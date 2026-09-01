@@ -20,6 +20,10 @@ permissions:
 jobs:
   # `force-run` and `force-skip` are global overrides; `defer` means this
   # job has no opinion and every downstream gate behaves as it always has.
+  #
+  # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
+  # ref is the stack base. Every PR above it is force-skipped and gets tested
+  # once it reaches the bottom of the stack.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -35,6 +39,7 @@ jobs:
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
+            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
 
@@ -60,8 +65,13 @@ jobs:
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      project_backend_checks: ${{ steps.changes.outputs.project_backend_checks }}
+      project_migration_checks: ${{ steps.changes.outputs.project_migration_checks }}
+      project_ratchet_checks: ${{ steps.changes.outputs.project_ratchet_checks }}
+      # A ratchets-only change (the shrink automation PR) needs the ratchet check, not an uberjar.
       no_source_code_changes: >-
-        ${{ steps.changes.outputs.documentation == 'true'
+        ${{ (steps.changes.outputs.documentation == 'true'
+        || steps.changes.outputs.project_ratchet_checks == 'true')
         && steps.changes.outputs.backend_all == 'false'
         && steps.changes.outputs.frontend_all == 'false'
         && steps.changes.outputs.e2e_all == 'false' }}
@@ -124,10 +134,9 @@ jobs:
       - name: Upload affected tests stats
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          TRIGGERED_BY: ${{ github.event_name == 'pull_request' && 'pr_update' || 'merge_to_master' }}
-          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
-          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: bun .github/scripts/upload-affected-tests-stats.ts
@@ -211,6 +220,9 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' &&
         needs.static-viz-files-changed.outputs.static_viz != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' }}
+      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' }}
+      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
 
   semantic-search-tests:
     if: |

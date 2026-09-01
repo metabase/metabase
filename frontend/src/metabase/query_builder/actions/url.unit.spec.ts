@@ -6,7 +6,7 @@
 // other side: how `navigate` drives the router.
 
 import { createMockEntitiesState } from "__support__/store";
-import { SET_CURRENT_STATE } from "metabase/redux/query-builder";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -18,7 +18,6 @@ import {
   getIsNavigationPending,
   navigate,
 } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -30,6 +29,7 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import { SET_CURRENT_STATE } from "../store/actions";
 import { getTableUrlForPristineQuestion } from "../utils";
 
 import { updateUrl } from "./url";

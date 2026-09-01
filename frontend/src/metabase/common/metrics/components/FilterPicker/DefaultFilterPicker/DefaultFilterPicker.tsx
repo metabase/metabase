@@ -72,7 +72,6 @@ export function DefaultFilterPicker({
                 value={option.operator}
                 label={option.displayName}
                 pb={6}
-                size="xs"
               />
             ))}
           </Stack>

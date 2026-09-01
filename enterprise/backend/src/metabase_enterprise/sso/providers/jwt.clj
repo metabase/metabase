@@ -161,7 +161,9 @@
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
     (sso-utils/group-names->ids group-names name-mappings)
-    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
+    (let [names (into #{} (sso-utils/group-names->strings group-names))]
+      (when (seq names)
+        (t2/select-pks-set :model/PermissionsGroup :name [:in names])))))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.

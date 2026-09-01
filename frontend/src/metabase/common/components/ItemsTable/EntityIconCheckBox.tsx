@@ -59,7 +59,6 @@ export const EntityIconCheckBox = ({
           swappedElement={
             <Checkbox
               checked={selected}
-              size={isSmall ? "xs" : "sm"}
               // Visual-only; clicks are handled by the wrapping button.
               className={CS.pointerEventsNone}
             />

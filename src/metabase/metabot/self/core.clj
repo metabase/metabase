@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
@@ -14,6 +15,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
@@ -55,6 +57,15 @@
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
+    :reasoning-config - Explicit reasoning directive for an adapter re-hosting a non-native
+                        model on another provider's dialect, where the model-derived config
+                        does not apply. Dialect-shaped, not portable: on the Anthropic dialect
+                        it is the `thinking` block, sent verbatim. When set it wins over both
+                        the derived config and the suppression rules, and :reasoning parts
+                        survive into the replayed input.
+    :fast?            - When true, request the provider's fast mode where the model
+                        supports it (Anthropic Opus fast mode); adapters without one
+                        ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
@@ -69,6 +80,8 @@
    [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:reasoning-config {:optional true} [:maybe :map]]
+   [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
@@ -158,6 +171,33 @@
         ;; Return a map with a sentinel key so the tool sees an error via schema validation
         ;; rather than a cryptic JSON parse stacktrace.
         {:_raw_arguments raw}))))
+
+(defn- try-decode-json-string
+  "If `v` is a string that looks like a JSON object or array, decode it.
+  Returns the decoded value on success, or the original value on failure."
+  [v]
+  (if (and (string? v)
+           (let [trimmed (str/trim v)]
+             (or (str/starts-with? trimmed "{")
+                 (str/starts-with? trimmed "["))))
+    (try
+      (json/decode+kw v)
+      (catch Exception _ v))
+    v))
+
+(defn- coerce-stringified-json
+  "Walk tool arguments and decode any string values that are actually stringified
+  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
+  [args]
+  (if (map? args)
+    (reduce-kv (fn [m k v]
+                 (assoc m k (cond
+                              (string? v) (try-decode-json-string v)
+                              (map? v)    (coerce-stringified-json v)
+                              :else       v)))
+               {}
+               args)
+    args))
 
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
@@ -258,19 +298,23 @@
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
-  optional `:title-fn`. A throwing title-fn leaves the part untitled."
+  optional `:title-fn`. Stringified JSON is coerced and the tool's `:decode` is
+  applied first, when it has one, so the title describes the arguments the tool
+  will run with. A throwing title-fn or decode leaves the part untitled."
   [tools]
   (map (fn [part]
-         (if-let [title-fn (and (= :tool-input (:type part))
-                                (:title-fn (get tools (:function part))))]
-           (let [title (try
-                         (title-fn (:arguments part))
-                         (catch Throwable e
-                           (log/debug e "tool title-fn failed" {:tool (:function part)})
-                           nil))]
-             (cond-> part
-               (string? title) (assoc :title title)))
-           part))))
+         (let [{:keys [title-fn decode]} (when (= :tool-input (:type part))
+                                           (get tools (:function part)))]
+           (if title-fn
+             (let [title (try
+                           (title-fn (cond-> (coerce-stringified-json (:arguments part))
+                                       decode decode))
+                           (catch Throwable e
+                             (log/debug e "tool title-fn failed" {:tool (:function part)})
+                             nil))]
+               (cond-> part
+                 (string? title) (assoc :title title)))
+             part)))))
 
 ;;; AI SDK SSE Output
 ;;
@@ -604,33 +648,6 @@
       ;; Other errors
       (or (ex-message e) "Unknown error"))))
 
-(defn- try-decode-json-string
-  "If `v` is a string that looks like a JSON object or array, decode it.
-  Returns the decoded value on success, or the original value on failure."
-  [v]
-  (if (and (string? v)
-           (let [trimmed (str/trim v)]
-             (or (str/starts-with? trimmed "{")
-                 (str/starts-with? trimmed "["))))
-    (try
-      (json/decode+kw v)
-      (catch Exception _ v))
-    v))
-
-(defn- coerce-stringified-json
-  "Walk tool arguments and decode any string values that are actually stringified
-  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
-  [args]
-  (if (map? args)
-    (reduce-kv (fn [m k v]
-                 (assoc m k (cond
-                              (string? v) (try-decode-json-string v)
-                              (map? v)    (coerce-stringified-json v)
-                              :else       v)))
-               {}
-               args)
-    args))
-
 (def ^:private stringified-scalar-transformer
   "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
   Restricted to the types models get wrong — strings, keywords and enums are left alone."
@@ -657,6 +674,49 @@
         (catch Exception _ nil))
       arguments))
 
+(defn- json-type-name
+  [v]
+  (cond
+    (nil? v)        "null"
+    (string? v)     "a string"
+    (boolean? v)    "a boolean"
+    (number? v)     "a number"
+    (map? v)        "an object"
+    (sequential? v) "an array"
+    :else           "an unsupported value"))
+
+(defn- argument-error-text
+  [arguments field messages]
+  (let [texts (->> (tree-seq coll? seq messages) (filter string?) distinct vec)]
+    (condp = texts
+      ["disallowed key"]       (str "`" (name field) "` is not a supported argument.")
+      ["missing required key"] (str "`" (name field) "` is required.")
+      (str "`" (name field) "` " (str/join "; " texts)
+           (when (every? string? messages)
+             (str "; received " (json-type-name (get arguments field))))
+           "."))))
+
+(defn- invalid-arguments-message
+  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
+  [schema arguments]
+  (when-let [error (mr/explain schema arguments)]
+    (let [humanized (me/humanize error)]
+      (str "Invalid tool arguments: "
+           (if (map? humanized)
+             (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
+                             (argument-error-text arguments field messages)))
+             (str "expected an object of named arguments; received "
+                  (json-type-name arguments) "."))))))
+
+(defn- validate-tool-arguments!
+  [tool arguments]
+  (when (and (map? arguments) (contains? arguments :_raw_arguments))
+    (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+                    {:agent-error? true})))
+  (when-let [schema (tool-args-schema tool)]
+    (when-let [message (invalid-arguments-message schema arguments)]
+      (throw (ex-info message {:agent-error? true})))))
+
 (defn- tool-decode-fn
   "Extract the `:decode` function from a tool definition map.
   The decode function transforms tool arguments before the tool runs.
@@ -676,6 +736,10 @@
   arguments before invocation. The decode function can coerce values and throw
   `:agent-error?` exceptions for validation failures.
 
+  The arguments are then checked against the tool's declared schema in every
+  environment — `mu/defn` only instruments dev and test namespaces — and a
+  mismatch is returned to the model as a repair-oriented error.
+
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
   (ait/with-tool-call {:ai/tool-name    tool-name
@@ -693,7 +757,8 @@
                              arguments (or (coerce-stringified-json arguments) {})
                              arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
-                             arguments (cond-> arguments decode decode)]
+                             arguments (cond-> arguments decode decode)
+                             _         (validate-tool-arguments! tool arguments)]
                          (log/debug "Executing tool" {:tool-name tool-name})
                          (when (ait/capture-active?)
                            (ait/record! {:ai/tool-args arguments}))
@@ -888,6 +953,13 @@
   (raw API keys, org/account names, tenant IDs). For these we don't splice a
   body preview into the message the caller sees."
   #{401 403})
+
+(defn decode-error-body
+  "The response map on a provider HTTP exception's ex-data, with its body decoded for
+  inspection. Consumes and closes a streamed body, so a caller that swallows the
+  exception (e.g. to retry) does not leak the connection."
+  [e]
+  (decode-bounded-body (ex-data e)))
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.

@@ -158,7 +158,7 @@ export function ItemList({
                     onChange(item);
                   }
                 }}
-                variant={isCurrentLevel ? "default" : "mb-light"}
+                variant={isCurrentLevel ? "primary" : "secondary"}
                 {...navLinkProps?.(isSelected)}
               />
             </Tooltip>

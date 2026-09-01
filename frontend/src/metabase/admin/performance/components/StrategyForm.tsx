@@ -42,7 +42,7 @@ import type {
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
-import { rootId } from "../constants/simple";
+import { defaultRootStrategy, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import {
   getDefaultValueForField,
@@ -61,7 +61,6 @@ interface ButtonLabels {
 export type StrategyFormLayout = "default" | "sidebar" | "modal";
 
 // Module-level so initialValues stay reference-stable across renders.
-const ROOT_DEFAULT_STRATEGY: CacheStrategy = { type: "nocache" };
 const INHERIT_DEFAULT_STRATEGY: CacheStrategy = { type: "inherit" };
 
 interface StrategyFormProps {
@@ -73,7 +72,7 @@ interface StrategyFormProps {
   savedStrategy?: CacheStrategy;
   shouldAllowInvalidation?: boolean;
   shouldShowName?: boolean;
-  onReset?: () => void;
+  onCancel?: () => void;
   buttonLabels?: ButtonLabels;
   layout?: StrategyFormLayout;
 }
@@ -87,7 +86,7 @@ export const StrategyForm = ({
   savedStrategy,
   shouldAllowInvalidation = false,
   shouldShowName = true,
-  onReset,
+  onCancel,
   layout = "default",
   buttonLabels = layout === "default"
     ? {
@@ -100,7 +99,7 @@ export const StrategyForm = ({
       },
 }: StrategyFormProps) => {
   const defaultStrategy =
-    targetId === rootId ? ROOT_DEFAULT_STRATEGY : INHERIT_DEFAULT_STRATEGY;
+    targetId === rootId ? defaultRootStrategy : INHERIT_DEFAULT_STRATEGY;
 
   const initialValues = savedStrategy ?? defaultStrategy;
 
@@ -110,7 +109,6 @@ export const StrategyForm = ({
       initialValues={initialValues}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
-      onReset={onReset}
       enableReinitialize
     >
       <StrategyFormBody
@@ -123,7 +121,7 @@ export const StrategyForm = ({
         buttonLabels={buttonLabels}
         layout={layout}
         strategyType={initialValues.type}
-        onDiscard={onReset}
+        onDiscard={onCancel}
       />
     </FormProvider>
   );
@@ -242,7 +240,7 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} gap="xl">
+          <Stack maw="35rem" gap="xl">
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -254,12 +252,14 @@ const StrategyFormBody = ({
               <DurationStrategyFormFields
                 targetModel={targetModel}
                 onSwitchToggle={handleSwitchToggle}
+                fullWidthFields={layout === "sidebar"}
               />
             )}
             {selectedStrategyType === "schedule" && (
               <ScheduleStrategyFormFields
                 targetModel={targetModel}
                 onSwitchToggle={handleSwitchToggle}
+                fullWidthFields={layout === "sidebar"}
               />
             )}
           </Stack>
@@ -291,7 +291,7 @@ const FormButtonsGroup = ({
       py="md"
       gap="md"
       justify={layout === "sidebar" ? "flex-end" : undefined}
-      px={layout === "sidebar" ? "md" : "2.5rem"}
+      px={layout === "sidebar" ? 0 : "2.5rem"}
       pb={layout === "sidebar" ? 0 : undefined}
       bg={layout === "sidebar" ? undefined : "background_page-primary"}
       style={
@@ -400,9 +400,11 @@ const FormButtons = ({
 const ScheduleStrategyFormFields = ({
   targetModel,
   onSwitchToggle,
+  fullWidthFields = false,
 }: {
   targetModel: CacheableModel;
   onSwitchToggle: () => void;
+  fullWidthFields?: boolean;
 }) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
@@ -447,6 +449,7 @@ const ScheduleStrategyFormFields = ({
           onScheduleChange={onScheduleChange}
           verb={c("A verb in the imperative mood").t`Invalidate`}
           layout="horizontal"
+          fullWidthSelects={fullWidthFields}
           timezone={timezone}
           aria-label={t`Describe how often the cache should be invalidated`}
         />
@@ -507,13 +510,18 @@ export const StrategySelectorHeading = ({
 }) => (
   <Stack gap="xs">
     <Text lh="1.25rem" fw="bold" fz="md" id={headingId}>
-      {t`Select the cache invalidation policy`}
+      {t`Cache invalidation policy`}
     </Text>
     <Text lh="1.25rem" fw="normal" fz="md" c="text-secondary">
       {t`This determines how long cached results will be stored.`}
     </Text>
   </Stack>
 );
+
+const EMPTY_FIELDS_BY_STRATEGY: Partial<Record<string, string[]>> = {
+  duration: ["duration"],
+  ttl: ["min_duration_seconds", "multiplier"],
+};
 
 const StrategySelector = ({
   targetId,
@@ -547,10 +555,20 @@ const StrategySelector = ({
     <section aria-labelledby={headingId}>
       {showHeading && <StrategySelectorHeading headingId={headingId} />}
       <Select
-        mt={showHeading ? "xl" : 0}
+        mt={showHeading ? "sm" : 0}
         data={data}
         value={values.type}
-        onChange={(value) => value && setFieldValue("type", value)}
+        onChange={(value) => {
+          if (!value) {
+            return;
+          }
+          setFieldValue("type", value);
+          for (const fieldName of EMPTY_FIELDS_BY_STRATEGY[value] ?? []) {
+            if (!(fieldName in values)) {
+              setFieldValue(fieldName, null);
+            }
+          }
+        }}
         allowDeselect={false}
         aria-labelledby={headingId}
         data-testid="cache-strategy-select"
@@ -642,9 +660,11 @@ const getDurationUnitOptions = (duration: number) => {
 const DurationStrategyFormFields = ({
   targetModel,
   onSwitchToggle,
+  fullWidthFields = false,
 }: {
   targetModel: CacheableModel;
   onSwitchToggle: () => void;
+  fullWidthFields?: boolean;
 }) => {
   const { values, setFieldValue } = useFormikContext<CacheStrategy>();
   const unit = values.type === "duration" ? values.unit : undefined;
@@ -667,7 +687,11 @@ const DurationStrategyFormFields = ({
           </Text>
         }
       >
-        <Flex align="flex-start" gap="sm">
+        <Flex
+          align="flex-start"
+          gap="sm"
+          w={fullWidthFields ? "100%" : undefined}
+        >
           <PositiveNumberInput
             strategyType="duration"
             name="duration"
@@ -676,7 +700,8 @@ const DurationStrategyFormFields = ({
           <FormSelect
             name="unit"
             data={getDurationUnitOptions(duration)}
-            w="8rem"
+            w={fullWidthFields ? undefined : "8rem"}
+            style={fullWidthFields ? { flexGrow: 1 } : undefined}
             allowDeselect={false}
             aria-label={t`Cache duration unit`}
             data-testid="duration-unit-select"

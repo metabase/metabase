@@ -11,6 +11,7 @@
 
   Batch processing can be disabled by setting the environment variable `MB_SYNCHRONOUS_BATCH_UPDATES=true`"
   (:require
+   ;; this ns is our grouper facade; the rest of the codebase goes through it
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
    [metabase.app-db.core :as mdb]
@@ -33,13 +34,18 @@
    [:f       ::fn-or-var]
    [:grouper (ms/InstanceOfClass Grouper)]])
 
+(def ^:private flush-sentinel
+  "Submitted by [[flush!]] purely to get a promise that is delivered once the batch it lands in has been processed.
+  Stripped out before `f` sees it."
+  ::flush)
+
 (mu/defn start! :- ::grouper-wrapper
   "Wrapper around [[grouper/start!]]."
   [f :- ::fn-or-var & options]
   ;; this wrapper is so we can use Vars which Grouper normally doesn't allow.
-  #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
   (let [f*      (fn [items]
-                  (f items))
+                  (when-let [items (not-empty (remove #{flush-sentinel} items))]
+                    (f items)))
         grouper (apply grouper/start! f* options)]
     {:f f, :grouper grouper}))
 
@@ -47,6 +53,19 @@
   "Wrapper around [[grouper/shutdown!]]."
   [grouper :- ::grouper-wrapper]
   (grouper/shutdown! (:grouper grouper)))
+
+(mu/defn flush!
+  "Block until everything submitted to `grouper-wrapper` before this call has been processed. Batches are otherwise
+  only processed once the queue fills up or the interval elapses, so callers that need to observe the effects of their
+  own submissions have to flush first."
+  [grouper-wrapper :- ::grouper-wrapper]
+  (let [grouper (:grouper grouper-wrapper)
+        ;; submit before waking the dispatcher: the sentinel is then drained in the same batch as everything already
+        ;; queued, and its promise is delivered only after that whole batch has been processed.
+        result  (grouper/submit! grouper flush-sentinel)]
+    (.wakeUp ^Grouper grouper)
+    @result
+    nil))
 
 (mu/defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.

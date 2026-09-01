@@ -43,7 +43,7 @@ concurrency:
 # ci-conductor (secrets: inherit is already set on the app-db call in
 # run-tests.yml). See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
   # passed as inputs to each job so that turning either on is one line, not one line per job.
@@ -332,7 +332,6 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'

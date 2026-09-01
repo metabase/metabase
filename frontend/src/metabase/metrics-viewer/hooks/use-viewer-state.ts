@@ -2,9 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
 import { useLocation } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getObjectEntries } from "metabase/utils/objects";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";

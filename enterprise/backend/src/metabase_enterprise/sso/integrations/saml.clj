@@ -39,9 +39,11 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.session.core :as session]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -121,7 +123,8 @@
           (if embedding?
             {:status 200
              :body {:url (:redirect-url auth-result)
-                    :method "saml"}
+                    :method "saml"
+                    :saml-popup-url (acs-url)}
              :headers {"Content-Type" "application/json"}}
             (response/redirect (:redirect-url auth-result))))
 
@@ -164,7 +167,7 @@
     (relay-state/relay-state-key? relay-state)
     (if-let [{:keys [continue_url origin embedding]} (relay-state/find-unexpired relay-state)]
       (if embedding
-        {:mode :embedding, :continue-url continue_url, :origin (or origin "*"), :relay-key relay-state}
+        {:mode :embedding, :continue-url continue_url, :origin origin, :relay-key relay-state}
         {:mode :redirect,  :continue-url continue_url, :relay-key relay-state})
       {:mode :expired})
 
@@ -188,6 +191,14 @@
     (when (= mode :expired)
       (throw (ex-info (tru "Invalid authentication token")
                       {:status-code 401})))
+    ;; Validate the popup callback target against the configured SDK embedding origins.
+    (when (= mode :embedding)
+      (when-not (and origin
+                     (mw.security/approved-origin? origin (embed.settings/embedding-app-origins-sdk)))
+        (log/warn "Rejecting SAML embedding login: popup origin is not an approved embedding origin"
+                  {:origin origin})
+        (throw (ex-info (tru "This origin is not an approved embedding origin.")
+                        {:status-code 400}))))
     (sso-utils/check-sso-redirect continue-url)
     (try
       (let [redirect-url (or continue-url (system/site-url))

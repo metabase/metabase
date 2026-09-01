@@ -51,7 +51,6 @@ If you're running Metabase Cloud, you can [contact support](https://www.metabase
 
 ## List of environment variables
 
-
 ### `MB_ADMIN_EMAIL`
 
 - Type: string
@@ -871,7 +870,7 @@ Custom URL for the help link.
 
 Prevent the exception middleware from including stacktraces in responses.
 
-### `MB_HTTP_CHANNEL_HOST_STRATEGY`
+### `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`
 
 - Type: keyword
 - Default: `external-only`
@@ -1240,6 +1239,14 @@ Use SSL, TLS or plain text.
 
 Should we sync user attributes when someone logs in via LDAP?
 
+### `MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`
+
+- Type: csv
+- Default: ``
+- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-allowlist`
+
+Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.
+
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
 - Type: csv
@@ -1255,6 +1262,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 - [Configuration file name](./config-file.md): `ldap-timeout-seconds`
 
 Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
+### `MB_LDAP_TRUST_STORE`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `ldap-trust-store`
+
+Path to a JKS trust store of CA certificates used to validate the LDAP server's TLS certificate. Leave blank to use the JVM default trust store.
 
 ### `MB_LDAP_USER_BASE`
 
@@ -1405,6 +1420,26 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 - [Configuration file name](./config-file.md): `llm-connection-timeout-ms`
 
 TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever.
+
+### `MB_LLM_DEEPSEEK_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.deepseek.com`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-base-url`
+
+The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_DEEPSEEK_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-key`
+
+The DeepSeek API Key.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_GOOGLE_API_BASE_URL`
 
@@ -1604,6 +1639,34 @@ Maximum SQL generation requests per user per minute.
 
 Socket (inter-byte read) timeout in milliseconds for LLM API requests. For streaming responses this bounds the gap between successive chunks, NOT the total response time. Picked generously: extended thinking can pause for tens of seconds between chunks. Without it, a hung read inside the stream blocks the worker indefinitely — observed in production when an upstream proxy held the connection open without sending data.
 
+### `MB_LLM_VLLM_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-vllm-api-base-url`
+
+The base URL of your vLLM server's OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.
+
+Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_VLLM_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-vllm-api-key`
+
+The API key for your vLLM server. Only needed when the server was started with `--api-key`.
+
+Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_VLLM_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-vllm-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your vLLM server.
+
 ### `MB_LLM_ZAI_API_BASE_URL`
 
 - Type: string
@@ -1667,6 +1730,18 @@ Options for displaying the illustration on the login page.
 - [Configuration file name](./config-file.md): `login-page-illustration-custom`
 
 The custom illustration for the login page.
+
+### `MB_MAP_TILE_SERVER_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for map tile servers.
+Options:
+- allow-private (external + private networks but NOT loopback or link-local)
+- external-only (only globally routable public addresses)
+- allow-all (no restrictions).
+Defaults to allow-private when self-hosted.
 
 ### `MB_MAP_TILE_SERVER_URL`
 
@@ -3432,6 +3507,16 @@ Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
 
+### `MB_QUARTZ_MAX_CONNECTION_POOL_SIZE`
+
+Type: integer<br>
+Default: `5`<br>
+Since: v64.0
+
+Maximum number of connections in the dedicated pool that Metabase's internal task scheduler (Quartz) uses to talk to the application database. This pool is separate from the main application database pool (see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size)), so scheduled tasks can always reach the application database even when the main pool is fully in use.
+
+Scheduler operations are short, so the default is enough for most deployments. Consider raising it only if you run a very large number of scheduled items (subscriptions, alerts, syncs) and see tasks firing late.
+
 ### `MB_SESSION_SECRET_KEY`
 
 Type: string<br>
@@ -3469,4 +3554,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-

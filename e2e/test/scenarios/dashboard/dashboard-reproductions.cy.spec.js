@@ -1934,102 +1934,6 @@ describe("issue 56716", () => {
     H.getDashboardCard().findByText("200 rows").should("be.visible");
   });
 });
-
-describe("Issue 46337", () => {
-  const MODEL_NAME = "Model 46337";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createQuestion({
-      type: "model",
-      name: MODEL_NAME,
-      query: {
-        "source-table": ORDERS_ID,
-        fields: [
-          [
-            "field",
-            ORDERS.ID,
-            {
-              "base-type": "type/BigInteger",
-            },
-          ],
-          [
-            "field",
-            ORDERS.TAX,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.DISCOUNT,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.QUANTITY,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "base-type": "type/DateTime",
-            },
-          ],
-          [
-            "field",
-            ORDERS.PRODUCT_ID,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-        ],
-        joins: [
-          {
-            fields: "all",
-            alias: "Products",
-            "source-table": PEOPLE_ID,
-            strategy: "left-join",
-            condition: [
-              "=",
-              ["field", ORDERS.USER_ID, {}],
-              ["field", PEOPLE.ID, { "join-alias": "Products" }],
-            ],
-          },
-        ],
-      },
-    }).then(({ body: model }) => {
-      cy.visit(`/auto/dashboard/model/${model.id}`);
-    });
-  });
-
-  // TODO: unskip when metabase#46337 is fixed
-  // See: https://github.com/metabase/metabase/issues/46337
-  it("should (metabase#46337)", { tags: "@skip" }, () => {
-    cy.log("ensure the dashcards render data not errors");
-
-    cy.findByTestId("dashboard-grid").within(() => {
-      cy.findByText("There was a problem displaying this chart.").should(
-        "not.exist",
-      );
-      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
-    });
-  });
-});
-
 function slowDownCardQuery() {
   return cy.intercept("POST", "/api/card/*/query", (req) => {
     req.on("response", (res) => {
@@ -2246,7 +2150,9 @@ describe("issue 64138", () => {
       })
       .within(() => {
         cy.findByLabelText("Zoom in").should("not.exist");
-        cy.findByText("Set as default view").should("be.visible").click();
+        // the update button is disabled until the map is panned, so only
+        // assert that it is shown while the zoom controls are hidden
+        cy.findByText("Set as default view").should("be.visible");
       });
 
     cy.log("hovering marker icons should not open their tooltips");

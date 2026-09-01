@@ -28,7 +28,10 @@ import {
   SIDE_EFFECT_PATHS,
 } from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
-import { NO_MODULE_SIDE_EFFECTS_OPTIONS } from "./frontend/lint/no-module-side-effects-options.js";
+import {
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
+  NO_MODULE_SIDE_EFFECTS_OPTIONS,
+} from "./frontend/lint/no-module-side-effects-options.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
@@ -121,6 +124,11 @@ const baseMetabaseRestrictedConfig = {
       name: "@storybook/test",
       message:
         "Please use `testing-library/react` or `@testing-library/user-event`",
+    },
+    {
+      name: "reselect",
+      message:
+        "Please import from `@reduxjs/toolkit` instead, which re-exports reselect.",
     },
   ],
 };
@@ -329,7 +337,6 @@ const configs = [
         {
           allowed: [
             "underscore",
-            "lodash.orderby",
             "lodash.debounce",
             "chalk",
             "node-fetch",
@@ -1211,24 +1218,17 @@ const configs = [
   // SIDE-EFFECT-FREE MODULES
   // ============================================
   {
-    // Rspack drops any file in these directories whose exports go unused, so an
-    // import-time effect there is silently lost in production. Declaring a
-    // directory in SIDE_EFFECT_FREE_PATHS enrols it here.
+    // Run the lint on the directories rspack treats as side-effect-free
     files: SIDE_EFFECT_FREE_PATHS.map(
       (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
     ),
     ignores: [
-      // A directory entry (trailing separator) covers every file under it
       ...SIDE_EFFECT_PATHS.map((entry) =>
         entry.endsWith(path.sep)
           ? `${path.relative(__dirname, entry)}/**`
           : path.relative(__dirname, entry),
       ),
-      "**/*.unit.spec.*",
-      "**/*.stories.*",
-      "**/tests/**",
-      "**/__support__/**",
-      "**/*.d.ts",
+      ...NO_MODULE_SIDE_EFFECTS_IGNORES,
     ],
     rules: {
       "metabase/no-module-side-effects": [

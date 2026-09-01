@@ -14,13 +14,11 @@ import {
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type Question from "metabase-lib/v1/Question";
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { IconName } from "metabase-types/api";
+import type { Card, IconName } from "metabase-types/api";
 
 import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
@@ -32,8 +30,8 @@ import type {
 
 import S from "./QuestionPane.module.css";
 
-const getIcon = (question: Question): IconName => {
-  return match(question.type())
+const getIcon = (card: Card): IconName => {
+  return match(card.type)
     .returnType<IconName>()
     .with("question", () => "table")
     .with("model", () => "model")
@@ -54,10 +52,13 @@ export const QuestionPane = ({
   } = useGetCardQuery({
     id,
   });
-  const { isLoading: isLoadingTable, error: tableError } =
-    useGetTableQueryMetadataQuery({
-      id: getQuestionVirtualTableId(id),
-    });
+  const {
+    data: table,
+    isLoading: isLoadingTable,
+    error: tableError,
+  } = useGetTableQueryMetadataQuery({
+    id: getQuestionVirtualTableId(id),
+  });
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -67,31 +68,24 @@ export const QuestionPane = ({
   );
   const isLoading = isLoadingCard || isLoadingTable || isLoadingCollection;
   const error = cardError ?? tableError ?? collectionError;
-  const metadata = useSelector(getMetadata);
 
-  if (isLoading || error != null) {
+  if (card == null || table == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const question = metadata.question(id);
-  const table = metadata.table(getQuestionVirtualTableId(id));
-  if (question == null || table == null) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  const lastEditInfo = question.lastEditInfo();
+  const lastEditInfo = card["last-edit-info"];
 
   return (
     <SidebarContent
-      title={question.displayName() || undefined}
-      icon={getIcon(question)}
+      title={card.name || undefined}
+      icon={getIcon(card)}
       onBack={onBack}
       onClose={onClose}
     >
       <Box pl="lg" pr="lg">
         <Box p="0 0.5rem 1rem 0.5rem">
-          {question.description() ? (
-            <Description>{question.description()}</Description>
+          {card.description ? (
+            <Description>{card.description}</Description>
           ) : (
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
@@ -99,7 +93,7 @@ export const QuestionPane = ({
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <a
             className={S.QuestionPaneDetailLink}
-            href={Urls.question(question)}
+            href={Urls.card(card)}
             target="_blank"
             rel="noreferrer"
           >
@@ -109,11 +103,7 @@ export const QuestionPane = ({
         </Flex>
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="label" />
-          <Box
-            component="span"
-            ml="sm"
-            fw="normal"
-          >{t`ID #${question.id()}`}</Box>
+          <Box component="span" ml="sm" fw="normal">{t`ID #${card.id}`}</Box>
         </Flex>
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="collection" />
@@ -146,8 +136,10 @@ export const QuestionPane = ({
                 id:
                   typeof field.id === "number"
                     ? field.id
-                    : // Unjustified type cast. FIXME
-                      (field.getUniqueId() as UniqueFieldId),
+                    : // `getUniqueFieldId` returns the same synthetic string key
+                      // the field list renders with, which is what a non-numeric
+                      // field id means here.
+                      (getUniqueFieldId(field) as UniqueFieldId),
               });
             }}
           />

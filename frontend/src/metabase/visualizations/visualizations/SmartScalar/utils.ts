@@ -6,6 +6,10 @@ import { formatNumber } from "metabase/utils/formatting";
 import { measureText } from "metabase/utils/measure-text";
 import { uuid } from "metabase/utils/uuid";
 import { isEmpty } from "metabase/utils/validate";
+import {
+  type ComparisonMenuOption,
+  formatPreviousPeriodOptionName,
+} from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DateTimeAbsoluteUnit,
@@ -28,7 +32,6 @@ import {
   SPACING,
   VALUE_MIN_HEIGHT,
 } from "./constants";
-import type { ComparisonMenuOption } from "./types";
 
 export const isPeriodVisible = (height: number) =>
   height > PERIOD_HIDE_HEIGHT_THRESHOLD;
@@ -395,26 +398,6 @@ function createComparisonMenuOption(
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
-}
-
-export function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
-  switch (dateUnit) {
-    case "minute":
-      return t`Previous minute`;
-    case "hour":
-      return t`Previous hour`;
-    case "day":
-      return t`Previous day`;
-    case "week":
-      return t`Previous week`;
-    case "month":
-      return t`Previous month`;
-    case "quarter":
-      return t`Previous quarter`;
-    case "year":
-      return t`Previous year`;
-  }
-  return "";
 }
 
 function formatPeriodsAgoOptionName(dateUnit: DateTimeAbsoluteUnit) {

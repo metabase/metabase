@@ -23,6 +23,11 @@ const EDITABLE_SOURCE_TABLE_NAME_REGEX = new RegExp("Many Data Types", "i");
 const INLINE_EDIT_TEST_TABLE_NAME = "editing_test";
 const DEFAULT_FIELD = "UUID";
 
+// `many_data_types` seeds two rows; the editing tests target the second one,
+// whose date columns fall in February 2020 (the month the date pickers open on).
+const TEST_TABLE_ROW_COUNT = 2;
+const TARGET_ROW_ID = 2;
+
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
     resetSnowplow();
@@ -131,45 +136,65 @@ describe("scenarios > table-editing", () => {
       resetSnowplow();
 
       H.queryWritableDB(
-        `CREATE TABLE IF NOT EXISTS ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
+        `DROP TABLE IF EXISTS ${INLINE_EDIT_TEST_TABLE_NAME}`,
         "postgres",
       );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID }).then(() => {
-        H.getTableId({
-          databaseId: WRITABLE_DB_ID,
-          name: INLINE_EDIT_TEST_TABLE_NAME,
-        }).then((tableId) => {
-          /*
-            Adjusting "string" column type.
-            By default it is set to "type/Category" due to only 2 unique values in test dataset.
-            This causes to "string" column cell rendering a dropdown instead of an input field
-            when editing.
-          */
-          H.getFieldId({
-            tableId,
-            name: "string",
-          }).then((fieldId) => {
-            cy.request("PUT", `/api/field/${fieldId}`, {
-              semantic_type: null,
-            });
-          });
+      H.queryWritableDB(
+        `CREATE TABLE ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
+        "postgres",
+      );
 
-          cy.intercept("GET", `/api/table/${tableId}/query_metadata`).as(
-            "getDataTable",
-          );
-          cy.intercept("POST", "api/dataset").as("getTableDataQuery");
-          cy.intercept("POST", "api/ee/action-v2/execute-bulk").as(
-            "updateTableData",
-          );
-
-          cy.visit(
-            `/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`,
-          );
-
-          cy.wait("@getDataTable");
-          cy.log("table data loaded");
-        });
+      /*
+        Without `tableName` the helper returns as soon as the database reports
+        any table at all, so it can hand back before the freshly created table
+        has been scanned. Row updates key on the PK that classification infers
+        for the "id" column, and the "string" field id below has to exist, so
+        wait for this table specifically. `retrigger` covers sync_schema calls
+        that get silently dropped by the single-threaded task pool.
+      */
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: INLINE_EDIT_TEST_TABLE_NAME,
+        retrigger: true,
       });
+
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: INLINE_EDIT_TEST_TABLE_NAME,
+      }).then((tableId) => {
+        /*
+          Adjusting "string" column type.
+          By default it is set to "type/Category" due to only 2 unique values in test dataset.
+          This causes to "string" column cell rendering a dropdown instead of an input field
+          when editing.
+        */
+        H.getFieldId({
+          tableId,
+          name: "string",
+        }).then((fieldId) => {
+          cy.request("PUT", `/api/field/${fieldId}`, {
+            semantic_type: null,
+          });
+        });
+
+        cy.intercept("GET", `/api/table/${tableId}/query_metadata`).as(
+          "getDataTable",
+        );
+        cy.intercept("POST", "api/dataset").as("getTableDataQuery");
+        cy.intercept("POST", "api/ee/action-v2/execute-bulk").as(
+          "updateTableData",
+        );
+
+        cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+      });
+
+      cy.log("wait for the grid to be interactive");
+      cy.wait("@getDataTable");
+      cy.wait("@getTableDataQuery");
+      H.tableInteractiveBody()
+        .find("[data-column-id='id']")
+        .should("have.length", TEST_TABLE_ROW_COUNT);
+      cy.findByTestId("edit-table-data-loading-overlay").should("not.exist");
     });
 
     afterEach(() => {
@@ -292,12 +317,12 @@ describe("scenarios > table-editing", () => {
         {
           dataType: "integer",
           column: "integer",
-          value: Math.floor(Math.random() * 10000),
+          value: 1234,
         },
         {
           dataType: "tinyint",
           column: "tinyint",
-          value: Math.floor(Math.random() * 256),
+          value: 42,
         },
         {
           dataType: "string",
@@ -308,31 +333,28 @@ describe("scenarios > table-editing", () => {
 
       cases.forEach(({ dataType, column, value }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
-          // Locate the table and the specific cell to edit
-          H.tableInteractiveBody()
-            .find(`[data-column-id='${column}']`)
-            .eq(1) // Select the second row (index 1)
+          getEditableCell(TARGET_ROW_ID, column)
             .as("targetCell")
-            .click(); // Activate inline editing
+            .click({ scrollBehavior: false });
 
-          // Edit the cell value
           cy.get("@targetCell")
             .find("input")
-            .first() // Assuming the cell becomes an input field
-            .type(`{selectAll}{backspace}${value}`) // Enter the new value
-            .blur(); // Trigger the save action by blurring the input
+            .type(`{selectAll}{backspace}${value}`, { scrollBehavior: false })
+            /*
+              The number input holds its value in React state that the blur
+              handler closes over, so blurring before the DOM has settled sends
+              the pre-edit value (or the empty intermediate one).
+            */
+            .should("have.value", String(value))
+            .blur();
 
           cy.wait("@updateTableData").then(({ response }) => {
             expect(response?.body.outputs[0].op).to.equal("updated");
-            if (dataType === "date") {
-              // BE returns the date in the report timezone, so we should ignore the timezone offset
-              expect(response?.body.outputs[0].row[column]).to.satisfy(
-                (date: string) => date.startsWith(value.toString()),
-              );
-            } else {
-              expect(response?.body.outputs[0].row[column]).to.equal(value);
-            }
+            expect(response?.body.outputs[0].row[column]).to.equal(value);
           });
+
+          cy.log("the toast auto-hides after 5s, so assert it before Snowplow");
+          H.undoToast().findByText("Successfully updated").should("be.visible");
 
           H.getTableId({
             databaseId: WRITABLE_DB_ID,
@@ -346,19 +368,16 @@ describe("scenarios > table-editing", () => {
               result: "success",
             });
           });
-
-          H.undoToast().findByText("Successfully updated").should("be.visible");
         });
       });
 
       it("should allow to edit a cell with date type", () => {
-        H.tableInteractiveBody()
-          .find("[data-column-id='date']")
-          .eq(1)
-          .as("targetCell")
-          .click({ scrollBehavior: false });
+        getEditableCell(TARGET_ROW_ID, "date").click({
+          scrollBehavior: false,
+        });
 
-        const day = Math.floor(Math.random() * 10) + 10; // 10-20
+        // The picker opens on the month of the cell's current value.
+        const day = 15;
 
         H.popover().within(() => {
           cy.findByRole("button", { name: `${day} February 2020` }).click();
@@ -377,15 +396,9 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with datetime type", () => {
-        H.tableInteractiveBody()
-          .findByTestId("center-center-quadrant")
-          .findAllByRole("row")
-          .eq(1)
-          .within(() => {
-            cy.get("[data-column-id='datetime']").as("targetCell").click({
-              scrollBehavior: false,
-            });
-          });
+        getEditableCell(TARGET_ROW_ID, "datetime").click({
+          scrollBehavior: false,
+        });
 
         const day = 15;
         const hour = 11;
@@ -420,45 +433,42 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should allow to edit a cell with select type", () => {
-        H.tableInteractiveBody()
-          .find("[data-column-id='boolean']")
-          .eq(1)
-          .as("targetCell")
-          .click({ scrollBehavior: false });
+        // The target row's boolean is `false`, so "True" is always a change.
+        getEditableCell(TARGET_ROW_ID, "boolean").click({
+          scrollBehavior: false,
+        });
 
         H.popover().within(() => {
-          // 3: true, false, null
-          cy.findAllByRole("option").should("have.length", 3).eq(0).click();
+          // 3: True, False, None
+          cy.findAllByRole("option").should("have.length", 3);
+          cy.findByRole("option", { name: "True" }).click();
+        });
 
-          cy.wait("@updateTableData").then(({ response }) => {
-            expect(response?.body.outputs[0].op).to.equal("updated");
-          });
+        cy.wait("@updateTableData").then(({ response }) => {
+          expect(response?.body.outputs[0].op).to.equal("updated");
+          expect(response?.body.outputs[0].row.boolean).to.equal(true);
         });
 
         H.undoToast().findByText("Successfully updated").should("be.visible");
       });
 
       it("should not allow to edit PK cells", () => {
-        H.tableInteractiveBody()
-          .find("[data-column-id='id']")
-          .eq(1)
-          .as("targetCell")
+        getEditableCell(TARGET_ROW_ID, "id")
           .click({ scrollBehavior: false })
+          .should("be.visible")
           .find("input")
           .should("not.exist");
       });
 
       it("should handle errors", () => {
-        H.tableInteractiveBody()
-          .find("[data-column-id='tinyint']")
-          .eq(1)
-          .as("targetCell")
+        getEditableCell(TARGET_ROW_ID, "tinyint")
           .click({ scrollBehavior: false })
           .find("input")
           // Entering a big number into tinyint column
           .type("{selectAll}{backspace}9999999", {
             scrollBehavior: false,
           })
+          .should("have.value", "9999999")
           .blur(); // Trigger the save action by blurring the input
 
         H.undoToast()
@@ -716,6 +726,26 @@ function getTableEditIcon(tableName: RegExp) {
 
 function openTableEdit(tableName: RegExp) {
   getTableEditIcon(tableName).click();
+}
+
+/**
+ * Rows are split across the pinned and center quadrants; only the center one
+ * carries the "id" cell, so filtering on it yields a single row element.
+ * Matching on the id value keeps targeting stable — the grid query has no
+ * ORDER BY, so display position is not guaranteed.
+ */
+function getEditableRow(rowId: number) {
+  return H.tableInteractiveBody()
+    .findAllByRole("row")
+    .filter(
+      (_, row) =>
+        row.querySelector("[data-column-id='id']")?.textContent?.trim() ===
+        String(rowId),
+    );
+}
+
+function getEditableCell(rowId: number, column: string) {
+  return getEditableRow(rowId).find(`[data-column-id='${column}']`);
 }
 
 function openEditRowModal(rowIndex: number) {

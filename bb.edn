@@ -276,6 +276,25 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
+  project-tests
+  {:doc "Run project-level backend and migration checks."
+   :examples [["./bin/mage project-tests" "Run backend and migration checks"]
+              ["./bin/mage project-tests backend" "Run backend checks"]
+              ["./bin/mage project-tests migrations" "Run migration checks"]
+              ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests ratchets" "Run ratchet checks"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "migrations"
+                         "modules"
+                         "ratchets"]]]
+   :requires [[mage.project-tests :as project-tests]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (project-tests/run! suite)
+                  (project-tests/run!)))}
+
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
    :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
@@ -283,6 +302,12 @@
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+
+  check-kondo-ratchets
+  {:doc "Fail when suppressions exceed a bounded budget or the ratchets file isn't normalized (babashka only, no JVM)."
+   :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when a policy is exceeded, the file is missing, or its formatting is not normalized"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check))}
 
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
@@ -409,36 +434,27 @@
         (with-out-str
           (table/table [["Priority" "Condition" "Result" "Reason"]
                         ["0"    "--only-driver=DRIVER was passed"         "RUN/SKIP" "only that one driver runs"]
-                        ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label (skip list ignored)"]
+                        ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label"]
                         ["2"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["3"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["4"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["5"    "Driver's own modules/drivers/* files changed" "RUN" "driver files changed (skip list ignored)"]
-                        ["6"    "Configured status = skip"                "SKIP" "driver is skipped by CI config"]
-                        ["7"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
-                        ["8"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
-                        ["9"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
-                        ["10"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["11"
+                        ["5"    "Driver's own modules/drivers/* files changed" "RUN" "driver files changed"]
+                        ["6"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
+                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["8"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
+                        ["9"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["10"
                          (str (pr-str driver-triggers) " module deps affected")
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+                        ["11"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
         "\nThis table decides only WHETHER a driver runs. Whether its failures GATE is a separate\n"
         "question, answered at the end of the job by ci-conductor's quarantine rules.\n"
-        "\nNote: the remote skip list (status = skip) is ignored entirely on a force-run --\n"
-        "master and release-* branches, or a ci:run-all label -- so every driver runs there.\n"
-        "Whether failures gate remains determined by CI Conductor's quarantine rules. The skip\n"
-        "list is also ignored for any driver whose own modules/drivers/* files the run changes.\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
-        "  ci:run-all-drivers        Force-run ALL drivers (overrides the skip list)\n"
-        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides the skip list)\n"
+        "  ci:run-all-drivers        Force-run ALL drivers\n"
+        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb\n"
         "  ci:run-all-cloud-drivers  Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
-        "\n## Driver Status (from the CI driver config)\n\n"
-        "  skip   Listed with status \"skip\" in ci-test-config.json: not run at all (changing the\n"
-        "         driver's own files or ci:run-DRIVER overrides). Every other driver runs and\n"
-        "         gates as usual.\n"
         "\nTo let a driver run but not gate, add a suite-quarantine rule in CI Conductor instead.\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))

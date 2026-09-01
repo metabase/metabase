@@ -93,7 +93,7 @@
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers (disj (descendants driver/hierarchy :sql-jdbc)
                            ;; too tricky to stub the connection
-                           :presto-jdbc :databricks :starburst)
+                           :presto-jdbc :databricks :starburst :clickhouse)
       (let [connection-option-calls (volatile! [])
             is-default-options
             (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
@@ -220,6 +220,7 @@
 
 (deftest bad-connection-details-throw-client-error-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    ;; needs a real Database row: the query goes through the HTTP API, not a metadata provider
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                            :engine  driver/*driver*}]
@@ -241,6 +242,7 @@
 (deftest connection-pool-checkout-timeout-returns-503-test
   (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      ;; needs a real Database row: the query goes through the HTTP API, not a metadata provider
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                              :engine  driver/*driver*}]
@@ -278,6 +280,7 @@
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      ;; needs a real Database row: the query goes through the HTTP API, not a metadata provider
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                              :engine  driver/*driver*}]

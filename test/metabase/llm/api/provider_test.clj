@@ -8,6 +8,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -28,13 +29,38 @@
   (fn [& _]
     (throw (ex-info message {:api-error true :status-code 401}))))
 
+(defn- do-with-another-instances-write!
+  [conns thunk]
+  (let [stale-conns   (get (setting.cache/cache) "llm-providers")
+        stale-updated (setting/cache-last-updated-at)]
+    (assert (some? stale-updated) "the cached settings-last-updated is what the rewind below makes stale")
+    (llm.provider/set-connections! (vec conns))
+    ;; close the once-a-minute window first, so nothing but an explicit forced check can reload the cache and the
+    ;; test is measuring the endpoint rather than a poll that happened to come due
+    (setting/restore-cache-if-needed! :force-check? true)
+    (setting.cache/update-cache! "llm-providers" stale-conns)
+    (setting.cache/update-cache! "settings-last-updated" stale-updated)
+    ;; the cache is process-wide, so a body that leaves it stale hands the staleness to whatever test runs next
+    (try
+      (thunk)
+      (finally
+        (setting.cache/restore-cache!)))))
+
+(defmacro ^:private with-another-instances-write!
+  "Run `body` with `conns` committed to the app DB while this instance's settings cache still holds what it held
+  before — where every instance but the writer sits until its cache next polls, up to a minute later."
+  {:style/indent 1}
+  [conns & body]
+  `(do-with-another-instances-write! ~conns (fn [] ~@body)))
+
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "vllm"
-               "metabase"}
+      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
+               "vllm" "metabase"}
              (set (map :type types))))
-      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "vllm"]
+      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
+              "vllm"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -109,9 +135,15 @@
         (is (nil? (fields "model")))
         (is (= "google/gemini-3.5-flash" (:default_model google)))
         (testing "and the catalog rides along so the connection form can offer the model to validate against"
-          (is (= [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                  {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                  {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+          (is (= [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
+                  {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
+                  {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                  {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                  {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
+                  {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                  {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
+                  {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                  {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
                  (:models google)))))
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
@@ -246,8 +278,8 @@
                                     (reset! opts o)
                                     {:models         [{:id "vllm-test" :display_name "vllm-test"}
                                                       {:id "other" :display_name "other"}]
-                                     :probed-model   "vllm-test"
-                                     :learned-config {:model-reasoning "true"}})]
+                                     :learned-config {:model-reasoning "true"
+                                                      :probed-model    "vllm-test"}})]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
             (is (=? {:key    "vllm"
@@ -262,7 +294,8 @@
             (is (= "vllm/vllm-test" (metabot.settings/llm-metabot-provider)))
             (testing "and what the probe learned is stored on the connection, where the request path reads it"
               (is (= {:base-url        "http://vllm.internal:8000/v1"
-                      :model-reasoning "true"}
+                      :model-reasoning "true"
+                      :probed-model    "vllm-test"}
                      (stored-config "vllm")))
               (is (true? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
 
@@ -312,8 +345,8 @@
                                   (fn [_provider o]
                                     (reset! opts o)
                                     {:models         [{:id "served-a" :display_name "served-a"}]
-                                     :probed-model   "served-b"
-                                     :learned-config {:model-reasoning "false"}})]
+                                     :learned-config {:model-reasoning "false"
+                                                      :probed-model    "served-b"}})]
         (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
                                                                       {:base-url        "http://old.internal:8000/v1"
                                                                        :model-reasoning "true"})]]
@@ -323,9 +356,56 @@
             (is (=? {:model "served-b" :probe? true} @opts))
             (testing "and the probe's fresh verdict replaces the one the connection was carrying"
               (is (= {:base-url        "http://vllm.internal:8000/v1"
-                      :model-reasoning "false"}
+                      :model-reasoning "false"
+                      :probed-model    "served-b"}
                      (stored-config "vllm")))
               (is (false? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
+
+(deftest update-adopts-the-model-a-vllm-server-is-serving-now-test
+  (testing "vLLM still reports configured models even if no longer serving the previously :probed-model"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider {:keys [model] :as o}]
+                                    (reset! opts o)
+                                    (when model
+                                      (throw (ex-info "The vLLM server is not serving Qwen/Qwen3-8B. It is serving: Qwen/Qwen3-32B."
+                                                      {:api-error true :status-code 400})))
+                                    {:models         [{:id "Qwen/Qwen3-32B" :display_name "Qwen/Qwen3-32B"}]
+                                     :learned-config {:model-reasoning "false"
+                                                      :probed-model    "Qwen/Qwen3-32B"}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                      {:base-url        "http://old.internal:8000/v1"
+                                                                       :model-reasoning "false"
+                                                                       :probed-model    "Qwen/Qwen3-8B"})]]
+          ;; Metabot points elsewhere, so nothing but the recorded probe names a model for this connection
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-8"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/vllm"
+                                  {:config {:base-url "http://vllm.internal:8000/v1"}})
+            (testing "the recorded model is offered as a proposal the probe may decline, not as a request"
+              (is (=? {:proposed-model "Qwen/Qwen3-8B" :probe? true} @opts))
+              (is (not (contains? @opts :model))))
+            (testing "and the connection records what the server is serving now"
+              (is (= {:base-url        "http://vllm.internal:8000/v1"
+                      :model-reasoning "false"
+                      :probed-model    "Qwen/Qwen3-32B"}
+                     (stored-config "vllm"))))))))))
+
+(deftest update-still-verifies-against-a-model-the-client-names-test
+  (testing "a model the admin picks is a request, and stays binding even though a recorded probe names another"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider o]
+                                    (reset! opts o)
+                                    {:models         [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}]
+                                     :learned-config {:probed-model (:model o)}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :probed-model       "anthropic/claude-sonnet-4-6"})]]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {:oauth-access-token "ya29.token" :project-id "my-project"}
+                                 :model  "google/gemini-3.7-flash"})
+          (is (= "google/gemini-3.7-flash" (:model @opts))))))))
 
 (deftest create-selects-a-model-composed-from-the-config-test
   (testing (str "Azure names its deployment in `:config` rather than listing models, and the form leaves a field it "
@@ -541,6 +621,23 @@
                                     :config {:api-key  "**********ed"
                                              :base-url "https://new.example.com"}})))
       (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} (stored-config "anthropic"))))))
+
+(deftest update-preserves-a-masked-service-account-key-test
+  (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
+                "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [_provider {:keys [credentials]}]
+                                      (is (= key-file (:service-account-key credentials))
+                                          "the stored key is what gets probed, not the mask")
+                                      {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {:auth-method         "service-account-key"
+                                          :service-account-key (setting/obfuscate-value key-file)}})
+          (is (= key-file (:service-account-key (stored-config "google")))))))))
 
 (deftest update-replaces-a-freshly-entered-secret-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
@@ -849,24 +946,193 @@
           (mt/user-http-request :crowberto :get 200 "llm/models"))
         (is (= ["sk-ant-first" "sk-ant-rotated"] @keys-seen))))))
 
+(deftest models-are-refetched-when-the-selected-model-changes-test
+  (testing "repointing Metabot at another of a connection's models reprobes instead of reusing the cached listing"
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (swap! probed conj (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "cache-keying-model" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "cache-keying-model/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (mt/user-http-request :crowberto :get 200 "llm/models"))
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "cache-keying-model/anthropic/claude-opus-5"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")))
+        (is (= ["google/gemini-3.5-flash" "anthropic/claude-opus-5"] @probed))))))
+
+(deftest models-cache-is-seeded-under-the-post-save-selection-test
+  (testing "creating the first usable connection caches its listing under the model selected by the save"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (swap! calls inc)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "google"
+                                   :key    "post-save-create"
+                                   :model  "anthropic/claude-opus-5"
+                                   :config {:oauth-access-token "ya29.token"
+                                            :project-id         "my-project"}})
+            (is (= "post-save-create/anthropic/claude-opus-5"
+                   (metabot.settings/llm-metabot-provider)))
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= 1 @calls) "the post-save model refetch reuses the credential probe"))))))
+  (testing "editing the active fixed-catalog model caches its listing under the followed selection"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                             (swap! calls inc)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "post-save-update" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider
+                                                 "post-save-update/google/gemini-3.5-flash"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/post-save-update"
+                                  {:config {}
+                                   :model  "anthropic/claude-opus-5"})
+            (is (= "post-save-update/anthropic/claude-opus-5"
+                   (metabot.settings/llm-metabot-provider)))
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= 1 @calls) "the post-save model refetch reuses the credential probe")))))))
+
 (deftest models-for-a-connection-with-a-fixed-catalog-test
   (testing (str "Google's models are the registry's, so every connection of the type offers both of them in the "
                 "model picker — but the call is still made, because it is what verifies the credentials")
     (let [probed (atom nil)]
-      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
-                                                             (reset! probed model)
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
                                                              {:models []})]
         (mt/with-temporary-setting-values [llm-providers [(connection "gemini-catalog" "google"
                                                                       {:oauth-access-token "ya29.token"
                                                                        :project-id         "my-project"})]]
-          (is (= [{:key    "gemini-catalog"
-                   :name   "gemini-catalog"
-                   :type   "google"
-                   :models [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                            {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                            {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]}]
-                 (mt/user-http-request :crowberto :get 200 "llm/models")))
-          (is (= "google/gemini-3.5-flash" @probed)))))))
+          ;; nothing names a model for this connection, so the probe has only the catalog to go on
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (is (= [{:key    "gemini-catalog"
+                     :name   "gemini-catalog"
+                     :type   "google"
+                     :models [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
+                              {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
+                              {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                              {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                              {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
+                              {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                              {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
+                              {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                              {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]}]
+                   (mt/user-http-request :crowberto :get 200 "llm/models")))
+            (is (= "google/gemini-3.5-flash" @probed))))))))
+
+(deftest models-listing-probes-the-model-the-connection-was-verified-against-test
+  (testing (str "Google's catalog spans two families served in different locations, so probing whichever model the "
+                "registry lists first can fail on a connection that works — the model the connection was verified "
+                "against is probed instead, while the picker still offers the whole catalog")
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "claude-only" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :location           "us-east5"
+                                                                       :probed-model       "anthropic/claude-sonnet-4-6"})]]
+          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some?  some? some? some? some? some? some? some?]}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models")))
+          (is (= "anthropic/claude-sonnet-4-6" @probed)))))))
+
+(deftest models-listing-probes-the-model-metabot-is-pointed-at-test
+  (testing (str "an environment-configured connection is never written back to, so it carries no probed model — the "
+                "selection Metabot runs on names it instead")
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "env-google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "env-google/anthropic/claude-opus-5"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-opus-5" @probed))))))))
+
+(deftest models-listing-prefers-the-selection-over-the-recorded-probe-test
+  (testing "a selection made since the connection was saved is fresher than what it was last verified against"
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model proposed-model]}]
+                                                             (reset! probed (or model proposed-model))
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "reselected-google" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"
+                                                                       :probed-model       "anthropic/claude-sonnet-4-6"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "reselected-google/anthropic/claude-opus-5"]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-opus-5" @probed))))))))
+
+(deftest models-listing-keeps-the-fixed-catalog-when-the-probed-model-is-not-served-test
+  (testing (str "a selection naming a model the project cannot serve fails the probe — the catalog it was picked "
+                "from is still offered, so the admin can select a model that works instead of facing an empty picker")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider _opts]
+                                  (throw (ex-info "Google API error: model not found"
+                                                  {:api-error true :status 404})))]
+      (mt/with-temporary-setting-values [llm-providers [(connection "wrong-model-google" "google"
+                                                                    {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "wrong-model-google/anthropic/claude-opus-5"]
+          (is (=? [{:key    "wrong-model-google"
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some?]
+                    :error  "Google API error: model not found"}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+(deftest models-listing-keeps-the-fixed-catalog-when-the-model-is-not-permitted-test
+  (testing (str "a 403 for a publisher whose terms the project has not accepted is about the model, not the "
+                "credentials — the catalog stays, because picking another model is the admin's way out")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider _opts]
+                                  (throw (ex-info "Google API error: PERMISSION_DENIED"
+                                                  {:api-error true :status 403})))]
+      (mt/with-temporary-setting-values [llm-providers [(connection "forbidden-model-google" "google"
+                                                                    {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "forbidden-model-google/anthropic/claude-opus-5"]
+          (is (=? [{:key    "forbidden-model-google"
+                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some?]
+                    :error  "Google API error: PERMISSION_DENIED"}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+(deftest models-listing-keeps-the-fixed-catalog-when-the-credentials-are-rejected-test
+  (testing (str "rejected credentials are reported as the error on the connection rather than implied by an empty "
+                "picker — a catalog the type owns does not depend on the call that failed")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [_provider _opts]
+                                  (throw (ex-info "Google API error: invalid authentication credentials"
+                                                  {:api-error true :status 401})))]
+      (mt/with-temporary-setting-values [llm-providers [(connection "bad-key-google" "google"
+                                                                    {:oauth-access-token "ya29.expired"
+                                                                     :project-id         "my-project"})]]
+        (is (=? [{:key    "bad-key-google"
+                  :name   "bad-key-google"
+                  :type   "google"
+                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some?]
+                  :error  "Google API error: invalid authentication credentials"}]
+                (mt/user-http-request :crowberto :get 200 "llm/models")))))))
+
+(deftest create-records-the-model-the-probe-verified-test
+  (testing "connecting Google against a partner model records it, so the listing that follows probes it too"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                           {:models         []
+                                                            :learned-config {:probed-model model}})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/user-http-request :crowberto :post 200 "llm/providers"
+                              {:type   "google"
+                               :config {:oauth-access-token "ya29.token" :project-id "my-project"}
+                               :model  "anthropic/claude-sonnet-4-6"})
+        (is (= {:oauth-access-token "ya29.token"
+                :project-id         "my-project"
+                :probed-model       "anthropic/claude-sonnet-4-6"}
+               (stored-config "google")))))))
 
 (deftest models-for-a-connection-that-names-its-own-model-test
   (testing "Azure serves a deployment its listing endpoint never returns, so the connection's own model is reported"
@@ -934,3 +1200,33 @@
                    :type   "metabase"
                    :models [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+;;; ------------------------------------- Reading another instance's changes ----------------------------------------
+
+(deftest list-providers-sees-another-instances-connection-test
+  (testing "the list an admin is shown is not the one this instance happened to cache a minute ago"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant"})]]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant"})
+                                      (connection "openai" "openai" {:api-key "sk-openai"})]
+        (is (= ["anthropic" "openai"]
+               (map :key (mt/user-http-request :crowberto :get 200 "llm/providers"))))))))
+
+(deftest create-is-not-rejected-by-a-connection-another-instance-deleted-test
+  (testing "a create is allowed or refused on the list in the app DB, not on a stale one that still holds a
+            connection another instance has removed"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")]
+                                         llm-proxy-base-url "https://proxy.example.com"]
+        (with-another-instances-write! []
+          (is (=? {:key "metabase" :type "metabase"}
+                  (mt/user-http-request :crowberto :post 200 "llm/providers" {:type "metabase"}))
+              "the singleton check must not fire on a connection that is already gone"))))))
+
+(deftest update-is-not-rejected-by-a-connection-another-instance-added-test
+  (testing "a connection this instance has not cached yet is still editable"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key "sk-ant-rotated"}}))
+        (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))

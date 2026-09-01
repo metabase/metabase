@@ -1,6 +1,6 @@
+import type { ComponentType } from "react";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
   isEmbeddingSdk,
@@ -10,10 +10,15 @@ import {
   removeInternalClickBehaviors,
 } from "metabase/embedding-sdk/lib/links";
 import {
+  type ChartSettingColorRangeProps,
+  type ComputedVisualizationSettings,
+  type SettingsExtra,
   registerSettingWidgets,
   registerVisualization,
+  setComputedSettingsTransform,
   setDefaultVisualization,
-} from "metabase/visualizations";
+  setTooltipRootProvider,
+} from "metabase/viz-core";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
@@ -41,10 +46,8 @@ import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSerie
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
-import { setTooltipRootProvider } from "./echarts/tooltip";
+import { ColorRangeSelector } from "./components/settings/ColorRangeSelector";
 import { registerJsxFormatting } from "./lib/register-jsx-formatting";
-import { setComputedSettingsTransform } from "./lib/settings";
-import type { ComputedVisualizationSettings, SettingsExtra } from "./types";
 import { AREA_CHART_DEFINITION } from "./visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "./visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "./visualizations/BoxPlot/definition";
@@ -200,7 +203,8 @@ function registerVisualizationSettingWidgets() {
     fieldsPartition: ChartSettingFieldsPartition,
     color: ChartSettingColorPicker,
     colors: ChartSettingColorsPicker,
-    colorRangeSelector: ColorRangeSelector,
+    colorRangeSelector:
+      ColorRangeSelector satisfies ComponentType<ChartSettingColorRangeProps>,
     linkUrlInput: ChartSettingLinkUrlInput,
     tableFormatting: ChartSettingsTableFormatting,
     multiselect: ChartSettingMultiSelect,
