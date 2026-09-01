@@ -201,13 +201,55 @@
    granting writes, so it keeps its own scope rather than folding into `content:write`."
   #{"agent:content:write" "agent:delivery:write" "agent:sql:run"})
 
+(defn- do-with-temp-tool!
+  "Register a throwaway tool for the body, then restore the registry and flush the manifest cache."
+  [tool thunk]
+  (let [tools-atom @#'registry/tools*
+        snapshot   @tools-atom]
+    (try
+      (registry/register-tool! tool)
+      (thunk)
+      (finally
+        (reset! tools-atom snapshot)
+        (reset! @#'registry/manifest-cache nil)))))
+
 (defn- mutating-tools
   "Registered tools that declare they mutate, as `{name tool}`. Enumerated from the registry rather
-   than a hand-kept list, so a write tool landing tomorrow is covered the day it registers."
+   than a hand-kept list, so a write tool landing tomorrow is covered the day it registers.
+
+   Read from the MANIFEST, not from the raw registry entries: `:annotations` are defaulted at manifest
+   time, so the raw entry for a tool that declared none carries no `:readOnlyHint` at all while clients
+   are told `false`. See [[mutating-tools-sees-what-clients-see-test]]."
   []
   (into {}
-        (filter (fn [[_ tool]] (false? (get-in tool [:annotations :readOnlyHint]))))
-        @@#'registry/tools*))
+        (comp (filter #(false? (get-in % [:annotations :readOnlyHint])))
+              (map (juxt :name identity)))
+        (@#'registry/manifest)))
+
+;; not ^:parallel: registers a throwaway tool
+(deftest mutating-tools-sees-what-clients-see-test
+  (testing "GHY-4337: the three invariants below are only as good as this enumeration, and `default-annotations`
+            supplies `:readOnlyHint false` at MANIFEST time rather than at registration. So a tool that declares
+            no `:annotations` is published to clients as mutating while its raw registry entry carries no
+            `:readOnlyHint` at all — and enumerating from the raw entry would skip exactly the tool these
+            invariants exist to catch: one that mutates, says nothing about it, and rides a read scope."
+    (do-with-temp-tool!
+     {:name        "annotation_free_mutator"
+      :scope       "agent:content:read"
+      :description "test-only tool that declares no annotations at all"
+      :args        [:map]
+      :handler     (fn [_ _] nil)}
+     (fn []
+       (testing "clients are told it mutates"
+         (is (false? (->> (registry/list-tools nil)
+                          (filter #(= "annotation_free_mutator" (:name %)))
+                          first
+                          :annotations
+                          :readOnlyHint))))
+       (testing "so the enumeration the invariants run over must see it too"
+         (is (contains? (set (keys (mutating-tools))) "annotation_free_mutator")))
+       (testing "and it carries the :scope the invariants check, so they can actually run on it"
+         (is (= "agent:content:read" (:scope (get (mutating-tools) "annotation_free_mutator")))))))))
 
 (deftest write-tools-are-annotated-as-mutating-test
   (testing "a tool named `*_write` declares `:readOnlyHint false`. This guards the enumeration the
