@@ -62,7 +62,11 @@
                  :joins [{:stages [{:lib/type :mbql.stage/mbql
                                     :joins [{:stages [{:lib/type :mbql.stage/native}]}]}]}]}]}   ; nested join
       {"database" 1 "type" "native" "native" {"query" "SELECT 1"}}                     ; decoded without keywordizing
-      {"stages" [{"lib/type" "mbql.stage/native" "native" "SELECT 1"}]}))
+      {"stages" [{"lib/type" "mbql.stage/native" "native" "SELECT 1"}]}
+      ;; snake_case source_query: legacy normalization canonicalizes it too, so it reaches the QP
+      ;; as a native stage — missing this edge let an MBQL-only-scoped caller run raw SQL.
+      {"type" "query" "database" 1 "query" {"source_query" {"native" "SELECT 1"}}}
+      {:database 1 :type :query :query {:source_query {:native "SELECT 1"}}}))
   (testing "a payload MBQL 5 normalization cannot make sense of still fails closed"
     ;; The guard cannot delegate detection to `lib-be/normalize-query` + `lib/any-native-stage?`:
     ;; normalization swallows its own failure and hands back `{}`, so a normalize-then-inspect check

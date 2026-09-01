@@ -48,8 +48,10 @@
 
 (def ^:private native-map-edges
   "Structural edges whose value is a nested stage/query *map*. Listed in keyword and raw-JSON-string
-   form for payloads decoded without keywordizing."
-  [:query "query" :source-query "source-query"])
+   form for payloads decoded without keywordizing, and in snake_case as well as lisp-case: legacy
+   MBQL normalization canonicalizes `source_query` too, so a snake_case payload still reaches the
+   query processor as a native stage and must trip the guard."
+  [:query "query" :source-query "source-query" :source_query "source_query"])
 
 (defn native-query?
   "True if `query-map` (a decoded, client-reachable query) contains native SQL along its
