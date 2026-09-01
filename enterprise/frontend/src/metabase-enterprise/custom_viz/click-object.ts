@@ -3,7 +3,7 @@ import type {
   ComputedVisualizationSettings,
 } from "metabase/visualizations/types";
 
-// Only the documented click fields cross over, with the host's settings.
+// Only the documented click fields are allowed, with the host's settings.
 export function toHostClickObject(
   clickObject: ClickObject,
   settings: ComputedVisualizationSettings,

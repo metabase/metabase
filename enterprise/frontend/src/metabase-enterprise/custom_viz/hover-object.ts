@@ -3,7 +3,7 @@ import type {
   HoveredObject,
 } from "metabase/visualizations/types";
 
-// Only the documented hover fields cross over, with the host's settings.
+// Only the documented hover fields are allowed, with the host's settings.
 export function toHostHoverObject(
   hoverObject: HoveredObject,
   settings: ComputedVisualizationSettings,
