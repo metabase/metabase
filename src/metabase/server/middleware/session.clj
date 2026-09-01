@@ -8,8 +8,8 @@
   be viewed by FE code. If the session is a full-app embedded session, then the cookie is `metabase.EMBEDDED_SESSION`
   instead.
 
-  The `X-Metabase-Session` header is checked before either cookie, and decides the request on its own -- a stale
-  cookie can't shadow it, and it doesn't fall back to one when its own session is dead.
+  If present, the `X-Metabase-Session` header is used for authentication instead of cookies - the `metabase.SESSION` and
+  `metabase.EMBEDDED_SESSION` cookies are ignored in this case.
 
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
