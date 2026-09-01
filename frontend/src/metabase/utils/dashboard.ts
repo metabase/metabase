@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { stringifyHashOptions } from "metabase/utils/browser";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type {
@@ -48,6 +49,20 @@ export function isTransientId(id: unknown) {
 }
 
 export const ADHOC_DASHBOARD_PATH = "/dashboard/adhoc";
+export const ADHOC_DASHBOARD_HASH_KEY = "adhoc";
+
+// An ad-hoc dashboard id is its own url: the adhoc path plus the definition as a
+// `#adhoc=<encoded>` hash option, so DashboardApp's other hash options
+// (`fullscreen`, `refresh`, …) can live alongside it.
+export function getAdhocDashboardId(encodedDefinition: string) {
+  return `${ADHOC_DASHBOARD_PATH}#${stringifyHashOptions({
+    [ADHOC_DASHBOARD_HASH_KEY]: encodedDefinition,
+  })}`;
+}
+
+export function isAdhocDashboardPath(pathname: string) {
+  return pathname === ADHOC_DASHBOARD_PATH;
+}
 
 export function isAdhocDashboardId(id: unknown) {
   return typeof id === "string" && id.startsWith(ADHOC_DASHBOARD_PATH);
