@@ -312,7 +312,9 @@
                  :cache-creation-tokens cache-creation
                  :cache-read-tokens     cache-read
                  :total-tokens          (+ prompt completion)
-                 :estimated-costs-usd   0.0
+                 ;; The provider-reported charge for this call (today only OpenRouter reports one);
+                 ;; 0.0 when the provider doesn't, and the warehouse estimates from the token counts.
+                 :estimated-costs-usd   (or (:costUsd usage) 0.0)
                  :duration-ms           (long (u/since-ms start-ms))
                  :user-id               api/*current-user-id*
                  :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)

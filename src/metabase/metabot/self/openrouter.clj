@@ -194,10 +194,14 @@
 
   `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). Gating it in the shared
   builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
-  whose model names are customer-chosen free text."
+  whose model names are customer-chosen free text.
+
+  `:usage {:include true}` turns on OpenRouter usage accounting, which adds the actual charge (`cost`) to the
+  final usage chunk — the routed endpoint's real price rather than anything we could look up ourselves."
   [{:keys [model system] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
-  (cond-> (chat-completions/request-body (assoc opts :model model))
+  (cond-> (assoc (chat-completions/request-body (assoc opts :model model))
+                 :usage {:include true})
     (and system (anthropic-model? model))
     (update-in [:messages 0 :content] claude/system->cached-content-blocks)
 

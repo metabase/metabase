@@ -28,13 +28,18 @@
       cache_write_tokens — input tokens written to the provider cache;
                            undocumented but reported by both OpenRouter
                            (Anthropic models) and newer OpenAI models.
-                           Providers without it (e.g. Z.AI) omit it."
+                           Providers without it (e.g. Z.AI) omit it.
+
+  `cost` is the amount the provider actually charged for the call in USD, carried
+  as `:costUsd`. OpenRouter reports it when the request asks for usage accounting
+  (see the openrouter adapter); other Chat Completions providers omit it."
   [u]
   (let [details (:prompt_tokens_details u)]
-    {:promptTokens        (:prompt_tokens u 0)
-     :completionTokens    (:completion_tokens u 0)
-     :cacheCreationTokens (or (:cache_write_tokens details) 0)
-     :cacheReadTokens     (or (:cached_tokens details) 0)}))
+    (cond-> {:promptTokens        (:prompt_tokens u 0)
+             :completionTokens    (:completion_tokens u 0)
+             :cacheCreationTokens (or (:cache_write_tokens details) 0)
+             :cacheReadTokens     (or (:cached_tokens details) 0)}
+      (number? (:cost u)) (assoc :costUsd (double (:cost u))))))
 
 ;;; AISDK parts → Chat Completions messages
 

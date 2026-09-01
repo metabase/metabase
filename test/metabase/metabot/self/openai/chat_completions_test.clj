@@ -230,6 +230,25 @@
                      {:choices []
                       :usage   {:prompt_tokens 100 :completion_tokens 5 :cached_tokens 64}}]))))))
 
+(deftest ^:parallel chunks-xf-provider-cost-passes-through-test
+  (testing "a provider-reported charge on the usage block is carried as :costUsd"
+    (is (=? {:usage {:promptTokens 100
+                     :costUsd     0.0123}}
+            (first (usage-parts
+                    [{:id      "chatcmpl-3"
+                      :model   "anthropic/claude-haiku-4.5"
+                      :choices [{:index 0 :delta {:role "assistant" :content "hi"}}]}
+                     {:choices []
+                      :usage   {:prompt_tokens 100 :completion_tokens 5 :cost 0.0123}}])))))
+  (testing "providers that report no cost add no :costUsd key"
+    (is (not (contains? (:usage (first (usage-parts
+                                        [{:id      "chatcmpl-4"
+                                          :model   "kimi-k2.6"
+                                          :choices [{:index 0 :delta {:role "assistant" :content "hi"}}]}
+                                         {:choices []
+                                          :usage   {:prompt_tokens 100 :completion_tokens 5}}])))
+                        :costUsd)))))
+
 (deftest ^:parallel chunks-xf-parallel-tool-calls-are-tracked-by-id-test
   (testing "tool calls serialized on one choice are split into separate blocks by tool-call id"
     ;; Both calls arrive on `choices[0]`; only the `tool_calls` entry's `id` distinguishes them.

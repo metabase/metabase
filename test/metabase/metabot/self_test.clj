@@ -1515,6 +1515,26 @@
                                     "event_details" {"tool_name" "get-time"}}}]
                         tool-events))))))))))
 
+(deftest call-llm-provider-cost-snowplow-test
+  (llm.tu/with-default-connections
+    (testing "a provider-reported charge on the usage part lands in estimated_costs_usd"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (constantly (test-util/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type :usage :usage {:promptTokens     950
+                                                                      :completionTokens 20
+                                                                      :costUsd          0.004235}
+                                                 :model "anthropic/claude-haiku-4.5" :id "msg-1"}]))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (snowplow-test/with-fake-snowplow-collector
+            (run! identity (self/call-llm "openrouter/anthropic/claude-haiku-4.5" nil [] test-util/TOOLS
+                                          snowplow-tracking-opts))
+            (let [token-events (filter #(contains? (:data %) "total_tokens")
+                                       (snowplow-test/pop-event-data-and-user-id!))]
+              (is (=? [{:data {"model_id"            "openrouter/anthropic/claude-haiku-4.5"
+                               "estimated_costs_usd" 0.004235}}]
+                      token-events)))))))))
+
 (deftest call-llm-structured-snowplow-test
   (llm.tu/with-default-connections
     (testing "fires :snowplow/token_usage event for call-llm-structured"

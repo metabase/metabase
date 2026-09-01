@@ -72,6 +72,13 @@
                  :input [{:role :user :content "hi"}]})]
       (is (= ["user"] (map :role (:messages body)))))))
 
+(deftest ^:parallel request-body-asks-for-usage-accounting-test
+  (testing "every request opts into usage accounting so the final usage chunk carries the actual charge"
+    (let [body (openrouter/openrouter-request-body
+                {:model "anthropic/claude-haiku-4.5"
+                 :input [{:role :user :content "hi"}]})]
+      (is (= {:include true} (:usage body))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Temperature gating
 ;;; ──────────────────────────────────────────────────────────────────
