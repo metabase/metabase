@@ -194,7 +194,8 @@
                        (connection "google" "google")
                        (connection "azure" "azure")
                        (connection "zai" "zai")
-                       (connection "openrouter" "openrouter")]
+                       (connection "openrouter" "openrouter")
+                       (connection "google" "google")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -220,10 +221,13 @@
                ;; encrypted-only upstream: reasoning exists but never renders
                "openrouter/openai/gpt-5.4"                  false
                "openrouter/anthropic/claude-haiku-4.5"      false
-               ;; google serves both wire families; only its Claude models stream reasoning back
+               ;; google serves both wire families; Claude partner models and catalog Geminis both stream
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
-               "google/google/gemini-3.5-flash"             false}]
+               "google/google/gemini-3.5-flash"             true
+               "google/google/gemini-3.7-flash"             true
+               ;; off-catalog: no thinking directive — see google/models.clj
+               "google/google/gemini-2.5-flash"             false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))

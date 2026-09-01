@@ -312,7 +312,7 @@
   [model]
   (case (model-families (model-publisher model))
     :anthropic (raw-predict/reasoning-model? (model-id model))
-    :google    (stream-generate-content/reasoning-model? (model-id model))
+    :google    (stream-generate-content/reasoning-model? model)
     false))
 
 (defn context-window-tokens
@@ -506,7 +506,8 @@
   (let [family   (model->family model)
         req      (case family
                    :anthropic (raw-predict/request-body (model-id model) opts)
-                   :google    (stream-generate-content/request-body opts))
+                   ;; pass the defaulted model down: the thinking directive keys off it
+                   :google    (stream-generate-content/request-body (assoc opts :model model)))
         method   (case family
                    :anthropic raw-predict-method
                    :google    generate-content-method)
