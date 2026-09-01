@@ -13,6 +13,8 @@
   - [[cost-shape-probes]] separates those two explanations. This is the one that decides the rest.
   - [[which-function-probes]] splits the three functions, since they may not cost alike.
   - [[ordering-probes]] tries to make the planner filter before it evaluates, keeping today's semantics.
+  - [[select-list-probes]] moves the functions out of `where` entirely, which is the candidate fix: one
+    statement, no round trip, and no reliance on the planner declining to optimize.
   - [[source-probes]] times the set-based alternatives, and [[privilege-source-agreement-test]] checks
     whether they actually agree with the functions -- a cheaper source that answers differently is no use.
 
@@ -138,6 +140,60 @@
 ;;; |                                    Group 3: make the planner filter first                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- narrowed-oid-sql
+  "The narrowing half of `get-tables-sql` projecting just `oid`: the row source the select-list probes wrap."
+  [schema-names]
+  (str/join "\n"
+            (remove nil?
+                    ["  select c.oid"
+                     "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
+                     "  where c.relnamespace = n.oid"
+                     "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+                     "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
+                     (when (seq schema-names)
+                       (str "    and n.nspname in " (placeholders schema-names)))])))
+
+(def ^:private selectable-expr
+  "  has_table_privilege(s.oid, 'SELECT') or has_any_column_privilege(s.oid, 'SELECT') as selectable")
+
+(defn- select-list-probes
+  "The functions moved out of `where` and into the outer select list, which is the whole point: a `where`
+  predicate is what the planner may reorder and push down -- that is how `has_any_column_privilege` ended up
+  above the schema filter -- while a select-list expression is by definition computed on rows that already
+  survived `where`. That should hold even when the subquery is flattened, since flattening leaves it a
+  select-list expression, so unlike an `offset 0` fence this works with the optimizer rather than against it.
+
+  The first two return every narrowed row plus a boolean and expect the caller to drop the false ones. The
+  third asks whether the filtering can stay in SQL after all; a planner that substitutes the expression back
+  into the predicate should land it right back at the slow plan, which is the answer worth having before
+  choosing where the filter lives."
+  [schema-names]
+  [{:label "subquery + privilege in outer SELECT list (no SQL filter)"
+    :sql   (into [(str/join "\n" ["select s.oid,"
+                                  selectable-expr
+                                  "from ("
+                                  (narrowed-oid-sql schema-names)
+                                  ") s"])]
+                 schema-names)}
+   {:label "CTE + privilege in outer SELECT list (no SQL filter)"
+    :sql   (into [(str/join "\n" ["with narrowed as ("
+                                  (narrowed-oid-sql schema-names)
+                                  ")"
+                                  "select s.oid,"
+                                  selectable-expr
+                                  "from narrowed s"])]
+                 schema-names)}
+   {:label "select-list alias, then filtered in SQL one level up"
+    :sql   (into [(str/join "\n" ["select count(*) as n from ("
+                                  "  select s.oid,"
+                                  selectable-expr
+                                  "  from ("
+                                  (narrowed-oid-sql schema-names)
+                                  "  ) s"
+                                  ") t"
+                                  "where t.selectable"])]
+                 schema-names)}])
+
 (defn- ordering-probes
   "Same functions, same user, same answer -- only the set they run over changes. These keep today's semantics
   exactly, so any of them that is fast is a fix needing no argument about behaviour.
@@ -258,6 +314,9 @@
               (report! (run-probe conn-spec probe)))
             (log/infof "%s ---- group 3: filter before evaluating ----" tag)
             (doseq [probe (ordering-probes schema-names oids)]
+              (report! (run-probe conn-spec probe)))
+            (log/infof "%s ---- group 5: privilege in the outer SELECT list ----" tag)
+            (doseq [probe (select-list-probes schema-names)]
               (report! (run-probe conn-spec probe)))))
         (is true "cost breakdown is a report -- read the [redshift-priv] lines")))))
 
