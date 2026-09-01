@@ -14,10 +14,10 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Group,
   GroupsPermissions,
+  PermissionsDatabase,
   SpecialGroupType,
   TableEntityId,
 } from "metabase-types/api";
@@ -45,7 +45,7 @@ const buildAccessPermission = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const value = getFieldsPermission(
     permissions,
@@ -208,7 +208,7 @@ export const buildFieldsPermissions = ({
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
   defaultGroup: Group;
-  database: Database;
+  database: PermissionsDatabase;
   showTransformPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";

@@ -333,20 +333,6 @@
 
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 
-(deftest segment-upgrade-field-refs!-mbql-query-test
-  (testing "should upgrade id-based field refs in a segment with a card source"
-    (let [mp         (mt/metadata-provider)
-          card-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query card-query}]
-        (let [seg-definition (-> (lib/query mp (lib.metadata/card mp card-id))
-                                 (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition seg-definition}]
-            (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
-            (is (=? {:definition {:stages [{:source-card card-id
-                                            :filters     [[:= {} [:field {} "ID"] 10]]}]}}
-                    (t2/select-one :model/Segment segment-id)))))))))
-
 (deftest segment-upgrade-field-refs!-broken-query-test
   (testing "should not crash or update a segment with a broken definition"
     (let [mp    (mt/metadata-provider)

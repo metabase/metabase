@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import {
   createMockAdminAppState,
   createMockAdminState,

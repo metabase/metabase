@@ -9,9 +9,9 @@ import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
+import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 

@@ -2,9 +2,9 @@ import { skipToken } from "@reduxjs/toolkit/query/react";
 
 import { useGetSubscriptionQuery, useUnsubscribeMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 
 import { getArchiveUrl } from "../../actions";
 import { UnsubscribeModal } from "../../components/UnsubscribeModal";

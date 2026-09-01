@@ -29,7 +29,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some empty? not-empty]]
+   [metabase.util.performance :refer [every? mapv some empty? not-empty]]
+   ;; sync fix-ups read and write Database/Table/Field rows directly; the metadata provider is read-only
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -117,6 +118,9 @@
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
+        universe-domain (or (:universe-domain details)
+                            (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+                            (System/getProperty "google.cloud.universe_domain"))
         read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
                               (.setReadTimeout read-timeout-ms)
@@ -125,6 +129,8 @@
                        (.setCredentials creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
+    (when universe-domain
+      (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
@@ -143,22 +149,74 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private exact-dataset-id-re
+  "Matches an inclusion-filter segment that names one dataset outright.
+
+  [[metabase.driver.sync/schema-pattern->re-pattern]] compiles a segment into a regex, expanding an unescaped `*`
+  into `.*` and passing every other character through as regex source. A segment of only `\\w` characters therefore
+  contains no wildcard and no regex syntax, so it matches itself and nothing else -- and `\\w` is also exactly the
+  character set BigQuery permits in a dataset ID. A leading underscore is excluded on top of that: BigQuery calls such
+  a dataset *hidden* and omits it from `datasets.list` unless `all=true`, which we never pass, so a scan would never
+  turn one up even though a name lookup finds it.
+
+  All of that has to hold for a name lookup to select the same datasets a scan would;
+  [[metabase.driver.bigquery-cloud-sdk-test/exactly-named-datasets-agrees-with-scan-test]] pins that agreement."
+  #"[a-zA-Z0-9]\w*")
+
+(defn- exactly-named-datasets
+  "The dataset IDs an inclusion filter names outright, or `nil` when evaluating the filter requires a scan.
+
+  Blank patterns mean \"include everything\", so they fall through to the scan."
+  [{:keys [dataset-filters-type dataset-filters-patterns]}]
+  (when (= "inclusion" dataset-filters-type)
+    (let [segments (map str/trim (str/split (str dataset-filters-patterns) #","))]
+      (when (every? #(re-matches exact-dataset-id-re %) segments)
+        ;; a scan yields each dataset once however many segments matched it
+        (distinct segments)))))
+
+(defn- dataset-exists?
+  [^BigQuery client project-id dataset-id]
+  (some? (.getDataset client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$DatasetOption))))
+
+(defn- assert-project-reachable!
+  "Throws whatever listing would have thrown when `project-id` is unreachable.
+
+  `.getDataset` answers 404 with `nil`, so a name lookup that comes back empty cannot tell \"no such dataset\" from
+  \"no such project\" -- and callers rely on the difference: [[driver/can-connect?]] reports a bad project as a
+  connection failure, and sync must not read an unreachable project as one holding no tables. `.listDatasets` throws
+  in that case, and a single-row page is enough to provoke it."
+  [^BigQuery client project-id]
+  (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption [(BigQuery$DatasetListOption/pageSize 1)]))
+  nil)
+
 (defn- list-datasets
-  "Fetch all datasets given database `details`, applying dataset filters if specified."
+  "Fetch all datasets given database `details`, applying dataset filters if specified.
+
+  When the filter names its datasets outright they are fetched by name. Listing is paginated over every dataset in
+  the project, which is unrelated to how many the filter keeps -- 3400 datasets took ~18s, past the
+  [[metabase.driver.settings/db-connection-timeout-ms]] budget that `can-connect?` runs under."
   [{:keys [dataset-filters-type dataset-filters-patterns] :as details} & {:keys [logging-schema-exclusions?]}]
   (let [client (database-details->client details)
-        project-id (bigquery.common/get-project-id details)
-        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-        inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
-        exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
-    (for [^Dataset dataset (.iterateAll datasets)
-          :let [dataset-id (.. dataset getDatasetId getDataset)]
-          :when ((if logging-schema-exclusions?
-                   sql-jdbc.describe-database/include-schema-logging-exclusion
-                   driver.s/include-schema?) inclusion-patterns
-                                             exclusion-patterns
-                                             dataset-id)]
-      dataset-id)))
+        project-id (bigquery.common/get-project-id details)]
+    (if-let [named (exactly-named-datasets details)]
+      ;; `logging-schema-exclusions?` has nothing to report on this path: it logs datasets the filter rejected, and
+      ;; here every dataset looked at was named by the filter. Stays lazy past the first hit so `can-connect?` costs
+      ;; one round trip.
+      (let [found (seq (filter #(dataset-exists? client project-id %) named))]
+        (when-not found
+          (assert-project-reachable! client project-id))
+        found)
+      (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+            inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+            exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
+        (for [^Dataset dataset (.iterateAll datasets)
+              :let [dataset-id (.. dataset getDatasetId getDataset)]
+              :when ((if logging-schema-exclusions?
+                       sql-jdbc.describe-database/include-schema-logging-exclusion
+                       driver.s/include-schema?) inclusion-patterns
+                                                 exclusion-patterns
+                                                 dataset-id)]
+          dataset-id)))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details]
@@ -589,10 +647,18 @@
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
 (def ^:private ^:dynamic *page-byte-budget*
-  "Target measured bytes per result page, for both `tabledata.list` sampling and regular query execution. The next
-  page size is `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page
-  cap to leave headroom for JVM object expansion when the page is parsed."
+  "Target measured bytes per result page for `tabledata.list` sampling. The next page size is
+  `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave
+  headroom for JVM object expansion when the page is parsed. Sync may have several tables in flight at once, so this
+ stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
   (* 4 1024 1024))
+
+(def ^:private ^:dynamic *query-page-byte-budget*
+  "Target measured bytes per result page for regular query execution. Deliberately larger than [[*page-byte-budget*]]
+  because the QP streams rows and holds only one parsed page at a time, and the number of `getQueryResults` round trips
+  is inversely proportional to this budget, so a small budget makes CSV downloads of larger tables >2x slower (#79273).
+  Still a hard bound, so the unbounded-first-page OOM this pagination was added to prevent (#76459) cannot recur."
+  (* 32 1024 1024))
 
 (def ^:private initial-page-rows
   "Rows to request for the *first* result page of every BigQuery fetch -- both `tabledata.list` sampling and regular
@@ -600,8 +666,9 @@
   otherwise requests an unbounded first page, so a wide/large result (e.g. the `INFORMATION_SCHEMA.COLUMNS` sweep in
   `describe-fields` over a 1000-column dataset, or a heavy sample) materializes hundreds of thousands of `FieldValue`s
   at once and can OOM sync. After this probe, [[adaptive-sample-next-page]]/[[adaptive-query-next-page]] grow each
-  subsequent page from the *measured* bytes/row toward [[*page-byte-budget*]]. Small enough to stay within budget even
-  for heavy rows, but not 1 -- a handful averages out per-row size variance."
+  subsequent page from the *measured* bytes/row toward that path's byte budget ([[*page-byte-budget*]] for sampling,
+  [[*query-page-byte-budget*]] for query execution). Small enough to stay within budget even for heavy rows, but not
+  1 -- a handful averages out per-row size variance."
   10)
 
 (def ^:private sample-cell-overhead-bytes
@@ -824,23 +891,30 @@
   ^TableResult [^Job job options]
   (.getQueryResults job options))
 
+(def ^:private measured-rows-per-page
+  "Rows of each consumed page [[adaptive-query-next-page]] measured to estimate bytes/row. Measuring the whole page
+  re-walks every cell a second time after normal result parsing but a prefix estimates the average just as well.
+  Only the query path can take this shortcut: [[adaptive-sample-next-page]] also needs the *exact* per-page row count
+  for its `max-rows` budget, so it still measures every row."
+  32)
+
 (defn- adaptive-query-next-page
   "Adaptive page-advance for query-job results (the regular execution path), mirroring [[adaptive-sample-next-page]]
   but paging via `getQueryResults` -- the query result's own `.getNextPage` re-uses the original page size and can't
-  be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
-  targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
-  large parsed page in memory. Returns nil once the result set is exhausted; throws if BigQuery reports another
-  page is available (non-blank page token) but fails to return it, so we surface the error instead of silently
-  truncating the result set."
+  be re-sized. Measures the just-consumed page's real bytes/row (a [[measured-rows-per-page]] prefix) and re-issues
+  the next page with a `pageSize` targeting [[*query-page-byte-budget*]], so a wide or heavy result fetches fewer
+  rows per page instead of holding a large parsed page in memory. Returns nil once the result set is exhausted;
+  throws if BigQuery reports another page is available (non-blank page token) but fails to return it, so we surface
+  the error instead of silently truncating the result set."
   [^Job job]
-  (let [budget (long *page-byte-budget*)
+  (let [budget (long *query-page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
         (when-not (str/blank? token)
           (let [[page-bytes page-rows] (reduce (fn [[b n] row] [(+ (long b) (row-bytes row)) (inc (long n))])
                                                [0 0]
-                                               (.getValues page))
+                                               (eduction (take measured-rows-per-page) (.getValues page)))
                 {:keys [bytes rows]}   (swap! seen (fn [s] {:bytes (+ (long (:bytes s)) (long page-bytes))
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
             (log/trace "BigQuery: Fetching new page")
@@ -1361,7 +1435,7 @@
         dataset-id (DatasetId/of project-id schema)]
     (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
       ;; Dataset doesn't exist, try to create it
-      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.u/quote-name :bigquery-cloud-sdk :table schema))]]]
         (driver/execute-raw-queries! driver conn-spec sql)))))
 
 (defmethod driver/schema-exists? :bigquery-cloud-sdk

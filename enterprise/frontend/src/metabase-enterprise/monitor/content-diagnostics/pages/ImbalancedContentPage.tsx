@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import { useNavigate, useSearchParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ContentDiagnosticsImbalancedFindingType } from "metabase-types/api";

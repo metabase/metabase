@@ -46,6 +46,85 @@
       (is (> (:total_score (score {:distance 0.1 :doc_type "name"}))
              (:total_score (score {:distance 0.5 :doc_type "name"})))))))
 
+(deftest search-uses-reconcile-lock-test
+  (let [calls      (atom [])
+        lock-count (atom 0)]
+    (mt/with-premium-features #{:library-retrieval}
+      (with-redefs [entity-retrieval.core/available?                         (constantly true)
+                    semantic.db.datasource/ensure-initialized-data-source!  (constantly ::datasource)
+                    semantic.embedding/get-configured-model                 (constantly semantic.tu/mock-embedding-model)
+                    reconcile/with-index-read-lock                          (fn [ds f]
+                                                                              (let [n    (swap! lock-count inc)
+                                                                                    conn (keyword (str "locked-connection-" n))]
+                                                                                (swap! calls conj [:lock ds])
+                                                                                (f conn)))
+                    index-table/index-status                                (fn [conn _model]
+                                                                              (swap! calls conj [:compatible conn])
+                                                                              :compatible)
+                    semantic.embedding/get-embedding                        (fn [_model text & _opts]
+                                                                              (swap! calls conj [:embed text])
+                                                                              [0.0 0.0 0.0 0.0])
+                    jdbc/execute!                                           (fn [conn & _args]
+                                                                              (swap! calls conj [:query conn])
+                                                                              [])]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10)))
+        (is (= [[:lock ::datasource]
+                [:compatible :locked-connection-1]
+                [:embed "the query"]
+                [:lock ::datasource]
+                [:compatible :locked-connection-2]
+                [:query :locked-connection-2]]
+               @calls)
+            "both preflight and query compatibility checks happen behind non-blocking reconcile locks")))))
+
+(deftest search-skips-embedding-for-an-incompatible-index-test
+  (mt/with-premium-features #{:library-retrieval}
+    (with-redefs [entity-retrieval.core/available?                        (constantly true)
+                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                  index-table/index-status                               (constantly :incompatible)
+                  semantic.embedding/get-embedding                       (fn [& _]
+                                                                           (throw (ex-info "must not embed" {})))
+                  reconcile/with-index-read-lock                         (fn [_ds f]
+                                                                           (f ::locked-connection))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
+
+(deftest search-degrades-when-reconcile-holds-the-lock-test
+  (mt/with-premium-features #{:library-retrieval}
+    (with-redefs [entity-retrieval.core/available?                        (constantly true)
+                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                  index-table/index-status                               (fn [& _]
+                                                                           (throw (ex-info "must not touch index metadata" {})))
+                  semantic.embedding/get-embedding                       (fn [& _]
+                                                                           (throw (ex-info "must not embed" {})))
+                  reconcile/with-index-read-lock                         (constantly nil)
+                  jdbc/execute!                                          (fn [& _]
+                                                                           (throw (ex-info "must not query" {})))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
+
+(deftest search-degrades-when-configured-model-cannot-be-resolved-test
+  (mt/with-premium-features #{:library-retrieval}
+    (with-redefs [entity-retrieval.core/available?                        (constantly true)
+                  semantic.db.datasource/ensure-initialized-data-source! (constantly ::datasource)
+                  semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
+                  semantic.embedding/resolve-model                       (fn [_]
+                                                                           (throw (ex-info "model changed"
+                                                                                           {:type ::model-changed})))
+                  index-table/index-status                                (fn [& _]
+                                                                            (throw (ex-info "must not inspect index" {})))
+                  semantic.embedding/get-embedding                       (fn [& _]
+                                                                           (throw (ex-info "must not embed" {})))
+                  reconcile/with-index-read-lock                         (fn [& _]
+                                                                           (throw (ex-info "must not lock" {})))
+                  jdbc/execute!                                          (fn [& _]
+                                                                           (throw (ex-info "must not query" {})))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (is (= [] (entity-retrieval.core/search-unfiltered "the query" 10))))))
+
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
@@ -264,7 +343,7 @@
               (is (=? {:dependencies deps, :index {:status :missing}}
                       (entity-retrieval.core/retrieval-status false))))))))))
 
-(deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
+(deftest ^:synchronized entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
@@ -298,19 +377,22 @@
                                           (index-table/vectors-table) ", "
                                           (index-table/meta-table))]))))))))))
 
-(deftest ^:sequential ranks-by-similarity-test
+(deftest ^:synchronized ranks-by-similarity-test
   (testing "search ranks library documents by cosine similarity, nearest first"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
-        (let [suffix (System/nanoTime)
-              ds     (semantic.db.datasource/ensure-initialized-data-source!)
-              q      "the query"]
+        (let [suffix     (System/nanoTime)
+              ds         (semantic.db.datasource/ensure-initialized-data-source!)
+              q          "the query"
+              prefixed-q "query: the query"
+              model      (semantic.tu/resolved-mock-embedding-model
+                          :model-name "Snowflake/snowflake-arctic-embed-l-v2.0")]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
-                                      (constantly semantic.tu/mock-embedding-model)]
+                                      (constantly model)]
             (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix)
                                             :meta    (str "library_entity_index_meta_test_" suffix)}]
-              ;; the two tables' name docs embed "near"/"far"; q ties "near" exactly and is orthogonal to "far".
-              (semantic.tu/with-mock-embeddings {q      [1.0 0.0 0.0 0.0]
+              ;; Arctic's prefixed query ties "near" exactly and is orthogonal to "far".
+              (semantic.tu/with-mock-embeddings {prefixed-q [1.0 0.0 0.0 0.0]
                                                  "near" [1.0 0.0 0.0 0.0]
                                                  "far"  [0.0 1.0 0.0 0.0]}
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
@@ -321,7 +403,7 @@
                                :model/Table      {far-id :id}   {:db_id db-id :collection_id data-id :is_published true
                                                                  :active true :name "far" :display_name "far"}]
                   (try
-                    (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
+                    (reconcile/reconcile! ds (constantly model))
                     (testing "the nearer table ranks first; each hit carries the entity ref + matched doc"
                       (is (=? [{:entity {:model "table" :id near-id} :doc_type "name" :doc_text "near"}
                                {:entity {:model "table" :id far-id}}]
@@ -337,7 +419,7 @@
   (mt/user-http-request :crowberto :put 200 (format "osi/ai-context/%s/%d" entity-type entity-local-id)
                         {:ai_context ai-context}))
 
-(deftest ^:sequential crud-api-to-tool-end-to-end-test
+(deftest ^:synchronized crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> reconcile -> pgvector -> retrieve_library_entities tool, end to end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this; locally with the
     ;; dev pgvector running it exercises the whole pipeline. Uses the mock embedding model (4-dim,
@@ -393,7 +475,7 @@
                                               (index-table/vectors-table) ", "
                                               (index-table/meta-table))]))))))))))))
 
-(deftest ^:sequential doc-type-boost-breaks-ties-test
+(deftest ^:synchronized doc-type-boost-breaks-ties-test
   (testing "on a distance tie, a name match outranks a synonym match (blended ORDER BY, not raw NN)"
     (when semantic.db.datasource/db-url
       (mt/with-premium-features #{:library :library-retrieval}
@@ -429,7 +511,7 @@
                                               (index-table/vectors-table) ", "
                                               (index-table/meta-table))]))))))))))))
 
-(deftest ^:sequential search-degrades-on-dimension-mismatch-test
+(deftest ^:synchronized search-degrades-on-dimension-mismatch-test
   ;; A post-upgrade embedding-dimension change leaves the query vector incompatible with the index column
   ;; until the next reconcile rebuilds it; search must degrade to [] rather than throw in that window.
   (testing "an index/query vector dimension mismatch degrades search to [] instead of throwing"
@@ -456,8 +538,21 @@
                     (is (=? [{:model "table" :id table-id}]
                             (distinct (map :entity (entity-retrieval.core/search-unfiltered "orders" 10))))
                         "the query really runs, so the [] below is the degrade path and not a fallback")
-                    ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000
-                    (is (= [] (entity-retrieval.core/search-unfiltered "q" 10))))
+                    ;; Shrink the configured model to one dimension, the way an upgrade would, keeping it
+                    ;; self-consistent so the provider resolves it instead of rejecting a changed space.
+                    ;; The meta row still describes the dim-4 build, so the compatibility preflight would
+                    ;; answer [] on its own; stub it aside to reach the case this test is about — a dim-1
+                    ;; literal meeting the vector(4) column, which is pgvector SQLState 22000.
+                    (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                                (constantly (semantic.tu/resolved-mock-embedding-model
+                                                             :vector-dimensions 1))
+                                                index-table/index-status (constantly :compatible)]
+                      (mt/with-log-messages-for-level [messages [metabase-enterprise.entity-retrieval.core :warn]]
+                        (is (= [] (entity-retrieval.core/search-unfiltered "q" 10)))
+                        (is (=? [{:level   :warn
+                                  :message #"(?s)library entity index incompatible with the query vector.*"}]
+                                (messages))
+                            "the query reached pgvector and degraded on 22000, not on an earlier preflight"))))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
                                             "\", \"" (index-table/meta-table) "\"")])))))))))))

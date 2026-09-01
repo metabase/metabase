@@ -3,8 +3,6 @@
   (:require
    [clojure.data :as data]
    [honey.sql.helpers :as sql.helpers]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -16,8 +14,6 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -51,6 +47,7 @@
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (api/check-superuser)
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (data-perms.graph/api-graph {:group-id group-id}))
 
 (defenterprise upsert-sandboxes!
@@ -89,64 +86,31 @@
    {:keys [skip-graph force]} :- [:map
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- [:map
-            ;; keyed by group id, then by database id -- `::permissions-rest.schema/strict-api-permissions-graph`
-            ;; below turns both back into the ints the graph is stored under, and checks the per-database
-            ;; permissions, so the value stays open here
-            [:groups                          [:map-of :keyword [:maybe ms/Map]]]
-            [:revision       {:optional true} [:maybe ms/Int]]
-            [:force          {:optional true} [:maybe :boolean]]
-            ;; sandboxes without an `:id` are created, ones with an `:id` are updated -- and only in the keys the
-            ;; request actually carries, so `:card_id`/`:attribute_remappings` have to keep their present/absent
-            ;; distinction
-            [:sandboxes      {:optional true}
-             [:maybe [:sequential
-                      [:map
-                       [:id                   {:optional true} ms/PositiveInt]
-                       [:group_id             {:optional true} ms/PositiveInt]
-                       [:table_id             {:optional true} ms/PositiveInt]
-                       [:card_id              {:optional true} [:maybe ms/PositiveInt]]
-                       ;; user attribute name -> the parameter target it is remapped to
-                       [:attribute_remappings {:optional true} [:maybe ms/Map]]
-                       [:permission_id        {:optional true} [:maybe ms/PositiveInt]]]]]]
-            [:impersonations {:optional true}
-             [:maybe [:sequential
-                      [:map
-                       [:group_id  ms/PositiveInt]
-                       [:db_id     ms/PositiveInt]
-                       [:attribute ms/NonBlankString]]]]]]]
+   new-graph :- ::permissions-rest.schema/graph-update-request]
   (api/check-superuser)
-  (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
-                             body
-                             (mtx/transformer
-                              mtx/string-transformer
-                              (mtx/transformer {:name :perm-graph})))]
-    (when-not (mr/validate ::permissions-rest.schema/data-permissions-graph new-graph)
-      (let [explained (mu/explain ::permissions-rest.schema/data-permissions-graph new-graph)]
-        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
-                        {:status-code 400}))))
-    (t2/with-transaction [_conn]
-      (let [group-ids (-> new-graph :groups keys)
-            old-graph (data-perms.graph/api-graph {:group-ids group-ids})
-            [old new] (data/diff (:groups old-graph)
-                                 (:groups new-graph))
-            old       (or old {})
-            new       (or new {})]
-        (perms/log-permissions-changes old new)
-        (when-not force (perms/check-revision-numbers old-graph new-graph))
-        (data-perms.graph/update-data-perms-graph! {:groups new})
-        (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
-        (let [sandbox-updates        (:sandboxes new-graph)
-              sandboxes              (when sandbox-updates
-                                       (upsert-sandboxes! sandbox-updates))
-              impersonation-updates  (:impersonations new-graph)
-              impersonations         (when impersonation-updates
-                                       (insert-impersonations! impersonation-updates))
-              group-ids (-> new-graph :groups keys)]
-          (merge {:revision (perms/latest-permissions-revision-id)}
-                 (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
-                 (when sandboxes {:sandboxes sandboxes})
-                 (when impersonations {:impersonations impersonations})))))))
+  (perms/check-tenant-groups-visible! (keys (:groups new-graph)))
+  (t2/with-transaction [_conn]
+    (let [group-ids (-> new-graph :groups keys)
+          old-graph (data-perms.graph/api-graph {:group-ids group-ids})
+          [old new] (data/diff (:groups old-graph)
+                               (:groups new-graph))
+          old       (or old {})
+          new       (or new {})]
+      (perms/log-permissions-changes old new)
+      (when-not force (perms/check-revision-numbers old-graph new-graph))
+      (data-perms.graph/update-data-perms-graph! {:groups new})
+      (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+      (let [sandbox-updates        (:sandboxes new-graph)
+            sandboxes              (when sandbox-updates
+                                     (upsert-sandboxes! sandbox-updates))
+            impersonation-updates  (:impersonations new-graph)
+            impersonations         (when impersonation-updates
+                                     (insert-impersonations! impersonation-updates))
+            group-ids (-> new-graph :groups keys)]
+        (merge {:revision (perms/latest-permissions-revision-id)}
+               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
+               (when sandboxes {:sandboxes sandboxes})
+               (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -207,11 +171,11 @@
          (when (and (not api/*is-superuser?*)
                     (premium-features/enable-advanced-permissions?)
                     api/*is-group-manager?*)
-           [:in :id {:select [:group_id]
-                     :from   [:permissions_group_membership]
-                     :where  [:and
-                              [:= :user_id api/*current-user-id*]
-                              [:= :is_group_manager true]]}])
+           [:in :id ^:allow-subquery {:select [:group_id]
+                                      :from   [:permissions_group_membership]
+                                      :where  [:and
+                                               [:= :user_id api/*current-user-id*]
+                                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
          (when-not (premium-features/enable-advanced-permissions?)
@@ -238,6 +202,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (perms/check-manager-of-group id)
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
   (api/check-404
    (some-> (t2/select-one :model/PermissionsGroup :id id)
            (t2/hydrate :members)
@@ -273,8 +238,12 @@
                                       [:name ms/NonBlankString]
                                       [:is_tenant_group {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (when (and is_tenant_group (not (premium-features/enable-tenants?)))
-    (throw (premium-features/ee-feature-error (tru "Tenants"))))
+  (when is_tenant_group
+    (when-not (premium-features/enable-tenants?)
+      (throw (premium-features/ee-feature-error (tru "Tenants"))))
+    (when-not (setting/get :use-tenants)
+      (throw (ex-info (tru "Tenant groups cannot be created while the Tenants feature is disabled.")
+                      {:status-code 400}))))
   (u/prog1 (t2/insert-returning-instance! :model/PermissionsGroup
                                           :name name
                                           :is_tenant_group (boolean is_tenant_group))
@@ -293,6 +262,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (api/check-404 group)
     (t2/update! :model/PermissionsGroup group-id
@@ -313,6 +283,7 @@
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
+  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (t2/delete! :model/PermissionsGroup :id group-id)
     (events/publish-event! :event/group-delete {:object group
@@ -339,13 +310,18 @@
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
                                   (sql.helpers/where
-                                   [:in :group_id {:select [:group_id]
-                                                   :from   [:permissions_group_membership]
-                                                   :where  [:and
-                                                            [:= :user_id api/*current-user-id*]
-                                                            [:= :is_group_manager true]]}])
+                                   [:in :group_id ^:allow-subquery {:select [:group_id]
+                                                                    :from   [:permissions_group_membership]
+                                                                    :where  [:and
+                                                                             [:= :user_id api/*current-user-id*]
+                                                                             [:= :is_group_manager true]]}])
                                   (not (premium-features/enable-advanced-permissions?))
-                                  (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])))))
+                                  (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])
+                                  (not (setting/get :use-tenants))
+                                  (sql.helpers/where [:not-in :group_id ^:allow-subquery
+                                                      {:select [:id]
+                                                       :from   [:permissions_group]
+                                                       :where  [:= :is_tenant_group true]}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -361,6 +337,7 @@
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
     (perms/check-manager-of-group group_id)
+    (perms/check-tenant-groups-visible! [group_id])
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
       (perms/check-advanced-permissions-enabled :group-manager)
@@ -390,6 +367,7 @@
   (perms/check-group-manager)
   (let [old (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 old)
+    (perms/check-tenant-groups-visible! [(:group_id old)])
     (perms/check-manager-of-group (:group_id old))
     (api/check
      (t2/exists? :model/User :id (:user_id old) :is_superuser false)
@@ -409,6 +387,7 @@
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
+  (perms/check-tenant-groups-visible! [group-id])
   (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
@@ -422,6 +401,7 @@
                     [:id ms/PositiveInt]]]
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
+    (perms/check-tenant-groups-visible! [(:group_id membership)])
     (perms/check-manager-of-group (:group_id membership))
     (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))

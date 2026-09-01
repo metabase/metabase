@@ -10,6 +10,7 @@ import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/com
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
+import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -19,7 +20,6 @@ import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
-import { getUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,

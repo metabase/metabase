@@ -6,9 +6,8 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import CS from "metabase/css/core/index.css";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
-import type { Channel } from "metabase-types/api";
+import type { Channel, DraftDashboardSubscription } from "metabase-types/api";
 
 function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
   const { scheduleOptionNames } = getScheduleStrings();

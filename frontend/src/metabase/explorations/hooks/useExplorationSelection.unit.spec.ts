@@ -3,8 +3,8 @@ import { act } from "@testing-library/react";
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   DimensionId,
   ExplorationMetric,
@@ -19,8 +19,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  type DimensionBlock,
-  isMetricBlock,
   metricBlockId,
   useExplorationSelection,
 } from "./useExplorationSelection";
@@ -56,12 +54,12 @@ function renderSelection(timelines: Timeline[] = []) {
   return renderHookWithProviders(() => useExplorationSelection(), {});
 }
 
-function metricBlockOf(result: {
+function firstBlockOf(result: {
   current: ReturnType<typeof useExplorationSelection>;
 }) {
   const block = result.current.blocks[0];
-  if (!block || !isMetricBlock(block)) {
-    throw new Error("expected a metric block");
+  if (!block) {
+    throw new Error("expected a block");
   }
   return block;
 }
@@ -80,7 +78,7 @@ describe("useExplorationSelection", () => {
         result.current.addMetric(metric, { dimensionsById });
       });
 
-      const block = metricBlockOf(result);
+      const block = firstBlockOf(result);
       expect(block.dimensions.map((d) => d.id)).toEqual([
         "dim-high",
         "dim-low",
@@ -100,7 +98,7 @@ describe("useExplorationSelection", () => {
         result.current.addMetric(metric, { dimensionsById });
       });
 
-      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
+      expect([...firstBlockOf(result).selectedDimensionIds].sort()).toEqual([
         "dim-a",
         "dim-b",
       ]);
@@ -119,7 +117,7 @@ describe("useExplorationSelection", () => {
         result.current.addMetric(metric, { dimensionsById });
       });
 
-      expect(metricBlockOf(result).dimensions.map((d) => d.id)).toEqual([
+      expect(firstBlockOf(result).dimensions.map((d) => d.id)).toEqual([
         "dim-high",
         "dim-mid",
         "dim-low",
@@ -157,7 +155,7 @@ describe("useExplorationSelection", () => {
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
       });
-      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+      expect([...firstBlockOf(result).selectedDimensionIds]).toEqual([
         "dim-high",
       ]);
 
@@ -170,7 +168,7 @@ describe("useExplorationSelection", () => {
       });
 
       expect(result.current.blocks).toHaveLength(1);
-      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
+      expect([...firstBlockOf(result).selectedDimensionIds].sort()).toEqual([
         "dim-high",
         "dim-low",
       ]);
@@ -194,7 +192,7 @@ describe("useExplorationSelection", () => {
 
       // Without replace this would select dim-high (interesting) ∪ dim-low; with replace it is
       // exactly the requested dim-low.
-      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+      expect([...firstBlockOf(result).selectedDimensionIds]).toEqual([
         "dim-low",
       ]);
     });
@@ -265,7 +263,7 @@ describe("useExplorationSelection", () => {
   });
 
   describe("toggleDimensionSelected", () => {
-    it("flips a candidate dimension's selected state within a metric block", () => {
+    it("flips a candidate dimension's selected state", () => {
       const dimHigh = makeDim("dim-high", 0.9);
       const dimLow = makeDim("dim-low", 0.3);
       const metric = makeMetric(1, ["dim-high", "dim-low"]);
@@ -281,7 +279,7 @@ describe("useExplorationSelection", () => {
       act(() => {
         result.current.toggleDimensionSelected(blockId, "dim-low");
       });
-      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
+      expect([...firstBlockOf(result).selectedDimensionIds].sort()).toEqual([
         "dim-high",
         "dim-low",
       ]);
@@ -289,145 +287,15 @@ describe("useExplorationSelection", () => {
       act(() => {
         result.current.toggleDimensionSelected(blockId, "dim-high");
       });
-      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+      expect([...firstBlockOf(result).selectedDimensionIds]).toEqual([
         "dim-low",
       ]);
     });
   });
 
-  describe("addDimension", () => {
-    it("adds a dimension block, all related metrics selected, and is idempotent", () => {
-      const dimA = makeDim("dim-a", 0.9);
-      const metric1 = makeMetric(1, ["dim-a"]);
-      const metric2 = makeMetric(2, ["dim-a"]);
-      const metricsByDimension = new Map([["dim-a", [metric1, metric2]]]);
-
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.addDimension(dimA, {
-          group: null,
-          metricsByDimension,
-        });
-      });
-
-      const block = result.current.blocks[0];
-      if (block.kind !== "dimension") {
-        throw new Error("expected a dimension block");
-      }
-      expect(block.metrics.map((m) => m.id)).toEqual([1, 2]);
-      expect([...block.selectedMetricIds].sort()).toEqual([1, 2]);
-
-      const blocksAfterFirst = result.current.blocks;
-      act(() => {
-        result.current.addDimension(dimA, {
-          group: null,
-          metricsByDimension,
-        });
-      });
-      expect(result.current.blocks).toBe(blocksAfterFirst);
-    });
-
-    it("selects only the requested metrics when a subset is given", () => {
-      const dimA = makeDim("dim-a", 0.9);
-      const metric1 = makeMetric(1, ["dim-a"]);
-      const metric2 = makeMetric(2, ["dim-a"]);
-      const metricsByDimension = new Map([["dim-a", [metric1, metric2]]]);
-
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.addDimension(dimA, {
-          group: null,
-          metricsByDimension,
-          selectedMetricIds: new Set([1]),
-        });
-      });
-
-      const block = result.current.blocks[0];
-      if (block.kind !== "dimension") {
-        throw new Error("expected a dimension block");
-      }
-      // Both metrics remain candidates, but only the requested one is selected.
-      expect(block.metrics.map((m) => m.id).sort()).toEqual([1, 2]);
-      expect([...block.selectedMetricIds]).toEqual([1]);
-    });
-
-    it("grows an existing dimension block by re-selecting related metrics", () => {
-      const dimA = makeDim("dim-a", 0.9);
-      const metric1 = makeMetric(1, ["dim-a"]);
-      const metric2 = makeMetric(2, ["dim-a"]);
-      const metricsByDimension = new Map([["dim-a", [metric1, metric2]]]);
-
-      const { result } = renderSelection();
-
-      // Existing block with metric 2 deselected.
-      act(() => {
-        result.current.setBlocks([
-          {
-            kind: "dimension",
-            id: "dim:dim-a",
-            dimension: dimA,
-            groupDimensions: [dimA],
-            metrics: [metric1, metric2],
-            selectedMetricIds: new Set([1]),
-          },
-        ]);
-      });
-
-      act(() => {
-        result.current.addDimension(dimA, {
-          group: null,
-          metricsByDimension,
-        });
-      });
-
-      expect(result.current.blocks).toHaveLength(1);
-      expect(
-        [
-          // Unjustified type cast. FIXME
-          ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
-        ].sort(),
-      ).toEqual([1, 2]);
-    });
-  });
-
-  describe("toggleMetricSelected", () => {
-    it("flips a candidate metric's selected state within a dimension block", () => {
-      const dimA = makeDim("dim-a", 0.9);
-      const metric1 = makeMetric(1, ["dim-a"]);
-      const metric2 = makeMetric(2, ["dim-a"]);
-
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.setBlocks([
-          {
-            kind: "dimension",
-            id: "dim:dim-a",
-            dimension: dimA,
-            groupDimensions: [dimA],
-            metrics: [metric1, metric2],
-            selectedMetricIds: new Set([1, 2]),
-          },
-        ]);
-      });
-
-      act(() => {
-        result.current.toggleMetricSelected("dim:dim-a", 1);
-      });
-
-      expect([
-        // Unjustified type cast. FIXME
-        ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
-      ]).toEqual([2]);
-    });
-  });
-
-  describe("removeBlockMembers", () => {
-    function metricBlockWith(dims: MetricDimension[], selected: DimensionId[]) {
+  describe("removeBlockDimensions", () => {
+    function blockWith(dims: MetricDimension[], selected: DimensionId[]) {
       return {
-        kind: "metric" as const,
         id: metricBlockId(1),
         metric: makeMetric(
           1,
@@ -438,113 +306,49 @@ describe("useExplorationSelection", () => {
       };
     }
 
-    function dimensionBlockWith(
-      metrics: ExplorationMetric[],
-      selected: number[],
-    ) {
-      const dimA = makeDim("dim-a", 0.9);
-      return {
-        kind: "dimension" as const,
-        id: "dim:dim-a",
-        dimension: dimA,
-        groupDimensions: [dimA],
-        metrics,
-        selectedMetricIds: new Set(selected),
-      };
-    }
-
-    it("deselects a dimension within a metric block, keeping the block", () => {
+    it("deselects a dimension, keeping the block", () => {
       const dimA = makeDim("dim-a", 0.9);
       const dimB = makeDim("dim-b", 0.8);
       const { result } = renderSelection();
 
       act(() => {
-        result.current.setBlocks([
-          metricBlockWith([dimA, dimB], ["dim-a", "dim-b"]),
-        ]);
+        result.current.setBlocks([blockWith([dimA, dimB], ["dim-a", "dim-b"])]);
       });
       act(() => {
-        result.current.removeBlockMembers(metricBlockId(1), {
-          dimensionIds: ["dim-a"],
-        });
+        result.current.removeBlockDimensions(metricBlockId(1), ["dim-a"]);
       });
 
-      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
-        "dim-b",
-      ]);
+      expect([...firstBlockOf(result).selectedDimensionIds]).toEqual(["dim-b"]);
     });
 
-    it("drops the metric block when its last selected dimension is removed", () => {
+    it("drops the block when its last selected dimension is removed", () => {
       const dimA = makeDim("dim-a", 0.9);
       const { result } = renderSelection();
 
       act(() => {
-        result.current.setBlocks([metricBlockWith([dimA], ["dim-a"])]);
+        result.current.setBlocks([blockWith([dimA], ["dim-a"])]);
       });
       act(() => {
-        result.current.removeBlockMembers(metricBlockId(1), {
-          dimensionIds: ["dim-a"],
-        });
+        result.current.removeBlockDimensions(metricBlockId(1), ["dim-a"]);
       });
 
       expect(result.current.blocks).toHaveLength(0);
     });
 
-    it("deselects a metric within a dimension block, keeping the block", () => {
-      const metric1 = makeMetric(1, ["dim-a"]);
-      const metric2 = makeMetric(2, ["dim-a"]);
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.setBlocks([
-          dimensionBlockWith([metric1, metric2], [1, 2]),
-        ]);
-      });
-      act(() => {
-        result.current.removeBlockMembers("dim:dim-a", { metricIds: [1] });
-      });
-
-      expect([
-        // Unjustified type cast. FIXME
-        ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
-      ]).toEqual([2]);
-    });
-
-    it("drops the dimension block when its last selected metric is removed", () => {
-      const metric1 = makeMetric(1, ["dim-a"]);
-      const { result } = renderSelection();
-
-      act(() => {
-        result.current.setBlocks([dimensionBlockWith([metric1], [1])]);
-      });
-      act(() => {
-        result.current.removeBlockMembers("dim:dim-a", { metricIds: [1] });
-      });
-
-      expect(result.current.blocks).toHaveLength(0);
-    });
-
-    it("ignores a mismatched member family", () => {
+    it("is a no-op when none of the given dimensions are selected", () => {
       const dimA = makeDim("dim-a", 0.9);
       const dimB = makeDim("dim-b", 0.8);
       const { result } = renderSelection();
 
       act(() => {
-        result.current.setBlocks([
-          metricBlockWith([dimA, dimB], ["dim-a", "dim-b"]),
-        ]);
+        result.current.setBlocks([blockWith([dimA, dimB], ["dim-a", "dim-b"])]);
       });
-      // metric ids don't apply to a metric block — nothing changes
+      const blocksBefore = result.current.blocks;
       act(() => {
-        result.current.removeBlockMembers(metricBlockId(1), {
-          metricIds: [1, 2],
-        });
+        result.current.removeBlockDimensions(metricBlockId(1), ["dim-missing"]);
       });
 
-      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
-        "dim-a",
-        "dim-b",
-      ]);
+      expect(result.current.blocks).toBe(blocksBefore);
     });
 
     it("is a no-op when the block id is not present", () => {
@@ -552,18 +356,14 @@ describe("useExplorationSelection", () => {
       const { result } = renderSelection();
 
       act(() => {
-        result.current.setBlocks([metricBlockWith([dimA], ["dim-a"])]);
+        result.current.setBlocks([blockWith([dimA], ["dim-a"])]);
       });
       act(() => {
-        result.current.removeBlockMembers("metric:999", {
-          dimensionIds: ["dim-a"],
-        });
+        result.current.removeBlockDimensions("metric:999", ["dim-a"]);
       });
 
       expect(result.current.blocks).toHaveLength(1);
-      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
-        "dim-a",
-      ]);
+      expect([...firstBlockOf(result).selectedDimensionIds]).toEqual(["dim-a"]);
     });
   });
 

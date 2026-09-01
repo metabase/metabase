@@ -3,3 +3,14 @@
   background-color: var(--mb-color-bg-dashboard);
   scrollbar-gutter: stable;
 }
+
+/* The query builder sizes itself with percentage heights, which need a parent
+   with a definite height. A `min-height`-only flex column gives them none, so
+   the visualization collapses to 0 (EMB-2252). A grid row does resolve against
+   `min-height`: this fills a host that sets a height, and falls back to 700px
+   when the host is auto-height. */
+.FullHeight {
+  display: grid;
+  grid-template: 1fr / 1fr;
+  min-height: max(100%, 700px);
+}

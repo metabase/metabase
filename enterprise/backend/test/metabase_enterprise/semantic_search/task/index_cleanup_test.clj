@@ -37,9 +37,12 @@
   [table-name {:keys [provider model-name vector-dimensions]}]
   {:table-name table-name
    :version 1
-   :embedding-model {:provider provider
+   ;; Resolve the model so it carries an :embedding-space-id -- record-new-index-table! persists it into a
+   ;; NOT NULL column.
+   :embedding-model (semantic.tu/resolved-mock-embedding-model
+                     :provider provider
                      :model-name model-name
-                     :vector-dimensions vector-dimensions}})
+                     :vector-dimensions vector-dimensions)})
 
 (defn- insert-metadata-with-timestamps!
   "Insert an index metadata row using record-new-index-table! and then update timestamps for testing."

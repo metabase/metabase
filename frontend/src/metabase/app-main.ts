@@ -5,12 +5,12 @@ import "metabase-dev";
 import { Api } from "metabase/api";
 import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
+import { getUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { navigate } from "metabase/router";
 import { getRoutes } from "metabase/routes";
-import { getUser } from "metabase/selectors/user";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // Let embedded children detect that their parent is a Metabase instance.

@@ -23,7 +23,7 @@ import {
   getAvailableFonts,
   getLoginStatus,
 } from "embedding-sdk-bundle/store/selectors";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";

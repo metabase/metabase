@@ -1,11 +1,10 @@
-import { onlyOn } from "@cypress/skip-test";
-
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
 const { H } = cy;
 

@@ -1,6 +1,13 @@
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 
-import { getDataColumns } from "./utils";
+import {
+  databaseManagementPermissionAllowedPathGetter,
+  getDataColumns,
+} from "./utils";
 
 describe("getDataColumns", () => {
   const originalIsEnabled = PLUGIN_TRANSFORMS.isEnabled;
@@ -107,5 +114,33 @@ describe("getDataColumns", () => {
         expectedColumns,
       );
     });
+  });
+});
+
+describe("databaseManagementPermissionAllowedPathGetter", () => {
+  it("grants the databases admin path when the user has database management permission", () => {
+    const user = createMockUser({
+      is_superuser: false,
+      permissions: createMockUserPermissions({ can_access_db_details: true }),
+    });
+
+    expect(databaseManagementPermissionAllowedPathGetter(user)).toEqual([
+      "databases",
+    ]);
+  });
+
+  it("grants no path when the user lacks database management permission", () => {
+    const user = createMockUser({
+      is_superuser: false,
+      permissions: createMockUserPermissions({ can_access_db_details: false }),
+    });
+
+    expect(databaseManagementPermissionAllowedPathGetter(user)).toEqual([]);
+  });
+
+  it("grants no path when there is no user", () => {
+    expect(databaseManagementPermissionAllowedPathGetter(undefined)).toEqual(
+      [],
+    );
   });
 });

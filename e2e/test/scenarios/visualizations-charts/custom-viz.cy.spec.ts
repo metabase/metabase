@@ -1,10 +1,15 @@
-import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_TABLES,
+  USER_GROUPS,
+} from "e2e/support/cypress_data";
 import {
   type DashboardDetails,
   type StructuredQuestionDetails,
   adminAppLinkText,
   mainAppLinkText,
 } from "e2e/support/helpers";
+import { b64hash_to_utf8 } from "metabase/utils/encoding";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   CardId,
@@ -12,6 +17,7 @@ import type {
   DashboardId,
   DocumentContent,
   Parameter,
+  UnsavedCard,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -623,6 +629,39 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
       H.main().findByText("Threshold: 42").should("be.visible");
+    });
+
+    it("keeps an unsaved question's custom viz after a browser reload (metabase#76065)", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+        },
+      });
+
+      switchToDemoViz();
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.location("hash").should((hash) => {
+        const card: UnsavedCard = JSON.parse(b64hash_to_utf8(hash));
+        expect(card.display).to.eq(H.CUSTOM_VIZ_DISPLAY);
+        expect(card.displayIsLocked).to.eq(true);
+      });
+
+      H.interceptPluginBundle();
+      cy.reload();
+      cy.wait("@pluginBundle");
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+      cy.findByTestId("scalar-value").should("not.exist");
     });
 
     it("opens the column formatting popover from a field setting (metabase#78039)", () => {
@@ -1761,6 +1800,18 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(
         /addEventListener for global event type: storage/,
       ),
+    },
+    {
+      // The `on*` IDL setters reach the same global event types as
+      // addEventListener, so they are gated on the property path too.
+      name: "document.onkeydown setter",
+      payload: "document.onkeydown = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onkeydown/),
+    },
+    {
+      name: "document.onpaste setter",
+      payload: "document.onpaste = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onpaste/),
     },
     {
       name: 'setAttribute("onclick", ...)',

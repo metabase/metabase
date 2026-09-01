@@ -1,10 +1,13 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.string :as str]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -58,7 +61,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls)
 
@@ -67,7 +70,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls)
 
@@ -76,7 +79,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls)
 
@@ -98,78 +101,13 @@
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
-(def ^:private direct-providers
-  "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "google" "mistral" "moonshot" "openai" "openrouter" "zai"})
-
-(def ^:private default-anthropic-llm-metabot-model
-  "Default Anthropic model used for Metabot when no explicit model is selected."
-  "claude-sonnet-4-6")
-
-(def ^:private default-bedrock-llm-metabot-model
-  "Default Bedrock model used for Metabot when no explicit model is selected."
-  "anthropic.claude-opus-4-8")
-
-(def ^:private default-google-llm-metabot-model
-  "Default Google model used for Metabot when no explicit model is selected.
-  Note that Google model IDs include their `{publisher}/{model}` qualifier."
-  "google/gemini-3.5-flash")
-
-(def ^:private default-mistral-llm-metabot-model
-  "Default Mistral model used for Metabot when no explicit model is selected."
-  "mistral-medium-3-5")
-
-(def ^:private default-moonshot-llm-metabot-model
-  "Default Moonshot model used for Metabot when no explicit model is selected."
-  "kimi-k3")
-
-(def ^:private default-openai-llm-metabot-model
-  "Default OpenAI model used for Metabot when no explicit model is selected."
-  "gpt-5.4")
-
-(def ^:private default-openrouter-llm-metabot-model
-  "Default OpenRouter model used for Metabot when no explicit model is selected.
-  Note that OpenRouter model IDs use dots in version numbers (`claude-sonnet-4.6`),
-  unlike the Anthropic API's hyphenated IDs (`claude-sonnet-4-6`)."
-  "anthropic/claude-sonnet-4.6")
-
-(def ^:private default-zai-llm-metabot-model
-  "Default Z.AI model used for Metabot when no explicit model is selected."
-  "glm-5.2")
-
 (def default-llm-metabot-provider
-  "Default provider/model used for Metabot when no explicit model is selected."
-  (str "anthropic/" default-anthropic-llm-metabot-model))
-
-(def default-llm-metabot-model-by-provider
-  "Default model payload keyed by provider for `PUT /api/metabot/settings`.
-
-  Values match the shape expected in the request body for each provider: direct providers use a bare model ID (except
-  OpenRouter and Google, whose IDs are publisher-qualified), while the managed `metabase` provider uses the proxied
-  `provider/model` form."
-  {"anthropic"                            default-anthropic-llm-metabot-model
-   "bedrock"                              default-bedrock-llm-metabot-model
-   "google"                               default-google-llm-metabot-model
-   "mistral"                              default-mistral-llm-metabot-model
-   "moonshot"                             default-moonshot-llm-metabot-model
-   "openai"                               default-openai-llm-metabot-model
-   "openrouter"                           default-openrouter-llm-metabot-model
-   "zai"                                  default-zai-llm-metabot-model
-   provider-util/metabase-provider-prefix default-llm-metabot-provider})
+  "Default model reference used for Metabot when no explicit model is selected."
+  "anthropic/claude-sonnet-4-6")
 
 (def default-metabase-llm-metabot-provider
   "Managed-provider version of [[default-llm-metabot-provider]]."
-  (str provider-util/metabase-provider-prefix "/" default-llm-metabot-provider))
-
-(def ^:private proxied-providers-and-models
-  "Providers and models that can be used via the metabase managed AI proxy.
-
-  The keys of this map must be a subset of the [[direct-providers]]."
-  {"anthropic" #{"claude-sonnet-4-6"}})
-
-(def supported-metabot-providers
-  "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
-  (conj direct-providers provider-util/metabase-provider-prefix))
+  (str llm.provider/managed-connection-key "/" default-llm-metabot-provider))
 
 (def azure-model-families
   "Wire-protocol families for models hosted on Azure: the first segment of the azure model
@@ -177,7 +115,7 @@
   #{"anthropic" "openai"})
 
 (defn validate-azure-model!
-  "Validate the model segment of an `azure/{family}/{deployment-name}` provider string:
+  "Validate the model segment of an azure connection's `{family}/{deployment-name}` model:
   a supported wire family followed by a non-blank deployment name without slashes
   (Azure deployment names cannot contain `/`). Throws on invalid input."
   [value model]
@@ -185,95 +123,63 @@
     (when-not (and (contains? azure-model-families family)
                    (not (str/blank? deployment))
                    (not (str/includes? deployment "/")))
-      (throw (ex-info (tru "Invalid Azure model {0}. Expected format: azure/<family>/<deployment-name> where <family> is one of: {1}"
+      (throw (ex-info (tru "Invalid Azure model {0}. Expected format: <connection>/<family>/<deployment-name> where <family> is one of: {1}"
                            (pr-str value)
                            (str/join ", " (sort azure-model-families)))
                       {:status-code 400
                        :value       value})))))
 
-(defn- validate-direct-provider!
-  "Validate that `value` is a `provider/model` string for one of the [[direct-providers]]
-  (i.e. *not* using the `metabase/` proxy prefix). Throws on invalid input."
-  [value]
-  (when (provider-util/metabase-provider? value)
-    (throw (ex-info (tru "Invalid direct provider {0}. Must not start with {1}/."
-                         (pr-str value) provider-util/metabase-provider-prefix)
-                    {:status-code 400
-                     :value       value})))
-  (let [provider (provider-util/provider-and-model->provider value)
-        model    (provider-util/provider-and-model->model value)]
-    (when-not (contains? direct-providers provider)
-      (throw (ex-info (tru "Unknown provider {0}. Supported providers: {1}"
-                           (pr-str provider)
-                           (str/join ", " (sort supported-metabot-providers)))
+(defn- validate-google-model!
+  "Validate the model segment of a google connection's `{publisher}/{model-id}` model.
+  A publisher this provider serves followed by a non-blank model ID without slashes (the ID is one path segment of the
+  request URL).  Throws on invalid input."
+  [value model]
+  (let [[publisher model-id] (str/split (str model) #"/" 2)]
+    (when-not (and (contains? google/model-publishers publisher)
+                   (not (str/blank? model-id))
+                   (not (str/includes? model-id "/")))
+      (throw (ex-info (tru "Invalid Google model {0}. Expected format: <connection>/<publisher>/<model> where <publisher> is one of: {1}"
+                           (pr-str value)
+                           (str/join ", " (sort google/model-publishers)))
                       {:status-code 400
-                       :provider    provider
-                       :supported   supported-metabot-providers})))
-    (when (str/blank? model)
-      (throw (ex-info (tru "Model name is required. Expected format: provider/model, e.g. \"anthropic/claude-haiku-4-5\"")
-                      {:status-code 400
-                       :value       value})))
-    (when (= provider "azure")
-      (validate-azure-model! value model))))
+                       :value       value})))))
 
-(defn- validate-metabase-managed-provider!
-  "Validate that `value` is a `metabase/provider/model` string whose inner provider and
-  model are in the [[proxied-providers-and-models]] allow-list. Throws on invalid input."
-  [value]
-  (when-not (provider-util/metabase-provider? value)
-    (throw (ex-info (tru "Invalid metabase managed AI provider {0}. Must start with {1}/."
-                         (pr-str value) provider-util/metabase-provider-prefix)
-                    {:status-code 400
-                     :value       value})))
-  (let [inner-provider    (provider-util/provider-and-model->provider value)
-        inner-model       (provider-util/provider-and-model->model value)
-        allowed-providers (sort (keys proxied-providers-and-models))
-        allowed-models    (get proxied-providers-and-models inner-provider)]
-    (when-not (contains? proxied-providers-and-models inner-provider)
-      (throw (ex-info (tru "Unsupported provider {0} for metabase managed AI. Supported providers: {1}"
-                           (pr-str inner-provider)
-                           (str/join ", " allowed-providers))
-                      {:status-code 400
-                       :provider    inner-provider
-                       :supported   (set (keys proxied-providers-and-models))})))
-    (when (str/blank? inner-model)
-      (throw (ex-info (tru "Model name is required. Expected format: metabase/provider/model, e.g. {0}"
-                           (pr-str default-metabase-llm-metabot-provider))
-                      {:status-code 400
-                       :value       value})))
-    (when-not (contains? allowed-models inner-model)
-      (throw (ex-info (tru "Unsupported model {0} for metabase managed provider {1}. Supported models: {2}"
-                           (pr-str inner-model)
-                           (pr-str inner-provider)
-                           (str/join ", " (sort allowed-models)))
-                      {:status-code 400
-                       :provider    inner-provider
-                       :model       inner-model
-                       :supported   allowed-models})))))
-(defn default-model-for-provider
-  "Return the default request-model payload for a provider.
+(defn- validate-managed-model!
+  "Check `model` against the fixed catalog the Metabase AI proxy serves (see the `metabase` entry in
+  [[metabase.llm.provider/provider-types]])."
+  [model]
+  (let [allowed (into #{} (map :id) (llm.provider/fixed-models llm.provider/managed-connection-key))]
+    (when-not (contains? allowed model)
+      (throw (ex-info (tru "Unsupported model {0} for Metabase managed AI. Supported models: {1}"
+                           (pr-str model) (str/join ", " (sort allowed)))
+                      {:status-code 400 :model model})))))
 
-  When `provider` is nil, fall back to the global default provider/model string."
-  [provider]
-  (if (nil? provider)
-    default-llm-metabot-provider
-    (get default-llm-metabot-model-by-provider provider)))
+(defn- validate-model-ref!
+  "Validate that `value` is a `connection-key/model` string with a non-blank model, plus whatever extra rules the
+  named connection's provider type imposes on its models.
 
-(defn- validate-metabot-provider!
-  "Validate that `value` has the format `provider/model` with a supported provider prefix.
-  Dispatches to [[validate-metabase-managed-provider!]] when `value` uses the
-  `metabase/` proxy prefix and to [[validate-direct-provider!]] otherwise.
+  Deliberately does *not* require the connection to exist. A model-reference setting can legitimately be written
+  before the connection it names — an env var, a config file, or a serdes import can land in either order — and a
+  value naming a missing connection is already reported where it is actionable: [[llm-metabot-configured?]] reads
+  false, and resolving it for a request throws a 400 that names the connection.
+
   Throws an exception with `:status-code 400` on invalid input."
   [value]
   (when-not (string? value)
     (throw (ex-info (tru "Metabot provider must be a string, got: {0}" (pr-str value))
                     {:status-code 400})))
-  (if (provider-util/metabase-provider? value)
-    (validate-metabase-managed-provider! value)
-    (validate-direct-provider! value)))
+  (let [model (llm.provider/model-ref->model value)]
+    (when (str/blank? model)
+      (throw (ex-info (tru "Model name is required. Expected format: connection/model, e.g. \"anthropic/claude-haiku-4-5\"")
+                      {:status-code 400 :value value})))
+    (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
+      "azure"    (validate-azure-model! value model)
+      "google"   (validate-google-model! value model)
+      "metabase" (validate-managed-model! model)
+      nil)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.")
+  (deferred-tru "The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
@@ -282,91 +188,71 @@
   :deprecated-name  :ee-ai-metabot-provider
   :setter           (fn [new-value]
                       (when new-value
-                        (validate-metabot-provider! new-value))
+                        (validate-model-ref! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
 
-(defn- non-blank
-  [value]
-  (when (string? value)
-    (let [trimmed (str/trim value)]
-      (when-not (str/blank? trimmed)
-        trimmed))))
+(defn- mini-model-ref
+  "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
+  provider type has no such model."
+  [model-ref]
+  (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
+    (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
+      (str conn-key "/" model))))
 
-(defn- configured-api-key-credentials
-  [api-key]
-  (when-let [k (non-blank api-key)]
-    {:api-key k}))
+(defn explicit-mini-model
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
+  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
+  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
+  []
+  (setting/get-value-of-type :string :llm-mini-model))
 
-(defn provider-credentials-complete?
-  "Whether a credentials map carries everything `provider` needs."
-  [provider credentials]
-  (boolean
-   (case provider
-     "bedrock" (and (non-blank (:access-key-id credentials))
-                    (non-blank (:secret-access-key credentials)))
-     "azure"   (and (non-blank (:api-key credentials))
-                    (non-blank (:base-url credentials)))
-     "google"  (or (non-blank (:service-account-key credentials))
-                   (and (non-blank (:oauth-access-token credentials))
-                        (non-blank (:project-id credentials))))
-     (non-blank (:api-key credentials)))))
+(defn- -llm-mini-model
+  "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
+  model Metabot chats on, so with nothing stored this resolves to the fastest model of the
+  connection [[llm-metabot-provider]] names. Connections whose provider type has no such model — the ones that name
+  the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
+  names a model as long as Metabot does."
+  []
+  (or (explicit-mini-model)
+      (let [metabot-ref (llm-metabot-provider)]
+        (or (mini-model-ref metabot-ref) metabot-ref))))
 
-(defn configured-provider-credentials
-  "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured."
-  [provider]
-  (case provider
-    "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
-    "azure"      (let [creds {:api-key  (non-blank (llm.settings/llm-azure-api-key))
-                              :base-url (non-blank (llm.settings/llm-azure-api-base-url))}]
-                   (when (provider-credentials-complete? "azure" creds)
-                     creds))
-    "bedrock"    (let [creds {:access-key-id     (non-blank (llm.settings/llm-bedrock-access-key-id))
-                              :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
-                              :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
-                              :region            (non-blank (llm.settings/llm-bedrock-region))}]
-                   (when (provider-credentials-complete? "bedrock" creds)
-                     creds))
-    "google"     (let [creds {:service-account-key (non-blank (llm.settings/llm-google-service-account-key))
-                              :oauth-access-token  (non-blank (llm.settings/llm-google-oauth-access-token))
-                              :project-id          (non-blank (llm.settings/llm-google-project-id))
-                              :location            (non-blank (llm.settings/llm-google-location))}]
-                   (when (provider-credentials-complete? "google" creds)
-                     creds))
-    "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
-    "moonshot"   (configured-api-key-credentials (llm.settings/llm-moonshot-api-key))
-    "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
-    "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
-    "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))
-    nil))
-
-(defn- llm-provider-configured?
-  "Check if a provider-and-model string has the necessary configuration.
-  For `metabase/*` providers, checks that the proxy URL is set.
-  For direct providers, checks that credentials are configured (see [[configured-provider-credentials]])."
-  [provider-and-model]
-  (boolean
-   (if (provider-util/metabase-provider? provider-and-model)
-     (some? (llm.settings/llm-proxy-base-url))
-     (some-> provider-and-model
-             provider-util/provider-and-model->provider
-             configured-provider-credentials))))
+(defsetting llm-mini-model
+  (deferred-tru "The AI provider connection and model used for quick background tasks, such as naming Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.")
+  :type       :string
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :getter     #'-llm-mini-model
+  :setter     (fn [new-value]
+                (when new-value
+                  (validate-model-ref! new-value))
+                (setting/set-value-of-type! :string :llm-mini-model new-value)))
 
 (defsetting llm-metabot-configured?
-  "Whether credentials for the selected Metabot provider are configured."
+  "Whether the connection selected for Metabot has the credentials it needs."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(llm-provider-configured? (llm-metabot-provider))
+  :getter     #(llm.provider/connection-usable?
+                (llm.provider/model-ref->connection-key (llm-metabot-provider)))
   :doc        false)
 
 (defn- llm-provider-streams-reasoning?
-  "Whether a provider-and-model string names a model that streams its reasoning back to us."
-  [provider-and-model]
-  (let [model (provider-util/provider-and-model->model provider-and-model)]
-    (case (provider-util/provider-and-model->provider provider-and-model)
+  "Whether a model reference names a model that streams its reasoning back to us.
+
+  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
+  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
+  `--reasoning-parser` as well as on the model, so the name cannot settle it."
+  [model-ref]
+  (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
+    (case type
       "anthropic" (claude/reasoning-model? model)
+      "deepseek"  (deepseek/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
+      "google"    (google/reasoning-model? model)
+      "vllm"      (vllm/reasoning-connection? credentials)
       false)))
 
 (defsetting llm-metabot-supports-reasoning?
@@ -377,6 +263,35 @@
   :export?    false
   :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
   :doc        false)
+
+(defn- llm-provider-supports-fast-mode?
+  "Whether a model reference names a model we can serve in Anthropic fast mode.
+
+  Anthropic-only and BYOK-only: fast mode is premium-priced, and proxied connections bill through
+  Metabase Cloud rather than the instance's own API key."
+  [model-ref]
+  (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
+    (boolean (and (= type "anthropic")
+                  (not ai-proxy?)
+                  (claude/fast-mode-model? model)))))
+
+(defsetting llm-metabot-supports-fast-mode?
+  "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
+  only the admin page reads it, and a public value would tell unauthenticated callers which
+  provider and model tier serves Metabot."
+  :type       :boolean
+  :visibility :settings-manager
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-supports-fast-mode? (llm-metabot-provider))
+  :doc        false)
+
+(defsetting llm-fast-mode
+  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :export?    false)
 
 (def ^:private metabot-llm-setting-keys
   #{:metabot-enabled? :embedded-metabot-enabled? :llm-metabot-provider})

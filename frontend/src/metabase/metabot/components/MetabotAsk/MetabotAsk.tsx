@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 
-import type { MetabotConfig } from "metabase/metabot/components/Metabot";
 import { MetabotChat } from "metabase/metabot/components/MetabotChat";
 import { MetabotConversationHistory } from "metabase/metabot/components/MetabotChat/MetabotConversationHistory";
 import { isHistoryEnabledProfile } from "metabase/metabot/constants";
@@ -26,16 +25,11 @@ const SUGGESTION_MODELS: SuggestionModel[] = [
   "dashboard",
 ];
 
-const askConfig: MetabotConfig = {
-  agentId: "ask",
-  suggestionModels: SUGGESTION_MODELS,
-};
-
 export const MetabotAsk = () => {
   const navigate = useNavigate();
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
-  const askAgent = useMetabotAgent("ask");
-  const { messages, isDoingScience, conversationId } = askAgent;
+  const { conversationId, messages, isDoingScience, profile } =
+    useMetabotAgent("ask");
   const { isConfigured } = useUserMetabotPermissions();
   const isAskPage = useIsAskPage();
 
@@ -57,10 +51,10 @@ export const MetabotAsk = () => {
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
-  const showHistory = isConfigured && isHistoryEnabledProfile(askAgent.profile);
+  const showHistory = isConfigured && isHistoryEnabledProfile(profile);
   const historyAction = showHistory ? (
     <MetabotConversationHistory
-      profileId={askAgent.profile}
+      profileId={profile}
       activeConversationId={conversationId}
       onConversationSelect={(id) => navigate(Urls.metabotConversation(id))}
     />
@@ -75,13 +69,21 @@ export const MetabotAsk = () => {
               {historyAction}
             </Flex>
           )}
-          <MetabotGreeting agentId="ask" suggestionModels={SUGGESTION_MODELS} />
+          <MetabotGreeting
+            conversationId={conversationId}
+            suggestionModels={SUGGESTION_MODELS}
+          />
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
           <Box className={S.topFade} />
           <MetabotChat
-            config={askConfig}
+            conversationId={conversationId}
+            agentId="ask"
+            onNewConversation={() =>
+              navigate(Urls.newQuestion({ mode: "ask" }))
+            }
+            config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}
           />

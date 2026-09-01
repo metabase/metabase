@@ -1,8 +1,6 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
-   [medley.core :as m]
-   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -11,11 +9,14 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -33,7 +34,6 @@
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -205,7 +205,6 @@
         (t2/hydrate :based_on_upload
                     :creator
                     :can_write
-                    :can_run_adhoc_query
                     :dashboard_count
                     [:dashboard :moderation_status]
                     :average_query_time
@@ -267,6 +266,7 @@
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
+                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
                                #_{:clj-kondo/ignore [:discouraged-var]}
                                (cond-> query
                                  (seq query) lib/->legacy-MBQL))))))
@@ -485,7 +485,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mu/defn- check-if-card-can-be-saved
-  [dataset-query :- [:maybe ::queries.schema/query]
+  [dataset-query :- [:maybe ::lib-be.schema/maybe-legacy-query]
    card-type     :- [:maybe ::queries.schema/card-type]]
   (when (and (seq dataset-query) (= card-type :metric))
     (when-not (lib/can-save? dataset-query card-type)
@@ -525,7 +525,7 @@
   [:map
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-   [:dataset_query          ms/Map]
+   [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
@@ -535,7 +535,7 @@
    [:visualization_settings ms/Map]
    [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -543,14 +543,15 @@
                                                       [:size_x ms/PositiveInt]
                                                       [:size_y ms/PositiveInt]]]]])
 
-(defn- normalize-dataset-query-or-400
-  "Strictly normalize an incoming `:dataset_query` from an API request, converting any normalization
-  failure into a 400 Bad Request."
-  [query]
-  (try
-    (lib-be/normalize-query nil query {:strict? true})
-    (catch Throwable e
-      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
+(defn- check-parameter-permissions
+  [parameters query]
+  (queries/check-parameter-source-card-permissions parameters)
+  (query-perms/check-parameter-field-permissions
+   (into []
+         (keep (fn [{:keys [target]}]
+                 (when target
+                   (params/param-target->field-id target {:dataset_query query}))))
+         parameters)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -561,14 +562,12 @@
   [_route-params
    _query-params
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
-  (let [card (-> card
-                 (update :dataset_query normalize-dataset-query-or-400)
-                 (cond-> (some? collection-id)
-                   ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
-                   ;; from being written into the DB (#74615).
-                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))
+  (let [card (cond-> card
+               (some? collection-id)
+               (update :collection_id #(eid-translation/->id-or-404 :collection %)))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
+    (check-parameter-permissions (:parameters card) query)
     ;; check that we have permissions to run the query that we're trying to save.
     ;; Strip :query-permissions/perms first -- it is populated internally by the QP
     ;; middleware, so any value already on the incoming query is dropped here.
@@ -601,6 +600,7 @@
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
+    (api/create-check :model/Card new-card)
     (-> (queries/create-card! new-card @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
@@ -645,7 +645,7 @@
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
-   [:dataset_query          {:optional true} [:maybe ms/Map]]
+   [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
@@ -656,7 +656,7 @@
    [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
@@ -680,11 +680,10 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
-  ;; from being written into the DB (#74615).
-  (let [card-updates (m/update-existing card-updates :dataset_query normalize-dataset-query-or-400)
-        query        (:dataset_query card-updates)]
+  (let [query (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
+    (check-parameter-permissions (:parameters card-updates)
+                                 (or query (t2/select-one-fn :dataset_query :model/Card :id id)))
     (when-some [query (:dataset_query card-updates)]
       (try
         (lib/check-card-overwrite id query)
@@ -902,37 +901,61 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(defn- serve-cached-stored-result
+  "Cached branch of the card-query endpoint. Loads the stored_result, runs the cached-read
+  perm gate, and returns the cached Dataset shape — same shape as a live query response, so
+  the FE doesn't care which path served the data.
+
+  The read-check on the URL card authorizes only snapshots actually materialized for that
+  card, so the (card, stored_result) pairing must exist in `stored_result_use` — otherwise
+  any readable card would serve as a skeleton key for arbitrary client-supplied snapshot
+  ids. 404s (rather than 403s) on an unpaired id so it doesn't confirm the snapshot exists."
+  [card-id stored-result-id sort]
+  (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
+  (let [sr (api/check-404 (t2/select-one :model/StoredResult :id stored-result-id))]
+    (queries/assert-can-view-card-snapshots! card-id)
+    (api/check-404 (queries/cached-dataset sr sort))))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
-  "Run the query associated with a Card."
+  "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
+  and optionally re-sorts the rows via the `sort` body param."
   [{:keys [card-id]} :- [:map
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview]}
+   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
    :- [:map
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+       [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
+       [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
+       [:sort               {:optional true}
+        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
         card             (api/check-404 (t2/select-one :model/Card resolved-card-id))]
-    (when dashboard_id
-      (api/read-check :model/Dashboard dashboard_id))
-    (qp.card/process-query-for-card
-     card :api
-     :parameters parameters
-     :ignore-cache ignore_cache
-     :dashboard-id dashboard_id
-     :card-transform (cond
-                       ;; Collection previews start from the aggregate so no usable default stays scalar
-                       collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                metric-card-without-query-breakouts)
-                       dashboard_id       qp.dashboard/card-with-default-metric-dimension)
-     :context (cond
-                collection_preview :collection
-                dashboard_id       :dashboard
-                :else              :question)
-     :middleware   {:process-viz-settings? false})))
+    (if stored_result_id
+      (do
+        (api/read-check card)
+        (serve-cached-stored-result resolved-card-id stored_result_id sort))
+      (do
+        (when dashboard_id
+          (api/read-check :model/Dashboard dashboard_id))
+        (qp.card/process-query-for-card
+         card :api
+         :parameters parameters
+         :ignore-cache ignore_cache
+         :dashboard-id dashboard_id
+         :card-transform (cond
+                           ;; Collection previews start from the aggregate so no usable default stays scalar
+                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
+                                                    metric-card-without-query-breakouts)
+                           dashboard_id       qp.dashboard/card-with-default-metric-dimension)
+         :context (cond
+                    collection_preview :collection
+                    dashboard_id       :dashboard
+                    :else              :question)
+         :middleware   {:process-viz-settings? false})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -954,17 +977,9 @@
     csv-include-bom? :csv_include_bom
     :as             _body}
    :- [:map
-       [:parameters    {:optional true} [:maybe
-                                         ;; support JSON-encoded parameters for backwards compatibility when with this
-                                         ;; was still submitted with a `<form>`... see
-                                         ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                         {:decode/api (fn [x]
-                                                        (cond-> x
-                                                          (string? x) json/decode+kw))}
-                                         ;; TODO -- figure out what the actual schema for parameters is supposed to be
-                                         ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
-                                         ;; it breaks existing tests
-                                         [:sequential [:map-of :keyword :any]]]]
+       ;; JSON-encoded string form supported for backwards compatibility with `<form>` submission... see
+       ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]]
@@ -996,7 +1011,7 @@
   be enabled."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
-  (perms/check-has-application-permission :setting)
+  (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)

@@ -5,9 +5,9 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,
   type BoxProps,
@@ -158,7 +158,7 @@ export function ItemList({
                     onChange(item);
                   }
                 }}
-                variant={isCurrentLevel ? "default" : "mb-light"}
+                variant={isCurrentLevel ? "primary" : "secondary"}
                 {...navLinkProps?.(isSelected)}
               />
             </Tooltip>

@@ -9,7 +9,7 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -245,7 +245,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
             })}
             onClick={preventDefault}
           >
-            <EntityItem.Name name={metric.name} variant="list" id={headingId} />
+            <EntityItemName name={metric.name} id={headingId} />
           </Link>
         ) : (
           <SkeletonText />

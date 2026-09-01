@@ -3,7 +3,6 @@ import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-import "metabase/utils/dayjs";
 
 import {
   StaticChoropleth,
@@ -16,9 +15,6 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
-import { extractRemappings, isCartesianChart } from "metabase/visualizations";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
@@ -26,6 +22,12 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils/split-series";
+import {
+  extendCardWithDashcardSettings,
+  extractRemappings,
+  isCartesianChart,
+  makeCellBackgroundGetter,
+} from "metabase/viz-core";
 import type {
   Card,
   DashCardVisualizationSettings,

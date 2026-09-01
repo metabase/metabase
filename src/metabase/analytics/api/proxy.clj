@@ -24,7 +24,7 @@
   stringifies every field value, so the values are always strings."
   [:map
    [:schema ms/NonBlankString]
-   [:data [:sequential [:map-of :keyword :string]]]])
+   [:data [:sequential {:max 100} [:map-of :keyword :string]]]])
 
 ;; No response schema: the body is an opaque relay of the collector's own response. The tracker drives its retry
 ;; outbox off the HTTP status, so we forward status + body verbatim; a fabricated schema would be misleading.

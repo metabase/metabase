@@ -22,6 +22,7 @@
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -50,6 +51,13 @@
            (= :query-builder-and-native
               (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
 
+(defn- transform-database-permissions?
+  [instance]
+  (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
+        target-db-id (transforms-base.i/target-db-id instance)]
+    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+            (distinct (keep identity [source-db-id target-db-id])))))
+
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
@@ -58,7 +66,7 @@
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
-                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+                (transform-database-permissions? instance)
                 (native-transform-write-allowed? instance (:source_database_id instance))))))
 
 (defmethod mi/can-read? :model/Transform
@@ -93,7 +101,7 @@
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
                   (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
+                  (transform-database-permissions? instance)
                   (native-transform-write-allowed? instance source-db-id))))))
 
 (defn- orphan-query?
@@ -594,8 +602,9 @@
   ;; or when its most recent run started on/before the cutoff (failed runs still count). Transforms
   ;; between fires of a slower-than-threshold schedule are not stale.
   (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
+    ^:allow-subquery
     {:select    [:transform.id
-                 [[:inline "Transform"] :model]
+                 [(h2x/literal "Transform") :model]
                  [:transform.name :name]
                  [:latest_run.last_start :last_used_at]
                  :transform.collection_id]

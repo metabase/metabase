@@ -2041,8 +2041,12 @@ describe("scenarios > metrics > explorer", () => {
         name: SEGMENT_NAME,
         description: "Orders with a total over $100",
         definition: {
-          "source-table": ORDERS_ID,
-          filter: [">", ["field", ORDERS.TOTAL, null], 100],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       });
 

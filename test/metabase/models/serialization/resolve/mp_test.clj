@@ -436,7 +436,7 @@
       (is (nil? (resolve/export-fk-keyed r nil :model/Database :name))))))
 
 (deftest ^:parallel export-mbql-with-mp-resolver-round-trip-shape-test
-  (testing "final numeric pMBQL exports back to portable DB/table/field/card references"
+  (testing "final numeric MBQL 5 exports back to portable DB/table/field/card references"
     (let [r        (resolve.mp/export-resolver mp-with-cards cards-content-store)
           exported (resolve/export-mbql
                     r

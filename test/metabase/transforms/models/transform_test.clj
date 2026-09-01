@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.stale-test :as stale-test]
@@ -293,3 +294,46 @@
             (is (contains? stale-ids missed-schedule-id)))
           (testing "the schedule exception does not shield never-run transforms"
             (is (contains? stale-ids never-scheduled-id))))))))
+
+(deftest source-references-gate-transform-permissions-test
+  (testing "A Card the source query names is required to read, write or create the transform"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                     :model/Collection collection {}
+                     :model/Card {card-id :id}
+                     {:collection_id (:id collection)
+                      :database_id   (mt/id)
+                      :dataset_query (lib/query (mt/metadata-provider)
+                                                (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
+                     :model/Transform transform
+                     {:name   "Reads a Card"
+                      :source {:type  "query"
+                               :query {:database (mt/id)
+                                       :type     "native"
+                                       :native   {:query         (format "SELECT * FROM {{#%d}} AS c" card-id)
+                                                  :template-tags {(str "#" card-id)
+                                                                  {:id           (str "#" card-id)
+                                                                   :name         (str "#" card-id)
+                                                                   :display-name (str "#" card-id)
+                                                                   :type         :card
+                                                                   :card-id      card-id}}}}}}]
+        (mt/with-non-admin-groups-no-collection-perms collection
+          (let [stored (t2/select-one :model/Transform (:id transform))
+                body   (into {} stored)]
+            (mt/with-data-analyst-role! (mt/user->id :rasta)
+              (mt/with-restored-data-perms!
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder-and-native)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/transforms :yes)
+                (testing "while the Card is unreadable"
+                  (mt/with-current-user (mt/user->id :rasta)
+                    (is (not (mi/can-read? stored)))
+                    (is (not (mi/can-write? stored)))
+                    (is (not (mi/can-create? :model/Transform body)))))
+                (perms/grant-collection-read-permissions! group-id collection)
+                (testing "once the Card is readable"
+                  (mt/with-current-user (mt/user->id :rasta)
+                    (is (mi/can-read? stored))
+                    (is (mi/can-write? stored))
+                    (is (mi/can-create? :model/Transform body))))))))))))

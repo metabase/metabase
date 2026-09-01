@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -72,63 +73,67 @@
 (defn- bookmarks-union-query
   [user-id]
   (let [as-null (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
-        base-queries [{:select [:card_id
-                                [as-null :dashboard_id]
-                                [as-null :collection_id]
-                                [as-null :document_id]
-                                [as-null :exploration_id]
-                                [:card_id :item_id]
-                                [(h2x/literal "card") :type]
-                                :created_at]
-                       :from   [:card_bookmark]
-                       :where  [:= :user_id user-id]}
-                      {:select [[as-null :card_id]
-                                :dashboard_id
-                                [as-null :collection_id]
-                                [as-null :document_id]
-                                [as-null :exploration_id]
-                                [:dashboard_id :item_id]
-                                [(h2x/literal "dashboard") :type]
-                                :created_at]
-                       :from   [:dashboard_bookmark]
-                       :where  [:= :user_id user-id]}
-                      {:select [[as-null :card_id]
-                                [as-null :dashboard_id]
-                                :collection_id
-                                [as-null :document_id]
-                                [as-null :exploration_id]
-                                [:collection_id :item_id]
-                                [(h2x/literal "collection") :type]
-                                :created_at]
-                       :from   [:collection_bookmark]
-                       :where [:= :user_id user-id]}
-                      {:select [[as-null :card_id]
-                                [as-null :dashboard_id]
-                                [as-null :collection_id]
-                                :document_id
-                                [as-null :exploration_id]
-                                [:document_id :item_id]
-                                [(h2x/literal "document") :type]
-                                :created_at]
-                       :from [:document_bookmark]
-                       :where [:= :user_id user-id]}]]
+        base-queries [^:allow-subquery {:select [:card_id
+                                                 [as-null :dashboard_id]
+                                                 [as-null :collection_id]
+                                                 [as-null :document_id]
+                                                 [as-null :exploration_id]
+                                                 [:card_id :item_id]
+                                                 [(h2x/literal "card") :type]
+                                                 :created_at]
+                                        :from   [:card_bookmark]
+                                        :where  [:= :user_id user-id]}
+                      ^:allow-subquery {:select [[as-null :card_id]
+                                                 :dashboard_id
+                                                 [as-null :collection_id]
+                                                 [as-null :document_id]
+                                                 [as-null :exploration_id]
+                                                 [:dashboard_id :item_id]
+                                                 [(h2x/literal "dashboard") :type]
+                                                 :created_at]
+                                        :from   [:dashboard_bookmark]
+                                        :where  [:= :user_id user-id]}
+                      ^:allow-subquery {:select [[as-null :card_id]
+                                                 [as-null :dashboard_id]
+                                                 :collection_id
+                                                 [as-null :document_id]
+                                                 [as-null :exploration_id]
+                                                 [:collection_id :item_id]
+                                                 [(h2x/literal "collection") :type]
+                                                 :created_at]
+                                        :from   [:collection_bookmark]
+                                        :where [:= :user_id user-id]}
+                      ^:allow-subquery {:select [[as-null :card_id]
+                                                 [as-null :dashboard_id]
+                                                 [as-null :collection_id]
+                                                 :document_id
+                                                 [as-null :exploration_id]
+                                                 [:document_id :item_id]
+                                                 [(h2x/literal "document") :type]
+                                                 :created_at]
+                                        :from [:document_bookmark]
+                                        :where [:= :user_id user-id]}]]
     {:union-all (conj base-queries
-                      {:select [[as-null :card_id]
-                                [as-null :dashboard_id]
-                                [as-null :collection_id]
-                                [as-null :document_id]
-                                :exploration_id
-                                [:exploration_id :item_id]
-                                [(h2x/literal "exploration") :type]
-                                :created_at]
-                       :from [:exploration_bookmark]
-                       :where [:= :user_id user-id]})}))
+                      ^:allow-subquery {:select [[as-null :card_id]
+                                                 [as-null :dashboard_id]
+                                                 [as-null :collection_id]
+                                                 [as-null :document_id]
+                                                 :exploration_id
+                                                 [:exploration_id :item_id]
+                                                 [(h2x/literal "exploration") :type]
+                                                 :created_at]
+                                        :from [:exploration_bookmark]
+                                        :where [:= :user_id user-id]})}))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
-  item_id, name, and description from the underlying bookmarked item."
+  item_id, name, and description from the underlying bookmarked item.
+
+  Bookmarks whose target `user-id` can no longer read are filtered out."
   [user-id]
-  (let [select-fields [[:bookmark.created_at :created_at]
+  (let [user-scope {:current-user-id user-id
+                    :is-superuser?   (perms/is-superuser? user-id)}
+        select-fields [[:bookmark.created_at :created_at]
                        [:bookmark.type              :type]
                        [:bookmark.item_id           :item_id]
                        [:card.name                  (mdb/qualify :model/Card :name)]
@@ -163,12 +168,28 @@
         where-conditions (into [:and]
                                (for [table [:card :dashboard :collection :document :exploration]
                                      :let  [field (keyword (str (name table) "." "archived"))]]
-                                 [:or [:= field false] [:= field nil]]))]
+                                 [:or [:= field false] [:= field nil]]))
+        ;; Re-check read permission at read time (SEC-669). The `:visible_collection_ids` CTE governs *permissions*
+        ;; only (`:include-archived-items :all`); the `where-conditions` above keep governing archived filtering.
+        visible? (fn [collection-id-field]
+                   (collection/visible-collection-filter-clause collection-id-field
+                                                                {:cte-name :visible_collection_ids}
+                                                                user-scope))
+        readable-conditions [:or
+                             [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
+                             [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
     (->> (mdb/query
-          {:select select-fields
+          {:with [[:visible_collection_ids (collection/visible-collection-query
+                                            {:include-archived-items :all
+                                             :permission-level        :read}
+                                            user-scope)]]
+           :select select-fields
            :from [[(bookmarks-union-query user-id) :bookmark]]
            :left-join left-joins
-           :where where-conditions
+           :where [:and where-conditions readable-conditions]
            :order-by  [[:bookmark_ordering.ordering (case (mdb/db-type)
                                                       ;; NULLS LAST is not supported by MySQL, but this is default
                                                       ;; behavior for MySQL anyway

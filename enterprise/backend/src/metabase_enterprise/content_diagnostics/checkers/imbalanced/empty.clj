@@ -36,10 +36,12 @@
   []
   (u/index-by :card_id :started_at
               (t2/query {:select [:card_id :started_at]
-                         :from   [[{:select [:qe.card_id :qe.started_at :qe.result_rows
-                                             [[:over [[:row_number] {:partition-by :qe.card_id
-                                                                     :order-by     [[:qe.started_at :desc]
-                                                                                    [:qe.id :desc]]}]]
+                         :from   [[^:allow-subquery
+                                   {:select [:qe.card_id :qe.started_at :qe.result_rows
+                                             [[:over [[:row_number] ^:allow-subquery
+                                                      {:partition-by :qe.card_id
+                                                       :order-by     [[:qe.started_at :desc]
+                                                                      [:qe.id :desc]]}]]
                                               :rn]]
                                     :from   [[:query_execution :qe]]
                                     :join   [[:report_card :c] [:= :c.id :qe.card_id]]

@@ -25,8 +25,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -233,20 +234,6 @@
          :limit  (request/limit)
          :offset (request/offset)}))))
 
-(defn- same-groups-user-ids
-  "Return a list of all user-ids in the same group with the user with id `user-id`.
-  Ignore the All-user groups."
-  [user-id]
-  (map :user_id
-       (t2/query {:select-distinct [:permissions_group_membership.user_id]
-                  :from [:permissions_group_membership]
-                  :where [:in :permissions_group_membership.group_id
-                          ;; get all the groups ids that the current user is in
-                          {:select-distinct [:permissions_group_membership.group_id]
-                           :from  [:permissions_group_membership]
-                           :where [:and [:= :permissions_group_membership.user_id user-id]
-                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -262,14 +249,16 @@
   (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
+                                  (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
-          (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
+          (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses {})
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
+                                            (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
@@ -368,14 +357,62 @@
                                                      :include-archived-items :exclude
                                                      :permission-level :write})}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/current"
+(mr/def ::user-permissions
+  "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,
+  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled."
+  [:map
+   [:can_create_queries        :boolean]
+   [:can_create_native_queries :boolean]
+   [:can_access_setting        {:optional true} :boolean]
+   [:can_access_subscription   {:optional true} :boolean]
+   [:can_access_monitoring     {:optional true} :boolean]
+   [:can_access_data_model     {:optional true} :boolean]
+   [:can_access_db_details     {:optional true} :boolean]
+   [:can_access_transforms     {:optional true} :boolean]
+   [:is_data_analyst           {:optional true} :boolean]
+   [:is_group_manager          {:optional true} :boolean]])
+
+(mr/def ::current-user-response
+  "Response for `GET /api/user/current`."
+  [:map
+   [:id                         ms/PositiveInt]
+   [:email                      ms/NonBlankString]
+   [:first_name                 [:maybe :string]]
+   [:last_name                  [:maybe :string]]
+   [:common_name                [:maybe :string]]
+   [:date_joined                :any]
+   [:last_login                 [:maybe :any]]
+   [:updated_at                 [:maybe :any]]
+   [:first_login                :any]
+   [:is_superuser               :boolean]
+   [:is_data_analyst            :boolean]
+   [:is_qbnewb                  :boolean]
+   [:is_active                  :boolean]
+   [:is_installer               :boolean]
+   [:has_invited_second_user    :boolean]
+   [:has_question_and_dashboard :boolean]
+   [:has_model                  :boolean]
+   [:can_write_any_collection   :boolean]
+   [:sso_source                 [:maybe :keyword]]
+   [:locale                     [:maybe :string]]
+   [:tenant_id                  [:maybe ms/PositiveInt]]
+   [:tenant_collection_id       [:maybe ms/PositiveInt]]
+   ;; nil for API-key users, who have no personal collection
+   [:personal_collection_id     [:maybe ms/PositiveInt]]
+   [:group_ids                  [:set ms/PositiveInt]]
+   [:login_attributes           [:maybe [:map-of :string :any]]]
+   [:jwt_attributes             [:maybe [:map-of :string :any]]]
+   [:attributes                 [:map-of :string :any]]
+   [:permissions                ::user-permissions]
+   [:custom_homepage            [:maybe [:map [:dashboard_id ms/PositiveInt]]]]])
+
+(api.macros/defendpoint :get "/current" :- ::current-user-response
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
+      ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
+      ;; endpoint's response
+      (dissoc :type)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
       add-first-login
@@ -390,14 +427,15 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
+  "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.
+  Only personal users can be fetched this way; API-key users and the internal user 404."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
-  (-> (api/check-404 (users/fetch-user :id id))
+  (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
       add-structured-attributes))
 
@@ -475,7 +513,8 @@
 (api.macros/defendpoint :put "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
-  Group Managers can only add/remove users from groups they are manager of."
+  Group Managers can only add/remove users from groups they are manager of.
+  Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead)."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -497,7 +536,7 @@
       (perms/check-group-manager)))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
-  (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true)]
+  (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true, :type :personal)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (when (contains? body :email)
       (api/check-403 (valid-email-update? user-before-update email)))
@@ -585,6 +624,9 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defonce ^:private password-change-throttler
+  (throttle/make-throttler :user-id :attempts-threshold 10))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -599,17 +641,21 @@
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
+  (api/let-404 [user (t2/select-one [:model/User :id :email :last_login],
                                     :id id,
                                     :type :personal,
                                     :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
-      (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+      (when-not (config/config-bool :mb-disable-session-throttle)
+        (throttle/check password-change-throttler id))
+      (api/checkp (true? (:success? (auth-identity/authenticate :provider/password {:email    (:email user)
+                                                                                    :password old_password})))
                   "old_password"
                   (tru "Invalid password")))
-    (t2/update! :model/AuthIdentity :provider "password" :user_id id {:credentials {:plaintext_password password}})
+    ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
+    (auth-identity/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
       (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)
@@ -633,7 +679,7 @@
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id id))})
+                             {:object (assoc user :token (auth-identity/reset-token-hash id))})
       {:password_reset_url password-reset-url})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

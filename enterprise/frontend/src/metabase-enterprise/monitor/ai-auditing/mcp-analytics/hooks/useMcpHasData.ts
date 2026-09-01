@@ -75,8 +75,9 @@ export function useMcpHasData({
   // Latch once the first count resolves (successfully or not); from then on a fetch is a
   // refetch, not initial load.
   const hasLoadedOnce = useRef(false);
+  const hasError = error != null;
   const resolved =
-    query != null && !isFetching && (data != null || error != null);
+    query !== null && !isFetching && (data !== undefined || hasError);
   if (resolved) {
     hasLoadedOnce.current = true;
   }

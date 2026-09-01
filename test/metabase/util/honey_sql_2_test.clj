@@ -63,12 +63,11 @@
     (is (= ["WHERE name = 'Cam''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam's")]}
                        {:quoted false}))))
-  (testing "`literal` should only escape single quotes that aren't already escaped -- with two single quotes..."
-    (is (= ["WHERE name = 'Cam''s'"]
+  (testing "`literal` escapes every single quote unconditionally -- no \"already escaped\" exception"
+    (is (= ["WHERE name = 'Cam''''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam''s")]}
-                       {:quoted false}))))
-  (testing "...or with a slash"
-    (is (= ["WHERE name = 'Cam\\'s'"]
+                       {:quoted false})))
+    (is (= ["WHERE name = 'Cam\\''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}
                        {:quoted false}))))
   (testing "`literal` should escape strings that start with a single quote"
@@ -149,9 +148,26 @@
                           :mysql          0.1M)}]
            (app-db/query {:select [[(/ 1 10) :one_tenth]]})))))
 
-(deftest ^:parallel quoted-cast-test
-  (is (= ["SELECT CAST(? AS \"bird type\")" "toucan"]
-         (sql/format {:select [[(h2x/quoted-cast "bird type" "toucan")]]} {:quoted true, :dialect :ansi}))))
+(deftest ^:parallel cast-test
+  (testing "a sane bare type-name token is emitted raw, since most dialects reject a quoted type name in a CAST"
+    (is (= ["SELECT CAST(? AS date)" "toucan"]
+           (sql/format {:select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
+  (testing "a type name that isn't a bare token is quoted, so a hostile type cannot inject SQL"
+    (is (= ["SELECT CAST(? AS \"date) UNION SELECT 1 --\")" "toucan"]
+           (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
+                       {:quoted true, :dialect :ansi})))))
+
+(deftest ^:parallel raw-type-name?-test
+  (are [expected sql-type] (= expected (h2x/raw-type-name? sql-type))
+    true  "timestamp"
+    true  :varchar
+    true  "double precision"
+    true  "decimal(10, 2)"
+    true  "VARCHAR(10)"
+    false "integer); select 1 --"
+    false "\"quoted\""
+    false "schema.type"
+    false "decimal(10, 2); --"))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))

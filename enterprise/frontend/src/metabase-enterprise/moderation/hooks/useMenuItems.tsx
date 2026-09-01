@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import type { Card, Dashboard, ModerationReview } from "metabase-types/api";
 

@@ -14,7 +14,6 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
     sharing: "sharing",
     settings: "settings",
     info: "info",
-    analyze: "analyze",
   };
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
@@ -24,6 +23,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  linkTargets: { questions: {}, dashboards: {} },
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {

@@ -6,8 +6,8 @@ import {
   useListRecentsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type {

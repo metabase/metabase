@@ -10,7 +10,6 @@ import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   Card,
   Collection,
-  Dashboard,
   Database,
   Field,
   ForeignKey,
@@ -25,7 +24,6 @@ import type {
 } from "metabase-types/api";
 
 export const QuestionSchema = new schema.Entity<Card>("questions");
-export const DashboardSchema = new schema.Entity<Dashboard>("dashboards");
 export const CollectionSchema = new schema.Entity<Collection>("collections");
 
 export const DatabaseSchema = new schema.Entity<Database>("databases");
@@ -152,7 +150,6 @@ MeasureSchema.define({
 
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
-  dashboards: DashboardSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,
   measures: MeasureSchema,
@@ -177,5 +174,4 @@ export const QueryMetadataSchema = {
   fields: [FieldSchema],
   snippets: [SnippetSchema],
   cards: [QuestionSchema],
-  dashboards: [DashboardSchema],
 };

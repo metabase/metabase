@@ -22,6 +22,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
@@ -68,6 +69,7 @@
 
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
+   :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
@@ -80,7 +82,7 @@
   [dashboard]
   (let [defaults  {:parameters []}
         dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
-    (u/prog1 dashboard
+    (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
@@ -96,7 +98,9 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
-    (u/prog1 (maybe-populate-initially-published-at dashboard)
+    (u/prog1 (-> dashboard
+                 maybe-populate-initially-published-at
+                 public-sharing/add-public-uuid-prefix-if-changed)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
@@ -296,12 +300,18 @@
                                    (update :series #(map :id %)))
             dashboard-card     (update dashcard :series #(map :id %))]
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
-    (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
+    ;; `t2/hydrate` is a no-op when `:card` is already present, so strip any
+    ;; client-supplied value first: a JSON round-trip strings-ifies keyword
+    ;; metadata (`type/Category`, `source/table-defaults`, ...) that
+    ;; `param-target->field-id` later validates against `:metabase.queries.schema/card`.
+    (let [dashcards-for-hydration (map #(dissoc % :card) new-dashcards)
+          new-param-field-ids    (params/dashcards->param-field-ids (t2/hydrate dashcards-for-hydration :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
 (defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
+  ;; card result_metadata is persisted in legacy shape; Lib-shape migration pending
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
@@ -310,24 +320,45 @@
   (cond
     ;; If this is a pre-existing card, just return it
     (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
-    card
+    (do
+      (api/read-check :model/Card (:id card))
+      card)
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
-    (let [card (first (t2/insert-returning-instances!
+    (let [_    (query-perms/check-run-permissions-for-query (:dataset_query card))
+          card (first (t2/insert-returning-instances!
                        :model/Card
                        (-> card
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                           ;; Xrays populate this in their transient cards
-                           (dissoc :id :can_run_adhoc_query))))]
+                           (dissoc :id
+                                   :public_uuid :made_public_by_id
+                                   :enable_embedding :embedding_params)
+                           (assoc :creator_id api/*current-user-id*))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+
+(defn- check-dashcard-parameter-mapping-permissions
+  [dashcards]
+  (let [mappings       (for [{:keys [card_id parameter_mappings]} dashcards
+                             mapping parameter_mappings]
+                         (assoc mapping ::card-id (or (:card_id mapping) card_id)))
+        card-ids       (into #{} (keep ::card-id) mappings)
+        card-id->query (when (seq card-ids)
+                         (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+        field-ids      (into []
+                             (keep (fn [{:keys [target] ::keys [card-id]}]
+                                     (when target
+                                       (params/param-target->field-id target {:dataset_query (card-id->query card-id)}))))
+                             mappings)]
+    (query-perms/check-parameter-field-permissions field-ids)))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
+  (queries/check-parameter-source-card-permissions (:parameters dashboard))
   (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs
@@ -336,30 +367,34 @@
                              :model/Dashboard
                              (-> dashboard
                                  (dissoc :dashcards :tabs :rule :related
-                                         :transient_name :transient_filters :param_fields :more)
+                                         :transient_name :transient_filters :param_fields :more
+                                         :public_uuid :made_public_by_id
+                                         :enable_embedding :embedding_params)
                                  (assoc :description description
-                                        :collection_id parent-collection-id))))
-          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
-      (add-dashcards! dashboard
-                      (for [dashcard dashcards]
-                        (let [card     (some-> dashcard :card
-                                               (assoc :dashboard_id (:id dashboard)
-                                                      :collection_id parent-collection-id)
-                                               save-card!)
-                              series   (some->> dashcard
-                                                :series
-                                                (mapv (fn [card]
-                                                        (-> card
-                                                            (assoc :collection_id parent-collection-id)
-                                                            save-card!))))
-                              dashcard (-> dashcard
-                                           (dissoc :card :id :creator_id)
-                                           (update :parameter_mappings
-                                                   (partial map #(assoc % :card_id (:id card))))
-                                           (assoc :series series)
-                                           (update :dashboard_tab_id (or old->new-tab-id {}))
-                                           (assoc :card_id (:id card)))]
-                          dashcard)))
+                                        :collection_id parent-collection-id
+                                        :creator_id api/*current-user-id*))))
+          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
+          dashcards-to-add (for [dashcard dashcards]
+                             (let [card     (some-> dashcard :card
+                                                    (assoc :dashboard_id (:id dashboard)
+                                                           :collection_id parent-collection-id)
+                                                    save-card!)
+                                   series   (some->> dashcard
+                                                     :series
+                                                     (mapv (fn [card]
+                                                             (-> card
+                                                                 (assoc :collection_id parent-collection-id)
+                                                                 save-card!))))
+                                   dashcard (-> dashcard
+                                                (dissoc :card :id :creator_id)
+                                                (update :parameter_mappings
+                                                        (partial map #(assoc % :card_id (:id card))))
+                                                (assoc :series series)
+                                                (update :dashboard_tab_id (or old->new-tab-id {}))
+                                                (assoc :card_id (:id card)))]
+                               dashcard))]
+      (check-dashcard-parameter-mapping-permissions dashcards-to-add)
+      (add-dashcards! dashboard dashcards-to-add)
       (cond-> dashboard
         (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
 
@@ -424,7 +459,9 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl]
+               :cache_ttl
+               ;; always re-derived from public_uuid on import
+               :public_uuid_prefix]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
@@ -548,30 +585,30 @@
 
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]
-  {:select [:report_dashboard.id
-            [(h2x/literal "Dashboard") :model]
-            [:report_dashboard.name :name]
-            [:last_viewed_at :last_used_at]
-            :report_dashboard.collection_id]
-   :from :report_dashboard
-   :left-join [:pulse [:and
-                       [:= :pulse.archived false]
-                       [:= :pulse.dashboard_id :report_dashboard.id]]
-               :collection [:= :collection.id :report_dashboard.collection_id]
-               :moderation_review [:and
-                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                   [:= :moderation_review.most_recent true]
-                                   [:= :moderation_review.status (h2x/literal "verified")]]]
-   :where [:and
-           [:= :pulse.id nil]
-           [:= :moderation_review.id nil]
-           [:= :report_dashboard.archived false]
-           [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
-           ;; find things only in regular collections, not the `instance-analytics` collection.
-           [:= :collection.type nil]
-           (when (embed.settings/some-embedding-enabled?)
-             [:= :report_dashboard.enable_embedding false])
-           (when (setting/get :enable-public-sharing)
-             [:= :report_dashboard.public_uuid nil])
-           (staleness/collection-filter :report_dashboard.collection_id args)]})
+  ^:allow-subquery {:select [:report_dashboard.id
+                             [(h2x/literal "Dashboard") :model]
+                             [:report_dashboard.name :name]
+                             [:last_viewed_at :last_used_at]
+                             :report_dashboard.collection_id]
+                    :from :report_dashboard
+                    :left-join [:pulse [:and
+                                        [:= :pulse.archived false]
+                                        [:= :pulse.dashboard_id :report_dashboard.id]]
+                                :collection [:= :collection.id :report_dashboard.collection_id]
+                                :moderation_review [:and
+                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                                    [:= :moderation_review.most_recent true]
+                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                    :where [:and
+                            [:= :pulse.id nil]
+                            [:= :moderation_review.id nil]
+                            [:= :report_dashboard.archived false]
+                            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
+                            ;; find things only in regular collections, not the `instance-analytics` collection.
+                            [:= :collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_dashboard.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_dashboard.public_uuid nil])
+                            (staleness/collection-filter :report_dashboard.collection_id args)]})

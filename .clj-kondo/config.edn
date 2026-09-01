@@ -191,6 +191,8 @@
      metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     ;; only inspects a details map and throws; the `!` is for the throw, not for a mutation
+     metabase.driver/validate-db-details!
      metabase.mcp.usage/record-mcp-session!
      metabase.mcp.usage/record-mcp-session-end!
      metabase.mcp.usage/record-mcp-tool-call!
@@ -403,6 +405,7 @@
     metabase.channel.render.core              channel.render
     metabase.cloud-migration.core             cloud-migration
     metabase.eid-translation.core             eid-translation
+    metabase.llm.test-util                    llm.tu
     metabase.login-history.core               login-history
     metabase.model-persistence.core           model-persistence
     metabase.notification.core                notification
@@ -495,6 +498,7 @@
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.oauth-server.test-util/with-oauth-client                                     clojure.core/fn
   metabase.osi.ai-context.api-test/with-test-entry                                      clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
@@ -799,7 +803,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}

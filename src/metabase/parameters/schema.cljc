@@ -1,7 +1,8 @@
 (ns metabase.parameters.schema
   (:require
    #?@(:clj
-       ([metabase.models.interface :as mi]))
+       ([metabase.models.interface :as mi]
+        [metabase.util.json :as json]))
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -133,6 +134,17 @@
   (lib/normalize ::parameters-with-optional-types parameters))
 
 #?(:clj
+   (defn json-encoded
+     "Wrap a parameters `schema` so that it also accepts the JSON-encoded string form. The public sharing, embedding and
+     tile endpoints take their parameters on the query string, where that is the only form available."
+     [schema]
+     [:schema
+      {:decode/api (fn [x]
+                     (cond-> x
+                       (string? x) json/decode))}
+      schema]))
+
+#?(:clj
    (def transform-parameters
      "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
      {:in  (comp mi/json-in normalize-parameters)
@@ -143,15 +155,34 @@
   the frontend's `normalizeParameters` sends. Distinct from `::lib.schema.parameter/parameter`, which requires `:type`
   and normalizes the value."
   [:map
-   {:description "parameter must be a map with an :id key"}
+   {:description      "parameter must be a map with an :id key"
+    :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:id      ::lib.schema.common/non-blank-string]
    ;; the name of the template tag this value is for, when it can't be inferred from `:target`
    [:name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:slug    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:type    {:optional true} [:maybe [:ref ::lib.schema.parameter/type]]]
    [:value   {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:target  {:optional true} [:maybe [:ref ::lib.schema.parameter/target]]]
    [:options {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]])
+
+;; The `:parameters` a client sends when *running* something: values for parameter slots the Card or Dashboard
+;; already declares. Contrast `::parameters`, which is the declaration of the slots themselves and belongs on the
+;; endpoints that save a Card or Dashboard.
+;;
+;; Deliberately no docstring: `mr/def` turns one into a `:description`, which is what a request that fails this
+;; schema is told it should have sent. Without it the description is built from the shape instead -- "sequence of
+;; parameter must be a map with an :id key".
+(mr/def ::parameter-values
+  [:sequential [:ref ::parameter-with-value]])
+
+;; [[parameter-values]] as it arrives over HTTP: either a JSON array, or -- for the endpoints that take parameters on
+;; the query string or from a `<form>` submission -- a JSON-encoded string, which is decoded and then held to the same
+;; schema. No docstring here for the same reason as above.
+#?(:clj
+   (mr/def ::api.parameter-values
+     (json-encoded ::parameter-values)))
 
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"

@@ -124,6 +124,7 @@
     :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
+    :conditions     {:exploration_id nil}  ; exclude exploration Summary docs from sync
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
     :enabled?       true}
@@ -631,12 +632,12 @@
    i.e. unsynced local work (an already-synced entity's removal is a normal reconcile, not data loss).
    `id-col` is the qualified id column of the model's own table (see [[model-id-column]])."
   [model-type id-col]
-  [:not [:exists {:select [1]
-                  :from   [:remote_sync_object]
-                  :where  [:and
-                           [:= :remote_sync_object.model_type model-type]
-                           [:= :remote_sync_object.model_id id-col]
-                           [:= :remote_sync_object.status "synced"]]}]])
+  [:not [:exists ^:allow-subquery {:select [1]
+                                   :from   [:remote_sync_object]
+                                   :where  [:and
+                                            [:= :remote_sync_object.model_type model-type]
+                                            [:= :remote_sync_object.model_id id-col]
+                                            [:= :remote_sync_object.status "synced"]]}]])
 
 (defn check-deletion-conflicts
   "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import
@@ -757,7 +758,7 @@
 (defn- object-matches-conditions?
   "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set).
    A key MISSING from `object` does not match, even against a nil condition value — eligibility needs
-   positive evidence the condition holds (e.g. the snippet spec's `{:built_in_type nil}` must
+   positive evidence the condition holds (e.g. the Document spec's `{:exploration_id nil}` must
    see an explicit nil, not an absent key), so a partial payload can't sneak conditioned rows into
    sync scope.
    NOTE: only handles scalar values — non-scalar `:conditions` (e.g. `[:not= ...]`) are not supported here.

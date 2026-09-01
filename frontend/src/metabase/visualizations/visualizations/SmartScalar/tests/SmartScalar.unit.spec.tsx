@@ -3,8 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import { registerVisualizations } from "metabase/visualizations/register";
+import {
+  getSettingsWidgetsForSeries,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
@@ -16,6 +19,10 @@ import {
 } from "./test-mocks";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["smartscalar"]));
 
 const createMockInsights = (insights: Partial<Insight>[]) => insights;
 

@@ -570,17 +570,38 @@
         (log/error (str "Error in " label ": " (ex-message e)))
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
+(def ^:private semantic-queries-schema
+  [:sequential {:error/message "must be an array of strings"}
+   [:string {:description semantic-query-desc}]])
+
+(def ^:private keyword-queries-schema
+  [:sequential {:error/message "must be an array of strings"}
+   [:string {:description keyword-query-desc}]])
+
+(defn- entity-types-schema
+  [& types]
+  [:maybe [:sequential {:error/message "must be an array of supported entity type strings"}
+           (into [:enum {:description entity-types-desc}] types)]])
+
+(def ^:private limit-schema
+  [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]])
+
 (def ^:private search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+    (entity-types-schema "table" "model" "metric" "dashboard" "document" "question")]
+   [:limit {:optional true} limit-schema]])
 
 (defn- search-display
   [{:keys [keyword_queries semantic_queries]}]
-  (let [queries (distinct (concat keyword_queries semantic_queries))]
+  (let [query-lists  [keyword_queries semantic_queries]
+        well-formed? (every? #(or (nil? %) (sequential? %)) query-lists)
+        queries      (when well-formed?
+                       (->> (apply concat query-lists)
+                            (filter string?)
+                            distinct))]
     (when (seq queries)
       ;; just the object (the queries) — the client wraps it in the verb + tense
       ;; ("Searching for …" while active, "Searched for …" once finished)
@@ -596,12 +617,11 @@
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:database_id [:int {:description "ID of the database to search — use the database currently selected in the SQL editor."}]]
-   [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+   [:entity_types {:optional true} (entity-types-schema "table" "model")]
+   [:limit {:optional true} limit-schema]])
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
@@ -613,12 +633,11 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc}
-                          "table" "model" "metric" "question" "dashboard" "document"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+    (entity-types-schema "table" "model" "metric" "question" "dashboard" "document")]
+   [:limit {:optional true} limit-schema]])
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
@@ -634,12 +653,11 @@
 
 (def ^:private transform-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
-   [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
+   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
+   [:keyword_queries {:optional true} keyword-queries-schema]
    [:search_native_query {:optional true} [:maybe [:boolean {:description "Also match against the native SQL text of transforms, not just names and descriptions."}]]]
-   [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "transform"]]]]
-   [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
+   [:entity_types {:optional true} (entity-types-schema "table" "model" "transform")]
+   [:limit {:optional true} limit-schema]])
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search

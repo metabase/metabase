@@ -43,9 +43,9 @@
    ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
    ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
    ;; partial scan hasn't re-written yet still shows its last finding.
-   [:in :id {:select   [[[:max :id] :id]]
-             :from     [(t2/table-name :model/ContentDiagnosticsFinding)]
-             :group-by [:entity_type :entity_id :finding_type]}]])
+   [:in :id ^:allow-subquery {:select   [[[:max :id] :id]]
+                              :from     [(t2/table-name :model/ContentDiagnosticsFinding)]
+                              :group-by [:entity_type :entity_id :finding_type]}]])
 
 ;;; ------------------------------ per-caller read-time filters (shared) --------------------------------
 ;;; Resolved live at read time against each entity's *current* collection (not scan-time

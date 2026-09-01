@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
-import { type Plan, getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/redux";
 import { getSetting, useLazyGetSettingsQuery } from "metabase/settings";
+import { type Plan, getPlan } from "metabase/settings";
 import { Box } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 

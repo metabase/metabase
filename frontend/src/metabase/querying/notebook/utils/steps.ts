@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { hasFeature, supportsJoins } from "metabase/databases";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -40,7 +41,7 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "joins",
     valid: (query, stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
-      return hasData(query) && Boolean(database?.hasFeature("join"));
+      return hasData(query) && Boolean(database && supportsJoins(database));
     },
     subSteps: (query, stageIndex) => {
       return Lib.joins(query, stageIndex).length;
@@ -72,7 +73,10 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "expressions",
     valid: (query, _stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
-      return hasData(query) && Boolean(database?.hasFeature("expressions"));
+      return (
+        hasData(query) &&
+        Boolean(database && hasFeature(database, "expressions"))
+      );
     },
     active: (query, stageIndex) => {
       return Lib.expressions(query, stageIndex).length > 0;
@@ -205,7 +209,7 @@ export function getQuestionSteps(
 
   const database = metadata.database(Lib.databaseID(query));
   const allowsNesting =
-    Boolean(database?.hasFeature("nested-queries")) &&
+    Boolean(database && hasFeature(database, "nested-queries")) &&
     question.type() !== "metric";
   const hasBreakouts = Lib.breakouts(query, -1).length > 0;
   const hasAggregations = Lib.aggregations(query, -1).length > 0;
