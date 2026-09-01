@@ -29,7 +29,7 @@ global.window.ResizeObserver = class ResizeObserver {
 jest.mock("metabase/analytics");
 
 jest.mock("@uiw/react-codemirror", () => {
-  const { forwardRef } = jest.requireActual("react");
+  const { forwardRef, useEffect, useState } = jest.requireActual("react");
 
   const MockEditor = forwardRef((props, ref) => {
     const {
@@ -44,14 +44,21 @@ jest.mock("@uiw/react-codemirror", () => {
       onStatistics,
       ...rest
     } = props;
+    const [value, setValue] = useState(props.value ?? "");
+    useEffect(() => {
+      setValue(props.value ?? "");
+    }, [props.value]);
     return (
       // @ts-expect-error: some props types are different on CodeMirror
       <textarea
         ref={ref}
         {...rest}
-        value={props.value ?? ""}
-        // @ts-expect-error: We cannot provide the update argument to onChange
-        onChange={(evt) => props.onChange?.(evt.target.value, undefined)}
+        value={value}
+        onChange={(evt) => {
+          setValue(evt.target.value);
+          // @ts-expect-error: We cannot provide the update argument to onChange
+          props.onChange?.(evt.target.value, undefined);
+        }}
         autoFocus
         disabled={editable === false}
       />
