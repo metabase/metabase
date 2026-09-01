@@ -12,11 +12,9 @@ import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 import { NewThemeCard } from "./NewThemeCard";
 
-const HUB_APPEARANCE_BASE_PATH = "/embedding/appearance";
-
 type EmbeddingThemeListingAppProps = {
-  /** Where the theme editor lives, so the same listing works under other hosts. */
-  basePath?: string;
+  /** Where the theme editor lives, so the listing knows where to link to. */
+  basePath: string;
   /**
    * Whether the listing supplies its own page heading. The embedding hub's
    * Appearance page titles itself and puts the grid under a "Themes" section
@@ -31,9 +29,9 @@ type EmbeddingThemeListingAppProps = {
  * upsell instead of mounting this component at all when the feature is off.
  */
 export function EmbeddingThemeListingApp({
-  basePath = HUB_APPEARANCE_BASE_PATH,
+  basePath,
   showHeading = true,
-}: EmbeddingThemeListingAppProps = {}) {
+}: EmbeddingThemeListingAppProps) {
   const navigate = useNavigate();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [duplicateTheme] = useCopyEmbeddingThemeMutation();
