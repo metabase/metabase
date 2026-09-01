@@ -106,10 +106,12 @@ if (window.CookieStore) {
 }
 
 // Global event-handler IDL setters — the property-path twin of the `addEventListener` block.
+// Window is a WebIDL [Global] interface, so its on* accessors are own
+// properties of the window instance, not Window.prototype.
 for (const eventType of GLOBAL_BLOCKED_EVENT_TYPES) {
   const handler = `on${eventType}`;
   block(setter(Document.prototype, handler), `Document.set ${handler}`);
-  block(setter(Window.prototype, handler), `Window.set ${handler}`);
+  block(setter(window, handler), `Window.set ${handler}`);
 }
 
 // Referrer — URL of the page that linked here, which can leak internal
