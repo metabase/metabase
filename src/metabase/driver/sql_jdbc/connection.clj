@@ -177,7 +177,16 @@
    ;; request. IRL the Metabase server and data warehouse are likely to be located in closer geographical proximity to
    ;; one another than my trans-contintental tests. Thus in the majority of cases the overhead should be next to
    ;; nothing, and in the worst case close to imperceptible.
-   "testConnectionOnCheckout"             true
+   ;;
+   ;; Tests are the exception: CI drives remote warehouses over a slow link, and on Snowflake `isValid()` is a
+   ;; heartbeat REST call, which makes the per-checkout test one of the largest single costs in the driver test
+   ;; suite. There, verify on c3p0's background thread instead -- the same pairing the app DB pool
+   ;; uses (see [[metabase.app-db.connection-pool-setup]]) -- so a stale connection is still culled without putting
+   ;; a round trip in front of every query.
+   "testConnectionOnCheckout"             (not driver-api/is-test?)
+   ;; Seconds between background tests of idle, checked-in connections. Zero disables it, which is what we want
+   ;; whenever `testConnectionOnCheckout` is already covering every connection handed out.
+   "idleConnectionTestPeriod"             (if driver-api/is-test? 60 0)
    ;; [From dox] Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the
    ;; pool before being culled. Intended for applications that wish to aggressively minimize the number of open
    ;; Connections, shrinking the pool back towards minPoolSize if, following a spike, the load level diminishes and
