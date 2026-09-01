@@ -11,13 +11,6 @@ const HOST_SETTING_KEYS_WITHOUT_DOT: ReadonlySet<string> = new Set([
   "series_settings",
 ]);
 
-// A pre-namespacing plugin setting was stored under the plugin's own id. Never adopt a key that
-// names one of Metabase's own settings (dotted keys like `graph.goal_value`, or the ones above) —
-// a plugin must not capture or erase host settings by declaring a colliding id.
-function isHostSettingKey(key: string): boolean {
-  return key.includes(".") || HOST_SETTING_KEYS_WITHOUT_DOT.has(key);
-}
-
 /**
  * Custom viz settings used to be stored under the plugin's bare setting ids. They now live under
  * `custom-viz:<plugin>:<id>` keys, so adopt any bare legacy key into its namespaced form on read.
@@ -63,4 +56,11 @@ export function migrateStoredCustomVizSettings(
   }
 
   return settings;
+}
+
+// A plugin must not capture or erase host settings by declaring a colliding id.
+// Never adopt a key that names one of Metabase's own settings (dotted keys like
+// graph.goal_value`, or the exceptions listed in HOST_SETTING_KEYS_WITHOUT_DOT).
+function isHostSettingKey(key: string): boolean {
+  return key.includes(".") || HOST_SETTING_KEYS_WITHOUT_DOT.has(key);
 }

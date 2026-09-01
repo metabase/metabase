@@ -17,7 +17,7 @@ const pluginSettingsCache = new WeakMap<
   Map<string, PluginSettings>
 >();
 
-// Sandbox proxies write through to redux state, so the plugin gets a copy
+// Sandbox proxies could write through to redux state, so the plugin gets a copy.
 export function toPluginSeries(series: Series): PluginSeries {
   const cached = pluginSeriesCache.get(series);
 
@@ -25,13 +25,7 @@ export function toPluginSeries(series: Series): PluginSeries {
     return cached;
   }
 
-  // The plugin API mirrors the internal Metabase series shape with looser types.
-  // `structuredClone` (baseline in supported browsers) preserves Map (`col.remapping`), Date
-  // and BigInt values that a JSON round-trip would corrupt — don't fall back to a JSON clone.
-  const pluginSeries = series.map((single) =>
-    structuredClone(single),
-  ) as unknown as PluginSeries;
-
+  const pluginSeries = series.map((single) => structuredClone(single));
   pluginSeriesCache.set(series, pluginSeries);
 
   return pluginSeries;

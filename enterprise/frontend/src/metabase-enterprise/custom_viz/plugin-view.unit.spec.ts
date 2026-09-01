@@ -62,14 +62,15 @@ describe("toPluginSeries", () => {
       "remapping",
     );
 
-    // A JSON round-trip would corrupt the Map into `{}` and the Date into a string.
     const getEntry =
       isObject(pluginRemapping) && isFunction(pluginRemapping.get)
         ? pluginRemapping.get
         : null;
+
     if (!getEntry) {
       throw new Error("Expected the plugin column to keep its remapping Map");
     }
+
     expect(pluginRemapping).not.toBe(remapping);
     expect(getEntry.call(pluginRemapping, 1)).toBe("One");
     expect(typeof pluginSeries[0].data.rows[0][0]).not.toBe("string");

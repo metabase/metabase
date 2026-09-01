@@ -51,8 +51,6 @@ export function applyDefaultVisualizationProps(
         plugin,
       }),
     },
-    // Older or hand-written bundles may omit `checkRenderable`; treat those as renderable
-    // rather than calling a wrapper that throws.
     checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
       if (typeof vizDef.checkRenderable === "function") {
         vizDef.checkRenderable(
