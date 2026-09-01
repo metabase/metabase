@@ -1,49 +1,170 @@
 import type { Store } from "@reduxjs/toolkit";
 
-import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_DATA_APPS,
+  PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import {
-  Outlet,
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { Outlet, Route, type RouteComponent, redirect } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
-import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
-import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
-import { SettingsNav } from "./settings/components/SettingsNav";
-import { AppearanceSettingsPage } from "./settings/components/SettingsPages/AppearanceSettingsPage";
-import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/AuthenticationSettingsPage";
-import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
-import {
-  CustomVisualizationsDevelopmentPage,
-  CustomVisualizationsFormPage,
-  CustomVisualizationsManagePage,
-} from "./settings/components/SettingsPages/CustomVisualizationsSettingsPage";
-import { DataAppsManagePage } from "./settings/components/SettingsPages/DataAppsSettingsPage";
-import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
-import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
-import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
-import { LocalizationSettingsPage } from "./settings/components/SettingsPages/LocalizationSettingsPage";
-import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
-import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
-import { RemoteSyncSettingsPage } from "./settings/components/SettingsPages/RemoteSyncSettingsPage";
-import { SlackSettingsPage } from "./settings/components/SettingsPages/SlackSettingsPage";
-import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
-import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
-import { WebhooksSettingsPage } from "./settings/components/SettingsPages/WebhooksSettingsPage";
+/**
+ * The admin settings pages, in one chunk. Every loader names it, so the section
+ * arrives in a single request rather than one per page.
+ *
+ * This module holds paths and `import()` calls, so the admin route tree can name
+ * it eagerly while none of the pages are in the initial bundle. They are fetched
+ * the first time one of these routes is matched.
+ *
+ * The nav and the layout load together with the first page rather than ahead of
+ * it: they are only ever seen inside this section, so there is nothing to gain
+ * from splitting them apart.
+ */
+const settingsLayout = () =>
+  Promise.all([
+    import(
+      /* webpackChunkName: "admin-settings" */ "metabase/admin/components/AdminLayout/AdminSettingsLayout"
+    ),
+    import(
+      /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsNav"
+    ),
+  ]).then(([{ AdminSettingsLayout }, { SettingsNav }]) => ({
+    Component: function AdminSettingsLayoutRoute() {
+      return (
+        <AdminSettingsLayout sidebar={<SettingsNav />}>
+          <Outlet />
+        </AdminSettingsLayout>
+      );
+    },
+  }));
 
-const RoutedCustomVisualizationsFormPage = withRouteProps(
-  CustomVisualizationsFormPage,
-);
+const generalSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/GeneralSettingsPage"
+  ).then(({ GeneralSettingsPage }) => ({ Component: GeneralSettingsPage }));
+
+const updatesSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UpdatesSettingsPage"
+  ).then(({ UpdatesSettingsPage }) => ({ Component: UpdatesSettingsPage }));
+
+const emailSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/EmailSettingsPage"
+  ).then(({ EmailSettingsPage }) => ({ Component: EmailSettingsPage }));
+
+const slackSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/SlackSettingsPage"
+  ).then(({ SlackSettingsPage }) => ({ Component: SlackSettingsPage }));
+
+const webhooksSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/WebhooksSettingsPage"
+  ).then(({ WebhooksSettingsPage }) => ({ Component: WebhooksSettingsPage }));
+
+// `route.lazy` supplies a component and no props, so the routes that share this
+// page bind their tab here.
+const authenticationSettings =
+  (tab: "authentication" | "user-provisioning" | "api-keys") => () =>
+    import(
+      /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/AuthenticationSettingsPage"
+    ).then(({ AuthenticationSettingsPage }) => ({
+      Component: function AuthenticationSettingsRoute() {
+        return <AuthenticationSettingsPage tab={tab} />;
+      },
+    }));
+
+const googleAuth = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/auth/components/GoogleAuthForm"
+  ).then(({ GoogleAuthForm }) => ({ Component: GoogleAuthForm }));
+
+const ldapAuth = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsLdapForm"
+  ).then(({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }));
+
+const remoteSyncSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/RemoteSyncSettingsPage"
+  ).then(({ RemoteSyncSettingsPage }) => ({
+    Component: RemoteSyncSettingsPage,
+  }));
+
+const mapsSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/MapsSettingsPage"
+  ).then(({ MapsSettingsPage }) => ({ Component: MapsSettingsPage }));
+
+const localizationSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/LocalizationSettingsPage"
+  ).then(({ LocalizationSettingsPage }) => ({
+    Component: LocalizationSettingsPage,
+  }));
+
+const customVisualizationsManage = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CustomVisualizationsSettingsPage"
+  ).then(({ CustomVisualizationsManagePage }) => ({
+    Component: CustomVisualizationsManagePage,
+  }));
+
+const customVisualizationsForm = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CustomVisualizationsSettingsPage"
+  ).then(({ CustomVisualizationsFormPage }) => ({
+    Component: CustomVisualizationsFormPage,
+  }));
+
+const customVisualizationsDevelopment = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CustomVisualizationsSettingsPage"
+  ).then(({ CustomVisualizationsDevelopmentPage }) => ({
+    Component: CustomVisualizationsDevelopmentPage,
+  }));
+
+const dataAppsManage = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
+  ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
+
+const uploadSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UploadSettingsPage"
+  ).then(({ UploadSettingsPage }) => ({ Component: UploadSettingsPage }));
+
+const publicSharingSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/PublicSharingSettingsPage"
+  ).then(({ PublicSharingSettingsPage }) => ({
+    Component: PublicSharingSettingsPage,
+  }));
+
+const licenseSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/LicenseSettingsPage"
+  ).then(({ LicenseSettingsPage }) => ({ Component: LicenseSettingsPage }));
+
+/** The `appearance` page, opened on one of its tabs. */
+const appearanceSettings = (tab?: "branding" | "conceal-metabase") => () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/AppearanceSettingsPage"
+  ).then(({ AppearanceSettingsPage }) => ({
+    Component: function AppearanceSettingsRoute() {
+      return <AppearanceSettingsPage tab={tab} />;
+    },
+  }));
+
+const cloudSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CloudSettingsPage"
+  ).then(({ CloudSettingsPage }) => ({ Component: CloudSettingsPage }));
 
 export const getSettingsRoutes = (
   store: Store<State>,
@@ -55,95 +176,91 @@ export const getSettingsRoutes = (
   );
 
   return (
-    <Route
-      element={
-        <AdminSettingsLayout sidebar={<SettingsNav />}>
-          <Outlet />
-        </AdminSettingsLayout>
-      }
-    >
+    <Route lazy={settingsLayout}>
       <Route index element={redirect("general")} />
-      <Route path="general" element={<GeneralSettingsPage />} />
-      <Route path="updates" element={<UpdatesSettingsPage />} />
-      <Route path="email" element={<EmailSettingsPage />} />
-      <Route path="slack" element={<SlackSettingsPage />} />
-      <Route path="webhooks" element={<WebhooksSettingsPage />} />
+      <Route path="general" lazy={generalSettings} />
+      <Route path="updates" lazy={updatesSettings} />
+      <Route path="email" lazy={emailSettings} />
+      <Route path="slack" lazy={slackSettings} />
+      <Route path="webhooks" lazy={webhooksSettings} />
       <Route
         path="authentication"
-        element={<AuthenticationSettingsPage tab="authentication" />}
+        lazy={authenticationSettings("authentication")}
       />
       <Route
         path="authentication/user-provisioning"
-        element={<AuthenticationSettingsPage tab="user-provisioning" />}
+        lazy={authenticationSettings("user-provisioning")}
       />
       <Route
         path="authentication/api-keys"
-        element={<AuthenticationSettingsPage tab="api-keys" />}
+        lazy={authenticationSettings("api-keys")}
       />
-      <Route path="authentication/google" element={<GoogleAuthForm />} />
-      <Route path="authentication/ldap" element={<SettingsLdapForm />} />
+      <Route path="authentication/2fa" element={<IsAdmin />}>
+        <Route
+          path="enrolled"
+          lazy={PLUGIN_MULTI_FACTOR_AUTH.enrolledUsersPage}
+        />
+        <Route
+          path="unenrolled"
+          lazy={PLUGIN_MULTI_FACTOR_AUTH.unenrolledUsersPage}
+        />
+      </Route>
+      <Route path="authentication/google" lazy={googleAuth} />
+      <Route path="authentication/ldap" lazy={ldapAuth} />
       <Route
         path="authentication/saml"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsSAMLForm}
       />
       <Route
         path="authentication/jwt"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsJWTForm}
       />
       <Route
         path="authentication/oidc"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsOIDCForm}
       />
-      <Route path="remote-sync" element={<RemoteSyncSettingsPage />} />
-      <Route path="maps" element={<MapsSettingsPage />} />
-      <Route path="localization" element={<LocalizationSettingsPage />} />
+      <Route path="remote-sync" lazy={remoteSyncSettings} />
+      <Route path="maps" lazy={mapsSettings} />
+      <Route path="localization" lazy={localizationSettings} />
       <Route
         path="custom-visualizations"
         /* do not allow users with "Settings access" permissions to access custom viz pages */
         element={<IsAdmin />}
       >
-        <Route index element={<CustomVisualizationsManagePage />} />
-        <Route path="new" element={<RoutedCustomVisualizationsFormPage />} />
-        <Route
-          path="edit/:id"
-          element={<RoutedCustomVisualizationsFormPage />}
-        />
+        <Route index lazy={customVisualizationsManage} />
+        <Route path="new" lazy={customVisualizationsForm} />
+        <Route path="edit/:id" lazy={customVisualizationsForm} />
         {devModeEnabled && (
-          <Route
-            path="development"
-            element={<CustomVisualizationsDevelopmentPage />}
-          />
+          <Route path="development" lazy={customVisualizationsDevelopment} />
         )}
       </Route>
-      <Route
-        path={
-          Urls.DATA_APP_URL_SEGMENT
-        } /* do not allow users with "Settings access" permissions to access data apps pages */
-        element={<IsAdmin />}
-      >
-        <Route index element={<DataAppsManagePage />} />
-      </Route>
-      <Route path="uploads" element={<UploadSettingsPage />} />
+      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so the
+          page shows the upsell without the token feature instead of 404ing */}
+      {PLUGIN_DATA_APPS.isEnabled && (
+        <Route
+          path={
+            Urls.DATA_APP_URL_SEGMENT
+          } /* do not allow users with "Settings access" permissions to access data apps pages */
+          element={<IsAdmin />}
+        >
+          <Route index lazy={dataAppsManage} />
+        </Route>
+      )}
+      <Route path="uploads" lazy={uploadSettings} />
       <Route
         path="python-runner"
-        element={<PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage />}
+        lazy={PLUGIN_TRANSFORMS_PYTHON.pythonRunnerSettingsPage}
       />
-      <Route path="public-sharing" element={<PublicSharingSettingsPage />} />
-      <Route path="license" element={<LicenseSettingsPage />} />
-      <Route path="appearance" element={<AppearanceSettingsPage />} />
-      <Route
-        path="whitelabel"
-        element={<AppearanceSettingsPage tab="branding" />}
-      />
-      <Route
-        path="whitelabel/branding"
-        element={<AppearanceSettingsPage tab="branding" />}
-      />
+      <Route path="public-sharing" lazy={publicSharingSettings} />
+      <Route path="license" lazy={licenseSettings} />
+      <Route path="appearance" lazy={appearanceSettings()} />
+      <Route path="whitelabel" lazy={appearanceSettings("branding")} />
+      <Route path="whitelabel/branding" lazy={appearanceSettings("branding")} />
       <Route
         path="whitelabel/conceal-metabase"
-        element={<AppearanceSettingsPage tab="conceal-metabase" />}
+        lazy={appearanceSettings("conceal-metabase")}
       />
-      <Route path="cloud" element={<CloudSettingsPage />} />
+      <Route path="cloud" lazy={cloudSettings} />
       <Route path="*" element={<NotFound />} />
     </Route>
   );

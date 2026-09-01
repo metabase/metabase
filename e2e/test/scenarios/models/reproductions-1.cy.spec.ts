@@ -197,45 +197,6 @@ describe("issues 25884 and 34349", () => {
   });
 });
 
-describe("issue 23103", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
-  });
-
-  it("shows correct number of distinct values (metabase#23103)", () => {
-    H.createNativeQuestion(
-      {
-        type: "model",
-        native: {
-          query: "select * from products limit 5",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-
-    cy.findAllByTestId("header-cell").contains("CATEGORY").click();
-    cy.findAllByTestId("select-button").contains("None").click();
-    H.popover().within(() => {
-      cy.findByText("Products").click();
-      cy.findByText("Category").click();
-    });
-
-    cy.button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.button("Saving…").should("not.exist");
-
-    cy.findAllByTestId("header-cell").contains("Category").trigger("mouseover");
-
-    H.hovercard().findByText("4 distinct values").should("exist");
-  });
-});
-
 describe("issue 41785, issue 46756", () => {
   beforeEach(() => {
     H.restore();

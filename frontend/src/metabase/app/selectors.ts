@@ -1,23 +1,19 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getUser } from "metabase/current-user";
 import {
   getDashboard,
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
-} from "metabase/dashboard/selectors";
+} from "metabase/dashboard/shell-selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import {
-  getIsSavedQuestionChanged,
-  getQuestion,
-} from "metabase/query_builder/selectors";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getCurrentExploration } from "metabase/explorations/selectors";
+import { getIsSavedQuestionChanged, getQuestion } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
-import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
@@ -48,28 +44,28 @@ export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
 });
 
 export const getIsLogoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.logo;
   },
 );
 
 export const getIsSearchVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.search;
   },
 );
 
 export const getIsNewButtonVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) => {
     return !isEmbeddingIframe || embedOptions.new_button;
   },
 );
 
 export const getIsAppSwitcherVisible = createSelector(
-  [getIsEmbeddingIframe],
+  [selectIsWithinIframe],
   (isEmbeddingIframe) => !isEmbeddingIframe,
 );
 
@@ -109,10 +105,19 @@ export const getIsCollectionPathVisible = createSelector(
     getDashboard,
     getCurrentDocument,
     getRouterPath,
-    getIsEmbeddingIframe,
+    selectIsWithinIframe,
     getEmbedOptions,
+    getCurrentExploration,
   ],
-  (question, dashboard, document, path, isEmbedded, embedOptions) => {
+  (
+    question,
+    dashboard,
+    document,
+    path,
+    isEmbedded,
+    embedOptions,
+    exploration,
+  ) => {
     if (isEmbedded && !embedOptions.breadcrumbs) {
       return false;
     }
@@ -133,7 +138,8 @@ export const getIsCollectionPathVisible = createSelector(
     return (
       ((question != null && question.isSaved()) ||
         dashboard != null ||
-        document !== null) &&
+        document !== null ||
+        exploration != null) &&
       PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
     );
   },
@@ -151,7 +157,7 @@ export const getIsNavBarEnabled = createSelector(
     getUser,
     getRouterPath,
     getIsEditingDashboard,
-    getIsEmbeddingIframe,
+    selectIsWithinIframe,
     getEmbedOptions,
   ],
   (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
@@ -199,7 +205,7 @@ export const getIsAppBarVisible = createSelector(
     getIsDataStudioApp,
     getIsMonitorApp,
     getIsEditingDashboard,
-    getIsEmbeddingIframe,
+    selectIsWithinIframe,
     getIsEmbeddedAppBarVisible,
   ],
   (
@@ -238,8 +244,17 @@ export const getCollectionId = createSelector(
     getCurrentDocument,
     getDetailViewState,
     getRouterPath,
+    getCurrentExploration,
   ],
-  (question, dashboard, dashboardId, document, detailView, path) => {
+  (
+    question,
+    dashboard,
+    dashboardId,
+    document,
+    detailView,
+    path,
+    exploration,
+  ) => {
     if (detailView) {
       return detailView.collectionId;
     }
@@ -255,6 +270,10 @@ export const getCollectionId = createSelector(
     const questionCollectionId = question?.collectionId();
     if (questionCollectionId != null) {
       return questionCollectionId;
+    }
+
+    if (exploration) {
+      return exploration.collection_id;
     }
 
     // On a collection page the URL itself identifies the current collection.

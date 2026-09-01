@@ -1,26 +1,24 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { getShallowFields as getFields } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { updateDatabase } from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
-import { push } from "metabase/router";
-import { getShallowFields as getFields } from "metabase/selectors/metadata";
 import type { User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getUser,
 } from "../selectors";
 import type { BaseDetailFormFields, StubbedDatabase } from "../types";
@@ -39,9 +37,6 @@ const mapStateToProps = (
   return {
     entity,
     metadataFields: fields,
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -49,14 +44,13 @@ const mapStateToProps = (
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateDatabase,
   ...actions,
   onSubmit: actions.rUpdateDatabaseDetail,
-  onChangeLocation: push,
 };
 
 interface DatabaseDetailProps {
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   entity: StubbedDatabase;
   user: User | null;
   isEditing?: boolean;
@@ -65,7 +59,7 @@ interface DatabaseDetailProps {
   loading?: boolean;
   loadingError?: unknown;
   // The action handler in reference.ts types its own props parameter.
-  onSubmit: (fields: DatabaseDetailFormFields, props: any) => void;
+  onSubmit: (fields: DatabaseDetailFormFields, props: any) => Promise<void>;
 }
 
 const DatabaseDetail = (props: DatabaseDetailProps) => {
@@ -81,6 +75,8 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -89,8 +85,14 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
     handleReset,
   } = useFormik<DatabaseDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -125,8 +127,8 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>

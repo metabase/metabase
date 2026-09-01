@@ -29,7 +29,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys not-empty #?(:clj for)]]))
@@ -162,7 +161,6 @@
     card-id      :- [:maybe ::lib.schema.id/card]
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
-   (log/debugf "Applying drill thru: %s"
-               (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
+   (log/debugf "Applying drill thru: %s" (:type drill))
    (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql query stage-number card-id)]
      (apply lib.drill-thru.common/drill-thru-method query stage-number drill args))))

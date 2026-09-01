@@ -11,7 +11,7 @@ import { getStore } from "metabase/store";
 import { useSetEmbedFont } from "./use-set-embed-font";
 
 const setup = ({ location }: { location: Location }) => {
-  const store = getStore(mainReducers, undefined, createMockState());
+  const store = getStore(mainReducers, createMockState());
 
   const Wrapper = ({ children }: PropsWithChildren) => (
     <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>

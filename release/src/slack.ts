@@ -24,7 +24,7 @@ export function mentionUserByGithubLogin(githubLogin?: string | null) {
   if (githubLogin && githubLogin in githubSlackMap) {
     return `<@${githubSlackMap[githubLogin]}>`;
   }
-  return `@${githubLogin ?? 'unassigned'}`;
+  return githubLogin ? `@${githubLogin}` : '@unassigned';
 }
 
 export function mentionSlackTeam(teamName: string) {
@@ -198,7 +198,11 @@ async function getSlackChannelId(
   return maybeChannelId;
 }
 
-async function getExistingSlackMessage(version: string, channelName: string) {
+export async function findSlackMessage({ channelName, text, limit = 100 }: {
+  channelName: string,
+  text: string,
+  limit?: number,
+}) {
   const channelId = await getSlackChannelId(channelName);
   if (!channelId) {
     throw new Error(`Could not find channel ${channelName}`);
@@ -206,10 +210,11 @@ async function getExistingSlackMessage(version: string, channelName: string) {
 
   const response = await slack.conversations.history({
     channel: channelId,
+    limit,
   });
 
   const existingMessage = response.messages?.find(
-    message => message.text?.includes(getReleaseTitle(version)),
+    message => message.text?.includes(text),
   );
 
   if (!existingMessage) {
@@ -220,6 +225,10 @@ async function getExistingSlackMessage(version: string, channelName: string) {
     id: existingMessage.ts ?? '',
     body: existingMessage.text ?? '',
   };
+}
+
+function getExistingSlackMessage(version: string, channelName: string) {
+  return findSlackMessage({ channelName, text: getReleaseTitle(version) });
 }
 
 export async function sendSlackReply({ channelName, message, messageId, broadcast }: {channelName: string, message: string, messageId?: string, broadcast?: boolean}) {
@@ -376,7 +385,7 @@ export async function sendPreReleaseMessage({
     releaseCommitLink,
     milestoneLink,
     githubBuildLink,
-    userName ? `started by ${mentionUserByGithubLogin(userName)}` : null
+    userName ? `started from ${owner}/${repo} by ${mentionUserByGithubLogin(userName)}` : null
   ].filter(Boolean).join(" - ");
 
   const message = `${title}\n${preReleaseMessage}`;

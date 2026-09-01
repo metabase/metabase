@@ -3,7 +3,7 @@
   lookup."
   (:require
    [clojure.core :as core]
-   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -74,7 +74,7 @@
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
   (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
-                                                       [:raw "current_timestamp"])]
+                                                       (h2x/current-datetime-honeysql-form (mdb/db-type)))]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
@@ -85,9 +85,10 @@
           ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
           (t2/insert! (t2/table-name (t2/resolve-model :model/Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
-            ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
+            ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
+            ;; race condition issue
             (log/errorf "Error updating Settings last updated value: %s"
-                        (with-out-str (jdbc/print-sql-exception-chain e)))))))
+                        (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))
@@ -147,26 +148,22 @@
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 
 (defn restore-cache-if-needed!
-  "Check whether we need to repopulate the cache with fresh values from the DB (because the cache is either empty or
-  known to be out-of-date), and do so if needed. This is intended to be called every time a Setting value is
-  retrieved, so it should be efficient; thus the calculation (`should-restore-cache?`) is itself TTL-memoized."
-  []
-  ;; There's a potential race condition here where two threads both call this at the exact same moment, and both get
-  ;; `true` when they call `should-restore-cache`, and then both simultaneously try to update the cache (or, one
-  ;; updates the cache, but the other calls `should-restore-cache?` and gets `true` before the other calls
-  ;; `memo-swap!` (see below))
-  ;;
-  ;; This is not desirable, since either situation would result in duplicate work. Better to just add a quick lock
-  ;; here so only one of them does it, since at any rate waiting for the other thread to finish the task in progress is
-  ;; certainly quicker than starting the task ourselves from scratch
-  (when (time-for-another-update-check?)
-    ;; if the lock is not already held by any thread, including this one...
+  "Check whether the settings cache is out of date by reading the DB value of `settings-last-updated`, and reload the
+  cache if so. Called on every Setting read, so the check is throttled to run at most once per
+  `cache-update-check-interval-ms`; pass `:force-check? true` to skip that throttle and check now. Returns truthy when
+  a reload happened."
+  [& {:keys [force-check?]}]
+  (when (or force-check? (time-for-another-update-check?))
+    ;; There's a potential race condition here where two threads both call this at the exact same moment, and both get
+    ;; `true` from `cache-out-of-date?`, and then both simultaneously try to update the cache. Better to just add a
+    ;; quick lock here so only one of them does it, since waiting for the other thread to finish the task in progress
+    ;; is certainly quicker than starting the task ourselves from scratch.
     (when-not (.isLocked restore-cache-lock)
-      ;; attempt to acquire the lock. Returns immediately if lock is already held.
       (when (.tryLock restore-cache-lock)
         (try
           (.set last-update-check (System/nanoTime))
           (when (cache-out-of-date?)
-            (restore-cache!))
+            (restore-cache!)
+            true)
           (finally
             (.unlock restore-cache-lock)))))))

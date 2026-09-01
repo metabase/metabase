@@ -80,6 +80,7 @@ describe("scenarios > alert", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       H.notificationList().findByText("Your alert is all set up.");
@@ -138,6 +139,7 @@ describe("scenarios > alert", () => {
 
     cy.findByLabelText("Move, duplicate, and more…").click();
     H.popover().findByText("Create an alert").click();
+    H.selectScheduleTime();
     H.modal().button("Done").click();
 
     cy.findByLabelText("Move, duplicate, and more…").click();
@@ -187,6 +189,7 @@ describe("scenarios > alert", () => {
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
 
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
@@ -199,7 +202,7 @@ describe("scenarios > alert", () => {
 
       it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openDashboardMenu("Subscriptions");
+        H.toggleDashboardSubscriptionsSidebar();
 
         H.sidebar().within(() => {
           cy.findByText("Email it").click();
@@ -218,6 +221,7 @@ describe("scenarios > alert", () => {
 
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
@@ -231,7 +235,7 @@ describe("scenarios > alert", () => {
         });
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openDashboardMenu("Subscriptions");
+        H.toggleDashboardSubscriptionsSidebar();
 
         H.sidebar().within(() => {
           addEmailRecipient(deniedEmail);

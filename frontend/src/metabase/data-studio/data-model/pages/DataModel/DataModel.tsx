@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -25,6 +25,7 @@ import {
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -48,20 +49,16 @@ import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-interface Props {
-  children?: ReactNode;
-  params: RouteParams;
-}
-
-export const DataModel = ({ children, params }: Props) => {
+export const DataModel = () => {
   return (
     <SelectionProvider>
-      <DataModelContent params={params}>{children}</DataModelContent>
+      <DataModelContent />
     </SelectionProvider>
   );
 };
 
-function DataModelContent({ params }: Props) {
+function DataModelContent() {
+  const params = useParams<RouteParams>();
   const {
     hasSelectedItems,
     hasOnlyOneTableSelected,

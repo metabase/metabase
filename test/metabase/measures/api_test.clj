@@ -57,18 +57,16 @@
   (testing "POST /api/measure"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "measure" {})))
-    (is (=? {:errors {:definition "Value must be a map."}}
+    (is (=? {:errors {:definition "value must be a valid MBQL query with a source table."}}
             (mt/user-http-request :crowberto :post 400 "measure" {:name "abc"})))
-    (is (=? {:errors {:definition "Value must be a map."}}
-            (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
-                                                                  :definition "foobar"})))
-    (testing "definition must specify a source table"
-      (is (= "Measure definition must specify a source table."
-             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
-                                                                   :definition {}})))
-      (is (= "Measure definition must specify a source table."
-             (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
-                                                                   :definition {:aggregation [[:count]]}}))))))
+    (testing "a non-map definition is rejected while decoding, so the body is the message rather than :errors"
+      (is (=? "value must be a valid MBQL query."
+              (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                    :definition "foobar"}))))
+    (testing "a definition that isn't a full MBQL query (e.g. a bare MBQL4 fragment) is rejected"
+      (is (=? "Query must include :lib/type or :type"
+              (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
+                                                                    :definition {:aggregation [[:count]]}}))))))
 
 (deftest create-measure-test
   (testing "POST /api/measure"
@@ -97,7 +95,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "measure/" (:id measure))
                                      {:name             "abc"
-                                      :definition       {}
+                                      :definition       (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))
                                       :revision_message "something different"})))))))
 
 (deftest update-input-validation-test
@@ -109,20 +107,20 @@
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name             "abc"
                                                                    :revision_message ""})))
-    (is (=? {:errors {:definition "nullable map"}}
+    (is (=? "value must be a valid MBQL query."
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name             "abc"
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
 (deftest update-definition-table-test
   (testing "PUT /api/measure/:id"
-    (testing "an updated definition must still specify a source table"
+    (testing "an updated definition must still be a valid MBQL query with a source table"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
                                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-        (is (= "Measure definition must specify a source table."
-               (mt/user-http-request :crowberto :put 400 (str "measure/" id)
-                                     {:revision_message "no more source table"
-                                      :definition       {}})))))
+        (is (=? {:errors {:definition some?}}
+                (mt/user-http-request :crowberto :put 400 (str "measure/" id)
+                                      {:revision_message "no more source table"
+                                       :definition       {}})))))
     (testing "a definition that moves the Measure to another table keeps table_id in sync"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
                                                   :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
@@ -264,13 +262,51 @@
         (let [response   (mt/user-http-request :rasta :get 200 (format "measure/%d" id))
               dimensions (:dimensions response)]
           (is (seq dimensions) "should have dimensions")
-          (testing "at least some dimensions have has-field-values"
-            (let [dims-with-hfv (filter :has-field-values dimensions)]
+          (testing "at least some dimensions have has_field_values"
+            (let [dims-with-hfv (filter :has_field_values dimensions)]
               (is (seq dims-with-hfv)
-                  "at least some dimensions should have has-field-values")
+                  "at least some dimensions should have has_field_values")
               (doseq [dim dims-with-hfv]
-                (is (#{"list" "search" "none"} (:has-field-values dim))
-                    (str "dimension " (:name dim) " has-field-values should be list, search, or none"))))))))))
+                (is (#{"list" "search" "none"} (:has_field_values dim))
+                    (str "dimension " (:name dim) " has_field_values should be list, search, or none"))))))))))
+
+(deftest fetch-measure-dimension-wire-format-test
+  (testing "GET /api/measure/:id and GET /api/measure/ serve dimensions and mappings with snake_case keys"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [check-wire (fn [dimensions mappings]
+                           (doseq [dim dimensions]
+                             (is (string? (:display_name dim)))
+                             (is (string? (:effective_type dim)))
+                             (is (not (contains? dim :display-name))
+                                 (str "kebab-case :display-name leaked onto the wire: " (pr-str (keys dim))))
+                             (when (contains? dim :has_field_values)
+                               (is (string? (:has_field_values dim))))
+                             (when-let [group (:group dim)]
+                               (is (string? (:display_name group))
+                                   (str "group keys should be snake_case: " (pr-str (keys group)))))
+                             (doseq [source (:sources dim)]
+                               (is (contains? source :field-id)
+                                   (str "sources entries keep the kebab-case :field-id key: " (pr-str (keys source))))))
+                           (doseq [mapping mappings]
+                             (is (string? (:dimension_id mapping)))
+                             (is (int? (:table_id mapping)))
+                             (is (sequential? (:target mapping)))
+                             (is (not (contains? mapping :dimension-id))
+                                 (str "kebab-case :dimension-id leaked onto the wire: " (pr-str (keys mapping))))))]
+          (testing "GET /:id"
+            (let [{:keys [dimensions dimension_mappings]}
+                  (mt/user-http-request :rasta :get 200 (format "measure/%d" id))]
+              (is (seq dimensions))
+              (is (seq dimension_mappings))
+              (check-wire dimensions dimension_mappings)))
+          (testing "GET / list"
+            (let [listed (mt/user-http-request :rasta :get 200 "measure/")
+                  mine   (first (filter #(= id (:id %)) listed))]
+              (is (some? mine))
+              (check-wire (:dimensions mine) (:dimension_mappings mine)))))))))
 
 (deftest list-test
   (testing "GET /api/measure/"
@@ -316,14 +352,12 @@
 (deftest api-accepts-mbql4-on-post-test
   (testing "POST /api/measure accepts MBQL4 definitions and returns MBQL5"
     (mt/with-model-cleanup [:model/Measure]
-      (testing "MBQL4 fragment format"
-        (let [response (mt/user-http-request
-                        :crowberto :post 200 "measure"
-                        {:name       "Fragment Measure"
-                         :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
-          (is (some? (:id response)))
-          (is (mbql5-definition? (:definition response))
-              "Returned definition should be MBQL5")))
+      (testing "an MBQL4 fragment is rejected with the specific normalization error"
+        (is (= "Query must include :lib/type or :type"
+               (mt/user-http-request
+                :crowberto :post 400 "measure"
+                {:name       "Fragment Measure"
+                 :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])}))))
       (testing "MBQL4 full query format"
         (let [response (mt/user-http-request
                         :crowberto :post 200 "measure"
@@ -337,14 +371,12 @@
   (testing "PUT /api/measure/:id accepts MBQL4 definitions and returns MBQL5"
     (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
                                                     :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-      (testing "MBQL4 fragment format"
-        (let [response (mt/user-http-request
-                        :crowberto :put 200 (str "measure/" measure-id)
-                        {:revision_message "Update with fragment"
-                         :definition       (mbql4-fragment-definition (mt/id :venues) [[:count]])})]
-          (is (= measure-id (:id response)))
-          (is (mbql5-definition? (:definition response))
-              "Returned definition should be MBQL5")))
+      (testing "an MBQL4 fragment is rejected -- see `api-accepts-mbql4-on-post-test`"
+        (is (= "Query must include :lib/type or :type"
+               (mt/user-http-request
+                :crowberto :put 400 (str "measure/" measure-id)
+                {:revision_message "Update with fragment"
+                 :definition       (mbql4-fragment-definition (mt/id :venues) [[:count]])}))))
       (testing "MBQL4 full query format"
         (let [response (mt/user-http-request
                         :crowberto :put 200 (str "measure/" measure-id)
@@ -360,7 +392,7 @@
       (let [{measure-id :id} (mt/user-http-request
                               :crowberto :post 200 "measure"
                               {:name       "Venue Count"
-                               :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
+                               :definition (legacy-mbql-measure-definition (mt/id) (mt/id :venues) [[:count]])})
             measure-query (mt/mbql-query venues {:aggregation [[:measure measure-id]]})
             direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]
         (is (= (mt/rows (qp/process-query direct-query))

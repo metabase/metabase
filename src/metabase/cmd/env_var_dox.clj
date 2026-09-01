@@ -7,9 +7,9 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader.edn :as edn]
    [metabase.cmd.common :as cmd.common]
+   [metabase.cmd.markdown :as md]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.settings.core :as setting]
-   [metabase.util :as u]))
+   [metabase.settings.core :as setting]))
 
 (defn prep-settings
   "Used to return a map from the registered settings atom."
@@ -59,11 +59,12 @@
   [env-var]
   (let [d (:default (handle-defaults-set-elsewhere env-var))]
     (str "Default: "
-         (cond
-           (false? d) "`false`"
-           (nil? d) "`null`"
-           (keyword? d) (str "`" (name d) "`")
-           :else (str "`" d "`")))))
+         (md/code
+          (cond
+            (false? d)   "false"
+            (nil? d)     "null"
+            (keyword? d) (name d)
+            :else        d)))))
 
 (defn- format-prefix
   "Formats an environment variable name with the 'MB_' prefix
@@ -74,44 +75,40 @@
       (str base-name " [DEPRECATED]")
       base-name)))
 
-(defn- format-heading
-  "Takes an integer and a string and creates a Markdown heading of level n."
-  [n s]
-  (str (apply str (take n (repeat "#"))) " `" s "`"))
-
 (defn- format-description
   "Helper function to specify description format for environment variable docs."
   [env-var]
-  (->> ((:description env-var))
-       u/add-period
-       ;; Drop brackets used to create source code links
-       (#(str/replace % #"\[\[|\]\]" ""))))
+  ;; `some->` so a setting with a blank description drops out of its section rather than contributing a bare "."
+  (some-> ((:description env-var))
+          md/sentence
+          ;; Drop brackets used to create source code links
+          (str/replace #"\[\[|\]\]" "")))
 
 (defn- format-deprecated
   "Tags a deprecated environment variable."
   [env-var]
   (when-let [deprecated (:deprecated env-var)]
-    (if (string? deprecated)
-      (str "> DEPRECATED: " deprecated)
-      "> DEPRECATED")))
+    (md/blockquote (if (string? deprecated)
+                     (str "DEPRECATED: " deprecated)
+                     "DEPRECATED"))))
 
 (def paid-message
   "Used to mark an env var that requires a paid plan."
-  "> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
+  (md/blockquote (str "Only available on Metabase [Pro](https://www.metabase.com/product/pro) and "
+                      "[Enterprise](https://www.metabase.com/product/enterprise) plans.")))
 
 (defn- format-paid
   "Does the variable require a paid license?"
   [env-var]
-  (if (nil? (:feature env-var))
-    ""
+  (when (:feature env-var)
     paid-message))
 
 (defn- format-export
   "Whether the variable is exported in serialization settings."
   [env-var]
-  (if (true? (:export? env-var))
-    (str "[Exported as](../installation-and-operation/serialization.md): `" (:munged-name env-var) "`.")
-    ""))
+  (when (true? (:export? env-var))
+    (str (md/link "Exported as" "../installation-and-operation/serialization.md")
+         ": " (md/code (:munged-name env-var)) ".")))
 
 (defn- format-doc
   "Includes additional documentation for an environment variable, if it exists.
@@ -123,41 +120,39 @@
     (when (string? d)
       d)))
 
-(defn- format-config-name
-  "Formats the configuration file name for an environment variable."
+(defn settable-in-config-file?
+  "Can this setting be set via the `settings:` section of a configuration file?
+   Settings with `:setter` `:none` are read-only: the config file calls the same `setting/set!` path as
+   the Admin settings, so it will always reject them."
   [env-var]
-  (if (= (:visibility env-var) :internal)
-    ""
-    (str "[Configuration file name](./config-file.md): `" (:munged-name env-var) "`")))
+  (not= :none (:setter env-var)))
 
-(defn- list-item
-  "Create a list item for an entry, like `- Default: 100`."
-  [entry]
-  (if (or (str/blank? entry)
-          (nil? entry))
-    ""
-    (str "- " entry)))
+(defn- format-config-name
+  "Formats the configuration file name for an environment variable, or notes that the setting is
+  read-only and can only be set with an environment variable."
+  [env-var]
+  (cond
+    (not (settable-in-config-file? env-var))
+    "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md)."
 
-(defn- format-list
-  "Used to format metadata as a list."
-  [entries]
-  (str/join "\n" (remove str/blank? (map list-item entries))))
+    ;; an internal setting has no config-file name to give, and nothing else to say either
+    (not= (:visibility env-var) :internal)
+    (str (md/link "Configuration file name" "./config-file.md") ": " (md/code (:munged-name env-var)))))
 
 (defn- format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
   [env-var]
-  (str/join "\n\n" (remove str/blank?
-                           [(format-heading 3 (format-prefix env-var))
-                            (format-paid env-var)
-                            (format-deprecated env-var)
-                            ;; metadata we should format as a list
-                            ;; Like `- Default: 100`
-                            (format-list [(format-type env-var)
-                                          (format-default env-var)
-                                          (format-export env-var)
-                                          (format-config-name env-var)])
-                            (format-description env-var)
-                            (format-doc env-var)])))
+  (md/paragraphs
+   [(md/heading 3 (md/code (format-prefix env-var)))
+    (format-paid env-var)
+    (format-deprecated env-var)
+    ;; metadata we should format as a list, like `- Default: 100`
+    (md/bullets [(format-type env-var)
+                 (format-default env-var)
+                 (format-export env-var)
+                 (format-config-name env-var)])
+    (format-description env-var)
+    (format-doc env-var)]))
 
 ;;;; Filter functions
 
@@ -175,7 +170,7 @@
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter-none?
-  "Used to remove settings that lack a setter (`:setter :none`).
+  "Used to remove undocumented settings that lack a setter (`:setter :none`).
    For example, settings that are derived from other settings."
   [env-var]
   ;; If the `defsetting` has a `:doc` key with a string, we should document it.
@@ -206,19 +201,19 @@
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."
   []
-  (str (cmd.common/load-resource! "metabase/cmd/resources/env-var-intro.md") "\n\n"))
+  (cmd.common/load-resource! "metabase/cmd/resources/env-var-intro.md"))
 
 (defn- non-defsetting-env-vars
   "Retrieves environment variables not specified via `defsetting`."
   []
-  (str "\n\n" (cmd.common/load-resource! "metabase/cmd/resources/other-env-vars.md") "\n"))
+  (cmd.common/load-resource! "metabase/cmd/resources/other-env-vars.md"))
 
 (defn prep-dox
   "Preps the environment variable docs for printing."
   []
-  (apply str (format-intro)
-         (str/join "\n\n" (format-env-var-docs (get-settings)))
-         (non-defsetting-env-vars)))
+  (md/document (concat [(format-intro)]
+                       (format-env-var-docs (get-settings))
+                       [(non-defsetting-env-vars)])))
 
 (defn generate-dox!
   "Prints the generated environment variable docs to a file."

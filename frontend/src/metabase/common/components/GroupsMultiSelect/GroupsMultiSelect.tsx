@@ -1,4 +1,4 @@
-import { Fragment, type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -25,6 +25,11 @@ import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import S from "./GroupsMultiSelect.module.css";
 
+export interface GroupSection {
+  label: string;
+  groupIds: GroupId[];
+}
+
 interface GroupsMultiSelectProps {
   groups: GroupInfo[];
   value: GroupId[];
@@ -34,6 +39,9 @@ interface GroupsMultiSelectProps {
   isCurrentUser?: boolean;
   placeholder?: string;
   "aria-label"?: string;
+  // Ordered labeled sections (a group counts toward the first section listing it);
+  // unclaimed groups fall under a trailing "Other groups" section.
+  sections?: GroupSection[];
 }
 
 export const GroupsMultiSelect = ({
@@ -45,6 +53,7 @@ export const GroupsMultiSelect = ({
   isCurrentUser = false,
   placeholder,
   "aria-label": ariaLabel = t`Groups`,
+  sections,
 }: GroupsMultiSelectProps) => {
   const combobox = useCombobox();
   const [search, setSearch] = useState("");
@@ -85,11 +94,10 @@ export const GroupsMultiSelect = ({
         getGroupSortOrder(a) - getGroupSortOrder(b),
     );
 
+  const searchTerm = search.trim().toLowerCase();
   const visibleGroups = groups
     .filter((group) =>
-      getGroupNameLocalized(group)
-        .toLowerCase()
-        .includes(search.trim().toLowerCase()),
+      getGroupNameLocalized(group).toLowerCase().includes(searchTerm),
     )
     // Pinned groups lead so the divider sits at the single pinned-to-custom boundary;
     // getGroupSortOrder alone leaves the external default (rank 3) among custom groups.
@@ -131,10 +139,98 @@ export const GroupsMultiSelect = ({
     }
   };
 
+  const renderOption = (group: GroupInfo) => (
+    <GroupOption
+      key={group.id}
+      group={group}
+      isSelected={value.includes(group.id)}
+      isLocked={isGroupLocked(group)}
+      showManagerToggle={canEditManager(group)}
+      isManager={isManager(group.id)}
+      onToggleManager={() => onToggleManager?.(group.id)}
+    />
+  );
+
+  const renderOptions = () => {
+    if (visibleGroups.length === 0) {
+      return <Combobox.Empty>{t`No groups found`}</Combobox.Empty>;
+    }
+
+    if (sections && sections.length > 0) {
+      // A group renders in the first section listing it.
+      const sectionIndexByGroupId = new Map<GroupId, number>();
+      sections.forEach(({ groupIds }, index) =>
+        groupIds.forEach((id) => {
+          if (!sectionIndexByGroupId.has(id)) {
+            sectionIndexByGroupId.set(id, index);
+          }
+        }),
+      );
+
+      const sectionedGroups: { label: string; members: GroupInfo[] }[] =
+        sections.map(({ label }) => ({ label, members: [] }));
+
+      const otherGroups: GroupInfo[] = [];
+
+      visibleGroups.forEach((group) => {
+        const sectionIndex = sectionIndexByGroupId.get(group.id);
+        if (sectionIndex != null) {
+          sectionedGroups[sectionIndex].members.push(group);
+        } else {
+          otherGroups.push(group);
+        }
+      });
+      return (
+        <>
+          {sectionedGroups.map(
+            ({ label, members }) =>
+              members.length > 0 && (
+                <Combobox.Group
+                  key={label}
+                  label={label}
+                  role="group"
+                  aria-label={label}
+                >
+                  {members.map(renderOption)}
+                </Combobox.Group>
+              ),
+          )}
+          {otherGroups.length > 0 && (
+            <Combobox.Group
+              label={t`Other groups`}
+              role="group"
+              aria-label={t`Other groups`}
+            >
+              {otherGroups.map(renderOption)}
+            </Combobox.Group>
+          )}
+        </>
+      );
+    }
+
+    // Without sections: unlabeled groups with a divider at the pinned-to-custom boundary.
+    const pinnedGroups = visibleGroups.filter(isPinnedGroup);
+    const customGroups = visibleGroups.filter((group) => !isPinnedGroup(group));
+    return (
+      <>
+        {pinnedGroups.length > 0 && (
+          <Combobox.Group>{pinnedGroups.map(renderOption)}</Combobox.Group>
+        )}
+        {pinnedGroups.length > 0 && customGroups.length > 0 && (
+          <Divider my="sm" />
+        )}
+        {customGroups.length > 0 && (
+          <Combobox.Group>{customGroups.map(renderOption)}</Combobox.Group>
+        )}
+      </>
+    );
+  };
+
   return (
     <Combobox
       store={combobox}
       floatingStrategy="fixed"
+      classNames={{ groupLabel: S.groupLabel }}
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.DropdownTarget>
@@ -184,53 +280,54 @@ export const GroupsMultiSelect = ({
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown>
-        <Combobox.Options>
-          {visibleGroups.length === 0 ? (
-            <Combobox.Empty>{t`No groups found`}</Combobox.Empty>
-          ) : (
-            visibleGroups.map((group, index) => {
-              const isSelected = value.includes(group.id);
-              const previousGroup = visibleGroups[index - 1];
-              const showDivider =
-                previousGroup != null &&
-                isPinnedGroup(previousGroup) &&
-                !isPinnedGroup(group);
-              return (
-                <Fragment key={group.id}>
-                  {showDivider && <Divider my="sm" />}
-                  <Combobox.Option
-                    value={String(group.id)}
-                    aria-label={getGroupNameLocalized(group)}
-                    active={isSelected}
-                    disabled={isGroupLocked(group)}
-                  >
-                    <Flex align="center" justify="space-between" gap="sm">
-                      <Flex align="center" gap="sm">
-                        <Checkbox
-                          checked={isSelected}
-                          readOnly
-                          aria-hidden
-                          tabIndex={-1}
-                          style={{ pointerEvents: "none" }}
-                        />
-                        <span>{getGroupNameLocalized(group)}</span>
-                      </Flex>
-                      {canEditManager(group) && (
-                        <Box onMouseDown={(event) => event.preventDefault()}>
-                          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-                            isManager={isManager(group.id)}
-                            onChange={() => onToggleManager?.(group.id)}
-                          />
-                        </Box>
-                      )}
-                    </Flex>
-                  </Combobox.Option>
-                </Fragment>
-              );
-            })
-          )}
-        </Combobox.Options>
+        <Combobox.Options>{renderOptions()}</Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
   );
 };
+
+interface GroupOptionProps {
+  group: GroupInfo;
+  isSelected: boolean;
+  isLocked: boolean;
+  showManagerToggle: boolean;
+  isManager: boolean;
+  onToggleManager: () => void;
+}
+
+const GroupOption = ({
+  group,
+  isSelected,
+  isLocked,
+  showManagerToggle,
+  isManager,
+  onToggleManager,
+}: GroupOptionProps) => (
+  <Combobox.Option
+    value={String(group.id)}
+    aria-label={getGroupNameLocalized(group)}
+    active={isSelected}
+    disabled={isLocked}
+  >
+    <Flex align="center" justify="space-between" gap="sm">
+      <Flex align="center" gap="sm">
+        <Checkbox
+          className={S.checkbox}
+          checked={isSelected}
+          readOnly
+          aria-hidden
+          tabIndex={-1}
+        />
+        <span>{getGroupNameLocalized(group)}</span>
+      </Flex>
+      {showManagerToggle && (
+        <Box onMouseDown={(event) => event.preventDefault()}>
+          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+            isManager={isManager}
+            onChange={onToggleManager}
+          />
+        </Box>
+      )}
+    </Flex>
+  </Combobox.Option>
+);

@@ -12,25 +12,24 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
+import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import { extractRemappedColumns } from "metabase/visualizations";
+import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-interface Props {
-  params: {
-    slug: string;
-    rowId: string;
-  };
-}
+type ModelDetailPageParams = {
+  slug: string;
+  rowId: string;
+};
 
-export function ModelDetailPage({ params }: Props) {
-  const cardId = Urls.extractEntityId(params.slug);
-  const rowId = params.rowId;
+export function ModelDetailPage() {
+  const { slug, rowId = "" } = useParams<ModelDetailPageParams>();
+  const cardId = Urls.extractEntityId(slug);
 
   const {
     data: card,
@@ -44,9 +43,12 @@ export function ModelDetailPage({ params }: Props) {
     isLoading: isMetadataLoading,
   } = useGetCardQueryMetadataQuery(cardId == null ? skipToken : cardId);
 
-  const table = queryMetadata?.tables?.find(
-    (table) => table.id === getQuestionVirtualTableId(cardId),
-  );
+  const virtualTableId =
+    cardId == null ? undefined : getQuestionVirtualTableId(cardId);
+  const table =
+    virtualTableId != null
+      ? queryMetadata?.tables?.find((table) => table.id === virtualTableId)
+      : undefined;
   const metadata = useSelector(getMetadata);
   const tableQuery = useMemo(
     () => getTableQuery(metadata, table),

@@ -14,6 +14,7 @@ import type {
   DimensionId,
   IconName,
   MathOperator,
+  SeriesCard,
   SingleSeries,
   TemporalUnit,
   VisualizationSettings,
@@ -135,6 +136,7 @@ export interface AvailableDimension {
   group?: DimensionGroup;
   canListValues?: boolean;
   isPreferred?: boolean;
+  isDefault?: boolean;
   geoSubtype?: GeoSubtype | null;
   dimensionBreakoutInfo: DimensionBreakoutInfo;
 }
@@ -198,6 +200,12 @@ export interface SourceDisplayInfo {
   name: string;
 }
 
+// ── Series types ──
+
+export type MetricsViewerSeries = SingleSeries<
+  SeriesCard & Required<Pick<SeriesCard, "id" | "name">>
+>;
+
 export interface UseViewerStateResult {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
@@ -207,7 +215,7 @@ export interface UseViewerStateResult {
   queriesError: string | null;
   modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
   metricSlots: MetricSlot[];
-  series: SingleSeries[];
+  series: MetricsViewerSeries[];
   cardIdToEntityIndex: Record<CardId, number>;
   activeBreakoutColors: SourceBreakoutColorMap;
   sourceColors: SourceColorMap;

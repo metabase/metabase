@@ -26,6 +26,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
    [potemkin :as p]
+   ;; sync-time read of already-synced Field rows; sync runs without a metadata provider
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -398,13 +399,9 @@
           (and table-names (empty? table-names)))
     []
     (let [sql (describe-fields-sql driver (assoc args :details (driver.conn/effective-details db)))]
-      (try
-        (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
-                    (driver/prettify-native-form driver (first sql))
-                    (rest sql))
-        ;; This overly defensive, but rather save than sorry.
-        (catch Throwable _
-          (log/error "Failed to prepare sql for log.")))
+      (log/debugf "`describe-fields` for schemas %s, tables %s"
+                  (pr-str schema-names)
+                  (pr-str table-names))
       (eduction
        (comp
         (m/mapply describe-fields-pre-process-xf driver db args)

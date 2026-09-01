@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DatabaseMultiSelect } from "metabase/common/components/DatabaseMultiSelect";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
-import { Link } from "metabase/router";
 import { Button, Flex, Stack, Text } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 

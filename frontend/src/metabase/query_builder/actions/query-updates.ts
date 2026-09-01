@@ -2,7 +2,7 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
-import { getQuestion } from "../selectors";
+import { getQuestion } from "../store/selectors";
 
 import { updateQuestion } from "./core";
 

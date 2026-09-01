@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { useSetting, useStoreUrl } from "metabase/common/hooks";
+import { useStoreUrl } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Alert, Anchor, Icon } from "metabase/ui";
 
 export function DevInstanceBanner() {

@@ -79,8 +79,8 @@
   (let [user-id (:current-user-id search-ctx)
         db-id   (:database_id instance)]
     (and
-     (= :query-builder-and-native (perms/full-db-permission-for-user user-id :perms/create-queries db-id))
-     (= :unrestricted (perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
+     (= :query-builder-and-native (perms/full-database-permission-for-user user-id :perms/create-queries db-id))
+     (= :unrestricted (perms/full-database-permission-for-user user-id :perms/view-data db-id)))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -105,6 +105,26 @@
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
+
+(defn- prime-perms!
+  "Load the permissions that the per-result checks are about to read.
+
+  Only the `table` and `indexed-entity` methods of [[check-permissions-for-model]] consult them; the rest are answered
+  in SQL or from the collection. A `table` result is checked with `can-query?`, which reads both the table's own grant
+  and its database's, so this primes the table cache -- which covers the database cache too. `indexed-entity` needs
+  only the database half.
+
+  Results are consumed as a stream, so there is no point at which the databases they span are known -- and a search
+  ranges over all of them anyway, so prime every database. Passing only `:db-ids` is what makes that affordable: the
+  table cache holds `data_permissions` rows with a `table_id`, so the load is bounded by how many table-level grants
+  the user's groups actually have, not by how many tables exist.
+
+  Destination databases are skipped -- they are reachable only through their router and never carry
+  `data_permissions` rows of their own, so priming them would just widen the load for nothing."
+  [search-ctx]
+  (when (and (not (:is-superuser? search-ctx))
+             (some #{"table" "indexed-entity"} (:models search-ctx)))
+    (perms/prime-table-perms-cache {:db-ids (t2/select-pks-set :model/Database :router_database_id nil)})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -199,6 +219,7 @@
          :all-scores
          :dataset_query
          :document
+         :document_id
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
@@ -404,7 +425,13 @@
         (update :archived bit->boolean)
         (update :archived_directly bit->boolean)
         ;; Collections require some transformation before being scored and returned by search.
-        (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
+        (cond-> (t2/instance-of? :model/Collection instance) map-collection)
+        ;; The Card search spec filters `[:= :this.document_id nil]`, so nothing Document-scoped is
+        ;; ever indexed and every Card result is known not to belong to one. Say so on the instance:
+        ;; the permission checks below consult `document_id` (a Document-scoped Card is gated by its
+        ;; Document), and an instance that merely *omits* it makes that resolve one from the primary
+        ;; key instead — one extra query per result row.
+        (cond-> (t2/instance-of? :model/Card instance) (assoc :document_id nil)))))
 
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
@@ -492,6 +519,7 @@
   Hydration is the expensive part, so it should only ever run on the rows actually returned.
   Pass the result to [[search-results]] for the API response shape; [[search]] composes the two."
   [search-ctx :- SearchContext]
+  (prime-perms! search-ctx)
   (let [reducible-results (search.engine/results search-ctx)
         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp

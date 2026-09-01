@@ -8,6 +8,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -63,8 +64,7 @@
    :id
    {:default 0}))
 
-(def Attributes
-  "Attributes attached to a tenant that will be passed down to users in the tenant."
+(def ^:private StrictAttributes
   [:map-of
    [:and
     (mu/with-api-error-message
@@ -74,6 +74,19 @@
      [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
      (deferred-tru "attribute keys must not start with `@`"))]
    :any])
+
+(def Attributes
+  "Attributes attached to a tenant that will be passed down to users in the tenant.
+
+  [[StrictAttributes]] can't be the request schema directly: request decoding drops `:map-of` entries that don't
+  match their schema, so an `@`-prefixed key would be quietly discarded and the tenant saved without it. Decoding
+  therefore sees a permissive `:map-of` that keeps every entry, and the `:fn` re-checks the strict shape afterwards,
+  so an `@`-prefixed key is a 400."
+  [:and
+   [:map-of ms/KeywordOrString :any]
+   (mu/with-api-error-message
+    [:fn #(mr/validate StrictAttributes %)]
+    (deferred-tru "attribute keys must be a keyword or string and must not start with `@`"))])
 
 (defenterprise user->tenant-collection-and-descendant-ids
   "EE version of user->tenant-collection-and-descendant-ids. Returns a vector of the tenant collection ID and all

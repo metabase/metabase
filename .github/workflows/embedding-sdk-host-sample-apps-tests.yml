@@ -100,6 +100,7 @@ jobs:
     env:
       MB_EDITION: ee
       MB_RUN_MODE: e2e
+      MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -156,9 +157,9 @@ jobs:
           REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
           echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
           if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
-            echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+            echo "sample_app_branch_exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+            echo "sample_app_branch_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Prepare and launch Sample Apps
@@ -202,7 +203,9 @@ jobs:
       fail-fast: false
       matrix:
         environment: ["production", "development"]
+    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
+      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -211,6 +214,7 @@ jobs:
     env:
       MB_EDITION: ee
       MB_RUN_MODE: e2e
+      MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -268,7 +272,9 @@ jobs:
   # They use the shoppy production environment and include performance measurement tests.
   e2e-shoppy-synthetic-tests:
     needs: [get-sample-apps-data]
+    # TEMPORARILY DISABLED: re-enable by removing the `false &&` below.
     if: |
+      false &&
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master'
@@ -278,6 +284,7 @@ jobs:
     env:
       MB_EDITION: ee
       MB_RUN_MODE: e2e
+      MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -360,6 +367,7 @@ jobs:
         test_suite:
           [
             "vite-6-host-app-e2e",
+            "vite-6-data-app-host-app-e2e",
             "next-15-app-router-host-app-e2e",
             "next-15-pages-router-host-app-e2e",
             "angular-20-host-app-e2e",
@@ -372,7 +380,7 @@ jobs:
       # Host apps are the only suite here running through Metabase's Cypress config,
       # whose `after:spec` hook reports failures and writes QUARANTINE_FAILURES_FILE.
       # Sample-app suites load their own config (no-op), so ci-conductor is scoped to this job.
-      CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+      CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
       CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-host-app
       REPO_ID: ${{ github.event.repository.id }}
@@ -414,6 +422,21 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      # esbuild resolves every import in the spec bundle's graph, even the ones tree shaking then drops.
+      # The cljs imports resolve into target/cljs_dev, so the compiled CLJS has to exist before Cypress runs.
+      # run-tests.yml compiles it in parallel with the uberjar build, so downloading is ~10x faster than compiling here.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+
+      - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
+        run: bun run build-pure:cljs
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start

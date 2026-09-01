@@ -87,8 +87,7 @@
         (let [final-redirect (or (:redirect-url login-result) "/")
               base-response (-> (response/redirect final-redirect)
                                 (sso/clear-oidc-state-cookie))]
-          (log/infof "Slack authentication successful for user %s"
-                     (get-in login-result [:user-data :email]))
+          (log/info "Slack authentication successful")
           (if-let [session (:session login-result)]
             (request/set-session-cookies request
                                          base-response

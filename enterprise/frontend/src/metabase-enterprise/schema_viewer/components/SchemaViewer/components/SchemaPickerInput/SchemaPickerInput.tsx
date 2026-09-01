@@ -5,8 +5,7 @@ import { t } from "ttag";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
@@ -25,7 +24,7 @@ export function SchemaPickerInput({
   schema,
   onSchemaChange,
 }: SchemaPickerInputProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [opened, setOpened] = useState(databaseId == null);
 
   const handleChange = useCallback(
@@ -35,17 +34,15 @@ export function SchemaPickerInput({
         return;
       }
       onSchemaChange();
-      dispatch(
-        push(
-          Urls.dataStudioSchemaViewer({
-            databaseId: picked.database_id,
-            schema: picked.name,
-          }),
-        ),
+      navigate(
+        Urls.dataStudioSchemaViewer({
+          databaseId: picked.database_id,
+          schema: picked.name,
+        }),
       );
       setOpened(false);
     },
-    [dispatch, onSchemaChange],
+    [onSchemaChange, navigate],
   );
 
   const hasNamedSchema = schema != null && schema.length > 0;

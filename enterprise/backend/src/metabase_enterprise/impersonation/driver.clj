@@ -89,7 +89,11 @@
           (let [conn-impersonation (first conn-impersonations)
                 role-attribute     (:attribute conn-impersonation)
                 user-attributes    (api/current-user-attributes)
-                role               (get user-attributes role-attribute)]
+                role               (get user-attributes role-attribute)
+                database           (if (map? database-or-id)
+                                     database-or-id
+                                     (t2/select-one :model/Database :id (u/the-id database-or-id)))
+                default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)
               (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
@@ -101,6 +105,13 @@
               (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single non-empty string.")
                               {:user-id api/*current-user-id*
                                :conn-impersonations conn-impersonations}))
+
+              (and default-role
+                   (= (u/lower-case-en role) (u/lower-case-en default-role)))
+              (throw (ex-info (tru "Connection impersonation attribute is invalid: role must not be the database default role.")
+                              {:user-id api/*current-user-id*
+                               :conn-impersonations conn-impersonations}))
+
               :else
               role)))))))
 
@@ -112,6 +123,14 @@
   (let [db-id (field/field-id->database-id (u/the-id field))]
     (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
       {:impersonation-role role})))
+
+(defenterprise impersonation-token-for-db
+  "Connection-impersonation fingerprint for the current user on `db-id` (the resolved database
+  role), or nil when not impersonated (including admins)."
+  :feature :none
+  [db-id]
+  (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
+    {:role role}))
 
 (def ^:dynamic *impersonation-role*
   "Set by Impersonation middleware, via the query processor, to define the role that should be used by
@@ -142,5 +161,5 @@
           ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
           (driver/set-role! driver conn role)))
       (catch Throwable e
-        (log/debug e "Error setting role on connection")
+        (log/debugf "Error setting role on connection: %s" (ex-message e))
         (throw e)))))

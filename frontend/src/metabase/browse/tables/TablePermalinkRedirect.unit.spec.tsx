@@ -5,13 +5,11 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { Database, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { TablePermalinkRedirect } from "./TablePermalinkRedirect";
-
-const RoutedTablePermalinkRedirect = withRouteProps(TablePermalinkRedirect);
 
 const PERMALINK_PATH =
   "/browse/databases/:dbName/schema/:schemaName/table/:tableName";
@@ -43,7 +41,7 @@ const setup = ({
     <>
       <Route
         path={noSchema ? PERMALINK_PATH_NO_SCHEMA : PERMALINK_PATH}
-        element={<RoutedTablePermalinkRedirect />}
+        element={<TablePermalinkRedirect />}
       />
       <Route path="/table/:slug" element={<div>Table page</div>} />
     </>,
@@ -63,14 +61,14 @@ describe("TablePermalinkRedirect", () => {
         name: "orders",
         display_name: "Orders",
       });
-      const { history } = setup({
+      const { router } = setup({
         databases: [SALES],
         tables: [table],
         initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
       });
 
       await waitFor(() =>
-        expect(history?.getCurrentLocation().pathname).toBe("/table/10-orders"),
+        expect(router?.location.pathname).toBe("/table/10-orders"),
       );
     });
 
@@ -82,14 +80,14 @@ describe("TablePermalinkRedirect", () => {
         name: "events",
         display_name: "Events",
       });
-      const { history } = setup({
+      const { router } = setup({
         databases: [SALES],
         tables: [table],
         initialRoute: "/browse/databases/Sales/table/events",
       });
 
       await waitFor(() =>
-        expect(history?.getCurrentLocation().pathname).toBe("/table/11-events"),
+        expect(router?.location.pathname).toBe("/table/11-events"),
       );
     });
   });

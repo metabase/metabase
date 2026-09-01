@@ -14,6 +14,7 @@ export const TRASHABLE_MODELS_ARRAY = [
   "dashboard",
   "collection",
   "document",
+  "exploration",
 ] as const;
 
 export type TrashableModel = (typeof TRASHABLE_MODELS_ARRAY)[number];

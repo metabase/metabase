@@ -7,7 +7,13 @@ import { commonReducers } from "metabase/reducers-common";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { reducer as entitiesReducer } from "metabase/redux/entities";
+import { metadataHydrationMiddleware } from "metabase/redux/entities/hydration";
 import type { State } from "metabase/redux/store";
+import {
+  type StoreSeedState,
+  seedApiQueryCache,
+} from "metabase/redux/store/mocks";
+
 // Re-exported from the test-support tier so specs can build a main-app store
 // without importing `metabase/reducers-main` directly, which would
 // cross module boundaries. The test-support tier is exempt from those rules.
@@ -22,7 +28,7 @@ export { mainReducers };
  */
 export function getStore(
   reducers: Record<string, Reducer<any, any, any>> = {},
-  initialState: Partial<State> = {},
+  initialState: Partial<StoreSeedState> = {},
   middleware: Middleware[] = [],
 ) {
   // Unjustified type cast. FIXME
@@ -31,17 +37,31 @@ export function getStore(
     ...reducers,
   }) as unknown as Reducer<State>;
 
+  // Settings live in the `getSessionProperties` RTK Query cache, not a reducer.
+  // When a `settings` seed field is present seed the cache entry and strip the raw field
+  const { settings, ...preloadedState } = initialState;
+  if (settings?.values && reducers[Api.reducerPath]) {
+    // Unjustified type cast. FIXME
+    (preloadedState as Record<string, unknown>)[Api.reducerPath] =
+      seedApiQueryCache(preloadedState[Api.reducerPath], [
+        { endpointName: "getSessionProperties", value: settings.values },
+      ]);
+  }
+
   return configureStore({
     reducer,
     // Unjustified type cast. FIXME
-    preloadedState: initialState as State,
+    preloadedState: preloadedState as State,
 
     // Unjustified type cast. FIXME
     middleware: ((getDefaultMiddleware: any) =>
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,
-      }).concat(middleware)) as never,
+        // Appended rather than defaulted: callers pass their own `middleware`
+        // list, and dropping the mirror's only writer would stop hydration in
+        // that spec with nothing failing.
+      }).concat(middleware, metadataHydrationMiddleware)) as never,
   });
 }
 
@@ -51,10 +71,10 @@ export function getStore(
  * `metabase/reducers-main` into specs.
  */
 export function getMainStore(
-  initialState: Partial<State> = {},
+  initialState: Partial<StoreSeedState> = {},
   middleware: Middleware[] = [Api.middleware],
 ) {
-  return getStore(
+  return getManifestStore(
     { ...mainReducers, [Api.reducerPath]: Api.reducer },
     initialState,
     middleware,
@@ -63,12 +83,12 @@ export function getMainStore(
 
 function getManifestStore(
   reducers: Record<string, Reducer<any, any, any>>,
-  initialState: Partial<State> = {},
+  initialState: Partial<StoreSeedState> = {},
   middleware: Middleware[] = [Api.middleware],
 ) {
   return getStore(
     reducers,
-    _.pick(initialState, ...Object.keys(reducers)),
+    _.pick(initialState, ...Object.keys(reducers), "settings"),
     middleware,
   );
 }
@@ -79,7 +99,7 @@ function getManifestStore(
  * `metabase/reducers-common` into stories, which would cross module boundaries.
  */
 export function getCommonStore(
-  initialState: Partial<State> = {},
+  initialState: Partial<StoreSeedState> = {},
   middleware: Middleware[] = [Api.middleware],
 ) {
   return getManifestStore(commonReducers, initialState, middleware);
@@ -94,7 +114,7 @@ export function getCommonStore(
  * point so public stories keep their own source of truth.
  */
 export function getPublicStore(
-  initialState: Partial<State> = {},
+  initialState: Partial<StoreSeedState> = {},
   middleware: Middleware[] = [Api.middleware],
 ) {
   return getManifestStore(publicReducers, initialState, middleware);

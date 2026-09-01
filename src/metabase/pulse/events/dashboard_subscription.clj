@@ -9,8 +9,8 @@
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
-(derive ::dashboard-update :metabase/event)
-(derive :event/dashboard-update ::dashboard-update)
+(events/derive! ::dashboard-update :metabase/event)
+(events/derive! :event/dashboard-update ::dashboard-update)
 
 (m/defmethod events/publish-event! ::dashboard-update
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"

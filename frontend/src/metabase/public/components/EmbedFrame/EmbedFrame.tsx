@@ -23,16 +23,16 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/querying/components/use-sync-url-parameters";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
-import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
+import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {

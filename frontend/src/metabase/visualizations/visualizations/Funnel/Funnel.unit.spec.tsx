@@ -2,6 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
@@ -16,6 +17,10 @@ import {
 import { Funnel } from "./Funnel";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["funnel"]));
 
 const cardTitle = "cardTitle";
 

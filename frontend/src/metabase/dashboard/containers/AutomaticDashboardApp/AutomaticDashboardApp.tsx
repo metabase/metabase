@@ -18,7 +18,7 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -218,12 +218,13 @@ const AutomaticDashboardAppInner = () => {
 };
 
 export const AutomaticDashboardApp = () => {
-  const { router, location, params } = useRouter();
-  useDashboardUrlQuery(router, location);
+  const location = useLocation();
+  const params = useParams();
+  useDashboardUrlQuery(location);
 
   const dispatch = useDispatch();
 
-  const dashboardId = `/auto/dashboard/${params.splat}${location.hash.replace(/^#?/, "?")}`;
+  const dashboardId = `/auto/dashboard/${params["*"]}${location.hash.replace(/^#?/, "?")}`;
 
   return (
     <DashboardContextProvider

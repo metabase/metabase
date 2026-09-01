@@ -16,8 +16,8 @@
   "keyword to use for locking document updates that can deadlock"
   ::document-statistics-lock)
 
-(derive ::document-read :metabase/event)
-(derive :event/document-read ::document-read)
+(events/derive! ::document-read :metabase/event)
+(events/derive! :event/document-read ::document-read)
 
 (def ^:private update-document-last-viewed-at-interval-seconds 20)
 
@@ -39,7 +39,7 @@
                             :updated_at :updated_at} ;; setting last_viewed_at should not update the updated_at column
                    :where  [:in :id (keys document-id->timestamp)]}))
       (catch Exception e
-        (log/error e "Failed to update document last_viewed_at")))))
+        (log/errorf "Failed to update document last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-document-last-viewed-at-queue
   (delay (grouper/start!
@@ -65,7 +65,10 @@
       (view-log/increment-view-counts! :model/Document object-id)
       (update-document-last-viewed-at! object-id)
       (view-log/record-views! (view-log/generate-view :model :model/Document event))
-      ;; Update recent views alongside existing view log functionality
-      (activity-feed/update-users-recent-views! user-id :model/Document object-id :view)
+      ;; Exploration documents aren't first-class content — they're surfaced only through their
+      ;; owning Exploration, and are hidden from search and collection listings. Skip recording
+      ;; recent views for them so they don't crowd out real document views in the bucket cap.
+      (when (nil? (t2/select-one-fn :exploration_id :model/Document :id object-id))
+        (activity-feed/update-users-recent-views! user-id :model/Document object-id :view))
       (catch Throwable e
-        (log/warnf e "Failed to process document view event. %s" topic)))))
+        (log/warnf "Failed to process document view event. %s: %s" topic (ex-message e))))))

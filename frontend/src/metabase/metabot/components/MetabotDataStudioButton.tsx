@@ -2,11 +2,10 @@ import { t } from "ttag";
 
 import {
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { METAKEY } from "metabase/utils/browser";
@@ -18,8 +17,8 @@ import { MetabotIcon } from "./MetabotIcon";
 export const MetabotDataStudioButton = () => {
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
-  const metabotName = useMetabotName();
-  const location = useSelector(getLocation);
+  const metabotName = useSetting("metabot-name");
+  const location = useLocation();
 
   if (!hasMetabotAccess) {
     return null;

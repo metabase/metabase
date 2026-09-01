@@ -13,11 +13,11 @@ import {
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/redux/hooks";
+import { useSelector } from "metabase/redux/hooks";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Box } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -141,10 +141,10 @@ const SupportingTextComponent = ({
     skip: !isInViewport,
   });
   const isOpen = childTargetId === _id;
-  const commentsPath = document
-    ? `/document/${document.id}/comments/${_id}`
-    : "";
-  const dispatch = useDispatch();
+  const commentsPath = host.useCommentUrl({
+    childTargetId: _id,
+  });
+  const navigate = useNavigate();
 
   const canWrite = editor.options.editable;
 
@@ -236,13 +236,7 @@ const SupportingTextComponent = ({
             unresolvedCommentsCount={unresolvedCommentsCount}
             onClick={(e) => {
               e.preventDefault();
-              dispatch(
-                push(
-                  unresolvedCommentsCount > 0
-                    ? commentsPath
-                    : `${commentsPath}?new=true`,
-                ),
-              );
+              navigate(commentsPath);
             }}
           />
         </Box>

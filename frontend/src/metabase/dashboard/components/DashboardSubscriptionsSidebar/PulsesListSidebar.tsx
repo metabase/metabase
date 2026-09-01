@@ -11,9 +11,13 @@ import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
-import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
+import { conjunct } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { isNotNull } from "metabase/utils/types";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -185,7 +189,7 @@ function buildRecipientText(pulse: DashboardSubscription): string {
       )}`;
 }
 
-function buildFilterText(
+export function buildFilterText(
   pulse: DashboardSubscription,
   parameters: UiParameter[],
 ): string {
@@ -204,8 +208,8 @@ function buildFilterText(
       ? firstParameter.value
       : [firstParameter.value];
     const formattedValues = values
-      .map((val: string) => formatDateValue(firstParameter, val))
-      .filter(Boolean);
+      .map((val) => formatDateValue(firstParameter, val))
+      .filter(isNotNull);
     if (formattedValues.length > 0) {
       formattedValue = conjunct(formattedValues, t`and`);
     } else {
@@ -218,7 +222,7 @@ function buildFilterText(
     formattedValue =
       values.length > 1
         ? t`${values.length} selections`
-        : conjunct(values, t`and`);
+        : conjunct(values.filter(isNotNull), t`and`);
   }
 
   const firstFilterText = `${firstParameter.name}: ${formattedValue}`;

@@ -1,8 +1,6 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -13,16 +11,8 @@ type PublishedTableNewSegmentPageParams = {
   tableId: string;
 };
 
-type PublishedTableNewSegmentPageProps = {
-  params: PublishedTableNewSegmentPageParams;
-  route: Route;
-  children?: ReactNode;
-};
-
-export function PublishedTableNewSegmentPage({
-  params,
-  route,
-}: PublishedTableNewSegmentPageProps) {
+export function PublishedTableNewSegmentPage() {
+  const params = useParams<PublishedTableNewSegmentPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
 
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId, {
@@ -39,7 +29,6 @@ export function PublishedTableNewSegmentPage({
 
   return (
     <NewSegmentPage
-      route={route}
       table={table}
       breadcrumbs={<PublishedTableSegmentBreadcrumbs table={table} />}
       getSuccessUrl={(segment) =>

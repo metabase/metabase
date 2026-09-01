@@ -52,8 +52,8 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   google_drive: "metabase-enterprise/google_drive",
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
+  multi_factor_auth: "metabase-enterprise/multi_factor_auth",
   tenants: "metabase-enterprise/tenants",
-  workspaces: "metabase-enterprise/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

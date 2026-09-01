@@ -96,11 +96,12 @@
                                       :description "Files or directories to fix unused requires in"}]]
    :task (task! (fix/fix-files parsed))}
 
-  check
-  {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
-   :examples [["./bin/mage check"]]
-   :requires [[mage.check]]
-   :task (task! (mage.check/check (:arguments parsed)))}
+  load-namespaces
+  {:doc "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
+   :examples [["./bin/mage load-namespaces"]]
+   :requires [[mage.load-namespaces]]
+   :arg-schema [:tuple]
+   :task (task! (mage.load-namespaces/load-namespaces))}
 
   codespell
   {:doc "Check for misspellings in the source code."
@@ -275,6 +276,25 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
+  project-tests
+  {:doc "Run project-level backend and migration checks."
+   :examples [["./bin/mage project-tests" "Run backend and migration checks"]
+              ["./bin/mage project-tests backend" "Run backend checks"]
+              ["./bin/mage project-tests migrations" "Run migration checks"]
+              ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests ratchets" "Run ratchet checks"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "migrations"
+                         "modules"
+                         "ratchets"]]]
+   :requires [[mage.project-tests :as project-tests]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (project-tests/run! suite)
+                  (project-tests/run!)))}
+
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
    :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
@@ -282,6 +302,12 @@
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+
+  check-kondo-ratchets
+  {:doc "Fail when suppressions exceed a bounded budget or the ratchets file isn't normalized (babashka only, no JVM)."
+   :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when a policy is exceeded, the file is missing, or its formatting is not normalized"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check))}
 
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
@@ -391,10 +417,11 @@
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
-   :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
-              ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
+   :examples [["./bin/mage -driver-decisions --git-ref=master --force-run=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:run-all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
+              ["./bin/mage -driver-decisions --only-driver=bigquery" "Run only the BigQuery job, whatever the other rules say"]
               ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
    :requires [[clojure.string :as str]
               [table.core :as table]
@@ -406,51 +433,37 @@
         "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
         (with-out-str
           (table/table [["Priority" "Condition" "Result" "Reason"]
-                        ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
-                        ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
-                        ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Configured status = skip (PR branches)" "SKIP" "driver is quarantined"]
-                        ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
-                        ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
-                        ["7"
-                         "Cloud driver + its files changed"
-                         "RUN"
-                         (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
-                        ["8"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
-                        ["9"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
-                        ["10"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["11"
+                        ["0"    "--only-driver=DRIVER was passed"         "RUN/SKIP" "only that one driver runs"]
+                        ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label"]
+                        ["2"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
+                        ["3"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
+                        ["4"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
+                        ["5"    "Driver's own modules/drivers/* files changed" "RUN" "driver files changed"]
+                        ["6"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
+                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["8"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
+                        ["9"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["10"
                          (str (pr-str driver-triggers) " module deps affected")
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
-        "\nThis table decides only WHETHER a driver runs. A driver's configured status then\n"
-        "applies to that decision (see 'Driver Status' below) and never overrides it.\n"
-        "\nNote: the remote quarantine list (status = skip) is ignored entirely on master and\n"
-        "release-* branches -- every driver runs and gates there (Priority 4 is bypassed).\n"
+                        ["11"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+        "\nThis table decides only WHETHER a driver runs. Whether its failures GATE is a separate\n"
+        "question, answered at the end of the job by ci-conductor's quarantine rules.\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
-        "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
-        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
-        "  ci:all-cloud-drivers      Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
-        "  break-quarantine-DRIVER   Un-quarantine a specific driver, e.g. break-quarantine-mysql\n"
-        "\n## Driver Status (from the CI driver config)\n\n"
-        "Each driver also gets a configured status, emitted as DRIVER-status=... for the result job. The\n"
-        "run/skip decision above always takes precedence; status only shapes the outcome of a run mage\n"
-        "decides on:\n\n"
-        "  skip       Listed with status \"skip\": not run at all (quarantined; break-quarantine-DRIVER overrides)\n"
-        "  info       Listed with status \"info\": if mage decides to run it, the run proceeds but its result\n"
-        "             must NOT gate (data collection). info NEVER forces a run -- if mage wouldn't run the\n"
-        "             driver, info does not change that.\n"
-        "  required   No configured status: runs and gates as usual (the default)\n"
+        "  ci:run-all-drivers        Force-run ALL drivers\n"
+        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb\n"
+        "  ci:run-all-cloud-drivers  Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
+        "\nTo let a driver run but not gate, add a suite-quarantine rule in CI Conductor instead.\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))
         "\n")))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
-             [nil "--is-master-or-release MASTER_OR_RELEASE"]
+             [nil "--force-run FORCE_RUN" "Run every driver regardless of the diff"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
              [nil "--skip SKIP"]
+             [nil "--only-driver DRIVER" "Run only this driver's job, ignoring every other rule"]
              [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
 
    :task (task! (mage.modules/-main parsed))}

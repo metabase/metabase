@@ -2,12 +2,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Divider,

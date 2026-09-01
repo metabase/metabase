@@ -12,6 +12,11 @@ import {
   createMetricMetadata,
   setupDefinition,
 } from "metabase/metrics-viewer/utils/__tests__/test-helpers";
+import {
+  createMockMetricDimension,
+  createMockMetricDimensionGroup,
+  createMockNormalizedMetric,
+} from "metabase-types/api/mocks/metric";
 
 import { MetricPill } from "./MetricPill";
 
@@ -88,6 +93,43 @@ describe("MetricPill action menu", () => {
     expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.getByText("Add a series breakout")).toBeInTheDocument();
     expect(screen.getByText("Go to metric home page")).toBeInTheDocument();
+  });
+
+  it("shows curated dimension names without table headings", async () => {
+    const productsGroup = createMockMetricDimensionGroup({
+      id: "products",
+      type: "connection",
+      display_name: "Products",
+    });
+    const metric = createMockNormalizedMetric({
+      id: 2,
+      name: "Product revenue",
+      dimensions: [
+        createMockMetricDimension({
+          id: "product-category",
+          display_name: "Product type",
+          group: productsGroup,
+        }),
+        createMockMetricDimension({
+          id: "product-title",
+          display_name: "Product name",
+          group: productsGroup,
+        }),
+      ],
+    });
+    const metadata = createMetricMetadata([metric]);
+    const definition = setupDefinition(metadata, metric.id);
+
+    setup({
+      metric: { id: metric.id, name: metric.name, sourceType: "metric" },
+      definitionEntry: { id: "metric:2", definition },
+    });
+    await openPillMenu();
+    await userEvent.click(screen.getByText("Add a series breakout"));
+
+    expect(screen.getByText("Product type")).toBeInTheDocument();
+    expect(screen.getByText("Product name")).toBeInTheDocument();
+    expect(screen.queryByText("Products")).not.toBeInTheDocument();
   });
 
   it("should open the MetricSearchDropdown when Replace is clicked", async () => {

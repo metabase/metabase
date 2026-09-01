@@ -7,8 +7,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import { Divider, Flex, Stack } from "metabase/ui";
 
 export function EmbeddingNav() {
@@ -70,8 +69,8 @@ export function EmbeddingNav() {
 }
 
 const EmbeddingNavItem = (props: AdminNavItemProps) => {
-  const location = useSelector(getLocation);
-  const subpath = location?.pathname;
+  const location = useLocation();
+  const subpath = location.pathname;
 
   const isActive = props.path === subpath;
 

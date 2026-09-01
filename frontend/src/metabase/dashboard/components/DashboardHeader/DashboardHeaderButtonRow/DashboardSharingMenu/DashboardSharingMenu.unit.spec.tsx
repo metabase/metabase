@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 import {
+  createMockDashboardCard,
   createMockDashboardTab,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -82,6 +83,46 @@ describe("DashboardSharingMenu", () => {
       expect(screen.getByTestId("dashboard-export-pdf-button")).not.toHaveStyle(
         { cursor: "wait" },
       );
+    });
+
+    it("should not be shown if the dashboard is empty", async () => {
+      setupDashboardSharingMenu({ dashboard: { dashcards: [] } });
+      await openMenu();
+      expect(
+        screen.queryByTestId("dashboard-export-pdf-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not be shown if the selected tab is empty", async () => {
+      setupDashboardSharingMenu({
+        dashboard: {
+          tabs: [
+            createMockDashboardTab({ id: 1 }),
+            createMockDashboardTab({ id: 2 }),
+          ],
+          dashcards: [createMockDashboardCard({ id: 1, dashboard_tab_id: 2 })],
+        },
+        dashboardState: { selectedTabId: 1 },
+      });
+      await openMenu();
+      expect(
+        screen.queryByTestId("dashboard-export-pdf-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be enabled if the selected tab has cards", async () => {
+      setupDashboardSharingMenu({
+        dashboard: {
+          tabs: [
+            createMockDashboardTab({ id: 1 }),
+            createMockDashboardTab({ id: 2 }),
+          ],
+          dashcards: [createMockDashboardCard({ id: 1, dashboard_tab_id: 2 })],
+        },
+        dashboardState: { selectedTabId: 2 },
+      });
+      await openMenu();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeEnabled();
     });
   });
 
@@ -258,9 +299,8 @@ describe("DashboardSharingMenu", () => {
             "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link when clicking 'Copy public link'", async () => {
@@ -355,6 +395,7 @@ describe("DashboardSharingMenu", () => {
   describe("invite to view", () => {
     const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
       fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
       setupDashboardSharingMenu({
         isAdmin: true,
@@ -402,6 +443,7 @@ describe("DashboardSharingMenu", () => {
 
     it("opens the invite modal for the dashboard", async () => {
       fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       setupDashboardSharingMenu({ isAdmin: true });
       await openMenu();
       await userEvent.click(screen.getByText("Invite someone to view this"));

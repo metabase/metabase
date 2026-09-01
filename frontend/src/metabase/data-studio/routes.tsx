@@ -1,10 +1,11 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -13,34 +14,76 @@ import {
   Route,
   type RouteComponent,
   redirect,
-  withRouteProps,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
-import { DataSectionLayout } from "./app/pages/DataSectionLayout";
-import { DataStudioLayout } from "./app/pages/DataStudioLayout";
-import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
-import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
-import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
+import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
-import {
-  DependenciesUpsellPage,
-  LibraryUpsellPage,
-  SchemaViewerUpsellPage,
-} from "./upsells/pages";
 
-const RoutedTransformsSectionLayout = withRouteProps(TransformsSectionLayout);
+/**
+ * The Data Studio layouts and upsell pages, in their own chunk. The route guards
+ * stay eager: they have to decide before there is anything to show.
+ */
+const dataStudioLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/DataStudioLayout"
+  ).then(({ DataStudioLayout }) => ({
+    Component: DataStudioLayout,
+  }));
 
-export function getDataStudioRoutes(
-  CanAccessDataStudio: RouteComponent,
-  CanAccessDataModel: RouteComponent,
-  IsAdmin: RouteComponent,
-) {
+const dataSectionLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/DataSectionLayout"
+  ).then(({ DataSectionLayout }) => ({
+    Component: DataSectionLayout,
+  }));
+
+const transformsSectionLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/TransformsSectionLayout"
+  ).then(({ TransformsSectionLayout }) => ({
+    Component: TransformsSectionLayout,
+  }));
+
+const dependenciesSectionLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/DependenciesSectionLayout"
+  ).then(({ DependenciesSectionLayout }) => ({
+    Component: DependenciesSectionLayout,
+  }));
+
+const gitSyncSectionLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/GitSyncSectionLayout"
+  ).then(({ GitSyncSectionLayout }) => ({ Component: GitSyncSectionLayout }));
+
+const dependenciesUpsellPage = () =>
+  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
+    ({ DependenciesUpsellPage }) => ({
+      Component: DependenciesUpsellPage,
+    }),
+  );
+
+const libraryUpsellPage = () =>
+  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
+    ({ LibraryUpsellPage }) => ({
+      Component: LibraryUpsellPage,
+    }),
+  );
+
+const schemaViewerUpsellPage = () =>
+  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
+    ({ SchemaViewerUpsellPage }) => ({
+      Component: SchemaViewerUpsellPage,
+    }),
+  );
+
+export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
     <>
       {/* These redirects sit
@@ -52,41 +95,39 @@ export function getDataStudioRoutes(
 
       {getDataStudioDependencyDiagnosticsRedirects()}
       <Route element={<CanAccessDataStudio />}>
-        <Route path="data-studio" element={<DataStudioLayout />}>
+        <Route path="data-studio" lazy={dataStudioLayout}>
           <Route index element={<DataStudioIndexRedirect />} />
+          <Route path="guide" element={<GuidePage />} />
           <Route path="data" element={<CanAccessDataModel />}>
-            <Route element={<DataSectionLayout />}>
+            <Route lazy={dataSectionLayout}>
               {getDataStudioMetadataRoutes(IsAdmin)}
             </Route>
           </Route>
-          <Route path="transforms" element={<RoutedTransformsSectionLayout />}>
+          <Route path="transforms" lazy={transformsSectionLayout}>
             {getDataStudioTransformRoutes()}
-          </Route>
-          <Route element={<WorkspacesSectionLayout />}>
-            {PLUGIN_WORKSPACES.getDataStudioRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSettingsRoutes()}
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
           ) : (
-            <Route path="library" element={<LibraryUpsellPage />} />
+            <Route path="library" lazy={libraryUpsellPage} />
           )}
           {PLUGIN_DEPENDENCIES.isEnabled ? (
-            <Route path="dependencies" element={<DependenciesSectionLayout />}>
+            <Route path="dependencies" lazy={dependenciesSectionLayout}>
               {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
             </Route>
           ) : (
-            <Route path="dependencies" element={<DependenciesUpsellPage />} />
+            <Route path="dependencies" lazy={dependenciesUpsellPage} />
           )}
           {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
             <Route path="schema-viewer">
               {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
             </Route>
           ) : (
-            <Route path="schema-viewer" element={<SchemaViewerUpsellPage />} />
+            <Route path="schema-viewer" lazy={schemaViewerUpsellPage} />
           )}
-          <Route path="git-sync" element={<GitSyncSectionLayout />} />
+          <Route path="git-sync" lazy={gitSyncSectionLayout} />
 
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -112,9 +153,21 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
   );
 }
 
-function DataStudioIndexRedirect() {
+export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
-  return <Navigate to={indexPath} replace />;
+  const { value: hasSeenGuide, isLoading } = useUserKeyValue({
+    namespace: "data_studio",
+    key: "hasSeenGuide",
+    defaultValue: false,
+  });
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <Navigate to={hasSeenGuide ? indexPath : Urls.dataStudioGuide()} replace />
+  );
 }
 
 function getIndexPath(state: State) {

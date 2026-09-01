@@ -56,6 +56,10 @@ export function dataStudio() {
   return ROOT_URL;
 }
 
+export function dataStudioGuide() {
+  return `${ROOT_URL}/guide`;
+}
+
 export function dataStudioData({
   databaseId,
   schemaName,
@@ -262,6 +266,10 @@ export function dataStudioMetricOverview(cardId: CardId) {
 
 export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
+}
+
+export function dataStudioMetricDimensions(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/dimensions`;
 }
 
 export function dataStudioMetricDependencies(cardId: CardId) {

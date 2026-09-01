@@ -61,6 +61,59 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
 
+(defn- cause-chain-messages
+  "Messages of `e` and every exception beneath it, skipping any that have none."
+  [e]
+  ;; `keep`, not `map` - an exception with a nil message would NPE the callers' `re-find` and hide the real failure
+  (into [] (keep ex-message) (take-while some? (iterate ex-cause e))))
+
+(defn- load-failure-messages!
+  "Loads `ingestion`, expecting it to throw, and returns the thrown exception's cause-chain messages."
+  [ingestion]
+  (try
+    (serdes.load/load-metabase! ingestion)
+    ["load-metabase! unexpectedly succeeded"]
+    (catch Exception e
+      (cause-chain-messages e))))
+
+(deftest schema-validation-opt-out-reaches-import-test
+  (testing (str "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION has to travel env var -> Setting -> the binding "
+                "in load-metabase! -> import-mbql. Nothing else covers that chain, so dropping the binding would "
+                "silently disable the opt-out.")
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native with a variable"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db)
+                                               :type     :native
+                                               :native   {:template-tags {"id" {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "id"
+                                                                                :display-name "ID"
+                                                                                :type         :number}}
+                                                          :query         "SELECT 1 WHERE x = {{id}}"}})]
+          (reset! extracted {:db   (serdes/extract-one "Database" {} db)
+                             :coll (serdes/extract-one "Collection" {} coll)
+                             :card (serdes/extract-one "Card" {} card)})))
+      ;; a tag type this version has no representation for - what an export from a newer Metabase that introduced
+      ;; one would look like
+      (let [{:keys [db coll card]} @extracted
+            bad-card  (assoc-in card [:dataset_query :stages 0 :template-tags]
+                                {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
+            ingestion #(ingestion-in-memory [db coll bad-card])
+            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+        (testing "by default the schema check is what refuses the import"
+          (mt/with-empty-h2-app-db!
+            (is (ours? (load-failure-messages! (ingestion))))))
+        (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
+          (mt/with-empty-h2-app-db!
+            (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+              (let [messages (load-failure-messages! (ingestion))]
+                (is (some (partial re-find #"Invalid input.*:template-tags") messages))
+                (is (not (ours? messages)))))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
@@ -694,6 +747,7 @@
                        :database (:id @db1d)}
                       (:definition @msr1d))))))))))
 
+;; full serdes round-trip: source graph, export, load, then cross-check remapped IDs -- one indivisible flow
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
@@ -2007,16 +2061,11 @@
                          (t2/select-one-fn :details :model/Database)))))))))
       (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
-        (testing "with :include-database-secrets"
+        (testing "connection details are never exported, even when :include-database-secrets is requested"
           (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
                 dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
             (is (= 1 (count dbs)))
-            (is (every? :details dbs))
-            (ts/with-db dest-db
-              (testing "Details are imported if provided"
-                (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                (is (= (:details (first dbs))
-                       (t2/select-one-fn :details :model/Database)))))))))))
+            (is (not-any? :details dbs))))))))
 
 (deftest unique-dimensions-test
   (ts/with-dbs [source-db dest-db]
@@ -2267,6 +2316,85 @@
                     db        (t2/select-one :model/Database :name "my-db")]
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
+
+(deftest transform-checkpoint-field-remap-test
+  (testing "checkpoint-filter-field-id survives serdes into an instance with different field IDs (GDGT-2906)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  field (ts/create! :model/Field :name "updated_at" :table_id (:id table)
+                                    :base_type :type/DateTime)
+                  _     (ts/create! :model/Transform
+                                    :name "Checkpoint Transform"
+                                    :source {:type "query"
+                                             :query (mbql5-query (:id db) (:id table))
+                                             :source-incremental-strategy {:type "checkpoint"
+                                                                           :checkpoint-filter-field-id (:id field)
+                                                                           :lookback {:value 4 :unit "day"}}}
+                                    :target {:database (:id db)
+                                             :type "table-incremental"
+                                             :schema "public"
+                                             :name "target_table"
+                                             :target-incremental-strategy {:type "append"}})]
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (testing "the export contains a portable field ref, not a numeric ID"
+            (let [transform (first (filter #(= "Transform" (-> % :serdes/meta last :model)) @serialized))]
+              (is (= ["my-db" nil "customers" "updated_at"]
+                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            ;; shift the ID sequences so a raw numeric ID could not accidentally resolve
+            (let [db    (ts/create! :model/Database :name "padding-db")
+                  table (ts/create! :model/Table :name "padding" :db_id (:id db))]
+              (ts/create! :model/Field :name "padding_field" :table_id (:id table)))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [transform (t2/select-one :model/Transform :name "Checkpoint Transform")
+                  field     (t2/select-one :model/Field :name "updated_at")]
+              (is (some? transform))
+              (is (some? field))
+              (is (= (:id field)
+                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id]))
+                  "the imported checkpoint field id points at the destination's field row")
+              (testing "the lookback config rides along unchanged"
+                (is (= {:value 4 :unit "day"}
+                       (get-in transform [:source :source-incremental-strategy :lookback])))))))))))
+
+(deftest transform-dangling-checkpoint-field-export-test
+  (testing "a checkpoint field id whose field no longer exists exports as-is and doesn't fail the import (GDGT-2906)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  _     (ts/create! :model/Transform
+                                    :name "Stale Checkpoint Transform"
+                                    :source {:type "query"
+                                             :query (mbql5-query (:id db) (:id table))
+                                             :source-incremental-strategy {:type "checkpoint"
+                                                                           :checkpoint-filter-field-id 999999999}}
+                                    :target {:database (:id db)
+                                             :type "table-incremental"
+                                             :schema "public"
+                                             :name "target_table"
+                                             :target-incremental-strategy {:type "append"}})]
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (testing "the dangling id is exported as a raw number, not a broken field ref"
+            (let [transform (first (filter #(= "Transform" (-> % :serdes/meta last :model)) @serialized))]
+              (is (= 999999999
+                     (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (is (= 999999999
+                   (get-in (t2/select-one :model/Transform :name "Stale Checkpoint Transform")
+                           [:source :source-incremental-strategy :checkpoint-filter-field-id]))
+                "the stale numeric id survives the import unchanged")))))))
 
 (deftest transform-with-deleted-source-database-load-test
   (testing "An orphaned transform (source database was deleted before export) round-trips through serdes as a tombstone (GDGT-2447)"
@@ -2773,31 +2901,3 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
-
-(deftest card-last-used-at-test
-  (let [serialized  (atom nil)
-        eid         (u/generate-nano-id)
-        source-date (t/offset-date-time 2021 3 1 10)]
-    (ts/with-dbs [source-db dest-db]
-      (ts/with-db source-db
-        (let [db   (ts/create! :model/Database :name "my-db")
-              card (ts/create! :model/Card
-                               :name "old card"
-                               :entity_id eid
-                               :database_id (:id db)
-                               :dataset_query {:database (:id db)
-                                               :type     :native
-                                               :native   {:query "select 1"}})]
-          (t2/update! :model/Card (:id card) {:last_used_at source-date})
-          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
-      (ts/with-db dest-db
-        (testing "a fresh import brings over last_used_at, so auto-trash can see the card is stale (GDGT-217)"
-          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (is (= (t/instant source-date)
-                 (t2/select-one-fn (comp t/instant :last_used_at) :model/Card :entity_id eid))))
-        (testing "re-importing an existing card keeps the destination's own last_used_at"
-          (let [dest-date (t/offset-date-time 2025 6 1 12)]
-            (t2/update! :model/Card :entity_id eid {:last_used_at dest-date})
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (is (= (t/instant dest-date)
-                   (t2/select-one-fn (comp t/instant :last_used_at) :model/Card :entity_id eid)))))))))

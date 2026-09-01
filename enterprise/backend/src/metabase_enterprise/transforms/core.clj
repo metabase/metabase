@@ -21,7 +21,7 @@
     (try
       (t2/update! (t2/table-name :model/Transform) id {:table_dependencies (json/encode (vec raw-deps))})
       (catch Throwable e
-        (log/warnf e "Failed to cache table-dependencies for transform %s" id)))))
+        (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e))))))
 
 (defenterprise transform-metered-as
   "Return the meter bucket a new transform run of the given source-type counts toward,

@@ -6,8 +6,8 @@ import { t } from "ttag";
 import { Api, skipToken } from "metabase/api";
 import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
+import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
@@ -20,7 +20,7 @@ type GsheetsStatus = GdrivePayload["status"];
 
 export const GdriveSyncStatus = () => {
   const dispatch = useDispatch();
-  const showGdrive = useShowGdrive();
+  const { showGdrive } = useShowGdrive();
 
   const [forceHide, setForceHide] = useState(true);
   const [dbId, setDbId] = useState<DatabaseId | undefined>();

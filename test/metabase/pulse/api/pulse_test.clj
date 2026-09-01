@@ -128,24 +128,24 @@
            {:name  "abc"
             :cards ["abc"]}
            {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                     :channels "one or more map"}}
+                     :channels #(str/starts-with? % "one or more map")}}
 
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                     {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]}
-           {:errors {:channels "one or more map"}}
+           {:errors {:channels #(str/starts-with? % "one or more map")}}
 
            {:name     "abc"
             :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                        {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels "foobar"}
-           {:errors {:channels "one or more map"}}
+           {:errors {:channels #(str/starts-with? % "one or more map")}}
 
            {:name     "abc"
             :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                        {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels ["abc"]}
-           {:errors {:channels "one or more map"}}}]
+           {:errors {:channels #(str/starts-with? % "one or more map")}}}]
     (testing (pr-str input)
       (is (=? expected-error
               (mt/user-http-request :rasta :post 400 "pulse" input))))))
@@ -464,13 +464,13 @@
              {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
 
              {:channels 123}
-             {:errors {:channels "nullable one or more map"}}
+             {:errors {:channels #(str/starts-with? % "nullable one or more map")}}
 
              {:channels "foobar"}
-             {:errors {:channels "nullable one or more map"}}
+             {:errors {:channels #(str/starts-with? % "nullable one or more map")}}
 
              {:channels ["abc"]}
-             {:errors {:channels "nullable one or more map"}}}]
+             {:errors {:channels #(str/starts-with? % "nullable one or more map")}}}]
       (testing (pr-str input)
         (is (=? expected-error
                 (mt/user-http-request :rasta :put 400 "pulse/1" input)))))))
@@ -481,7 +481,7 @@
                    :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                    :model/PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
                    :model/Card                  card  {}]
-      (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
+      (let [filter-params [{:id "123abc", :name "species", :type "string/="}]]
         (with-pulses-in-writeable-collection! [pulse]
           (api.card-test/with-cards-in-readable-collection! [card]
             (is (= (merge
@@ -1065,7 +1065,7 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
         (let [requests (atom [])
               endpoint (channel.http-test/make-route
                         :post "/test"

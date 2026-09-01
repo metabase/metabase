@@ -1,39 +1,43 @@
-import { type HTMLAttributes, useCallback, useMemo } from "react";
+import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import {
-  cronToScheduleSettings,
+  cronToBuilderValue,
   cronUnitToNumber,
   isRepeatingEvery,
 } from "metabase/common/components/Schedule/cron";
+import type {
+  CronString,
+  ScheduleBuilderValue,
+  ScheduleValue,
+  ScheduleValueType,
+} from "metabase/common/components/Schedule/domain";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import {
-  DEFAULT_ALERT_CRON_SCHEDULE,
   DEFAULT_ALERT_SCHEDULE,
   formatNotificationScheduleDescription,
+  getScheduleDefaultsWithoutHour,
 } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
-import type {
-  NotificationCronSubscription,
-  ScheduleSettings,
-  ScheduleType,
-} from "metabase-types/api";
+import type { NotificationCronSubscription } from "metabase-types/api";
 
 import styles from "./NotificationSchedule.module.css";
 import { NotificationScheduleWarning } from "./NotificationScheduleWarning";
 
 export interface NotificationScheduleProps {
-  subscription?: NotificationCronSubscription;
-  scheduleOptions: ScheduleType[];
-  onScheduleChange: (subscription: NotificationCronSubscription) => void;
+  initialSubscription?: NotificationCronSubscription;
+  scheduleOptions: ScheduleValueType[];
+  onScheduleChange: (subscription?: NotificationCronSubscription) => void;
 }
 
 export const NotificationSchedule = ({
-  subscription,
+  initialSubscription,
   scheduleOptions,
   onScheduleChange,
   ...boxProps
@@ -42,16 +46,16 @@ export const NotificationSchedule = ({
     getSetting(state, "report-timezone-short"),
   );
 
-  const scheduleSettings = useMemo(() => {
-    return (
-      cronToScheduleSettings(
-        subscription?.cron_schedule,
-        subscription?.ui_display_type === "cron/raw",
-      ) || DEFAULT_ALERT_SCHEDULE
-    );
-  }, [subscription?.cron_schedule, subscription?.ui_display_type]);
-
-  const cronString = subscription?.cron_schedule || DEFAULT_ALERT_CRON_SCHEDULE;
+  const [value, setValue] = useState<ScheduleValue>(() => {
+    if (!initialSubscription) {
+      return { ...DEFAULT_ALERT_SCHEDULE };
+    }
+    const { ui_display_type, cron_schedule } = initialSubscription;
+    if (ui_display_type === "cron/raw") {
+      return { schedule_type: "cron", cron: cron_schedule };
+    }
+    return cronToBuilderValue(cron_schedule) ?? { ...DEFAULT_ALERT_SCHEDULE };
+  });
 
   const actionText = t`Alerts will be sent`;
   const applicationName = useSelector(getApplicationName);
@@ -59,15 +63,14 @@ export const NotificationSchedule = ({
     // No description is necessary for schedule types, which recur periodically.
     const PERIODIC_SCHEDULE_TYPES = ["every_n_minutes", "hourly"];
     return function ScheduleDescription(
-      schedule: ScheduleSettings,
+      value: ScheduleValue,
       cronExpression: string,
     ) {
-      // Unjustified type cast. FIXME
-      if (PERIODIC_SCHEDULE_TYPES.includes(schedule.schedule_type as string)) {
+      if (PERIODIC_SCHEDULE_TYPES.includes(value.schedule_type)) {
         return null;
       }
 
-      if (schedule.schedule_type === "cron") {
+      if (isScheduleCronValue(value)) {
         return (
           <Text className={styles.customScheduleExplainer}>
             {`${actionText} ${getScheduleExplanation(cronExpression)}${c("An additional clarification for a human-readable schedule description").t`, according to your ${applicationName} timezone (${timezone}).`}`}
@@ -75,8 +78,7 @@ export const NotificationSchedule = ({
         );
       }
 
-      const scheduleDescription =
-        formatNotificationScheduleDescription(schedule);
+      const scheduleDescription = formatNotificationScheduleDescription(value);
       if (!scheduleDescription) {
         return null;
       }
@@ -94,17 +96,22 @@ export const NotificationSchedule = ({
   }, [actionText, applicationName, timezone]);
 
   const handleScheduleChange = useCallback(
-    (newCronString: string, newSchedule: ScheduleSettings) => {
-      if (subscription) {
-        onScheduleChange({
-          ...subscription,
-          cron_schedule: newCronString,
-          ui_display_type:
-            newSchedule.schedule_type === "cron" ? "cron/raw" : "cron/builder",
-        });
-      }
+    ({ value: nextValue, cronString }: ScheduleChangeEvent) => {
+      setValue(nextValue);
+      onScheduleChange(
+        cronString
+          ? {
+              type: "notification-subscription/cron",
+              event_name: null,
+              cron_schedule: cronString,
+              ui_display_type: isScheduleCronValue(nextValue)
+                ? "cron/raw"
+                : "cron/builder",
+            }
+          : undefined,
+      );
     },
-    [subscription, onScheduleChange],
+    [onScheduleChange],
   );
 
   return (
@@ -112,10 +119,10 @@ export const NotificationSchedule = ({
       <Flex className={styles.scheduleContainer} direction="column" gap="md">
         <Schedule
           verb={c("A verb in the imperative mood").t`Check`}
-          cronString={cronString}
+          value={value}
           scheduleOptions={scheduleOptions}
           minutesOnHourPicker
-          isCustomSchedule={subscription?.ui_display_type === "cron/raw"}
+          getDefaults={getScheduleDefaultsWithoutHour}
           renderScheduleDescription={renderScheduleDescription}
           onScheduleChange={handleScheduleChange}
           aria-label={t`Describe how often the alert notification should be sent`}
@@ -123,32 +130,30 @@ export const NotificationSchedule = ({
           className={styles.schedule}
         />
       </Flex>
-      {showWarning(scheduleSettings, cronString) && (
-        <NotificationScheduleWarning />
-      )}
+      {showWarning(value) && <NotificationScheduleWarning />}
     </Box>
   );
 };
 
-const UNSAFE_SCHEDULE_TYPES = ["every_n_minutes", "cron"];
 const WARNING_THRESHOLD_MINS = 10;
-function showWarning(schedule: ScheduleSettings, cronString?: string) {
-  if (
-    !schedule.schedule_type ||
-    !UNSAFE_SCHEDULE_TYPES.includes(schedule.schedule_type) ||
-    !schedule.schedule_minute
-  ) {
-    return false;
-  }
-  if (schedule.schedule_type === "every_n_minutes") {
-    return schedule.schedule_minute < WARNING_THRESHOLD_MINS;
-  }
-  if (schedule.schedule_type === "cron") {
-    const [, minute] = cronString?.split(" ") || [];
-    return (
-      isRepeatingEvery(minute) &&
-      cronUnitToNumber(minute) < WARNING_THRESHOLD_MINS
-    );
-  }
-  return false;
-}
+
+const showWarning = (value: ScheduleValue) =>
+  isScheduleCronValue(value)
+    ? isCronRepeatingTooOften(value.cron)
+    : isBuilderRepeatingTooOften(value);
+
+const isCronRepeatingTooOften = (cron: CronString) => {
+  const [, minute] = cron.split(" ");
+  return (
+    isRepeatingEvery(minute) &&
+    cronUnitToNumber(minute) < WARNING_THRESHOLD_MINS
+  );
+};
+
+const isBuilderRepeatingTooOften = ({
+  schedule_type,
+  schedule_minute,
+}: ScheduleBuilderValue) =>
+  schedule_type === "every_n_minutes" &&
+  !!schedule_minute &&
+  schedule_minute < WARNING_THRESHOLD_MINS;

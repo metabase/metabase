@@ -55,7 +55,7 @@
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
                   (catch clojure.lang.ExceptionInfo e
-                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
+                    (log/errorf "site-url is invalid; returning nil for now. Will be reset on next request: %s" (ex-message e)))))
   :setter     (fn [new-value]
                 (let [new-value (some-> new-value normalize-site-url)
                       https?    (some-> new-value (str/starts-with?  "https:"))]
@@ -97,6 +97,7 @@
 
 (defsetting available-fonts
   "Available fonts"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -105,6 +106,7 @@
 
 (defsetting available-locales
   "Available i18n locales"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -113,6 +115,7 @@
 
 (defsetting available-timezones
   "Available report timezone options"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -121,6 +124,7 @@
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
+  :encryption :no
   :visibility :authenticated
   :export?    true
   :setter     :none

@@ -10,6 +10,7 @@ import type {
   TransformRunForJobRun,
   UpdateTransformJobRequest,
 } from "metabase-types/api";
+import { PENDING_RUN_ID } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
@@ -86,7 +87,6 @@ export const transformJobApi = Api.injectEndpoints({
           listTag("transform-run"),
           tag("transform"),
           tag("table"),
-          listTag("table-remapping"),
         ]),
       onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
         const patchResult = dispatch(
@@ -95,7 +95,7 @@ export const transformJobApi = Api.injectEndpoints({
             id,
             (draft) => {
               draft.last_run = {
-                id: -1,
+                id: PENDING_RUN_ID,
                 status: "started",
                 start_time: new Date().toISOString(),
                 end_time: null,

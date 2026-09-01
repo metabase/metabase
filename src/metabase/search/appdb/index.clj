@@ -117,21 +117,22 @@
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
-       (t2/query {:select [:table_name]
-                  :from   :information_schema.tables
+       (t2/query {:select [:ist.table_name]
+                  :from   [[:information_schema.tables :ist]]
                   :where  [:and
-                           [:= :table_schema :%current_schema]
+                           [:= :ist.table_schema :%current_schema]
                            [:or
-                            [:like [:lower :table_name] [:inline "search\\_index\\_\\_%"]]
+                            [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
                             ;; legacy table names
-                            [:in [:lower :table_name]
-                             (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
+                            [:in [:lower :ist.table_name]
+                             ["search_index" "search_index_next" "search_index_retired"]]]
                            ;; Exclude temp tables — they are managed by with-temp-index-table
-                           [:not-like [:lower :table_name] [:inline "%\\_temp"]]
-                           [:not-in [:lower :table_name]
-                            {:select [:%lower.index_name]
-                             :from   [(t2/table-name :model/SearchIndexMetadata)]
-                             :where  [:= :engine [:inline "appdb"]]}]]})))
+                           [:not-like [:lower :ist.table_name] "%\\_temp"]
+                           [:not [:exists ^:allow-subquery {:select [1]
+                                                            :from   [[(t2/table-name :model/SearchIndexMetadata) :sim]]
+                                                            :where  [:and
+                                                                     [:= :sim.engine "appdb"]
+                                                                     [:= [:lower :sim.index_name] [:lower :ist.table_name]]]}]]]})))
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
@@ -144,7 +145,7 @@
         (vswap! dropped conj table)
         ;; Deletion could fail if it races with other instances
         (catch Exception e
-          (log/warnf e "Failed to drop stale index %s" table))))
+          (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
     (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
 
 (defn- ->db-type [t]
@@ -172,7 +173,7 @@
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
-          [:default [:raw "CURRENT_TIMESTAMP"]]
+          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
           :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]
@@ -218,12 +219,12 @@
                 (try
                   (create-table! table-name)
                   (catch Exception e
-                    (log/error e "Error creating pending index table, cleaning up metadata")
+                    (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
                         (t2/delete! :conn safe-conn :model/SearchIndexMetadata :index_name (name table-name)))
                       (catch Exception del-e
-                        (log/warn del-e "Error clearing out search metadata after failure")))
+                        (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
               (let [pending (:pending (sync-tracking-atoms!))]
                 (log/infof "New pending index %s" pending)
@@ -236,7 +237,7 @@
   (try
     (specialization/analyze-table! table-name)
     (catch Exception e
-      (log/warnf e "Failed to analyze index table %s" table-name))))
+      (log/warnf "Failed to analyze index table %s: %s" table-name (ex-message e)))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
@@ -299,6 +300,15 @@
             :initial-exception-message (ex-message e-before)}
            e-after))
 
+(defn- isolate-write!
+  "Run `f` directly unless already in a transaction, in which case use a savepoint so the caller can catch an error
+  without aborting the enclosing transaction."
+  [f]
+  (if (mdb/in-transaction?)
+    (t2/with-transaction [_conn]
+      (f))
+    (f)))
+
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
@@ -310,7 +320,9 @@
   [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
+    (let [upsert! (fn [t]
+                    (isolate-write! #(specialization/batch-upsert! t entries))
+                    t)]
       (try
         (upsert! table-name)
         (catch InterruptedException ie
@@ -321,7 +333,7 @@
           (if (and (table-not-found-exception? e) (not (exists? table-name)))
             (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
               (if (= table-name refreshed-table-name)
-                (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
+                (throw (ex-info "Currently tracked index does not exist" {:table-name table-name} e))
                 (try
                   (upsert! refreshed-table-name)
                   (catch InterruptedException ie
@@ -331,14 +343,13 @@
                     (if (table-not-found-exception? e2)
                       (throw (retry-upsert-ex table-type table-name refreshed-table-name e e2))
                       (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
-                          (log/errorf (retry-upsert-ex table-type table-name refreshed-table-name e e2)
-                                      "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing"
-                                      (name table-type) refreshed-table-name)
+                          (log/errorf "Error upserting search index batch into %s table %s after refresh; skipping batch and continuing: %s"
+                                      (name table-type) refreshed-table-name (ex-message e2))
                           nil))))))
             ;; Any other failure - log and continue so reindex can still finish.
             (do (analytics/inc! :metabase-search/appdb-index-batches-skipped {:table-type table-type})
-                (log/errorf e "Error upserting search index batch into %s table %s; skipping batch and continuing"
-                            (name table-type) table-name)
+                (log/errorf "Error upserting search index batch into %s table %s; skipping batch and continuing: %s"
+                            (name table-type) table-name (ex-message e))
                 nil)))))))
 
 (defn- batch-update!
@@ -411,8 +422,9 @@
     (->> [(active-table) (pending-table)]
          (keep (fn [table-name]
                  (when table-name
-                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                      ;; Race conditions with table being deleted, especially in tests.
+                   ;; The table can disappear after we read its name, especially during tests.
+                   {search-model (try (isolate-write!
+                                       #(t2/delete! table-name :model search-model :model_id [:in (set ids)]))
                                       (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
          (apply merge-with +)
          (into {}))))

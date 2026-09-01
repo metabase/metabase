@@ -293,9 +293,7 @@ are known to be the same."
   (or (when-let [join-alias (:join-alias opts)]
         (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
             ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
-            (do (log/warnf "Failed to find match for column %s with join alias %s, looking for match without join alias..."
-                           (pr-str ref-name)
-                           (pr-str join-alias))
+            (do (log/warn "Failed to find match for column with its join alias, looking for match without join alias...")
                 nil)))
       (plausible-matches-for-name-no-join-alias ref-name columns)))
 
@@ -336,7 +334,7 @@ are known to be the same."
       ;; In all other cases, this is an ambiguous match.
       #_(throw (ambiguous-match-error a-ref columns))
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
-         :clj  (log/warn (ambiguous-match-error a-ref columns)))))
+         :clj  (log/warn (ex-message (ambiguous-match-error a-ref columns))))))
 
 (defn- matching-col-with-fn [columns col-fn]
   (let [matching-columns (filter col-fn columns)]
@@ -409,10 +407,11 @@ are known to be the same."
          ;; try again ignoring join alias.
          (do
            (when join-alias
-             (#?(:cljs js/console.warn :clj log/warn)
-              "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-              {:ref     a-ref
-               :matches matches}))
+             #?(:cljs (js/console.warn
+                       "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+                       {:ref     a-ref
+                        :matches matches})
+                :clj  (log/warn "Multiple plausible matches with the same :join-alias - more disambiguation needed")))
            nil)))
      (disambiguate-matches-ignoring-join-alias a-ref columns))))
 
@@ -606,7 +605,7 @@ are known to be the same."
                                         (keep (fn [selected-col-or-ref]
                                                 (or (find-matching-column query stage-number selected-col-or-ref cols)
                                                     (do
-                                                      (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str selected-col-or-ref))
+                                                      (log/warn "[mark-selected-columns] failed to find match for a selected column or ref")
                                                       nil))))
                                         selected-columns-or-refs)]
        (when-not (clojure.core/= (count selected-columns-or-refs) (count matching-selected-cols))

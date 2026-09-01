@@ -48,8 +48,6 @@ cypress.env.json
 **/node_modules
 /docs/**/package.json
 /docs/**/yarn.lock
-/docs/embedding/sdk/api/
-/docs/embedding/eajs/snippets/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
@@ -62,6 +60,8 @@ cypress.env.json
 /e2e/coverage-manifest
 /e2e/coverage/analysis
 /e2e/coverage/spec-file-manifest.json
+/e2e/coverage/spec-test-manifest.json
+/e2e/coverage/openapi.json
 /e2e/support/.nyc_output
 /e2e/support/coverage
 /e2e/support/e2e
@@ -75,6 +75,9 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
+# Generated in-process embedder model bundles and build outputs.
+/modules/embedder/resources/metabase-embedder
+/modules/embedder/target
 /plugins
 /process.yml
 /reset-password-artifacts

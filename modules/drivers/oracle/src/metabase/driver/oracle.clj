@@ -1,5 +1,5 @@
 (ns metabase.driver.oracle
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv not-empty select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -11,12 +11,12 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
-   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
@@ -24,10 +24,11 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]])
+   [metabase.util.performance :refer [mapv not-empty select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
@@ -47,8 +48,30 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :oracle, :parent #{:sql-jdbc
-                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
+;; Turn off Oracle's "centralized configuration providers", which are enabled by default and which read a connect
+;; descriptor as instructions rather than as an address: `@config-https://host/path` makes the driver fetch that URL
+;; and obey the configuration it returns, and `@config-file:///path` makes it read that file.
+
+;; `(NONE)` is the driver's spelling for "no providers at all". `oracle.jdbc.driver.OracleDriver` reads this in its
+;; static initializer, so it has to be set before that class is initialized: the plugin manifest loads this namespace
+;; before the `register-jdbc-driver` step that triggers it.
+(System/setProperty "oracle.jdbc.configurationProviders" "(NONE)")
+
+(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/host-carrying-parameters :oracle
+  [_driver]
+  ["oracle.net.httpsProxyHost" "oracle.net.socksProxyHost" "oracle.jdbc.ociIamUrl"])
+
+(defmethod driver/non-host-parameters :oracle
+  [_driver]
+  ["oracle.jdbc.DRCPConnectionPurity" "oracle.jdbc.TcpNoDelay" "oracle.jdbc.azureDatabaseApplicationIdUri"
+   "oracle.jdbc.enableErrorUrl" "oracle.jdbc.localhostName" "oracle.jdbc.proxyClientName"
+   "oracle.jdbc.readOnlyInstanceAllowed" "oracle.jdbc.redirectUri" "oracle.jdbc.tokenLocation"
+   "oracle.net.DOWN_HOSTS_TIMEOUT" "oracle.net.httpsProxyPort" "oracle.net.ldap.security.authentication"
+   "oracle.net.ldap.security.credentials" "oracle.net.ldap.security.principal" "oracle.net.ldap.ssl.walletLocation"
+   "oracle.net.proxyRemoteDNS" "oracle.net.socksProxyPort" "oracle.net.ssl_server_cert_dn"
+   "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
@@ -59,6 +82,7 @@
                               :expression-literals              true
                               :expressions/date                 false
                               :identifiers-with-spaces          true
+                              :native-pivot-tables              true
                               :now                              true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
@@ -88,6 +112,83 @@
    [:ssl-truststore-path           {:optional true} [:maybe string?]]
    [:ssl-truststore-options        {:optional true} [:maybe string?]]
    [:ssl-truststore-password-value {:optional true} [:maybe string?]]])
+
+;;; Everything after the `@` in `jdbc:oracle:thin:@...` is a *connect descriptor*, which the driver reads as
+;;; instructions and not merely as an address: a scheme there sends it to fetch a URL, read a file, or ask an LDAP
+;;; directory where to connect, and the `(KEY=value)` syntax lets a value that escapes its own clause name a different
+;;; host entirely. Every detail below is concatenated into that descriptor, so each is allowlisted down to a plain
+;;; value first. An allowlist rather than a denylist of the dangerous forms: the punctuation that gives the descriptor
+;;; its structure -- `:` `/` `(` `)` `=` `?` `&` `@` `,` -- has no place in a hostname, a port, a SID, or a service
+;;; name, and leaving any of it through is what makes `config-https://attacker/x` or `x))(ADDRESS=(HOST=attacker)` a
+;;; connection Metabase would open.
+
+(def ^:private detail-patterns
+  "What each detail interpolated into the connect descriptor is allowed to look like, keyed by detail."
+  {;; a hostname or IPv4 literal, or an IPv6 literal in the brackets Oracle needs to tell it from the port separator
+   :host         #"[A-Za-z0-9][A-Za-z0-9._-]*|\[[0-9A-Fa-f:.]+\]"
+   ;; bounded rather than `\d+` so that the `parse-long` in [[validated-details]] is total -- no TCP port needs more
+   :port         #"\d{1,5}"
+   ;; `$` and `#` are legal in an Oracle identifier; a service name is commonly qualified, e.g.
+   ;; `db_high.adb.oraclecloud.com`
+   :sid          #"[A-Za-z0-9][A-Za-z0-9._$#-]*"
+   :service-name #"[A-Za-z0-9][A-Za-z0-9._$#-]*"})
+
+(def ^:private detail-display-names
+  "How the connection form labels each detail, so an error names the field the user can actually see."
+  {:host         (deferred-tru "host")
+   :port         (deferred-tru "port")
+   :sid          (deferred-tru "Oracle system ID (SID)")
+   :service-name (deferred-tru "Oracle service name")})
+
+(defn- invalid-detail-exception [detail-key]
+  (let [message (tru "Invalid {0}: it must be a plain value, not a URL or an Oracle connect descriptor."
+                     (detail-display-names detail-key))]
+    (ex-info message {:status-code 400, :message message})))
+
+(defn- validated-details
+  "`details` with every value that reaches the connect descriptor reduced to its canonical form: strings trimmed, the
+  port read as a number, and blanks dropped so the caller's defaults apply. Throws an `ex-info` when one of them is not
+  a plain value of the kind it claims to be. Build the descriptor from the map this returns, so that no value is
+  checked in one form and used in another."
+  [details]
+  (reduce-kv (fn [details detail-key pattern]
+               ;; surrounding whitespace is a copy-and-paste artifact rather than an attempt at anything, so it is
+               ;; trimmed away instead of being grounds for refusal
+               (if-let [value (some-> (detail-key details) str str/trim not-empty)]
+                 (do
+                   (when-not (re-matches pattern value)
+                     (throw (invalid-detail-exception detail-key)))
+                   (assoc details detail-key (cond-> value (= detail-key :port) parse-long)))
+                 ;; a blank detail names nowhere. Dropping it rather than passing `""` along lets the `:or` defaults in
+                 ;; [[sql-jdbc.conn/connection-details->spec]] apply, and keeps a blank port out of [[ssl-spec]]'s `%d`
+                 (dissoc details detail-key)))
+             details
+             detail-patterns))
+
+(defmethod driver/validate-db-details! :oracle
+  [_driver details]
+  (validated-details details)
+  ;; Oracle's connection form has never offered an `additional-options` field, and the one place the driver used to
+  ;; honor it -- the SSL branch -- turned it into `?name=value` parameters on the descriptor, which is a way around
+  ;; [[connection-property-keys]] below. Warned about here rather than in `connection-details->spec`, which runs for
+  ;; every connection pool and every host check; this runs when an admin saves or tests the database.
+  (when-not (str/blank? (:additional-options details))
+    (log/warn "Ignoring additional-options on an Oracle database: this driver does not support extra JDBC options.")))
+
+(def ^:private connection-property-keys
+  "The only detail keys that become JDBC connection properties. Everything else a details map carries -- the SSH tunnel
+  keys, the secret bookkeeping, the scheduling options, and anything an API caller invented -- belongs to Metabase, not
+  to the Oracle client."
+  [:user
+   :password
+   ;; written by handle-ssl-options, never by a user
+   :javax.net.ssl.keyStore
+   :javax.net.ssl.keyStorePassword
+   :javax.net.ssl.keyStoreType
+   :javax.net.ssl.trustStore
+   :javax.net.ssl.trustStorePassword
+   :javax.net.ssl.trustStoreType
+   :oracle.net.authentication_services])
 
 (defmethod driver/prettify-native-form :oracle
   [_ native-form]
@@ -134,7 +235,13 @@
   [_ column-type]
   (database-type->base-type column-type))
 
-(mu/defn- non-ssl-spec [_details :- ::details spec host port sid service-name]
+;;; both take the values [[validated-details]] returned, which is what makes it safe to concatenate them
+(mu/defn- non-ssl-spec :- :map
+  [spec         :- :map
+   host         :- :string
+   port         :- :int
+   sid          :- [:maybe :string]
+   service-name :- [:maybe :string]]
   (assoc spec :subname (str "@" host
                             ":" port
                             (when sid
@@ -142,13 +249,17 @@
                             (when service-name
                               (str "/" service-name)))))
 
-(mu/defn- ssl-spec [details :- ::details spec host port sid service-name]
-  (-> (assoc spec :subname (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
-                                   host
-                                   port
-                                   (if sid (str "(SID=" sid ")") "")
-                                   (if service-name (str "(SERVICE_NAME=" service-name ")") "")))
-      (sql-jdbc.common/handle-additional-options details)))
+(mu/defn- ssl-spec :- :map
+  [spec         :- :map
+   host         :- :string
+   port         :- :int
+   sid          :- [:maybe :string]
+   service-name :- [:maybe :string]]
+  (assoc spec :subname (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
+                               host
+                               port
+                               (if sid (str "(SID=" sid ")") "")
+                               (if service-name (str "(SERVICE_NAME=" service-name ")") ""))))
 
 (def ^:private ^:const prog-name-property
   "The connection property used by the Oracle JDBC Thin Driver to control the program name."
@@ -192,26 +303,30 @@
     details))
 
 (mu/defmethod sql-jdbc.conn/connection-details->spec :oracle
-  [_driver
-   {:keys [host port sid service-name]
-    :or   {host "localhost", port 1521}
-    :as   details} :- ::details]
-  (assert (or sid service-name))
-  (let [spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
-        finish-fn (partial (if (:ssl details) ssl-spec non-ssl-spec) details)
+  [_driver details :- ::details]
+  ;; validated here rather than only in [[driver/validate-db-details!]] so that no connection path -- sync, a query, a
+  ;; pool being rebuilt from details saved before this check existed -- can reach the driver without it
+  (let [{:keys [host port sid service-name]
+         :or   {host "localhost", port 1521}
+         :as   details} (validated-details details)
+        _         (assert (or sid service-name))
+        spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
+        finish-fn (if (:ssl details) ssl-spec non-ssl-spec)
         ;; the v$session.program value has a max length of 48 (see T4Connection), so we have to make it more terse than
         ;; the usual config/mb-version-and-process-identifier string and ensure we truncate to a length of 48
         prog-nm   (as-> (format "MB %s %s" (driver-api/mb-version-info :tag) driver-api/local-process-uuid) s
                     (subs s 0 (min 48 (count s))))]
-    (-> (merge spec details)
+    ;; an allowlist, not the whole details map: an extra key such as `oracle.net.tns_admin` or
+    ;; `oracle.net.httpsProxyHost` would otherwise reach the driver as a connection property and make it read a local
+    ;; file, or route its egress through a host of the caller's choosing
+    (-> (merge spec (select-keys (handle-ssl-options details) connection-property-keys))
         (assoc prog-name-property prog-nm)
-        handle-ssl-options
-        (dissoc :host :port :sid :service-name :ssl)
         (finish-fn host port sid service-name))))
 
 (mu/defmethod driver/can-connect? :oracle
   [driver
    details :- ::details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (= 1M (first (vals (first (jdbc/query jdbc-spec ["SELECT 1 FROM dual"])))))))
 
@@ -250,6 +365,11 @@
   [_driver _unit v]
   (let [t (h2x/->timestamp v)]
     (h2x/->integer [:floor [::h2x/extract :second t]])))
+
+;; Oracle's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
+(defmethod sql.pivot/pivot-grouping-hsql :oracle
+  [_driver exprs]
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
@@ -301,14 +421,14 @@
   (h2x/with-database-type-info [:raw "CURRENT_TIMESTAMP"] "timestamp with time zone"))
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (or (sql.qp.u/field-with-tz? arg)
                           (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))]
     (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
     (-> (if has-timezone?
           expr
-          [:from_tz expr (or source-timezone (driver-api/results-timezone-id))])
+          [:from_tz expr (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
@@ -328,13 +448,13 @@
     (driver.impl/truncate-alias s legacy-max-identifier-length)))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
-  [driver [_ arg start length]]
+  [driver [_ _opts arg start length]]
   (if length
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length)]
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start)]))
 
 (defmethod sql.qp/->honeysql [:oracle :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (transduce
    (map (partial sql.qp/->honeysql driver))
    (completing
@@ -347,7 +467,7 @@
    args))
 
 (defmethod sql.qp/->honeysql [:oracle :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- num-to-ds-interval [unit v]
@@ -552,7 +672,12 @@
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
   [driver _ honeysql-form query]
   (->> (update query :filter boolean->comparison)
-       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
+       ((get-method sql.qp/apply-top-level-clause [:sql :filter]) driver :filter honeysql-form)))
+
+(defmethod sql.qp/apply-top-level-clause [:oracle :filters]
+  [driver _ honeysql-form query]
+  (->> (update query :filters #(mapv boolean->comparison %))
+       ((get-method sql.qp/apply-top-level-clause [:sql :filters]) driver :filters honeysql-form)))
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
@@ -562,26 +687,26 @@
 (defmethod sql.qp/->honeysql [:oracle :and]
   [driver clause]
   (->> (mapv boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :or]
   [driver clause]
   (->> (mapv boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :not]
   [driver clause]
   (->> (mapv boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :case]
   [driver clause]
   (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ messages]
@@ -676,7 +801,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting result set fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -693,7 +818,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting result set fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";

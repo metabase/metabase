@@ -1,7 +1,6 @@
 name: Customer Locations (Map)
 entity_id: CI61cHgBAKPBEDTxhK8X3
 created_at: '2026-04-02T02:59:02.778668Z'
-last_used_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: map
 collection_id: cOlViZsEtTiNgS0ExAmP1
@@ -451,7 +450,7 @@ visualization_settings:
   map.pin_type: markers
   map.type: pin
   map.zoom: 4
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: CI61cHgBAKPBEDTxhK8X3
   label: customer_locations__map_

@@ -51,17 +51,12 @@
   (let [options {:scope      :sub
                  :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
                  :size-limit 1}]
-    (log/debugf "Searching for LDAP user %s with user search base %s and options %s"
-                username
-                user-base
-                (u/pprint-to-str options))
+    (log/debugf "Searching for LDAP user with user search base %s" user-base)
     (let [search-result (ldap/search
                          ldap-connection
                          user-base
-                         {:scope      :sub
-                          :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
-                          :size-limit 1})]
-      (log/debugf "LDAP search results: %s" (u/pprint-to-str search-result))
+                         options)]
+      (log/debugf "LDAP search returned %d result(s)" (count search-result))
       (some-> (first search-result) u/lower-case-map-keys))))
 
 (mu/defn- process-group-membership-filter :- ms/NonBlankString

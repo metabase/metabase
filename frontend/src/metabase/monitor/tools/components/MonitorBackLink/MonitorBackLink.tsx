@@ -1,5 +1,5 @@
+import { Link } from "metabase/common/components/Link";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { Link } from "metabase/router";
 import { Flex, Icon } from "metabase/ui";
 
 type MonitorBackLinkProps = {

@@ -84,8 +84,8 @@
                    (or (some-> e
                                ex-data
                                (select-keys [:error :value])
-                               u/pprint-to-str)
-                       e))
+                               pr-str)
+                       (ex-message e)))
        (throw e)))))
 
 (defn load-dir

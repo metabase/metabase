@@ -43,6 +43,7 @@
 (defmethod ->QueryParameterValue Short                [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Byte                 [v] (param "INT64" v))
 (defmethod ->QueryParameterValue clojure.lang.BigInt  [v] (param "INT64" v))
+(defmethod ->QueryParameterValue java.math.BigInteger [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Float                [v] (param "FLOAT64" v))
 (defmethod ->QueryParameterValue Double               [v] (param "FLOAT64" v))
 
@@ -74,7 +75,7 @@
 
 (defn- query-parameter ^QueryParameterValue [value]
   (let [param (->QueryParameterValue value)]
-    (log/tracef "Set parameter ^%s %s -> %s" (some-> value class .getCanonicalName) (pr-str value) (pr-str param))
+    (log/tracef "Set parameter of class %s" (some-> value class .getCanonicalName))
     param))
 
 (defn set-parameters!

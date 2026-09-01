@@ -52,7 +52,13 @@
   (if (empty? tables)
     #{}
     (let [input-table-id  (keyword (name input-field) "table_id")
-          output-table-id (keyword (name output-field) "table_id")]
+          output-table-id (keyword (name output-field) "table_id")
+          not-in-tables   (if (map? tables)
+                            [:not [:exists (-> tables
+                                               (assoc :select [1])
+                                               (update :where (fn [where]
+                                                                [:and where [:= :id output-table-id]])))]]
+                            [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
             (t2/reducible-query {:select [[output-table-id :table_id]]
                                  :from   [[(t2/table-name :model/Dimension) :dim]]
@@ -63,7 +69,7 @@
                                  :where  [:and
                                           [:= :dim.type "external"]
                                           [:in input-table-id tables]
-                                          [:not [:in output-table-id tables]]]})))))
+                                          not-in-tables]})))))
 
 (defn- upstream-table-ids
   "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
@@ -80,7 +86,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
-  {:select [:id] :from [(t2/table-name :model/Table)] :where where})
+  ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.

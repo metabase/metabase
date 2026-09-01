@@ -118,11 +118,13 @@ describe("scenarios > data apps > sandbox & isolation", () => {
 
         cy.findByTestId("probe-innerhtml").should("have.text", "stripped");
 
-        // XHR obeys the same allowlist as fetch.
+        // XHR is hard-blocked entirely — data apps are fetch-only. It can't opt out
+        // of following a redirect back to the instance, so it's never allowlisted
+        // like fetch: both blocked and allowed hosts are refused.
         cy.findByTestId("blocked-xhr-result").should("contain", "blocked");
         cy.findByTestId("allowed-xhr-result", { timeout: 30000 }).should(
-          "have.text",
-          "ok: 200",
+          "contain",
+          "blocked",
         );
       });
     });
@@ -188,7 +190,9 @@ describe("scenarios > data apps > sandbox & isolation", () => {
         expect(csp).to.contain("frame-ancestors 'self'");
         expect(csp).to.contain("default-src 'none'");
         expect(csp).to.contain("form-action 'none'");
-        expect(csp).to.contain("'unsafe-eval'");
+        // The data-app document deliberately does NOT grant 'unsafe-eval' — it's
+        // confined to the sandbox-host realm doc (see the BE sandbox-host-endpoint-test).
+        expect(csp).to.not.contain("'unsafe-eval'");
         expect(String(res.headers["x-frame-options"] ?? "")).to.match(
           /sameorigin/i,
         );

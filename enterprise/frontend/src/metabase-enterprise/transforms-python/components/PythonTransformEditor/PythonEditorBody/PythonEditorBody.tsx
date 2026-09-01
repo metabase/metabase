@@ -5,8 +5,7 @@ import { t } from "ttag";
 
 import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -16,7 +15,7 @@ import { PythonEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { createPythonImportTokenLocator } from "./utils";
 
-type PythonEditorBodyProps = {
+export type PythonEditorBodyProps = {
   disabled?: boolean;
   source: string;
   proposedSource?: string;
@@ -57,7 +56,7 @@ export function PythonEditorBody({
   const [isResizing, setIsResizing] = useState(false);
   const showResizeHandle = isEditMode && withDebugger;
   const editorHeight = useInitialEditorHeight(isEditMode, showResizeHandle);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const navigateToCommonLibrary = useCallback(
     (e: MouseEvent) => {
@@ -68,10 +67,10 @@ export function PythonEditorBody({
       if (openInNewTab) {
         window.open(href, "_blank", "noopener,noreferrer");
       } else {
-        dispatch(push(href));
+        navigate(href);
       }
     },
-    [dispatch],
+    [navigate],
   );
 
   const clickableTokensExtension = useMemo(

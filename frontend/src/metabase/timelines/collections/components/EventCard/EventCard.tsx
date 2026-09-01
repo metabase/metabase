@@ -5,7 +5,7 @@ import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {

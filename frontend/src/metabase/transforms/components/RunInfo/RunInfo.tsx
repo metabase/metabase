@@ -1,10 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import dayjs from "dayjs";
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { dayjs } from "metabase/dayjs";
 import {
   ActionIcon,
   Box,

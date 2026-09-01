@@ -7,6 +7,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -39,7 +41,7 @@
    _query-params
    {:keys [name description definition], :as body} :- [:map
                                                        [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
+                                                       [:definition  ::segments.schema/definition]
                                                        [:description {:optional true} [:maybe :string]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (let [table-id (definition-table-id definition)]
@@ -75,11 +77,15 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (as-> (t2/select :model/Segment
-                   :archived false
-                   {:order-by [[:%lower.name :asc]]}) segments
-    (filter mi/can-read? segments)
-    (t2/hydrate segments :creator :definition_description)))
+  (let [segments  (t2/select :model/Segment
+                             :archived false
+                             {:order-by [[:%lower.name :asc]]})
+        table-ids (into #{} (keep :table_id) segments)]
+    (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
+                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                    :table-ids table-ids})
+    (-> (filterv mi/can-read? segments)
+        (t2/hydrate :creator :definition_description))))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
@@ -116,7 +122,7 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe :map]]
+            [:definition              {:optional true} [:maybe ::segments.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:caveats                 {:optional true} [:maybe :string]]

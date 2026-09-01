@@ -74,6 +74,38 @@
     (is (=? {:status :not-found}
             (mcp.resources/read-resource "test://nope" #{::scope/unrestricted} {})))))
 
+(deftest redact-ui-credential-test
+  (testing "the top-level UI credential is removed without walking or removing other metadata"
+    (is (= {:_meta {:ui {:resourceUri "ui://metabase/example.html"}}}
+           (mcp.resources/redact-ui-credential
+            {:_meta {:ui                   {:resourceUri "ui://metabase/example.html"}
+                     :com.metabase/mcp-apps {:credential "secret"}}}))))
+  (testing "a result without private metadata is unchanged"
+    (is (= {:content [{:type "text", :text "large result"}]}
+           (mcp.resources/redact-ui-credential
+            {:content [{:type "text", :text "large result"}]})))))
+
+(deftest register-ui-tool-validates-visibility-test
+  (testing "the multi-resource registration path rejects misspelled visibility values"
+    (is (thrown?
+         Exception
+         (#'mcp.resources/register-ui-tool-for-resources!
+          [:visualize-query :render-drill-through]
+          {:name        "invalid_visibility_test"
+           :description "Never registered"
+           :inputSchema [:map]
+           :visibility  ["apps"]
+           :response-fn (constantly {})})))))
+
+(deftest refresh-ui-credential-requires-authenticated-session-test
+  (testing "missing authentication context is returned as a tool error"
+    (is (= {:content [{:type "text"
+                       :text "MCP UI credential refresh requires an authenticated MCP session."}]
+            :isError true}
+           (#'mcp.resources/with-ui-credential
+            {:content [{:type "text", :text "MCP UI credential refreshed."}]}
+            nil)))))
+
 (deftest builtin-construct-query-resource-test
   (testing "the construct-query reference is registered as a public markdown resource"
     (is (=? {:uri      "metabase://docs/construct-query.md"
@@ -84,20 +116,46 @@
 
 (deftest builtin-ui-resource-prefers-border-test
   (testing "the visualize query UI resource explicitly asks the host to provide a border"
+    (let [uri "ui://metabase/visualize-query.html"]
+      (mcp.resources/with-fallback-template
+        (is (=? {:status   :ok
+                 :contents [{:uri      uri
+                             :mimeType "text/html;profile=mcp-app"
+                             :_meta    {:ui {:prefersBorder true}}}]}
+                (mcp.resources/read-resource uri
+                                             #{"agent:viz:mcp-ui:query"}
+                                             {})))))
+    (is (= :scope-denied
+           (mcp.resources/check-resource-access
+            "ui://metabase/visualize-query.deadbeef.html"
+            #{"agent:search"})))))
+
+(deftest builtin-ui-resource-supports-compatible-uris-test
+  (testing "legacy and future build-hashed URIs resolve without being advertised"
+    (doseq [uri ["ui://metabase/visualize-query-v2.html"
+                 "ui://metabase/visualize-query.deadbeef.html"]]
+      (mcp.resources/with-fallback-template
+        (is (=? {:status   :ok
+                 :contents [{:uri uri}]}
+                (mcp.resources/read-resource uri
+                                             #{"agent:viz:mcp-ui:query"}
+                                             {}))))))
+  (testing "canonical and compatible URIs produce byte-distinct HTML"
     (mcp.resources/with-fallback-template
-      (is (=? {:status   :ok
-               :contents [{:uri      "ui://metabase/visualize-query.html"
-                           :mimeType "text/html;profile=mcp-app"
-                           :_meta    {:ui {:prefersBorder true}}}]}
-              (mcp.resources/read-resource "ui://metabase/visualize-query.html"
-                                           #{"agent:viz:mcp-ui:query"}
-                                           {}))))))
+      (let [read-html (fn [uri]
+                        (-> (mcp.resources/read-resource uri
+                                                         #{"agent:viz:mcp-ui:query"}
+                                                         {})
+                            :contents first :text))]
+        (is (not= (read-html "ui://metabase/visualize-query.html")
+                  (read-html "ui://metabase/visualize-query.deadbeef.html")))))))
 
 (deftest drill-through-ui-resource-is-distinct-from-visualize-query-test
   (testing "render_drill_through has its own UI resource URI (ChatGPT dedupes the iframe by `_meta.ui.resourceUri`; sharing the URI prevents a fresh widget from mounting on drill)"
     (let [uris (set (map :uri (:resources (mcp.resources/list-resources #{"agent:viz:*"}))))]
       (is (contains? uris "ui://metabase/visualize-query.html"))
-      (is (contains? uris "ui://metabase/render-drill-through.html"))))
+      (is (contains? uris "ui://metabase/render-drill-through.html"))
+      (is (not (contains? uris "ui://metabase/visualize-query.deadbeef.html")))))
   (testing "the two UI resources return byte-distinct HTML (ChatGPT's asset CDN appears to dedupe by body hash, so identical bodies cause the second asset to silently 404)"
     (mcp.resources/with-fallback-template
       (let [viz-html   (-> (mcp.resources/read-resource "ui://metabase/visualize-query.html"
@@ -163,7 +221,7 @@
           html     (stencil/render-file
                     "frontend_client/mcp_apps_template.html"
                     {:instanceUrl    "\"https://metabase.example.com/sub/path\""
-                     :instanceUrlRaw site-url
-                     :sessionToken   nil
-                     :mcpSessionId   nil})]
-      (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\"")))))
+                     :instanceUrlRaw site-url})]
+      (is (str/includes? html "<base href=\"https://metabase.example.com/sub/path/\""))
+      (is (not (str/includes? html "uiCredential")))
+      (is (not (str/includes? html "mcpSessionId"))))))

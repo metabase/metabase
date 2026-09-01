@@ -2,14 +2,12 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { useSetting } from "metabase/common/hooks";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
-import { getEngines } from "metabase/databases/selectors";
 import {
   getEngineLogo,
   getEngineOptions,
 } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Center,
@@ -49,7 +47,7 @@ export const DatabaseEngineList = ({
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const options = getEngineOptions(engines);
 
   const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);

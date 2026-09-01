@@ -1,13 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import type { State } from "metabase/redux/store";
 import {
   getShallowDatabases as getDatabases,
   getShallowFields as getFields,
   getShallowSegments as getSegments,
   getShallowTables as getTables,
-} from "metabase/selectors/metadata";
+} from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
 import type {
@@ -18,20 +18,20 @@ import type {
 } from "./types";
 import { idsToObjectMap } from "./utils";
 
-export interface ReferenceRouteParams {
+// A `type`, not an `interface`, so `useParams<ReferenceRouteParams>()` accepts
+// it: the hook's constraint needs an implicit index signature.
+export type ReferenceRouteParams = {
   segmentId?: string;
   databaseId?: string;
   tableId?: string;
   fieldId?: string;
-}
+};
 
 export interface ReferenceRouteProps {
   params: ReferenceRouteParams;
 }
 
 interface ReferenceSliceState {
-  isLoading: boolean;
-  error: unknown;
   isEditing: boolean;
   isFormulaExpanded: boolean;
 }
@@ -45,22 +45,18 @@ export type StateWithReference = State & {
   revisions?: Record<string, Record<string | number, unknown>>;
 };
 
-export const getUser = (state: StateWithReference) => state.currentUser;
+export { getUser } from "metabase/current-user";
 
-export const getSegmentId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.segmentId ?? "");
+export const getSegmentId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.segmentId ?? "");
 export const getSegment = createSelector(
   [getSegmentId, getSegments],
   (segmentId, segments): StubbedSegment =>
     segments?.[segmentId] || { id: segmentId },
 );
 
-export const getDatabaseId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.databaseId ?? "");
+export const getDatabaseId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.databaseId ?? "");
 
 export const getDatabase = createSelector(
   [getDatabaseId, getDatabases],
@@ -68,10 +64,8 @@ export const getDatabase = createSelector(
     databases?.[databaseId] || { id: databaseId },
 );
 
-export const getTableId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.tableId ?? "");
+export const getTableId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.tableId ?? "");
 // export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
 export const getTablesByDatabase = createSelector(
   [getTables, getDatabase],
@@ -95,10 +89,8 @@ export const getTable = createSelector(
         : { id: 0 },
 );
 
-export const getFieldId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.fieldId ?? "");
+export const getFieldId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.fieldId ?? "");
 export const getFieldsByTable = createSelector(
   [getTable, getFields],
   (table, fields) => (table.fields ? idsToObjectMap(table.fields, fields) : {}),
@@ -116,10 +108,12 @@ export const getFieldBySegment = createSelector(
   (fieldId, fields): StubbedField => fields[fieldId] || { id: fieldId },
 );
 
-const getQuestions = (state: StateWithReference) =>
+const getQuestions = (state: State) =>
   getIn(state, ["entities", "questions"]) || {};
 
-const getRevisions = (state: StateWithReference) => state.revisions;
+const getRevisions = (state: State) =>
+  // Unjustified type cast. FIXME
+  (state as StateWithReference).revisions;
 
 export const getSegmentRevisions = createSelector(
   [getSegmentId, getRevisions],
@@ -136,14 +130,6 @@ export const getTableQuestions = createSelector(
     );
   },
 );
-
-export const getLoading = (state: State) =>
-  // Unjustified type cast. FIXME
-  (state as StateWithReference).reference.isLoading;
-
-export const getError = (state: State) =>
-  // Unjustified type cast. FIXME
-  (state as StateWithReference).reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
@@ -162,5 +148,6 @@ export const getIsEditing = (state: State) =>
   // Unjustified type cast. FIXME
   (state as StateWithReference).reference.isEditing;
 
-export const getIsFormulaExpanded = (state: StateWithReference) =>
-  state.reference.isFormulaExpanded;
+export const getIsFormulaExpanded = (state: State) =>
+  // Unjustified type cast. FIXME
+  (state as StateWithReference).reference.isFormulaExpanded;

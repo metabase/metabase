@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux/hooks";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 
 export const LockedTransformsBanner = () => {

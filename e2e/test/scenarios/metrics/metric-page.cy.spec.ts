@@ -5,9 +5,9 @@ import {
   TRUSTED_ORDERS_METRIC,
   createLibraryWithItems,
 } from "e2e/support/test-library-data";
-import type { Card } from "metabase-types/api";
+import type { Card, ListMetricDimensionsResponse } from "metabase-types/api";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Orders count",
@@ -20,23 +20,60 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar" as const,
 };
 
+// Renders as a time series through its curated default dimension, which
+// H.setMetricDefaultDimension sets to Created At; metric queries carry no breakout.
 const ORDERS_TIMESERIES_METRIC = {
   name: "Orders over time",
-  description: "Count of orders broken down by month",
+  description: "Count of orders over time",
   type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-    ],
   },
   display: "line" as const,
 };
+
+const OVERVIEW_DIMENSIONS_TO_ADD = [
+  ["Product", "Category"],
+  ["Product", "Price"],
+  ["Product", "Rating"],
+  ["Product", "Title"],
+  ["Product", "Vendor"],
+  ["User", "City"],
+  ["User", "Source"],
+  ["User", "State"],
+] as const;
+
+function addOverviewDimensions(metricId: number) {
+  return cy
+    .request("GET", `/api/metric/${metricId}`)
+    .then(() =>
+      cy.request<ListMetricDimensionsResponse>(
+        "GET",
+        `/api/metric/${metricId}/dimension?with-addable=true`,
+      ),
+    )
+    .then(({ body }) => {
+      const dimensions = OVERVIEW_DIMENSIONS_TO_ADD.flatMap(
+        ([groupName, dimensionName]) => {
+          const group = body.addable.find(
+            (candidate) => candidate.group.display_name === groupName,
+          );
+          const dimension = group?.dimensions.find(
+            (candidate) => candidate.display_name === dimensionName,
+          );
+
+          expect(dimension, `${groupName} - ${dimensionName}`).to.exist;
+          return dimension ? [dimension] : [];
+        },
+      );
+
+      expect(dimensions).to.have.length(OVERVIEW_DIMENSIONS_TO_ADD.length);
+      cy.request("POST", `/api/metric/${metricId}/dimension/add`, {
+        dimensions,
+      });
+    });
+}
 
 describe("scenarios > metrics > metric page", () => {
   beforeEach(() => {
@@ -60,6 +97,18 @@ describe("scenarios > metrics > metric page", () => {
 
     cy.log("about page with description sidebar");
     H.MetricPage.aboutPage().should("be.visible");
+
+    cy.log("a metric without a default dimension previews a scalar");
+    H.MetricPage.aboutPage().within(() => {
+      cy.findByTestId("visualization-root")
+        .should("be.visible")
+        .and("have.attr", "data-viz-ui-name", "Number");
+      cy.findByTestId("scalar-value").should("have.text", "18,760");
+      cy.findByRole("button", { name: /^Select dimension/ }).should(
+        "not.exist",
+      );
+    });
+
     H.MetricPage.aboutPageDescriptionSidebar().within(() => {
       cy.findByText("Total number of orders").should("be.visible");
       cy.findByText("Source").should("be.visible");
@@ -159,6 +208,7 @@ describe("scenarios > metrics > metric page", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       cy.wait("@createAlert").then(({ response }) => {
@@ -174,11 +224,22 @@ describe("scenarios > metrics > metric page", () => {
 
   it("should display timeseries metric and navigate between tabs", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
+      // Set default dimension so the metric can be previewed as a timeseries chart.
+      H.setMetricDefaultDimension(metric.id, "Created At");
       H.visitMetric(metric.id);
     });
 
     H.MetricPage.aboutPage().should("be.visible");
-    H.echartsContainer().should("be.visible");
+    cy.log("the curated default time dimension charts the metric");
+    H.MetricPage.aboutPage().within(() => {
+      cy.findByTestId("visualization-root")
+        .should("be.visible")
+        .and("have.attr", "data-viz-ui-name", "Line");
+      H.echartsContainer().should("be.visible");
+      cy.findByRole("button", { name: /^Select dimension: Created At/ }).should(
+        "be.visible",
+      );
+    });
 
     H.MetricPage.aboutTab().should("be.visible");
     H.MetricPage.overviewTab().should("be.visible");
@@ -196,8 +257,9 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.aboutPage().should("be.visible");
   });
 
-  it("should render dimension charts on the overview tab and show more", () => {
+  it("should render curated dimension charts in order and load more", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
+      addOverviewDimensions(metric.id);
       H.visitMetric(metric.id);
     });
 
@@ -205,25 +267,42 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.overviewPage().should("be.visible");
 
     H.MetricPage.overviewPage().within(() => {
-      cy.findByText("By Created At").should("exist");
-      cy.findByText("By State").should("exist");
-      cy.findByText("By Category").should("exist");
-      cy.findByText("By City").should("exist");
-      cy.findAllByText(/^By /).should("have.length", 4);
+      cy.findAllByText(/^By /).then(($cards) => {
+        expect($cards.map((_, card) => card.textContent).get()).to.deep.equal([
+          "By Subtotal",
+          "By Tax",
+          "By Total",
+          "By Discount",
+        ]);
+      });
+    });
+
+    H.MetricPage.overviewPage().realMouseWheel({ deltaY: 100 });
+
+    H.MetricPage.overviewPage().within(() => {
+      cy.findAllByText(/^By /).should("have.length", 10);
+
+      cy.findAllByText(/^By /).then(($cards) => {
+        expect($cards.map((_, card) => card.textContent).get()).to.deep.equal([
+          "By Subtotal",
+          "By Tax",
+          "By Total",
+          "By Discount",
+          "By Created At",
+          "By Quantity",
+          "By Category",
+          "By Price",
+          "By Rating",
+          "By Title",
+        ]);
+      });
 
       cy.findByText("Show more").scrollIntoView().click();
+      cy.findAllByText(/^By /).should("have.length", 14);
     });
 
     H.expectUnstructuredSnowplowEvent({
       event: "metric_page_show_more_clicked",
-    });
-
-    H.MetricPage.overviewPage().within(() => {
-      cy.findByText("By Name").should("exist");
-      cy.findByText("By Source").should("exist");
-      cy.findByText("By Title").should("exist");
-      cy.findByText("By Vendor").should("exist");
-      cy.findAllByText(/^By /).should("have.length", 8);
     });
   });
 

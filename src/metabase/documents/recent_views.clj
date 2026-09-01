@@ -14,7 +14,7 @@
      :name (:collection_name model-object)
      :authority_level (some-> (:collection_authority_level model-object) name)}
     (select-keys
-     (root/root-collection-with-ui-details {})
+     (root/root-collection-with-ui-details nil)
      [:id :name :authority_level])))
 
 (defn- parent-collection-valid?

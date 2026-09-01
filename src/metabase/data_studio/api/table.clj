@@ -55,7 +55,13 @@
   (if (empty? tables)
     #{}
     (let [input-table-id  (keyword (name input-field) "table_id")
-          output-table-id (keyword (name output-field) "table_id")]
+          output-table-id (keyword (name output-field) "table_id")
+          not-in-tables   (if (map? tables)
+                            [:not [:exists (-> tables
+                                               (assoc :select [1])
+                                               (update :where (fn [where]
+                                                                [:and where [:= :id output-table-id]])))]]
+                            [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
             (t2/reducible-query {:select [[output-table-id :table_id]]
                                  :from   [[(t2/table-name :model/Dimension) :dim]]
@@ -66,7 +72,7 @@
                                  :where  [:and
                                           [:= :dim.type "external"]
                                           [:in input-table-id tables]
-                                          [:not [:in output-table-id tables]]]})))))
+                                          not-in-tables]})))))
 
 (defn- upstream-table-ids
   "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
@@ -83,6 +89,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
+  ^:allow-subquery
   {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
@@ -159,8 +166,8 @@
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
@@ -246,7 +253,7 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
         nil
         (catch Throwable e
-          (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
+          (log/warn (u/format-color :red "Cannot connect to database %s in order to sync tables" (:id database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
     (doseq [table tables]
       (sync-schema-async! table api/*current-user-id*))))
@@ -271,9 +278,10 @@
    body :- ::table-selectors]
   (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (let [field-ids-to-delete-q {:select [:id]
-                                 :from   [(t2/table-name :model/Field)]
-                                 :where  [:in :table_id (map :id tables)]}]
+    (let [field-ids-to-delete-q ^:allow-subquery
+          {:select [:id]
+           :from   [(t2/table-name :model/Field)]
+           :where  [:in :table_id (map :id tables)]}]
       (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
     nil))
 

@@ -2,11 +2,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
-import { useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Button, Modal, Stack, rem } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
 

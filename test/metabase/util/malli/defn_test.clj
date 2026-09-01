@@ -176,8 +176,9 @@
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
                     (clojure.core/let
-                     [&f (clojure.core/fn f [] "foo")]
+                     [&f (clojure.core/fn f_AMPERSAND_ [] "foo")]
                       (clojure.core/fn
+                        mufn
                         ([]
                          (try
                            (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))

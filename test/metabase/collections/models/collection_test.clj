@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.collections.models.collection-test]}}}}}}
   (:refer-clojure :exclude [descendants])
   (:require
+   [clojure.core.cache :as cache]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -9,8 +10,10 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -53,6 +56,21 @@
   (testing "test that we can get the name of a user's personal collection as :user"
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
+
+(deftest with-temp-user-evicts-personal-collection-id-cache-test
+  (testing "a temporary User cannot leave its deleted Personal Collection id in the production cache"
+    (let [user-id       (atom nil)
+          collection-id (atom nil)]
+      (mt/with-temp [:model/User {id :id}]
+        (reset! user-id id)
+        (reset! collection-id (@#'collection/user->personal-collection-id id))
+        (is (t2/exists? :model/Collection :id @collection-id)))
+      (is (not (t2/exists? :model/Collection :id @collection-id))
+          "with-temp removed the Personal Collection")
+      (is (not (cache/has? @(-> @#'collection/user->personal-collection-id
+                                meta :clojure.core.memoize/cache)
+                           [(mdb/unique-identifier) @user-id]))
+          "with-temp evicted the stale cache entry"))))
 
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
@@ -346,6 +364,14 @@
              Exception
              (collection/children-location collection)))))))
 
+(defn- visible-collection-ids
+  "Every Collection ID the current user can see under `visibility-config`."
+  ([] (visible-collection-ids {}))
+  ([visibility-config]
+   (cond-> (t2/select-pks-set :model/Collection
+                              {:where (collection/visible-collection-filter-clause :id visibility-config)})
+     (collection/should-display-root-collection? visibility-config) (conj "root"))))
+
 (deftest visible-collection-ids-test
   (with-collection-hierarchy! [{:keys [a b c d e f g]}]
     (let [->names (fn [id-set]
@@ -353,25 +379,25 @@
                           others (when-let [non-root-ids (seq (disj id-set "root"))]
                                    (t2/select-fn-set :name :model/Collection :id [:in non-root-ids]))]
                       (set/union root others)))
-          visible-collection-ids (fn []
-                                   (->names
-                                    (set/intersection (collection/visible-collection-ids {})
-                                                      (set (conj (map :id [a b c d e f g]) "root")))))]
+          visible-names (fn []
+                          (->names
+                           (set/intersection (set (visible-collection-ids))
+                                             (set (conj (map :id [a b c d e f g]) "root")))))]
       (testing "All permissions => all the collections!"
         (with-current-user-perms-for-collections! [a b c d e f g]
-          (is (= #{"A" "B" "C" "D" "E" "F" "G"} (visible-collection-ids)))))
+          (is (= #{"A" "B" "C" "D" "E" "F" "G"} (visible-names)))))
       (testing "Some permissions => some of the collections!"
         (with-current-user-perms-for-collections! [a b c]
           (is (= #{"A" "B" "C"}
-                 (visible-collection-ids)))))
+                 (visible-names)))))
       (testing "Some other permissions => some other collections"
         (with-current-user-perms-for-collections! [d e f]
           (is (= #{"D" "E" "F"}
-                 (visible-collection-ids)))))
+                 (visible-names)))))
       (testing "If the current user is an admin, it should return *all* collections"
         (mt/with-test-user :crowberto
           (is (= #{"A" "B" "C" "D" "E" "F" "G" "root"}
-                 (visible-collection-ids))))))))
+                 (visible-names))))))))
 
 (deftest permissions-set->visible-collection-ids-test-with-config
   (mt/with-temp [:model/Collection {c1 :id} {:archived false :archive_operation_id nil}
@@ -381,7 +407,7 @@
     (letfn [(visible-collection-ids [config]
               (into #{}
                     (keep {c1 'c1, c2 'c2, c3 'c3, c4 'c4, (collection/trash-collection-id) 'trash, "root" 'root})
-                    (collection/visible-collection-ids config)))]
+                    (#'visible-collection-ids config)))]
       (with-current-user-perms-for-collections! [c1 c2 c3 c4]
         (testing "Archived"
           (testing "Default"
@@ -417,11 +443,8 @@
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
 
-(def ^:dynamic ^:private *visible-collection-ids* #{})
-
 (deftest effective-location-path-test
-  (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)
-                              collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
+  (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)]
     (testing "valid input"
       (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
                                              ["/10/20/30/" #{10 30}]    "/10/30/"
@@ -429,7 +452,8 @@
                                              ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
         (testing (format "path '%s' with visible ids '%s'" path (pr-str visible-ids))
           (is (= expected
-                 (binding [*visible-collection-ids* visible-ids]
+                 (binding [api/*current-user-permissions-set*
+                           (delay (into #{} (map perms/collection-read-path) visible-ids))]
                    (collection/effective-location-path {:location path})))))))
     (testing "invalid input"
       (doseq [path [nil [10 20]]]
@@ -1281,7 +1305,12 @@
        :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
                                                       :personal_owner_id nil}
        :model/Collection {top-level-coll :id}        {:location "/"}
-       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+       :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}
+       ;; a grandchild of a Personal Collection: only the *first* ID in the location is the personal one
+       :model/Collection {deep-personal-coll :id}    {:location (format "/%d/%d/" personal-coll nested-personal-coll)}
+       ;; Personal Collections only ever live in the Root Collection, so a personal ID appearing deeper in a
+       ;; location does not make that Collection personal
+       :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
       (let [check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
                                   (-> (t2/select-one :model/Collection id-or-ids)
@@ -1293,7 +1322,11 @@
         (testing "simple hydration and batched hydration should return correctly"
           (is (= [true true false false]
                  (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
-                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))
+          (testing "only the first ID of the location decides"
+            (is (= [true false]
+                   (map check-is-personal [deep-personal-coll sneaky-coll])
+                   (check-is-personal [deep-personal-coll sneaky-coll])))))
         (testing "root collection shouldn't be hydrated"
           (is (= nil (t2/hydrate nil :is_personal)))
           (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
@@ -3002,6 +3035,49 @@
           (is (contains? descendants-without-skip ["Collection" (:id archived-child)]))
           (is (contains? descendants-without-skip ["Card" (:id archived-card)]))
           (is (contains? descendants-without-skip ["Dashboard" (:id archived-dash)])))))))
+
+(deftest serdes-descendants-excludes-exploration-documents-test
+  (testing "Documents tied to an exploration are not included in Collection descendants (UXW-4091)"
+    (mt/with-temp [:model/Collection  coll      {:name "Coll"}
+                   :model/User        user      {:email "explo@example.com"}
+                   :model/Exploration explo     {:name "Explo" :creator_id (:id user)}
+                   :model/Document    plain-doc {:name          "Plain Doc"
+                                                 :creator_id    (:id user)
+                                                 :collection_id (:id coll)}
+                   :model/Document    explo-doc {:name           "Exploration Doc"
+                                                 :creator_id     (:id user)
+                                                 :collection_id  (:id coll)
+                                                 :exploration_id (:id explo)}]
+      (when config/ee-available?
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Document" (:id plain-doc)])
+              "plain documents should be included")
+          (is (not (contains? descendants ["Document" (:id explo-doc)]))
+              "exploration documents should be excluded"))))))
+
+(deftest serdes-descendants-excludes-exploration-summary-cards-test
+  (testing "Cards belonging to an exploration Summary document are not Collection descendants"
+    (mt/with-temp [:model/Collection  coll       {:name "Coll"}
+                   :model/User        user       {:email "explo-card@example.com"}
+                   :model/Exploration explo      {:name "Explo" :creator_id (:id user)}
+                   :model/Document    plain-doc  {:name "Plain Doc" :creator_id (:id user)
+                                                  :collection_id (:id coll)}
+                   :model/Document    explo-doc  {:name           "Exploration Doc"
+                                                  :creator_id     (:id user)
+                                                  :collection_id  (:id coll)
+                                                  :exploration_id (:id explo)}
+                   :model/Card        plain-card {:collection_id (:id coll)}
+                   :model/Card        doc-card   {:collection_id (:id coll) :document_id (:id plain-doc)}
+                   :model/Card        explo-card {:collection_id (:id coll) :document_id (:id explo-doc)}]
+      (when config/ee-available?
+        (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived true})]
+          (is (contains? descendants ["Card" (:id plain-card)])
+              "ordinary cards are included")
+          (is (contains? descendants ["Card" (:id doc-card)])
+              "a card in an ordinary document is included, since that document is exported too")
+          (is (not (contains? descendants ["Card" (:id explo-card)]))
+              "a card in an exploration Summary is excluded — otherwise it is exported while the
+               Document it depends on is not, leaving a dangling reference"))))))
 
 (deftest serdes-extract-query-skip-archived-test
   (testing "Collection extract-query with skip-archived: true filters archived collections"

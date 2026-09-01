@@ -18,7 +18,7 @@ describe("useMcpFeedback", () => {
           mcpSessionId: "mcp-session-id",
           prompt: "visualize customers",
           query: "encoded-query",
-          sessionToken: "session-token",
+          uiCredential: "ui-credential",
         }),
       {},
     );

@@ -56,6 +56,16 @@ Permission configuration for transform depends on your plan.
   - To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
   - To **execute** transforms on a database, people need to be either Admins on belong to the special [Data Analyst group](../../people-and-groups/managing.md). Additionally people need to have the [Transform permissions](../../permissions/data.md) for that database.
 
+## Set up transforms on a self-hosted Metabase
+
+If you run Metabase yourself, here's the path to working transforms:
+
+1. **Check your plan.** [Basic transforms](addons.md#basic-transforms) (query-based) are included on self-hosted Metabase. [Advanced transforms](addons.md#advanced-transforms) — Python transforms, the [transform inspector](transform-inspector.md), and [writable connections](../../databases/writable-connection.md) — need a self-hosted Pro or Enterprise plan with the Advanced transforms add-on.
+2. **Connect a database that can write.** Transforms create and replace tables in your database, so the database user needs create, drop, and write privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md). For cleaner isolation, point the transform at a [writable connection](../../databases/writable-connection.md). Only some databases [support transforms](#databases-that-support-transforms).
+3. **For Python transforms, set up a runner.** Query-based transforms need nothing extra — they run inside your database. Python transforms run in a separate execution environment, so you'll point Metabase at a [self-hosted Python runner](python-runner.md) backed by S3-compatible storage (AWS S3, MinIO, and so on).
+4. **[Enable transforms](#enable-transforms)** in Data Studio.
+5. **Create and run a transform.** [Create a query-based transform](query-transforms.md#create-a-query-based-transform) or a [Python transform](python-transforms.md#create-a-python-transform), run it manually, and check the result under **Runs**. Once it works, [schedule it with jobs](jobs-and-runs.md).
+
 ## Enable transforms
 
 Before you can start writing transforms, you'll need to enable transforms in your Metabase instance.

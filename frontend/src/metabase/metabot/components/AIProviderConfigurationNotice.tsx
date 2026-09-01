@@ -1,11 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import { canAccessSettings } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
-import { canAccessSettings } from "metabase/selectors/user";
 import { Anchor, Flex, Text, type TextProps } from "metabase/ui";
+
+import { useUserMetabotPermissions } from "../hooks";
 
 import { AIProviderConfigurationModal } from "./AIProviderConfigurationModal";
 
@@ -13,14 +16,47 @@ export function AIProviderConfigurationNotice({
   featureName,
   onConfigureAi,
   inline,
+  // Most call sites only render this notice after feature-access gating, so permission is already assumed
+  hasFeatureAccess = true,
   ...rest
 }: {
   featureName: string;
   onConfigureAi: () => void;
   inline?: boolean;
+  hasFeatureAccess?: boolean;
 } & TextProps) {
   const canConfigureAi = useSelector(canAccessSettings);
+  const { isLoading: isLoadingPermissions } = useUserMetabotPermissions();
 
+  if (isLoadingPermissions) {
+    return null;
+  }
+
+  const content = match({ hasFeatureAccess, canConfigureAi })
+    .with(
+      { hasFeatureAccess: true, canConfigureAi: true },
+      () =>
+        jt`To use ${featureName}, please ${(
+          <Anchor
+            key="configure-ai-link"
+            component="button"
+            type="button"
+            fz="inherit"
+            inline
+            onClick={onConfigureAi}
+          >
+            {t`connect to a model`}
+          </Anchor>
+        )}.`,
+    )
+    .with(
+      { hasFeatureAccess: true },
+      () => t`Ask your admin to connect to a model to use ${featureName}.`,
+    )
+    .otherwise(
+      () =>
+        t`You don't have permission to use ${featureName}. Please contact your admin for access.`,
+    );
   return (
     <Text
       c="text-disabled"
@@ -29,20 +65,7 @@ export function AIProviderConfigurationNotice({
       lh="lg"
       {...rest}
     >
-      {canConfigureAi
-        ? jt`To use ${featureName}, please ${(
-            <Anchor
-              key="configure-ai-link"
-              component="button"
-              type="button"
-              fz="inherit"
-              inline
-              onClick={onConfigureAi}
-            >
-              {t`connect to a model`}
-            </Anchor>
-          )}.`
-        : t`Ask your admin to connect to a model to use ${featureName}.`}
+      {content}
     </Text>
   );
 }

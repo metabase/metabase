@@ -7,6 +7,32 @@ on:
         type: boolean
         default: false
 
+  # Run one semantic-search job on demand, against the ref you dispatch on, optionally under a
+  # profiler. Everything else about the job -- services, matrix legs, test args, quarantine gating --
+  # is whatever the normal CI run uses, because it is the same job.
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which semantic-search job to run. Only this one runs; the others are skipped.'
+        type: choice
+        required: true
+        options:
+          - h2
+          - mariadb
+          - mysql
+          - postgres
+          - appdb-mode
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase-enterprise.semantic-search.index-test/some-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-semantic-search
   cancel-in-progress: true
@@ -15,12 +41,20 @@ concurrency:
 # ci-conductor (secrets: inherit is already set on the semantic-search call in
 # run-tests.yml). See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per job.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen job runs the
+  # whole list.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'h2') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -58,25 +92,14 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -109,6 +132,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mariadb-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -133,25 +158,14 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -162,10 +176,17 @@ jobs:
             junit-name: semantic-search-tests-mysql-8-0
             mysql-image: mysql:8.0
             pgvector-image: pgvector/pgvector:pg17
-          - name: MySQL Latest with pgvector pg17
-            junit-name: semantic-search-tests-mysql-latest
-            mysql-image: mysql:latest
+          - name: MySQL 9 with pgvector pg17
+            junit-name: semantic-search-tests-mysql-9
+            mysql-image: mysql:9
             pgvector-image: pgvector/pgvector:pg17
+          # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log
+          # until the runner cancels the job. A cancelled job can't be soft-failed with
+          # continue-on-error, so the leg is disabled until 26.x is supported.
+          # - name: MySQL Latest with pgvector pg17
+          #   junit-name: semantic-search-tests-mysql-latest
+          #   mysql-image: mysql:latest
+          #   pgvector-image: pgvector/pgvector:pg17
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -184,6 +205,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mysql-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -208,25 +231,14 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-postgres:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -284,28 +296,17 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   # pgvector-on-the-app-db mode: the app db itself is a pgvector-capable Postgres and
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -350,22 +351,11 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-result:
     needs:
@@ -374,7 +364,7 @@ jobs:
       - semantic-search-tests-mysql
       - semantic-search-tests-postgres
       - semantic-search-tests-appdb-mode
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result
     if: always() && !cancelled()

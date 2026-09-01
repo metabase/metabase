@@ -34,7 +34,7 @@ describe("issue 18009", { tags: "@external" }, () => {
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
 
     H.sidebar()
       .findByPlaceholderText("Enter user names or email addresses")
@@ -90,7 +90,7 @@ describe("issue 18344", { tags: "@external" }, () => {
 
   it("subscription should not include original question name when it's been renamed in the dashboard (metabase#18344)", () => {
     // Send a test email subscription
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -135,7 +135,7 @@ describe("issue 18352", { tags: "@external" }, () => {
   });
 
   it("should send the card with the INT64 values (metabase#18352)", () => {
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
@@ -206,7 +206,7 @@ describe("issue 18669", { tags: "@external" }, () => {
   });
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -709,7 +709,7 @@ describe("issue 30314", () => {
   it("should clean the new subscription form on cancel (metabase#30314)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Email it").click();
 
@@ -782,7 +782,7 @@ describe("issue 17657", () => {
   it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
@@ -877,7 +877,7 @@ describe("issue 17658", { tags: "@external" }, () => {
   it("should delete dashboard subscription from any collection (metabase#17658)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
@@ -1025,7 +1025,7 @@ describe("issue 49525", { tags: "@external" }, () => {
 
   it("Subscriptions with 'Keep the data pivoted' checked should work (metabase#49525)", () => {
     // Send a test email subscription
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
@@ -1070,7 +1070,7 @@ describe("issue 49525", { tags: "@external" }, () => {
   });
 
   it("renders the pivot table inline in the subscription email body (UXW-4378)", () => {
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
@@ -1216,7 +1216,7 @@ describe("issue 54603", () => {
     // subscription list so the panel reflects the archive without a refresh.
     H.saveDashboard();
 
-    H.openDashboardMenu("Subscriptions");
+    H.toggleDashboardSubscriptionsSidebar();
     H.sidebar().findByText("Weekly Category Roundup").should("not.exist");
   });
 

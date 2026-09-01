@@ -13,7 +13,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   ;; result metadata's field-ref wire format is still legacy MBQL; schemas describe legacy refs
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy ref munging (update-field-options) on the legacy wire format; dies with the MBQL 5 port
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
@@ -132,7 +134,7 @@
         ;; meantime -- see
         ;; https://metaboat.slack.com/archives/C0645JP1W81/p1757457633926199?thread_ts=1757457374.178329&cid=C0645JP1W81
         (do
-          (log/error e)
+          (log/error (ex-message e))
           (mapv merge-col
                 initial-cols
                 ;; `util.perf/mapv` checks the `count` of all args, so it's NSFIS - Not Safe For Infinite Seqs.
@@ -177,8 +179,7 @@
                                        (when-let [expr (try
                                                          (lib.expression/resolve-expression query expression-name)
                                                          (catch #?(:clj Throwable :cljs :default) e
-                                                           (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
-                                                           (log/debugf "In query:\n%s" (u/pprint-to-str query))
+                                                           (log/errorf "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342): %s" (ex-message e))
                                                            nil))]
                                          (match/match-one expr
                                            [:convert-timezone _opts _expr source-tz & _]
@@ -238,6 +239,7 @@
   used by individual pieces of middleware or driver implementations for tracking little bits of information that
   should not be considered relevant when comparing clauses for equality."
   [legacy-ref]
+  ;; operates on legacy refs kept for FE compat; the legacy options helper matches that shape
   ^{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
                                                                      (qualified-keyword? k))))))

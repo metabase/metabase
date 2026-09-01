@@ -1,1 +1,1 @@
-export { GroupsMultiSelect } from "./GroupsMultiSelect";
+export { GroupsMultiSelect, type GroupSection } from "./GroupsMultiSelect";

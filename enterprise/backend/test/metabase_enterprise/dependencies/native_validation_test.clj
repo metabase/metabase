@@ -62,25 +62,25 @@
 (deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
-    (is (= #{{:table (meta/id :products)}} ; how is a driver supposed to work out the ID of the table??
+    (is (= #{{:table (mt/id :products)}} ; how is a driver supposed to work out the ID of the table??
            (->> (lib.metadata/card mp 4)
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
+    (is (= #{{:table (mt/id :products)}
              {:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
+    (is (= #{{:table (mt/id :products)}
              {:card 1}
              {:snippet 1}}
            (->> (lib.metadata/card mp 6)
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
+    (is (= #{{:table (mt/id :products)}
              {:card 1}
              {:snippet 1}
              {:snippet 2}}
@@ -88,8 +88,8 @@
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
-             {:table (meta/id :orders)}
+    (is (= #{{:table (mt/id :products)}
+             {:table (mt/id :orders)}
              {:card 1}
              {:card 2}}
            (->> (lib.metadata/card mp 9)
@@ -119,7 +119,7 @@
         (is (= (normalize-error-names driver
                                       #{(merge (lib/missing-column-error "bad")
                                                {:source-entity-type :table
-                                                :source-entity-id   (meta/id :products)})})
+                                                :source-entity-id   (mt/id :products)})})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products"))))))))
@@ -142,21 +142,21 @@
       (testing "Invalid query - selecting non-existent column from subquery"
         (validates? mp driver 11 #{(merge (lib/missing-column-error "CATEGORY")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})})
+                                           :source-entity-id   (mt/id :people)})})
         (validates? mp driver 12 #{(merge (lib/missing-column-error "CATEGORY")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})}))
+                                           :source-entity-id   (mt/id :people)})}))
       (testing "Nested subqueries"
         (validates? mp driver 13 empty?)
         (validates? mp driver 14 #{(merge (lib/missing-column-error "CATEGORY")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})}))
+                                           :source-entity-id   (mt/id :people)})}))
       (testing "SELECT * from subquery expands to subquery columns"
         (validates? mp driver 15 empty?)
         (validates? mp driver 16 empty?)
         (validates? mp driver 17 #{(merge (lib/missing-column-error "EMAIL")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})})))))
+                                           :source-entity-id   (mt/id :people)})})))))
 
 (deftest ^:parallel validate-card-reference-after-expansion-test
   (testing "Validation of queries after card references have been expanded"
@@ -208,12 +208,12 @@
         (validates? mp driver 27
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :table
-                              :source-entity-id   (meta/id :products)})}))
+                              :source-entity-id   (mt/id :products)})}))
       (testing "Mixed table+card, missing column + unknown alias"
         (validates? mp driver 28
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :table
-                              :source-entity-id   (meta/id :products)})
+                              :source-entity-id   (mt/id :products)})
                       (lib/missing-table-alias-error "xix")})))))
 
 (defn- check-result-metadata [driver mp query expected]
@@ -234,17 +234,17 @@
         (check-result-metadata
          driver mp
          "select * from orders"
-         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+         (add-desired-column-alias (lib.metadata/fields mp (mt/id :orders)))))
       (testing "Selecting a table wildcard"
         (check-result-metadata
          driver mp
          "select orders.* from orders"
-         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+         (add-desired-column-alias (lib.metadata/fields mp (mt/id :orders)))))
       (testing "Selecting a single col"
         (check-result-metadata
          driver mp
          "select total from orders"
-         (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
+         (add-desired-column-alias [(lib.metadata/field mp (mt/id :orders :total))])))
       (testing "Selecting a nonexistent col"
         (check-result-metadata
          driver mp
@@ -329,7 +329,7 @@
                                       #{{:type               :missing-column
                                          :name               "bad"
                                          :source-entity-type :table
-                                         :source-entity-id   (meta/id :products)}})
+                                         :source-entity-id   (mt/id :products)}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products")))))
@@ -345,7 +345,7 @@
                                       #{{:type               :missing-column
                                          :name               "bad"
                                          :source-entity-type :table
-                                         :source-entity-id   (meta/id :products)}})
+                                         :source-entity-id   (mt/id :products)}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select products.bad from products join orders on products.id = orders.product_id")))))
@@ -354,7 +354,7 @@
                                       #{{:type               :missing-column
                                          :name               "bad"
                                          :source-entity-type :table
-                                         :source-entity-id   (meta/id :products)}})
+                                         :source-entity-id   (mt/id :products)}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select p.bad from products p join orders o on p.id = o.product_id")))))
@@ -372,7 +372,7 @@
                                     #{{:type               :missing-column
                                        :name               "bad"
                                        :source-entity-type :table
-                                       :source-entity-id   (meta/id :products)}})
+                                       :source-entity-id   (mt/id :products)}})
              (deps.native-validation/validate-native-query
               driver
               (fake-query mp "WITH cte AS (SELECT id, title FROM products) SELECT bad FROM cte")))))))
@@ -613,7 +613,7 @@
                                                           :table-id     1}}))]
       (is (empty? (deps.native-validation/validate-native-query driver query))))))
 
-(deftest ^:sequential validate-native-query-with-database-routing-test
+(deftest ^:synchronized validate-native-query-with-database-routing-test
   (testing "native query validation works on databases with routing enabled (#74084)"
     (mt/with-premium-features #{:database-routing}
       (let [mp     (mt/metadata-provider)

@@ -18,7 +18,7 @@
 ;;;; transforms
 
 (t2/deftransforms :model/EmbeddingTheme
-  {:settings mi/transform-json})
+  {:settings mi/transform-json-no-keywordization})
 
 ;;;; serialization
 

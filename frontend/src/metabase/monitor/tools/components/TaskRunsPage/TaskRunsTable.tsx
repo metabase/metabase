@@ -5,11 +5,11 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { useNavigate } from "metabase/router";
 import {
-  Card,
   Ellipsified,
+  LoadingOverlay,
   Text,
   TreeTable,
   type TreeTableColumnDef,
@@ -50,7 +50,7 @@ export const TaskRunsTable = ({
   taskRuns,
   onSortingOptionsChange,
 }: TaskRunsTableProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const columns = useMemo(() => getColumns(), []);
   const { sortingState, onSortingChange } = useSortingStateChange({
@@ -62,9 +62,9 @@ export const TaskRunsTable = ({
 
   const handleRowActivate = useCallback(
     (row: Row<TaskRun>) => {
-      dispatch(push(Urls.monitorTaskRunDetails(row.original.id)));
+      navigate(Urls.monitorTaskRunDetails(row.original.id));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<TaskRun>({
@@ -84,26 +84,23 @@ export const TaskRunsTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
-      data-testid="task-runs-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="task-runs-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          ariaLabel={t`Task runs`}
-          emptyState={<MonitorEmptyState label={t`No results`} />}
-          getRowProps={() => ({ "data-testid": "task-run" })}
-          onRowClick={handleRowActivate}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Task runs`}
+            emptyState={<MonitorEmptyState label={t`No results`} />}
+            getRowProps={() => ({ "data-testid": "task-run" })}
+            onRowClick={handleRowActivate}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 

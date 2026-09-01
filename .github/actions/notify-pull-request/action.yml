@@ -1,12 +1,11 @@
 name: Notify Pull Request
+description: Post a comment on the pull request, optionally replacing the previous one with the same message.
 inputs:
   remove-previous-comment:
     required: false
-    type: boolean
     default: false
   add-new-comment:
     required: false
-    type: boolean
     default: true
   message:
     required: true

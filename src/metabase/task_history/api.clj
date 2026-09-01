@@ -10,6 +10,7 @@
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -157,10 +158,8 @@
     (let [run-ids      (map :id runs)
           counts       (t2/query {:select   [:run_id
                                              [[:count :id] :task_count]
-                                             [[:raw "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"]
-                                              :success_count]
-                                             [[:raw "SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)"]
-                                              :failed_count]]
+                                             [[:sum [:case [:= :status [::h2x/literal "success"]] [:inline 1] :else [:inline 0]]] :success_count]
+                                             [[:sum [:case [:= :status [::h2x/literal "failed"]] [:inline 1] :else [:inline 0]]] :failed_count]]
                                   :from     :task_history
                                   :where    [:in :run_id run-ids]
                                   :group-by [:run_id]})
@@ -226,9 +225,9 @@
 
       :task_count
       {:select    [:task_run.*]
-       :left-join [[{:select   [:run_id [[:count :*] :task_count]]
-                     :from     [:task_history]
-                     :group-by [:run_id]}
+       :left-join [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
+                                      :from     [:task_history]
+                                      :group-by [:run_id]}
                     :sort_tc]
                    [:= :sort_tc.run_id :task_run.id]]
        :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] dir] secondary]}

@@ -14,7 +14,6 @@ import {
 } from "../constants/bundle";
 import {
   DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
-  DATA_APP_DIAGNOSTICS_EVENT,
   DATA_APP_DIAGNOSTICS_URL,
 } from "../constants/diagnostics-channel";
 
@@ -36,6 +35,8 @@ type ConnectReq = {
   url?: string;
   method?: string;
   headers?: Record<string, string>;
+  // The POST branch reads the body by async-iterating the request stream.
+  [Symbol.asyncIterator]?: () => AsyncIterator<Buffer>;
 };
 type ConnectRes = { statusCode: number; setHeader: jest.Mock; end: jest.Mock };
 type ConnectHandler = (
@@ -110,9 +111,18 @@ class FakeDevServer {
 
   async request(
     url: string,
-    { method = "GET", headers = {} }: RequestOptions = {},
+    { method = "GET", headers = {}, body }: RequestOptions = {},
   ): Promise<RequestResult> {
-    const req: ConnectReq = { url, method, headers };
+    const req: ConnectReq = {
+      url,
+      method,
+      headers,
+      ...(body !== undefined && {
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(JSON.stringify(body));
+        },
+      }),
+    };
     const res: ConnectRes = {
       statusCode: 0,
       setHeader: jest.fn(),
@@ -140,6 +150,12 @@ class FakeDevServer {
 
     await next();
 
+    // Middlewares follow connect's convention of calling `next()` without
+    // awaiting it, so an async handler further down the stack (the POST
+    // branch reads the body) may still be running — let it settle before
+    // reading the response.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     const [payload] = res.end.mock.calls[0] ?? [];
 
     return {
@@ -154,7 +170,11 @@ class FakeDevServer {
   }
 }
 
-type RequestOptions = { method?: string; headers?: Record<string, string> };
+type RequestOptions = {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+};
 
 type TestPlugin = {
   name: string;
@@ -352,7 +372,27 @@ describe("dataAppSandboxDevPlugin", () => {
         );
 
         expect(mockedBuild).toHaveBeenCalledTimes(1);
-        expect(server.ws.send).not.toHaveBeenCalled();
+        expect(server.ws.send).not.toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_REBUILT_EVENT,
+        });
+      });
+
+      it("nudges clients to re-read the feed when data_app.yaml changes", async () => {
+        const { server } = await setup();
+
+        await server.watcher.emit(
+          "all",
+          "change",
+          path.join("/app", "data_app.yaml"),
+        );
+
+        // The manifest is served from the feed, so the toolbar's Manifest tab
+        // only refreshes when told to re-read — otherwise it lags the edit.
+        expect(server.ws.send).toHaveBeenCalledWith({
+          type: "custom",
+          event: DATA_APP_DIAGNOSTICS_CHANGED_EVENT,
+        });
       });
     });
 
@@ -404,15 +444,20 @@ describe("dataAppSandboxDevPlugin", () => {
     });
 
     describe("diagnostics feed", () => {
+      // The page's reporter delivers over POST (see the middleware's note on
+      // why not the HMR socket).
       const report = (
         server: FakeDevServer,
         entries: unknown[],
         sessionId?: string,
       ) =>
-        server.ws.emit(DATA_APP_DIAGNOSTICS_EVENT, {
-          sessionId,
-          entries,
-          connection: { reachable: true },
+        server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "POST",
+          body: {
+            sessionId,
+            entries,
+            connection: { reachable: true },
+          },
         });
 
       it("refuses a method it does not serve", async () => {
@@ -420,17 +465,39 @@ describe("dataAppSandboxDevPlugin", () => {
 
         const { statusCode, res } = await server.request(
           DATA_APP_DIAGNOSTICS_URL,
-          { method: "POST" },
+          { method: "PUT" },
         );
 
         expect(statusCode).toBe(405);
-        expect(res.setHeader).toHaveBeenCalledWith("Allow", "GET, DELETE");
+        expect(res.setHeader).toHaveBeenCalledWith(
+          "Allow",
+          "GET, POST, DELETE",
+        );
+      });
+
+      it("accepts a reporter batch on POST and rejects a non-JSON body", async () => {
+        const { server } = await setup();
+
+        const posted = await report(server, [{ summary: "boom" }], "page-1");
+        expect(posted.statusCode).toBe(204);
+
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+        expect(
+          body.entries.map((entry: { summary: string }) => entry.summary),
+        ).toEqual(["boom"]);
+
+        const rejected = await server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "POST",
+          // A raw string is valid JSON but not a message object.
+          body: "not-a-message",
+        });
+        expect(rejected.statusCode).toBe(400);
       });
 
       it("serves what the page reported, and passes other URLs through", async () => {
         const { server } = await setup();
 
-        report(server, [
+        await report(server, [
           { id: 1, kind: "error", summary: "boom", alert: true },
           { id: 2, kind: "sdk-call", summary: "POST /api/dataset → 400" },
         ]);
@@ -461,7 +528,7 @@ describe("dataAppSandboxDevPlugin", () => {
 
       it("keeps the manifest even when the page reports without one", async () => {
         const { server } = await setup();
-        report(server, [{ eventId: 1, summary: "boom" }]);
+        await report(server, [{ eventId: 1, summary: "boom" }]);
 
         const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
 
@@ -470,7 +537,7 @@ describe("dataAppSandboxDevPlugin", () => {
 
       it("returns only events from `startEventId` onward", async () => {
         const { server } = await setup();
-        report(server, [
+        await report(server, [
           { id: 1, summary: "old" },
           { id: 2, summary: "new" },
         ]);
@@ -495,7 +562,7 @@ describe("dataAppSandboxDevPlugin", () => {
         });
 
         server.ws.clients.add({});
-        report(server, []);
+        await report(server, []);
 
         const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
         expect(body.clients).toBe(1);
@@ -510,7 +577,7 @@ describe("dataAppSandboxDevPlugin", () => {
       it("nudges readers when a report brings something new", async () => {
         const { server } = await setup();
 
-        report(server, [{ summary: "boom" }], "page-1");
+        await report(server, [{ summary: "boom" }], "page-1");
 
         // The nudge carries no payload: readers re-read the endpoint, so the
         // toolbar and a shell agent still see the same bytes.
@@ -524,13 +591,165 @@ describe("dataAppSandboxDevPlugin", () => {
       it("stays quiet when a report brings nothing new", async () => {
         const { server } = await setup();
 
-        report(server, [{ summary: "boom" }], "page-1");
-        report(server, [], "page-1");
-        report(server, [], "page-1");
+        await report(server, [{ summary: "boom" }], "page-1");
+        await report(server, [], "page-1");
+        await report(server, [], "page-1");
 
         // The reporter flushes on a timer whether or not anything happened.
         // Nudging on those would rebuild the poll loop from the other side.
         expect(changeNudges(server)).toBe(1);
+      });
+
+      it("clears on DELETE and nudges every reader, so Clear is global", async () => {
+        const { server } = await setup();
+        await report(server, [{ summary: "boom" }], "page-1");
+        const nudgesBefore = changeNudges(server);
+
+        const { statusCode } = await server.request(DATA_APP_DIAGNOSTICS_URL, {
+          method: "DELETE",
+        });
+
+        expect(statusCode).toBe(204);
+        // Other open toolbars only re-read on the nudge — without it they'd
+        // keep showing the entries that were just cleared.
+        expect(changeNudges(server)).toBe(nudgesBefore + 1);
+
+        const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+        expect(body.entries).toEqual([]);
+      });
+
+      describe("entries an earlier build left behind", () => {
+        // Every save rebuilds, so a multi-step edit runs through builds that
+        // throw. Those errors describe code the preview has already replaced.
+        const rebuild = (server: FakeDevServer) =>
+          server.watcher.emit("all", "change", "/app/src/App.tsx");
+
+        it("serves the current build's entries and withholds the rest", async () => {
+          const { server } = await setup();
+          await report(server, [{ summary: "mid-edit crash", buildId: 1 }]);
+
+          await rebuild(server);
+          await report(server, [{ summary: "still crashing", buildId: 2 }]);
+
+          const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+
+          // A rebuild re-evaluates the bundle and remounts the app, so
+          // whatever is still wrong reports itself again under build 2 — and
+          // what doesn't was fixed by the edit that triggered the rebuild.
+          expect(
+            body.entries.map((entry: { summary: string }) => entry.summary),
+          ).toEqual(["still crashing"]);
+          expect(body.buildId).toBe(2);
+          expect(body.staleEntries).toBe(1);
+        });
+
+        it("keeps entries no build owns", async () => {
+          const { server } = await setup();
+          await report(server, [
+            { summary: "the preview page itself failed", buildId: null },
+          ]);
+
+          await rebuild(server);
+
+          // Recorded before any bundle loaded — a rebuild neither re-runs nor
+          // disproves it, so hiding it would lose the report for good.
+          const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+          expect(body.entries).toHaveLength(1);
+          expect(body.staleEntries).toBe(0);
+        });
+
+        it("keeps entries stamped ahead of the server's own counter", async () => {
+          const { server } = await setup();
+          await report(server, [
+            { summary: "from before the restart", buildId: 9 },
+          ]);
+
+          // A dev-server restart begins counting again while an open preview
+          // keeps running the bundle it already has. Nothing replaced that
+          // code, so its failures are as live as any.
+          const { body } = await server.request(DATA_APP_DIAGNOSTICS_URL);
+          expect(body.entries).toHaveLength(1);
+          expect(body.staleEntries).toBe(0);
+        });
+
+        it("keeps entries from a page that stamps nothing", async () => {
+          const { server } = await setup();
+          await report(server, [{ summary: "boom" }]);
+
+          await rebuild(server);
+
+          // An older dev entry reports without a build id. Filtering those out
+          // would empty the feed of a preview that is genuinely broken.
+          expect(
+            (await server.request(DATA_APP_DIAGNOSTICS_URL)).body.entries,
+          ).toHaveLength(1);
+        });
+
+        it("hands back everything for a reader that asks", async () => {
+          const { server } = await setup();
+          await report(server, [{ summary: "mid-edit crash", buildId: 1 }]);
+          await rebuild(server);
+
+          for (const query of [
+            "?includeStale",
+            "?includeStale=true",
+            "?includeStale=1",
+          ]) {
+            const { body } = await server.request(
+              `${DATA_APP_DIAGNOSTICS_URL}${query}`,
+            );
+
+            expect(body.entries).toHaveLength(1);
+            expect(body.staleEntries).toBe(0);
+          }
+
+          // Spelling out false is the one way to ask and still be filtered.
+          const { body } = await server.request(
+            `${DATA_APP_DIAGNOSTICS_URL}?includeStale=false`,
+          );
+          expect(body.entries).toEqual([]);
+        });
+
+        it("counts only what the cursor would have shown", async () => {
+          const { server } = await setup();
+          await report(server, [
+            { summary: "read already", buildId: 1 },
+            { summary: "read already too", buildId: 1 },
+          ]);
+          const cursor = (await server.request(DATA_APP_DIAGNOSTICS_URL)).body
+            .nextEventId;
+
+          await rebuild(server);
+          await report(server, [{ summary: "old news", buildId: 1 }]);
+
+          // Reporting entries the reader consumed before its cursor moved
+          // would make a clean feed look like it was hiding a pile.
+          const { body } = await server.request(
+            `${DATA_APP_DIAGNOSTICS_URL}?startEventId=${cursor}`,
+          );
+          expect(body.entries).toEqual([]);
+          expect(body.staleEntries).toBe(1);
+        });
+
+        it("names the build it serves on the bundle itself", async () => {
+          const { server } = await setup();
+
+          const { res } = await server.request(DATA_APP_BUNDLE_URL);
+
+          // How the page learns which generation to stamp: the header comes
+          // with the exact bytes it is about to evaluate.
+          expect(res.setHeader).toHaveBeenCalledWith(
+            "x-data-app-build-id",
+            "1",
+          );
+
+          await rebuild(server);
+          const { res: rebuilt } = await server.request(DATA_APP_BUNDLE_URL);
+          expect(rebuilt.setHeader).toHaveBeenCalledWith(
+            "x-data-app-build-id",
+            "2",
+          );
+        });
       });
     });
   });

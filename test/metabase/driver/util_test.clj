@@ -3,18 +3,22 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.snake-hating-map :as snake-hating-map])
   (:import
-   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -449,12 +453,12 @@
               feature (keyword (name (ns-name *ns*)) (mt/random-name))]
           (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
             (is (false? (driver.u/supports? :test-driver feature db)))
-            (is (some (fn [{:keys [level e message]}]
+            (is (some (fn [{:keys [level message]}]
                         (and (= level :error)
-                             (= (ex-message e) "test exception message")
-                             (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                             (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
                                                         (u/qualified-name feature)
-                                                        (:name db)))))
+                                                        (:id db)
+                                                        "test exception message"))))
                       (log-messages)))))))))
 
 (deftest supports?-failure-test-2
@@ -467,12 +471,12 @@
                         driver/database-supports? (fn [_ _ _] (Thread/sleep 200) true)]
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
               (is (false? (driver.u/supports? :test-driver feature db)))
-              (is (some (fn [{:keys [level e message]}]
+              (is (some (fn [{:keys [level message]}]
                           (and (= level :error)
-                               (= (ex-message e) "Timed out after 100.0 ms")
-                               (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                               (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
                                                           (u/qualified-name feature)
-                                                          (:name db)))))
+                                                          (:id db)
+                                                          "Timed out after 100.0 ms"))))
                         (log-messages)))))
           (testing "we memoize the results for the same database, so we don't log the error again"
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
@@ -608,79 +612,303 @@
           (is (= "Group info message" (:placeholder group-info)))
           (is (nil? (:getter group-info)) "Getter should be removed"))))))
 
-;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            SSRF: blocking connections to private network addresses                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel scrub-exceptions-test
-  (testing "plain Exception: secret is redacted from message"
-    (let [e (driver.u/scrub-exceptions (Exception. "PASSWORD='s3cret'") ["s3cret"])]
-      (is (= "PASSWORD='****'" (ex-message e)))))
-  (testing "secret not present: message unchanged"
-    (let [e (driver.u/scrub-exceptions (Exception. "no secret here") ["s3cret"])]
-      (is (= "no secret here" (ex-message e)))))
-  (testing "cause chain is scrubbed"
-    (let [e (driver.u/scrub-exceptions
-             (Exception. "outer pw=s3cret" (Exception. "inner pw=s3cret"))
-             ["s3cret"])]
-      (is (= "outer pw=****" (ex-message e)))
-      (is (= "inner pw=****" (ex-message (.getCause ^Exception e))))))
-  (testing "ExceptionInfo: ex-data is preserved, message is scrubbed"
-    (let [e (driver.u/scrub-exceptions (ex-info "pw=s3cret" {:code 42}) ["s3cret"])]
-      (is (= "pw=****" (ex-message e)))
-      (is (= {:code 42} (ex-data e)))))
-  (testing "SQLException: SQLState and errorCode are preserved"
-    (let [e (driver.u/scrub-exceptions (SQLException. "pw=s3cret" "42501" 7) ["s3cret"])]
-      (is (= "pw=****" (ex-message e)))
-      (is (= "42501" (.getSQLState ^SQLException e)))
-      (is (= 7 (.getErrorCode ^SQLException e)))))
-  (testing "SQLException next-exception chain is scrubbed"
-    (let [next-ex (SQLException. "next pw=s3cret" "42501" 7)
-          main    (doto (SQLException. "main pw=s3cret" "42000" 1)
-                    (.setNextException next-ex))
-          e       (driver.u/scrub-exceptions main ["s3cret"])]
-      (is (= "main pw=****" (ex-message e)))
-      (is (= "next pw=****" (ex-message (.getNextException ^SQLException e))))
-      (is (= "42501" (.getSQLState (.getNextException ^SQLException e))))))
-  (testing "multiple secrets are all redacted"
-    (let [e (driver.u/scrub-exceptions
-             (Exception. "user=admin password=s3cret escaped=s3cr\\et")
-             ["s3cret" "s3cr\\et"])]
-      (is (= "user=admin password=**** escaped=****" (ex-message e)))))
-  (testing "password with backslash sequences is treated literally, not as regex"
-    (let [pw "p\\nass\\r\\twor$d"
-          e  (driver.u/scrub-exceptions (Exception. (str "CREATE USER x PASSWORD='" pw "'")) [pw])]
-      (is (= "CREATE USER x PASSWORD='****'" (ex-message e)))))
-  (testing "stack trace is preserved"
-    (let [original (Exception. "pw=s3cret")
-          trace    (.getStackTrace original)
-          e        (driver.u/scrub-exceptions original ["s3cret"])]
-      (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
+(deftest ^:parallel connection-hosts-test
+  (testing "the default implementation picks the host out of the usual detail keys"
+    (are [details expected] (= expected (set (driver/connection-hosts :sql details)))
+      {}                                              #{}
+      {:host "db.example.com"}                        #{"db.example.com"}
+      {:host "  db.example.com  "}                    #{"db.example.com"}
+      {:host ""}                                      #{}
+      {:host nil}                                     #{}
+      {:hostname "athena.example.com"}                #{"athena.example.com"}
+      {:host "a.example.com" :hostname "b.example.com"} #{"a.example.com" "b.example.com"}))
+  (testing "hosts given as URLs or host:port pairs are normalized (BigQuery, Databricks and Druid all accept these)"
+    (are [details expected] (= expected (set (driver/connection-hosts :sql details)))
+      {:host "https://db.example.com:8443"}           #{"db.example.com"}
+      {:host "http://10.0.0.1"}                       #{"10.0.0.1"}
+      {:host "db.example.com:5432"}                   #{"db.example.com"}
+      {:host "[::1]:5432"}                            #{"::1"}
+      {:host "::1"}                                   #{"::1"}
+      {:host "https://user:pw@10.0.0.1:8443/path"}    #{"10.0.0.1"}))
+  (testing "comma-separated host lists are split (Mongo accepts a replica-set list here)"
+    (is (= #{"a.example.com" "b.example.com"}
+           (set (driver/connection-hosts :sql {:host "a.example.com,b.example.com"}))))))
 
-(deftest batch-exception-scrub-test
-  (testing "unwrapping the batch envelope composes with password scrubbing (the init-workspace-isolation! shape)"
-    (let [inner    (java.sql.SQLException. "ERROR: syntax error in CREATE USER \"u\" PASSWORD 's3cret'")
-          batch    (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER ... PASSWORD 's3cret' was aborted" (int-array 0))
-                     (.setNextException inner))
-          scrubbed (driver.u/scrub-exceptions (driver.u/batch-exception batch) ["s3cret"])]
-      (is (not (instance? java.sql.BatchUpdateException scrubbed))
-          "the batch envelope is gone")
-      (is (not (str/includes? (ex-message scrubbed) "s3cret"))
-          "the password is gone from the message")
-      (is (str/includes? (ex-message scrubbed) "****")
-          "the password is redacted, not silently dropped"))))
+(defn- ssrf-error [thunk]
+  (try (thunk) nil (catch clojure.lang.ExceptionInfo e (ex-data e))))
 
-(deftest batch-exception-test
-  (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
-    (let [inner (java.sql.SQLException. "user cannot be dropped")
-          batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
-                  (.setNextException inner))]
-      (is (identical? inner (driver.u/batch-exception batch)))))
-  (testing "the MariaDB-connector shape chains the real exception via the cause"
-    (let [inner (java.sql.SQLException. "You are not allowed to create a user with GRANT")
-          batch (java.sql.BatchUpdateException. "envelope" nil 0 (int-array 0) inner)]
-      (is (identical? inner (driver.u/batch-exception batch)))))
-  (testing "the mssql-jdbc shape (no next exception, no cause) passes through — its message is already the plain server error"
-    (let [batch (java.sql.BatchUpdateException. "Cannot find the schema 'x'" "S0001" 208 (int-array 0))]
-      (is (identical? batch (driver.u/batch-exception batch)))))
-  (testing "non-batch throwables pass through"
-    (let [e (ex-info "boom" {})]
-      (is (identical? e (driver.u/batch-exception e))))))
+(deftest validate-connection-hosts!-hosted-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (testing "connections to non-public addresses are refused"
+      (doseq [details [{:host "127.0.0.1" :port 5432}
+                       {:host "localhost" :port 5432}
+                       {:host "10.224.7.141" :port 5432}
+                       {:host "169.254.169.254"}
+                       {:host "https://192.168.0.1:8443"}]]
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres details)))
+            (str "should be refused: " (pr-str details)))))
+    (testing "the error is the same for every blocked host, so it cannot be used as a reachability oracle"
+      (is (= (:message (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))
+             (:message (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
+    (testing "public and unresolvable hosts are left alone"
+      (doseq [details [{:host "8.8.8.8"}
+                       {:host "metabase-ssrf-test.invalid"}]]
+        (is (nil? (driver.u/validate-connection-hosts! :postgres details))
+            (str "should be allowed: " (pr-str details)))))
+    (testing "a database with no host of its own is refused: the client fills one in and connects anyway"
+      ;; every `:sql-jdbc` client substitutes `localhost` for a host detail that is missing or blank, so reading only
+      ;; the details would leave every port on the Metabase host reachable -- and an open one distinguishable from a
+      ;; closed one -- to anybody who can add a database
+      (doseq [details [{}
+                       {:port 6379 :dbname "db"}
+                       {:host "" :port 6379 :dbname "db"}
+                       {:host "   " :port 6379 :dbname "db"}
+                       {:db "/tmp/whatever.db"}]]
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres details)))
+            (str "should be refused: " (pr-str details)))))
+    (testing "a driver whose database really is a file, rather than a client with a default host, still has no host"
+      (is (nil? (driver.u/validate-connection-hosts! :sqlite {:db "/tmp/whatever.db"}))))
+    (testing "auth-provider URLs are fetched by Metabase itself, so they are checked too"
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            :postgres
+                            {:host "db.example.com" :use-auth-provider true :auth-provider "oauth"
+                             :oauth-token-url "http://169.254.169.254/latest/meta-data/"}))))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            :postgres
+                            {:host "db.example.com" :use-auth-provider true :auth-provider "http"
+                             :http-auth-url "http://127.0.0.1:8080/token"}))))
+      (testing "...but a public auth URL is fine, and the keys are ignored when the provider is off"
+        (is (nil? (driver.u/validate-connection-hosts!
+                   :postgres
+                   {:host            "db.example.com" :use-auth-provider true
+                    :oauth-token-url "https://login.example.com/token"})))
+        (is (nil? (driver.u/validate-connection-hosts!
+                   :postgres
+                   {:host "db.example.com" :oauth-token-url "http://127.0.0.1:8080/token"})))))
+    (testing "with an SSH tunnel the warehouse host is resolved by the tunnel server, so only the tunnel host matters"
+      (is (nil? (driver.u/validate-connection-hosts!
+                 :postgres
+                 {:tunnel-enabled true :tunnel-host "bastion.example.com" :host "127.0.0.1" :port 5432})))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            :postgres
+                            {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"})))))))
+
+(deftest can-connect-with-details?-refused-host-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [details {:host "127.0.0.1" :port 5432 :dbname "db"}]
+      (testing "the boolean arity keeps its contract and answers `false` rather than throwing"
+        ;; sync, the unhidden-table resync task, and the legacy-details migration loop all branch on this answer;
+        ;; a throw from here abandons work that used to carry on to the next database or the next candidate details
+        (is (false? (driver.u/can-connect-with-details? :postgres details))))
+      (testing "the throwing arity reports the refusal, unhumanized"
+        ;; a driver's `humanize-connection-error-message` must not get to rewrite this into something more revealing
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"^Cannot connect to a private or internal network address\.$"
+                              (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))))))
+
+(deftest validate-connection-hosts!-connection-parameters-test
+  ;; A JDBC client honors a host named in the connection parameters over the one in the URL it was handed -- pgjdbc
+  ;; reads `host=`/`PGHOST=` from the query string -- and `:additional-options` is appended to that string verbatim.
+  (testing "a host smuggled through `:additional-options` is checked, not just the `:host` detail"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (doseq [opts ["host=169.254.169.254"
+                    "PGHOST=127.0.0.1&ssl=false"
+                    "ssl=false&host=[::1]"]]
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts!
+                              :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                                         :additional-options opts})))
+            (str "should be refused: " (pr-str opts))))
+      (testing "an SSH tunnel does not exempt them -- it rewrites the host detail, not the parameters"
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts!
+                              :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                                         :tunnel-enabled true :tunnel-host "bastion.example.com"
+                                         :additional-options "host=169.254.169.254"})))))
+      (testing "ordinary options are not mistaken for hosts"
+        ;; only the parameters a driver declares in `driver/host-carrying-parameters` are resolved, so a value
+        ;; that is not a host is never handed to the resolver -- and a name that happens to resolve inside the
+        ;; cluster cannot refuse a database over its application name
+        (is (nil? (driver.u/validate-connection-hosts!
+                   :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                              :additional-options "loginTimeout=1&ApplicationName=localhost&ssl=false"}))))
+      (testing "an undeclared parameter is still checked when its value is already an address"
+        ;; a declaration that has fallen behind the client it describes is not a free pass; an IP costs no lookup
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts!
+                              :postgres {:host "db.example.com" :port 5432 :dbname "db"
+                                         :additional-options "ApplicationName=169.254.169.254"}))))))))
+
+(driver/register! ::no-tunnel-driver, :abstract? true)
+
+(deftest validate-connection-hosts!-tunnel-details-do-not-disable-the-check-test
+  (testing "a driver that ignores the tunnel details still has its own hosts checked"
+    ;; `:tunnel-enabled` is only meaningful to drivers that route the connection through the tunnel. Details are
+    ;; stored as an open map, so any driver's details can carry the key -- for one that ignores it (BigQuery), taking
+    ;; the caller's word for it would leave the host it really connects to unchecked.
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts!
+                            ::no-tunnel-driver
+                            {:tunnel-enabled true :tunnel-host "bastion.example.com" :host "169.254.169.254"}))))
+      (testing "and the tunnel host it never contacts is not held against it"
+        (is (nil? (driver.u/validate-connection-hosts!
+                   ::no-tunnel-driver
+                   {:tunnel-enabled true :tunnel-host "127.0.0.1" :host "db.example.com"}))))))
+  (testing "drivers that do route through the tunnel are unaffected"
+    (is (true? (driver/routes-connection-through-ssh-tunnel? :postgres)))
+    (is (false? (driver/routes-connection-through-ssh-tunnel? ::no-tunnel-driver)))))
+
+(driver/register! ::broken-hosts-driver, :abstract? true)
+
+(defmethod driver/connection-hosts ::broken-hosts-driver
+  [_driver _details]
+  (throw (ex-info "boom" {:sensitive "should not reach the caller"})))
+
+(deftest validate-connection-hosts!-fails-closed-test
+  (testing "a driver that cannot say which hosts it would connect to is refused, not left unchecked"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"}))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"could not apply security policy"
+                            (driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"})))
+      (testing "the underlying failure is chained for the logs but kept out of the message"
+        (let [e (try (driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"})
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (= "boom" (ex-message (ex-cause e))))
+          (is (not (str/includes? (ex-message e) "boom")))))
+      (testing "details the driver multimethod itself refuses to dispatch on fail closed the same way"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"could not apply security policy"
+                              (driver.u/validate-connection-hosts!
+                               :postgres
+                               {:host "8.8.8.8" :connection-uri "jdbc:postgresql://127.0.0.1:5432/db"}))))))
+  (testing "with the policy off no hosts are extracted at all, so a broken driver is not an error"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (is (nil? (driver.u/validate-connection-hosts! ::broken-hosts-driver {:host "8.8.8.8"}))))))
+
+(deftest validate-connection-hosts!-allowed-test
+  (testing "allow-private permits private networks but still rejects loopback and link-local addresses"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "169.254.169.254"}))))))
+  (testing "allow-all permits every network -- the normal self-hosted case"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1" :port 5432})))
+      (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"}))))))
+
+(deftest with-database-network-policy-test
+  (mt/with-premium-features #{:attached-dwh}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (if config/ee-available?
+        (testing "the attached DWH relaxes an external-only policy to allow-private"
+          (driver.u/with-database-network-policy {:is_attached_dwh true}
+            (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))
+            (testing "and no further: loopback and link-local are still refused"
+              (is (=? {:status-code 400}
+                      (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+              (is (=? {:status-code 400}
+                      (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "169.254.169.254"})))))))
+        (testing "on an OSS build no token feature can be present, so not even the attached DWH is relaxed"
+          (driver.u/with-database-network-policy {:is_attached_dwh true}
+            (is (=? {:status-code 400}
+                    (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))))))
+      (testing "an ordinary database is not relaxed"
+        (driver.u/with-database-network-policy {:name "ordinary"}
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "10.224.7.141"})))))))
+    (testing "an explicit allow-all policy is left alone"
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+        (driver.u/with-database-network-policy {:is_attached_dwh true}
+          (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))
+
+(deftest network-exempt-warehouse?-test
+  (testing "the exemption needs both the database's attached-DWH flag and the :attached-dwh token feature"
+    (mt/with-premium-features #{:attached-dwh}
+      ;; the token can only carry a feature at all when EE code is available, so on an OSS build the flag confers
+      ;; nothing even with the feature in the (test-stubbed) token
+      (let [exempt? config/ee-available?]
+        (testing "a Toucan row or config-file entry carries the flag in snake_case"
+          (is (= exempt? (driver.u/network-exempt-warehouse? {:is_attached_dwh true})))
+          (is (false? (driver.u/network-exempt-warehouse? {:is_attached_dwh false})))
+          (is (false? (driver.u/network-exempt-warehouse? {:name "ordinary"}))))
+        (testing "a Lib metadata database carries it in kebab-case, in a map that throws on snake_case lookups"
+          (is (= exempt? (driver.u/network-exempt-warehouse?
+                          (snake-hating-map/snake-hating-map {:lib/type :metadata/database, :is-attached-dwh true}))))
+          (is (false? (driver.u/network-exempt-warehouse?
+                       (snake-hating-map/snake-hating-map {:lib/type :metadata/database, :name "ordinary"})))))))
+    (mt/with-premium-features #{}
+      (is (false? (driver.u/network-exempt-warehouse? {:is_attached_dwh true}))))))
+
+(deftest pool-creation-attached-dwh-network-exemption-test
+  (mt/with-premium-features #{:attached-dwh}
+    ;; the exemption requires the :attached-dwh token feature, which an OSS build can never have -- there the
+    ;; attached DWH cannot even be written with these details (covered by the model-level tests)
+    (when config/ee-available?
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+        (mt/with-temp [:model/Database database {:engine          :postgres
+                                                 :is_attached_dwh true
+                                                 :details         {:host "10.224.7.141", :port 5432, :dbname "dwh"}}]
+          (try
+            (testing "an attached DWH on a private address still gets a connection pool"
+              ;; fetch by id so the database takes the metadata-provider path, which must carry `is-attached-dwh`
+              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database)))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! database))))))
+    ;; write the ordinary row under allow-all, the way a formerly-lax instance would have, then flip the policy
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+      (mt/with-temp [:model/Database database {:engine  :postgres
+                                               :details {:host "10.224.7.141", :port 5432, :dbname "dwh"}}]
+        (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+          (testing "an ordinary database with the same details is still refused at pool time"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"private or internal network address"
+                 (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
+
+(deftest warehouse-allowed-networks-default-test
+  (testing "self-hosted, with nothing configured, all networks are allowed"
+    ;; a self-hosted warehouse on a private network is the normal case, not an attack
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (mt/with-premium-features #{}
+        (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+  (testing "hosted, with nothing configured, only public addresses are allowed"
+    ;; on Metabase Cloud a warehouse is always reached across the public internet, so anything else is somebody
+    ;; reaching for our own infrastructure
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (mt/with-premium-features #{:hosting}
+        (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "8.8.8.8"}))))))
+  (testing "an explicit setting is honored on Cloud too, in either direction"
+    (mt/with-premium-features #{:hosting}
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
+        (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+        (is (= :allow-private (driver.settings/warehouse-allowed-networks))))))
+  (testing "an explicit setting overrides the default"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+      (is (=? {:status-code 400}
+              (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Unknown network policy"
+                            (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))

@@ -23,7 +23,8 @@
    [:id [:ref ::lib.schema.id/card]]])
 
 (mr/def ::test-source-spec
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:table ::test-table-source-spec]
    [:card ::test-card-source-spec]])
 
@@ -84,7 +85,8 @@
    [:args {:default []} [:sequential [:ref ::test-expression-spec]]]])
 
 (mr/def ::test-expression-spec
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
@@ -116,7 +118,8 @@
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
 (mr/def ::test-join-source-spec
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-with-binning-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
@@ -192,7 +195,8 @@
 (mr/def ::test-template-tag-spec
   [:map
    [:type ::lib.schema.template-tag/type]]
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:temporal-unit [:ref ::test-temporal-unit-spec]]
    [:dimension     [:ref ::test-field-filter-spec]]
    [:snippet       [:ref ::test-snippet-spec]]

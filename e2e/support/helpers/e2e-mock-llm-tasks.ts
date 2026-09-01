@@ -74,11 +74,18 @@ function buildAnthropicToolUseSSE({ name, input }: MockLlmToolCall): string {
   return lines.join("\n");
 }
 
+const MOCK_MODEL_CATALOG = [
+  { id: "claude-haiku-4-5", display_name: "Claude Haiku 4.5" },
+  { id: "claude-sonnet-4-6", display_name: "Claude Sonnet 4.6" },
+];
+
 /**
- * Start a mock server that impersonates the Anthropic Messages API.
+ * Start a mock server that impersonates the Anthropic API.
  *
- * Every POST to /v1/messages responds with a valid SSE stream containing
- * either the given `responseText` or a tool-use call. The server listens on `port`.
+ * GET /v1/models responds with a static model catalog (used by the provider
+ * credential validation when connecting). Every other request responds with a
+ * valid /v1/messages SSE stream containing either the given `responseText` or
+ * a tool-use call. The server listens on `port`.
  *
  * Call `stopMockLlmServer` to tear it down.
  */
@@ -97,7 +104,13 @@ export function startMockLlmServer(
       ? buildAnthropicToolUseSSE(options.toolCall)
       : buildAnthropicSSE(options.responseText);
 
-    server = http.createServer((_req, res) => {
+    server = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url?.includes("/models")) {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ data: MOCK_MODEL_CATALOG }));
+        return;
+      }
+
       res.writeHead(200, {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",

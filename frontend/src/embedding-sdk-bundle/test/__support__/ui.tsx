@@ -10,13 +10,16 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
+import {
+  type StoreSeedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 
 export interface RenderWithSDKProvidersOptions {
-  storeInitialState?: Partial<State>;
+  storeInitialState?: Partial<StoreSeedState>;
   componentProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
   // Needed for Components/Hooks that retrieve Component/Hooks from the window.METABASE_EMBEDDING_SDK_BUNDLE
@@ -35,7 +38,11 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  let { routing, ...initialState }: Partial<State> =
+  // `settings` and the current user are served from the `getSessionProperties`
+  // and `getCurrentUser` RTK Query caches rather than redux slices.
+  // Settings are captured here and seeded through `preloadedState` below.
+  // The user entry is seeded by `createMockState` itself.
+  let { settings: seededSettings, ...initialState }: Partial<StoreSeedState> =
     createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
@@ -46,9 +53,21 @@ export function renderWithSDKProviders(
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
   // Without this, SDK components will not render due to missing token features and settings.
-  if (!storeInitialState.settings && initialState.settings) {
-    initialState.settings.values["token-features"].embedding_sdk = true;
-    initialState.settings.values["enable-embedding-sdk"] = true;
+  if (!storeInitialState.settings && seededSettings) {
+    seededSettings.values["token-features"].embedding_sdk = true;
+    seededSettings.values["enable-embedding-sdk"] = true;
+  }
+
+  if (seededSettings?.values) {
+    initialState = {
+      ...initialState,
+      [Api.reducerPath]: seedApiQueryCache(initialState[Api.reducerPath], [
+        {
+          endpointName: "getSessionProperties",
+          value: seededSettings.values,
+        },
+      ]),
+    };
   }
 
   const storeMiddleware = _.compact([Api.middleware]);

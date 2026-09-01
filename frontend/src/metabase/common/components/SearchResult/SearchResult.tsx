@@ -5,9 +5,8 @@ import { forwardRef, useCallback } from "react";
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push } from "metabase/router";
+import type { To } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
   Anchor,
@@ -113,13 +112,11 @@ export function SearchResult({
 
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
-
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onXRayClick = (e: MouseEvent<HTMLButtonElement>) => {

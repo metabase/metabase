@@ -1,20 +1,38 @@
+import { sharedRules } from "./shared-tiers.mjs";
+
 const createElement = ({
   type,
   name,
   pattern,
   mode,
   enforceOutgoing = true,
-}) => ({
-  type: `${type}/${name}`,
-  pattern: pattern ?? `frontend/src/metabase/${name}/**`,
-  ...(mode && { mode }),
-  enforceOutgoing,
-});
+  enforceSharedTiers = true,
+  // Outside code must import the module root alias, and the module's own files must import relatively.
+  // Enforced by the `metabase/enforce-module-public-api` rule via `getPublicApiModules` below.
+  enforcePublicApi = false,
+}) => {
+  if (enforcePublicApi && (pattern || mode)) {
+    // Single-file elements are their own entry point, and elements outside the
+    // `metabase` alias root would need their own alias derivation.
+    throw new Error(
+      `enforcePublicApi requires a default folder element (frontend/src/metabase/<name>/**): ${name}`,
+    );
+  }
+  return {
+    type: `${type}/${name}`,
+    pattern: pattern ?? `frontend/src/metabase/${name}/**`,
+    ...(mode && { mode }),
+    enforceOutgoing,
+    enforceSharedTiers,
+    ...(enforcePublicApi && { publicApiAlias: `metabase/${name}` }),
+  };
+};
 
 const elements = [
   // lib
-  createElement({ type: "lib", name: "analytics" }),
+  createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
   createElement({ type: "lib", name: "css" }),
+  createElement({ type: "lib", name: "dayjs", enforcePublicApi: true }),
   createElement({
     type: "lib",
     name: "env",
@@ -44,18 +62,63 @@ const elements = [
   }),
 
   // basic
+  createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
+  createElement({
+    type: "basic",
+    name: "value-formatting",
+    enforcePublicApi: true,
+  }),
+  // static-viz runs this in GraalJS, so it stays free of the React and redux side of visualizations.
+  createElement({ type: "basic", name: "viz-core", enforcePublicApi: true }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
-  createElement({ type: "shared", name: "api" }),
+  createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
   createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
+  ...[
+    "frontend/src/metabase/common/metrics/**",
+    "frontend/src/metabase/common/metrics-viewer/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "metrics-ui", pattern }),
+  ),
+  // Data-studio UI shared by the metrics and data-studio features and consumed
+  // by shared/transforms. Only the components are carved out: they import
+  // querying/nav/metabot/upsells, which must not become edges of shared/common.
+  // The sibling analytics and collection utils stay in common (common files
+  // import them). Untiered for now: it cannot take a sub-tier level until the
+  // metabot button and the AppSwitcher are slotted out of PaneHeader, and a
+  // pattern element cannot take enforcePublicApi.
+  createElement({
+    type: "shared",
+    name: "data-studio-ui",
+    pattern: "frontend/src/metabase/common/data-studio/components/**",
+  }),
+  createElement({
+    type: "shared",
+    name: "upsells",
+    pattern: "frontend/src/metabase/common/components/upsells/**",
+    enforceSharedTiers: false,
+  }),
+  ...[
+    "frontend/src/metabase/common/search/**",
+    "frontend/src/metabase/common/components/SearchResult/**",
+    "frontend/src/metabase/common/components/SearchResultLink/**",
+    "frontend/src/metabase/common/components/InfoText/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "search-ui", pattern }),
+  ),
   createElement({ type: "shared", name: "common" }),
+  createElement({
+    type: "shared",
+    name: "current-user",
+    enforcePublicApi: true,
+  }),
   createElement({
     type: "shared",
     name: "custom-viz",
@@ -63,11 +126,10 @@ const elements = [
   }),
   createElement({ type: "shared", name: "data-grid" }),
   createElement({ type: "shared", name: "databases" }),
-  createElement({ type: "shared", name: "detail-view" }),
   createElement({
     type: "shared",
-    name: "embed",
-    pattern: "frontend/src/embed/**",
+    name: "detail-view",
+    enforceSharedTiers: false,
   }),
   // embedding-iframe-sdk, embedding-iframe-sdk-setup and mcp-app must come before
   // shared/embedding: their patterns are subfolders of
@@ -117,8 +179,8 @@ const elements = [
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
   // Window-global bridges between the SDK bundle and the npm package. They
-  // stay shared tier (both artifacts compile them in), but their payload
-  // types are owned by the bundle, hence the type-only allow rule below.
+  // stay shared tier (both artifacts compile them in) and carry their payloads
+  // as opaque types; each artifact pins the concrete bundle types on its side.
   ...[
     "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store.ts",
     "frontend/src/embedding-sdk-shared/lib/metabot-state-channel.ts",
@@ -130,48 +192,71 @@ const elements = [
       mode: "full",
     }),
   ),
+  // Storybook config is a composition root: preview wires app-tier decorators.
+  // Needs its own pattern because ** doesn't match dot-folders in the lint,
+  // and must come before shared/embedding-sdk-shared: the affected-tests
+  // tooling matches with `dot: true` and first-element-wins, so a later
+  // position would hand these files to the shared module in the test graph.
+  createElement({
+    type: "app",
+    name: "misc",
+    pattern: "frontend/src/embedding-sdk-shared/.storybook/**",
+    mode: "full",
+  }),
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
-  createElement({ type: "shared", name: "hooks" }),
+  createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
+  createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
+  // The app-wide mirror of table and field metadata. Separate from
+  // `shared/metadata`, which is the Semantic Layer UI: 147 files read the store,
+  // 115 use the UI, and 8 do both.
   createElement({
     type: "shared",
-    name: "metabase-shared",
-    pattern: "frontend/src/metabase-shared/**",
+    name: "metadata-store",
+    enforcePublicApi: true,
   }),
-  createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
-  createElement({ type: "shared", name: "monitor" }),
+  createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav" }),
-  createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
-  createElement({ type: "shared", name: "plugins" }),
+  createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({ type: "shared", name: "querying" }),
+  createElement({
+    type: "shared",
+    name: "querying",
+    enforceSharedTiers: false,
+  }),
   createElement({ type: "shared", name: "questions" }),
-  createElement({ type: "shared", name: "redux" }),
+  createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
-  createElement({ type: "shared", name: "router" }),
+  createElement({ type: "shared", name: "route-guards" }),
   createElement({
     type: "shared",
     name: "schema",
-    pattern: "frontend/src/metabase/schema.js",
+    pattern: "frontend/src/metabase/schema.ts",
     mode: "full",
+    enforceSharedTiers: false,
   }),
   createElement({ type: "shared", name: "selectors" }),
+  createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
+  createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
-  createElement({ type: "shared", name: "styled-components" }),
+  createElement({
+    type: "shared",
+    name: "styled-components",
+    enforceSharedTiers: false,
+  }),
   createElement({ type: "shared", name: "timelines" }),
   createElement({ type: "shared", name: "transforms" }),
   createElement({
@@ -179,24 +264,36 @@ const elements = [
     name: "types",
     pattern: "frontend/src/types/**",
   }),
-  createElement({ type: "shared", name: "urls" }),
-  createElement({ type: "shared", name: "visualizations" }),
+  createElement({ type: "shared", name: "urls", enforceSharedTiers: false }),
+  createElement({
+    type: "shared",
+    name: "visualizations",
+    enforceSharedTiers: false,
+  }),
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor preview renders the live embed via the app-tier EAJS
-  // runtime; the edge is whitelisted via the allow rules below.
+  // The theme editor previews the live embed through the app-tier EAJS
+  // runtime, so the whole editor is an app-tier module. It still lives under
+  // the admin folder; the pattern must come before feature/admin (first match
+  // wins).
+  // TODO(embedding-modules): move the folder out of admin so module == folder.
   createElement({
-    type: "feature",
-    name: "admin-theme-preview",
-    pattern:
-      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
-    mode: "full",
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
   }),
+  // Route composition for the admin app. Must precede feature/admin.
+  ...[
+    "frontend/src/metabase/admin/routes.tsx",
+    "frontend/src/metabase/admin/routes.unit.spec.tsx",
+  ].map((pattern) =>
+    createElement({ type: "app", name: "admin-routes", pattern, mode: "full" }),
+  ),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
-  createElement({ type: "feature", name: "documents" }),
+  createElement({ type: "shared", name: "documents" }),
   // EE plugin-bootstrap files that only wire app-tier SDK modules into plugin
   // slots, so they're app tier, not feature/enterprise. Tagged by which embedding
   // product they belong to. Must precede the feature/enterprise element below
@@ -251,18 +348,30 @@ const elements = [
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
   }),
+  createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
-  createElement({ type: "feature", name: "query_builder" }),
+  createElement({
+    type: "feature",
+    name: "query_builder",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "reference" }),
   createElement({ type: "feature", name: "search" }),
 
   // app
+  // Composition/barrel file for reducers shared among the embedding sdk and the core app
+  createElement({
+    type: "app",
+    name: "reducers-common",
+    pattern: "frontend/src/metabase/reducers-common.ts",
+    mode: "full",
+  }),
   ...[
-    "frontend/src/metabase/app.js",
+    "frontend/src/metabase/app.tsx",
     "frontend/src/metabase/app-embed-sdk.tsx",
-    "frontend/src/metabase/app-main.js",
+    "frontend/src/metabase/app-main.ts",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
@@ -272,7 +381,6 @@ const elements = [
     "frontend/src/metabase/app/selectors.ts",
     "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
-    "frontend/src/metabase/reducers-common.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes.unit.spec.tsx",
@@ -282,16 +390,10 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
-    // NewModals is used very high in the hierarchy and imports the EAJS wizard that uses EAJS (app level)
-    "frontend/src/metabase/new/components/NewModals/NewModals.tsx",
-    // Its spec mounts NewModals to assert menu clicks open modals, so the test is app-tier too.
-    "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
-    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
+    // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
-    // Storybook config is a composition root: preview wires app-tier decorators.
-    // Needs its own pattern because ** doesn't match dot-folders.
-    "frontend/src/embedding-sdk-shared/.storybook/**",
   ].map((path) =>
     createElement({
       type: "app",
@@ -305,11 +407,8 @@ const elements = [
     name: "nav",
     pattern: "frontend/src/metabase/app/nav/**",
   }),
-  // static-viz must come after the app entries rather than in the
-  // alphabetical shared list: its entry point (static-viz/index.tsx) is app
-  // tier, and the first matching element wins.
-  createElement({ type: "shared", name: "static-viz" }),
-
+  // NewModals is composition glue rendered at the app root, wiring in the app-tier embed wizard.
+  createElement({ type: "app", name: "new" }),
   // Loose files living directly under frontend/src/metabase that have not yet
   // been pulled into a module folder.
   ...["frontend/src/metabase/dev.ts", "frontend/src/metabase/dev-noop.ts"].map(
@@ -328,7 +427,7 @@ const elements = [
     mode: "full",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "routes-stable-id-aware",
     pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
     mode: "full",
@@ -336,12 +435,12 @@ const elements = [
   createElement({
     type: "shared",
     name: "redux-store",
-    pattern: "frontend/src/metabase/store.js",
+    pattern: "frontend/src/metabase/store.ts",
     mode: "full",
   }),
 ];
 
-const rules = [
+const baseRules = [
   ...elements.map((element) => ({
     // always allow self-imports
     from: [element.type],
@@ -359,6 +458,16 @@ const rules = [
   {
     from: ["basic/ui"],
     allow: ["lib/lib"],
+  },
+  // The column-vocabulary predicates (isa, column-key) live in metabase-lib/v1.
+  {
+    from: ["basic/value-formatting"],
+    allow: ["basic/mlv1"],
+  },
+  // mlv1 for the column predicates, value-formatting for formatValue, ui for the colour utilities and theme types.
+  {
+    from: ["basic/viz-core"],
+    allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],
   },
   {
     from: ["shared/*"],
@@ -384,26 +493,11 @@ const rules = [
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
-  // Whitelisted cross-tier edges. Keep this list short; every entry should
-  // eventually be removed.
-  // Window-bridge ABI: the payload shapes are owned by the bundle.
-  // TODO(embedding-modules): decouple with shared contracts.
-  {
-    from: ["shared/embedding-sdk-window-bridge"],
-    allow: ["app/embedding-sdk-bundle"],
-    importKind: "type",
-  },
-  // Admin theme preview drives the live embed through the EAJS runtime.
-  // Remove once the preview is lifted out of admin.
-  {
-    from: ["feature/admin-theme-preview"],
-    allow: ["feature/admin", "app/embedding-iframe-sdk"],
-  },
-  {
-    from: ["feature/admin"],
-    allow: ["feature/admin-theme-preview"],
-  },
 ];
+
+// The full rule set drives the standalone `bun run module-boundaries` count.
+// PR lint uses enforcedRules.
+const rules = [...baseRules, ...sharedRules];
 
 /**
  * Returns a subset of rules that only enforces boundaries for modules with
@@ -448,10 +542,41 @@ function buildEnforcedRules(elements, rules) {
   ];
 }
 
-const enforcedRules = buildEnforcedRules(elements, rules);
+/**
+ * Modules with enforceSharedTiers: false are dropped from the level rules,
+ * which leaves them on the blanket shared -> shared allow.
+ */
+function buildEnforcedSharedRules(elements, rules) {
+  const enforcedTypes = new Set(
+    elements
+      .filter((el) => el.type.startsWith("shared/") && el.enforceSharedTiers)
+      .map((el) => el.type),
+  );
+  return rules.flatMap((rule) => {
+    const from = rule.from.filter((type) => enforcedTypes.has(type));
+    return from.length > 0 ? [{ ...rule, from }] : [];
+  });
+}
+
+const enforcedRules = buildEnforcedRules(elements, [
+  ...baseRules,
+  ...buildEnforcedSharedRules(elements, sharedRules),
+]);
 
 function getFeatureModules(els = elements) {
   return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
 }
 
-export { elements, rules, enforcedRules, getFeatureModules };
+// The import aliases of the modules flagged `enforcePublicApi`, for the
+// `metabase/enforce-module-public-api` rule.
+function getPublicApiModules(els = elements) {
+  return els.map((element) => element.publicApiAlias).filter(Boolean);
+}
+
+export {
+  elements,
+  rules,
+  enforcedRules,
+  getFeatureModules,
+  getPublicApiModules,
+};

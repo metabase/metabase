@@ -158,7 +158,7 @@
       (.getObject rs i LocalTime)
       (catch Throwable _
         (when-let [s (.getString rs i)]
-          (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+          (log/trace "Error in Postgres JDBC driver reading TIME value, fetching as string")
           (u.date/parse s))))
 
     ;; H2 & MySQL work as expected

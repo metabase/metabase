@@ -51,7 +51,7 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    const input = screen.getByTestId("custom-expression-query-editor");
+    const input = await screen.findByTestId("custom-expression-query-editor");
     await userEvent.type(input, "1 + 1");
     await act(async () => {
       input.blur();
@@ -151,7 +151,7 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    const input = screen.getByTestId("custom-expression-query-editor");
+    const input = await screen.findByTestId("custom-expression-query-editor");
     await userEvent.type(input, "1 + 1");
     await act(async () => {
       input.blur();

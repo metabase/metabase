@@ -5,7 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { Alert, Box, Code, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isEmpty } from "metabase/utils/validate";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 interface ImpersonationWarningProps {
   database: Database;

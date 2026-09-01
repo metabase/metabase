@@ -537,13 +537,14 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
-   "model_index"       #{"model_index_value"}
-   "metabase_database" #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
-   "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
-   "document"          #{"action" "model_index_value" "report_card"}
-   "report_card"       #{"action" "model_index_value"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
+  {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
+   "model_index"        #{"model_index_value"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
+   "document"           #{"action" "model_index_value" "report_card"}
+   "exploration"        #{"action" "document" "model_index_value" "report_card"}
+   "report_card"        #{"action" "model_index_value"}
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants
@@ -787,3 +788,22 @@
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))
+
+(deftest missing-index-table-does-not-abort-enclosing-transaction-test
+  (when (search/supports-index?)
+    (testing "Handling writes to a missing index table does not abort an enclosing transaction"
+      (search.tu/with-temp-index-table
+        (let [table-name (search.index/active-table)]
+          (#'search.index/drop-table! table-name)
+          (testing "delete!"
+            (t2/with-transaction [_conn]
+              (is (= {"card" 0} (search.engine/delete! :search.engine/appdb "card" [1])))
+              (testing "\nthe enclosing transaction remains usable"
+                (is (true? (t2/exists? :model/User))))))
+          (testing "upsert"
+            (t2/with-transaction [_conn]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Currently tracked index does not exist"
+                                    (#'search.index/safe-batch-upsert! :active (constantly table-name)
+                                                                       [{:model "card" :model_id "1"}])))
+              (testing "\nthe enclosing transaction remains usable"
+                (is (true? (t2/exists? :model/User)))))))))))

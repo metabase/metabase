@@ -2,15 +2,15 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useLocation } from "metabase/router";
 import { getObjectEntries } from "metabase/utils/objects";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
   DimensionBreakoutInfo,
   MetricDefinitionEntry,
@@ -86,9 +86,8 @@ async function loadMeasureDefinition(
   return LibMetric.fromMeasureMetadata(provider, meta);
 }
 
-export function useViewerState({
-  location,
-}: MetricsViewerPageProps): UseViewerStateResult {
+export function useViewerState(): UseViewerStateResult {
+  const location = useLocation();
   const dispatch = useDispatch();
   const store = useStore();
 

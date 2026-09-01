@@ -37,7 +37,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { ActionProps } from "./Action";
-import Action from "./Action";
+import { Action } from "./Action";
 
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;

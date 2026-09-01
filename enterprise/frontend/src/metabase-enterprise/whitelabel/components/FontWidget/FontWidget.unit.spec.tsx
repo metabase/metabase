@@ -7,6 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -39,7 +40,9 @@ const setup = async (
   ]);
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<FontWidget />);
+  renderWithProviders(<FontWidget />, {
+    storeInitialState: { settings: createMockSettingsState(settings) },
+  });
   await screen.findByText("Font");
   return waitFor(async () => {
     const gets = await findRequests("GET");

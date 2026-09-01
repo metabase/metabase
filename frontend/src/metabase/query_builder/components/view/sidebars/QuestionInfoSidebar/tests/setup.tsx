@@ -3,6 +3,7 @@ import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupCardsUsingModelEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupRevisionsEndpoints,
   setupTokenStatusEndpoint,
   setupUsersEndpoints,
@@ -11,7 +12,6 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { getQuestion } from "metabase/query_builder/selectors";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -24,8 +24,12 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
+import { getQuestion } from "../../../../../store/selectors";
 import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
 
 export interface SetupOpts {
@@ -48,6 +52,7 @@ export const setup = async ({
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
   setupAuditInfoEndpoint();
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
 
   const state = createMockState({
     currentUser,

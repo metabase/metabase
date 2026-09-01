@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { CurrencyStyle } from "metabase/utils/formatting";
-
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
+import type { CurrencyStyle } from "./formatting";
 import type { GroupId } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
@@ -165,22 +164,14 @@ export interface EngineSourceContact {
 }
 
 export interface ScheduleSettings {
-  schedule_type?: ScheduleType | null;
+  schedule_type: ScheduleType;
   schedule_day?: ScheduleDayType | null;
   schedule_frame?: ScheduleFrameType | null;
   schedule_hour?: number | null;
   schedule_minute?: number | null;
 }
 
-export type ScheduleType =
-  | "every_n_minutes"
-  | "hourly"
-  | "daily"
-  | "weekly"
-  | "monthly"
-  // 'cron' type implies usage of more complex expressions represented
-  // by raw cron string.
-  | "cron";
+export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
 
 export type ScheduleDayType =
   | "sun"
@@ -255,6 +246,7 @@ export type GdrivePayload = {
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
+  "attached-dwh",
   "audit-app",
   "cache-granular-controls",
   "collection-cleanup",
@@ -384,7 +376,6 @@ export const tokenFeatures = [
   "writable_connection",
   "admin_security_center",
   "ai_controls",
-  "workspaces",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -538,12 +529,22 @@ interface SettingsManagerSettings {
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-zai-api-key"?: string | null;
+  "llm-mistral-api-key"?: string | null;
+  "llm-moonshot-api-key"?: string | null;
+  "llm-deepseek-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
+  "llm-google-service-account-key"?: string | null;
+  "llm-google-oauth-access-token"?: string | null;
+  "llm-google-project-id"?: string | null;
+  "llm-google-location"?: string | null;
   "llm-bedrock-access-key-id"?: string | null;
   "llm-bedrock-secret-access-key"?: string | null;
   "llm-bedrock-region"?: string | null;
   "llm-bedrock-session-token"?: string | null;
+  "llm-vllm-api-base-url"?: string | null;
+  "llm-vllm-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -571,7 +572,9 @@ interface PublicSettings {
   "application-name": string;
   "application-favicon-url": string;
   "available-fonts": string[];
-  "available-locales": LocaleData[] | null;
+  // Non-null: :public visibility and a total getter (computed from the jar's
+  // bundled translation resources), so every viewer always receives a list.
+  "available-locales": LocaleData[];
   "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
@@ -582,6 +585,7 @@ interface PublicSettings {
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
+  "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "mfa-enforcement"?: "off" | "optional";
@@ -629,7 +633,7 @@ interface PublicSettings {
   "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
-  "session-cookies": boolean | null;
+  "session-cookies": boolean;
   "setup-token": string | null;
   "metabot-enabled?": boolean;
   "metabot-name": string;
@@ -668,6 +672,7 @@ export type UserSettings = {
   "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
+  "dismissed-research-mode-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-sidebar-width"?: number | null;
@@ -714,7 +719,7 @@ export type UserSettings = {
  *
  * To further complicate things, there are two endpoints for fetching settings:
  *  - `GET /api/setting` that _can only be used by admins!_ — returns `403` for non-admins.
- *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted (unavailable).
+ *  - `GET /api/session/properties` that can be used by any user (returns `200`), but some settings might be omitted.
  */
 export type Settings = InstanceSettings &
   PublicSettings &
@@ -768,7 +773,13 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-api-key"?: string;
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
+  "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-metabot-supports-fast-mode?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-zai-api-key"?: string | null;
+  "llm-mistral-api-key"?: string | null;
+  "llm-moonshot-api-key"?: string | null;
+  "llm-deepseek-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -805,6 +816,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "jwt-group-mappings": Record<string, GroupId[]> | null;
+  "oidc-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
@@ -824,6 +837,8 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
+  "llm-mini-model"?: string | null;
+  "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;

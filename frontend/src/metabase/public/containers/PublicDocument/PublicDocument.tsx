@@ -9,37 +9,31 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
+import { CardEmbed } from "metabase/documents/components/editor-extensions/CardEmbed/CardEmbedNode";
+import { ExternalCardDataProvider } from "metabase/documents/components/editor-extensions/CardEmbed/ExternalCardDataContext";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { MetabotNode } from "metabase/metabot/components/editor-extensions/MetabotEmbed";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
-import { ExternalCardDataProvider } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
-import { MetabotNode } from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
-import type { Location } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { useLocation, useParams } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";
 
-interface PublicDocumentProps {
-  location: Location;
-  params: {
-    uuid: string;
-  };
-}
-
-export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
-  const { uuid } = params;
+export const PublicDocument = () => {
+  const location = useLocation();
+  const { uuid = "" } = useParams<{ uuid: string }>();
   const dispatch = useDispatch();
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 

@@ -1,6 +1,7 @@
 import { cardCreated, cardUpdated } from "metabase/redux/cards";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 import { tablesReducer } from "./tables-reducer";
 
@@ -9,13 +10,15 @@ describe("tablesReducer", () => {
     function getQuestion({
       id = 5,
       name = "Q1",
+      description = null,
       collection = null,
-      dataset_query = { database: 1 },
+      dataset_query = createMockStructuredDatasetQuery({ database: 1 }),
       archived = false,
     } = {}) {
       const question = {
         id,
         name,
+        description,
         collection,
         dataset_query,
         archived,
@@ -171,6 +174,22 @@ describe("tablesReducer", () => {
         { id: 10, table_id: 1, display_name: "New" },
         { id: 11, display_name: "Other" },
       ]);
+    });
+
+    it("skips a field written as null, which is a delete", () => {
+      const state = {
+        1: {
+          id: 1,
+          original_fields: [{ id: 10, display_name: "Old" }],
+        },
+      };
+
+      const nextState = tablesReducer(
+        state,
+        getEntitiesUpdateAction({ 10: null }),
+      );
+
+      expect(nextState).toBe(state);
     });
 
     it("leaves state untouched when the table has no original_fields", () => {

@@ -3,17 +3,18 @@ import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
-} from "metabase/visualizations/lib/iframe";
+} from "metabase/viz-core";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -45,7 +46,7 @@ export interface IFrameVizProps {
   onTogglePreviewing: () => void;
 }
 
-export function IFrameViz({
+function IFrameVizInner({
   dashcard,
   dashboard,
   isEditing,
@@ -211,4 +212,4 @@ function GenericError() {
   );
 }
 
-Object.assign(IFrameViz, settings);
+export const IFrameViz = Object.assign(IFrameVizInner, settings);

@@ -4,11 +4,14 @@ import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import { fireEvent, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockDatabase,
 } from "metabase-types/api/mocks";
 
@@ -86,6 +89,139 @@ describe("Embed flow > misconfigured Site URL (EMB-1747)", () => {
     expect(
       screen.queryByTestId("sdk-iframe-embed-site-url-mismatch-error"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Embed flow > custom visualizations", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("automatically allows the custom visualization used by a question opened from sharing", async () => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+
+    const mockDatabase = createMockDatabase();
+    const mockCard = createMockCard({
+      id: 456,
+      display: "custom:calendar",
+    });
+
+    setupCardEndpoints(mockCard);
+    setupCardQueryMetadataEndpoint(
+      mockCard,
+      createMockCardQueryMetadata({ databases: [mockDatabase] }),
+    );
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      initialState: {
+        resourceType: "question",
+        resourceId: mockCard.id,
+      },
+    });
+
+    await waitFor(() => {
+      expect(window.metabaseConfig?.allowedCustomVisualizations).toEqual([
+        "custom:calendar",
+      ]);
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    await userEvent.click(screen.getByRole("button", { name: /Copy code/ }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /"allowedCustomVisualizations": \[\s+"custom:calendar"\s+\]/,
+      ),
+    );
+  });
+
+  it("automatically allows the custom visualizations used by a dashboard opened from the embedding hub", async () => {
+    const dashboard = createMockDashboard({
+      enable_embedding: true,
+      dashcards: [
+        createMockDashboardCard({
+          id: 1,
+          card: createMockCard({ display: "custom:calendar" }),
+        }),
+        createMockDashboardCard({
+          id: 2,
+          card: createMockCard({ display: "custom:thumbs" }),
+        }),
+      ],
+    });
+
+    setup({ simpleEmbeddingEnabled: true, dashboard });
+
+    await waitFor(() => {
+      expect(window.metabaseConfig?.allowedCustomVisualizations).toEqual([
+        "custom:calendar",
+        "custom:thumbs",
+      ]);
+    });
+  });
+});
+
+describe("Embed flow > Get Code Snippet", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("copies the SSO code snippet with only instanceUrl in the config", async () => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: false },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    await userEvent.click(screen.getByRole("button", { name: /Copy code/ }));
+
+    const [copiedSnippet] = jest.mocked(navigator.clipboard.writeText).mock
+      .calls[0];
+
+    // defineMetabaseConfig accepts a config object
+    const metabaseConfigObjectRegex = /defineMetabaseConfig\((\{.*?\})\);/s;
+    const [, config] = copiedSnippet.match(metabaseConfigObjectRegex) ?? [];
+
+    // fields like `useExistingUserSession` should not exist
+    expect(JSON.parse(config)).toStrictEqual({
+      instanceUrl: window.location.origin,
+    });
+  });
+
+  it("tracks embed_wizard_code_copied when the snippet is copied without the button (EMB-2309)", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: true },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    // A keyboard or context-menu copy never reaches the Copy code button, so
+    // the card tracks the snippet's own `copy` event too.
+    fireEvent.copy(await screen.findByTestId("embed-code-snippet"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "embed_wizard_code_copied",
+      event_detail:
+        "experience=dashboard,snippetType=frontend,authSubType=user-session",
+    });
   });
 });
 

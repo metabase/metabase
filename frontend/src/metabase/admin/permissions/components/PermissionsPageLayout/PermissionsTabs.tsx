@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
 } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Tabs } from "metabase/ui";
 
 import type { PermissionsPageTab } from "./PermissionsPageLayout";
@@ -37,8 +37,7 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
       <Tabs
         listBorder={false}
         value={tab}
-        // Unjustified type cast. FIXME
-        onChange={(value) => value && onChangeTab(value as PermissionsPageTab)}
+        onChange={(value) => value && onChangeTab(value)}
       >
         <Tabs.List pl="xl">
           {tabs.map((tabOption) => (

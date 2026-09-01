@@ -35,14 +35,15 @@
     (let [summary (try
                     (usage-metadata.batch/run-batch!)
                     (catch Throwable e
-                      (log/error e "Error processing usage metadata batch")
+                      (log/errorf "Error processing usage metadata batch: %s" (ex-message e))
                       (throw e)))]
       (try
         ;; reset the "falling edge" — fields whose last rollup row was just pruned — in the same pass
         (usage-metadata.interestingness/rescore-dimension-interestingness!
          (:pruned-dimension-fields summary))
         (catch Throwable e
-          (log/error e "Error rescoring dimension interestingness from usage metadata"))))))
+          (log/errorf "Error rescoring dimension interestingness from usage metadata: %s"
+                      (ex-message e)))))))
 
 (defn- job []
   (jobs/build

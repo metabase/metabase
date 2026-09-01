@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -9,16 +8,13 @@ import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import S from "./DestinationDatabasesModal.module.css";
 
-export const DestinationDatabasesModal = ({
-  params,
-}: {
-  params: { databaseId: string };
-}) => {
-  const primaryDbId = parseInt(params.databaseId, 10);
+export const DestinationDatabasesModal = () => {
+  const params = useParams<{ databaseId: string }>();
+  const primaryDbId = parseInt(params.databaseId ?? "", 10);
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const handleCloseModal = () => {
-    dispatch(push(Urls.viewDatabase(primaryDbId)));
+    navigate(Urls.viewDatabase(primaryDbId));
   };
 
   return (

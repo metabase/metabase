@@ -2,9 +2,8 @@ import { useEffect, useMemo } from "react";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import { useDispatch } from "metabase/redux";
 import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import { isNullOrUndefined } from "metabase/utils/types";
 
@@ -45,7 +44,7 @@ export const useLocationSync = <
   onChange: (value: Value | null) => void;
   location: Location;
 }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
   // Unjustified type cast. FIXME
@@ -80,16 +79,18 @@ export const useLocationSync = <
           };
 
       const hashString = stringifyHashOptions(updatedOptions);
+      const hash = hashString ? "#" + hashString : "";
 
-      dispatch(
-        replace({
-          ...location,
-          hash: hashString ? "#" + hashString : "",
-        }),
-      );
+      // The effect reads `location` and replaces it, so a replace that lands on
+      // the same URL would re-enter it through the resulting location change.
+      if (hash !== location.hash) {
+        navigate(
+          { ...location, hash },
+          { replace: true, state: location.state },
+        );
+      }
     }
   }, [
-    dispatch,
     hashOptions,
     key,
     latestValue,
@@ -97,5 +98,6 @@ export const useLocationSync = <
     onChange,
     previousValue,
     value,
+    navigate,
   ]);
 };

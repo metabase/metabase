@@ -32,6 +32,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.test :as qp]
@@ -56,6 +57,34 @@
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (mt/with-test-user :rasta (thunk)))))
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined strings use a representation that is independent of the session's backslash-escaping mode"
+    (let [expected (fn [^String s]
+                     (format "_utf8mb4 X'%s'" (codecs/bytes->hex (.getBytes s "UTF-8"))))]
+      (are [s] (= (expected s) (sql.qp/inline-value :mysql s))
+        "Tito's Tacos"
+        "back\\slash"
+        "a\\' OR 1 = 1 --"
+        ""
+        "\u00e9\ud83c\udf63")))
+  (testing "compiling a query with inline parameters"
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM `venues` WHERE `venues`.`name` = _utf8mb4 X'615c27204f522031203d2031202d2d'"]
+             (sql.qp/format-honeysql :mysql {:select [:*]
+                                             :from   [[:venues]]
+                                             :where  [:= :venues/name "a\\' OR 1 = 1 --"]}))))))
+
+(deftest ^:parallel like-pattern-escape-char-not-driver-inlined-test
+  (testing "LIKE's ESCAPE character compiles to a plain `'!'` even with a driver bound — a `_utf8mb4 X'21'` hex
+            literal carries utf8mb4's default collation and makes MySQL app DBs on another collation fail with
+            `Illegal mix of collations` (#81161 follow-up)"
+    (binding [driver/*driver* :mysql]
+      (is (= ["SELECT * FROM `t` WHERE LOWER(`name`) LIKE ? ESCAPE '!'" "%a!%b%"]
+             (sql/format {:select [:*]
+                          :from   [:t]
+                          :where  [:like [:lower :name] (h2x/like-substring "a%b")]}
+                         {:dialect :mysql}))))))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -548,7 +577,12 @@
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
         (is (= ["JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?))" "$.\"boop\".\"foobar\".\"1234\""]
-               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+               (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))
+    (testing "a database-type that isn't a plain type name is rejected instead of spliced raw into CONVERT"
+      (let [evil-field {:database-type "signed); select 1 --" :nfc-path [:bleh :meh]}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid database type for MySQL CONVERT"
+                              (sql.qp/json-query :mysql boop-identifier evil-field)))))))
 
 (tx/defdataset json-unquote-test
   [["json_test"
@@ -652,15 +686,14 @@
             (sync/sync-table! table)
             (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
-                (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
-                                                                 :field
-                                                                 {:binning
-                                                                  {:strategy :num-bins,
-                                                                   :num-bins 100,
-                                                                   :min-value 0.75,
-                                                                   :max-value 54.0,
-                                                                   :bin-width 0.75}}
-                                                                 (u/the-id field))]
+                (let [field-clause [:field
+                                    {:binning
+                                     {:strategy :num-bins,
+                                      :num-bins 100,
+                                      :min-value 0.75,
+                                      :max-value 54.0,
+                                      :bin-width 0.75}}
+                                    (u/the-id field)]]
                   (is (= ["((FLOOR((((JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))

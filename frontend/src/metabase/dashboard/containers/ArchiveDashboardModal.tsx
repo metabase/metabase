@@ -7,7 +7,7 @@ import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -57,7 +57,7 @@ const ArchiveDashboardModal = ({
 };
 
 export const ArchiveDashboardModalConnectedInner = (props: OwnProps) => {
-  const { params } = useRouter();
+  const params = useParams();
   const id = Urls.extractCollectionId(params?.slug);
   const { currentData: dashboard, error } = useGetDashboardQuery(
     id != null ? { id } : skipToken,

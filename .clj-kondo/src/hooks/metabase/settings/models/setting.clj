@@ -286,6 +286,7 @@
     (update context :node update-node)))
 
 (comment
+  (require '[clojure.pprint])
   (defn- defsetting* [form]
     (hooks/sexpr
      (:node
@@ -293,7 +294,6 @@
         {:node
          (hooks/parse-string
           (with-out-str
-            #_{:clj-kondo/ignore [:unresolved-namespace]}
             (clojure.pprint/pprint
              form)))}))))
 

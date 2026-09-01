@@ -17,12 +17,17 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private date-tag-id
+  "The `:id` of the template tag in [[parameterized-native-query]], and so of the parameter the Card declares for it --
+  the id a client sends when giving that parameter a value."
+  "04ae45bd-f8fd-4e8d-9bc6-a9737f231a50")
+
 (defn- parameterized-native-query
   "A native query with an optional template tag"
   []
   {:database (mt/id)
    :type     :native
-   :native   {:template-tags {"date" {:id           "04ae45bd-f8fd-4e8d-9bc6-a9737f231a50"
+   :native   {:template-tags {"date" {:id           date-tag-id
                                       :name         "date"
                                       :display-name "Check-In Date"
                                       :type         :text}}
@@ -110,12 +115,12 @@
         (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
                                                   :dataset_query (parameterized-native-query)}]
           (let [param-val-1 "2024-12-01"
-                params-1    [{:id     "_DATE_"
+                params-1    [{:id     date-tag-id
                               :type   :text
                               :target [:variable [:template-tag "date"]]
                               :value  param-val-1}]
                 param-val-2 "2024-12-02"
-                params-2    [{:id     "_DATE_"
+                params-2    [{:id     date-tag-id
                               :type   :text
                               :target [:variable [:template-tag "date"]]
                               :value  param-val-2}]
@@ -237,12 +242,12 @@
                                              :refresh_automatically true
                                              :config                {:unit "hours" :duration 1}}]
           (let [param-val-1 "2024-12-01"
-                params-1    [{:id     "_DATE_"
+                params-1    [{:id     date-tag-id
                               :type   :text
                               :target [:variable [:template-tag "date"]]
                               :value  param-val-1}]
                 param-val-2 "2024-12-02"
-                params-2    [{:id     "_DATE_"
+                params-2    [{:id     date-tag-id
                               :type   :text
                               :target [:variable [:template-tag "date"]]
                               :value  param-val-2}]
@@ -489,7 +494,7 @@
     :result [[1000]]}
    {:label "parameterized native query"
     :query (parameterized-native-query)
-    :parameters [{:id "_DATE_"
+    :parameters [{:id date-tag-id
                   :type  :text
                   :target [:variable [:template-tag "date"]]
                   :value  "2014-05-31"}]
@@ -560,6 +565,38 @@
                       (compare-query-results original-result cached-result))
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))
+
+(deftest refresh-schedule-cache-uses-invalidated-at-cutoff-test
+  ;; Regression for #78341.
+  (binding [task.cache/*run-cache-refresh-async* false]
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
+                                              :dataset_query (parameterized-native-query)}]
+      (let [created-at     (t/minus (t/offset-date-time) (t/days 30))
+            invalidated-at (t/minus (t/offset-date-time) (t/hours 1))
+            captured       (atom nil)
+            capture-cutoff
+            (fn [cache-config]
+              (reset! captured ::not-called)
+              (mt/with-dynamic-fn-redefs [task.cache/scheduled-queries-to-rerun
+                                          (fn [_card-id cutoff]
+                                            (reset! captured cutoff)
+                                            [])]
+                (@#'task.cache/refresh-schedule-cache! cache-config))
+              @captured)]
+        (testing "rerun-cutoff is the previous refresh (invalidated_at), not the config's created_at"
+          (is (= invalidated-at
+                 (capture-cutoff {:model          "question"
+                                  :model_id       card-id
+                                  :strategy       :schedule
+                                  :created_at     created-at
+                                  :invalidated_at invalidated-at}))))
+        (testing "falls back to created_at when the config has never been invalidated (first run)"
+          (is (= created-at
+                 (capture-cutoff {:model          "question"
+                                  :model_id       card-id
+                                  :strategy       :schedule
+                                  :created_at     created-at
+                                  :invalidated_at nil}))))))))
 
 (deftest refresh-duration-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}

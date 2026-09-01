@@ -33,6 +33,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; reads the provider that mt/with-metadata-provider binds in the ambient store
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -958,7 +959,7 @@
 (defn- fmt-str-or-int
   [x]
   (if (string? x)
-    (str x)
+    x
     (int x)))
 
 (defn- week-of-year-and-week-count-should-be-consistent-test-break-out [unit]
@@ -1828,7 +1829,7 @@
                      #t "2022-03-31T00:00:00"
                      #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (let [march-31 (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause driver/*driver* :absolute-datetime t :day))
+              (let [march-31 (sql.qp/->honeysql driver/*driver* [:absolute-datetime {} t :day])
                     june-31 (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins (mt/with-metadata-provider (mt/id)
                                (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))

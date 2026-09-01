@@ -8,7 +8,7 @@ import {
   useListPublicCardsQuery,
   useListPublicDashboardsQuery,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import type {
   GetPublicAction,

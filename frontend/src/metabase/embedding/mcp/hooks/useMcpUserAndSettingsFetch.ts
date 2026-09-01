@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { userApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { userUpdated } from "metabase/redux/user";
+import { refetchCurrentUser } from "metabase/current-user";
+import { refetchSiteSettings } from "metabase/settings";
 
 import {
   type McpAppsUserAndSettingsFetchErrorType,
@@ -14,7 +12,7 @@ import {
 
 interface UseMcpUserAndSettingsFetchOptions {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   store: SdkStore;
 }
 
@@ -25,7 +23,7 @@ interface UseMcpUserAndSettingsFetchResult {
 
 export function useMcpUserAndSettingsFetch({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   store,
 }: UseMcpUserAndSettingsFetchOptions): UseMcpUserAndSettingsFetchResult {
   const [isSettingsReady, setIsSettingsReady] = useState(false);
@@ -36,6 +34,10 @@ export function useMcpUserAndSettingsFetch({
   // selectors like getTokenFeature has populated settings.
   // We also no-op the EE auth flow (auth.ts) when in MCP Apps route.
   useEffect(() => {
+    if (isSettingsReady) {
+      return;
+    }
+
     let isMounted = true;
 
     const setErrorByType = (type: McpAppsUserAndSettingsFetchErrorType) =>
@@ -46,8 +48,7 @@ export function useMcpUserAndSettingsFetch({
         setIsSettingsReady(false);
         setFetchError(null);
 
-        if (!sessionToken) {
-          setErrorByType("auth");
+        if (!uiCredential) {
           return;
         }
 
@@ -56,20 +57,17 @@ export function useMcpUserAndSettingsFetch({
           return;
         }
 
-        const [currentUser] = await Promise.all([
-          runRtkEndpoint(
-            undefined,
-            store.dispatch,
-            userApi.endpoints.getCurrentUser,
-          ),
-          store.dispatch(refreshSiteSettings()),
+        // `unwrap` both so an auth/network failure lands in the catch below
+        // instead of silently reporting ready.
+        await Promise.all([
+          store.dispatch(refetchCurrentUser()).unwrap(),
+          store.dispatch(refetchSiteSettings()).unwrap(),
         ]);
 
         if (!isMounted) {
           return;
         }
 
-        store.dispatch(userUpdated(currentUser));
         setIsSettingsReady(true);
       } catch (error) {
         console.error("Error initializing MCP app", error);
@@ -85,7 +83,7 @@ export function useMcpUserAndSettingsFetch({
     return () => {
       isMounted = false;
     };
-  }, [instanceUrl, sessionToken, store]);
+  }, [instanceUrl, isSettingsReady, uiCredential, store]);
 
   return { isSettingsReady, userAndSettingsFetchError: fetchError };
 }

@@ -10,19 +10,12 @@ import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type { Card, Parameter } from "metabase-types/api";
-
-type BlankQueryOptions = {
-  db?: string;
-  table?: string;
-  segment?: string;
-  metric?: string;
-};
-
-type QueryParams = BlankQueryOptions & {
-  slug?: string;
-  objectId?: string;
-};
+import type {
+  Card,
+  Parameter,
+  ParameterValuesMap,
+  SeriesCard,
+} from "metabase-types/api";
 
 function shouldPropagateDashboardParameters({
   cardId,
@@ -86,8 +79,8 @@ export function getParameterValuesForQuestion({
   queryParams,
   metadata,
 }: {
-  card: Card;
-  queryParams?: QueryParams;
+  card: SeriesCard;
+  queryParams?: ParameterValuesMap;
   metadata: Metadata;
 }) {
   const parameters = getCardUiParameters(card, metadata);
@@ -108,13 +101,14 @@ export async function propagateDashboardParameters({
   originalCard,
   dispatch,
 }: {
-  card: Card;
+  card: SeriesCard;
   deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
   originalCard?: Card | null;
   dispatch: Dispatch;
 }) {
   const cardId = card.id;
   if (
+    cardId &&
     shouldPropagateDashboardParameters({
       cardId,
       deserializedCard,

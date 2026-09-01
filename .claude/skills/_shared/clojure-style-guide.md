@@ -27,9 +27,28 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 - Format using Markdown conventions
 - Reference other vars with `[[other-var]]` not backticks
 
+A docstring states the *contract*: what it returns (including when it returns nil), what its
+params mean, what it throws versus swallows, and any precondition or invariant the caller must
+respect. A params block for non-obvious or optional args is good documentation — length is not
+the problem.
+
+These seven things are, and each is a reason to cut or relocate:
+
+| Anti-pattern | Why | Where it goes instead |
+| --- | --- | --- |
+| **Facts you don't own** — how a *callee*, another namespace, or another repo works internally | Drifts silently; nothing fails when it goes stale | Cut. Name the callee and let its own docstring say it |
+| **Said twice** — ns docstring restating its vars', a caller restating its callee's, sibling fns repeating boilerplate | Two copies means one is already wrong | Cut the copy. One fact, one owner |
+| **Design rationale** — why this approach, why it lives in this module, what the alternative was | The caller can't act on it | Commit message, or an inline comment on the specific line it constrains |
+| **Development history** — "matching master", "the X branch", "currently", "for now", "used to" | Stale by construction | Cut |
+| **Instructions to the reader** — "callers should trust this", "don't bother checking", "you should use X" | State the contract; the caller decides | Cut, keeping any actual guarantee as a plain statement |
+| **Invented precision** — score bands, thresholds, or tables no code enforces | Reads as spec, isn't | Cut, or make the code enforce it |
+| **A note on the wrong var** — describing how overrides behave, on the base/default impl | Nobody reading the override sees it | Move to the overrides it describes |
+
 **Comments:**
 
 - `TODO` format: `;; TODO (Name YYYY-MM-DD) -- description`
+- Prefer an inline comment over docstring prose for anything that explains *the body*. Put it on
+  the line it explains, not at the top of the function.
 
 ## Code Organization
 

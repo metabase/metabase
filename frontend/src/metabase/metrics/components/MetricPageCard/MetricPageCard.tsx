@@ -7,11 +7,11 @@ import { useLoadCardWithMetadata } from "metabase/metrics/common/use-load-card-w
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { is403Error } from "metabase/utils/errors";
-import type { Card } from "metabase-types/api";
+import type { Card, CardQueryMetadata } from "metabase-types/api";
 
 interface MetricPageCardProps {
   cardId: string | undefined;
-  children: (card: Card) => ReactNode;
+  children: (card: Card, metadata: CardQueryMetadata) => ReactNode;
 }
 
 /**
@@ -26,7 +26,7 @@ export function MetricPageCard({
   children,
 }: MetricPageCardProps) {
   const cardId = Urls.extractEntityId(rawCardId);
-  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
+  const { card, metadata, isLoading, error } = useLoadCardWithMetadata(cardId);
   const { error: datasetError, isLoading: isLoadingDataset } =
     useGetCardQueryQuery(cardId != null ? { cardId } : skipToken);
 
@@ -35,7 +35,7 @@ export function MetricPageCard({
   }
 
   const loading = isLoading || isLoadingDataset;
-  if (loading || error != null || card == null) {
+  if (loading || error != null || card == null || metadata == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={loading} error={error} />
@@ -43,5 +43,5 @@ export function MetricPageCard({
     );
   }
 
-  return <>{children(card)}</>;
+  return <>{children(card, metadata)}</>;
 }

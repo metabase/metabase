@@ -41,15 +41,25 @@
                         {:error-type :configuration-error}))
         {}))))
 
+(def ^:private connection-timeout-ms
+  "Connection timeout for runner requests."
+  (u/seconds->ms 10))
+
+(def ^:private socket-timeout-ms
+  "Read timeout for the short runner requests (logs, cancel); /execute adds it as a margin on top of the run timeout."
+  (u/seconds->ms 60))
+
 (defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
   [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
-        base-options {:content-type     :json
-                      :accept           :json
-                      :throw-exceptions false
-                      :as               :json
-                      :headers          (authorization-headers)}]
+        base-options {:content-type       :json
+                      :accept             :json
+                      :throw-exceptions   false
+                      :as                 :json
+                      :connection-timeout connection-timeout-ms
+                      :socket-timeout     socket-timeout-ms
+                      :headers            (authorization-headers)}]
     (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
 
 (defn root-type
@@ -197,6 +207,14 @@
      [~job-run-id]
      (^:once fn* [] ~@body)))
 
+(defn cancel-python-code-http-call!
+  "Calls the /cancel endpoint of the python runner. Returns immediately."
+  [server-url run-id]
+  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
+                                                     :async? true}
+                         #_success (fn [_] (log/debug "Python runner cancel request completed"))
+                         #_failure #(log/errorf "Python runner cancel request failed: %s" (ex-message %))))
+
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
@@ -210,9 +228,10 @@
         table-name->manifest-url (into {} (map (fn [{:keys [alias table_id]}]
                                                  [alias (url-for-path [:table table_id :manifest])]))
                                        source-tables)
+        run-timeout-secs         (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                  :timeout             run-timeout-secs
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
@@ -220,7 +239,17 @@
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
         response                 (with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+                                   (try
+                                     (python-runner-request server-url :post "/execute"
+                                                            {:body           (json/encode payload)
+                                                             :socket-timeout (+ (u/seconds->ms run-timeout-secs)
+                                                                                socket-timeout-ms)})
+                                     ;; a connect/read timeout counts as a runner timeout. we stop waiting, so tell
+                                     ;; the runner to stop too, otherwise it keeps working on an abandoned run
+                                     (catch java.io.InterruptedIOException _
+                                       (u/ignore-exceptions
+                                         (cancel-python-code-http-call! server-url (or request-id run-id)))
+                                       {:status 408 :body {:timeout true}})))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -249,14 +278,6 @@
   "Return an InputStream with the output jsonl contents. Close with .close. Returns nil if the object does not exist."
   ^InputStream [{:keys [s3-client bucket-name objects]}]
   (s3/open-object s3-client bucket-name (:path (:output objects))))
-
-(defn cancel-python-code-http-call!
-  "Calls the /cancel endpoint of the python runner. Returns immediately."
-  [server-url run-id]
-  (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
-                                                     :async? true}
-                         #_success #(log/debug %)
-                         #_failure #(log/error %)))
 
 (defn- safe-delete
   "Safely delete a file."

@@ -13,6 +13,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
@@ -37,7 +38,7 @@
 (set! *warn-on-reflection* true)
 
 ;; Make sure the legacy cookies still work.
-(derive :search.engine/fulltext :search.engine/appdb)
+(search.hierarchy/derive! :search.engine/fulltext :search.engine/appdb)
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
@@ -65,6 +66,7 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      ;; internal permission signal (published tables) — never surfaced in API responses
       (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
@@ -83,9 +85,9 @@
       true       (sql.helpers/where
                   [:or
                    [:= :search_index.model nil]
-                   [:!= :search_index.model [:inline "table"]]
+                   [:!= :search_index.model "table"]
                    [:and
-                    [:= :search_index.model [:inline "table"]]
+                    [:= :search_index.model "table"]
                     clause]]))))
 
 (defn add-collection-join-and-where-clauses
@@ -145,7 +147,7 @@
           (future
             (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
-            (log/error e))))
+            (log/error (ex-message e)))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
@@ -287,10 +289,10 @@
     (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
       (search.index/activate-table!))
     (catch Throwable e
-      (log/error e "Error during reindexing")
+      (log/errorf "Error during reindexing: %s" (ex-message e))
       (throw e))))
 
-(derive :event/setting-update ::settings-changed-event)
+(events/derive! :event/setting-update ::settings-changed-event)
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]

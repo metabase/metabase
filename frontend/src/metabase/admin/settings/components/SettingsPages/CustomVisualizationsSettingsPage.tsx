@@ -2,11 +2,11 @@ import { jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
-import { useAdminSetting } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useHasTokenFeature, useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { useParams } from "metabase/router";
+import { useAdminSetting } from "metabase/settings";
 import {
   Alert,
   Button,
@@ -40,11 +40,8 @@ export function CustomVisualizationsManagePage() {
   return <PLUGIN_CUSTOM_VIZ.ManageCustomVizPage />;
 }
 
-export function CustomVisualizationsFormPage({
-  params,
-}: {
-  params?: { id?: string };
-}) {
+export function CustomVisualizationsFormPage() {
+  const params = useParams<{ id: string }>();
   const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
   const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
 

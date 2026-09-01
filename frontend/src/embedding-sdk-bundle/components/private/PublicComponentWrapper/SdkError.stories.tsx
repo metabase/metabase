@@ -1,5 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
+import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
 
@@ -16,7 +17,9 @@ export default {
 };
 
 const Template: StoryFn<SdkErrorComponentProps> = (args) => (
-  <SdkError {...args} />
+  <PublicComponentWrapper>
+    <SdkError {...args} />
+  </PublicComponentWrapper>
 );
 
 export const Default = {
@@ -76,9 +79,17 @@ export const LongMessage = {
 };
 
 export const QuestionNotFound = {
-  render: () => <QuestionNotFoundError id={1} />,
+  render: () => (
+    <PublicComponentWrapper>
+      <QuestionNotFoundError id={1} />
+    </PublicComponentWrapper>
+  ),
 };
 
 export const DashboardNotFound = {
-  render: () => <DashboardNotFoundError id={42} />,
+  render: () => (
+    <PublicComponentWrapper>
+      <DashboardNotFoundError id={42} />
+    </PublicComponentWrapper>
+  ),
 };

@@ -4,7 +4,7 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { colors } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,

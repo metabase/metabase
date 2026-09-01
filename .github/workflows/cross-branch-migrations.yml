@@ -103,6 +103,8 @@ jobs:
     services:
       mysql:
         image: mysql:8.0
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -115,7 +117,7 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mysql-latest-ee:
+  migrations-mysql-9-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
@@ -128,7 +130,9 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: mysql:latest
+        image: mysql:9
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
@@ -140,6 +144,35 @@ jobs:
         with:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
+
+  # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log until the
+  # runner cancels the job. A cancelled job can't be soft-failed with continue-on-error, so this
+  # job is disabled until 26.x is supported.
+  # migrations-mysql-latest-ee:
+  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+  #   timeout-minutes: 15
+  #   env:
+  #     CI: 'true'
+  #     MB_DB_TYPE: mysql
+  #     MB_DB_HOST: localhost
+  #     MB_DB_PORT: 3306
+  #     MB_DB_DBNAME: mb_test
+  #     MB_DB_USER: root
+  #     MB_MYSQL_TEST_USER: root
+  #   services:
+  #     mysql:
+  #       image: mysql:latest
+  #       env:
+  #         MYSQL_ALLOW_EMPTY_PASSWORD: true
+  #         MYSQL_DATABASE: mb_test
+  #       ports:
+  #         - "3306:3306"
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - uses: ./.github/actions/cross-branch-migration-test
+  #       with:
+  #         base-ref: ${{ env.BASE_REF }}
+  #         head-ref: ${{ env.HEAD_REF }}
 
   migrations-mariadb-10-6-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -154,6 +187,8 @@ jobs:
     services:
       mariadb:
         image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -179,6 +214,8 @@ jobs:
     services:
       mariadb:
         image: mariadb:latest
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:

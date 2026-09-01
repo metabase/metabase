@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import { useListDatabasesQuery } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { ScrollArea } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -42,7 +42,7 @@ export const Editor = ({
   hasVisualizeButton = true,
 }: EditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
-  useDatabaseListQuery();
+  useListDatabasesQuery();
 
   const {
     question: rawQuestion,

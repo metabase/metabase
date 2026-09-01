@@ -10,12 +10,11 @@ import {
 } from "metabase/utils/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   getDatasetPermissionError,
   getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -43,6 +42,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -218,6 +218,13 @@ export function getCurrentTabDashboardCards(
   );
 }
 
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
+}
+
 export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
@@ -270,7 +277,7 @@ export function isDashcardAccessRestricted(
 }
 
 export function getDashcardResultsError(
-  datasets: Dataset[],
+  datasets: Partial<Dataset>[],
   isGuestEmbed: boolean,
 ) {
   const permissionError = datasets
@@ -403,8 +410,10 @@ export const isDashboardCacheable = (
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
 export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;
   }

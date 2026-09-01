@@ -102,8 +102,8 @@
                           {:tables {{:table "PEOPLE"} "users"}})))))
 
 (deftest ^:parallel table-rename-with-schema-map-value-test
-  (testing "Table rename using map value with schema and table (workspace isolation pattern)"
-    ;; This is the pattern used by workspaces to isolate tables into a new schema
+  (testing "Table rename using map value with schema and table (schema relocation pattern)"
+    ;; Relocating a table into a different schema as part of the rename
     (is (= "SELECT * FROM ws_isolated_123.public__orders"
            (replace-names :postgres
                           "SELECT * FROM orders"
@@ -124,7 +124,7 @@
 (deftest ^:parallel clickhouse-positional-placeholders-preserved-test
   (testing "ClickHouse: positional `?` placeholders survive the rewrite"
     ;; sqlglot renders ClickHouse placeholders in named-parameter syntax, which turns a
-    ;; positional `?` into the invalid `{?: }` — this broke workspace-isolated incremental
+    ;; positional `?` into the invalid `{?: }` — this broke rewritten incremental
     ;; transforms, whose compiled checkpoint filters carry prepared-statement params
     ;; (GDGT-2847). Patched in sql_tools.py.
     (is (= "SELECT * FROM \"zz\".\"iso__src\" WHERE (\"ts\" > \"parseDateTimeBestEffort\"(?)) AND (\"ts\" <= \"parseDateTimeBestEffort\"(?))"

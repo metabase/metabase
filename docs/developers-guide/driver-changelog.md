@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
@@ -19,7 +22,19 @@ title: Driver interface changelog
 
 - Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
   `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
-  derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
+  derive from `:sql` (which provides the `:pivot` clause compiler). Defaults to `false`.
+
+- The `:sql-mbql5` abstract driver has been removed, and the `:sql` driver now compiles MBQL 5 directly. SQL drivers
+  must handle MBQL 5 clause shapes (options map as the second element) in their `sql.qp/->honeysql` implementations.
+  The transitional multimethods added in 0.61.0 to support both MBQL formats (e.g. `sql.qp/mbql-clause-with-opts`,
+  `sql.qp/compile-mbql`) have been removed along with the legacy `:sql` implementations they dispatched to.
+
+- `metabase.driver.sql-mbql5.pivot/pivot-grouping-hsql` `[driver exprs]` -- produces the HoneySQL
+  form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
+  multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
+
+- `:native-pivot-tables` is now enabled for `:hive-like` drivers.
+  Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
@@ -48,6 +63,15 @@ title: Driver interface changelog
 
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
+
+  - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+    tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
+
+  - `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+    `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
+  - The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
+    changed; please update your implementations accordingly.
 
 ## Metabase 0.63.0
 
@@ -196,6 +220,48 @@ title: Driver interface changelog
   or as a shortcut if the override is an identity function, add the abstract driver
   `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
   See `metabase.driver.mysql` for an example of using the abstract driver.
+
+## Metabase 0.58.23
+
+- `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the host names pointed to for a set
+  of connection details. Where `details` is the connection-details map stored
+  on the Database row: the values an admin filled into the "Add a database" form, plus anything Metabase derived from them.
+  The default implementation parses hostnames out of `:host` and/or `:hostname`.
+  The SSH tunnel host is handled externally and should not be returned here.
+
+  If you cannot work out the hosts -- an unparseable connection URI, say -- throw rather than guessing or returning
+  an empty list. Metabase turns a throw into a refusal, which is the safe answer; an empty list reads as "these
+  details name no hosts" and lets the connection through unchecked. Return an empty list only when the details really
+  do name nowhere, as a file-backed database does.
+
+- `metabase.driver/host-carrying-parameters` `[driver]` -- new multimethod returning possible client parameters
+  that can carry a host that the client will connect to: a proxy, a failover partner, a token or authentication
+  endpoint, an alternate API endpoint, etc.
+
+  ```clj
+  (defmethod driver/host-carrying-parameters :sqlserver
+    [_driver]
+    ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+  ```
+
+  To find possible parameter names, `java.sql.Driver/getPropertyInfo` enumerates every parameter it accepts.
+
+- `metabase.driver/non-host-parameters` `[driver]` -- new multimethod naming the parameters that LOOK
+  like they might carry a host but have been checked and do not: a certificate's expected hostname, a Kerberos
+  principal, a local bind address, a proxy's port, etc. Nothing reads it at connection time; it records that
+  somebody looked, so that `host-carrying-parameters` can be checked for completeness in tests against what
+  the client says it accepts. Does NOT have to include all non-host parameters. Just ones that sound like they might
+  but actually don't.
+
+- `metabase.driver/connection-parameter-hosts` `[driver details]` -- new multimethod returning the host *values*
+  those parameters hold, once the details, `:additional-options`, and any driver-specific rewriting have been folded
+  in. The default implementation is almost always valid, but exists as a possible multimethod for special cases
+  such as when your connection string is somewhere the default implementation cannot see.
+
+- `metabase.driver/routes-connection-through-ssh-tunnel?` `[driver]` -- new multimethod saying whether the driver
+  opens its warehouse connection through the SSH tunnel described by the `:tunnel-*` details.
+  Defaults to `false`, and to `true` for `:sql-jdbc` and everything beneath it. A non-`:sql-jdbc`
+  driver that opens a tunnel itself must implement this.
 
 ## Metabase 0.58.0
 

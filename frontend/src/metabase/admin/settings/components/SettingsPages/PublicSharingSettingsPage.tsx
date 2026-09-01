@@ -4,7 +4,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import {

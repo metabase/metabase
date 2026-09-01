@@ -3,9 +3,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -25,7 +27,8 @@
    [metabase.sync.core :as sync]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -87,24 +90,28 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [like       (fn [field pattern]
-                     (case (app-db/db-type)
-                       (:h2 :postgres) [:ilike field pattern]
-                       [:raw [:like field pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
-        pattern    (some-> term
-                           (str/replace "\\" "\\\\")
-                           (str/replace "_" "\\_")
-                           (str/replace "%" "\\%")
-                           (str/replace "*" "%")
-                           (cond-> (not (str/ends-with? term "%")) (str "%")))
+  (let [db-type    (app-db/db-type)
+        ;; `*` is the user-facing wildcard; everything else in `term` has already been escaped to match literally
+        glob       (fn [escaped]
+                     (-> escaped
+                         (str/replace "*" "%")
+                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        ci-pattern (fn [pattern]
+                     (case db-type
+                       (:h2 :postgres) pattern
+                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        like       (fn [field wrap]
+                     [(case db-type (:h2 :postgres) :ilike :like)
+                      field
+                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
         where      (cond-> [:and (if include-transform-targets
                                    [:or [:= :active true] [:= :transform_target true]]
                                    [:= :active true])]
                      (not (str/blank? term)) (conj [:or
-                                                    (like :name pattern)
-                                                    (like :display_name pattern)
+                                                    (like :name identity)
+                                                    (like :display_name identity)
                                                     ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name (str "% " pattern))])
+                                                    (like :display_name #(str "% " %))])
                      visibility-type         (conj [:= :visibility_type visibility-type])
                      data-layer              (conj [:= :data_layer      (name data-layer)])
                      data-source             (conj [:= :data_source     (name data-source)])
@@ -113,16 +120,19 @@
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      published-only          (conj [:= :is_published true])
                      (and unused-only (premium-features/has-feature? :dependencies))
-                     (conj [:not-exists {:select [:*]
-                                         :from   [[:dependency :d]]
-                                         :where  [:and
-                                                  [:= :d.to_entity_id :metabase_table.id]
-                                                  [:= :d.to_entity_type "table"]]}]))
+                     (conj [:not-exists ^:allow-subquery {:select [:*]
+                                                          :from   [[:dependency :d]]
+                                                          :where  [:and
+                                                                   [:= :d.to_entity_id :metabase_table.id]
+                                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
+      (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                          :table-ids (into #{} (map :id) tables)})
+          tables)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
                      (if can-write (filter mi/can-write?) identity)
@@ -226,14 +236,24 @@
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
+
+(defn- check-can-publish-tables-to-collection!
+  [tables collection-id]
+  (api/check-data-analyst)
+  (let [collection (api/check-404 (t2/select-one :model/Collection :id collection-id))]
+    (api/check-400 (= (:type collection) collections/library-data-collection-type)
+                   (tru "Tables can only be published to Library/Data collections."))
+    (api/check-403 (every? mi/can-query? tables))))
 
 (defn- update-tables!
-  [ids {:keys [visibility_type] :as body}]
+  [ids {:keys [collection_id visibility_type] :as body}]
   (let [existing-tables (t2/select :model/Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
+    (when collection_id
+      (check-can-publish-tables-to-collection! existing-tables collection_id))
     (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
@@ -300,7 +320,6 @@
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
@@ -364,9 +383,10 @@
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
-          :let [origin-field (-> (t2/hydrate origin-field [:table :db])
-                                 (update :table schema.table/present-table))]
-          :when (-> origin-field :table :active)]
+          :let [origin-field (t2/hydrate origin-field [:table :db])]
+          :when (and (-> origin-field :table :active)
+                     (mi/can-read? origin-field))
+          :let [origin-field (update origin-field :table schema.table/present-table)]]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
@@ -456,6 +476,21 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(def ^:private CsvUploadParts
+  "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
+  file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
+  [:and
+   [:map
+    [:file
+     [:map
+      [:filename :string]
+      [:tempfile (ms/InstanceOfClass java.io.File)]]]
+    [:collection_id {:optional true} :string]
+    [::mc/default [:map-of :keyword :any]]]
+   (mu/with-api-error-message
+    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
+    (deferred-tru "unexpected multipart part"))])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -470,20 +505,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map {:closed true}
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                  ["collection_id" {:optional true} :string]]]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/append}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -500,20 +525,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map {:closed true}
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                  ["collection_id" {:optional true} :string]]]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/replace}))
 
 (defn- sync-schema-async!
@@ -551,8 +566,8 @@
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
-                    (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
-                                              (:name database) (:name table)))
+                    (log/warn (u/format-color :red "Cannot connect to database %s in order to sync table '%s'"
+                                              (:id database) (:name table)))
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do

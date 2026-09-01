@@ -2,6 +2,9 @@ import { t } from "ttag";
 
 import { Flex, Icon, Text } from "metabase/ui";
 
+// how long the copied-confirmation feedback stays visible
+export const COPY_TIMEOUT_MS = 2000;
+
 export function LinkCopiedTooltipLabel({ message }: { message?: string }) {
   return (
     <Flex gap="sm" align="center">

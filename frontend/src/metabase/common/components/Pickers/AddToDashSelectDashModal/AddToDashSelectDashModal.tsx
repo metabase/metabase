@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/common/data-studio/collection-utils";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 

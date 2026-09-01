@@ -1233,6 +1233,433 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  # data_permissions had no unique constraint on (group_id, perm_type, db_id, table_id), so nothing
+  # prevented duplicate rows for the same scope. Duplicate DB-level rows caused a sandbox data leak:
+  # the going-granular path for newly-synced tables deleted only one of them, and the survivor
+  # out-voted the new table's :blocked row at enforcement time (most-permissive coalesce). The three
+  # changesets below delete existing duplicates (keeping the most restrictive value, lowest id as
+  # tie-break), then make the duplicate state unrepresentable with a unique constraint. Because
+  # table_id is nullable and all three app DBs treat NULLs as distinct in unique indexes (and H2 has
+  # no partial indexes, MariaDB no functional indexes), the constraint goes through a generated
+  # column that coalesces NULL table_id to -1 — same approach as metabase_table's
+  # unique_table_helper (v55.2025-05-19). Unlike that precedent our base column (table_id) carries an
+  # ON DELETE CASCADE foreign key, and MySQL rejects STORED generated columns on such base columns
+  # (errno 1215), so MySQL/MariaDB use a VIRTUAL generated column instead — unique indexes on virtual
+  # columns are supported by both, and the cascade still fires (verified on MySQL 8.0 and
+  # MariaDB 10.6). Postgres has no virtual generated columns and no such FK restriction, so it keeps
+  # STORED.
+  - changeSet:
+      id: v58.2026-07-31T00:00:00
+      author: johnswanson
+      comment: Delete duplicate data_permissions rows, keeping the most restrictive value per scope
+      changes:
+        - sql:
+            # The CASE ranks perm_value from most to least restrictive; rows within a partition always
+            # share a perm_type, so only the ordering within each perm_type's value set matters.
+            # Unknown values sort last and lose to any known value.
+            sql: >-
+              DELETE FROM data_permissions WHERE id IN (
+                SELECT id FROM (
+                  SELECT id,
+                         ROW_NUMBER() OVER (
+                           PARTITION BY group_id, perm_type, db_id, COALESCE(table_id, -1)
+                           ORDER BY
+                             CASE perm_value
+                               WHEN 'blocked' THEN 0
+                               WHEN 'no' THEN 0
+                               WHEN 'legacy-no-self-service' THEN 1
+                               WHEN 'query-builder' THEN 1
+                               WHEN 'ten-thousand-rows' THEN 1
+                               ELSE 2
+                             END,
+                             id
+                         ) AS row_num
+                  FROM data_permissions
+                ) x
+                WHERE x.row_num > 1
+              );
+      rollback: # nothing to restore; deleting duplicate rows is intentionally irreversible
+
+  - changeSet:
+      id: v58.2026-07-31T00:00:01
+      author: johnswanson
+      comment: Add data_permissions.unique_perms_helper for a NULL-safe unique constraint on table_id
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE data_permissions ADD COLUMN unique_perms_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(table_id, -1)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_permissions ADD COLUMN unique_perms_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(table_id, -1)
+              ) VIRTUAL;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE data_permissions ADD COLUMN unique_perms_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(table_id, -1)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE data_permissions DROP COLUMN unique_perms_helper;
+
+  - changeSet:
+      id: v58.2026-07-31T00:00:02
+      author: johnswanson
+      comment: Add unique constraint on data_permissions(group_id, perm_type, db_id, unique_perms_helper)
+      changes:
+        - addUniqueConstraint:
+            tableName: data_permissions
+            constraintName: idx_unique_data_permissions
+            columnNames: group_id, perm_type, db_id, unique_perms_helper
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_permissions
+            constraintName: idx_unique_data_permissions
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:00
+      author: ranquild
+      comment: >-
+        Encrypt any plaintext auth_identity.credentials rows written by the v58 password/SSO backfill (raw SQL that
+        bypassed encryption), so the credentials column can be read strictly once MB_ENCRYPTION_SECRET_KEY is set.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptAuthIdentityCredentials
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:01
+      author: ranquild
+      comment: >-
+        Encrypt any plaintext api_key.key bcrypt hashes at rest, so the column can be read strictly once
+        MB_ENCRYPTION_SECRET_KEY is set: authentication must only accept hashes written through the application, and
+        the strict read enforces that by rejecting a plaintext value written directly to the app DB.
+        Already-encrypted values are left untouched. On rollback the values are decrypted back to the plaintext hash,
+        so a downgrade to code that reads the column directly can still verify keys.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptApiKeys
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:02
+      author: ranquild
+      comment: Widen report_card.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:03
+      author: ranquild
+      comment: Widen report_dashboard.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:04
+      author: ranquild
+      comment: Widen action.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: action
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: action
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:05
+      author: ranquild
+      comment: Widen document.public_uuid so it can hold the encrypted value written by EncryptPublicUuids.
+      changes:
+        - modifyDataType:
+            tableName: document
+            columnName: public_uuid
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: document
+            columnName: public_uuid
+            newDataType: char(36)
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:06
+      author: ranquild
+      comment: >-
+        Add report_card.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:07
+      author: ranquild
+      comment: >-
+        Add report_dashboard.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:08
+      author: ranquild
+      comment: >-
+        Add action.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:09
+      author: ranquild
+      comment: >-
+        Add document.public_uuid_prefix, a plaintext copy of the public_uuid's leading characters. public_uuid is
+        encrypted (non-deterministic), so it can't be matched with a SQL '='; this indexed prefix narrows a public-link
+        lookup to a handful of candidate rows that are then decrypted and compared in memory.
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: public_uuid_prefix
+                  type: varchar(36)
+                  remarks: Plaintext leading characters of public_uuid, used as an indexed narrowing key for public-link lookups.
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:10
+      author: ranquild
+      comment: Add index on report_card.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:11
+      author: ranquild
+      comment: Add index on report_dashboard.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_dashboard
+                indexName: idx_report_dashboard_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:12
+      author: ranquild
+      comment: Add index on action.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: action
+                indexName: idx_action_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: action
+            indexName: idx_action_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:13
+      author: ranquild
+      comment: Add index on document.public_uuid_prefix for public-link lookups.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_public_uuid_prefix
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_public_uuid_prefix
+            columns:
+              - column:
+                  name: public_uuid_prefix
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:14
+      author: ranquild
+      comment: >-
+        Backfill report_card.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE report_card SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE report_card SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:15
+      author: ranquild
+      comment: >-
+        Backfill report_dashboard.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE report_dashboard SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE report_dashboard SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:16
+      author: ranquild
+      comment: >-
+        Backfill action.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE action SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE action SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:17
+      author: ranquild
+      comment: >-
+        Backfill document.public_uuid_prefix from the leading 8 characters of the (still plaintext) public_uuid, so
+        existing public links keep resolving. Runs before EncryptPublicUuids, which then encrypts public_uuid
+        itself. 8 = public-sharing.core/public-uuid-prefix-length.
+      changes:
+        - sql: >-
+            UPDATE document SET public_uuid_prefix = SUBSTRING(public_uuid, 1, 8) WHERE public_uuid IS NOT NULL
+      rollback:
+        - sql: >-
+            UPDATE document SET public_uuid_prefix = NULL
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:18
+      author: ranquild
+      comment: >-
+        Encrypt any plaintext public_uuid values at rest for cards, dashboards, actions, and documents, so the column
+        can be read strictly once MB_ENCRYPTION_SECRET_KEY is set: public links must only resolve to values issued by
+        the application, and the strict read enforces that by rejecting a plaintext value written directly to the app
+        DB. Already-encrypted values are left untouched.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptPublicUuids
+
+  - changeSet:
+      id: v58.2026-08-25T00:00:19
+      author: ranquild
+      comment: >-
+        Encrypt at rest the details column of notification_recipient and pulse_channel, which stores raw external email
+        recipients for alerts and dashboard subscriptions, so a plaintext value written directly to the app DB is
+        rejected on the strict read once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are left untouched.
+        On rollback the values are decrypted back to plaintext.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptNotificationAndPulseChannelDetails
+
+  - changeSet:
+      id: v58.2026-08-28T00:00:00
+      author: ranquild
+      comment: >-
+        Encrypt at rest any plaintext value of the settings this release newly marks
+        :encryption :when-encryption-key-set (they were previously stored plaintext), so the strict decrypting read
+        added for encrypted settings accepts them once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are
+        left untouched. Rollback decrypts them again, so a downgraded version that reads them as :encryption :no
+        still sees the values.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptSettingsV58
+
+  - changeSet:
+      id: v58.2026-08-28T14:00:00
+      author: ranquild
+      comment: >-
+        Encrypt at rest any plaintext values left in the columns that were encrypted long before any backfill existed:
+        metabase_database details/settings, core_user.settings, channel.details, and secret.value.
+        Encryption used to be write-time only, and the old startup auto-encrypt and key rotation covered only some of
+        these columns, so an upgraded database can hold a mix of plaintext and encrypted rows that the strict reads
+        would reject. Already-encrypted values are left untouched; without MB_ENCRYPTION_SECRET_KEY this is a no-op.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptRemainingColumns
+
+  - changeSet:
+      id: v58.2026-08-30T00:00:00
+      author: ranquild
+      comment: >-
+        Encrypt at rest any plaintext value of the :setter :none settings. They default to
+        :encryption :when-encryption-key-set whatever their type, so the strict decrypting read applies to them, but
+        some were settable in older versions and stored plaintext back then (e.g. enable-query-caching, once an admin
+        toggle saved as a plaintext boolean); such a row made restoring the settings cache fail at startup.
+        Already-encrypted values are left untouched. No rollback: these settings were always meant to be encrypted,
+        and a downgraded version reads them either way. Without MB_ENCRYPTION_SECRET_KEY this is a no-op.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptSetterNoneSettingsV58
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

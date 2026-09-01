@@ -20,17 +20,18 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -38,7 +39,7 @@
    [metabase.util.performance :as perf :refer [mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
-   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Statement Time)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)))
@@ -46,6 +47,15 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+(defmethod driver/host-carrying-parameters :sqlserver
+  [_driver]
+  ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+
+(defmethod driver/non-host-parameters :sqlserver
+  [_driver]
+  ["hostNameInCertificate" "iPAddressPreference" "instanceName" "integratedSecurity" "serverCertificate"
+   "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"])
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -63,6 +73,7 @@
                               :regex                                  false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
+                              :native-pivot-tables                    true
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
@@ -70,14 +81,13 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :workspace                              true
                               :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver
   [_driver]
   ;; SQL Server emits `db.schema.table` (3-part) when crossing databases. Single-DB
-  ;; queries are typically `schema.table`, but workspace remap rows must be keyed
+  ;; queries are typically `schema.table`, but table remapping rows must be keyed
   ;; on the more general 3-part shape.
   [:db :schema])
 
@@ -171,7 +181,9 @@
 (defmethod type->database-type :type/Integer [_] [:int])
 (defmethod type->database-type :type/Number [_] [:bigint])
 (defmethod type->database-type :type/BigInteger [_] [:bigint])
-(defmethod type->database-type :type/Text [_] [:text])
+;; not `text` -- SQL Server forbids comparing, sorting, or grouping text/ntext columns
+;; (IS NULL and LIKE only); nvarchar(max) is equally unbounded without the restriction.
+(defmethod type->database-type :type/Text [_] [[:raw "nvarchar(max)"]])
 (defmethod type->database-type :type/Time [_] [:time])
 (defmethod type->database-type :type/UUID [_] [:uniqueidentifier])
 
@@ -227,28 +239,42 @@
   nil)
 
 (defmethod sql.qp/->honeysql [:sqlserver :field]
-  [driver [_ _ options :as field-clause]]
+  [driver [_ options _ :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     (binding [*field-options* options]
       (parent-method driver field-clause))))
+
+;; SQL Server's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
+(defmethod sql.pivot/pivot-grouping-hsql :sqlserver
+  [_driver exprs]
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defn- maybe-inline-number [x]
   (if (number? x)
     [:inline x]
     x))
 
+(def ^:private allowed-dateparts
+  #{:year :quarter :month :dayofyear :day :week :iso_week :weekday
+    :hour :minute :second :millisecond :microsecond :nanosecond})
+
+(defn- datepart-token [unit]
+  (when-not (contains? allowed-dateparts unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (-> [:datepart [:raw (name unit)] expr]
+  (-> [:datepart [:raw (datepart-token unit)] expr]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-add [unit & exprs]
-  (into [:dateadd [:raw (name unit)]]
+  (into [:dateadd [:raw (datepart-token unit)]]
         (map maybe-inline-number)
         exprs))
 
 (defn- date-diff [unit x y]
-  [:datediff_big [:raw (name unit)] x y])
+  [:datediff_big [:raw (datepart-token unit)] x y])
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -482,7 +508,7 @@
          (apply merge {"UTC" "UTC"}))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
                             (h2x/is-of-type? expr "datetimeoffset"))]
@@ -494,7 +520,7 @@
         h2x/->datetime)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)
         _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
@@ -532,6 +558,44 @@
 (defmethod sql.qp/datetime-diff [:sqlserver :hour] [_driver _unit x y] (h2x// (date-diff :millisecond x y) 3600000))
 (defmethod sql.qp/datetime-diff [:sqlserver :minute] [_driver _unit x y] (date-diff :minute x y))
 (defmethod sql.qp/datetime-diff [:sqlserver :second] [_driver _unit x y] (date-diff :second x y))
+
+(defn- comparison-lhs-datetimeoffset?
+  "True when [[sql.qp/*parent-honeysql-col-type-info*]] indicates the LHS of the enclosing comparison is a
+  `datetimeoffset` column."
+  [parent-info]
+  (or (= "datetimeoffset" (:database-type parent-info))
+      (isa? (:effective-type parent-info) :type/DateTimeWithZoneOffset)
+      (isa? (:base-type parent-info) :type/DateTimeWithZoneOffset)))
+
+(defn- maybe-attach-report-timezone
+  "Wrap `rhs` in `AT TIME ZONE '<report-tz-windows-name>'` when:
+
+    - the LHS of the enclosing comparison is a `datetimeoffset` column,
+    - a report timezone is configured, and
+    - `rhs` is a naive `datetime`/`datetime2` (nothing to preserve).
+
+  Otherwise return `rhs` unchanged. This restores the report-timezone offset that date bucketing drops.
+  Without it, SQL Server implicitly treats a naive `datetime2` as offset +00:00 when comparing against
+  `datetimeoffset`, shifting the filter window by the report tz offset (#78612)."
+  [rhs]
+  (let [report-windows-tz (some-> (driver-api/requested-timezone-id) zone-id->windows-zone)
+        rhs-naive?        (contains? #{"datetime" "datetime2"}
+                                     (h2x/type-info->db-type (h2x/type-info rhs)))]
+    (cond-> rhs
+      (and report-windows-tz
+           rhs-naive?
+           (comparison-lhs-datetimeoffset? sql.qp/*parent-honeysql-col-type-info*))
+      (h2x/at-time-zone report-windows-tz))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :relative-datetime]
+  [driver clause]
+  (maybe-attach-report-timezone
+   ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :absolute-datetime]
+  [driver clause]
+  (maybe-attach-report-timezone
+   ((get-method sql.qp/->honeysql [:sql :absolute-datetime]) driver clause)))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
@@ -593,11 +657,11 @@
   query is much more efficient. See #9934 for more details."
   [field-clause]
   (when (driver-api/is-clause? :field field-clause)
-    (let [[_ id-or-name {:keys [temporal-unit], :as opts}] field-clause]
+    (let [[_ {:keys [temporal-unit], :as opts} id-or-name] field-clause]
       (when (#{:year :month :day} temporal-unit)
         (mapv
          (fn [unit]
-           [:field id-or-name (assoc opts :temporal-unit unit, ::optimized-bucketing? true)])
+           [:field (assoc opts :temporal-unit unit, ::optimized-bucketing? true) id-or-name])
          (case temporal-unit
            :year  [:year]
            :month [:year :month]
@@ -634,23 +698,23 @@
       ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
       (update new-hsql :group-by distinct))))
 
+(defn- maybe-add-cast
+  "Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
+  preserved in results metadata, so downstream questions and query stages can use the column in contexts
+  where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
+  For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
+  and then cast it to a :bit. See #53805 for more details."
+  [clause]
+  (cond-> clause
+    (sql.qp.boolean-to-comparison/predicate-expression-clause? clause)
+    (lib.options/update-options assoc ::sql.qp/add-cast :bit ::sql.qp/wrap-in-case true)
+
+    (sql.qp.boolean-to-comparison/boolean-expression-clause? clause)
+    (lib.options/update-options assoc ::sql.qp/add-cast :bit)))
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :fields]
   [driver _ honeysql-form query]
-  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :fields])
-        ;; Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
-        ;; preserved in results metadata, so downstream questions and query stages can use the column in contexts
-        ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
-        ;; For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
-        ;; and then cast it to a :bit. See #53805 for more details.
-        maybe-add-cast #(cond
-                          (sql.qp.boolean-to-comparison/predicate-expression-clause? %)
-                          (-> %
-                              (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
-                              (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
-                          (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
-                          (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
-                          :else
-                          %)]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :fields])]
     (->> (update query :fields #(mapv maybe-add-cast %))
          (parent-method driver :fields honeysql-form))))
 
@@ -659,10 +723,10 @@
   [subclauses]
   (vec
    (mapcat
-    (fn [[direction field :as subclause]]
+    (fn [[direction opts field :as subclause]]
       (if-let [optimized (optimized-temporal-buckets field)]
         (for [optimized-clause optimized]
-          [direction optimized-clause])
+          [direction opts optimized-clause])
         [subclause]))
     subclauses)))
 
@@ -671,22 +735,32 @@
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
-        parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
+        parent-method (get-method sql.qp/apply-top-level-clause [:sql :order-by])]
     (-> (parent-method driver :order-by honeysql-form query)
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
 
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause))
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
   [driver _k honeysql-form query]
-  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
-    (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :filter])]
+    (->> (update query :filter boolean->comparison)
          (parent-method driver :filter honeysql-form))))
+
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :filters]
+  [driver _k honeysql-form query]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :filters])]
+    (->> (update query :filters #(mapv boolean->comparison %))
+         (parent-method driver :filters honeysql-form))))
 
 ;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
 ;; escape the `LIKE` metacharacters `%` and `_`.
 (defmethod sql.qp/escape-like-pattern :sqlserver
   [_driver like-pattern]
   (-> like-pattern
+      (str/replace "["  "[[]")
       (str/replace "\\" "[\\]")
       (str/replace "%"  "[%]")
       (str/replace "_"  "[_]")))
@@ -698,60 +772,60 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :and]
   [driver clause]
-  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :or]
   [driver clause]
-  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :not]
   [driver clause]
-  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :case]
   [driver clause]
   (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
   [_ time-value]
   (h2x/->time time-value))
 
 (defmethod sql.qp/->honeysql [:sqlserver :stddev]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:stdevp (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :var]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:varp (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :substring]
-  [driver [_ arg start length]]
+  [driver [_ _opts arg start length]]
   (if length
     [:substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length)]
     [:substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) [:len (sql.qp/->honeysql driver arg)]]))
 
 (defmethod sql.qp/->honeysql [:sqlserver :length]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:len (sql.qp/->honeysql driver arg)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :ceil]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:ceiling (sql.qp/->honeysql driver arg)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :round]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:round (h2x/cast :float (sql.qp/->honeysql driver arg)) 0])
 
 (defmethod sql.qp/->honeysql [:sqlserver :power]
-  [driver [_ arg power]]
+  [driver [_ _opts arg power]]
   [:power (h2x/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :avg]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
 (defn- format-approx-percentile-cont
@@ -765,14 +839,14 @@
 (sql/register-fn! ::approx-percentile-cont #'format-approx-percentile-cont)
 
 (defmethod sql.qp/->honeysql [:sqlserver :percentile]
-  [driver [_ arg val]]
+  [driver [_ _opts arg val]]
   [::approx-percentile-cont
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver val)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  [driver [_ _opts arg]]
+  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
 (def ^:private ^:dynamic *compared-field-options*
   "This variable is set to the options of the field we are comparing
@@ -821,43 +895,44 @@
 ;;; this is a psuedo-MBQL clause to signify that we need to do a cast, see the code below where we add it for an
 ;;; explanation.
 (defmethod sql.qp/->honeysql [:sqlserver ::cast]
-  [driver [_tag expr database-type]]
+  [driver [_tag _opts expr database-type]]
   (h2x/maybe-cast database-type (sql.qp/->honeysql driver expr)))
 
 (doseq [op [:= :!= :< :<= :> :>= :between]]
   (defmethod sql.qp/->honeysql [:sqlserver op]
-    [driver [_tag field & args :as _clause]]
+    [driver [_tag opts field & args :as _clause]]
     (binding [*compared-field-options* (when (and (vector? field)
                                                   (= (get field 0) :field))
-                                         (get field 2))]
+                                         (get field 1))]
       ;; We read string literals like `2019-11-05T14:23:46.410` as `datetime2`, which is never going to be `=` to a
       ;; `datetime` (etc.). Wrap all args after the first in temporal filters in a cast() to the same type as the first
       ;; arg so filters work correctly. Do this before we fully compile to Honey SQL so we can still use the parent
       ;; method to take care of things like `[:= <string> <expr>]` generating `WHERE <string> = ? AND <string> IS NOT
       ;; NULL` for us.
-      (let [clause (into [op field]
+      (let [clause (into [op opts field]
                          ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
                          ;; get the real database type of the expression... maybe when we convert this to MBQL 5 we can
                          ;; just use Lib metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
-                                 (map (fn [[_type val :as expr]]
+                                 (map (fn [expr]
                                         ;; Do not cast nil arguments to enable transformation to IS NULL.
-                                        (if (some? val)
-                                          [::cast expr field-database-type]
+                                        (if (some? (driver-api/match-one expr
+                                                     [_ (_opts :guard :lib/uuid) val & _] val
+                                                     [_ val & _] val))
+                                          [::cast {} expr field-database-type]
                                           expr)))))
                              identity)
                          args)]
-        ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
+        ((get-method sql.qp/->honeysql [:sql op]) driver clause)))))
 
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
-
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar(256)"]))
 ;; This is used to wrap comparison expressions (e.g. [:> field1 field2]) in a case statement as
 ;; SQL server does not have a boolean data type. See #53805 for more details.
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/wrap-in-case]
-  [driver [_tag expr]]
+  [driver [_tag _opts expr]]
   [:case (sql.qp/->honeysql driver expr) [:inline 1] :else [:inline 0]])
 
 (defmethod driver/db-default-timezone :sqlserver
@@ -895,43 +970,38 @@
 ;;
 ;; - Add a max-results `:limit` to source queries if there's not already one
 
-(defn- fix-order-bys [inner-query]
-  (letfn [;; `in-source-query?` = whether the DIRECT parent is `:source-query`. This is only called on maps that have
-          ;; `:limit`, and the only two possible parents there are `:query` (for top-level queries) or `:source-query`.
-          (in-source-query? [path]
-            (= (last path) :source-query))
-          ;; `in-join-source-query?` = whether the parent is `:source-query`, and the grandparent is `:joins`, i.e. we
-          ;; are a source query being joined against. In this case it's apparently ok to remove the ORDER BY.
-          ;;
-          ;; What about source-query in source-query in Join? Not sure about that case. Probably better to be safe and
-          ;; not do the aggressive optimizations. See
-          ;; https://github.com/metabase/metabase/pull/19384#discussion_r787002558 for more details.
-          (in-join-source-query? [path]
-            (and (in-source-query? path)
-                 (= (last (butlast path)) :joins)))
-          (has-order-by-without-limit? [m]
-            (and (map? m)
-                 (:order-by m)
-                 (not (:limit m))))
-          (remove-order-by? [path m]
-            (and (has-order-by-without-limit? m)
-                 (in-join-source-query? path)))
-          (add-limit? [path m]
-            (and (has-order-by-without-limit? m)
-                 (not (in-join-source-query? path))
-                 (in-source-query? path)))]
-    (match/replace inner-query
-      ;; remove order by and then recurse in case we need to do more transformations at another level
-      (m :guard (remove-order-by? &parents m))
-      (fix-order-bys (dissoc m :order-by))
+(defn- has-order-by-without-limit? [stage]
+  (and (:order-by stage)
+       (not (:limit stage))))
 
-      (m :guard (add-limit? &parents m))
-      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
+(defn- fix-order-bys
+  [stages join-source?]
+  (let [n (count stages)]
+    (vec
+     (map-indexed
+      (fn [i stage]
+        (let [last? (= i (dec n))
+              ;; recurse into any joins first — each join's own `:stages` is a fresh derived table
+              stage (cond-> stage
+                      (:joins stage)
+                      (update :joins (fn [joins]
+                                       (mapv #(update % :stages fix-order-bys true) joins))))]
+          (cond
+            ;; last stage of a join = the derived table directly under JOIN → dropping the ORDER BY is fine
+            (and last? join-source? (has-order-by-without-limit? stage))
+            (dissoc stage :order-by)
+
+            ;; any non-final subquery stage → make the ORDER BY legal by giving it a TOP
+            (and (not last?) (has-order-by-without-limit? stage))
+            (assoc stage :limit driver-api/absolute-max-results)
+
+            :else stage)))
+      stages))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
   (let [parent-method (get-method sql.qp/preprocess :sql)]
-    (fix-order-bys (parent-method driver inner-query))))
+    (fix-order-bys (parent-method driver inner-query) false)))
 
 ;; SQL server only supports setting holdability at the connection level, not the statement level, as per
 ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
@@ -963,7 +1033,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -1134,18 +1204,18 @@
 
 (defmethod driver/create-schema-if-needed! :sqlserver
   [driver conn-spec schema]
-  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s;');"
-                      (sql.u/escape-sql schema :ansi)
-                      (quote-schema schema))]]]
+  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = %s) EXEC('CREATE SCHEMA %s;');"
+                      (sql.u/quote-literal schema :ansi)
+                      (sql.u/escape-sql (quote-schema schema) :ansi))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
-      (let [sql (format "EXEC sp_rename '%s', '%s';"
-                        (sql.u/escape-sql (name old-table-name) :ansi)
-                        (sql.u/escape-sql (name new-table-name) :ansi))]
+      (let [sql (format "EXEC sp_rename %s, %s;"
+                        (sql.u/quote-literal (name old-table-name) :ansi)
+                        (sql.u/quote-literal (name new-table-name) :ansi))]
         (.execute stmt sql)))))
 
 (defmethod driver/table-name-length-limit :sqlserver
@@ -1159,119 +1229,6 @@
             (if schema
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/init-workspace-isolation! :sqlserver
-  [driver database workspace]
-  (let [schema-name      (:schema workspace)
-        {:keys [user password]} (:database_details workspace)
-        username         user
-        escaped-password (sql.u/escape-sql password :ansi)
-        escaped-username (sql.u/escape-sql username :ansi)
-        escaped-schema   (sql.u/escape-sql schema-name :ansi)
-        quoted-user      (quote-field username)
-        quoted-schema    (quote-schema schema-name)]
-    ;; SQL Server: create login (server level), then user (database level), then schema
-    (try
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
-       (fn [^Connection conn]
-         (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
-                                     "CREATE LOGIN %s WITH PASSWORD = N'%s'")
-                                escaped-username quoted-user escaped-password)
-                        ;; the login may survive a failed teardown; without this it would keep
-                        ;; its old password while the new one gets persisted
-                        (format "ALTER LOGIN %s WITH PASSWORD = N'%s'" quoted-user escaped-password)
-                        (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
-                                escaped-username quoted-user quoted-user)
-                        (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
-                                escaped-schema quoted-schema)
-                        ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
-                        ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
-                        ;;   ALTER  - create/drop/sp_rename objects in the schema
-                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
-                        ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
-                        (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
-                                quoted-schema quoted-user)
-                        ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
-                        (format "GRANT CREATE TABLE TO %s" quoted-user)]]
-             (.addBatch ^Statement stmt ^String sql))
-           (.executeBatch ^Statement stmt))))
-      (catch Throwable t
-        (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))
-    nil))
-
-(defmethod driver/destroy-workspace-isolation! :sqlserver
-  [driver database workspace]
-  (let [schema-name      (:schema workspace)
-        username         (-> workspace :database_details :user)
-        escaped-schema   (sql.u/escape-sql schema-name :ansi)
-        escaped-username (sql.u/escape-sql username :ansi)
-        quoted-schema    (quote-schema schema-name)
-        quoted-user      (quote-field username)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
-     (fn [^Connection conn]
-       (with-open [^Statement stmt (.createStatement conn)]
-         ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
-         ;; variable names must be unique across the batch entries.
-         (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @drop_tables_sql += 'DROP TABLE %s.[' + name + ']; ' "
-                                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
-                                   "EXEC sp_executesql @drop_tables_sql")
-                              quoted-schema escaped-schema)
-                      (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
-                              escaped-schema quoted-schema)
-                      (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
-                              escaped-username quoted-user)
-                      ;; Kill all sessions using this login before dropping it
-                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                                   "EXEC sp_executesql @kill_sessions_sql")
-                              escaped-username)
-                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
-                              escaped-username quoted-user)]]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
-
-(defmethod driver/grant-workspace-read-access! :sqlserver
-  [driver database workspace schemas]
-  (let [username (-> workspace :database_details :user)
-        db-name  (:db (:details database))]
-    (when-not username
-      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
-                      {:workspace-id (:id workspace) :step :grant})))
-    (when (str/blank? db-name)
-      (throw (ex-info (tru "Cannot grant workspace read access. SQL Server connection details must include a ''db'' (database name). Set it in the database connection and retry.")
-                      {:database-id (:id database) :step :grant})))
-    ;; SQL Server connection is bound to one DB (`:db` in details). Per-schema
-    ;; grant: SELECT on the schema covers existing + future objects within it.
-    (let [quoted-user (quote-field username)]
-      (doseq [schema schemas]
-        (when (str/blank? schema)
-          (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
-                          {:database-id (:id database) :step :grant}))))
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
-       (fn [^Connection conn]
-         (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [schema schemas]
-             (.addBatch ^Statement stmt
-                        ^String (format "GRANT SELECT ON SCHEMA::%s TO %s"
-                                        (quote-schema schema)
-                                        quoted-user)))
-           (try
-             (.executeBatch ^Statement stmt)
-             (catch Throwable t
-               (throw (driver.u/batch-exception t))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |
@@ -1311,7 +1268,7 @@
 (defn- sql-string-literal
   "A SQL Server `N'...'` string literal for trusted `s`, escaping embedded quotes."
   [s]
-  (str "N'" (sql.u/escape-sql s :ansi) \'))
+  (str "N" (sql.u/quote-literal s :ansi)))
 
 (defmethod driver/compile-create-index :sqlserver
   [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
@@ -1367,10 +1324,6 @@
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")
-
-(defmethod driver/validate-impersonated-query :sqlserver
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
   [_driver conn-spec & {:as _options}]

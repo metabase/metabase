@@ -1,30 +1,26 @@
 import _ from "underscore";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_COLORS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
   LEGEND_SETTINGS,
   LINE_SETTINGS,
+  SERIES_SETTING_KEY,
   SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import {
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
-} from "metabase/visualizations/lib/settings/validation";
-import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type {
-  Visualization,
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Series,
@@ -43,69 +39,77 @@ const transformCartesianSeries = (series: Series): TransformedSeries => {
   return Object.assign([...transformed], { _raw: series });
 };
 
-export const getCartesianChartDefinition = (
-  props: Partial<VisualizationDefinition>,
-): Partial<Visualization> => {
-  return {
-    noHeader: true,
-    usesEChartsRenderer: true,
-    supportsVisualizer: true,
+type CartesianChartAdditions = Pick<
+  VisualizationDefinition,
+  "isSensible" | "checkRenderable"
+> &
+  Partial<VisualizationDefinition>;
 
-    isSensible: ({ cols, rows }) => {
-      return (
-        rows.length > 1 &&
-        cols.length >= 2 &&
-        cols.filter(isDimension).length > 0 &&
-        cols.filter(isMetric).length > 0
-      );
-    },
+const cartesianChartAdditions: CartesianChartAdditions = {
+  noHeader: true,
+  supportsVisualizer: true,
 
-    isLiveResizable: (series) => {
-      const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
-      return totalRows < 10;
-    },
+  isSensible: ({ cols, rows }) => {
+    return (
+      rows.length > 1 &&
+      cols.length >= 2 &&
+      cols.filter(isDimension).length > 0 &&
+      cols.filter(isMetric).length > 0
+    );
+  },
 
-    checkRenderable(series, settings) {
-      validateDatasetRows(series);
-      validateBreakoutSeriesCount(series, settings);
-      validateChartDataSettings(settings);
-      validateStacking(settings);
-    },
+  isLiveResizable: (series) => {
+    const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+    return totalRows < 10;
+  },
 
-    hasEmptyState: true,
+  checkRenderable(series, settings) {
+    validateDatasetRows(series);
+    validateBreakoutSeriesCount(series, settings);
+    validateChartDataSettings(settings);
+    validateStacking(settings);
+  },
 
-    transformSeries: transformCartesianSeries,
+  hasEmptyState: true,
 
-    onDisplayUpdate: (settings) => {
-      if (settings[SERIES_SETTING_KEY] == null) {
-        return settings;
-      }
+  transformSeries: transformCartesianSeries,
 
-      const newSettings = _.omit(settings, SERIES_SETTING_KEY);
-      const newSeriesSettings: VisualizationSettings["series_settings"] = {};
+  onDisplayUpdate: (settings) => {
+    if (settings[SERIES_SETTING_KEY] == null) {
+      return settings;
+    }
 
-      Object.entries(settings[SERIES_SETTING_KEY]).forEach(
-        ([key, seriesSettings]) => {
-          const newSingleSeriesSettings = seriesSettings
-            ? _.omit(seriesSettings, "display")
-            : seriesSettings;
+    const newSettings = _.omit(settings, SERIES_SETTING_KEY);
+    const newSeriesSettings: VisualizationSettings["series_settings"] = {};
 
-          if (!_.isEmpty(newSingleSeriesSettings)) {
-            newSeriesSettings[key] = newSingleSeriesSettings;
-          }
-        },
-      );
+    Object.entries(settings[SERIES_SETTING_KEY]).forEach(
+      ([key, seriesSettings]) => {
+        const newSingleSeriesSettings = seriesSettings
+          ? _.omit(seriesSettings, "display")
+          : seriesSettings;
 
-      if (!_.isEmpty(newSeriesSettings)) {
-        newSettings[SERIES_SETTING_KEY] = newSeriesSettings;
-      }
+        if (!_.isEmpty(newSingleSeriesSettings)) {
+          newSeriesSettings[key] = newSingleSeriesSettings;
+        }
+      },
+    );
 
-      return newSettings;
-    },
+    if (!_.isEmpty(newSeriesSettings)) {
+      newSettings[SERIES_SETTING_KEY] = newSeriesSettings;
+    }
 
-    ...props,
-  };
+    return newSettings;
+  },
 };
+
+export const getCartesianChartDefinition = <
+  T extends Partial<VisualizationDefinition>,
+>(
+  props: T,
+): T & CartesianChartAdditions => ({
+  ...cartesianChartAdditions,
+  ...props,
+});
 
 export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions =
   {
@@ -120,4 +124,5 @@ export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
     ...LEGEND_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   };

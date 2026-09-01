@@ -1,5 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
@@ -11,13 +11,8 @@ type PublishedTableMeasureDependenciesPageParams = {
   measureId: string;
 };
 
-type PublishedTableMeasureDependenciesPageProps = {
-  params: PublishedTableMeasureDependenciesPageParams;
-};
-
-export function PublishedTableMeasureDependenciesPage({
-  params,
-}: PublishedTableMeasureDependenciesPageProps) {
+export function PublishedTableMeasureDependenciesPage() {
+  const params = useParams<PublishedTableMeasureDependenciesPageParams>();
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     usePublishedTableMeasurePage(params);
 

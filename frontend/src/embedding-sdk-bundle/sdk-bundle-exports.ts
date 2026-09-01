@@ -3,7 +3,7 @@
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
 import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";
-import { SdkThemeProvider } from "./components/private/SdkThemeProvider";
+import { SdkThemeProviderWithStore } from "./components/private/SdkThemeProvider";
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -23,7 +23,7 @@ import {
   getAvailableFonts,
   getLoginStatus,
 } from "embedding-sdk-bundle/store/selectors";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
@@ -68,7 +68,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useLogVersionInfo,
   validateFunctionSchema,
   MetabotSubscriber,
-  SdkThemeProvider,
+  SdkThemeProviderWithStore,
   queryDataset,
   queryQuestion,
   dataAppRouting,

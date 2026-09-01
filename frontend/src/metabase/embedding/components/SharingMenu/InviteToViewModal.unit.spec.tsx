@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { InviteTarget } from "metabase-types/api";
+import type { GroupId, GroupInfo, InviteTarget } from "metabase-types/api";
 import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { InviteToViewModal } from "./InviteToViewModal";
@@ -15,11 +15,27 @@ const { trackUserInvited, trackInviteToViewOpened } = jest.requireMock(
   "metabase/common/analytics",
 );
 
-const GROUPS = [
-  createMockGroup({ id: 1, magic_group_type: "all-internal-users" }),
-  createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
-  createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
-];
+const ALL_USERS = createMockGroup({
+  id: 1,
+  name: "All Users",
+  magic_group_type: "all-internal-users",
+});
+const ADMINISTRATORS = createMockGroup({
+  id: 2,
+  name: "Administrators",
+  magic_group_type: "admin",
+});
+const MARKETING = createMockGroup({
+  id: 3,
+  name: "Marketing",
+  magic_group_type: null,
+});
+const SALES = createMockGroup({ id: 4, name: "Sales", magic_group_type: null });
+
+const GROUPS: GroupInfo[] = [ALL_USERS, ADMINISTRATORS, MARKETING, SALES];
+
+// By default All Users and Marketing can view the invite target.
+const ACCESS_GROUP_IDS: GroupId[] = [ALL_USERS.id, MARKETING.id];
 
 const TITLE = "Invite someone to view this dashboard";
 
@@ -39,6 +55,11 @@ interface SetupOpts {
   ssoEnabled?: boolean;
   passwordLoginEnabled?: boolean;
   createError?: boolean;
+  groups?: GroupInfo[];
+  accessGroupIds?: GroupId[];
+  groupsError?: boolean;
+  accessGroupIdsError?: boolean;
+  inviteTarget?: InviteTarget;
 }
 
 const setup = ({
@@ -47,10 +68,22 @@ const setup = ({
   ssoEnabled = false,
   passwordLoginEnabled = true,
   createError = false,
+  groups = GROUPS,
+  accessGroupIds = ACCESS_GROUP_IDS,
+  groupsError = false,
+  accessGroupIdsError = false,
+  inviteTarget = INVITE_TARGET,
 }: SetupOpts = {}) => {
   const onClose = jest.fn();
 
-  fetchMock.get("path:/api/permissions/group", GROUPS);
+  fetchMock.get(
+    "path:/api/permissions/group",
+    groupsError ? { status: 500 } : groups,
+  );
+  fetchMock.get(
+    "path:/api/permissions/invite-group-ids",
+    accessGroupIdsError ? { status: 500 } : accessGroupIds,
+  );
   fetchMock.post(
     "path:/api/user",
     createError
@@ -77,7 +110,7 @@ const setup = ({
       title={title}
       shareUrl={SHARE_URL}
       triggeredFrom="dashboard"
-      inviteTarget={INVITE_TARGET}
+      inviteTarget={inviteTarget}
       onClose={onClose}
     />,
     { storeInitialState: state },
@@ -91,6 +124,14 @@ const submitInvite = async (email: string) => {
   await userEvent.click(
     screen.getByRole("button", { name: "Send invitation" }),
   );
+};
+
+const getCreateUserRequestBody = async () => {
+  const call = fetchMock.callHistory.calls("path:/api/user", {
+    method: "POST",
+  })[0];
+  // fetch-mock types the captured body as BodyInit, but hands back a promise of the JSON string
+  return JSON.parse(await (call.options?.body as unknown as Promise<string>));
 };
 
 describe("InviteToViewModal", () => {
@@ -182,14 +223,130 @@ describe("InviteToViewModal", () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 
-    const call = fetchMock.callHistory.calls("path:/api/user", {
-      method: "POST",
-    })[0];
-    const body = JSON.parse(
-      // Unjustified type cast. FIXME
-      await (call.options?.body as unknown as Promise<string>),
-    );
+    const body = await getCreateUserRequestBody();
     expect(body.invite_target).toEqual(INVITE_TARGET);
+  });
+
+  describe("group picker access (UXW-4533)", () => {
+    it("offers every group, sectioned by access to the item", async () => {
+      setup();
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "All Users" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Administrators" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Marketing" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Sales" })).toBeInTheDocument();
+
+      expect(screen.getByText("Can view this dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Other groups")).toBeInTheDocument();
+    });
+
+    it("labels the access section for questions", async () => {
+      setup({ inviteTarget: { type: "question", id: 7, name: "My question" } });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+
+      expect(
+        await screen.findByText("Can view this question"),
+      ).toBeInTheDocument();
+    });
+
+    it("preselects All Users as a locked membership and leaves the rest to the admin", async () => {
+      const { onClose } = setup();
+
+      const pills = within(await screen.findByRole("list"));
+      expect(pills.getByText("All Users")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Remove All Users" }),
+      ).not.toBeInTheDocument();
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      // An untouched picker sends no memberships; the backend then defaults to just All Users.
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toBeUndefined();
+    });
+
+    it("sends added groups along with the locked All Users membership", async () => {
+      const { onClose } = setup();
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Sales" }),
+      );
+
+      await submitInvite("newbie@metabase.com");
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+      const body = await getCreateUserRequestBody();
+      expect(body.user_group_memberships).toEqual([
+        { id: ALL_USERS.id, is_group_manager: false },
+        { id: SALES.id, is_group_manager: false },
+      ]);
+    });
+
+    it("warns when no selected group can view the item, until one is added", async () => {
+      setup({ accessGroupIds: [MARKETING.id] });
+
+      expect(
+        await screen.findByText(
+          "None of the selected groups can view this dashboard, so this person won't be able to see it.",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Marketing" }),
+      );
+
+      expect(
+        screen.queryByText(/None of the selected groups/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not warn while a selected group has access", async () => {
+      setup();
+
+      expect(await screen.findByRole("list")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/None of the selected groups/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows a retryable error instead of the form when the access query fails", async () => {
+      setup({ accessGroupIdsError: true });
+
+      expect(
+        await screen.findByText("Couldn't load groups. Please try again."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Try again" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    });
+
+    it("shows a retryable error instead of the form when the groups query fails", async () => {
+      setup({ groupsError: true });
+
+      expect(
+        await screen.findByText("Couldn't load groups. Please try again."),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
+    });
   });
 
   it("tracks invite_to_view_opened when the modal opens", () => {

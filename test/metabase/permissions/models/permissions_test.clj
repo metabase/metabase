@@ -61,6 +61,29 @@
     #{"/db/3/" "/db/2/"}                             "/db/1/schema/public/table/2/"
     #{"/db/3/schema/public/" "/db/2/schema/public/"} "/db/1/schema/public/table/2/"))
 
+(deftest ^:parallel set-has-full-permissions?-path-boundary-test
+  (testing "a granted path only grants paths below it, never one that merely shares a textual prefix"
+    (are [perms path] (perms/set-has-full-permissions? perms path)
+      ;; a schema whose name contains a slash is escaped as `\/`, and still grants its tables
+      #{"/db/1/schema/a\\/b/"} "/db/1/schema/a\\/b/table/2/"
+      ;; an empty schema name is a real (empty) path segment
+      #{"/db/1/schema//"}      "/db/1/schema//table/2/"
+      #{"/collection/1/"}      "/collection/1/read/")
+    (are [perms path] (not (perms/set-has-full-permissions? perms path))
+      ;; IDs must match whole segments: collection 1 is not an ancestor of collection 12
+      #{"/collection/1/"}      "/collection/12/"
+      #{"/db/1/"}              "/db/12/"
+      #{"/db/1/schema/a/"}     "/db/1/schema/ab/"
+      ;; `a` is not the escaped-slash schema `a/b`
+      #{"/db/1/schema/a/"}     "/db/1/schema/a\\/b/table/2/"
+      ;; an empty schema name is not an ancestor of a named one
+      #{"/db/1/schema//"}      "/db/1/schema/public/table/2/"))
+  (testing "paths that do not end in a slash are matched exactly"
+    ;; `perms-objects-set` returns this sentinel for instances that remote sync makes read-only, so it must
+    ;; not be granted by any real permission
+    (is (perms/set-has-full-permissions? #{"___no-remote-sync-access"} "___no-remote-sync-access"))
+    (is (not (perms/set-has-full-permissions? #{"/"} "___no-remote-sync-access")))))
+
 (deftest ^:parallel set-has-application-permission-of-type?-test
   (are [perms perms-type] (perms/set-has-application-permission-of-type? perms perms-type)
     #{"/"}                          :subscription

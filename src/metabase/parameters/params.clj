@@ -23,6 +23,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -74,7 +75,7 @@
               :dimension
               lib/field-ref-id)
       (do
-        (log/tracef "Could not find matching Field ID for target: %s" (pr-str template-tag-name))
+        (log/trace "Could not find matching Field ID for target template tag")
         nil)))
 
 (mu/defn param-target->field-id :- [:maybe ::lib.schema.id/field]
@@ -96,21 +97,18 @@
   [fields]
   (filter #(isa? (:semantic_type %) :type/PK) fields))
 
-(def ^:private Field:params-columns-only
-  "Form for use in Toucan `t2/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
-  only the columns that are appropriate for returning in public/embedded API endpoints, which make heavy use of the
-  functions in this namespace. Use `conj` to add additional Fields beyond the ones already here. Use `rest` to get
-  just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
-
-    (t2/select Field:params-columns-only)"
-  [:model/Field :id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
+(def param-field-columns
+  "The only Field columns appropriate for returning in public/embedded API endpoints, which make heavy use of the
+  functions in this namespace. Used to narrow the Fields selected here, and by the public/embed endpoints to strip
+  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`."
+  [:id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (t2/select Field:params-columns-only
+    (m/index-by :table_id (-> (t2/select (into [:model/Field] param-field-columns)
                                          :table_id      [:in table-ids]
                                          :semantic_type (app-db/isa :type/Name)
                                          :active        true)
@@ -145,7 +143,7 @@
   "Strip nonpublic columns from a `dimension` and from its hydrated human-readable Field."
   [dimension]
   (some-> dimension
-          (update :human_readable_field #(select-keys % (rest Field:params-columns-only)))
+          (update :human_readable_field #(select-keys % param-field-columns))
           ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go
           ;; ahead and strip them out
           (dissoc :created_at :updated_at)))
@@ -156,6 +154,25 @@
   (for [field fields]
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
+(defn- remove-param-field-non-public-columns
+  "Strip every column but [[param-field-columns]] from a `:param_fields` Field, recursing into the nested Fields it
+  carries: its `:name_field`, its FK `:target` (and that target's `:name_field`), and the `:human_readable_field` of
+  its `:dimensions`; `nil` nested Fields are dropped. The frontend depends on the nested Fields to decide whether to
+  call the remapping endpoints, but when the request carries a session, `:target` hydrates as a full Field row, so
+  without this it carries columns like `:fingerprint` and `:description`."
+  [field]
+  (-> (select-keys field (conj param-field-columns :name_field :target :dimensions))
+      (u/update-some :name_field remove-param-field-non-public-columns)
+      (u/update-some :target remove-param-field-non-public-columns)
+      (u/update-some :dimensions (partial mapv #(u/update-some % :human_readable_field
+                                                               remove-param-field-non-public-columns)))))
+
+(defn remove-param-fields-non-public-columns
+  "Strip non-public columns from every Field in the hydrated `:param_fields` of a Card or Dashboard. Used by the
+  public/embed endpoints; see [[remove-param-field-non-public-columns]]."
+  [card-or-dashboard]
+  (m/update-existing card-or-dashboard :param_fields update-vals #(mapv remove-param-field-non-public-columns %)))
+
 (mu/defn- param-field-ids->fields
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
@@ -163,9 +180,10 @@
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                                              (t2/hydrate :has_field_values :name_field [:target :name_field]
-                                                          [:dimensions :human_readable_field])
+                          (m/index-by :id (-> (t2/select (into [:model/Field] param-field-columns) :id [:in field-ids])
+                                              (t2/hydrate :has_field_values :name_field
+                                                          [:target :has_field_values :name_field]
+                                                          [:dimensions [:human_readable_field :has_field_values]])
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
@@ -386,23 +404,9 @@
     (preload-param-filterable-columns! param-dashcard-infos)
     (into #{} cat (vals (transduce identity field-id-into-context-rf param-dashcard-infos)))))
 
-(defn get-linked-field-ids
-  "Retrieve a map relating parameter ids to field ids."
-  [dashcards]
-  (letfn [(targets [{params :parameter_mappings card :card, :as _dashcard}]
-            (into {}
-                  (for [param params
-                        :let  [target (:target param)]
-                        :when target
-                        :let [id (param-target->field-id target card)]
-                        :when id]
-                    [(:parameter_id param) #{id}])))]
-    (->> dashcards
-         (map targets)
-         (apply merge-with into {}))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :param_fields]
-  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Dashboard."
+  "Add a `:param_fields` map (parameter or template-tag ID -> vector of Fields) for all of the Fields referenced by
+  the parameters of a Dashboard."
   [_model k dashboards]
   (mapv (fn [dashboard]
           (let [param-fields (-> dashboard
@@ -427,7 +431,8 @@
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
 (methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
-  "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card."
+  "Add a `:param_fields` map (template-tag ID -> vector of Fields) for all of the Fields referenced by the parameters
+  of a Card."
   [_model k card]
   (let [param-fields (or (some-> card card->template-tag-id->field-ids param-field-ids->fields)
                          {})]

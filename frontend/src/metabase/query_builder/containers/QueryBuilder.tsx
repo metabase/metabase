@@ -15,61 +15,41 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
-import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
-  getDatabasesList,
-  getSampleDatabaseId,
-} from "metabase/querying/selectors";
+  canManageSubscriptions,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
+import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { getMetadata } from "metabase/metadata-store";
+import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
-  closeQB,
-  closeQbNewbModal,
   editSummary,
-  navigateBackToDashboard,
-  onCloseAIQuestionAnalysisSidebar,
-  onCloseChartSettings,
-  onCloseChartType,
-  onCloseQuestionInfo,
-  onCloseQuestionSettings,
-  onCloseSidebars,
-  onCloseSummary,
-  onCloseTimelines,
-  onOpenAIQuestionAnalysisSidebar,
-  onOpenChartSettings,
-  onOpenChartType,
-  onOpenQuestionInfo,
-  onOpenQuestionSettings,
-  onOpenTimelines,
   setIsNativeEditorOpen,
-  setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
 import {
   type Location,
-  type Route,
-  type WithRouterProps,
-  push,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useParams,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import {
-  canManageSubscriptions,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
 
 import {
   cancelQuery,
   cancelQuestionChanges,
   closeObjectDetail,
+  closeQbNewbModal,
   closeSnippetModal,
   deselectTimelineEvents,
   followForeignKey,
@@ -125,6 +105,24 @@ import {
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import {
+  closeQB,
+  navigateBackToDashboard,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onCloseTimelines,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  onOpenTimelines,
+  setParameterValue,
+} from "../store/actions";
+import { getIsObjectDetail, getMode } from "../store/mode-selectors";
+import {
   getCard,
   getDataReferenceStack,
   getDocumentTitle,
@@ -167,8 +165,7 @@ import {
   getVisualizationSettings,
   getZoomedObjectRowIndex,
   isResultsMetadataDirty,
-} from "../selectors";
-import { getIsObjectDetail, getMode } from "../selectors/mode";
+} from "../store/selectors";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
@@ -194,7 +191,6 @@ const mapStateToProps = (state: State) => {
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-    databases: getDatabasesList(state),
 
     metadata: getMetadata(state),
 
@@ -224,7 +220,6 @@ const mapStateToProps = (state: State) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
@@ -255,11 +250,9 @@ const mapStateToProps = (state: State) => {
 };
 
 const mapDispatchToProps = {
-  // from metabase/redux/query-builder (shared tier)
   closeQB,
   closeQbNewbModal,
   navigateBackToDashboard,
-  onCloseAIQuestionAnalysisSidebar,
   onCloseChartSettings,
   onCloseChartType,
   onCloseQuestionInfo,
@@ -268,7 +261,6 @@ const mapDispatchToProps = {
   onCloseSummary,
   onCloseTimelines,
   editSummary,
-  onOpenAIQuestionAnalysisSidebar,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
@@ -278,7 +270,6 @@ const mapDispatchToProps = {
   setParameterValue,
   setUIControls,
 
-  // from query_builder/actions
   cancelQuery,
   cancelQuestionChanges,
   closeObjectDetail,
@@ -336,19 +327,19 @@ const mapDispatchToProps = {
 
   // other
   closeNavbar,
-  onChangeLocation: push,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps & {
-    route: Route;
-  };
+type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
+  const navigationType = useNavigationType();
   const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
     useListTimelinesQuery({
       include: "events",
@@ -361,8 +352,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const {
     question,
     originalQuestion,
-    location,
-    params,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -377,7 +366,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
@@ -407,15 +395,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        if (card) {
-          setDidFirstNonTableChartRender(card);
+        if (card?.display) {
+          setDidFirstNonTableChartRender(card.display);
         }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
     [
       isAdmin,
-      card,
+      card?.display,
       didFirstNonTableChartGenerated,
       setDidFirstNonTableChartRender,
     ],
@@ -553,9 +541,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   useEffect(() => {
     if (previousLocation && location !== previousLocation) {
-      locationChanged(previousLocation, location, params);
+      locationChanged(previousLocation, location, params, navigationType);
     }
-  }, [location, params, previousLocation, locationChanged]);
+  }, [location, params, previousLocation, navigationType, locationChanged]);
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
@@ -623,6 +611,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     <>
       <View
         {...props}
+        onChangeLocation={navigate}
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
@@ -641,7 +630,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
       />
     </>
   );
