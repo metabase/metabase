@@ -165,6 +165,7 @@ export type IconName =
   | "mail"
   | "mail_at"
   | "mail_filled"
+  | "map"
   | "mcp"
   | "medallion"
   | "message_circle"

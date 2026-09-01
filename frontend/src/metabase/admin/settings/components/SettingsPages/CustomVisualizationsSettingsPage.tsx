@@ -125,10 +125,10 @@ function CustomVizEmptyState() {
                   {jt`Turn on "Restrict image domains" in ${(
                     <Link
                       key="link"
-                      to={Urls.generalSettings()}
+                      to={Urls.domainsSettings()}
                       variant="brand"
                     >
-                      {t`General settings`}
+                      {t`Domains settings`}
                     </Link>
                   )} before enabling custom visualizations.`}
                 </Text>
