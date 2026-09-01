@@ -21,8 +21,12 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
+    // Accept the terms up front so the wizard never shows the Agree CTA, whose
+    // click races the auth-mode switch (EMB-2333).
     H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("enable-embedding-static", false);
+    H.updateSetting("show-simple-embed-terms", false);
+    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("show-static-embed-terms", false);
     H.mockEmbedJsToDevServer();
   });
 

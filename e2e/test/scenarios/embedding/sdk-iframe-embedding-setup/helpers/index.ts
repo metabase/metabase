@@ -31,7 +31,10 @@ export const visitNewEmbedPage = (
 
   cy.visit("/admin/embedding");
 
-  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+  // The code-split admin bundle can outlast the default 4s timeout (EMB-2333).
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/, {
+    timeout: 30_000,
+  })
     .first()
     .within(() => {
       cy.findByText("New embed").click();
