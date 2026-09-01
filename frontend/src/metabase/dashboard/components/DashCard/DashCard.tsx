@@ -334,6 +334,10 @@ function DashCardInner({
     }
   }, [dashcard, onEditVisualization, getVisualizerInitialState]);
 
+  const handleEditVisualization = isDashCardDataSeries(series)
+    ? onEditVisualizationClick
+    : undefined;
+
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
     return isQuestionCard(dashcard.card)
@@ -395,7 +399,7 @@ function DashCardInner({
             onPreviewToggle={handlePreviewToggle}
             isTrashedOnRemove={isTrashedOnRemove}
             onAddParameter={handleAddParameter}
-            onEditVisualization={onEditVisualizationClick}
+            onEditVisualization={handleEditVisualization}
           />
         )}
         <DashCardVisualization
@@ -425,7 +429,7 @@ function DashCardInner({
           onTogglePreviewing={handlePreviewToggle}
           onEditVisualization={
             isVisualizerDashboardCard(dashcard)
-              ? onEditVisualizationClick
+              ? handleEditVisualization
               : undefined
           }
         />

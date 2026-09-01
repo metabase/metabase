@@ -183,8 +183,9 @@ function DashCardActionsPanelInner({
 
   if (!isLoading && !hasError) {
     if (
-      isVisualizerDashboardCard(dashcard) ||
-      isVisualizerSupportedVisualization(dashcard?.card.display)
+      (isVisualizerDashboardCard(dashcard) ||
+        isVisualizerSupportedVisualization(dashcard?.card.display)) &&
+      onEditVisualization
     ) {
       const label = isVisualizerDashboardCard(dashcard)
         ? t`Edit visualization`
