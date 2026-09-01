@@ -7,42 +7,17 @@ describe("scenarios > embedding > admin route redirects (EMB-1526)", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  const cases: [string, string][] = [
-    ["/admin/embedding", "/embedding/security"],
-    ["/admin/embedding/setup-guide", "/embedding/get-started"],
-    [
-      "/admin/embedding/setup-guide/permissions",
-      "/embedding/get-started/permissions",
-    ],
-    ["/admin/embedding/setup-guide/sso", "/embedding/get-started/sso"],
-    ["/admin/embedding/guest", "/embedding/security"],
-    ["/admin/embedding/security", "/embedding/security"],
-    ["/admin/embedding/themes", "/embedding/appearance"],
-    [
-      "/admin/embedding/themes/some-theme-id",
-      "/embedding/appearance/theme/some-theme-id",
-    ],
-    ["/admin/embedding/modular", "/embedding/security"],
-    ["/admin/embedding/interactive", "/embedding/security"],
-    ["/admin/settings/embedding-in-other-applications", "/embedding/security"],
-    [
-      "/admin/settings/embedding-in-other-applications/full-app",
-      "/embedding/security",
-    ],
-    [
-      "/admin/settings/embedding-in-other-applications/standalone",
-      "/embedding/security",
-    ],
-    [
-      "/admin/settings/embedding-in-other-applications/sdk",
-      "/embedding/security",
-    ],
-  ];
+  // admin/routes.unit.spec.tsx asserts the whole retired-path -> hub table off
+  // the route tree. This covers the part reading the tree cannot: that a
+  // redirect actually fires in a browser, and that it carries its params over.
+  it("redirects retired admin embedding URLs to the hub", () => {
+    cy.visit("/admin/embedding");
+    cy.location("pathname").should("eq", "/embedding/security");
 
-  cases.forEach(([oldPath, newPath]) => {
-    it(`redirects ${oldPath} to ${newPath}`, () => {
-      cy.visit(oldPath);
-      cy.location("pathname").should("eq", newPath);
-    });
+    cy.visit("/admin/embedding/themes/some-theme-id");
+    cy.location("pathname").should(
+      "eq",
+      "/embedding/appearance/theme/some-theme-id",
+    );
   });
 });
