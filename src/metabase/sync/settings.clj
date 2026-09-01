@@ -57,3 +57,16 @@
   :export?    true
   :type       :integer
   :default    10000)
+
+(defsetting data-sensitivity-scan-enabled
+  "When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
+  its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or
+  restrict anything. Labels set by a user are never overwritten."
+  :type       :boolean
+  :default    false
+  :setter     :none
+  :visibility :internal
+  :export?    false
+  :doc        "Opt-in for the deterministic data sensitivity classifier. When enabled, each sync's analyze phase
+  labels fields that have no data_sensitivity yet, writing PUBLIC when no rule matches. The label is metadata only and
+  does not mask or restrict data. Labels set by a user are never overwritten.")
