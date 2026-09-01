@@ -455,6 +455,21 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       .click({ force: true });
     cy.findByTestId("scalar-container").findByText("3,440,000");
     cy.findByTestId("scalar-previous-value").should("contain", "5,270,000");
+
+    cy.log("scalar.show_comparison_value setting");
+    cy.findByTestId("chartsettings-sidebar")
+      .findByLabelText("Show comparison value")
+      .should("be.checked")
+      .click({ force: true });
+    cy.findByTestId("scalar-previous-value")
+      .should("contain", "-34.72% MoM")
+      .and("not.contain", "5,270,000");
+
+    cy.findByTestId("chartsettings-sidebar")
+      .findByLabelText("Show comparison value")
+      .should("not.be.checked")
+      .click({ force: true });
+    cy.findByTestId("scalar-previous-value").should("contain", "5,270,000");
   });
 
   it("should work regardless of column order (metabase#13710)", () => {

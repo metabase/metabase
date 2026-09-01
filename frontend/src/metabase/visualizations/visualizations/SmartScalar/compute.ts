@@ -9,7 +9,6 @@ import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import {
   computeChange,
@@ -35,6 +34,8 @@ import type {
 } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
+import { COMPARISON_TYPES, VIZ_SETTINGS_DEFAULTS } from "./constants";
 
 export type ComparisonResult = {
   changeArrowIconName: ChangeArrowType | undefined;
@@ -190,6 +191,14 @@ function buildComparisonObject({
       )
     : undefined;
 
+  const showComparisonValue =
+    settings["scalar.show_comparison_value"] ??
+    VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"];
+  // "(No data)" is a status rather than a number, so it stays visible when the value is hidden.
+  const isComparisonValueHidden =
+    !showComparisonValue &&
+    changeType !== CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
+
   return {
     changeArrowIconName,
     changeColor,
@@ -200,10 +209,10 @@ function buildComparisonObject({
       comparison,
       currentMetricData,
     }),
-    comparisonValue,
+    comparisonValue: isComparisonValueHidden ? undefined : comparisonValue,
     display: {
       percentChange: percentChangeStr,
-      comparisonValue: comparisonValueStr,
+      comparisonValue: isComparisonValueHidden ? "" : comparisonValueStr,
     },
     percentChange,
   };

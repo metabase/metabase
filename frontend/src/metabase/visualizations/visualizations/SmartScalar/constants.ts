@@ -13,4 +13,5 @@ export const COMPARISON_TYPES = {
 export const VIZ_SETTINGS_DEFAULTS = {
   "scalar.switch_positive_negative": false,
   "scalar.compact_primary_number": false,
+  "scalar.show_comparison_value": true,
 };

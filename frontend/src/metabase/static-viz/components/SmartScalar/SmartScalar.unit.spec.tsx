@@ -6,7 +6,7 @@ import {
 } from "metabase/static-viz/lib/text";
 import { colors } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core";
-import type { RowValues } from "metabase-types/api";
+import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -29,13 +29,14 @@ const COLS = [
   }),
 ];
 
-const setup = (rows: RowValues[]) => {
+const setup = (rows: RowValues[], settings: VisualizationSettings = {}) => {
   const series = createMockSingleSeries(
     {
       display: "smartscalar",
       visualization_settings: {
         "scalar.field": "Count",
         "scalar.comparisons": [{ id: "1", type: "previousPeriod" }],
+        ...settings,
       },
     },
     {
@@ -102,5 +103,47 @@ describe("static-viz SmartScalar", () => {
 
     expect(screen.getByText("3.33%")).toBeInTheDocument();
     expect(screen.getByText("↑")).toBeInTheDocument();
+  });
+
+  describe("scalar.show_comparison_value", () => {
+    const hideComparisonValue = { "scalar.show_comparison_value": false };
+
+    it("should show the comparison value by default", () => {
+      setup([
+        ["2019-10-01", 300],
+        ["2019-11-01", 310],
+      ]);
+
+      expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+      expect(screen.getByText("300")).toBeInTheDocument();
+    });
+
+    it("should hide the comparison value when the setting is off", () => {
+      setup(
+        [
+          ["2019-10-01", 300],
+          ["2019-11-01", 310],
+        ],
+        hideComparisonValue,
+      );
+
+      expect(screen.getByText("3.33%")).toBeInTheDocument();
+      expect(screen.getByText("vs. previous month")).toBeInTheDocument();
+      expect(screen.queryByText("300")).not.toBeInTheDocument();
+    });
+
+    it("should keep the (No data) status when the comparison value is hidden", () => {
+      setup(
+        [
+          ["2019-10-01", null],
+          ["2019-11-01", 310],
+        ],
+        hideComparisonValue,
+      );
+
+      expect(screen.getByText("N/A")).toBeInTheDocument();
+      expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+      expect(screen.getByText("(No data)")).toBeInTheDocument();
+    });
   });
 });

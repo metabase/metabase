@@ -13,7 +13,9 @@ import type { Insight } from "metabase-types/api/insight";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 
 import {
+  PREVIOUS_PERIOD_COMPARISON,
   PREVIOUS_VALUE_COMPARISON,
+  STATIC_NUMBER_COMPARISON,
   getPeriodsAgoComparison,
   mockSeries as series,
 } from "./test-mocks";
@@ -484,6 +486,142 @@ describe("SmartScalar", () => {
         within(tooltip).getByText("vs. previous month"),
       ).toBeInTheDocument();
       expect(within(tooltip).getByText("50")).toBeInTheDocument();
+    });
+  });
+
+  describe("scalar.show_comparison_value", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 50],
+      ["2019-11-01T00:00:00", 100],
+    ];
+    const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+    const hideComparisonValue = { "scalar.show_comparison_value": false };
+    const twoComparisons = [
+      PREVIOUS_PERIOD_COMPARISON,
+      STATIC_NUMBER_COMPARISON,
+    ];
+
+    it("should add an enabled Display toggle right after Compact number", () => {
+      const widgets = getSettingsWidgetsForSeries(
+        series({ rows, insights }),
+        jest.fn(),
+      );
+      const displayWidgetIds = widgets
+        .filter((widget) => widget.section === "Display")
+        .map((widget) => widget.id);
+      const widget = widgets.find(
+        (widget) => widget.id === "scalar.show_comparison_value",
+      );
+
+      expect(displayWidgetIds.slice(0, 3)).toEqual([
+        "scalar.switch_positive_negative",
+        "scalar.compact_primary_number",
+        "scalar.show_comparison_value",
+      ]);
+      expect(widget?.title).toBe("Show comparison value");
+      expect(widget?.value).toBe(true);
+    });
+
+    it("should hide the comparison value but keep the percent change", () => {
+      setup(series({ rows, insights, settings: hideComparisonValue }), 400);
+
+      const comparison = within(screen.getByTestId("scalar-previous-value"));
+      expect(getTrendSymbol()).toHaveAttribute("data-direction", "arrow_up");
+      expect(comparison.getByText("+100% MoM")).toBeInTheDocument();
+      expect(comparison.queryByText("(50)")).not.toBeInTheDocument();
+    });
+
+    it("should keep the (No data) status when the previous value is missing", () => {
+      const rowsWithMissingValue = [
+        ["2019-10-01T00:00:00", null],
+        ["2019-11-01T00:00:00", 100],
+      ];
+
+      setup(
+        series({
+          rows: rowsWithMissingValue,
+          insights,
+          settings: hideComparisonValue,
+        }),
+        400,
+      );
+
+      const comparison = within(screen.getByTestId("scalar-previous-value"));
+      expect(
+        comparison.getByText("N/A vs. previous month"),
+      ).toBeInTheDocument();
+      expect(comparison.getByText("(No data)")).toBeInTheDocument();
+    });
+
+    it("should hide the value of every comparison in the hover panel", async () => {
+      setup(
+        series({
+          rows,
+          insights,
+          comparisonTypes: twoComparisons,
+          settings: hideComparisonValue,
+        }),
+        400,
+      );
+
+      const comparison = within(screen.getByTestId("scalar-previous-value"));
+      expect(comparison.getByText("+100% MoM")).toBeInTheDocument();
+      expect(comparison.getByText("+1")).toBeInTheDocument();
+      expect(comparison.queryByText("(50)")).not.toBeInTheDocument();
+
+      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+      const tooltip = within(await screen.findByRole("tooltip"));
+
+      expect(tooltip.getByText("vs. previous month")).toBeInTheDocument();
+      expect(tooltip.getByText("vs. Goal")).toBeInTheDocument();
+      expect(tooltip.getByText("25%")).toBeInTheDocument();
+      expect(tooltip.queryByText("50")).not.toBeInTheDocument();
+      expect(tooltip.queryByText("80")).not.toBeInTheDocument();
+    });
+
+    it("should hide the value of an unchanged comparison in the hover panel", async () => {
+      const unchangedRows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 100],
+      ];
+
+      // the smallest tier shows the percentage only, so the panel is always available
+      setup(
+        series({
+          rows: unchangedRows,
+          insights,
+          settings: hideComparisonValue,
+        }),
+        100,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+      const tooltip = within(await screen.findByRole("tooltip"));
+
+      expect(tooltip.getByText("vs. previous month")).toBeInTheDocument();
+      expect(tooltip.queryByText("100")).not.toBeInTheDocument();
+    });
+
+    it("should hide the comparison values in the query builder list", () => {
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({
+            rows,
+            insights,
+            comparisonTypes: twoComparisons,
+            settings: hideComparisonValue,
+          })}
+          width={800}
+          isQueryBuilder
+        />,
+      );
+
+      const list = within(screen.getByTestId("scalar-comparison-list"));
+      expect(list.getByText("vs. previous month")).toBeInTheDocument();
+      expect(list.getByText("+100%")).toBeInTheDocument();
+      expect(list.getByText("vs. Goal")).toBeInTheDocument();
+      expect(list.getByText("+25%")).toBeInTheDocument();
+      expect(list.queryByText(/\(50\)|\(80\)/)).not.toBeInTheDocument();
     });
   });
 
