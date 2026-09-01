@@ -350,6 +350,55 @@
             (.flush writer))
           (recur current-hash))))))
 
+(def ^:private max-concurrent-keepalive-streams
+  "How many GET keepalive streams one user may hold open at once.
+
+  Running the loop on virtual threads (see [[keepalive-executor]]) removed the only ceiling these streams had:
+  the fixed streaming pool refused work past its size, whereas a virtual thread costs nothing to park. A stream
+  is held for as long as the client keeps it and costs a single throttle attempt to open, so nothing else bounds
+  how many one credential can accumulate — and every one of them holds a connection.
+
+  The cap is per-user rather than global so a single caller cannot crowd everyone else off the surface. It is set
+  well above real use: a client opens one stream per MCP session, and the throttle's own sizing assumes a handful
+  of concurrent agents."
+  25)
+
+(defonce ^:private keepalive-stream-counts
+  (atom {}))
+
+(defn- acquire-keepalive-slot!
+  "Reserve a keepalive slot for `user-id`, returning true when reserved and false when they are already at
+  [[max-concurrent-keepalive-streams]]. A refusal costs the caller nothing."
+  [user-id]
+  (let [[old new] (swap-vals! keepalive-stream-counts
+                              (fn [counts]
+                                (cond-> counts
+                                  (< (get counts user-id 0) max-concurrent-keepalive-streams)
+                                  (update user-id (fnil inc 0)))))]
+    (not= (get old user-id 0) (get new user-id 0))))
+
+(defn- release-keepalive-slot!
+  "Return one of `user-id`'s keepalive slots. A user back at zero is dropped from the map rather than left as an
+  entry, so the map tracks live streams and not every user the process has ever served. Releasing more than was
+  acquired cannot drive the count negative — that would hand the user free slots on top of the cap."
+  [user-id]
+  (swap! keepalive-stream-counts
+         (fn [counts]
+           (let [remaining (dec (get counts user-id 0))]
+             (if (pos? remaining)
+               (assoc counts user-id remaining)
+               (dissoc counts user-id)))))
+  nil)
+
+(defn- keepalive-stream-body!
+  "Run [[keepalive-loop!]] and call `release!` however the loop ends — normally, on client disconnect, or by
+  throwing. A slot leaked on disconnect would retire the cap one connection at a time."
+  [release! writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  (try
+    (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
+    (finally
+      (release!))))
+
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
    Polls the tool manifest hash on each keepalive tick — if the visible tool set has
@@ -364,16 +413,33 @@
       (some? error)
       (respond error)
 
+      (not (acquire-keepalive-slot! user-id))
+      (respond (json-response 429 (jsonrpc-error nil -32000
+                                                 (str "Too many concurrent MCP event streams open for this user "
+                                                      "(limit " max-concurrent-keepalive-streams
+                                                      "). Close an existing stream before opening another."))))
+
       :else
-      (let [resp (streaming-response/streaming-response
-                  {:content-type "text/event-stream"
-                   :headers      {"Cache-Control" "no-cache"}
-                   :status       200
-                   :executor     keepalive-executor}
-                  [os canceled-chan]
-                   (keepalive-loop! (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-                                    tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
-        (compojure.response/send* resp request respond raise)))))
+      ;; The slot is returned by `keepalive-stream-body!` once the stream ends. `release!` also covers the case
+      ;; where `send*` throws before the body is ever submitted, and is idempotent so the two paths cannot
+      ;; double-release and hand the user a free slot.
+      (let [released? (atom false)
+            release!  #(when (compare-and-set! released? false true)
+                         (release-keepalive-slot! user-id))
+            resp      (streaming-response/streaming-response
+                       {:content-type "text/event-stream"
+                        :headers      {"Cache-Control" "no-cache"}
+                        :status       200
+                        :executor     keepalive-executor}
+                       [os canceled-chan]
+                        (keepalive-stream-body! release!
+                                                (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+                                                tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
+        (try
+          (compojure.response/send* resp request respond raise)
+          (catch Throwable e
+            (release!)
+            (throw e)))))))
 
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."

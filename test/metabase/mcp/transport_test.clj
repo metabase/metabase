@@ -79,24 +79,105 @@
         (is (= 3 (count (re-seq #": keepalive" output))))
         (is (= 1 (count (re-seq #"notifications/tools/list_changed" output))))))))
 
+(defn- keepalive-counts []
+  @@#'mcp.transport/keepalive-stream-counts)
+
+(defn- with-clean-keepalive-counts
+  "Run `thunk` against an empty slot table. The table is a `defonce` atom that outlives ns reloads, so it is
+  cleared going in as well as coming out — otherwise these tests depend on which of them ran first."
+  [thunk]
+  (reset! @#'mcp.transport/keepalive-stream-counts {})
+  (try (thunk) (finally (reset! @#'mcp.transport/keepalive-stream-counts {}))))
+
+(deftest keepalive-slot-accounting-test
+  (testing (str "GHY-4331: moving the keepalive off the fixed streaming pool removed the ceiling that pool "
+                "imposed — virtual threads have none. A stream is held for as long as the client keeps it and "
+                "costs a single throttle attempt to open, so without a cap one credential can accumulate "
+                "connections indefinitely. The cap is per-user so one caller cannot crowd out the rest.")
+    (with-clean-keepalive-counts
+      (fn []
+        (let [cap     @#'mcp.transport/max-concurrent-keepalive-streams
+              acquire #(#'mcp.transport/acquire-keepalive-slot! %)
+              release #(#'mcp.transport/release-keepalive-slot! %)]
+          (testing "a user may hold up to the cap"
+            (is (every? true? (repeatedly cap #(acquire 1)))))
+          (testing "and is refused past it, without the refusal costing them a held slot"
+            (is (false? (acquire 1)))
+            (is (= cap (get (keepalive-counts) 1))))
+          (testing "another user is unaffected — the cap bounds a caller, not the instance"
+            (is (true? (acquire 2))))
+          (testing "releasing frees exactly one slot"
+            (release 1)
+            (is (= (dec cap) (get (keepalive-counts) 1)))
+            (is (true? (acquire 1))))
+          (testing "a user at zero drops out of the map rather than accumulating an entry per user ever seen"
+            (release 2)
+            (is (not (contains? (keepalive-counts) 2))))
+          (testing "an unbalanced release cannot drive the count negative and hand out free slots"
+            (release 2)
+            (release 2)
+            (is (not (contains? (keepalive-counts) 2)))))))))
+
+(deftest keepalive-slot-is-released-when-the-stream-ends-test
+  (testing "a slot is held for the life of the stream and returned when it ends, however it ends — a slot leaked
+            on disconnect would retire the cap one connection at a time"
+    (with-clean-keepalive-counts
+      (fn []
+        (is (true? (#'mcp.transport/acquire-keepalive-slot! 7)))
+        (let [canceled (a/promise-chan)
+              sink     (StringWriter.)]
+          (#'mcp.transport/keepalive-stream-body! #(#'mcp.transport/release-keepalive-slot! 7)
+                                                  (signaling-writer! sink canceled)
+                                                  (constantly "hash") nil canceled 30000)
+          (is (not (contains? (keepalive-counts) 7))))))
+    (testing "and released even when the loop throws rather than returning"
+      (with-clean-keepalive-counts
+        (fn []
+          (is (true? (#'mcp.transport/acquire-keepalive-slot! 8)))
+          (is (thrown? Exception
+                       (#'mcp.transport/keepalive-stream-body! #(#'mcp.transport/release-keepalive-slot! 8)
+                                                               nil
+                                                               (fn [_] (throw (ex-info "boom" {})))
+                                                               nil (a/promise-chan) 30000)))
+          (is (not (contains? (keepalive-counts) 8))))))))
+
+(deftest keepalive-stream-at-the-cap-is-refused-test
+  (testing "a user already holding the cap gets a 429 instead of another stream"
+    (with-clean-keepalive-counts
+      (fn []
+        (let [cap       @#'mcp.transport/max-concurrent-keepalive-streams
+              responded (promise)]
+          (reset! @#'mcp.transport/keepalive-stream-counts {1 cap})
+          (with-redefs-fn {#'mcp.transport/require-valid-session (fn [_user-id _session-id] {:session-id "session"})}
+            (fn []
+              (#'mcp.transport/handle-get (constantly "hash") 1 {:headers {"mcp-session-id" "session"}}
+                                          #(deliver responded %) (fn [e] (throw e)))))
+          (let [response (deref responded 5000 nil)]
+            (is (= 429 (:status response)))
+            (is (str/includes? (str (:body response)) "concurrent"))))))))
+
 (deftest keepalive-stream-does-not-run-on-the-shared-streaming-pool-test
   (testing (str "GHY-4331: the GET keepalive blocks for the life of the client's connection, so it must not be "
                 "submitted to the fixed streaming-response pool that also serves query downloads")
-    (let [captured  (atom nil)
-          real-fn   @#'streaming-response/-streaming-response
-          responded (promise)]
-      (with-redefs-fn {#'mcp.transport/require-valid-session    (fn [_user-id _session-id] {:session-id "session"})
-                       #'streaming-response/-streaming-response (fn [f options]
-                                                                  (reset! captured options)
-                                                                  (real-fn f options))}
-        (fn []
-          (#'mcp.transport/handle-get (constantly "hash") 1 {:headers {"mcp-session-id" "session"}}
-                                      #(deliver responded %) (fn [e] (throw e)))))
-      (is (= 200 (:status (deref responded 5000 nil))))
-      (let [executor (:executor @captured)]
-        (is (some? executor)
-            "the keepalive stream must name an executor rather than defaulting to the shared pool")
-        (is (not= executor (thread-pool/thread-pool)))))))
+    ;; This harness never drives the stream body, so the slot the handler takes is never returned — cleared here
+    ;; rather than left to leak into whichever slot test happens to run next.
+    (with-clean-keepalive-counts
+      (fn []
+        (let [captured  (atom nil)
+              real-fn   @#'streaming-response/-streaming-response
+              responded (promise)]
+          (with-redefs-fn {#'mcp.transport/require-valid-session    (fn [_user-id _session-id] {:session-id "session"})
+                           #'streaming-response/-streaming-response (fn [f options]
+                                                                      (reset! captured options)
+                                                                      (real-fn f options))}
+            (fn []
+              (#'mcp.transport/handle-get (constantly "hash") 1 {:headers {"mcp-session-id" "session"}}
+                                          #(deliver responded %) (fn [e] (throw e)))))
+          (is (= 200 (:status (deref responded 5000 nil))))
+          (let [executor (:executor @captured)]
+            (is (some? executor)
+                "the keepalive stream must name an executor rather than defaulting to the shared pool")
+            (is (not= executor (thread-pool/thread-pool)))))))))
 
 ;;; ------------------------------------------ Transport-level guards ----------------------------------------------
 ;;;
