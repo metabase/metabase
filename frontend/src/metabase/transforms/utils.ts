@@ -4,7 +4,6 @@ import _ from "underscore";
 import { hasFeature } from "metabase/databases";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Database,
   DatabaseId,
@@ -166,27 +165,6 @@ export function isSameSource(
     return _.isEqual(source1, source2);
   }
   return false;
-}
-
-export function isSourceEmpty(
-  source: DraftTransformSource,
-  databaseId: DatabaseId,
-  metadata: Metadata,
-): boolean {
-  if (source.type !== "query") {
-    return false;
-  }
-
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  const query = Lib.fromJsQuery(metadataProvider, source.query);
-  const { isNative } = Lib.queryDisplayInfo(query);
-
-  if (!isNative) {
-    return false;
-  }
-
-  const nativeQuery = Lib.rawNativeQuery(query);
-  return !nativeQuery?.trim();
 }
 
 export function isCompleteSource(
