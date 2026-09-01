@@ -12,6 +12,7 @@ import {
   getDashCardById,
   getDashboard,
   getDashcardData,
+  getDashcardDataMap,
   getDashcards,
   getSidebar,
 } from "metabase/dashboard/selectors";
@@ -36,6 +37,7 @@ import type {
 import {
   canDashCardDisplayTimelineEvents,
   computeDashCardTimeseriesXAxis,
+  isDashCardDataLoaded,
 } from "./utils";
 
 const NO_EVENTS: TimelineEvent[] = [];
@@ -116,10 +118,15 @@ export const getDashCardSelectedTimelineEventIds = (
 };
 
 export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
-  [getCurrentDashcards, (state: State) => state],
-  (dashcards, state) =>
+  [getCurrentDashcards, getDashcardDataMap, (state: State) => state],
+  (dashcards, dashcardDataMap, state) =>
     dashcards
-      .filter((dashcard) => getIsTimelineEventsDashCard(state, dashcard.id))
+      .filter(
+        (dashcard) =>
+          canDashCardDisplayTimelineEvents(dashcard) &&
+          (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
+            getIsTimelineEventsDashCard(state, dashcard.id)),
+      )
       .map((dashcard) => dashcard.id),
 );
 

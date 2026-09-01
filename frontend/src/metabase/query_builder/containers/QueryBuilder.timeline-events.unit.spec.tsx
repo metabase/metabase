@@ -11,7 +11,12 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { hideTimeline, showTimeline } from "../actions/timelines";
+import {
+  hideTimeline,
+  showCreatedTimelineEvent,
+  showTimeline,
+  showTimelineEvents,
+} from "../actions/timelines";
 import { onOpenTimelines } from "../store/actions";
 import {
   getIsDirty,
@@ -158,7 +163,12 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("saving after turning events on records them", async () => {
-    const store = await setupWithTimelines();
+    // Turning on a timeline the collection fallback already shows changes
+    // nothing, so start from a question that recorded them as off.
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [],
+      "timeline.excluded_timeline_event_ids": [],
+    });
 
     await act(async () => {
       store.dispatch(showTimeline(TIMELINE));
@@ -215,5 +225,57 @@ describe("QueryBuilder > timeline events", () => {
       ],
     ).toEqual([]);
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
+  it("creating an event on a timeline that is already shown records nothing", async () => {
+    const store = await setupWithTimelines();
+
+    await act(async () => {
+      store.dispatch(showTimelineEvents([RC1]));
+    });
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings(),
+    ).not.toHaveProperty("timeline.selected_timeline_ids");
+    expect(getIsDirty(store.getState())).toBe(false);
+  });
+
+  it("creating an event on a hidden timeline shows the whole timeline", async () => {
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [],
+      "timeline.excluded_timeline_event_ids": [],
+    });
+    const created = createMockTimelineEvent({
+      id: 97,
+      timeline_id: TIMELINE.id,
+      timestamp: "2025-06-03T00:00:00Z",
+    });
+
+    await act(async () => {
+      store.dispatch(showCreatedTimelineEvent(created));
+    });
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
+  it("shows an event created on a timeline that has not been fetched yet", async () => {
+    const store = await setupWithTimelines();
+    const firstEvent = createMockTimelineEvent({
+      id: 97,
+      timeline_id: 2,
+      timestamp: "2025-06-03T00:00:00Z",
+    });
+
+    await act(async () => {
+      store.dispatch(showTimelineEvents([firstEvent]));
+    });
+
+    expect(checkNotNull(getQuestion(store.getState())).settings()).toEqual(
+      expect.objectContaining({
+        "timeline.selected_timeline_ids": [TIMELINE.id, 2],
+        "timeline.excluded_timeline_event_ids": [],
+      }),
+    );
   });
 });
