@@ -643,3 +643,63 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });
 });
+
+describe("scenarios > visualizations > trend chart on dashboards and public questions", () => {
+  const TREND_QUERY = {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should navigate to the question by clicking the dashcard title", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Trend title nav",
+        query: TREND_QUERY,
+        display: "smartscalar",
+      },
+      cardDetails: { size_x: 8, size_y: 4 },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    // a real pointer press: regressions here (e.g. the link re-rendering
+    // mid-press) do not reproduce with synthetic clicks
+    cy.findByTestId("scalar-title").findByText("Trend title nav").realClick();
+
+    cy.location("pathname").should("match", /^\/question\//);
+    H.queryBuilderHeader()
+      .findByDisplayValue("Trend title nav")
+      .should("be.visible");
+  });
+
+  it("should show the full comparison list in public question views", () => {
+    H.createQuestion({
+      name: "Public trend",
+      query: TREND_QUERY,
+      display: "smartscalar",
+      visualization_settings: {
+        "scalar.comparisons": [
+          { id: "1", type: "previousPeriod" },
+          { id: "2", type: "periodsAgo", value: 2 },
+          { id: "3", type: "staticNumber", value: 500, label: "Goal" },
+        ],
+      },
+    }).then(({ body: { id } }) => {
+      H.visitPublicQuestion(id);
+    });
+
+    // the standalone question view lists every comparison instead of the
+    // dashboard-style compact row with a "+N" badge
+    cy.findByTestId("scalar-comparison-list")
+      .children()
+      .should("have.length", 3);
+    cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
+    cy.findByTestId("scalar-content").findByText("+2").should("not.exist");
+  });
+});

@@ -57,6 +57,88 @@ export const Default: StoryFn = () => (
   </VisualizationWrapper>
 );
 
+const MOCK_MULTI_COMPARISON_SERIES = mockSeries({
+  rows: MOCK_ROWS,
+  insights: [{ unit: "month", col: "Count" }],
+  name: "Last invoice",
+  comparisonTypes: [
+    { id: "1", type: "previousPeriod" },
+    { id: "2", type: "periodsAgo", value: 2 },
+    { id: "3", type: "staticNumber", value: 90, label: "Target" },
+  ],
+});
+
+// dashboards show the compact row with a "+N" badge; the extra comparisons
+// live in the hover panel
+export const DashcardMultipleComparisons: StoryFn = () => (
+  <VisualizationWrapper>
+    <Flex gap="lg" align="flex-start" p="lg">
+      {CARD_SIZES.map(({ width, height }) => (
+        <Box
+          key={`${width}x${height}`}
+          w={width}
+          h={height}
+          style={{
+            borderRadius: 12,
+            boxShadow: "0 0 0 0.5px var(--mb-color-shadow-default)",
+          }}
+        >
+          <Visualization
+            rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+            showTitle
+            width={width}
+          />
+        </Box>
+      ))}
+    </Flex>
+  </VisualizationWrapper>
+);
+
+// a single comparison on a full-page question renders inline with the trend
+// symbol and the full comparison value
+export const QueryBuilderSingleComparison: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization rawSeries={MOCK_SERIES} width={800} isQueryBuilder />
+    </Box>
+  </VisualizationWrapper>
+);
+
+// several comparisons on a full-page question render as a date line plus the
+// full list — no hover panel needed
+export const QueryBuilderMultipleComparisons: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization
+        rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+        width={800}
+        isQueryBuilder
+      />
+    </Box>
+  </VisualizationWrapper>
+);
+
+// public/embedded question views get the same treatment as the query builder
+export const StandaloneQuestionSingleComparison: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization rawSeries={MOCK_SERIES} width={800} isStandaloneQuestion />
+    </Box>
+  </VisualizationWrapper>
+);
+
+export const StandaloneQuestionMultipleComparisons: StoryFn = () => (
+  <VisualizationWrapper>
+    <Box w={800} h={400}>
+      <Visualization
+        rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+        width={800}
+        isStandaloneQuestion
+      />
+    </Box>
+  </VisualizationWrapper>
+);
+
 // Example of how themes can be applied in the SDK.
 export const EmbeddingTheme: StoryFn = () => {
   const theme: MetabaseTheme = {
