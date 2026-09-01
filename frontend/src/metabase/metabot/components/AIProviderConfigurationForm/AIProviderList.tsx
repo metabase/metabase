@@ -195,7 +195,7 @@ export function AIProviderList() {
                   disabled={!isDraggable(item)}
                   draggingStyle={{
                     opacity: 0.5,
-                    backgroundColor: "var(--mb-color-background)",
+                    backgroundColor: "var(--mb-color-background-primary)",
                     borderRadius: "0.5rem",
                   }}
                   role="listitem"
