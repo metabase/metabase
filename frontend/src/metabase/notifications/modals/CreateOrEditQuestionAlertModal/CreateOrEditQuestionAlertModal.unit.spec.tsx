@@ -11,9 +11,9 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Notification,
@@ -537,10 +537,8 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
-    // Going through Custom drops the hour, so the alert is left without a
-    // subscription until a new time is picked
     await userEvent.click(screen.getByTestId("select-frequency"));
-    await userEvent.click(screen.getByRole("option", { name: /custom/i }));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
 
     await userEvent.click(screen.getByTestId("select-frequency"));
     await userEvent.click(screen.getByRole("option", { name: /daily/i }));

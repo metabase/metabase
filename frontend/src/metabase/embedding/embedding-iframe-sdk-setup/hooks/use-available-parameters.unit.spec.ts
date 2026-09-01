@@ -34,7 +34,7 @@ jest.mock("metabase/schema", () => ({
   FieldSchema: {},
 }));
 
-jest.mock("metabase/selectors/metadata", () => ({
+jest.mock("metabase/metadata-store", () => ({
   getMetadata: jest.fn(),
 }));
 
