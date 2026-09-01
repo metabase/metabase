@@ -154,7 +154,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                        :perms/create-queries :query-builder-and-native}
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Can create a transform with a param"
                 (let [query        (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")
@@ -174,7 +175,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                        :perms/create-queries :query-builder-and-native}
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a required param"
                 (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
@@ -199,7 +201,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                        :perms/create-queries :query-builder-and-native}
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a param that is necessary but not marked as required"
                 (let [query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
@@ -385,7 +388,8 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                          :perms/create-queries :query-builder-and-native}
               (testing "MBQL query transforms are detected as :mbql"
                 (with-transform-cleanup! [table-name "mbql_transform"]
                   (let [mbql-query (mt/mbql-query transforms_products)
@@ -416,7 +420,8 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                          :perms/create-queries :query-builder-and-native}
               (with-transform-cleanup! [table-name "type_update_transform"]
                 (let [native-query (lib/native-query (mt/metadata-provider) "SELECT 1")
                       mbql-query (mt/mbql-query transforms_products)

@@ -1,5 +1,6 @@
 (ns metabase.queries.metadata
   (:require
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -87,7 +88,7 @@
                   [dim-type field-id] (cond
                                         (vector? dimension) dimension
                                         (string? dimension) (try
-                                                              (read-string dimension)
+                                                              (edn/read-string dimension)
                                                               (catch Exception _ nil))
                                         :else               nil)]
          :when   (and (#{:field "field"} dim-type)

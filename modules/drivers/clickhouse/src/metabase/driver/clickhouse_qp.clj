@@ -78,6 +78,23 @@
                               without-low-car)]
       without-nullable)))
 
+(def ^:private date-granular-truncation-units
+  "Temporal truncation units whose ClickHouse result is a `Date` (not a `DateTime`)."
+  #{:week :month :quarter :year})
+
+(defmethod sql.qp/->honeysql [:clickhouse :field]
+  [driver [_ _id-or-name opts :as clause]]
+  ;; MBQL preserves a column's `:effective-type` through temporal truncation, but ClickHouse's
+  ;; `toStartOfWeek`/`Month`/`Quarter`/`Year` return `Date`, not `DateTime`. When such a ref reaches an
+  ;; outer stage, downgrade a DateTime-derived effective type to `:type/Date` so `in-report-timezone`
+  ;; doesn't wrap a `Date` in `toTimeZone` (ClickHouse rejects that with Code 43). See #79648.
+  (let [{:keys [inherited-temporal-unit effective-type base-type]} opts
+        clause (cond-> clause
+                 (and (contains? date-granular-truncation-units inherited-temporal-unit)
+                      (isa? (or effective-type base-type) :type/DateTime))
+                 (assoc 2 (assoc opts :effective-type :type/Date :base-type :type/Date)))]
+    ((get-method sql.qp/->honeysql [:sql :field]) driver clause)))
+
 (defn- in-report-timezone
   [expr]
   (let [report-timezone (get-report-timezone-id-safely)

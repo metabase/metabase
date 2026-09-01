@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -20,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -626,6 +628,7 @@
                                        :password "p@ssw0rd"
                                        :login_attributes {"role" "admin"
                                                           "department" "engineering"}}]
+        (auth-identity/set-password! (:id user) "p@ssw0rd")
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (testing "response includes structured_attributes"
             (is (contains? response :structured_attributes)))
@@ -648,6 +651,7 @@
                                                         "env" "production"}
                                        :login_attributes {"role" "admin"
                                                           "department" "engineering"}}]
+        (auth-identity/set-password! (:id user) "p@ssw0rd")
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (testing "User attributes override jwt attributes when keys conflict"
             (is (= {:role {:source "user" :frozen false :value "admin"
@@ -1302,6 +1306,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "google"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1312,6 +1317,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "ldap"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1324,6 +1330,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "google"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (client/client creds :put 200 (format "user/%d" (u/the-id user))
@@ -1332,6 +1339,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "ldap"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (client/client creds :put 200 (format "user/%d" (u/the-id user))
@@ -1463,7 +1471,8 @@
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
-    (mt/with-temp [:model/User {user-id :id, email :email} {:password "p@ssw0rd"}]
+    (mt/with-temp [:model/User {user-id :id, email :email} {}]
+      (auth-identity/set-password! user-id "p@ssw0rd")
       (letfn [(set-locale! [expected-status-code new-locale]
                 (mt/client {:username email, :password "p@ssw0rd"}
                            :put expected-status-code (str "user/" user-id)
@@ -1558,25 +1567,26 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- user-can-reset-password? [superuser?]
-  (mt/with-temp [:model/User user {:password "def", :is_superuser (boolean superuser?)}]
+(defn- user-can-reset-password! [superuser?]
+  (mt/with-temp [:model/User user {:is_superuser (boolean superuser?)}]
+    (auth-identity/set-password! (:id user) "def")
     (let [creds {:username (:email user), :password "def"}
-          hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))]
-      ;; use API to reset the users password
+          password-hash (fn [] (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
+                                                                 :user_id (:id user), :provider "password")))
+          original-hash (password-hash)]
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
-      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-      (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
+      (not= original-hash (password-hash)))))
 
 (deftest can-reset-password-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
         (is (true?
-             (user-can-reset-password? :superuser))))
+             (user-can-reset-password! :superuser))))
       (testing "non-superuser"
         (is (true?
-             (user-can-reset-password? (not :superuser))))))))
+             (user-can-reset-password! (not :superuser))))))))
 
 (deftest reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
@@ -1597,19 +1607,70 @@
                                     {:password "whateverUP12!!"
                                      :old_password "mismatched"}))))))
 
+(deftest reset-password-old-password-check-is-throttled-test
+  (testing "PUT /api/user/:id/password - repeated wrong old_password attempts are throttled"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "correct-horse-1!")
+      (let [creds     {:username (:email user) :password "correct-horse-1!"}
+            wrong     (fn [] (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                        {:password "abc123!!DEF" :old_password "wrong"}))
+            throttler (throttle/make-throttler :user-id :attempts-threshold 3)]
+        (with-redefs [api.user/password-change-throttler throttler]
+          (testing "attempts up to the threshold return the normal Invalid password error"
+            (dotimes [_ 3]
+              (is (=? {:errors {:old_password "Invalid password"}} (wrong)))))
+          (testing "the next attempt is throttled, not a fresh password check"
+            (is (re-find #"^Too many attempts!"
+                         (get-in (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                            {:password "abc123!!DEF" :old_password "wrong"})
+                                 [:errors :user-id] "")))))))))
+
+(deftest reset-password-verifies-old-password-against-auth-identity-test
+  (testing "PUT /api/user/:id/password"
+    (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
+        (t2/update! (t2/table-name :model/User) (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
+        (is (=? {:success true}
+                (mt/client {:username (:email user), :password "def"}
+                           :put 200 (format "user/%d/password" (:id user))
+                           {:password "abc123!!DEF", :old_password "def"})))
+        (testing "the new password authenticates and the stale core_user columns are left untouched"
+          (is (some? (mt/client :post 200 "session" {:username (:email user), :password "abc123!!DEF"})))
+          (is (= {:password "not-a-bcrypt-hash", :password_salt "stale"}
+                 (into {} (t2/select-one [:model/User :password :password_salt] :id (:id user))))))))))
+
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
         (let [creds {:username (:email user), :password "def"}]
           (is (=? {:session_id string/valid-uuid?
                    :success true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                     :old_password "def"}))))))
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
+
+(deftest reset-password-invalidates-existing-sessions-test
+  (testing "PUT /api/user/:id/password invalidates the user's existing sessions"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "def")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the password change")
+        (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user))
+                              {:password "abc123!!DEF", :old_password "def"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the user's pre-existing session should be deleted after the password change")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
@@ -1662,6 +1723,7 @@
                                                  :last_name (mt/random-name)
                                                  :email "def@metabase.com"
                                                  :password "def123"}]
+          (auth-identity/set-password! id "def123")
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"

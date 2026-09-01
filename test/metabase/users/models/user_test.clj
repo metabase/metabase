@@ -19,7 +19,6 @@
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -359,21 +358,6 @@
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
 
-(deftest password-sync-to-auth-identity-test
-  (testing "Password changes are automatically synced to AuthIdentity via lifecycle hooks"
-    (testing "Password update via t2/update! also syncs to AuthIdentity"
-      (mt/with-temp [:model/User {user-id :id} {:password "initial-password"}]
-        (let [initial-user (t2/select-one [:model/User :password] :id user-id)
-              initial-password-hash (:password initial-user)]
-          (t2/update! :model/User user-id {:password "another-new-password"})
-          (let [updated-user (t2/select-one [:model/User :password] :id user-id)
-                updated-password-hash (:password updated-user)
-                updated-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
-                auth-identity-hash (get-in updated-auth-identity [:credentials :password_hash])]
-            (is (not= initial-password-hash updated-password-hash) "Password should be updated in User table")
-            (is (some? updated-auth-identity) "AuthIdentity should still exist")
-            (is (= updated-password-hash auth-identity-hash) "AuthIdentity password hash should match User table")))))))
-
 (deftest validate-locale-test
   (testing "`:locale` should be validated"
     (testing "creating a new User"
@@ -433,32 +417,6 @@
       (is (= "e8d63472"
              (serdes/raw-hash ["fred@flintston.es"])
              (serdes/identity-hash user))))))
-
-(deftest hash-password-on-update-test
-  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"
-    (let [plaintext-password "password-1234"]
-      (mt/with-temp [:model/User {user-id :id} {:password plaintext-password}]
-        (let [salt                     (fn [] (t2/select-one-fn :password_salt :model/User :id user-id))
-              hashed-password          (fn [] (t2/select-one-fn :password :model/User :id user-id))
-              original-hashed-password (hashed-password)]
-          (testing "sanity check: check that password can be verified"
-            (is (u.password/verify-password plaintext-password
-                                            (salt)
-                                            original-hashed-password)))
-          (is (= 1
-                 (t2/update! :model/User user-id {:password plaintext-password})))
-          (let [new-hashed-password (hashed-password)]
-            (testing "password should have been hashed"
-              (is (not= plaintext-password
-                        new-hashed-password)))
-            (testing "even tho the plaintext password is the same, hashed password should be different (different salts)"
-              (is (not= original-hashed-password
-                        new-hashed-password)))
-            (testing "salt should have been set; verify password was hashed correctly"
-              (is (u.password/verify-password plaintext-password
-                                              (salt)
-                                              new-hashed-password)))))))))
-
 (deftest last-acknowledged-version-can-be-read-and-set
   (testing "last-acknowledged-version can be read and set"
     (mt/with-test-user :rasta

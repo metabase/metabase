@@ -294,11 +294,26 @@ describe(
     `Write actions on model detail page (${dialect})`,
     { tags: "@external" },
     () => {
+      // Sync the writable test table once, then snapshot the result. Restoring a
+      // `-writable` snapshot drops the warehouse tables, so re-syncing per test raced
+      // with the previous test's still-running sync and left the database with no tables.
+      before(() => {
+        H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
+        cy.signInAsAdmin();
+        H.resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tableName: WRITABLE_TEST_TABLE,
+        });
+        H.snapshot(`model-actions-${dialect}`);
+      });
+
       beforeEach(() => {
         cy.intercept("GET", "/api/card/*").as("getModel");
         cy.intercept("GET", "/api/action/*").as("getAction");
 
         cy.intercept("PUT", "/api/action/*").as("updateAction");
+        cy.intercept("POST", "/api/action/*/execute").as("executeAction");
         cy.intercept("POST", "/api/action").as("createAction");
         cy.intercept("POST", "/api/action/*/public_link").as(
           "enableActionSharing",
@@ -307,13 +322,9 @@ describe(
           "disableActionSharing",
         );
 
-        H.restore(`${dialect}-writable`);
+        H.restore(`model-actions-${dialect}`);
         H.resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
         cy.signInAsAdmin();
-        H.resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: WRITABLE_TEST_TABLE,
-        });
 
         H.createModelFromTableName({
           tableName: WRITABLE_TEST_TABLE,
@@ -799,6 +810,7 @@ describe(
           cy.findByLabelText(TEST_PARAMETER.name).type("1");
           cy.button(SAMPLE_QUERY_ACTION.name).click();
 
+          cy.wait("@executeAction");
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
           );

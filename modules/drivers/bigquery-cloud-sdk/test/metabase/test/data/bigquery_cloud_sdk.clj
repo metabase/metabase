@@ -39,7 +39,8 @@
     Schema
     StandardTableDefinition
     TableId
-    TableInfo)))
+    TableInfo)
+   (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -346,18 +347,53 @@
               (recur (dec num-retries))
               (throw e))))))))
 
+(def ^:private ^Duration reap-after
+  "How long [[delete-old-datasets!]] lets a dataset sit before deleting it - since its last recorded use if it is
+  tracked, since its creation if it is not."
+  (t/duration 14 :days))
+
+(def ^:private ^Duration track-debounce
+  "How stale a dataset's `accessed_at` may be before another use is worth recording.
+
+  Half of [[reap-after]], so a dataset that keeps being used is re-recorded with a full reap interval to spare.
+  Anything past that halfway point leaves a dataset that is still in use eligible for deletion."
+  (.dividedBy reap-after 2))
+
+(defn- track-debounce-seconds
+  "[[track-debounce]] shortened by a random margin.
+
+  Without the margin, every job using a given dataset crosses the threshold at the same moment and writes at once.
+  [[tx/track-dataset]] writes to one table shared by every branch and release stream, and BigQuery runs only two
+  mutating statements per table concurrently, queueing twenty more before it starts rejecting them."
+  []
+  (let [seconds (.toSeconds track-debounce)]
+    (- seconds (rand-int (quot seconds 4)))))
+
+(def ^:private recently-tracked-hashes
+  "Hashes of datasets used recently enough that recording another use would be redundant, read once per process.
+
+  Nothing reads `accessed_at` during a test run, so a snapshot going stale mid-run costs at worst a redundant write.
+  Nil if the tracking table cannot be read: on a fresh project nothing has been tracked, which is the same answer."
+  (delay
+    (u/ignore-exceptions
+      (into #{}
+            (map first)
+            (execute! (str "SELECT `hash` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d SECOND)")
+                      (project-id)
+                      (track-debounce-seconds))))))
+
 (defn delete-old-datasets! []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
+                      (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %2$d SECOND))"
                            " UNION ALL "
-                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
+                           "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                             where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
+                             and creation_time < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %2$d SECOND))")
                       (project-id)
-                      (project-id)
-                      (project-id))]
+                      (.toSeconds reap-after))]
     (doseq [outdated (map first all-outdated)]
       (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
@@ -526,17 +562,23 @@
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
-  (u/ignore-exceptions
-    (execute-params!
-     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-     [(tx/hash-dataset db-def)
-      (test-dataset-id db-def)
-      (tx/tracking-access-note)])))
+  ;; BigQuery has a limit of 20 pending DML statements per table.
+  ;; https://cloud.google.com/blog/products/data-analytics/dml-without-limits-now-in-bigquery
+  ;; Repeatedly tracking the same dataset each time it's touched causes us to run up against
+  ;; that limit in CI. Debounce tracking recently tracked datasets so we don't create nearly as much
+  ;; dataset tracking noise.
+  (when-not (contains? @recently-tracked-hashes (tx/hash-dataset db-def))
+    (setup-tracking-dataset!)
+    ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
+    (u/ignore-exceptions
+      (execute-params!
+       (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+                    "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
+                    "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                    "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
+       [(tx/hash-dataset db-def)
+        (test-dataset-id db-def)
+        (tx/tracking-access-note)]))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]

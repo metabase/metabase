@@ -59,7 +59,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls
   :doc        false)
@@ -69,7 +69,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls
   :doc        false)
@@ -79,7 +79,7 @@
   :type       :string
   :default    ""
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export?    true
   :feature    :ai-controls
   :doc        false)

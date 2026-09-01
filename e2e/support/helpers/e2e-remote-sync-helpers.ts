@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, RemoteSyncTask } from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
@@ -252,7 +252,9 @@ const MAIN_MENU_OPTION_RE = /Pull changes|Push changes|Switch branch/;
 const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
-  getOption().should("not.be.disabled").realClick();
+  // Clicks are swallowed while `data-combobox-disabled` is set (cleared once the git round-trips resolve)
+  getOption().should("not.have.attr", "data-combobox-disabled");
+  getOption().realClick();
   cy.get("body").then(($body) => {
     const mainMenuStillOpen =
       $body
@@ -288,14 +290,17 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
+const TASK_POLL_LIMIT = 30;
+
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 3) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+
+  return cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });
@@ -305,36 +310,38 @@ export const waitForTask = (
   });
 };
 
-// Poll for task completion by actively querying the endpoint
-// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit)
+// Poll for a task's terminal state by actively querying the endpoint; `until` is the expected status.
+// Use this when the app isn't loaded yet, or to confirm server-side settling independently of the UI.
 export const pollForTask = (
-  { taskName }: { taskName: "import" | "export" },
+  {
+    taskName,
+    until = "successful",
+  }: { taskName: "import" | "export"; until?: "successful" | "conflict" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 30) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
 
   return cy
-    .request("GET", "/api/ee/remote-sync/current-task")
+    .request<RemoteSyncTask | null>("GET", "/api/ee/remote-sync/current-task")
     .then((response) => {
       const { body } = response;
 
       // No task exists yet, keep waiting
       if (!body) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
       // Wrong task type, keep waiting
       if (body.sync_task_type !== taskName) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Task hasn't completed successfully yet
-      if (body.status !== "successful") {
-        // Check if it errored
+      // Task hasn't reached the expected terminal status yet
+      if (body.status !== until) {
         if (body.status === "errored") {
           throw Error(
             `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
@@ -347,11 +354,23 @@ export const pollForTask = (
           );
         }
 
+        if (body.status === "successful") {
+          throw Error(
+            `Task ${taskName} completed without the expected ${until}`,
+          );
+        }
+
+        if (body.status === "cancelled" || body.status === "timed-out") {
+          throw Error(
+            `Task ${taskName} ended with status ${body.status}: ${body.error_message || "Unknown error"}`,
+          );
+        }
+
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Success!
+      // Reached the expected terminal status!
       return cy.wrap(body);
     });
 };

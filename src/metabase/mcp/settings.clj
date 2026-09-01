@@ -62,7 +62,7 @@
   :default    []
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting mcp-apps-cors-custom-origins
@@ -71,7 +71,7 @@
   :default    ""
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------

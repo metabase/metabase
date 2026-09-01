@@ -47,6 +47,10 @@ Options:
 - `-k, --keep-existing` - Do not delete target H2 file if it exists.
 - `-p, --dump-plaintext` - Do not encrypt dumped contents.
 
+## `enable-encryption`
+
+Encrypts data in the metabase database with the key in the MB_ENCRYPTION_SECRET_KEY environment variable. Run this once, with Metabase stopped, after adding the key to an existing instance: Metabase refuses to start while the key is set but the database is not encrypted with it.
+
 ## `environment-variables-documentation`
 
 Generates a markdown file containing documentation for environment variables relevant to configuring Metabase. The command only includes environment variables registered as defsettings. For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.

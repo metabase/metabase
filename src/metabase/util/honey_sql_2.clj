@@ -378,6 +378,14 @@
   (`Unsupported data type`), never injection."
   #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")
 
+(defn raw-type-name?
+  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores, and spaces with an optional precision
+  suffix, e.g. `varchar(10)` or `double precision` — and is therefore safe to splice into SQL unquoted. Cast targets
+  that don't match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected
+  instead of being emitted raw."
+  [sql-type]
+  (boolean (re-matches raw-cast-type-name-re (name sql-type))))
+
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form.
 
@@ -387,7 +395,7 @@
   schema, which can name arbitrary user-defined types -- is quoted as an identifier, so it cannot be spliced into the
   query as SQL."
   [sql-type expr]
-  (-> (if (re-matches raw-cast-type-name-re (name sql-type))
+  (-> (if (raw-type-name? sql-type)
         [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))

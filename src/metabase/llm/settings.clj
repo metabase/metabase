@@ -50,7 +50,7 @@
 
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
@@ -78,7 +78,7 @@
 
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
@@ -101,7 +101,7 @@
 
 (defsetting llm-openrouter-api-base-url
   (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
@@ -127,7 +127,7 @@
   ;; For details on llm component see the https://github.com/metabase/metabase/pull/74526#discussion_r3282553435.
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :internal
   :default          nil
   :export?          false
@@ -137,7 +137,7 @@
   (deferred-tru "Base URL for the managed Metabase AI service.")
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :metabot-v3))
-  :encryption       :no
+  :encryption       :when-encryption-key-set
   :visibility       :internal
   :default          nil
   :export?          false

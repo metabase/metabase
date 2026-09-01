@@ -47,16 +47,14 @@
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
-(def ^:private BundleUploadRequest
-  "The multipart request carrying a tar.gz bundle. `:size` is what [[check-upload!]] enforces the size limit with, so
-  it has to be declared here for it to survive param decoding."
+(def ^:private BundleUploadParts
+  "The multipart parts carrying a tar.gz bundle. `:size` is what [[check-upload!]] enforces the size limit with, so it
+  has to be declared here for it to survive param decoding."
   [:map
-   [:multipart-params
-    [:map
-     ["file" [:map
-              [:filename :string]
-              [:size     ms/IntGreaterThanOrEqualToZero]
-              [:tempfile (ms/InstanceOfClass File)]]]]]])
+   [:file [:map
+           [:filename :string]
+           [:size     ms/IntGreaterThanOrEqualToZero]
+           [:tempfile (ms/InstanceOfClass File)]]]])
 
 (def ^:private CustomVizPluginResponse
   [:map
@@ -129,8 +127,7 @@
                :max-file-count 1}}
   [_route-params
    _query-params
-   _body
-   {{file "file"} :multipart-params, :as _request} :- BundleUploadRequest]
+   {:keys [file]} :- BundleUploadParts]
   (api/check-superuser)
   (let [tempfile (check-upload! file)]
     (try
@@ -240,8 +237,7 @@
                :max-file-count 1}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   _body
-   {{file "file"} :multipart-params, :as _request} :- BundleUploadRequest]
+   {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
         tempfile (check-upload! file)]
     (try

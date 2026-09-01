@@ -9,7 +9,7 @@
   ;; massive Hadoop/Hive transitive dependency tree.
   org.apache.hive/hive-jdbc                          {:mvn/version "4.2.0"}
 
-  org.apache.hive/hive-common                        {:mvn/version "4.2.0"
+  org.apache.hive/hive-common                        {:mvn/version "4.2.1"
                                                       :exclusions [com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
                                                                    com.tdunning/json
@@ -47,7 +47,7 @@
                                                                    org.jline/jline
                                                                    org.mockito/mockito-core]}
 
-  org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.0"
+  org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.1"
                                                       :exclusions [com.google.guava/guava
                                                                    com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.ben-manes.caffeine/caffeine
@@ -112,7 +112,7 @@
                                                                    org.antlr/antlr4-runtime
                                                                    org.apache.hive/hive-exec]}
 
-  org.apache.hive/hive-llap-client                   {:mvn/version "4.2.0"
+  org.apache.hive/hive-llap-client                   {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.commons/commons-lang3
                                                                    org.apache.curator/apache-curator
                                                                    org.apache.curator/curator-framework
@@ -120,7 +120,7 @@
                                                                    org.apache.hive/hive-llap-common
                                                                    org.apache.hive/hive-serde]}
 
-  org.apache.hive/hive-serde                         {:mvn/version "4.2.0"
+  org.apache.hive/hive-serde                         {:mvn/version "4.2.1"
                                                       :exclusions [com.carrotsearch/hppc
                                                                    com.esri.geometry/esri-geometry-api
                                                                    com.google.code.findbugs/jsr305
@@ -135,22 +135,22 @@
                                                                    org.apache.parquet/parquet-hadoop-bundle
                                                                    org.apache.thrift/libthrift]}
 
-  org.apache.hive/hive-storage-api                   {:mvn/version "4.2.0"
+  org.apache.hive/hive-storage-api                   {:mvn/version "4.2.1"
                                                       :exclusions [org.slf4j/slf4j-api]}
 
-  org.apache.hive/hive-shims                         {:mvn/version "4.2.0"
+  org.apache.hive/hive-shims                         {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.hive.shims/hive-shims-0.23
                                                                    org.apache.hive.shims/hive-shims-common]}
 
-  org.apache.hive.shims/hive-shims-common            {:mvn/version "4.2.0"
+  org.apache.hive.shims/hive-shims-common            {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.curator/curator-framework
                                                                    org.apache.thrift/libthrift]}
 
-  org.apache.hive.shims/hive-shims-0.23              {:mvn/version "4.2.0"
+  org.apache.hive.shims/hive-shims-0.23              {:mvn/version "4.2.1"
                                                       :exclusions [org.apache.hadoop/hadoop-yarn-server-resourcemanager
                                                                    org.apache.hive.shims/hive-shims-common]}
 
-  org.apache.hive/hive-service-rpc                   {:mvn/version "4.2.0"
+  org.apache.hive/hive-service-rpc                   {:mvn/version "4.2.1"
                                                       :exclusions [commons-cli/commons-cli
                                                                    commons-codec/commons-codec
                                                                    org.apache.hive/hive-classification

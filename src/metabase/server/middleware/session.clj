@@ -34,6 +34,8 @@
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -112,7 +114,7 @@
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
@@ -130,7 +132,7 @@
                                     [:or [:= :tenant.id nil] :tenant.is_active]
                                     [:= :tenant.id nil])
                                   [:= :user.is_active true]
-                                  [:or [:= :session.id ^:allow-raw-sql [:raw "?"]] [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]]
+                                  [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
@@ -151,7 +153,7 @@
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -178,7 +180,7 @@
 ;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
 ;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -201,11 +203,8 @@
                                                  [:is :pgm.is_group_manager true]]))))))))
 
 (defn- valid-session-key?
-  "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
-
-  SECURITY NOTE: Because functions will directly compare the session-key against the core_session.id table for
-  backwards-compatibility reasons, if this is NOT called before those queries against core_session.id, attackers with
-  access to the database can impersonate users by passing the core_session.id as their session cookie"
+  "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
+  against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
@@ -221,7 +220,7 @@
                                          (and (premium-features/enable-tenants?)
                                               (setting/get :use-tenants))
                                          timeout)
-          params  (concat [session-key (session/hash-session-key session-key)]
+          params  (concat [(session/hash-session-key session-key)]
                           (when (seq anti-csrf-token)
                             [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
@@ -237,11 +236,16 @@
   []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
-(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
-  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
-  ;; a useless hash, *then* return `false`.
-  (if api-key
-    (u.password/verify-password passed-api-key "" api-key)
+(defn- matching-api-key?
+  "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
+  path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
+  a value that is not valid ciphertext — e.g. a plaintext hash injected via direct SQL — decrypts to nil and is
+  rejected rather than trusted. With no usable hash we still compute a useless hash so the two cases can't be told apart
+  by timing."
+  [{:keys [api-key] :as _user-data} passed-api-key]
+  (if-let [stored-hash (when api-key
+                         (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
+    (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
