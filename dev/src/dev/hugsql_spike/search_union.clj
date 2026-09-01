@@ -109,7 +109,7 @@
   (let [one   (build-union ["card"])
         three (build-union ["card" "dashboard" "collection"])
         five  (build-union ["card" "dashboard" "collection" "dataset" "metric"])
-        try!  (fn [label f] [label (try (do (f) :ACCEPTED)
+        try!  (fn [label f] [label (try (f) :ACCEPTED
                                         (catch Exception e (str "REJECTED: " (.getMessage e))))])
         evil  ["SELECT 1; DROP TABLE report_card--"]]
     {:arity        {:1 {:params (count (rest one))   :unions (count (re-seq #"UNION ALL" (first one)))}
