@@ -165,6 +165,9 @@ describe("GeneralSettingsPage", () => {
     await screen.findByDisplayValue("Metabasey");
 
     const emailInput = await screen.findByDisplayValue("help@mysite.biz");
+    await waitFor(() => {
+      expect(emailInput).toBeEnabled();
+    });
     await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "support@mySite.biz");
     blur();

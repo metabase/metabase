@@ -1239,6 +1239,14 @@ Use SSL, TLS or plain text.
 
 Should we sync user attributes when someone logs in via LDAP?
 
+### `MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`
+
+- Type: csv
+- Default: ``
+- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-allowlist`
+
+Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.
+
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
 - Type: csv
@@ -1254,6 +1262,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 - [Configuration file name](./config-file.md): `ldap-timeout-seconds`
 
 Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
+### `MB_LDAP_TRUST_STORE`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `ldap-trust-store`
+
+Path to a JKS trust store of CA certificates used to validate the LDAP server's TLS certificate. Leave blank to use the JVM default trust store.
 
 ### `MB_LDAP_USER_BASE`
 
@@ -3478,6 +3494,16 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_QUARTZ_MAX_CONNECTION_POOL_SIZE`
+
+Type: integer<br>
+Default: `5`<br>
+Since: v64.0
+
+Maximum number of connections in the dedicated pool that Metabase's internal task scheduler (Quartz) uses to talk to the application database. This pool is separate from the main application database pool (see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size)), so scheduled tasks can always reach the application database even when the main pool is fully in use.
+
+Scheduler operations are short, so the default is enough for most deployments. Consider raising it only if you run a very large number of scheduled items (subscriptions, alerts, syncs) and see tasks firing late.
 
 ### `MB_SESSION_SECRET_KEY`
 

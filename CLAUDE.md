@@ -77,12 +77,22 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
+Run the repository-level module, ratchet, and migration checks with:
+
+```bash
+./bin/mage project-tests
+```
+
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
 `.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
 actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
+
+The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
+with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still
+causes an error on `master`.
 
 Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
 change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
