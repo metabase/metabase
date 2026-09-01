@@ -374,10 +374,12 @@
                         (try
                           (.releaseSavepoint connection savepoint)
                           (catch Throwable e
-                            ;; The savepoint is already gone -- DDL commits implicitly on H2 and MySQL. The scope
-                            ;; succeeded and its writes were headed for the outermost commit anyway, so there is
-                            ;; nothing to undo here; the release was only reclaiming a resource.
-                            (log/debugf "Failed to release savepoint: %s" (ex-message e))))
+                            ;; Either the savepoint is already gone -- DDL commits implicitly on H2 and MySQL -- or,
+                            ;; on postgres, the transaction is already aborted because the scope swallowed a SQL
+                            ;; error. Nothing to undo either way, but the aborted case is worth surfacing: postgres
+                            ;; silently turns the outermost commit into a rollback, so this is the only signal that
+                            ;; the tree's writes and after-commit callbacks are about to diverge.
+                            (log/warnf "Failed to release savepoint: %s" (ex-message e))))
                         [result false]))))))]
       ;; Avoid toggling autocommit when the connection is already in a transaction.
       (if (.getAutoCommit connection)
