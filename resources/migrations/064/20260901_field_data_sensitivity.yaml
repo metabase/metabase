@@ -1,19 +1,4 @@
-## Add a nullable data_sensitivity classification label to metabase_field and to its user-settings
-## mirror table.
-##
-## The label is metadata only. Nothing in the query processor, permissions, or sandboxing reads it;
-## it neither masks nor filters anything. It is orthogonal to visibility_type, which hides a field
-## rather than classifying it.
-##
-## The value is one of a closed set of classification codes (see remarks below) or NULL. NULL means
-## "never classified": no human has set a label and no automated classifier has suggested one. A
-## PUBLIC label is a deliberate "reviewed, not sensitive" and is distinct from NULL.
-##
-## The column lives in two tables for the same reason every other user-settable field attribute
-## does. metabase_field holds the effective value that sync, classifiers, and the API all write to.
-## metabase_field_user_settings holds only values a human set through the API; the Field model's
-## before-update hook overlays a non-NULL mirror value on top of any automated write, so a human's
-## label always wins over a classifier's.
+## Add a nullable data_sensitivity classification label to metabase_field and metabase_field_user_settings
 
 databaseChangeLog:
   - changeSet:
@@ -27,7 +12,7 @@ databaseChangeLog:
               - column:
                   name: data_sensitivity
                   type: varchar(32)
-                  remarks: "Data sensitivity classification of the field. One of PII, SEC_KEY, PHI, PCI_FIN, BIO_GEN, SENS_PERS, CORP_IP, SYS_TELEMETRY, BIZ_CONF, PUBLIC. NULL means the field has never been classified."
+                  remarks: "Data sensitivity classification of the field. One of PII, SEC_KEY, PHI, PCI_FIN, BIO_GEN, SENS_PERS, CORP_IP, SYS_TELEMETRY, BIZ_CONF, PUBLIC."
                   constraints:
                     nullable: true
 
