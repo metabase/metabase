@@ -29,10 +29,16 @@ export type AdhocDashboardTile = {
   size_y: number;
 };
 
+export type AdhocDashboardMetabotOrigin = {
+  conversation_id: string;
+  dashboard_id: string;
+};
+
 export type AdhocDashboardDefinition = {
   name: string;
   description?: string;
   tiles: AdhocDashboardTile[];
+  metabot?: AdhocDashboardMetabotOrigin;
 };
 
 export function adhocDashboard(definition: AdhocDashboardDefinition) {

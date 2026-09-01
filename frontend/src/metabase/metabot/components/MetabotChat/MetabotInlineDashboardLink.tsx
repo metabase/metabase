@@ -31,7 +31,7 @@ export function MetabotInlineDashboardLink({
   const url =
     savedDashboardId != null
       ? Urls.dashboard({ id: savedDashboardId, name: value.title })
-      : Urls.generatedDashboard(value);
+      : Urls.generatedDashboard(value, conversationId);
 
   return (
     <Flex
@@ -117,8 +117,14 @@ function SaveDashboardAction({
       </Button>
       {isSaveModalOpen && (
         <MetabotSaveDashboardModal
-          dashboard={dashboard}
           conversationId={conversationId}
+          dashboardId={dashboard.id}
+          name={dashboard.title}
+          description={dashboard.description}
+          tiles={dashboard.tiles.map(({ query, ...tile }) => ({
+            ...tile,
+            dataset_query: query,
+          }))}
           onSaved={handleSaved}
           onClose={closeSaveModal}
         />

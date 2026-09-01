@@ -94,13 +94,17 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
 // placeholder-id shape as inline dashboards, so the inline/transient machinery
 // (adhoc query execution, normalizr) applies unchanged. Ids are derived from the
 // tile index so re-expanding the same url yields identical entities.
-export function expandAdhocDashboard(dashId: string) {
+export function getAdhocDashboardDefinition(
+  dashId: string,
+): AdhocDashboardDefinition {
   const encodedDefinition = parseHashOptions(dashId.slice(dashId.indexOf("#")))[
     ADHOC_DASHBOARD_HASH_KEY
   ];
-  const definition: AdhocDashboardDefinition = JSON.parse(
-    b64url_to_utf8(String(encodedDefinition)),
-  );
+  return JSON.parse(b64url_to_utf8(String(encodedDefinition)));
+}
+
+export function expandAdhocDashboard(dashId: string) {
+  const definition = getAdhocDashboardDefinition(dashId);
   const dashboard: Partial<Dashboard> = {
     id: dashId,
     name: definition.name,
