@@ -44,6 +44,7 @@ export function EventsPanel({
     onHideTimeline,
     onSelectEvents,
     onDeselectEvents,
+    onEventCreated,
   } = useTimelineEventsHandlers({ dashcardIds, selectionDashcardId });
   const [modal, setModal] = useState<TimelineEventModalState | null>(null);
 
@@ -71,7 +72,7 @@ export function EventsPanel({
       <TimelineEventModals
         modal={modal}
         collectionId={collectionId}
-        onEventCreated={(event) => onShowTimelineEvents([event])}
+        onEventCreated={onEventCreated}
         onClose={() => setModal(null)}
       />
     </>
