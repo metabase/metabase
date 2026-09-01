@@ -64,6 +64,9 @@ frontend_specs: &frontend_specs
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
   - ".github/**/*.unit.spec.*"
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
@@ -112,7 +115,10 @@ backend_sources: &backend_sources
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
-  - ".clj-kondo/**"
+  # The ratchets file drives project_ratchet_checks alone, so the automation PR that lowers the budgets
+  # runs the Project tests job by itself. Patterns are OR-ed, so a separate "!..." entry would match
+  # every other path instead of excluding this one.
+  - ".clj-kondo/{!(ratchets.edn),*/**}"
 
 backend_specs: &backend_specs
   - *shared_specs

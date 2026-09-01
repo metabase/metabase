@@ -87,24 +87,33 @@ Run the repository-level module, ratchet, and migration checks with:
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
-`.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
-actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
+`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either an exact integer budget or `:unlimited`,
+which has no count ceiling. This count policy is independent of `:comment-exempt`, described below.
+Development enforces the file exactly, while CI rejects only over-budget suppressions and leaves reductions
+and stale exemptions for the shrink workflow to record.
+Prefer fixing the underlying warning over adding an ignore. Every policy key must name a linter: one of the
+pinned clj-kondo version's built-ins, a linter configured under `.clj-kondo/`, or an external diagnostic
+such as `:clojure-lsp/unused-public-var`.
+The test and the fixer refuse unknown names rather than dropping them.
 
 The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
 with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still
 causes an error on `master`.
 
-Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
-change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
-To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
+Budget too high (you removed ignores): once the change lands on `master`, the shrink workflow lowers the
+budgets in the `Tighten ratchets` automation PR, which approves and merges itself once the ratchet check
+passes. A bounded budget that reaches zero is dropped; an `:unlimited` entry stays even with no ignores
+left, and the check and fixer print one warning naming such entries so you can delete them by hand. To
+tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 
 ```bash
 ./bin/mage fix-kondo-ratchets
 ```
 
-Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
-genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
-PR.
+Budget too low (you added an ignore): the task only raises an `:ignore-counts` budget when told to. If the
+ignore is genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase
+in the PR. Set a linter's `:ignore-counts` value to `:unlimited` only when increasing its ignore count should
+not require a budget change.
 
 The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
 at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
