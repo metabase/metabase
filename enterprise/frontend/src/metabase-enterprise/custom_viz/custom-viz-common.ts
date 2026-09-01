@@ -51,11 +51,16 @@ export function applyDefaultVisualizationProps(
         plugin,
       }),
     },
-    checkRenderable: (series: Series, vizSettings: VisualizationSettings) =>
-      vizDef.checkRenderable(
-        toPluginSeries(series),
-        toPluginSettings(vizSettings, prefix),
-      ),
+    // Older or hand-written bundles may omit `checkRenderable`; treat those as renderable
+    // rather than calling a wrapper that throws.
+    checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
+      if (typeof vizDef.checkRenderable === "function") {
+        vizDef.checkRenderable(
+          toPluginSeries(series),
+          toPluginSettings(vizSettings, prefix),
+        );
+      }
+    },
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,
