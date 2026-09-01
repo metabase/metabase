@@ -6,6 +6,7 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
+  changeInput,
   getCacheStrategySelect,
   selectCacheStrategy,
 } from "metabase/admin/performance/components/test-utils";
@@ -85,6 +86,7 @@ describe("MetricCachingModal", () => {
     const { onClose } = setup();
 
     await selectCacheStrategy(/^Duration/i);
+    await changeInput(/Cache duration/, 0, 24);
     await userEvent.click(screen.getByTestId("strategy-form-submit-button"));
 
     await waitFor(() => {

@@ -466,35 +466,6 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it(
-    "column filters should work for metrics (metabase#15333)",
-    { tags: "@skip" },
-    () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["count"]],
-            breakout: [["field-id", PRODUCTS.CATEGORY]],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "table",
-      });
-
-      cy.get("[data-testid=cell-data]").contains("Count").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Enter a number").type("42");
-      cy.button("Update filter").should("not.be.disabled").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Doohickey");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Gizmo").should("not.exist");
-    },
-  );
-
   it("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
     H.openOrdersTable({ mode: "notebook" });
 

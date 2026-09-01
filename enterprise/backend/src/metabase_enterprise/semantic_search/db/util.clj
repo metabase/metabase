@@ -7,6 +7,7 @@
 (defn tx-or-throw!
   "Throw if not in transaction."
   [conn]
+  ;; checks the pgvector conn, not the app DB; app-db in-transaction? only tracks app-db tx depth
   (when-not #_{:clj-kondo/ignore [:discouraged-var]} (jdbc/active-tx? (.unwrap ^java.sql.Connection conn java.sql.Connection))
             (throw (Exception. "Not in transaction."))))
 

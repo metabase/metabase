@@ -2,7 +2,15 @@ import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
 import { dayjs } from "metabase/dayjs";
-import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
+import {
+  CARTESIAN_SERIES_COL_NAME,
+  HEAT_MAP_SEGMENT_COL_NAME,
+  OTHER_BUCKET_LABEL,
+  fallbackSegmentName,
+  heatMapSegmentDisplayName,
+  isDiscriminatorColumnName,
+} from "metabase/explorations/constants";
+import type { HighlightedCommentState } from "metabase/redux/store/explorations";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
@@ -10,17 +18,19 @@ import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { isCartesianChart } from "metabase/visualizations";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   BrushClickObject,
   BrushRange,
   ClickObject,
-  ComputedVisualizationSettings,
-  HighlightedObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
+import {
+  type ComputedVisualizationSettings,
+  type HighlightedObject,
+  getSeriesVizSettingsKey,
+  isCartesianChart,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
@@ -35,9 +45,9 @@ import type {
   Dataset,
   DatasetColumn,
   DateTimeAbsoluteUnit,
-  ExplorationBlockNodeType,
   ExplorationExploreFilter,
   ExplorationQuery,
+  ExplorationQueryId,
   ExplorationQueryType,
   RowValue,
   RowValues,
@@ -67,6 +77,7 @@ export interface LegendItem {
 
 export interface SeriesGroup {
   series: SingleSeries[];
+  queryIds: ExplorationQueryId[];
   isTimeseries: boolean;
   stackCount?: number;
   legendItems: LegendItem[];
@@ -82,8 +93,8 @@ export function buildSeriesGroup({
     (queryWithDataset) => queryWithDataset.dataset.data.rows.length > 0,
   );
 
-  const segmentNames = nonEmptyQueriesWithDatasets.map(
-    (q) => q.segment_name ?? t`(All)`,
+  const segmentNames = nonEmptyQueriesWithDatasets.map((q) =>
+    segmentNameForQuery(q),
   );
   const colors = getColorsForValues(segmentNames);
   const legendItems: LegendItem[] = segmentNames.map((name) => ({
@@ -94,6 +105,8 @@ export function buildSeriesGroup({
   const numSegmentQueries = nonEmptyQueriesWithDatasets.filter(
     (query) => query.segment_id != null,
   ).length;
+
+  const queryIds = nonEmptyQueriesWithDatasets.map((q) => q.id);
 
   const series = nonEmptyQueriesWithDatasets.map((queryWithDataset, i) => {
     const { dataset, ...query } = queryWithDataset;
@@ -142,6 +155,7 @@ export function buildSeriesGroup({
 
   return {
     series: getFinalSeries({ series, legendItems }),
+    queryIds,
     isTimeseries,
     stackCount,
     legendItems,
@@ -363,8 +377,8 @@ export function getHeatMapSeries({
 }: GetFinalSeriesParams): SingleSeries[] {
   const { card, data } = series[0];
   const segmentCol: DatasetColumn = {
-    name: "Segment",
-    display_name: "Segment",
+    name: HEAT_MAP_SEGMENT_COL_NAME,
+    display_name: heatMapSegmentDisplayName(),
     source: "breakout",
   };
   const cols = [...data.cols, segmentCol];
@@ -470,10 +484,15 @@ function clampTemporalBrushRange(
   const dateFormat = isDateWithoutTime(column)
     ? "YYYY-MM-DD"
     : "YYYY-MM-DDTHH:mm:ss";
-  const clampedStart = dayjs(start)
-    .add(1, unit)
-    .startOf(unit)
-    .format(dateFormat);
+  const startDate = dayjs(start);
+  const truncatedStart = startDate.startOf(unit);
+  // Same as Lib.updateTemporalFilter: if start is already the first instant of
+  // its unit (typical when it comes from a highlighted bar), keep it.
+  const clampedStart = (
+    startDate.isSame(truncatedStart)
+      ? truncatedStart
+      : startDate.add(1, unit).startOf(unit)
+  ).format(dateFormat);
   const clampedEnd = dayjs(end).startOf(unit).format(dateFormat);
   if (dayjs(clampedStart).isAfter(dayjs(clampedEnd))) {
     return null;
@@ -599,12 +618,9 @@ export function getExploreFurtherFilters(
 
 export function canExploreFurther(
   clicked: ClickObject,
-  blockType: ExplorationBlockNodeType,
-  queryType: ExplorationQueryType,
+  queryType?: ExplorationQueryType,
 ): boolean {
-  // disable for dimension blocks - every query in a dimension block is cut by the same dimension
-  // so filtering on a single dimension value doesn't provide a new view of the data
-  if (blockType === "dimension") {
+  if (queryType == null) {
     return false;
   }
 
@@ -626,69 +642,299 @@ export function canExploreFurther(
   return true;
 }
 
-export function getHighlightedWithShouldShowTooltip(
-  highlighted?: HighlightedObject,
-  seriesGroup?: SeriesGroup,
+function segmentNameForQuery(query: ExplorationQuery): string {
+  return query.segment_name ?? fallbackSegmentName();
+}
+
+type HighlightDimension = NonNullable<HighlightedObject["dimensions"]>[number];
+
+/** Drop discriminator dims the target series does not have (e.g. Series on a page). */
+function dimensionsForTarget(
+  dimensions: HighlightedObject["dimensions"],
+  cols: { name: string }[],
+): HighlightDimension[] {
+  return (dimensions ?? []).filter(
+    (dimension) =>
+      !isDiscriminatorColumnName(dimension.columnName) ||
+      cols.some((col) => col.name === dimension.columnName),
+  );
+}
+
+/**
+ * Comments are shared between an exploration page and the Summary document.
+ * For highlights to work in both we have to handle:
+ * 1. card IDs don't match between the page and the document
+ * 2. the BE may compose multiple exploration queries into one embed series
+ *
+ * Identity is `exploration_query_ids` on the comment (usually one id), not cardId.
+ */
+export function resolveHighlightForSeries(
+  highlightedCommentState: HighlightedCommentState | null,
+  series: SingleSeries[],
+  seriesQueryIds: ExplorationQueryId[],
+  queriesById: Readonly<Record<ExplorationQueryId, ExplorationQuery>>,
 ): HighlightedObject | null {
-  if (!highlighted || !seriesGroup) {
+  if (
+    highlightedCommentState == null ||
+    series.length === 0 ||
+    seriesQueryIds.length === 0
+  ) {
     return null;
   }
-  const { series } = seriesGroup;
+  const { highlighted, explorationQueryIds: commentQueryIds } =
+    highlightedCommentState;
+  if (commentQueryIds.length === 0) {
+    return null;
+  }
+
   const firstSeries = series[0];
-  if (!firstSeries) {
-    return null;
-  }
   const {
     card: { display },
     data: { cols },
   } = firstSeries;
-  const hasMultipleSeries = series.length > 1;
-  const hasBreakout = cols.length > 2;
   const shouldShowTooltip =
-    display === "line" && !hasMultipleSeries && !hasBreakout;
+    display === "line" && series.length === 1 && cols.length <= 2;
+
+  // if we have only a single series, simply check if the query ids are the same
+  if (
+    series.length === 1 &&
+    areQueryIdsEqual(seriesQueryIds, commentQueryIds)
+  ) {
+    return {
+      ...highlighted,
+      dimensions: dimensionsForTarget(highlighted.dimensions, cols),
+      cardId: firstSeries.card.id,
+      shouldShowTooltip,
+    };
+  }
+
+  // if we have multiple series, find the series that matches the comment's query ID
+  // only a single comment query ID is supported in this case
+  if (
+    series.length > 1 &&
+    series.length === seriesQueryIds.length &&
+    commentQueryIds.length === 1
+  ) {
+    for (let i = 0; i < series.length; i++) {
+      if (seriesQueryIds[i] === commentQueryIds[0]) {
+        return {
+          ...highlighted,
+          dimensions: dimensionsForTarget(
+            highlighted.dimensions,
+            series[i].data.cols,
+          ),
+          cardId: series[i].card.id,
+          shouldShowTooltip,
+        };
+      }
+    }
+    return null;
+  }
+
+  // composite series case - a composite series has a discriminator column built using segment names
+  // if the comment was created on a non-composite series, we need to add a discriminator column to the highlighted object's dimensions
+  if (
+    series.length === 1 &&
+    seriesQueryIds.length > 1 &&
+    commentQueryIds.length === 1 &&
+    seriesQueryIds.includes(commentQueryIds[0])
+  ) {
+    const dimensions = dimensionsForTarget(highlighted.dimensions, cols);
+    const discriminatorCol = cols.find((col) =>
+      isDiscriminatorColumnName(col.name),
+    );
+    if (!discriminatorCol) {
+      return null;
+    }
+    const hasDiscriminatorDimension = dimensions.some(
+      (dimension) => dimension.columnName === discriminatorCol.name,
+    );
+    if (!hasDiscriminatorDimension) {
+      const commentQuery = queriesById[commentQueryIds[0]];
+      if (!commentQuery) {
+        return null;
+      }
+      dimensions.push({
+        columnName: discriminatorCol.name,
+        value: segmentNameForQuery(commentQuery),
+      });
+    }
+    return {
+      ...highlighted,
+      dimensions,
+      cardId: firstSeries.card.id,
+      shouldShowTooltip,
+    };
+  }
+
+  return null;
+}
+
+export function areQueryIdsEqual(
+  queryIds1: ExplorationQueryId[],
+  queryIds2: ExplorationQueryId[],
+): boolean {
+  const queryIds1Set = new Set(queryIds1);
+  return (
+    queryIds1.length === queryIds2.length &&
+    queryIds2.every((id) => queryIds1Set.has(id))
+  );
+}
+
+/** Narrow a chart click to the single exploration query it refers to */
+export function resolveExplorationQueryIdForClick(
+  clicked: ClickObject,
+  seriesQueryIds: ExplorationQueryId[],
+  queriesById: Readonly<Record<ExplorationQueryId, ExplorationQuery>>,
+): ExplorationQueryId | null {
+  if (seriesQueryIds.length === 1) {
+    return seriesQueryIds[0];
+  }
+
+  const discriminatorDimension = clicked.dimensions?.find((dimension) =>
+    isDiscriminatorColumnName(dimension.column.name),
+  );
+  if (discriminatorDimension != null) {
+    const match = seriesQueryIds.find((id) => {
+      const query = queriesById[id];
+      return (
+        query != null &&
+        segmentNameForQuery(query) === discriminatorDimension.value
+      );
+    });
+    return match ?? null;
+  }
+
+  // for an exploration page, we set cardId to the exploration query id
+  // for the summary document, we don't control the cardId
+  // but it either has a single query ID or has a discriminator column, so is handled above
+  if (clicked.cardId != null && seriesQueryIds.includes(clicked.cardId)) {
+    return clicked.cardId;
+  }
+
+  return null;
+}
+
+export function buildCommentHighlightContext(
+  clicked: ClickObject,
+  seriesQueryIds: ExplorationQueryId[],
+  queriesById: Readonly<Record<ExplorationQueryId, ExplorationQuery>>,
+  settings?: ComputedVisualizationSettings,
+): {
+  highlighted: HighlightedObject;
+  exploration_query_ids: ExplorationQueryId[];
+  highlight_label?: string;
+} | null {
+  const queryId = resolveExplorationQueryIdForClick(
+    clicked,
+    seriesQueryIds,
+    queriesById,
+  );
+  if (queryId == null) {
+    return null;
+  }
+
+  const query = queriesById[queryId];
+  const hasDiscriminatorDimension = clicked.dimensions?.some((dimension) =>
+    isDiscriminatorColumnName(dimension.column.name),
+  );
+  const segmentName =
+    !hasDiscriminatorDimension && seriesQueryIds.length > 1 && query != null
+      ? segmentNameForQuery(query)
+      : null;
+
   return {
-    ...highlighted,
-    shouldShowTooltip,
+    highlighted: {
+      columnName: clicked.column?.name,
+      dimensions: clicked.dimensions?.map((dimension) => ({
+        value: dimension.value,
+        columnName: dimension.column.name,
+      })),
+    },
+    exploration_query_ids: [queryId],
+    highlight_label:
+      buildHighlightLabel(clicked, settings, segmentName) ?? undefined,
   };
 }
 
-export function getCommentLabel(
-  highlighted?: HighlightedObject | null,
-  seriesGroup?: SeriesGroup,
-  computedSettings?: ComputedVisualizationSettings,
-): string | null | undefined {
-  if (!highlighted || !seriesGroup) {
-    return null;
-  }
-
-  const seriesIndex =
-    seriesGroup.series.length === 1
-      ? 0
-      : seriesGroup.series.findIndex((s) => s.card.id === highlighted.cardId);
-  const series = seriesGroup.series[seriesIndex];
-  if (!series) {
-    return null;
-  }
-
+export function buildHighlightLabel(
+  clicked: ClickObject,
+  settings?: ComputedVisualizationSettings,
+  segmentName?: string | null,
+): string | null {
   const labels: string[] = [];
 
-  for (const dimension of highlighted.dimensions ?? []) {
-    const column = series.data.cols.find(
-      (col) => col.name === dimension.columnName,
+  for (const dimension of clicked.dimensions ?? []) {
+    const columnSettings = settings?.column?.(dimension.column) ?? {
+      column: dimension.column,
+    };
+    labels.push(
+      formatColumnValue(dimension.value, dimension.column, columnSettings),
     );
-    if (!column) {
-      continue;
-    }
-    const columnSettings = computedSettings?.column?.(column) ?? { column };
-    labels.push(formatColumnValue(dimension.value, column, columnSettings));
   }
 
-  if (highlighted.cardId && seriesGroup.series.length > 1) {
-    const segmentName = seriesGroup.legendItems[seriesIndex].name;
-    if (segmentName) {
-      labels.push(segmentName);
+  const hasDiscriminatorDimension = clicked.dimensions?.some((dimension) =>
+    isDiscriminatorColumnName(dimension.column.name),
+  );
+  if (!hasDiscriminatorDimension && segmentName) {
+    labels.push(segmentName);
+  }
+
+  return labels.length > 0 ? labels.join(", ") : null;
+}
+
+export interface ExplorationChartForDocumentEmbed {
+  queryIds: ExplorationQueryId[];
+  label: string;
+  display: VisualizationDisplay;
+  visualization_settings: VisualizationSettings;
+}
+
+/**
+ * Build the chart entries a page offers for "Add to Summary".
+ *
+ * Maps render one `<Visualization>` per series side-by-side (no
+ * `graph.split_panels` analogue), so the user perceives each map as a
+ * standalone chart. Expand a multi-series map group into N picker
+ * entries — each appends a single-snapshot embed (the N=1
+ * pass-through path through `composite/combine` server-side).
+ * Everything else adds the whole page as one composite.
+ */
+export function composeChartsForGroup(
+  group: SeriesGroup,
+): ExplorationChartForDocumentEmbed[] {
+  const firstSeries = group.series[0];
+  if (!firstSeries) {
+    return [];
+  }
+  const display = firstSeries.card.display;
+  const { queryIds } = group;
+
+  if (display === "map" && group.series.length > 1) {
+    return group.series.map((s, i) => ({
+      queryIds: [queryIds[i]],
+      label: s.card.name ?? t`Chart`,
+      display: s.card.display,
+      visualization_settings: s.card.visualization_settings ?? {},
+    }));
+  }
+
+  const label = firstSeries.card.name ?? t`Chart`;
+  let visualization_settings: VisualizationSettings =
+    firstSeries.card.visualization_settings ?? {};
+
+  if (group.series.length > 1 && isCartesianChart(display)) {
+    // The BE will append a "Series" column. Pin `graph.dimensions` so
+    // the rendered chart reads the new column as the series breakout.
+    const cols = firstSeries.data.cols;
+    const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
+    if (xCol) {
+      visualization_settings = {
+        ...visualization_settings,
+        "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
+      };
     }
   }
 
-  return labels.join(", ");
+  return [{ queryIds, label, display, visualization_settings }];
 }

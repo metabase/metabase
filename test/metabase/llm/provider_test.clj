@@ -87,6 +87,48 @@
                                        :secret-access-key "rotated-secret"
                                        :region            "us-west-1"})))))
 
+(deftest ^:parallel merge-config-preserves-a-masked-multi-line-secret-test
+  (testing (str "a service account key file is JSON that ends with a newline, so its mask straddles a line break — "
+                "echoing it back still has to keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (is (= {:auth-method         "service-account-key"
+              :service-account-key key-file}
+             (llm.provider/merge-config "google"
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key key-file}
+                                        {:auth-method         "service-account-key"
+                                         :service-account-key (setting/obfuscate-value key-file)}))))))
+
+(deftest set-single-provider-setting!-ignores-a-masked-multi-line-secret-test
+  (testing (str "the setter trims before storing, but the mask of a newline-terminated secret only matches "
+                "untrimmed — echoing it back must keep the stored key rather than store the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (setting/obfuscate-value key-file))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-ignores-a-whitespace-padded-mask-test
+  (testing "a mask that picked up surrounding whitespace in transit is still an echo, not a new value"
+    (let [key-file "{\"type\": \"service_account\", \"project_id\": \"my-project\"}"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (llm.settings/llm-google-service-account-key! (str " " (setting/obfuscate-value key-file) " "))
+        (is (= key-file (llm.settings/llm-google-service-account-key)))))))
+
+(deftest set-single-provider-setting!-stores-a-fresh-value-test
+  (testing "a freshly entered value still replaces the stored one"
+    (let [old-key "{\"type\": \"service_account\", \"project_id\": \"old-project\"}"
+          new-key "{\"type\": \"service_account\", \"project_id\": \"new-project\"}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key old-key})]]
+        (llm.settings/llm-google-service-account-key! new-key)
+        (testing "trimmed, the way the setter has always stored"
+          (is (= (str/trim new-key) (llm.settings/llm-google-service-account-key))))))))
+
 (deftest validate-config!-test
   (testing "an unknown provider type is rejected"
     (is (thrown-with-msg?

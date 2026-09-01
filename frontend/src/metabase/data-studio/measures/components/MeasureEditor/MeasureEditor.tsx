@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
+import { EditableText } from "metabase/common/components/EditableText";
+import { Markdown } from "metabase/common/components/Markdown";
 import { MeasureAggregationPicker } from "metabase/querying/measures";
-import { Card, Stack, Text, TextInput } from "metabase/ui";
+import { Card, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import S from "./MeasureEditor.module.css";
@@ -32,21 +34,25 @@ export function MeasureEditor({
           />
         )}
         {!readOnly && (
-          <TextInput
-            label={t`Give it a description`}
-            placeholder={t`Only if it really needs it`}
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-            maw={400}
-            classNames={{
-              label: S.descriptionLabel,
-            }}
-          />
+          <Stack gap="sm">
+            <Text fw="bold">{t`Give it a description`}</Text>
+            <EditableText
+              placeholder={t`Only if it really needs it`}
+              initialValue={description}
+              onContentChange={onDescriptionChange}
+              maw={400}
+              className={S.descriptionInput}
+              aria-label={t`Give it a description`}
+              isMultiline
+              isMarkdown
+              isOptional
+            />
+          </Stack>
         )}
         {readOnly && description && (
           <Stack gap="sm">
             <Text fw="bold">{t`Description`}</Text>
-            <Text c="text-secondary">{description}</Text>
+            <Markdown c="text-secondary">{description}</Markdown>
           </Stack>
         )}
       </Stack>

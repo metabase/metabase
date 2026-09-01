@@ -3,13 +3,15 @@ import L from "leaflet";
 import { t } from "ttag";
 
 import { color } from "metabase/ui/colors";
-import type { ClickObject, HoveredObject } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase/visualizations/types";
+import {
+  type HoveredObject,
+  computeNumericDataInterval,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
-
-import { computeNumericDataInterval } from "../lib/numeric";
 
 import {
   LeafletMap,

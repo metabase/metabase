@@ -23,6 +23,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboards: {},
   dashcards: {},
   dashcardData: {},
+  linkTargets: { questions: {}, dashboards: {} },
   parameterValues: {},
   draftParameterValues: {},
   loadingDashCards: {

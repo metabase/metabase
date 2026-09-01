@@ -4,7 +4,6 @@ import { normalize } from "normalizr";
 import type { EntitiesState } from "metabase/redux/store";
 import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
 import {
-  DashboardSchema,
   DatabaseSchema,
   FieldSchema,
   MeasureSchema,
@@ -17,7 +16,6 @@ import {
 } from "metabase/schema";
 import type {
   Card,
-  Dashboard,
   Database,
   Field,
   Measure,
@@ -30,7 +28,6 @@ import type {
 } from "metabase-types/api";
 
 export interface EntitiesStateOpts {
-  dashboards?: Dashboard[];
   databases?: (Database | SavedQuestionDatabase)[];
   schemas?: Schema[];
   tables?: Table[];
@@ -43,7 +40,6 @@ export interface EntitiesStateOpts {
 }
 
 const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
-  dashboards: [DashboardSchema],
   databases: [DatabaseSchema],
   schemas: [SchemaSchema],
   tables: [TableSchema],

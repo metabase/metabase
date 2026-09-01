@@ -137,6 +137,28 @@
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
 
+(deftest call-llm-fast-mode-test
+  (llm.tu/with-default-connections
+    (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured {:body    (json/decode+kw (:body opts))
+                                                                       :headers (:headers opts)}))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+            (doseq [fast? [true false]]
+              (testing (str "llm-fast-mode " fast?)
+                (mt/with-temporary-setting-values [llm-fast-mode fast?]
+                  (try
+                    (run! identity (self/call-llm "anthropic/claude-opus-5" nil [] {} {:tag "agent"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (= (when fast? "fast") (get-in @captured [:body :speed])))
+                  (is (= (when fast? "fast-mode-2026-02-01")
+                         (get-in @captured [:headers "anthropic-beta"]))))))))))))
+
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
     (let [captured (atom nil)]
@@ -464,6 +486,67 @@
       (is (= chunks result)
           "Unknown tools should be ignored, chunks pass through unchanged"))))
 
+;;; tool argument validation tests
+
+(defn- schema-tool
+  [args-schema]
+  {:fn     (fn [_args] {:output "ok"})
+   :doc    "validation test tool"
+   :schema [:=> [:cat args-schema] :any]})
+
+(defn- validation-error
+  [args-schema arguments]
+  (let [tools  {"validated" (schema-tool args-schema)}
+        chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-v"}
+                 {:type :tool-input :id "call-v" :function "validated" :arguments arguments}])]
+    (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message)))
+
+(deftest ^:parallel tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:names {:optional true} [:sequential {:error/message "must be an array of strings"} :string]]
+                [:limit {:optional true} [:int {:min 1 :max 50}]]]]
+    (testing "a well-formed call is accepted"
+      (is (nil? (validation-error schema {:names ["orders"] :limit 10}))))
+    (testing "a scalar where an array is declared names the field and what it received"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a string."
+             (validation-error schema {:names "orders"}))))
+    (testing "the received type reflects the value the model actually sent"
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received a number."
+             (validation-error schema {:names 5})))
+      (is (= "Invalid tool arguments: `names` must be an array of strings; received an object."
+             (validation-error schema {:names {:a 1}}))))
+    (testing "a bad element reports the element's constraint without a received clause"
+      (is (= "Invalid tool arguments: `names` should be a string."
+             (validation-error schema {:names ["ok" 5]}))))
+    (testing "an unsupported key is called out as such"
+      (is (= "Invalid tool arguments: `nope` is not a supported argument."
+             (validation-error schema {:names ["ok"] :nope 1}))))
+    (testing "constraint violations on scalars are reported too"
+      (is (= "Invalid tool arguments: `limit` should be at most 50; received a number."
+             (validation-error schema {:limit 999}))))
+    (testing "arguments that aren't an object at all"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (validation-error schema ["orders"]))))))
+
+(deftest ^:parallel tool-unparseable-arguments-test
+  (testing "arguments the provider streamed as invalid JSON are reported as such"
+    (let [tools  {"validated" (schema-tool [:map {:closed true} [:names {:optional true} [:sequential :string]]])}
+          chunks (concat [{:type :tool-input-start :toolName "validated" :toolCallId "call-j"}]
+                         [{:type :tool-input-delta :toolCallId "call-j" :inputTextDelta "{\"names\": ["}]
+                         [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])]
+      (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+             (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
+
+(deftest ^:parallel tool-without-schema-is-not-validated-test
+  (testing "a tool with no declared argument schema is left alone"
+    (let [tools  {"anything" {:fn (fn [_args] {:output "ok"}) :doc "d" :schema nil}}
+          chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-ns"}
+                   {:type :tool-input :id "call-ns" :function "anything" :arguments {:whatever "x"}}])]
+      (is (=? {:type :tool-output-available :toolCallId "call-ns" :result {:output "ok"}}
+              (last (into [] (self.core/tool-executor-xf tools) chunks)))))))
+
 ;;; tool :decode tests
 
 (defn- make-decode-tool
@@ -476,7 +559,7 @@
             {:output "ok"})]
     (cond-> {:fn f
              :doc (str tool-name " test tool")
-             :schema [:=> [:cat [:map [:x :any]]] :any]}
+             :schema [:=> [:cat [:map]] :any]}
       decode-fn (assoc :decode decode-fn))))
 
 (deftest ^:parallel tool-decode-var-test
@@ -641,10 +724,11 @@
                                {:keyword_queries ["15"]
                                 :entity_types    ["table"]})))))
 
-(deftest ^:parallel tool-args-unparseable-scalar-left-alone-test
-  (testing "a string that isn't a number is passed through so the tool still reports the error"
-    (is (= {:limit "abc"}
-           (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))))
+(deftest ^:parallel tool-args-unparseable-scalar-rejected-test
+  (testing "a string that isn't a number is rejected at the boundary instead of reaching the tool"
+    (is (nil? (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))
+    (is (= "Invalid tool arguments: `limit` should be an integer; received a string."
+           (validation-error [:map [:limit [:maybe :int]]] {:limit "abc"})))))
 
 (deftest ^:parallel tool-args-coercion-tolerates-unusable-schema-test
   (testing "a tool without a usable schema still receives its arguments"
@@ -855,10 +939,16 @@
                                 :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
 
 (deftest ^:parallel stamp-tool-titles-xf-test
-  (let [tools {"greet" {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
-               "boom"  {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
-               "num"   {:tool-name "num"   :title-fn (fn [_] 42)}
-               "plain" {:tool-name "plain"}}
+  (let [tools {"greet"   {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"    {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"     {:tool-name "num"   :title-fn (fn [_] 42)}
+               "plain"   {:tool-name "plain"}
+               "decoded" {:tool-name "decoded"
+                          :decode    (fn [args] (update args :who (fn [who] (if (string? who) [who] who))))
+                          :title-fn  (fn [{:keys [who]}] (str "Greeting " (str/join ", " who)))}
+               "badcode" {:tool-name "badcode"
+                          :decode    (fn [_] (throw (ex-info "nope" {})))
+                          :title-fn  (fn [_] "never")}}
         stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
     (testing "title-fn result becomes :title"
       (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
@@ -873,6 +963,17 @@
     (testing "a tool without a title-fn is untouched"
       (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
              (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "the tool's :decode runs first, so the title describes the arguments the tool will run with"
+      (is (= [{:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}}))))
+    (testing "a throwing :decode leaves the part untitled"
+      (is (= [{:type :tool-input :id "c6" :function "badcode" :arguments {}}]
+             (stamp {:type :tool-input :id "c6" :function "badcode" :arguments {}}))))
+    (testing "a double-encoded argument is coerced before :decode, as it is before the tool runs"
+      (is (= [{:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}
+               :title "Greeting Sam, Kim"}]
+             (stamp {:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
     (testing "non-tool-input parts pass through"
       (is (= [{:type :text :id "t1" :text "hi"}]
              (stamp {:type :text :id "t1" :text "hi"}))))))
@@ -1945,3 +2046,24 @@
             "a warn with provider and status is still emitted for server-side debugging")
         (is (not (str/includes? (:message entry) secret))
             "the secret-bearing body never appears in the warn log")))))
+
+(deftest known-models-normalization-test
+  (testing "adapters that key model id to a map are passed through"
+    (let [models (self/known-models "anthropic")]
+      (is (seq models))
+      (is (every? (comp :display-name val) models))))
+  (testing "DeepSeek keys model id straight to a display name, and is normalized to the same shape"
+    (let [models (self/known-models "deepseek")]
+      (is (seq models))
+      (is (every? (comp string? :display-name val) models))))
+  (testing "the types with no allow-list return nil rather than an empty map"
+    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+      (is (nil? (self/known-models provider)) provider)))
+  (testing "an unregistered provider throws instead of reading as one with no models"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown LLM provider"
+                          (self/known-models "brand-new"))))
+  (testing "an entry that is neither a map nor a string throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized supported-models entry"
+                          (#'self/normalize-known-model "anthropic" "some-model" 42)))))

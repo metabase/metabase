@@ -311,6 +311,14 @@
       (is (not (contains? body :reasoning)))
       (is (not (contains? body :include))))))
 
+(deftest fast-mode-is-disabled-test
+  (testing "a fast-mode request is stripped before the anthropic body is built"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request! {:model "anthropic.claude-opus-4-8"
+                                               :fast? true
+                                               :input [{:role :user :content "hi"}]})))]
+      (is (not (contains? body :speed))))))
+
 (deftest unsupported-model-throws-test
   (is (thrown-with-msg?
        clojure.lang.ExceptionInfo

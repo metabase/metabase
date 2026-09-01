@@ -113,13 +113,20 @@
     adversarial for post-filtering strategies. The adversarial filter must be a column with no supporting
     btree: a :models filter would be served exactly by the (model, model_id) unique constraint at this table
     size, bypassing the HNSW scan the matrix is exercising.
-  - :decoy lies beyond the cutoff and must never be returned."
-  [{:band :restricted :n 8   :model "card" :d0 0.020 :dstep 0.005}
-   {:band :core       :n 180 :model "card" :d0 0.100 :dstep 0.0015}
-   {:band :mid        :n 74  :model "card" :d0 0.400 :dstep 0.0008}
-   {:band :pinned     :n 6   :model "card" :d0 0.465 :dstep 0.002 :pinned true}
-   {:band :rare       :n 12  :model "card" :d0 0.550 :dstep 0.008 :verified true}
-   {:band :decoy      :n 20  :model "card" :d0 0.750 :dstep 0.007}])
+  - :decoy lies beyond the cutoff and must never be returned.
+
+  The model is `dashboard` because [[permission-under-fetch-matrix-test]] exercises the real
+  permission filter against these synthetic docs, and only a model on `filter-read-permitted`'s
+  collection-id-only fast path is adjudicated from the doc's denormalized `:collection_id` without
+  loading a row. A slow-path model (`card`, since a Card can be scoped to a Document and gated by
+  it) would have every one of these 300 ids miss in `report_card` and be dropped, collapsing the
+  measurement to zero. Nothing else here depends on which model it is."
+  [{:band :restricted :n 8   :model "dashboard" :d0 0.020 :dstep 0.005}
+   {:band :core       :n 180 :model "dashboard" :d0 0.100 :dstep 0.0015}
+   {:band :mid        :n 74  :model "dashboard" :d0 0.400 :dstep 0.0008}
+   {:band :pinned     :n 6   :model "dashboard" :d0 0.465 :dstep 0.002 :pinned true}
+   {:band :rare       :n 12  :model "dashboard" :d0 0.550 :dstep 0.008 :verified true}
+   {:band :decoy      :n 20  :model "dashboard" :d0 0.750 :dstep 0.007}])
 
 (defn- vector-at-distance
   "A unit `dims`-d vector at exact cosine distance `d` (pgvector `<=>`) from the probe `[1 0 0 ...]`."

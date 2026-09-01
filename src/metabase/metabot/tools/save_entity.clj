@@ -171,11 +171,12 @@
     `read_resource` on `metabase://collections?tree=true`. Omit `collection_id`
     to use the user's personal collection; pass `null` for the root collection.
   - To add it to a dashboard, set `target_type` to `dashboard` and pass a
-    `dashboard_id`. Find dashboards with `search`, restricting `entity_types` to
-    the `dashboard` type. Only offer or use results with `can_write=true`; results
+    `dashboard_id`. Find dashboards with your search/discovery tool — if that tool is
+    `search`, restrict `entity_types` to the `dashboard` type. Only offer or use results
+    with `can_write=true`; results
     with `can_write=false` are visible but read-only and cannot be save destinations.
   - To embed it in a document, set `target_type` to `document` and pass a
-    `document_id`. Find documents with `search`, restricting `entity_types` to
+    `document_id`. Find documents the same way — with `search`, restrict `entity_types` to
     the `document` type, just as you would use the `dashboard` type to find dashboards. Search
     using any name or topic the user provided. Before calling `save_entity`, you MUST call
     `read_resource` on `metabase://document/{id}` for the selected result and inspect its
@@ -187,6 +188,10 @@
     very top). Omit `position` to append the chart at the end. To pick a
     meaningful position, first inspect the document's blocks with
     `read_resource` on `metabase://document/{id}`.
+
+  If your only discovery tool returns library data entities (tables, models, metrics) rather
+  than saved content, dashboards and documents aren't discoverable that way — save to a
+  collection instead, or ask the user for the dashboard or document they mean.
 
   After saving, tell the user where it went and share the returned link."
   [{:keys [chart_id destination description] question-name :name} :- save-entity-schema]

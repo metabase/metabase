@@ -6,13 +6,10 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
 import {
-  isPivoted as _isPivoted,
-  getTitleForColumn,
-} from "metabase/visualizations/lib/settings/column";
-import {
   type VisibleTableData,
   getVisibleTableData,
 } from "metabase/visualizations/lib/visible-table-data";
+import { isPivoted as _isPivoted, getTitleForColumn } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 

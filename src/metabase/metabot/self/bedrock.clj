@@ -244,7 +244,7 @@
     (catch Exception e
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
-(def ^:private supported-models
+(def supported-models
   "Bedrock models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
@@ -325,7 +325,7 @@
   `:ai-proxy?` is not supported for Bedrock and throws when true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [opts   (assoc opts :model model :reasoning? false)
+  (let [opts   (assoc opts :model model :reasoning? false :fast? false)
         family (model->family model)
         {:keys [path headers req]}
         (case family

@@ -4,6 +4,8 @@
    [clojure.test :as t]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test.http-client :as client]
@@ -69,14 +71,14 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (t2/insert-returning-instance! :model/User
-                                           {:email        email
-                                            :first_name   first-name
-                                            :last_name    last-name
-                                            :password     password
-                                            :is_superuser superuser
-                                            :is_qbnewb    true
-                                            :is_active    active})))))
+            (u/prog1 (t2/insert-returning-instance! :model/User
+                                                    {:email        email
+                                                     :first_name   first-name
+                                                     :last_name    last-name
+                                                     :is_superuser superuser
+                                                     :is_qbnewb    true
+                                                     :is_active    active})
+              (auth-identity/set-password! (u/the-id <>) password))))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.
@@ -91,9 +93,9 @@
 ;;; If we run INSIDE of a transaction before the test users have been created globally then do not memoize the IDs,
 ;;; since the users will get discarded and we will need to recreate them next time around.
 ;;;
-;;; "Globally" is per application database: [[metabase.test.data/with-empty-h2-app-db!]] swaps in an empty
-;;; one, where the users another database created do not exist. Tracking it as a boolean meant the first
-;;; branch handed back ids for absent users, and the session insert failed on FK_SESSION_REF_USER_ID.
+;;; "Globally" means within one application DB. [[metabase.test.data/with-empty-h2-app-db!]] swaps in an empty
+;;; application DB where users created in another DB do not exist. Tracking this state with one boolean returned
+;;; stale IDs and caused session inserts to violate FK_SESSION_REF_USER_ID.
 (let [f                 (fn []
                           (zipmap usernames
                                   (map (comp u/the-id fetch-user) usernames)))
@@ -144,11 +146,11 @@
     {:username email
      :password password}))
 
-;; {[app-db username] session-key}
+;; {[app-db-id username] session-key}
 ;;
-;; The app db is in the key because `with-empty-h2-app-db!` swaps in a different one. A token from the old
-;; database names a session the new one has never heard of, so the request 401s. Tokens minted while the empty
-;; db is in place would stick around after the original comes back, too.
+;; Include the application DB in the key because [[metabase.test.data/with-empty-h2-app-db!]] swaps databases. A
+;; token from one database names a session the other has never heard of, so the request returns 401. Tokens created
+;; in the replacement database must not survive its restoration.
 (defonce ^:private tokens (atom {}))
 
 ;;; This is done by hitting the app DB directly instead of hitting [[metabase.test.http-client/authenticate]] to avoid
@@ -184,9 +186,13 @@
         (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                    username (user->credentials username)))))))
 
+;; Standard-user sessions are normally created before a transaction opens. [[metabase.test.redefs]] now materializes
+;; `:test-users` before each top-level `with-temp`, so initialization no longer first happens inside one -- except for
+;; the helpers that skip the prewarm to keep an empty app DB. There, sessions created inside `with-temp` are rolled
+;; back and subsequent requests authenticate again.
 (defn clear-cached-session-tokens!
-  "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
-  `401` unauthenticated response, and then retry the request."
+  "Clear cached session tokens that may have expired or been removed. Call this after receiving a `401` response, then
+  retry the request."
   []
   (locking tokens
     (reset! tokens {})))
@@ -207,8 +213,9 @@
             (thunk)
             (catch ExceptionInfo e
               (rethrow-when-not-401 e)
-              ;; second retry: clear cached session tokens, then try again one last time
-              (clear-cached-session-tokens!)
+              ;; For the final retry, evict only this user's token. A session created in a transaction can be
+              ;; rolled back with it; one resulting 401 should not evict every other user's durable token.
+              (swap! tokens dissoc [(mdb/unique-identifier) username])
               (try
                 (thunk)
                 (catch ExceptionInfo e
@@ -224,13 +231,25 @@
       (fetch-user user)
       (apply client-fn the-client user args))
     (let [user-id (u/the-id user)
-          session-key (session/generate-session-key)]
+          session-key (session/generate-session-key)
+          session-id (session/generate-session-id)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
-                                                 :key_hashed (session/hash-session-key session-key)
-                                                 :user_id user-id}]
-        (apply the-client session-key args)))))
+      ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
+      ;; transaction around the Session would also discard every app DB write made by the request. Delete only
+      ;; the Session explicitly instead.
+      ;;
+      ;; Write the row rather than the model. `:model/Session`'s after-insert hook publishes `:event/user-login`,
+      ;; which stamps `User.last_login`, and `:event/user-joined` for a User that has never logged in. Deleting the
+      ;; Session does not undo either, so they leak into whatever runs next.
+      (t2/insert! :core_session {:id         session-id
+                                 :key_hashed (session/hash-session-key session-key)
+                                 :user_id    user-id
+                                 :created_at (mi/now)})
+      (try
+        (apply the-client session-key args)
+        (finally
+          (t2/delete! :core_session :id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request

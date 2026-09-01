@@ -4,9 +4,10 @@ import { t } from "ttag";
 import ModelSVG from "img/model-illustration.svg?component";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useUserAcknowledgement } from "metabase/current-user";
-import { turnQuestionIntoModel } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
+
+import { turnQuestionIntoModel } from "../../actions";
 
 import NewDatasetModalS from "./NewDatasetModal.module.css";
 

@@ -18,6 +18,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -1231,6 +1232,14 @@
         (mt/with-native-query-testing-context query
           (is (= [["2" 1]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash before the quote"
+    (are [s expected] (= expected (sql.qp/inline-value :bigquery-cloud-sdk s))
+      "Tito's Tacos"     "'Tito\\'s Tacos'"
+      "back\\slash"      "'back\\\\slash'"
+      "' OR 1 = 1 --"    "'\\' OR 1 = 1 --'"
+      "a\\' OR 1 = 1 --" "'a\\\\\\' OR 1 = 1 --'")))
 
 (deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use DATETIME_ADD() if needed for units like month (#21969)"

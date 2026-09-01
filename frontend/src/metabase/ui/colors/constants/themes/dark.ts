@@ -43,9 +43,13 @@ const deprecatedColors = {
   filter: baseColors.octopus[40],
   focus: baseColors.blue[70],
   "icon-brand": baseColors.brand[40], // Matches text-brand
+  "icon-brand-inverse": baseColors.brand[50],
   "icon-primary": baseColors.orionAlphaInverse[80], // Matches text-primary
+  "icon-primary-inverse": baseColors.orionAlpha[80], // Matches text-primary-inverse
   "icon-disabled": baseColors.orionAlphaInverse[40], // Matches text-disabled
+  "icon-disabled-inverse": baseColors.orionAlpha[40], // Matches text-disabled-inverse
   "icon-secondary": baseColors.orionAlphaInverse[60], // Matches text-secondary
+  "icon-secondary-inverse": baseColors.orionAlpha[60], // Matches text-secondary-inverse
   "illustration-brand-secondary": baseColors.brand[80],
   "illustration-brand-tertiary": baseColors.brand[90],
   "metabase-brand": baseColors.blue[40],
@@ -125,6 +129,7 @@ const actualColors = {
   "background_surface-warning-strong": baseColors.dubloon[70],
   "border-brand": baseColors.brand[80],
   "border-filter": baseColors.filter[80],
+  "border-highlight": baseColors.brand[30],
   "border-neutral": baseColors.orionAlphaInverse[20],
   "border-neutral-strong": baseColors.orionAlphaInverse[30],
   "border-neutral-strongest": baseColors.orionAlphaInverse[50],

@@ -11,9 +11,11 @@
   - `edit-sql-query`,
   - `replace-sql-query`."
   (:require
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
@@ -36,6 +38,21 @@
   [:map
    [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
+
+(defn check-native-query-access!
+  "Throw an agent error unless the current user may write native queries against `database-id`.
+  No nil-user escape, unlike `qp.perms/current-user-has-adhoc-native-query-perms?`, and a
+  non-integer `database-id` fails closed."
+  [database-id]
+  (when-not (and (int? database-id)
+                 (= :query-builder-and-native
+                    (perms/full-database-permission-for-user api/*current-user-id*
+                                                             :perms/create-queries
+                                                             database-id)))
+    (throw (ex-info (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
+                    {:agent-error?    true
+                     :terminal-error? true
+                     :database-id     database-id}))))
 
 (defn- maybe-normalize-query
   [query]

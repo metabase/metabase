@@ -53,20 +53,27 @@ export function ProviderConnectionForm({
   const [config, setConfig] = useState<LlmProviderConfig>(
     connection?.config ?? {},
   );
-  // On edit, start the picker on the model the connection is actually serving Metabot, not the type default.
+  // On edit, start the picker on the model the connection is actually serving, not the type default.
   const modelRef = useSetting("llm-metabot-provider");
   const [model, setModel] = useState<string | undefined>(() => {
     const type = providerTypes.find(
       (option) => option.type === connection?.type,
     );
+    const isOnCatalog = (id?: string | null): id is string =>
+      type?.models.some((typeModel) => typeModel.id === id) ?? false;
     const [refKey, ...refModelParts] = (modelRef ?? "").split("/");
     const refModel = refModelParts.join("/");
     if (
       connection != null &&
       refKey === connection.key &&
-      type?.models.some((typeModel) => typeModel.id === refModel)
+      isOnCatalog(refModel)
     ) {
       return refModel;
+    }
+    // Metabot points elsewhere: fall back to the model this connection was last verified against.
+    const probedModel = connection?.config?.["probed-model"];
+    if (isOnCatalog(probedModel)) {
+      return probedModel;
     }
     return type?.default_model ?? undefined;
   });
