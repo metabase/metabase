@@ -152,6 +152,7 @@ Metabase's reference documentation.
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [AI settings](./ai/settings.md)
+- [Supported AI providers](./ai/providers.md)
 - [AI usage controls](./ai/usage-controls.md)
 - [AI usage auditing](./ai/usage-auditing.md)
 - [AI customization](./ai/customization.md)

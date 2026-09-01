@@ -143,6 +143,7 @@
            metabase.activity-feed.init}
    :uses #{api
            app-db
+           batch-processing
            collections
            config
            events
@@ -2485,6 +2486,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}
