@@ -322,6 +322,7 @@ export type VisualizationSettingsDefinitions = {
     SmartScalarComparisonWidgetProps
   >;
   "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.show_comparison_value"?: SeriesSettingDefinition<Value, Props>;
   "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
   scale?: DatasetColumnSettingDefinition<Value, Props>;
   "scatter.bubble"?: SeriesSettingDefinition<Value, Props>;
@@ -394,6 +395,7 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
+  noLoadingHeader?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
