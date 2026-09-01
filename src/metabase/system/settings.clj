@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -138,4 +139,19 @@
   :export?    false
   :setter     :none
   :getter     encryption/default-encryption-enabled?
+  :doc        false)
+
+(defsetting readable-paths
+  "Comma separated allowlist of paths which this Metabase instance is allowed to read for settings."
+  :encryption :no
+  :visibility :internal
+  :type       :csv
+  :export?    true
+  :getter     (fn []
+                (or (setting/get-value-of-type :csv :readable-paths)
+                    (if (premium-features/is-hosted?)
+                      ;; empty vector means "allow none"
+                      ["/"]
+                      ;; If not on hosted, allow all
+                      ["/"])))
   :doc        false)

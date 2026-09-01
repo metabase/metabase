@@ -10,13 +10,15 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.system.settings :as system-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (java.io File)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -224,6 +226,20 @@
 
 ;;; ---------------------------------------------- Fetching secrets ----------------------------------------------
 
+(defn- is-descendant
+  [ancestor maybe-descendant]
+  (let [->normalized-path #(Path/.toAbsolutePath
+                            (Path/.normalize (Path/of % (into-array String []))))]
+    (^[Path] Path/.startsWith (->normalized-path maybe-descendant)
+                              (->normalized-path ancestor))))
+
+(defn- ensure-allowed-path!
+  [file-path]
+  (let [readable-paths (system-settings/readable-paths)]
+    (when-not (some #(is-descendant % file-path) readable-paths)
+      (throw (ex-info (tru "Reading from path is disallowed: {0}" file-path)
+                      {:file-path file-path})))))
+
 (defn value-as-string
   "Retrieves a secret as a string.
    If the secret source is `:file-path` then read the file and return the contents.
@@ -232,7 +248,9 @@
   (when-let [{source :source secret-value :value} (resolve-secret-map driver details secret-property)]
     (let [s (unresolved-value-string secret-value)]
       (if (= :file-path source)
-        (slurp s)
+        (do
+          (ensure-allowed-path! s)
+          (slurp s))
         s))))
 
 (defn- value-as-file*
