@@ -5,7 +5,7 @@ import { getDashboard } from "../selectors";
 export const useRegisterDashboardMetabotContext = () => {
   useRegisterMetabotContextProvider(async (state) => {
     const dashboard = getDashboard(state);
-    if (!dashboard) {
+    if (!dashboard || typeof dashboard.id !== "number") {
       return {};
     }
 
