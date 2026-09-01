@@ -2,12 +2,15 @@ import _ from "underscore";
 
 import { datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { getMetadata } from "metabase/metadata-store";
+import {
+  selectMetadataProvider,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
+} from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import type { Card, DatasetColumn, Field, FieldId } from "metabase-types/api";
 
@@ -69,18 +72,17 @@ export const followForeignKey = createThunkAction(
       const card = getCard(state);
       const queryResult = getFirstQueryResult(state);
 
-      if (!queryResult || !fk) {
+      if (!queryResult || !fk || !card) {
         return false;
       }
 
-      const metadata = getMetadata(getState());
-      const databaseId = new Question(card, metadata).databaseId();
+      const databaseId = selectQuestionFromCard(getState(), card).databaseId();
       if (!databaseId) {
         return;
       }
 
       const tableId = fk.origin.table.id;
-      const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+      const metadataProvider = selectMetadataProvider(getState(), databaseId);
       const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
       if (table == null) {
         return;
@@ -90,9 +92,8 @@ export const followForeignKey = createThunkAction(
         table,
       );
       const query = filterByFk(baseQuery, fk.origin, objectId);
-      const finalCard = Question.create({
+      const finalCard = selectQuestionFromOpts(getState(), {
         dataset_query: Lib.toJsQuery(query),
-        metadata,
       }).card();
 
       dispatch(resetRowZoom());
@@ -126,13 +127,15 @@ export const loadObjectDetailFKReferences = createThunkAction(
         card: Card,
         fk: ForeignKey,
       ): Promise<FKInfo | undefined> {
-        const metadata = getMetadata(getState());
-        const databaseId = new Question(card, metadata).databaseId();
+        const databaseId = selectQuestionFromCard(
+          getState(),
+          card,
+        ).databaseId();
         const tableId = fk.origin?.table_id;
         if (!tableId || !databaseId || !fk.origin) {
           return;
         }
-        const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+        const metadataProvider = selectMetadataProvider(getState(), databaseId);
         const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
         if (table == null) {
           return;
@@ -148,9 +151,8 @@ export const loadObjectDetailFKReferences = createThunkAction(
           fk.origin.getPlainObject() as Field,
           objectId,
         );
-        const finalCard = Question.create({
+        const finalCard = selectQuestionFromOpts(getState(), {
           dataset_query: Lib.toJsQuery(query),
-          metadata,
         }).datasetQuery();
 
         const info: FKInfo = {

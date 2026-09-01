@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
 import { OverviewVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
-import { getMetadata } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import {
+  useMetadataProvider,
+  useQuestionFromOpts,
+} from "metabase/metadata-store";
 import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Table } from "metabase-types/api";
 
 import { DescriptionSection } from "./DescriptionSection";
@@ -17,8 +17,12 @@ type TableOverviewProps = {
 };
 
 export function TableOverview({ table }: TableOverviewProps) {
-  const metadata = useSelector(getMetadata);
-  const card = useMemo(() => getCard(table, metadata), [table, metadata]);
+  const metadataProvider = useMetadataProvider(table.db_id);
+  const buildQuestion = useQuestionFromOpts();
+  const card = useMemo(
+    () => getCard(table, metadataProvider, buildQuestion),
+    [table, metadataProvider, buildQuestion],
+  );
   return (
     <Flex flex={1} gap={0}>
       <Flex direction="column" flex={1} mah={700}>
@@ -31,8 +35,11 @@ export function TableOverview({ table }: TableOverviewProps) {
   );
 }
 
-function getCard(table: Table, metadata: Metadata) {
-  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+function getCard(
+  table: Table,
+  metadataProvider: Lib.MetadataProvider,
+  buildQuestion: ReturnType<typeof useQuestionFromOpts>,
+) {
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
   if (tableMetadata == null) {
     return;
@@ -42,9 +49,5 @@ function getCard(table: Table, metadata: Metadata) {
     metadataProvider,
     tableMetadata,
   );
-  const question = Question.create({
-    dataset_query: Lib.toJsQuery(query),
-    metadata,
-  });
-  return question.card();
+  return buildQuestion({ dataset_query: Lib.toJsQuery(query) }).card();
 }

@@ -2,7 +2,8 @@ import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import type { DatabaseId } from "metabase-types/api";
+import Question, { type QuestionCreatorOpts } from "metabase-lib/v1/Question";
+import type { Card, DatabaseId } from "metabase-types/api";
 
 import {
   type MetadataSelectorOpts,
@@ -123,3 +124,75 @@ export const useMetadataProviderUnfiltered = (
   databaseId: DatabaseId | null,
 ): Lib.MetadataProvider =>
   useSelector((state) => selectMetadataProviderUnfiltered(state, databaseId));
+
+/**
+ * A v1 `Question` for an existing card.
+ *
+ * The `Question` constructor takes the `Metadata` object, so building one
+ * outside this module means holding that object.
+ */
+export const selectQuestionFromCard = (state: State, card: Card): Question =>
+  new Question(card, getMetadata(state));
+
+/**
+ * A v1 `Question` for a draft that has no card yet, such as an ad-hoc query.
+ */
+export const selectQuestionFromOpts = (
+  state: State,
+  opts: Omit<QuestionCreatorOpts, "metadata">,
+): Question => Question.create({ ...opts, metadata: getMetadata(state) });
+
+/**
+ * `selectQuestionFromCard` for components, as a builder rather than a question.
+ *
+ * A `Question` is a fresh object on every call, so a hook returning one would
+ * re-render its component on every store action. The builder is memoised on
+ * the `Metadata` object instead, which keeps it stable in a dependency array
+ * and leaves the caller's own `useMemo` unchanged.
+ */
+const cardQuestionBuilders = new WeakMap<
+  Lib.Metadata,
+  (card: Card) => Question
+>();
+
+export const useQuestionFromCard = (): ((card: Card) => Question) =>
+  useSelector((state) => {
+    const metadata = getMetadata(state);
+    const cached = cardQuestionBuilders.get(metadata);
+
+    if (cached) {
+      return cached;
+    }
+
+    const build = (card: Card) => new Question(card, metadata);
+    cardQuestionBuilders.set(metadata, build);
+
+    return build;
+  });
+
+/**
+ * `selectQuestionFromOpts` for components. A builder for the same reason as
+ * `useQuestionFromCard`.
+ */
+const draftQuestionBuilders = new WeakMap<
+  Lib.Metadata,
+  (opts: Omit<QuestionCreatorOpts, "metadata">) => Question
+>();
+
+export const useQuestionFromOpts = (): ((
+  opts: Omit<QuestionCreatorOpts, "metadata">,
+) => Question) =>
+  useSelector((state) => {
+    const metadata = getMetadata(state);
+    const cached = draftQuestionBuilders.get(metadata);
+
+    if (cached) {
+      return cached;
+    }
+
+    const build = (opts: Omit<QuestionCreatorOpts, "metadata">) =>
+      Question.create({ ...opts, metadata });
+    draftQuestionBuilders.set(metadata, build);
+
+    return build;
+  });

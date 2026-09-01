@@ -5,7 +5,7 @@ import {
 } from "metabase/redux/store/mocks";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -16,6 +16,8 @@ import {
   selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
 } from "./provider";
 import { getMetadata } from "./selectors";
 
@@ -98,5 +100,29 @@ describe("the Metadata object these selectors build on", () => {
     // canonicalises its options. Without that, a bare call and an explicit
     // undefined build two Metadata objects over the same records.
     expect(getMetadata(state) === getMetadata(state, undefined)).toBe(true);
+  });
+});
+
+describe("the question selectors", () => {
+  it("build a question that carries the metadata", () => {
+    const question = selectQuestionFromOpts(state, {
+      DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    });
+
+    expect(question.databaseId()).toBe(SAMPLE_DB_ID);
+  });
+
+  it("wrap an existing card", () => {
+    const card = createMockCard({ id: 1 });
+
+    expect(selectQuestionFromCard(state, card).id()).toBe(card.id);
+  });
+
+  it("do not memoise the questions themselves", () => {
+    // Each call builds a fresh Question, which is why the hooks return
+    // builders rather than a question.
+    expect(
+      selectQuestionFromOpts(state, {}) === selectQuestionFromOpts(state, {}),
+    ).toBe(false);
   });
 });
