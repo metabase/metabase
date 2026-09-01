@@ -191,7 +191,7 @@
       (try
         ;; there is no owner to violate until a `core_session` row exists, so materialize one the way a resource
         ;; read would
-        (mcp.session/get-or-create-session-key! session-id rasta-id)
+        (mcp.session/get-or-create-embedding-session! session-id rasta-id)
         (testing "its owner still dispatches"
           (let [response (mcp-request :rasta (ping-call) {"mcp-session-id" session-id})]
             (is (= 200 (:status response)))

@@ -40,9 +40,19 @@
     (.init mac (SecretKeySpec. (.getBytes secret "UTF-8") "HmacSHA256"))
     (.doFinal mac (.getBytes message "UTF-8"))))
 
-(defn derive-embedding-session-key
+(defn- derive-embedding-session-key
   "Deterministically derive the embedding session key for `mcp-session-id` from the instance-wide signing secret. See ns
   docstring for rationale.
+
+  PRIVATE ON PURPOSE, and the privacy is load-bearing rather than stylistic. The derivation takes only the MCP
+  session id — which is client-supplied and unsigned — so two users presenting the same id derive the SAME key.
+  `core_session` lookups resolve a key by `key_hashed` alone, with no user filter and no ordering
+  ([[metabase.server.middleware.session]]), so whichever colliding row the DB returns first is who that key
+  authenticates as. Any public fn returning this plaintext is therefore an account-takeover primitive: a caller
+  who knows another user's session id gets a working session key for whoever else materialized a row under it.
+
+  Inside this namespace the value is only ever hashed. Keep it that way — a caller that needs the row should use
+  [[get-or-create-embedding-session!]], which returns the row and never the key.
 
   The output is formatted as a UUID string because `metabase.server.middleware.session` rejects non-UUID session keys
   up-front. Specifically we emit a version-8 UUID
@@ -315,9 +325,12 @@
       ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
       true)))
 
-(defn- get-or-create-embedding-session!
+(defn get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
-  Idempotent — repeated calls collapse to the same row in the common case."
+  Idempotent — repeated calls collapse to the same row in the common case.
+
+  Returns the row, never the session key — see [[derive-embedding-session-key]] for why the plaintext must not
+  leave this namespace."
   [session-id user-id]
   (let [session-key (derive-embedding-session-key session-id)
         key-hashed  (session/hash-session-key session-key)]
@@ -343,13 +356,6 @@
        {:id              (session/generate-session-id)
         :anti_csrf_token nil
         :created_at      :%now}))))
-
-(defn get-or-create-session-key!
-  "Ensure a `core_session` exists for this MCP session and return its (plaintext) session key, HMAC-derived from the MCP
-  session id."
-  [session-id user-id]
-  (get-or-create-embedding-session! session-id user-id)
-  (derive-embedding-session-key session-id))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if

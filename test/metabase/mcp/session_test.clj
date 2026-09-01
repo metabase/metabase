@@ -23,7 +23,7 @@
 (defn- derived-hash
   "Derives the embedding session key from an MCP session id, then hashes it."
   [session-id]
-  (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
+  (session/hash-session-key (@#'mcp.session/derive-embedding-session-key session-id)))
 
 (defn- session-correlator
   [session-id]
@@ -119,7 +119,7 @@
     ;; If this regresses, the embedding SDK iframe will get 403s from /api when it sends the
     ;; derived key as X-Metabase-Session, because the middleware rejects non-UUID keys up-front.
     (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)
-          key        (mcp.session/derive-embedding-session-key session-id)
+          key        (@#'mcp.session/derive-embedding-session-key session-id)
           parsed     (parse-uuid key)]
       (is (some? parsed)
           "derive-embedding-session-key must return a UUID-formatted string")
@@ -208,25 +208,41 @@
                "tripwire assertions that cover them (here and in query-guards-test). Leaving the guard branch "
                "keeps a fail-open path alive for any credential shaped `{:legacy true}`.")))))
 
-(deftest get-or-create-session-key-test
-  (testing "first call creates a core_session and returns the derived embedding key"
+(deftest get-or-create-embedding-session-test
+  (testing "first call materializes the core_session backing this MCP session and returns the row"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          key        (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (= (mcp.session/derive-embedding-session-key session-id) key))
-      (is (not= session-id key)
-          "Derived key must not equal the MCP session id that travels on the wire")
+          row        (mcp.session/get-or-create-embedding-session! session-id user-id)]
+      (is (some? (:id row)))
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
           "core_session should now exist")
-      (testing "subsequent calls return the same key and don't create duplicates"
-        (is (= key (mcp.session/get-or-create-session-key! session-id user-id)))
+      (testing "subsequent calls collapse to the same row rather than creating duplicates"
+        (is (= (:id row) (:id (mcp.session/get-or-create-embedding-session! session-id user-id))))
         (is (= 1 (t2/count :core_session :key_hashed (derived-hash session-id))))))))
+
+(deftest embedding-session-key-never-escapes-the-namespace-test
+  (testing "GHY-4333: `derive-embedding-session-key` takes only the MCP session id, which is client-supplied and
+            unsigned, so two users presenting the same id derive the SAME plaintext key — and `core_session`
+            lookups resolve a key by `key_hashed` alone, with no user filter and no ordering. Any public fn
+            handing out that plaintext is therefore an account-takeover primitive: a caller who learns another
+            user's session id gets a working session key for whoever else materialized a row under it.
+
+            `get-or-create-session-key!` was exactly such a fn. It had no production caller anywhere (dead since
+            #79312 replaced it with the signed UI credential), so it was deleted rather than guarded. The
+            derivation is private so the plaintext cannot leave this namespace at all; inside it, the value is
+            only ever hashed. This test is what stops that from being quietly undone."
+    (is (:private (meta #'mcp.session/derive-embedding-session-key))
+        (str "derive-embedding-session-key must stay private: its output authenticates as whichever user's "
+             "colliding core_session row the DB happens to return first. A caller needing the row should use "
+             "get-or-create-embedding-session!, which returns the row and never the key."))
+    (is (not (contains? (ns-publics 'metabase.mcp.session) 'get-or-create-session-key!))
+        "get-or-create-session-key! handed out that plaintext and must not come back")))
 
 (deftest delete-test
   (testing "delete! removes the core_session if one was created"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+          _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id user-id)
       (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))))))
@@ -236,7 +252,7 @@
     (let [user-id    (mt/user->id :crowberto)
           other-id   (mt/user->id :rasta)
           session-id (mcp.session/create! user-id nil)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+          _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id other-id)
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
@@ -253,7 +269,7 @@
   (testing "returns true for the owning user, false for others"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+          _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (true? (mcp.session/owned-by-user? session-id user-id)))
       (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :rasta)))))))
 
@@ -267,8 +283,8 @@
       (testing "both users pass the check while nothing has been materialized"
         (is (true? (mcp.session/owned-by-user? session-id owner-id)))
         (is (true? (mcp.session/owned-by-user? session-id other-id))))
-      (mcp.session/get-or-create-session-key! session-id owner-id)
-      (mcp.session/get-or-create-session-key! session-id other-id)
+      (mcp.session/get-or-create-embedding-session! session-id owner-id)
+      (mcp.session/get-or-create-embedding-session! session-id other-id)
       (is (= 2 (t2/count :core_session :key_hashed (derived-hash session-id)))
           "rows are scoped to (key_hashed, user_id), so each user materializes their own")
       (testing "neither user is locked out by the other's row"
@@ -343,13 +359,13 @@
       (is (nil? (mcp.session/resolve-query-handle session-id user-id handle))))))
 
 (deftest session-does-not-fire-login-event-test
-  (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
+  (testing "Creating a core_session via get-or-create-embedding-session! does not publish :event/user-login"
     (let [login-events (atom [])
           user-id      (mt/user->id :crowberto)
           session-id   (mcp.session/create! user-id nil)]
       (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic payload]
                                                           (when (= topic :event/user-login)
                                                             (swap! login-events conj payload)))]
-        (mcp.session/get-or-create-session-key! session-id user-id))
+        (mcp.session/get-or-create-embedding-session! session-id user-id))
       (is (empty? @login-events)
           "No :event/user-login should be published for MCP embedding sessions"))))
