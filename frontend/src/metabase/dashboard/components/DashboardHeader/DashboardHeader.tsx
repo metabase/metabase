@@ -22,6 +22,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { useMaybeLocation } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import { Flex, Loader } from "metabase/ui";
+import { isAdhocDashboardId } from "metabase/utils/dashboard";
 import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
@@ -136,7 +137,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
       <DashboardHeaderView
         dashboard={dashboard}
         collection={collection}
-        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
+        isBadgeVisible={
+          !isEditing &&
+          !isFullscreen &&
+          isAdditionalInfoVisible &&
+          !isAdhocDashboardId(dashboard.id)
+        }
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
         editWarning={getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`.concat(
