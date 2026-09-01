@@ -5,13 +5,13 @@ import { getThemeOverrides } from "metabase/ui/theme";
 
 const theme = getThemeOverrides();
 
-const spacingOptions = Object.keys(theme.spacing ?? {});
-const radiusOptions = Object.keys(theme.radius ?? {});
+const PAPER_PADDING_OPTIONS = ["lg", "xl", "xxl"] as const;
+const PAPER_RADIUS_OPTIONS = ["xxs", "md"] as const;
 const shadowOptions = Object.keys(theme.shadows ?? {});
 
 const args = {
   p: "lg",
-  radius: "sm",
+  radius: "xxs",
   shadow: "xs_outline",
   withBorder: false,
 };
@@ -22,11 +22,11 @@ const sampleArgs = {
 
 const argTypes = {
   p: {
-    options: spacingOptions,
+    options: PAPER_PADDING_OPTIONS,
     control: { type: "inline-radio" },
   },
   radius: {
-    options: radiusOptions,
+    options: PAPER_RADIUS_OPTIONS,
     control: { type: "inline-radio" },
   },
   shadow: {
