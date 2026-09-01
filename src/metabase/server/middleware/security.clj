@@ -131,20 +131,20 @@
   So, we'll double things up and include both the wildcard and non-wildcard entry. We still keep the logic of not adding a wildcard when a
   subdomain is already specified because we want to treat this case as the user being more specific and thus intentionally less permissive."
   [domain-or-url]
-  (let [cleaned-domain (-> domain-or-url
-                           (str/replace #"/$" "")
-                           (str/replace #"www." ""))
-        {:keys [protocol domain port]} (parse-url cleaned-domain)]
-    (when domain
-      (let [split-domain (str/split domain #"\.")
+  (let [{:keys [protocol domain port]} (parse-url (str/replace domain-or-url #"/$" ""))
+        ;; Strip only a *leading* `www.` label (anchored, escaped dot). An unescaped, unanchored
+        ;; `#"www."` ate `www` + the next char — mangling `wwwevil.com` and dropping `www2.*` hosts.
+        base-domain (some-> domain (str/replace #"^www\." ""))]
+    (when base-domain
+      (let [split-domain (str/split base-domain #"\.")
             new-domains  (cond-> (if (= (count split-domain) 2)
-                                   [domain (format "*.%s" domain)]
-                                   [domain])
-                           (str/includes? domain-or-url "www.") (conj (format "www.%s" domain)))]
+                                   [base-domain (format "*.%s" base-domain)]
+                                   [base-domain])
+                           (str/starts-with? domain "www.") (conj (format "www.%s" base-domain)))]
         (for [new-domain new-domains]
           (str (when protocol (format "%s://" protocol))
                new-domain
-               (when (and port (not= domain "*")) (format ":%s" port))))))))
+               (when (and port (not= base-domain "*")) (format ":%s" port))))))))
 
 (def ^:private always-allowed-iframe-hosts
   ["'self'"
