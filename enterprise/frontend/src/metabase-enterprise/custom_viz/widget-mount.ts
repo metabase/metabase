@@ -50,11 +50,18 @@ export function wrapPluginWidget(
 }
 
 function toPluginWidgetProps(
-  { value, onChange, onChangeSettings, ...rest }: CustomVizSettingWidgetProps,
+  {
+    id,
+    value,
+    onChange,
+    onChangeSettings,
+    ...extraProps
+  }: CustomVizSettingWidgetProps,
   prefix: string,
 ): PluginWidgetProps {
   return {
-    ...rest,
+    ...extraProps,
+    id,
     value: clone(value),
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>
