@@ -23,11 +23,20 @@
   - narrow-then-filter: the permission-scoped id set leads and is sargable, so the flag-gated
     predicates apply to an already-narrow row set at no measurable cost
 
-  ## Two things the conversion improves
+  ## Two differences from the original worth a reviewer's attention
 
-  - HoneySQL inlines the current user id as a SQL *literal* (`PGM.USER_ID = 1`). Here it is a
-    `:value:` param, so the statement text is identical for every user and the statement cache is
-    actually reusable.
+  - The current user id is a `:value:` param here. The original emits it as a SQL *literal* via an
+    explicit `[:inline current-user-id]` in `collection/visible-collection-filter-clause`
+    (collection.clj:874; `data_permissions/sql.clj:274` does the same for the permission graph).
+    Search arms inherit it through `add-collection-join-and-where-clauses` rather than choosing it.
+
+    This is a deliberate call upstream, not an oversight, and the tradeoff cuts both ways: a
+    literal lets the planner use `permissions_group_membership` selectivity statistics for that
+    specific user, while a param gives one cached statement for all users but a generic estimate.
+    Which wins is the custom-plan-vs-generic-plan question, and it is unmeasured here. Treat this
+    as a behavioural difference to check before shipping, not as a fix. (`current-user-id` is
+    session-derived and an integer, so neither form is an injection concern.)
+
   - `verified` and `created-by` throw upstream for collection (`:verified filter for collection is
     not supported`), so the arm provably never carries them. That is invisible in the HoneySQL
     version, where it is an absence.
@@ -101,8 +110,9 @@
      personal-collection modes) return identical id sets to the HoneySQL original on the same data,
      with real personal collections present so the personal modes discriminate."
     "The '40 distinct shapes' figure was a HoneySQL artifact, not a property of the query."
-    "The static version is strictly better in one respect: the current user id becomes a bound
-     param instead of a SQL literal, so the statement text no longer varies per user."]
+    "The static version turns the inlined current user id into a bound param. That is a real
+     behavioural difference (one cached statement for all users, vs per-user plans with real
+     selectivity stats) and it is NOT established which is faster -- see the ns docstring."]
 
    :not-yet
    ["13 of the 14 arms remain. `collection` is among the simpler ones (2 joins); `card` has 8 and
