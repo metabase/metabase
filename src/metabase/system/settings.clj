@@ -39,6 +39,13 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
+(def ^:private SiteURL
+  "A value [[normalize-site-url]] can make a URL of. Deliberately not `ms/Url`: the setter normalizes before it
+  validates -- `example.com` is stored as `http://example.com` -- so the schema has to accept what the setter accepts,
+  not only what it stores. On the read side the value has already been normalized, so it passes either way."
+  [:fn {:error/message "a URL"}
+   (fn [s] (boolean (u/ignore-exceptions (normalize-site-url s))))])
+
 ;;; This value is *guaranteed* to never have a trailing slash :D
 ;;;
 ;;; It will also prepend `http://` to the URL if there's no protocol when it comes in
@@ -64,6 +71,7 @@
                     ;; prevent circular dependencies with [[metabase.server.settings]]
                     (setting/set-value-of-type! :boolean :redirect-all-requests-to-https false))
                   (setting/set-value-of-type! :string :site-url new-value)))
+  :schema     SiteURL
   :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
         Make sure that the address defined is how Metabase is being accessed.")

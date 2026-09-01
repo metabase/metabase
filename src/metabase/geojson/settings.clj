@@ -148,7 +148,8 @@
                   (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public
   :export?    true
-  :audit      :raw-value)
+  :audit      :raw-value
+  :schema     CustomGeoJSON)
 
 (defn user-defined-custom-geojson
   "Returns the subset of custom-geojson that users defined, without the built-in geojson entries."
