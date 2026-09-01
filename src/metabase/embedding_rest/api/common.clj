@@ -217,7 +217,10 @@
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
     (into {} (for [[slug value] merged-slug->value
                    :when        value]
-               [(get slug->id (name slug)) value]))))
+               [(or (get slug->id (name slug))
+                    (throw (ex-info (tru "The parameter {0} does not exist on this dashboard." (name slug))
+                                    {:status-code 400})))
+                value]))))
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 

@@ -32,25 +32,36 @@
   (params/param-target->field-id (:target param) card))
 
 (mu/defn card-param-constraints :- [:maybe ::chain-filter/constraints]
-  "Chain-filter constraints for the parameters of `card` named in `slug->value`, so a caller that has already fixed
-  some parameter values can limit the values returned for the rest to the rows those values match."
-  [card       :- ::queries.schema/card
+  "Chain-filter constraints for the parameters of `card` named in `slug->value`. Callers pass the parameters whose
+  values they have already fixed and the caller may not change, so the values returned for the rest can be limited to
+  the rows those values match. Throws if a slug names no parameter of the card: a constraint that silently went
+  missing would widen the values returned rather than narrow them.
+
+  Note this only reaches parameters whose values come from a Field -- one drawing values from a static list or from
+  another card is returned in full, as it is on a dashboard."
+  [card        :- ::queries.schema/card
    slug->value :- [:maybe [:map-of :any :any]]]
-  (vec (for [param (or (seq (:parameters card))
-                       (card/template-tag-parameters card))
-             :let  [value (get slug->value (keyword (:slug param)))]
-             :when (some? value)
-             :let  [field-id (param->field-id card param)]
-             :when field-id]
-         {:field-id field-id
-          :op       (params/param-type->op (:type param))
-          :options  (params/param-type->default-options (:type param))
-          :value    value})))
+  (let [slug->param (into {} (map (juxt (comp keyword :slug) identity)) (:parameters card))]
+    (vec (for [[slug value] slug->value
+               ;; an empty collection means "no value", as it does in `validate-and-merge-params`
+               :let  [value (if (and (not (string? value)) (seqable? value)) (not-empty value) value)
+                      param (or (get slug->param (keyword slug))
+                                (throw (ex-info (tru "The parameter {0} does not exist on this card." (name slug))
+                                                {:status-code 400})))]
+               :when (some? value)
+               ;; a parameter targeting a raw `{{variable}}` resolves to no Field and so cannot constrain, the same as
+               ;; on a dashboard
+               :let  [field-id (param->field-id card param)]
+               :when field-id]
+           {:field-id field-id
+            :op       (params/param-type->op (:type param))
+            :options  (or (:options param) (params/param-type->default-options (:type param)))
+            :value    value}))))
 
 (mu/defn- mapping->field-values :- ms/FieldValuesResult
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
-  dashcards to worry about. With `constraints`, values are chain-filtered to the rows those constraints match,
-  the same way the dashboard version filters on its other parameter values."
+  dashcards to worry about. With `constraints`, values are chain-filtered to the rows those constraints match, the
+  same way the dashboard version filters on its other parameter values."
   [card         :- ::queries.schema/card
    param        :- ::parameters.schema/parameter
    query-string :- [:maybe :string]

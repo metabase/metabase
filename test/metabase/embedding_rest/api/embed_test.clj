@@ -1331,6 +1331,41 @@
             (testing "a value within them still remaps"
               (is (= [40 "Japanese"] (client/client :get 200 (str (url "c1" "remapping") "?value=40")))))))))))
 
+(deftest card-param-values-locked-slug-must-exist-test
+  (testing "a locked entry in embedding_params whose slug names no parameter is refused rather than dropped"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp (mt/metadata-provider)]
+        (with-temp-card [card {:enable_embedding true
+                               ;; the policy locks "price"; the parameter entry is slugged "price_v2"
+                               :embedding_params {:price "locked" :cat "enabled"}
+                               :dataset_query
+                               (-> (lib/native-query mp (str "SELECT ID, CATEGORY_ID, PRICE FROM VENUES "
+                                                             "WHERE {{price}} AND {{cat}}"))
+                                   (lib/with-template-tags
+                                     {"price" {:id           "p1"
+                                               :name         "price"
+                                               :display-name "Price"
+                                               :type         :dimension
+                                               :widget-type  :number/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                      "cat"   {:id           "c1"
+                                               :name         "cat"
+                                               :display-name "Cat"
+                                               :type         :dimension
+                                               :widget-type  :number/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}}))
+                               :parameters [{:id "p1" :type :number/= :slug "price_v2" :name "Price"
+                                             :target [:dimension [:template-tag "price"]]}
+                                            {:id "c1" :type :number/= :slug "cat" :name "Cat"
+                                             :target [:dimension [:template-tag "cat"]]}]}]
+          (let [token (card-token card {:params {:price 4}})]
+            (testing "values"
+              (is (= "The parameter price does not exist on this card."
+                     (client/client :get 400 (format "embed/card/%s/params/c1/values" token)))))
+            (testing "remapping"
+              (is (= "The parameter price does not exist on this card."
+                     (client/client :get 400 (format "embed/card/%s/params/c1/remapping?value=2" token)))))))))))
+
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
 (defn- do-with-chain-filter-fixtures! [f]
