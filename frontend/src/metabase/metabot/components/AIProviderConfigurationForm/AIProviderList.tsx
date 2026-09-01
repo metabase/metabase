@@ -193,7 +193,11 @@ export function AIProviderList() {
                   key={item.key}
                   id={item.key}
                   disabled={!isDraggable(item)}
-                  draggingStyle={{ opacity: 0.5 }}
+                  draggingStyle={{
+                    opacity: 0.5,
+                    backgroundColor: "var(--mb-color-background)",
+                    borderRadius: "0.5rem",
+                  }}
                   role="listitem"
                 >
                   {(dragHandle) => (
