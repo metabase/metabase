@@ -1,6 +1,6 @@
 import type { Feature } from "geojson";
 
-import { sumMetric } from "metabase/visualizations/lib/dataset";
+import { sumMetric } from "metabase/viz-core";
 import type {
   CardId,
   DatasetColumn,

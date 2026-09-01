@@ -19,7 +19,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
+import { canSavePng } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dataset,

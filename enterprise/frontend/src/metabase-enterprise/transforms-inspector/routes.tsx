@@ -11,16 +11,18 @@ import { Route } from "metabase/router";
  * links that do not lead here.
  */
 const transformInspectPage = () =>
-  import("./pages/TransformInspectPage").then(({ TransformInspectPage }) => ({
+  import(
+    /* webpackChunkName: "transforms-inspector" */ "./pages/TransformInspectPage"
+  ).then(({ TransformInspectPage }) => ({
     Component: TransformInspectPage,
   }));
 
 const transformInspectorUpsellPage = () =>
-  import("metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/TransformInspectorUpsellPage").then(
-    ({ TransformInspectorUpsellPage }) => ({
-      Component: TransformInspectorUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "transforms-inspector-upsell" */ "metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/TransformInspectorUpsellPage"
+  ).then(({ TransformInspectorUpsellPage }) => ({
+    Component: TransformInspectorUpsellPage,
+  }));
 
 export function getInspectorUpsellRoutes() {
   return (

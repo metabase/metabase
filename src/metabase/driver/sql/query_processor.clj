@@ -1692,6 +1692,7 @@
 
 (def ^:private ^{:deprecated "0.64.0"} LegacyStringValueOrFieldOrExpression
   "Deprecated: use MBQL 5 going forward."
+  ;; a deprecated schema assembled from equally-deprecated legacy MBQL schemas; they go away together
   #_{:clj-kondo/ignore [:deprecated-var]}
   [:or
    [:and driver-api/mbql.schema.value
@@ -1739,6 +1740,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
+   ;; still typed by the deprecated legacy schema above; both go away with the MBQL 5 migration
    [type _ :as arg] :- #_{:clj-kondo/ignore [:deprecated-var]} LegacyStringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]

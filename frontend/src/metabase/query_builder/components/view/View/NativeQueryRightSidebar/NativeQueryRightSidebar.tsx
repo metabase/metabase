@@ -1,10 +1,5 @@
 import { match } from "ts-pattern";
 
-import { setTemplateTagConfig } from "metabase/query_builder/actions";
-import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
-import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
-import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
-import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
@@ -22,6 +17,12 @@ import type {
   Timeline,
   TimelineEvent,
 } from "metabase-types/api";
+
+import { setTemplateTagConfig } from "../../../../actions";
+import { getOriginalQuestion } from "../../../../store/selectors";
+import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
+import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
+import { TimelineSidebar } from "../../sidebars/TimelineSidebar";
 
 interface NativeQueryRightSidebarProps {
   question: Question;
@@ -121,6 +122,7 @@ export const NativeQueryRightSidebar = (
     .with({ isShowingTimelineSidebar: true }, () => (
       <TimelineSidebar
         {...props}
+        collectionId={question.collectionId()}
         onShowTimelineEvents={showTimelineEvents}
         onHideTimelineEvents={hideTimelineEvents}
         onSelectTimelineEvents={selectTimelineEvents}

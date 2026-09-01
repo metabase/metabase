@@ -16,7 +16,7 @@ type ReducerAction = { type: string; payload?: any; error?: unknown };
  *
  * Tables no longer go through the entity framework — CRUD lives in
  * `metabase/api/table`. The slice itself is still consumed by `getMetadata` in
- * `metabase/selectors/metadata.ts`, so we keep it in sync when:
+ * `metabase/metadata-store.ts`, so we keep it in sync when:
  *
  * - questions are created/updated/archived (the saved-question virtual table
  *   `card__<id>` representation needs to track them), and
@@ -84,10 +84,10 @@ export function tablesReducer(
     };
   }
 
-  // Keep `original_fields` in sync when something dispatches
-  // `updateMetadata(field, FieldSchema)` (e.g. RTK Query's getField
-  // onQueryStarted). Without this, edits land in state.entities.fields but
-  // hydrateTableFields keeps reading stale data from original_fields.
+  // Keep `original_fields` in sync when a field reaches the mirror, which the
+  // hydration listener does for every endpoint carrying one. Without this,
+  // edits land in state.entities.fields but hydrateTableFields keeps reading
+  // stale data from original_fields.
   //
   // Virtual card tables can have multiple `original_fields` entries with the
   // same `id` (a model with two columns both mapped to the same source

@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.settings :as channel.settings]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.test-util :as tu]
@@ -15,7 +16,9 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (defn- with-upload-mocks!
   "Helper to set up common mocks for CSV upload tests.
@@ -92,7 +95,7 @@
           result (failed-upload-result! (ex-info raw {:status-code 422}))]
       (is (= raw (get-in result [:upload-result :results 0 :error]))))))
 
-(deftest csv-upload-disabled-test
+(deftest ^:synchronized csv-upload-disabled-test
   (testing "POST /events with file upload when uploads are disabled"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -118,7 +121,7 @@
                     (is (some #(= "CSV uploads are not enabled on this Metabase instance." %)
                               @append-text-calls))))))))))))
 
-(deftest csv-upload-success-test
+(deftest ^:synchronized csv-upload-success-test
   (testing "POST /events with successful CSV upload"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -151,7 +154,7 @@
                     (is (some #(= "Your CSV has been uploaded successfully as a model." %)
                               @append-text-calls))))))))))))
 
-(deftest csv-upload-non-csv-skipped-test
+(deftest ^:synchronized csv-upload-non-csv-skipped-test
   (testing "POST /events with non-CSV file is skipped"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -183,7 +186,7 @@
                     (is (some #(= "Only CSV files can be uploaded." %)
                               @append-text-calls))))))))))))
 
-(deftest csv-upload-non-csv-no-text-test
+(deftest ^:synchronized csv-upload-non-csv-no-text-test
   (testing "POST /events with non-CSV file and no text responds directly without AI"
     (tu/with-slackbot-setup
       ;; No :text field - user uploaded file without typing anything
@@ -223,7 +226,7 @@
                       (is (str/includes? message-text "can only process CSV and TSV"))
                       (is (str/includes? message-text "query_result.xlsx")))))))))))))
 
-(deftest csv-upload-mixed-files-test
+(deftest ^:synchronized csv-upload-mixed-files-test
   (testing "POST /events with mix of CSV and non-CSV files"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
@@ -262,7 +265,7 @@
                   (testing "only CSV/TSV files were uploaded"
                     (is (= 2 (count @upload-calls)))))))))))))
 
-(deftest csv-upload-file-too-large-test
+(deftest ^:synchronized csv-upload-file-too-large-test
   (testing "POST /events with file exceeding size limit"
     (tu/with-slackbot-setup
       (let [too-large-size (inc (* 200 1024 1024)) ;; Just over 200MB
@@ -291,7 +294,7 @@
                   (testing "upload was not attempted"
                     (is (= 0 (count @upload-calls)))))))))))))
 
-(deftest csv-upload-no-permission-test
+(deftest ^:synchronized csv-upload-no-permission-test
   (testing "POST /events with file upload when user lacks permission"
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge
