@@ -286,7 +286,7 @@ export const getRoutes = (
         />
         <Route
           path="/admin/embedding/setup-guide"
-          element={redirect("/embedding")}
+          element={redirect("/embedding/get-started")}
         />
         <Route
           path="/admin/embedding/setup-guide/permissions"

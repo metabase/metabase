@@ -93,7 +93,7 @@ describe("admin routes", () => {
 
     expect(targets).toMatchObject({
       "/admin/embedding": "/embedding/security",
-      "/admin/embedding/setup-guide": "/embedding",
+      "/admin/embedding/setup-guide": "/embedding/get-started",
       "/admin/embedding/setup-guide/permissions":
         "/embedding/get-started/permissions",
       "/admin/embedding/setup-guide/sso": "/embedding/get-started/sso",
