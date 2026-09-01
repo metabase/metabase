@@ -13,12 +13,13 @@
 (comment metabase.lib.core/keep-me)
 
 (deftest ^:parallel strip-internal-keys-test
-  (doseq [[schema m] [[::lib.schema.binning/binning              {:strategy :num-bins, :num-bins 8}]
-                      [::lib.schema.parameter/parameter          {:type :category, :id "p1"}]
-                      [::lib.schema.template-tag/template-tag     {:type :text, :name "t", :display-name "T", :id "id1"}]
-                      [::lib.schema.constraints/constraints       {:max-results 10}]
-                      [::lib.schema.middleware-options/middleware-options {:userland-query? true}]
-                      [::lib.schema/page                          {:page 1, :items 10}]]
+  (doseq [[schema m]
+          [[::lib.schema.binning/binning                       {:strategy :num-bins, :num-bins 8}]
+           [::lib.schema.parameter/parameter                   {:type :category, :id "p1"}]
+           [::lib.schema.template-tag/template-tag             {:type :text, :name "t", :display-name "T", :id "id1"}]
+           [::lib.schema.constraints/constraints               {:max-results 10}]
+           [::lib.schema.middleware-options/middleware-options {:userland-query? true}]
+           [::lib.schema/page                                  {:page 1, :items 10}]]
           f      [lib.serialize/prepare-after-deserialization
                   lib.serialize/prepare-for-serialization]]
     (testing (str schema " via " f)
