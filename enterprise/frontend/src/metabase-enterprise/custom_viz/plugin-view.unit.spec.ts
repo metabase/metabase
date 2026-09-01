@@ -76,6 +76,23 @@ describe("toPluginSettings", () => {
     ).toEqual({ "card.title": "Plugin" });
   });
 
+  it("keeps a plugin's mutation of a nested value away from the host settings", () => {
+    const clickBehavior = { type: "crossfilter" };
+    const settings = { click_behavior: clickBehavior };
+
+    const pluginSettings = toPluginSettings(settings, PREFIX);
+    const pluginClickBehavior: unknown = Reflect.get(
+      pluginSettings,
+      "click_behavior",
+    );
+    if (!isObject(pluginClickBehavior)) {
+      throw new Error("Expected the plugin to see click_behavior");
+    }
+    pluginClickBehavior.type = "link";
+
+    expect(clickBehavior.type).toBe("crossfilter");
+  });
+
   it("reuses the translation for the same settings object", () => {
     const settings = { [`${PREFIX}threshold`]: 42 };
 

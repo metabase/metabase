@@ -52,10 +52,11 @@ export function toPluginSettings(
     .filter(([key]) => key.startsWith(prefix))
     .map(([key, value]) => [key.slice(prefix.length), value]);
 
-  const pluginSettings: PluginSettings = Object.fromEntries([
-    ...hostEntries,
-    ...pluginEntries,
-  ]);
+  // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
+  // through the sandbox membrane. Settings are JSON-serializable — they persist as JSON.
+  const pluginSettings: PluginSettings = clone(
+    Object.fromEntries([...hostEntries, ...pluginEntries]),
+  );
 
   pluginSettingsCache.set(settings, { prefix, pluginSettings });
 
