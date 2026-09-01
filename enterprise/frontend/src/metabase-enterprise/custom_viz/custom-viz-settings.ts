@@ -156,11 +156,13 @@ function prefixSettingIds(
   if (!Array.isArray(ids)) {
     return undefined;
   }
-  // Dependencies may only reference the plugin's own settings; drop anything else
-  // (e.g. a host id like `card.title` listed by a bundle built against the old SDK).
-  return ids.flatMap((id) =>
-    typeof id === "string" && declaredIds.has(id) ? [`${prefix}${id}`] : [],
-  );
+
+  // Dependencies may only reference the plugin's own settings - drop anything else.
+  return ids.flatMap((id) => {
+    return typeof id === "string" && declaredIds.has(id)
+      ? [`${prefix}${id}`]
+      : [];
+  });
 }
 
 function isComponentWidget(
