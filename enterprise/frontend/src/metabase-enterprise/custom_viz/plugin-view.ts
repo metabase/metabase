@@ -50,7 +50,7 @@ export function toPluginSettings(
     .map(([key, value]) => [key.slice(prefix.length), value]);
 
   // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
-  // through the sandbox membrane. Settings are JSON-serializable — they persist as JSON.
+  // through the sandbox membrane.
   const pluginSettings: PluginSettings = clone(
     Object.fromEntries([...hostEntries, ...pluginEntries]),
   );
