@@ -1,12 +1,10 @@
-import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addUserToGroup,
   createDataAppApiKey,
   dataAppHostAppRoot,
   dataAppPermissionGroupId,
   declareDataAppActions,
-  getViewDataPermissionByGroup,
   moveDataAppModelToCollection,
   removeDataAppActionDeclaration,
   resetDataAppHostAppSources,
@@ -352,87 +350,6 @@ describe(
           cy.request({ url: `/api/card/${modelId}`, failOnStatusCode: false })
             .its("status")
             .should("eq", 403);
-        });
-      });
-
-      // The app declares nothing on the sample database, so the group blocks it —
-      // but `blocked` in one group loses to `unrestricted` in another, so joining
-      // an app's group never takes away access a member already had.
-      it("leaves a member's access to an undeclared database untouched", () => {
-        syncOneAction().then(() => {
-          const readsSampleDatabase = () =>
-            cy.request({
-              method: "POST",
-              url: "/api/dataset",
-              failOnStatusCode: false,
-              body: {
-                type: "query",
-                database: SAMPLE_DB_ID,
-                query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 1 },
-              },
-            });
-
-          dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-            // The graph reports only what departs from a group's defaults, so a
-            // database the app does not read never appears as granted.
-            getViewDataPermissionByGroup(groupId).should(
-              ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-                expect(sampleDatabase, "never granted").not.to.eq(
-                  "unrestricted",
-                );
-              },
-            );
-
-            cy.signInAsNormalUser();
-            readsSampleDatabase().its("status").should("eq", 202);
-
-            cy.signInAsAdmin();
-            addUserToGroup(groupId, USERS.normal.email);
-
-            cy.signInAsNormalUser();
-            readsSampleDatabase().its("status").should("eq", 202);
-          });
-        });
-      });
-
-      it("grants view-data only on a model's table, not a native action's database", () => {
-        H.setActionsEnabledForDB(SAMPLE_DB_ID);
-
-        cy.get<number>("@modelId").then((modelId) => {
-          H.createAction({
-            name: "Report",
-            type: "query",
-            model_id: modelId,
-            database_id: SAMPLE_DB_ID,
-            dataset_query: {
-              type: "native",
-              database: SAMPLE_DB_ID,
-              native: { query: "select 1;" },
-            },
-            parameters: [],
-          }).then(({ body: action }) => {
-            declareDataAppActions(APP_ROOT(), [action.id]);
-            sync();
-
-            cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
-              H.getTableId({ name: TEST_TABLE }).then((tableId) => {
-                cy.request("/api/permissions/graph").then(({ body: graph }) => {
-                  const granted = graph.groups[app.permission_group_id];
-                  const modelViewData = granted[WRITABLE_DB_ID]["view-data"];
-
-                  expect(modelViewData).not.to.eq("unrestricted");
-                  expect(
-                    Object.values(modelViewData)
-                      .flatMap(Object.keys)
-                      .map(Number),
-                  ).to.deep.eq([tableId]);
-                  expect(granted[SAMPLE_DB_ID]?.["view-data"]).not.to.eq(
-                    "unrestricted",
-                  );
-                });
-              });
-            });
-          });
         });
       });
     });

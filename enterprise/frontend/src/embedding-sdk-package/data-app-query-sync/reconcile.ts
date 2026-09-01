@@ -490,8 +490,4 @@ export async function reconcileQueries({
   if (!fs.existsSync(path.join(appRoot, RESOURCE_LOCKFILE))) {
     writeResourceLockfile(appRoot, lockfile);
   }
-
-  return [
-    ...new Set(resolvedQueries.flatMap(({ resolved }) => resolved.table_ids)),
-  ].sort((a, b) => a - b);
 }
