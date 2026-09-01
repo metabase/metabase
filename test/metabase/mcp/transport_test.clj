@@ -234,6 +234,26 @@
                                                 (jsonrpc-request "initialize"))]
       (is (= 403 (:status response)))
       (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
+  (testing (str "GHY-4337: an origin differs from a host when it differs in ANY of scheme, domain, or port — so "
+                "matching on the domain alone lets every other app on the same hostname through. That is the whole "
+                "local-MCP threat model: a page served by some other tool on 127.0.0.1 driving this server with the "
+                "user's cookies. `localhost` is one domain, not one origin.")
+    (let [response (mcp-request (jsonrpc-request "initialize")
+                                {"host" "localhost:3000" "origin" "http://localhost:9999"})]
+      (is (= 403 (:status response)))
+      (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
+  (testing "the same host and the same explicit port is still same-origin — the port check must not reject the
+            requests it is supposed to serve"
+    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                     {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
+  (testing (str "when only one side carries an explicit port the check falls back to the domain. A reverse proxy "
+                "can rewrite `Host` to add or drop a port that the browser's `Origin` does not carry, and a 403 on "
+                "a legitimate deployment is worse than the residual: an attacker exploiting this has to occupy the "
+                "scheme's DEFAULT port locally, which non-default-port dev servers by definition do not.")
+    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                     {"host" "localhost:3000" "origin" "http://localhost"}))))
+    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                     {"host" "localhost" "origin" "http://localhost:3000"})))))
   (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
     (is (= 200 (:status (mcp-request (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
   (testing "same-origin is allowed, including bracketed IPv6 and mixed case"

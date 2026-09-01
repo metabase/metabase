@@ -158,17 +158,42 @@
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
-(defn- normalize-domain
-  "Extract and lowercase the domain from a URL or Host-style header value.
-  Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+(defn- normalize-authority
+  "Extract `[domain port]` from a URL or Host-style header value, lowercasing the domain and leaving `port` as the
+  string the header carried (nil when it carried none). Bracketed IPv6 forms (`[::1]:3000`) are handled correctly.
+  Returns nil for unparsable input.
   Uses [[mw.security/try-parse-url]] (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
   are expected and shouldn't spam the error logs."
   [url]
-  (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
+  (when-let [{:keys [domain port]} (some-> url str mw.security/try-parse-url)]
+    [(u/lower-case-en domain) port]))
 
-(defn- same-origin-host? [origin host]
-  (let [origin-domain (normalize-domain origin)]
-    (and (some? origin-domain) (= origin-domain (normalize-domain host)))))
+(defn- same-origin-host?
+  "Is `origin` the same origin as the host the request was addressed to?
+
+  Compares domain AND port: an origin is a (scheme, domain, port) triple, so matching on the domain alone treats
+  every other app on the same hostname as same-origin. On a developer machine that is the whole threat model —
+  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server
+  with the user's cookies.
+
+  Two deliberate loosenesses:
+
+  - The ports are compared only when BOTH headers carry one. A reverse proxy can rewrite `Host` to add or drop a
+    port the browser's `Origin` does not carry, and a 403 on a legitimate deployment is worse than the residual
+    here: exploiting it requires occupying the scheme's DEFAULT port locally, which the dev servers this guard
+    is aimed at do not use.
+  - Scheme is not compared at all, because `Host` does not carry one. The request's own `:scheme` is not a
+    substitute — behind a TLS-terminating proxy it reads `:http` while the browser's `Origin` says `https` (cf.
+    #75110). Closing that would mean matching `Origin` against `site-url`'s origin rather than against `Host`,
+    which is a stronger check but a larger behavioral change than this guard warrants."
+  [origin host]
+  (let [[origin-domain origin-port] (normalize-authority origin)
+        [host-domain host-port]     (normalize-authority host)]
+    (and (some? origin-domain)
+         (= origin-domain host-domain)
+         (or (nil? origin-port)
+             (nil? host-port)
+             (= origin-port host-port)))))
 
 (defn- approved-mcp-origin? [origin]
   ;; Pre-lowercase both inputs so DNS hostname matching is case-insensitive (per RFC) and so mixed-case
