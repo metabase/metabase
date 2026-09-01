@@ -2470,11 +2470,14 @@
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
+                    :model/Document
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
+                    :model/Transform
+                    :model/TransformRun
                     :model/User}}
 
   tiles

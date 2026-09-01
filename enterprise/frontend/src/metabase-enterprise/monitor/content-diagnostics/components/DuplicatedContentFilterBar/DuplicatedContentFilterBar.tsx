@@ -1,4 +1,4 @@
-import { type ReactNode, memo } from "react";
+import { memo } from "react";
 
 import { Group } from "metabase/ui";
 
@@ -18,7 +18,6 @@ type DuplicatedContentFilterBarProps = {
   onFilterOptionsChange: (
     filterOptions: DuplicatedContentFilterOptions,
   ) => void;
-  actions?: ReactNode;
 };
 
 export const DuplicatedContentFilterBar = memo(
@@ -28,7 +27,6 @@ export const DuplicatedContentFilterBar = memo(
     isLoading,
     onQueryChange,
     onFilterOptionsChange,
-    actions,
   }: DuplicatedContentFilterBarProps) {
     const hasDefaultFilterOptions = areDuplicatedFilterOptionsEqual(
       filterOptions,
@@ -44,7 +42,6 @@ export const DuplicatedContentFilterBar = memo(
           hasDefaultOptions={hasDefaultFilterOptions}
           onFilterOptionsChange={onFilterOptionsChange}
         />
-        {actions}
       </Group>
     );
   },

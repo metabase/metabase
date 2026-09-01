@@ -15,7 +15,6 @@ import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
 import { StaleContentFilterBar } from "./StaleContentFilterBar";
 import { StaleContentSidebar } from "./StaleContentSidebar";
 import { StaleContentTable } from "./StaleContentTable";
@@ -148,7 +147,6 @@ export function StaleContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
-            actions={<DiagnosticsScanButton />}
           />
           {error != null ? (
             <Center flex={1}>

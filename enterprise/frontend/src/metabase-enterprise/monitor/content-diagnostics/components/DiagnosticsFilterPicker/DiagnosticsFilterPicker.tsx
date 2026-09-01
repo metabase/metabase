@@ -63,7 +63,16 @@ export function DiagnosticsFilterPicker<
   return (
     <Popover opened={isOpened} onDismiss={close}>
       <Popover.Target>
-        <Indicator size={8} offset={12} disabled={hasDefaultOptions}>
+        <Indicator
+          size={8}
+          offset={12}
+          disabled={hasDefaultOptions}
+          attributes={{
+            indicator: {
+              "data-testid": "content-diagnostics-filter-indicator",
+            },
+          }}
+        >
           <Button
             leftSection={<FixedSizeIcon name="filter" aria-hidden />}
             disabled={isDisabled}

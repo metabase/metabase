@@ -13,6 +13,7 @@
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.collections.models.collection :as collection]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -166,3 +167,10 @@
        :finding_count (count findings)
        ;; coerce to a primitive double so Math/round resolves without reflection (u/since-ms is un-hinted)
        :duration_ms   (Math/round (double duration-ms))})))
+
+(defenterprise run-content-diagnostics-scan!
+  "EE implementation: runs a full scan synchronously and returns its topline. Only for the testing API —
+  see [[metabase.testing-api.api]]."
+  :feature :none
+  []
+  (scan!))
