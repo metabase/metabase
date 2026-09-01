@@ -73,11 +73,6 @@
     box-shadow: none;
     transform: none;
   }
-
-  & svg {
-    width: 0.75rem;
-    height: 0.75rem;
-  }
 }
 
 .DashCardRoot:hover .DashCardMenuButton,

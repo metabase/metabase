@@ -17,17 +17,17 @@ export const DashCardMenuButton = forwardRef(function DashCardMenuButton(
 ) {
   return (
     <ActionIcon
-      {...props}
       ref={ref}
       aria-label={t`More options`}
       size="xs"
+      {...props}
       className={cx(
         S.DashCardMenuButton,
         SAVING_DOM_IMAGE_HIDDEN_CLASS,
         className,
       )}
     >
-      <Icon name="ellipsis" />
+      <Icon name="ellipsis" size={12} />
     </ActionIcon>
   );
 });
