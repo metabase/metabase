@@ -3166,7 +3166,8 @@
   {:team "Gadget"
    :api  #{metabase-enterprise.content-diagnostics.api
            metabase-enterprise.content-diagnostics.init}
-   :uses #{api
+   :uses #{analytics-interface
+           api
            collections
            documents
            events
@@ -3177,6 +3178,7 @@
            request
            settings
            task
+           tracing
            util
            enterprise/stale}
    :model-imports #{:model/Card

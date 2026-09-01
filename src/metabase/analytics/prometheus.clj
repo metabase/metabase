@@ -519,6 +519,25 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   ;; content diagnostics scan (enterprise/content-diagnostics): one run/day/instance where the feature is on
+   (prometheus/histogram :metabase-content-diagnostics/scan-duration-ms
+                         {:description "Duration in milliseconds of one Content Diagnostics scan (all checkers, enrichment, insert, supersession), by outcome."
+                          :labels      [:status]
+                          ;; 100ms -> 24h: the transforms job-run set (100ms -> 6h) plus 12h and 24h. Nothing caps
+                          ;; a run - DisallowConcurrentExecution defers the next fire rather than stopping this one,
+                          ;; and POST /scan bypasses the job - so anything slower than a day lands in +Inf.
+                          :buckets     [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000 43200000 86400000]})
+   ;; total ms, not a histogram: at one scan/day/instance there are too few samples for per-instance stage
+   ;; percentiles to mean anything, and the histogram would cost 153 series/instance against this counter's 9.
+   (prometheus/counter :metabase-content-diagnostics/scan-stage-ms
+                       {:description "Total milliseconds Content Diagnostics scans spent in each stage (checker.<name>, enrich, insert, invalidate); bumped on stage success only."
+                        :labels      [:stage]})
+   (prometheus/counter :metabase-content-diagnostics/scan-failures
+                       {:description "Number of Content Diagnostics scans that threw, by the stage that was running (unknown = outside any stage)."
+                        :labels      [:stage]})
+   (prometheus/counter :metabase-content-diagnostics/findings-persisted
+                       {:description "Number of findings persisted by a Content Diagnostics scan that completed its insert stage, by finding type."
+                        :labels      [:finding-type]})
    ;; explorations
    (prometheus/gauge :metabase-explorations/pending-queue-depth
                      {:description "Number of exploration_query rows currently in 'pending' status (awaiting execution by the explorations background runner)."})
