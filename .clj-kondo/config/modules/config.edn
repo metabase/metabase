@@ -3727,6 +3727,7 @@
            models
            permissions
            premium-features
+           request
            search
            settings
            task
