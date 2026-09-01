@@ -187,7 +187,7 @@
   (let [analysis-result (query-analyzer/tables-for-native query :all-drivers-trusted? true)
         queried-tables (->> analysis-result
                             :tables
-                            (map #(set/rename-keys % {:table :name, :table-id :id})))
+                            (map #(set/rename-keys % {:table :name, :table_id :id})))
         {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)
         recognized-tables (used-tables-from-ids database (keep :id recognized-tables))]
     (concat recognized-tables

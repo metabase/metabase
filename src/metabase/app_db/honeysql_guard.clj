@@ -70,6 +70,9 @@
       (uuid? v)
       (inst? v)
       (bytes? v)
+      (instance? java.sql.Blob v)
+      (instance? java.sql.Clob v)
+      (instance? java.sql.Array v)
       (instance? java.time.temporal.Temporal v)
       (instance? java.time.temporal.TemporalAmount v)))
 

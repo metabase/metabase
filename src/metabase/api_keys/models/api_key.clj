@@ -3,6 +3,7 @@
   various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [java-time.api :as t]
    [malli.error :as me]
    [metabase.api-keys.core :as-alias api-keys]
@@ -35,13 +36,16 @@
   (when (seq api-keys)
     (let [api-key-id->permissions-groups
           (group-by :api-key-id
-                    (t2/query {:select [[:pg.name :group-name]
-                                        [:pg.id :group-id]
-                                        [:api_key.id :api-key-id]]
-                               :from   [[:permissions_group :pg]]
-                               :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                                        :api_key [:= :api_key.user_id :pgm.user_id]]
-                               :where  [:in :api_key.id (map u/the-id api-keys)]}))
+                    (map #(set/rename-keys % {:group_name :group-name
+                                              :group_id   :group-id
+                                              :api_key_id :api-key-id})
+                         (t2/query {:select [[:pg.name :group_name]
+                                             [:pg.id :group_id]
+                                             [:api_key.id :api_key_id]]
+                                    :from   [[:permissions_group :pg]]
+                                    :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
+                                             :api_key [:= :api_key.user_id :pgm.user_id]]
+                                    :where  [:in :api_key.id (map u/the-id api-keys)]})))
           api-key-id->group
           (fn [api-key-id]
             (let [{name :group-name
