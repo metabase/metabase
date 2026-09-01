@@ -15,10 +15,10 @@ import {
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
   type MetabotIncompleteFinishReason,
-  type MetabotKnownTurnErrorCode,
   type MetabotMessage,
   type MetabotMessagePart,
   type MetabotMessageStatus,
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
   forkConversation,
   isChainOfThoughtMessage,
   isTextPart,
@@ -463,16 +463,9 @@ export const AgentMessage = ({
   );
 };
 
-// Errors where re-sending the same turn cannot end differently: the conversation needs a refresh, the
-// subscription an upgrade, the quota a reset, the user a permission. Everything else gets a Retry —
-// most usefully a provider failure, whose retry resolves to the fallback provider because the failure
-// was recorded when the turn died.
-const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>([
-  "conversation_out_of_sync",
-  "metabase_ai_managed_locked",
-  "ai_usage_limit_reached",
-  "permission_denied",
-] satisfies MetabotKnownTurnErrorCode[]);
+const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>(
+  UNRETRIABLE_METABOT_TURN_ERROR_CODES,
+);
 
 const AgentErroredTurnAlert = ({
   error,
@@ -488,36 +481,40 @@ const AgentErroredTurnAlert = ({
   onRefreshConversation?: () => void;
 }) => {
   const isOutOfSync = error.type === "conversation_out_of_sync";
-  const canRetry =
-    onRetry != null && !UNRETRIABLE_ERROR_TYPES.has(error.type);
+  const isRetriable = !UNRETRIABLE_ERROR_TYPES.has(error.type);
+
+  let cta: ReactNode;
+  if (isOutOfSync && onRefreshConversation) {
+    cta = (
+      <Button
+        variant="default"
+        size="compact-xs"
+        fz="xs"
+        onClick={onRefreshConversation}
+        data-testid="metabot-chat-message-refresh"
+      >
+        {t`Refresh`}
+      </Button>
+    );
+  } else if (isRetriable && onRetry != null) {
+    cta = (
+      <Button
+        variant="default"
+        size="compact-xs"
+        fz="xs"
+        onClick={onRetry}
+        data-testid="metabot-chat-message-retry"
+      >
+        {t`Retry`}
+      </Button>
+    );
+  }
 
   return (
     <AgentTurnAlert
       variant="error"
       message={display?.message ?? t`Something went wrong`}
-      cta={
-        isOutOfSync && onRefreshConversation ? (
-          <Button
-            variant="default"
-            size="compact-xs"
-            fz="xs"
-            onClick={onRefreshConversation}
-            data-testid="metabot-chat-message-refresh"
-          >
-            {t`Refresh`}
-          </Button>
-        ) : canRetry ? (
-          <Button
-            variant="default"
-            size="compact-xs"
-            fz="xs"
-            onClick={onRetry}
-            data-testid="metabot-chat-message-retry"
-          >
-            {t`Retry`}
-          </Button>
-        ) : undefined
-      }
+      cta={cta}
       footer={
         error.type === "metabase_ai_managed_locked" && (
           <MetabotManagedProviderLimitActions inline />
