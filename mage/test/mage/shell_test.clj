@@ -29,8 +29,10 @@
           (< (System/nanoTime) deadline)                       (do (Thread/sleep gone-poll-interval-ms) (recur))
           :else                                                false)))))
 
-;; Short, so the test spends no longer than it has to waiting for the timeout to fire.
-(def ^:private command-timeout-ms 200)
+;; Short, so the test spends no longer than it has to waiting for the timeout to fire -- but long enough
+;; that a loaded CI runner can still fork twice and write both pids before the kill lands. At 200 ms the
+;; file could come up one line short and fail the `child` assertion for the wrong reason.
+(def ^:private command-timeout-ms 1000)
 
 ;; Long enough that a run which merely waits the command out cannot come in under [[kill-bound-ms]].
 (def ^:private grandchild-sleep-seconds 30)
