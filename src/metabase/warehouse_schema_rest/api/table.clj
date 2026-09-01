@@ -90,24 +90,28 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [like       (fn [field pattern]
-                     (case (app-db/db-type)
-                       (:h2 :postgres) [:ilike field pattern]
-                       [::h2x/collate [:like field pattern] "utf8mb4_unicode_ci"]))
-        pattern    (some-> term
-                           (str/replace "\\" "\\\\")
-                           (str/replace "_" "\\_")
-                           (str/replace "%" "\\%")
-                           (str/replace "*" "%")
-                           (cond-> (not (str/ends-with? term "%")) (str "%")))
+  (let [db-type    (app-db/db-type)
+        ;; `*` is the user-facing wildcard; everything else in `term` has already been escaped to match literally
+        glob       (fn [escaped]
+                     (-> escaped
+                         (str/replace "*" "%")
+                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        ci-pattern (fn [pattern]
+                     (case db-type
+                       (:h2 :postgres) pattern
+                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        like       (fn [field wrap]
+                     [(case db-type (:h2 :postgres) :ilike :like)
+                      field
+                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
         where      (cond-> [:and (if include-transform-targets
                                    [:or [:= :active true] [:= :transform_target true]]
                                    [:= :active true])]
                      (not (str/blank? term)) (conj [:or
-                                                    (like :name pattern)
-                                                    (like :display_name pattern)
+                                                    (like :name identity)
+                                                    (like :display_name identity)
                                                     ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name (str "% " pattern))])
+                                                    (like :display_name #(str "% " %))])
                      visibility-type         (conj [:= :visibility_type visibility-type])
                      data-layer              (conj [:= :data_layer      (name data-layer)])
                      data-source             (conj [:= :data_source     (name data-source)])
@@ -316,7 +320,6 @@
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}

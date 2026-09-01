@@ -1,7 +1,6 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { SET_METADATA_DIFF } from "metabase/redux/query-builder";
 import type {
   DatasetEditorTab,
   Dispatch,
@@ -10,7 +9,8 @@ import type {
 import { addUndo } from "metabase/redux/undo";
 import { navigate } from "metabase/router";
 
-import { getQuestion } from "../selectors";
+import { SET_METADATA_DIFF } from "../store/actions";
+import { getQuestion } from "../store/selectors";
 
 import { apiUpdateQuestion, updateQuestion } from "./core";
 import { runDirtyQuestionQuery } from "./querying";

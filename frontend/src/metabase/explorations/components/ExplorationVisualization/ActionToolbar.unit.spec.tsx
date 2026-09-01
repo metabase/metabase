@@ -14,11 +14,15 @@ import type {
   Timeline,
   TimelineId,
 } from "metabase-types/api";
-import { createMockTimeline } from "metabase-types/api/mocks";
+import {
+  createMockTimeline,
+  createMockTimelineEvent,
+} from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 import { createMockDocumentContent } from "metabase-types/api/mocks/document";
 
 import { ActionToolbar } from "./ActionToolbar";
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
@@ -60,6 +64,8 @@ interface SetupOpts {
   selectedTimelineId?: TimelineId | null;
   showTimelineDropdown?: boolean;
   withUndos?: boolean;
+  charts?: ExplorationChartForDocumentEmbed[];
+  canAddToSummary?: boolean;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -70,16 +76,22 @@ function setup({
   selectedTimelineId = null,
   showTimelineDropdown = true,
   withUndos = false,
+  charts = [],
+  canAddToSummary = false,
   onPreviousPage,
   onNextPage,
 }: SetupOpts = {}) {
   const onSelectTimelineId = jest.fn();
   const setCommentDrafts = jest.fn();
+  const setSelectedSummary = jest.fn();
 
   renderWithProviders(
     <ActionToolbar
       explorationId={EXPLORATION_ID}
       page={page}
+      charts={charts}
+      canAddToSummary={canAddToSummary}
+      setSelectedSummary={setSelectedSummary}
       commentDrafts={{}}
       setCommentDrafts={setCommentDrafts}
       showTimelineDropdown={showTimelineDropdown}
@@ -92,7 +104,13 @@ function setup({
     { withUndos },
   );
 
-  return { onSelectTimelineId, setCommentDrafts, onPreviousPage, onNextPage };
+  return {
+    onSelectTimelineId,
+    setCommentDrafts,
+    setSelectedSummary,
+    onPreviousPage,
+    onNextPage,
+  };
 }
 
 async function openTimelineMenu() {
@@ -684,6 +702,150 @@ describe("ActionToolbar", () => {
         window.location.href,
       );
       expect(await screen.findByText("Copied link")).toBeInTheDocument();
+    });
+  });
+
+  describe("Add to Summary", () => {
+    const chart: ExplorationChartForDocumentEmbed = {
+      queryIds: [101],
+      label: "Revenue",
+      display: "line",
+      visualization_settings: { "graph.split_panels": true },
+    };
+
+    it("is hidden when canAddToSummary is false", () => {
+      setup({ charts: [chart], canAddToSummary: false });
+
+      expect(
+        screen.queryByRole("button", { name: "Add to Summary" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("appends a single chart directly from the toolbar button", async () => {
+      fetchMock.post(`path:/api/exploration/${EXPLORATION_ID}/summary/append`, {
+        id: 9,
+        name: "Summary",
+        exploration_id: EXPLORATION_ID,
+      });
+
+      const { setSelectedSummary } = setup({
+        charts: [chart],
+        canAddToSummary: true,
+        withUndos: true,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to Summary" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/${EXPLORATION_ID}/summary/append`,
+          { method: "POST" },
+        );
+        expect(calls).toHaveLength(1);
+        // Body is a JSON string from fetch-mock; parse to assert the payload.
+        expect(JSON.parse(String(calls[0].options?.body))).toEqual({
+          exploration_query_ids: [101],
+          display: "line",
+          visualization_settings: { "graph.split_panels": true },
+        });
+      });
+
+      expect(await screen.findByText(/Added to/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "View" }));
+      expect(setSelectedSummary).toHaveBeenCalledWith({ scrollIntoView: true });
+    });
+
+    it("seeds timeline selection into visualization_settings on append", async () => {
+      fetchMock.post(`path:/api/exploration/${EXPLORATION_ID}/summary/append`, {
+        id: 9,
+        name: "Summary",
+        exploration_id: EXPLORATION_ID,
+      });
+
+      const event = createMockTimelineEvent({
+        id: 7,
+        timeline_id: releases.id,
+      });
+      setup({
+        charts: [chart],
+        canAddToSummary: true,
+        withUndos: true,
+        timelines: [
+          createMockTimeline({
+            ...releases,
+            events: [event],
+          }),
+        ],
+        selectedTimelineId: releases.id,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to Summary" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/${EXPLORATION_ID}/summary/append`,
+          { method: "POST" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(String(calls[0].options?.body))).toEqual({
+          exploration_query_ids: [101],
+          display: "line",
+          visualization_settings: {
+            "graph.split_panels": true,
+            "timeline.selected_timeline_ids": [releases.id],
+            "timeline.excluded_timeline_event_ids": [],
+          },
+        });
+      });
+    });
+
+    it("opens a chart picker menu for multi-chart pages", async () => {
+      fetchMock.post(`path:/api/exploration/${EXPLORATION_ID}/summary/append`, {
+        id: 9,
+        name: "Summary",
+        exploration_id: EXPLORATION_ID,
+      });
+
+      setup({
+        charts: [
+          chart,
+          {
+            queryIds: [201],
+            label: "Sessions (US)",
+            display: "map",
+            visualization_settings: {},
+          },
+        ],
+        canAddToSummary: true,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to Summary" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Revenue" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Sessions (US)" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/${EXPLORATION_ID}/summary/append`,
+          { method: "POST" },
+        );
+        expect(calls).toHaveLength(1);
+        // Body is a JSON string from fetch-mock; parse to assert the payload.
+        expect(JSON.parse(String(calls[0].options?.body))).toMatchObject({
+          exploration_query_ids: [201],
+          display: "map",
+        });
+      });
     });
   });
 });

@@ -65,3 +65,36 @@
                              {::mb.viz/column-title "Column Name Title"}}}
               titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
           (is (= ["Column Name Title"] titles)))))))
+
+(deftest ^:parallel viz-settings-for-col-malformed-column-settings-test
+  (testing "a malformed value in a column's stored :settings is dropped instead of killing the export (SEC-868)"
+    (doseq [bad-click-behavior ["x" [1 2] 42 true]]
+      (testing (str "click_behavior = " (pr-str bad-click-behavior))
+        (let [col {:name           "N"
+                   :display_name   "N"
+                   :base_type      :type/Integer
+                   :effective_type :type/Integer
+                   :field_ref      [:field "N" {:base-type :type/Integer}]
+                   :source         :native
+                   :settings       {:click_behavior bad-click-behavior}}
+              settings (streaming.common/viz-settings-for-col col {})]
+          (is (map? settings))
+          (is (not (contains? settings ::mb.viz/click-behavior))))))
+    (testing "well-formed sibling entries in the same :settings map survive"
+      (let [col      {:name      "N"
+                      :base_type :type/Integer
+                      :field_ref [:field "N" {:base-type :type/Integer}]
+                      :settings  {:click_behavior "x"
+                                  :column_title   "Legit Title"}}
+            settings (streaming.common/viz-settings-for-col col {})]
+        (is (= "Legit Title" (::mb.viz/column-title settings)))))
+    (testing "a well-formed :click_behavior is still normalized"
+      (let [col      {:name      "N"
+                      :base_type :type/Integer
+                      :field_ref [:field "N" {:base-type :type/Integer}]
+                      :settings  {:click_behavior {:type "link" :linkType "url" :linkTextTemplate "http://example.com"}}}
+            settings (streaming.common/viz-settings-for-col col {})]
+        (is (= {::mb.viz/click-behavior-type ::mb.viz/link
+                ::mb.viz/link-type           ::mb.viz/url
+                ::mb.viz/link-text-template  "http://example.com"}
+               (::mb.viz/click-behavior settings)))))))

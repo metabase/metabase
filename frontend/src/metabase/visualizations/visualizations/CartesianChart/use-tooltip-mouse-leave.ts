@@ -2,8 +2,8 @@ import type { EChartsType } from "echarts/core";
 import { useEffect, useRef } from "react";
 import _ from "underscore";
 
-import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/viz-core";
 
 const ECHARTS_TOOLTIP_SELECTOR = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS} > div`;
 const MOUSEMOVE_THROTTLE_MS = 50;

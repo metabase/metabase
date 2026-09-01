@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -435,6 +436,39 @@
   (binding [pgm/*allow-direct-deletion* true]
     (next-method model explicit-attributes f)))
 
+;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
+;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
+;; inside another User's `with-temp` scope. Clear the cache whenever a `with-temp` scope exits.
+;; Use a unique method key because [[metabase.test.redefs]] already defines `:around :default`. Methods with the same
+;; key overwrite one another, which would disable either this eviction or the rollback-only transaction wrapper.
+(methodical/add-aux-method-with-unique-key!
+ #'t2.with-temp/do-with-temp* :around :default
+ (fn [next-method model explicit-attributes f]
+   (next-method model explicit-attributes
+                (fn [temp-object]
+                  (try
+                    (f temp-object)
+                    (finally
+                      (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
+ ::evict-personal-collection-cache)
+
+(def ^:private dimension-lock
+  "Serialises temporary Dimensions against each other.
+
+  A Dimension names a Field the whole suite shares, and it lives until its scope ends. Two threads creating one at
+  once deadlock on the unique index over `dimension.field_id`: each holds the record lock the other's uniqueness
+  check wants, while asking for the insert-intention gap in front of it. MySQL and MariaDB pick a victim and roll
+  it back, taking its savepoints with it.
+
+  Tests that create no Dimension keep running in parallel alongside these."
+  (Object.))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Dimension
+  [model explicit-attributes f]
+  ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
+  (locking dimension-lock
+    (next-method model explicit-attributes f)))
+
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
     (methodical/defmethod t2.with-temp/with-temp-defaults model
@@ -497,6 +531,7 @@
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal
+  :encryption :no
   :setter :none
   :default "abc")
 
@@ -1078,6 +1113,7 @@
         called-query? (promise)
         pause-query (promise)
         query-thunk (fn []
+                      ;; legacy query builder; helper not yet migrated to Lib
                       #_{:clj-kondo/ignore [:deprecated-var]}
                       (data/run-mbql-query checkins
                         {:aggregation [[:count]]}))
@@ -1306,8 +1342,6 @@
   [locale-tag & body]
   `(call-with-locale! ~locale-tag (fn [] ~@body)))
 
-;;; TODO -- this could be made thread-safe if we made [[with-temp-vals-in-db]] thread-safe which I think is pretty
-;;; doable (just do it in a transaction?)
 (defn do-with-column-remappings! [orig->remapped thunk]
   (transduce
    identity
@@ -1364,6 +1398,7 @@
          (= (first x) 'values-of))
     (let [[_ table+field] x
           [table field] (str/split (str table+field) #"\.")]
+      ;; legacy query builder; helper not yet migrated to Lib
       #_{:clj-kondo/ignore [:deprecated-var]}
       `(into {} (get-in (data/run-mbql-query ~(symbol table)
                           {:fields [~'$id ~(symbol (str \$ field))]})
@@ -1799,3 +1834,14 @@
   "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
   [adj-map]
   (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))
+
+(deftype DeferredStr [deferred]
+  java.lang.Object
+  (toString [_] (str @deferred)))
+
+(defmacro deferred-str
+  "Return an opaque deferred computable object that, when `str` is called on it, realizes itself and produces a string.
+  Useful for wrapping expensive context strings in `testing` macro when the context string is only needed to be
+  computed when the test fails."
+  [& body]
+  `(->DeferredStr (delay ~@body)))

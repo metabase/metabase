@@ -9,10 +9,7 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";
-import {
-  getIsSavedQuestionChanged,
-  getQuestion,
-} from "metabase/query_builder/selectors/question";
+import { getIsSavedQuestionChanged, getQuestion } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";

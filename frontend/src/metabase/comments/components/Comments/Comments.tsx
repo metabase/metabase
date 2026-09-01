@@ -40,7 +40,7 @@ type SidesheetTab = "open" | "resolved";
 interface CommentsProps {
   commentTarget: CommentTarget;
   childTargetId: string;
-  onOpenComments?: () => void;
+  useCommentUrl: (opts: { childTargetId: string | null }) => string;
   onCloseComments?: () => void;
   title?: string;
   showCloseButton?: boolean;
@@ -53,7 +53,7 @@ interface CommentsProps {
 export const Comments = ({
   commentTarget,
   childTargetId,
-  onOpenComments,
+  useCommentUrl,
   onCloseComments,
   title,
   showCloseButton = true,
@@ -90,10 +90,6 @@ export const Comments = ({
   const closeSidebar = useCallback(() => {
     onCloseComments?.();
   }, [onCloseComments]);
-
-  useEffect(() => {
-    onOpenComments?.();
-  }, [onOpenComments]);
 
   const resolvedComments = useMemo(
     () =>
@@ -232,6 +228,7 @@ export const Comments = ({
               onHoverChange={onHoverChange}
               targetId={commentTarget.target_id}
               targetType={commentTarget.target_type}
+              useCommentUrl={useCommentUrl}
               renderExtra={renderExtra}
             />
           )}
@@ -275,6 +272,7 @@ export const Comments = ({
             comments={resolvedComments}
             targetId={commentTarget.target_id}
             targetType={commentTarget.target_type}
+            useCommentUrl={useCommentUrl}
             renderExtra={renderExtra}
           />
         </Tabs.Panel>

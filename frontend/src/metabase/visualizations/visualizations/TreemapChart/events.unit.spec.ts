@@ -1,13 +1,13 @@
 import type { EChartsType } from "echarts/core";
 
-import { getTreemapRootNodeId } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type {
-  TreemapChartColumns,
-  TreemapRect,
-  TreemapTree,
-} from "metabase/visualizations/echarts/graph/treemap/model/types";
-import { TREEMAP_HOVER_OVERLAY_FILL } from "metabase/visualizations/echarts/graph/treemap/style";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  TREEMAP_HOVER_OVERLAY_FILL,
+  type TreemapChartColumns,
+  type TreemapRect,
+  type TreemapTree,
+  getTreemapRootNodeId,
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 import {
   createMockCard,

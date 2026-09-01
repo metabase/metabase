@@ -59,7 +59,7 @@
 (defsetting landing-page
   (deferred-tru "Enter a relative URL like /dashboard/1 or /collection/2.")
   :encryption :no
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :default    ""
@@ -245,7 +245,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting landing-page-illustration-custom
   (deferred-tru "The custom illustration for the landing page.")
   :encryption :no
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -325,7 +325,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
   :encryption :no
-  :visibility :public
+  :visibility :authenticated
   :type       :string
   :audit      :getter
   :default   "https://www.metabase.com/help/premium"
