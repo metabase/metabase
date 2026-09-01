@@ -28,22 +28,24 @@
     (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
     (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
 
-(deftest ^:parallel https?-test
-  (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
-                              {"x-forwarded-proto" "http"}     false
-                              {"x-forwarded-protocol" "https"} true
-                              {"x-forwarded-protocol" "http"}  false
-                              {"x-url-scheme" "https"}         true
-                              {"x-url-scheme" "http"}          false
-                              {"x-forwarded-ssl" "on"}         true
-                              {"x-forwarded-ssl" "off"}        false
-                              {"front-end-https" "on"}         true
-                              {"front-end-https" "off"}        false
-                              {"origin" "https://mysite.com"}  true
-                              {"origin" "http://mysite.com"}   false}]
-    (testing (pr-str (list 'https? {:headers headers}))
+(deftest ^:parallel https-state-test
+  (doseq [[headers expected] {{"x-forwarded-proto" "https"}    :https
+                              {"x-forwarded-proto" "http"}     :http
+                              {"x-forwarded-protocol" "https"} :https
+                              {"x-forwarded-protocol" "http"}  :http
+                              {"x-url-scheme" "https"}         :https
+                              {"x-url-scheme" "http"}          :http
+                              {"x-forwarded-ssl" "on"}         :https
+                              {"x-forwarded-ssl" "off"}        :http
+                              {"front-end-https" "on"}         :https
+                              {"front-end-https" "off"}        :http
+                              ;; `Origin` names the page that issued the request, not the transport it arrived on,
+                              ;; and the client picks it, so it can only leave the transport unknown
+                              {"origin" "https://mysite.com"}  :unknown
+                              {"origin" "http://mysite.com"}   :http}]
+    (testing (pr-str (list 'https-state {:headers headers}))
       (is (= expected
-             (req.util/https? {:headers headers}))))))
+             (req.util/https-state {:headers headers}))))))
 
 (def ^:private mock-request
   (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))
