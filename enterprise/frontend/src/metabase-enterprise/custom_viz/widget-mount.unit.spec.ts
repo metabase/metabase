@@ -144,9 +144,11 @@ describe("wrapPluginWidget", () => {
     });
 
     const mountedValue = pluginWidget.mock.calls[0][1].value;
+
     if (!isObject(mountedValue)) {
       throw new Error("Expected the widget to receive the object value");
     }
+
     mountedValue.min = 99;
 
     expect(hostValue.min).toBe(1);

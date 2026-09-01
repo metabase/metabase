@@ -54,9 +54,7 @@ function toPluginWidgetProps(
   prefix: string,
 ): PluginWidgetProps {
   return {
-    // `id` stays prefixed: it is the widget's DOM id and must match the host label's `htmlFor`.
     ...rest,
-    // Clone so a widget mutating an object-valued setting in place can't write through to host state.
     value: clone(value),
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>
