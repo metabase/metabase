@@ -461,7 +461,7 @@
 
   `:provider`          - label for analytics (e.g. \"ai-service\", \"openai\")
   `:endpoint`          - full URL including /v1/embeddings
-  `:api-key`           - Bearer token. For `ai-service`, an empty value uses `premium-embedding-token`.
+  `:api-key`           - Bearer token. Left empty, an `:instance-token?` endpoint uses `premium-embedding-token`.
   `:model-name`        - model identifier sent in the request body
   `:vector-dimensions` - expected dimensions of each returned vector
   `:texts`             - collection of input strings
@@ -471,9 +471,10 @@
   `:type`              - optional; forwarded to the token-tracking row
 
   `:network-policy-floor` optionally sets the minimum network access for a deployment-controlled endpoint; see
-  [[metabase.llm.settings/network-policy]]."
+  [[metabase.llm.settings/network-policy]]. `:instance-token?` marks an endpoint the deployment chose, the only
+  kind the instance token may be sent to."
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
-           network-policy-floor]
+           network-policy-floor instance-token?]
     :as opts}
    :- [:map
        [:provider       :string]
@@ -485,14 +486,15 @@
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
        [:extra-body     {:optional true} [:maybe :map]]
-       [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]]]
+       [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]
+       [:instance-token?      {:optional true} [:maybe :boolean]]]]
   ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.
   (let [policy-opts (llm.settings/llm-request-opts network-policy-floor endpoint)]
     (try
       (log/debug (str "Calling " provider " embeddings API")
                  {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
       (let [headers              (merge {"Content-Type" "application/json"}
-                                        (if (and (empty? api-key) (= "ai-service" provider))
+                                        (if (and (empty? api-key) instance-token?)
                                           {"x-metabase-instance-token"
                                            (u/prog1 (premium-features/premium-embedding-token)
                                              (when (nil? <>)
@@ -564,22 +566,35 @@
 (defn- embedding-service-resolve-config!
   "Return the embedding endpoint config, or throw if no base URL is configured.
 
-  Requests without an API key use the premium embedding token. A base URL the environment supplies is
-  deployment-controlled: its `:allow-private` policy floor admits private addresses but still blocks loopback and
-  link-local."
+  `:instance-token?` says the request authenticates with the instance token rather than with an API key of its own.
+  The token is deployment credential, not a setting anyone can enter, so it only travels to an endpoint the
+  deployment chose: `ee-embedding-service-base-url` earns it from the environment, not from the app DB.
+
+  A base URL the environment supplies is deployment-controlled in the same way: its `:allow-private` policy floor
+  admits private addresses but still blocks loopback and link-local."
   []
-  ;; the floor is granted per source, not per setting: a superuser can write either stored setting through the
-  ;; generic settings API, which must not widen the policy, while a value the environment supplies bypasses the
-  ;; vetting setter and is trusted instead
+  ;; the floor and the token are granted per source, not per setting: a settings manager can write the stored
+  ;; ee-embedding-service-base-url through the generic settings API, while a value the environment supplies bypasses
+  ;; the vetting setter and is trusted instead
   (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
-        (cond-> {:endpoint (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
-                                "/v1/embeddings")
-                 :api-key  (semantic-settings/ee-embedding-service-api-key)}
-          (setting/env-var-value :ee-embedding-service-base-url)
-          (assoc :network-policy-floor :allow-private))
+        (let [env-url? (some? (setting/env-var-value :ee-embedding-service-base-url))
+              api-key  (semantic-settings/ee-embedding-service-api-key)]
+          (when-not (or env-url? (not-empty api-key))
+            (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
+                                 "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
+                                 " to use the instance token, or configure "
+                                 (setting/env-var-name :ee-embedding-service-api-key) ".")
+                            {:settings ["ee-embedding-service-base-url"
+                                        "ee-embedding-service-api-key"]})))
+          (cond-> {:endpoint        (str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url))
+                                         "/v1/embeddings")
+                   :api-key         api-key
+                   :instance-token? env-url?}
+            env-url? (assoc :network-policy-floor :allow-private)))
 
         (string? (not-empty (llm.settings/ai-service-base-url)))
-        (cond-> {:endpoint (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")}
+        (cond-> {:endpoint        (str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
+                 :instance-token? true}
           (setting/env-var-value :ai-service-base-url)
           (assoc :network-policy-floor :allow-private))
 
@@ -593,7 +608,7 @@
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
-  (let [{:keys [endpoint api-key network-policy-floor]} (embedding-service-resolve-config!)]
+  (let [{:keys [endpoint api-key network-policy-floor instance-token?]} (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider             "ai-service"
       :endpoint             endpoint
@@ -604,7 +619,8 @@
       :snowplow?            snowplow?
       :record-tokens?       record-tokens?
       :type                 type
-      :network-policy-floor network-policy-floor})))
+      :network-policy-floor network-policy-floor
+      :instance-token?      instance-token?})))
 
 ;;;; OpenAI provider
 

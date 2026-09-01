@@ -3,9 +3,10 @@
    [clojure.string :as str]
    [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
+   [metabase.request.current :as request.current]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 ;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
 ;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
@@ -84,6 +85,17 @@
                  (setting/get-value-of-type :string :ee-embedding-service-base-url)))
   :setter     (fn [new-value]
                 (let [new-value (normalize-base-url new-value)]
+                  ;; The API caller cannot re-supply a key the environment holds, so this API is not where a
+                  ;; connection carrying one is repointed. Mirrors the LLM provider base URLs; see
+                  ;; [[metabase.llm.provider/assert-base-url-change-authorized!]].
+                  (when (and (request.current/current-request)
+                             (setting/env-var-value :ee-embedding-service-api-key)
+                             (not= new-value (normalize-base-url
+                                              (setting/get-value-of-type :string :ee-embedding-service-base-url))))
+                    (throw (ex-info (tru "The embedding service API key comes from an environment variable. Set its base URL there too.")
+                                    {:status-code 400
+                                     :api-error   true
+                                     :error-code  :embedding-base-url-change-requires-credentials})))
                   (when-let [problem (llm-settings/llm-url-problem new-value)]
                     (throw (ex-info problem {:status-code 400})))
                   (setting/set-value-of-type! :string :ee-embedding-service-base-url new-value)))

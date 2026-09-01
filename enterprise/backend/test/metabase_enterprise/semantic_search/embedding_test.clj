@@ -497,6 +497,46 @@
           (is (= "https://ai.example.com/v1/embeddings"
                  (embedding/embedder-circuit-endpoint {:provider "ai-service"}))))))))
 
+(deftest embedding-service-instance-token-only-goes-to-a-deployment-endpoint-test
+  (testing (str "The instance token is deployment credential rather than a setting anyone can enter, so it only "
+                "travels to an endpoint the deployment named.")
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"
+                                       ee-embedding-service-api-key  nil]
+      (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "mock-token")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"set in the application database and has no API key"
+             (embedding/embedder-circuit-endpoint {:provider "ai-service"})))))
+    (testing "the same URL from the environment is the deployment's own, and still authenticates with the token"
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "https://embed.example.com"]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly nil)
+                                      premium-features/premium-embedding-token       (constantly "mock-token")
+                                      http/post (fn [url opts]
+                                                  (reset! captured {:url url :headers (:headers opts)})
+                                                  {:status 200
+                                                   :body   (json/encode
+                                                            {:data  [{:object    "embedding"
+                                                                      :embedding (encode-floats-to-base64 [1.0 2.0 3.0])
+                                                                      :index     0}]
+                                                             :usage {:prompt_tokens 1 :total_tokens 1}})})]
+            (embedding/get-embedding {:provider "ai-service" :model-name "m" :vector-dimensions 3}
+                                     "text" {:record-tokens? false})
+            (is (= "mock-token" (get-in @captured [:headers "x-metabase-instance-token"])))))))))
+
+(deftest embedding-service-base-url-refuses-to-move-an-environment-key-test
+  (testing "a key the environment holds cannot be re-supplied through this API, so its URL is not moved here either"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
+        (is (=? {:message "The embedding service API key comes from an environment variable. Set its base URL there too."}
+                (mt/user-http-request :crowberto :put 400 "setting/ee-embedding-service-base-url"
+                                      {:value "https://elsewhere.example.com"})))
+        (is (= "https://embed.example.com" (semantic.settings/ee-embedding-service-base-url))))))
+  (testing "and startup configuration, which has no request, is left alone"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "embed-env-key"]
+        (semantic.settings/ee-embedding-service-base-url! "https://elsewhere.example.com")
+        (is (= "https://elsewhere.example.com" (semantic.settings/ee-embedding-service-base-url)))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
