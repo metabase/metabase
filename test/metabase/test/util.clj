@@ -531,6 +531,7 @@
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal
+  :encryption :no
   :setter :none
   :default "abc")
 

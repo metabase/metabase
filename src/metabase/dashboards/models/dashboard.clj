@@ -69,7 +69,7 @@
 
 (t2/deftransforms :model/Dashboard
   {:parameters       parameters/transform-parameters
-   :public_uuid      mi/transform-encrypted-text
+   :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
    :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard

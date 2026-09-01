@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
+   [metabase.session.events.revoke-on-deactivation] ; for side effects: deletes sessions on deactivation
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -34,6 +35,25 @@
 (def ^:private test-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
 (def ^:private test-session-key-hashed (session/hash-session-key test-session-key))
 (def ^:private test-session-id "abcd1234")
+
+(deftest session-deactivation-revokes-test
+  (init-status/set-complete!)
+  (testing "deactivating the user deletes the session; reactivating does NOT revive it (SEC-863)"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [session-key (str (random-uuid))]
+        (t2/insert! (t2/table-name :model/Session)
+                    {:id         (session/generate-session-id)
+                     :key_hashed (session/hash-session-key session-key)
+                     :user_id    user-id
+                     :created_at :%now})
+        (testing "session authenticates while the user is active"
+          (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
+        (t2/update! :model/User user-id {:is_active false})
+        (testing "after deactivation the session no longer authenticates"
+          (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
+        (t2/update! :model/User user-id {:is_active true})
+        (testing "after reactivation the same session STILL does not authenticate"
+          (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
 (deftest session-expired-test
   (init-status/set-complete!)
@@ -168,33 +188,36 @@
                      (#'mw.session/merge-current-user-info req))))))))))
 
 (deftest api-key-hash-encrypted-at-rest-test
-  (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-    (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
-                                                   :user_id               (mt/user->id :lucky)
-                                                   :creator_id            (mt/user->id :lucky)
-                                                   :updated_by_id         (mt/user->id :lucky)
-                                                   ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
-      (testing "the stored bcrypt hash is encrypted at rest"
-        ;; select from the raw table to bypass the model's decrypting :out transform
-        (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
-          (is (encryption/possibly-encrypted-string? raw)
-              "raw column value should be ciphertext")
-          (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
-              "it should decrypt to the (plaintext) bcrypt hash")))
-      (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
-        (is (= (mt/user->id :lucky)
-               (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
-      (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
-        (t2/query {:update :api_key
-                   :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
-                   :where  [:= :id api-key-id]})
-        (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
-            "strict decrypt rejects the unencrypted hash")
-        ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
-        ;; strict decrypt on the corrupted plaintext value
-        (t2/query {:update :api_key
-                   :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
-                   :where  [:= :id api-key-id]})))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
+                                                     :user_id               (mt/user->id :lucky)
+                                                     :creator_id            (mt/user->id :lucky)
+                                                     :updated_by_id         (mt/user->id :lucky)
+                                                     ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
+        (testing "the stored bcrypt hash is encrypted at rest"
+          ;; select from the raw table to bypass the model's decrypting :out transform
+          (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
+            (is (encryption/possibly-encrypted-string? raw)
+                "raw column value should be ciphertext")
+            (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
+                "it should decrypt to the (plaintext) bcrypt hash")))
+        (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
+          (is (= (mt/user->id :lucky)
+                 (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
+        (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
+          (t2/query {:update :api_key
+                     :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
+                     :where  [:= :id api-key-id]})
+          (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
+              "strict decrypt rejects the unencrypted hash")
+          ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
+          ;; strict decrypt on the corrupted plaintext value
+          (t2/query {:update :api_key
+                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
+                     :where  [:= :id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
@@ -227,6 +250,27 @@
                :e         nil
                :message   "Ignoring invalid API Key"}]
              (messages))))))
+
+(deftest api-key-lifecycle-follows-synthetic-user-not-creator-test
+  (testing "an API key is gated by its own synthetic user, not the admin who created it (SEC-863)"
+    (mt/with-temp [:model/User  {synthetic-id :id} {}
+                   :model/User  {creator-id :id}   {}
+                   :model/ApiKey _ {:name                  "An API Key"
+                                    :user_id               synthetic-id
+                                    :creator_id            creator-id
+                                    :updated_by_id         creator-id
+                                    ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
+      (let [authed? (fn [] (mt/with-premium-features #{}
+                             (boolean (:metabase-user-id
+                                       (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_foobar123"}})))))]
+        (testing "authenticates while its synthetic user is active"
+          (is (authed?)))
+        (testing "deactivating the creator does NOT revoke the key — creator_id is attribution only"
+          (t2/update! :model/User creator-id {:is_active false})
+          (is (authed?)))
+        (testing "deactivating the key's own synthetic user DOES revoke it"
+          (t2/update! :model/User synthetic-id {:is_active false})
+          (is (not (authed?))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"

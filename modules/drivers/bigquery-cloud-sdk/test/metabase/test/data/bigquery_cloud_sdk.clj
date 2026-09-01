@@ -153,8 +153,7 @@
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
   ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
   ;; intended -- Case
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Deleting dataset: " dataset-id)
+  (tx/print-progress! :bigquery-cloud-sdk "deleting %s" dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs

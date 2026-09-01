@@ -421,6 +421,23 @@
   (log/infof "%s has no orphan GC; skipping." driver)
   [])
 
+;; `println` rather than [[metabase.util.log]] on purpose: the nightly sweep runs as `clojure -X`, and log4j2 emits
+;; nothing to stdout in that context -- `info` and `warn` alike are swallowed, so a run's log showed only the few
+;; lines that already happened to use `println`.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defn print-progress!
+  "Print one operator-facing progress line, prefixed with `label` so the interleaved output of concurrently sweeping
+  drivers stays attributable.
+
+  Progress is printed as it happens rather than assembled at the end, because the job is expected to be killed at
+  its timeout partway through a backlog.
+
+  The newline is part of the string and written once. `println` writes the text and the newline separately, which
+  let concurrently sweeping drivers splice their output into the middle of each other's lines."
+  [label fmt-str & args]
+  (print (str "[" (name label) "] " (apply format fmt-str args) \newline))
+  (flush))
+
 (defmulti count-datasets
   "Census of every test dataset still on each server this driver's tests write to, taken after [[gc-orphans!]] has
   run. Returns `{server-label count}`, keyed the same way as `:server` in [[gc-orphans!]]'s results.

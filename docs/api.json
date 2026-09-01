@@ -6378,7 +6378,7 @@
         "required" : [ "metrics", "dimension_groups" ]
       },
       "metabase.explorations.api.ExplorationBlockNode" : {
-        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is\n   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or\n   `By <dimension>`). `:position` is the block's 0-indexed authoring slot.",
+        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading\n   (the metric name). `:position` is the block's 0-indexed authoring slot.",
         "type" : "object",
         "properties" : {
           "explore_filters" : {
@@ -6500,13 +6500,9 @@
             "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "metric", "dimension" ]
           }
         },
-        "required" : [ "id", "type", "name", "position", "pages" ]
+        "required" : [ "id", "name", "position", "pages" ]
       },
       "metabase.explorations.api.ExplorationDimensionGroup" : {
         "description" : "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that\n   refer to the same underlying source (same field/binning) so the FE can show a single user-facing\n   entry while still tracking the actual per-metric dimensions needed by `start exploration`.",
@@ -15552,6 +15548,207 @@
         }, {
           "$ref" : "#/components/schemas/metabase.transforms.schema.table-incremental-target"
         } ]
+      },
+      "metabase.users-rest.api.current-user-response" : {
+        "description" : "Response for `GET /api/user/current`.",
+        "type" : "object",
+        "properties" : {
+          "permissions" : {
+            "$ref" : "#/components/schemas/metabase.users-rest.api.user-permissions"
+          },
+          "has_model" : {
+            "type" : "boolean"
+          },
+          "login_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "sso_source" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "jwt_attributes" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "additionalProperties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_qbnewb" : {
+            "type" : "boolean"
+          },
+          "is_active" : {
+            "type" : "boolean"
+          },
+          "last_login" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "tenant_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "email" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "group_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "uniqueItems" : true
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "locale" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "oneOf" : [ { }, {
+              "type" : "null"
+            } ]
+          },
+          "first_login" : { },
+          "is_superuser" : {
+            "type" : "boolean"
+          },
+          "tenant_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "custom_homepage" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "dashboard_id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                }
+              },
+              "required" : [ "dashboard_id" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_installer" : {
+            "type" : "boolean"
+          },
+          "attributes" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "date_joined" : { },
+          "has_invited_second_user" : {
+            "type" : "boolean"
+          },
+          "personal_collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "common_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "has_question_and_dashboard" : {
+            "type" : "boolean"
+          },
+          "can_write_any_collection" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+      },
+      "metabase.users-rest.api.user-permissions" : {
+        "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
+        "type" : "object",
+        "properties" : {
+          "can_access_subscription" : {
+            "type" : "boolean"
+          },
+          "can_create_native_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_setting" : {
+            "type" : "boolean"
+          },
+          "is_data_analyst" : {
+            "type" : "boolean"
+          },
+          "is_group_manager" : {
+            "type" : "boolean"
+          },
+          "can_access_monitoring" : {
+            "type" : "boolean"
+          },
+          "can_access_data_model" : {
+            "type" : "boolean"
+          },
+          "can_access_db_details" : {
+            "type" : "boolean"
+          },
+          "can_create_queries" : {
+            "type" : "boolean"
+          },
+          "can_access_transforms" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "can_create_queries", "can_create_native_queries" ]
       },
       "metabase.users.schema.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
@@ -37161,14 +37358,6 @@
                             }, {
                               "type" : "null"
                             } ]
-                          },
-                          "type" : {
-                            "oneOf" : [ {
-                              "type" : "string",
-                              "enum" : [ "metric", "dimension" ]
-                            }, {
-                              "type" : "null"
-                            } ]
                           }
                         }
                       }
@@ -43625,7 +43814,7 @@
       "put" : {
         "operationId" : "put-api-mt-user-id-attributes",
         "summary" : "PUT /api/mt/user/{id}/attributes",
-        "description" : "Update the `login_attributes` for a User.",
+        "description" : "Update the `login_attributes` for a User. Only personal users can have attributes.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -58242,7 +58431,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.users-rest.api.current-user-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -58278,7 +58474,7 @@
       "get" : {
         "operationId" : "get-api-user-id",
         "summary" : "GET /api/user/{id}",
-        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.",
+        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.\n  Only personal users can be fetched this way; API-key users and the internal user 404.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -58305,7 +58501,7 @@
       "put" : {
         "operationId" : "put-api-user-id",
         "summary" : "PUT /api/user/{id}",
-        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.",
+        "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.\n  Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead).",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
