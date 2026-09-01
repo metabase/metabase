@@ -13,8 +13,10 @@ export type { MetadataSelectorOpts } from "./selectors";
 export {
   selectMetadataProvider,
   selectMetadataProviderUnfiltered,
+  selectMetricMetadataProvider,
   useMetadataProvider,
   useMetadataProviderUnfiltered,
+  useMetricMetadataProvider,
 } from "./provider";
 
 export { entitiesReducer } from "./reducer";

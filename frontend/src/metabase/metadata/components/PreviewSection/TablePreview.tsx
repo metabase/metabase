@@ -9,12 +9,10 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { getMetadataUnfiltered } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   Field,
@@ -89,18 +87,14 @@ function useDataSample({
   tableId,
 }: Props) {
   // do not generate a new query when metadata changes
-  const metadata = useSelector(getMetadataUnfiltered);
-  const metadataRef = useRef(metadata);
-  metadataRef.current = metadata;
+  const metadataProvider = useMetadataProviderUnfiltered(databaseId);
+  const metadataProviderRef = useRef(metadataProvider);
+  metadataProviderRef.current = metadataProvider;
   const query = useMemo(
     () =>
-      getPreviewQuery(
-        metadataRef.current,
-        databaseId,
-        tableId,
-        fieldId,
-        pkFields,
-      ),
+      getPreviewQuery(metadataProviderRef.current, tableId, fieldId, pkFields),
+    // databaseId is not read above, but it selects the provider held in the ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [databaseId, tableId, fieldId, pkFields],
   );
 
@@ -153,13 +147,11 @@ function useDataSample({
 }
 
 function getPreviewQuery(
-  metadata: Metadata,
-  databaseId: DatabaseId,
+  metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
   fieldId: FieldId,
   pkFields: Field[],
 ): Lib.Query | undefined {
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
   const field = Lib.fieldMetadata(metadataProvider, fieldId);
   if (table == null || field == null) {
