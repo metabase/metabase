@@ -3,29 +3,20 @@ import type {
   HoveredObject,
 } from "metabase/visualizations/types";
 
-// Only the documented hover fields cross over, with the host's settings, so a plugin can't forge tooltip state.
+// Only the documented hover fields cross over, with the host's settings.
 export function toHostHoverObject(
-  {
-    index,
-    seriesIndex,
-    value,
-    column,
-    data,
-    dimensions,
-    element,
-    event,
-  }: HoveredObject,
+  hoverObject: HoveredObject,
   settings: ComputedVisualizationSettings,
 ): HoveredObject {
   return {
-    index,
-    seriesIndex,
-    value,
-    column,
-    data,
-    dimensions,
-    element,
-    event,
+    index: hoverObject.index,
+    seriesIndex: hoverObject.seriesIndex,
+    value: hoverObject.value,
+    column: hoverObject.column,
+    data: hoverObject.data,
+    dimensions: hoverObject.dimensions,
+    element: hoverObject.element,
+    event: hoverObject.event,
     settings,
   };
 }

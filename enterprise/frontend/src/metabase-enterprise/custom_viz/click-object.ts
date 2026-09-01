@@ -3,10 +3,19 @@ import type {
   ComputedVisualizationSettings,
 } from "metabase/visualizations/types";
 
-// Only the documented click fields cross over, with the host's settings, so a plugin cannot forge `click_behavior`.
+// Only the documented click fields cross over, with the host's settings.
 export function toHostClickObject(
-  { value, column, dimensions, event, element, origin, data }: ClickObject,
+  clickObject: ClickObject,
   settings: ComputedVisualizationSettings,
 ): ClickObject {
-  return { value, column, dimensions, event, element, origin, data, settings };
+  return {
+    value: clickObject.value,
+    column: clickObject.column,
+    dimensions: clickObject.dimensions,
+    event: clickObject.event,
+    element: clickObject.element,
+    origin: clickObject.origin,
+    data: clickObject.data,
+    settings,
+  };
 }
