@@ -61,10 +61,9 @@
   This namespace takes and returns plain data and touches no database. A `{% entity %}` token
   parses to a smartLink carrying only its `entityId`/`model`, with `label`/`href` left at their
   defaults; resolving those means reading the referenced row, which is a permission decision, so
-  it belongs to the caller — see `resolve-smart-links!` in
-  [[metabase.mcp.v2.tools.document]]. Keeping it there also keeps the `documents` module clear of
-  a dependency on `permissions`, which would drag every documents change into the driver test
-  suite."
+  it belongs to the caller (the MCP document tool, in a later slice). Keeping it there also keeps
+  the `documents` module clear of a dependency on `permissions`, which would drag every documents
+  change into the driver test suite."
   (:require
    [clojure.string :as str]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -361,12 +360,16 @@
   from the leaf nodes rather than the paragraph's own chars because a block's chars carry the line
   prefixes of any enclosing blockquote or list item, and an inline node never spans one."
   [nodes]
-  (reduce (fn [lines ^Node node]
-            (if (instance? SoftLineBreak node)
-              (conj lines "")
-              (update lines (dec (count lines)) str (.getChars node))))
-          [""]
-          nodes))
+  ;; Chunks are collected per line and joined once at the end: appending to the accumulated line
+  ;; string directly is quadratic in the node count, and a paragraph is one line unless a soft
+  ;; break says otherwise — a megabyte of `*a* *a* …` prose would pin a core for minutes.
+  (->> nodes
+       (reduce (fn [lines ^Node node]
+                 (if (instance? SoftLineBreak node)
+                   (conj lines [])
+                   (update lines (dec (count lines)) conj (str (.getChars node)))))
+               [[]])
+       (mapv str/join)))
 
 (defn- table-paragraph?
   "True when a paragraph holds a GFM pipe table: a row containing a pipe, followed by a delimiter
@@ -717,8 +720,9 @@
   every node type that carries one, wraps a bare top-level card embed or flex container in
   the `resizeNode` that gives it a height, and closes the body with a paragraph. Malformed
   structure (unclosed fences, invalid container content, bad card tokens, nesting past
-  [[max-nesting-depth]]) throws a 400 `ex-info` whose message names the fix; a smart-link id that
-  doesn't resolve keeps the node and logs a warning instead."
+  [[max-nesting-depth]]) throws a 400 `ex-info` whose message names the fix. A `{% entity %}`
+  token parses to a smartLink with `label`/`href` left at their defaults — resolving them is the
+  caller's job (see the namespace docstring)."
   [markdown-string]
   (try
     {:type    "doc"
@@ -727,8 +731,7 @@
     ;; also run out of stack inside its own inline parser (a long `***…` delimiter run does it)
     ;; before there is a tree to measure. Left alone that escapes as an Error, slipping past the
     ;; `catch Exception` that sanitizes tool failures and surfacing as an unhandled 500. Safe to
-    ;; convert here because parsing is pure up to this point — the smart-link lookup runs after all
-    ;; the recursion, so nothing is half-written when the stack unwinds.
+    ;; convert here because parsing is pure — nothing is half-written when the stack unwinds.
     (catch StackOverflowError _
       (throw (teaching-error "Markdown is nested too deeply to parse — flatten it.")))))
 
@@ -844,9 +847,11 @@
 
 (defn- attr-pos-long
   [node-type attr v]
+  ;; Range-check before coercing: `(long 1.0E19)` throws a raw IllegalArgumentException, which
+  ;; would escape as a 500 instead of the teaching error this value deserves.
   (let [n (attr-num node-type attr v)
-        l (long n)]
-    (when-not (and (== n l) (pos? l))
+        l (when (<= 1 n Long/MAX_VALUE) (long n))]
+    (when-not (and l (== n l))
       (throw (teaching-error (format "Cannot serialize %s node: attribute %s is %s, expected a positive integer."
                                      node-type (name attr) (pr-str v)))))
     l))
@@ -972,7 +977,10 @@
 (defn- format-number
   ^String [n]
   (let [d (double n)]
-    (if (== d (Math/rint d))
+    ;; The long-range check keeps `(long d)` from throwing on an integral double a long can't
+    ;; hold (e.g. 1.0E19); such a value serializes in its double notation instead.
+    (if (and (== d (Math/rint d))
+             (<= Long/MIN_VALUE d Long/MAX_VALUE))
       (str (long d))
       (str d))))
 
@@ -980,6 +988,11 @@
   ^String [^String text]
   (let [longest (transduce (map count) max 0 (re-seq #"`+" text))]
     (apply str (repeat (max 3 (inc longest)) "`"))))
+
+(defn- tilde-fence-for
+  ^String [^String text]
+  (let [longest (transduce (map count) max 0 (re-seq #"~+" text))]
+    (apply str (repeat (max 3 (inc longest)) "~"))))
 
 (defn- resize-fence
   ^String [{:keys [height minHeight]}]
@@ -1010,9 +1023,18 @@
                           (-> (inlines->markdown content {:hard-break " "})
                               (str/replace #"\R" " ")
                               (str/replace #"(^|[ \t])(#+[ \t]*)$" "$1\\\\$2")))
-    "codeBlock"      (let [text  (apply str (map :text content))
-                           fence (code-fence-for text)]
-                       (str fence (or (:language attrs) "") "\n"
+    ;; The language rides the fence line, so a value that would break the line out of being a
+    ;; fence re-opens the code content to the parser — the token-opacity guarantee dies with the
+    ;; fence. A backtick fence's info string may not contain a backtick (CommonMark), but a tilde
+    ;; fence's may (and a tilde fence's info string is exactly where a parsed `:language` picks
+    ;; one up), so such a language re-serializes behind a tilde fence; a newline can't ride any
+    ;; fence line, so it collapses to a space, as a card name's does.
+    "codeBlock"      (let [text     (apply str (map :text content))
+                           language (str/replace (str (or (:language attrs) "")) #"\R" " ")
+                           fence    (if (str/includes? language "`")
+                                      (tilde-fence-for text)
+                                      (code-fence-for text))]
+                       (str fence language "\n"
                             (when-not (= text "") (str text "\n"))
                             fence))
     "blockquote"     (prefix-quote (render-blocks content))
@@ -1311,11 +1333,12 @@
   Finds the minimal children array whose combined span contains [start end), recursing into
   layout containers as needed. Every sibling whose own text doesn't overlap the span is reused
   by identity from `old-ast` — same `:_id`, same attrs, same nested content. The overlapping
-  sibling(s) have their serialized text, with the edit applied, re-parsed via [[parse]], and
+  sibling(s) have their serialized text, with the edit applied, re-parsed, and
   [[reconcile-ids]] then carries the old nodes' `:_id`s onto the parsed result, so editing a
   block's text preserves the identity its comments anchor to. Throws a 400 `ex-info`
   when `markdown` doesn't match `old-ast`'s serialization (a stale source map), when the span
-  is out of bounds, or when the re-parsed result violates a container's content model."
+  is out of bounds, when the re-parsed result violates a container's content model, or when the
+  replacement nests too deeply to parse."
   [old-ast {:keys [markdown] ::keys [extents ast] trusted-markdown ::markdown} start end replacement-text]
   (let [{fresh-markdown :markdown extents :extents}
         (if (and extents trusted-markdown (identical? ast old-ast))
@@ -1326,8 +1349,15 @@
     (when-not (and (int? start) (int? end) (<= 0 start end (count fresh-markdown)))
       (throw (teaching-error (format "Invalid splice span [%s %s) for a %d-character document."
                                      start end (count fresh-markdown)))))
-    (assoc old-ast :content
-           (-> (splice-level (:content old-ast) extents fresh-markdown
-                             start end (or replacement-text "") "doc")
-               wrap-loose-embeds
-               ensure-trailing-paragraph))))
+    (try
+      (assoc old-ast :content
+             (-> (splice-level (:content old-ast) extents fresh-markdown
+                               start end (or replacement-text "") "doc")
+                 wrap-loose-embeds
+                 ensure-trailing-paragraph))
+      ;; The same backstop [[parse]] has, for the same reason: the re-parse of the edited region
+      ;; runs through flexmark, whose inline parser can blow the stack on a long delimiter run in
+      ;; the replacement text before there is a tree to measure. Splicing is pure, so nothing is
+      ;; half-written when the stack unwinds.
+      (catch StackOverflowError _
+        (throw (teaching-error "Markdown is nested too deeply to parse — flatten it."))))))
