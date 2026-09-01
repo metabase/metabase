@@ -435,7 +435,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+(defn- wildcard-query [query] (h2x/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
