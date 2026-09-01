@@ -1,11 +1,16 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { updateSegment } from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
@@ -15,26 +20,21 @@ import { Formula } from "metabase/reference/components/Formula";
 import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import {
-  getShallowFields as getFields,
-  getMetadata,
-} from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { User } from "metabase-types/api";
 
 import S from "../components/Detail.module.css";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getSegment,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
+  ReferenceLoadingProps,
   StubbedSegment,
   StubbedTable,
 } from "../types";
@@ -86,9 +86,6 @@ const mapStateToProps = (
     table: getTable(state, props),
     metadataFields: fields,
     metadata: getMetadata(state),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -121,7 +118,7 @@ interface SegmentDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: SegmentDetailFormFields, props: any) => void;
+  onSubmit: (fields: SegmentDetailFormFields, props: any) => Promise<void>;
 }
 
 const SegmentDetail = (props: SegmentDetailProps) => {
@@ -142,6 +139,8 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -152,8 +151,14 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     validate,
     initialValues: {},
     initialErrors: validate({}),
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -196,8 +201,8 @@ const SegmentDetail = (props: SegmentDetailProps) => {
         />
       )}
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>
@@ -304,4 +309,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(SegmentDetail as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentDetail as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

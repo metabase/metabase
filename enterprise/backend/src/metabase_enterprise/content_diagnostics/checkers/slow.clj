@@ -51,11 +51,13 @@
         ;; AVG comes back as BigDecimal - round to a Long for the native bigint column.
         (map (juxt :card_id #(Math/round (double (:median_ms %)))))
         (t2/query {:select   [:card_id [[:avg :running_time] :median_ms]]
-                   :from     [[{:select [:qe.card_id :qe.running_time
-                                         [[:over [[:row_number] {:partition-by :qe.card_id
-                                                                 :order-by     [[:qe.running_time :asc]]}]]
+                   :from     [[^:allow-subquery
+                               {:select [:qe.card_id :qe.running_time
+                                         [[:over [[:row_number] ^:allow-subquery
+                                                  {:partition-by :qe.card_id
+                                                   :order-by     [[:qe.running_time :asc]]}]]
                                           :rn]
-                                         [[:over [[:count :*] {:partition-by :qe.card_id}]] :cnt]]
+                                         [[:over [[:count :*] ^:allow-subquery {:partition-by :qe.card_id}]] :cnt]]
                                 :from   [[:query_execution :qe]]
                                 :join   [[:report_card :c] [:= :c.id :qe.card_id]]
                                 :where  [:and

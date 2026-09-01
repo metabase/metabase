@@ -1,6 +1,6 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -30,46 +30,58 @@ import { getDataStudioSettingsRoutes } from "./settings/routes";
  * stay eager: they have to decide before there is anything to show.
  */
 const dataStudioLayout = () =>
-  import("./app/pages/DataStudioLayout").then(({ DataStudioLayout }) => ({
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/DataStudioLayout"
+  ).then(({ DataStudioLayout }) => ({
     Component: DataStudioLayout,
   }));
 
 const dataSectionLayout = () =>
-  import("./app/pages/DataSectionLayout").then(({ DataSectionLayout }) => ({
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/DataSectionLayout"
+  ).then(({ DataSectionLayout }) => ({
     Component: DataSectionLayout,
   }));
 
 const transformsSectionLayout = () =>
-  import("./app/pages/TransformsSectionLayout").then(
-    ({ TransformsSectionLayout }) => ({ Component: TransformsSectionLayout }),
-  );
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/TransformsSectionLayout"
+  ).then(({ TransformsSectionLayout }) => ({
+    Component: TransformsSectionLayout,
+  }));
 
 const dependenciesSectionLayout = () =>
-  import("./app/pages/DependenciesSectionLayout").then(
-    ({ DependenciesSectionLayout }) => ({
-      Component: DependenciesSectionLayout,
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/DependenciesSectionLayout"
+  ).then(({ DependenciesSectionLayout }) => ({
+    Component: DependenciesSectionLayout,
+  }));
+
+const gitSyncSectionLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/GitSyncSectionLayout"
+  ).then(({ GitSyncSectionLayout }) => ({ Component: GitSyncSectionLayout }));
+
+const dependenciesUpsellPage = () =>
+  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
+    ({ DependenciesUpsellPage }) => ({
+      Component: DependenciesUpsellPage,
     }),
   );
 
-const gitSyncSectionLayout = () =>
-  import("./app/pages/GitSyncSectionLayout").then(
-    ({ GitSyncSectionLayout }) => ({ Component: GitSyncSectionLayout }),
+const libraryUpsellPage = () =>
+  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
+    ({ LibraryUpsellPage }) => ({
+      Component: LibraryUpsellPage,
+    }),
   );
 
-const dependenciesUpsellPage = () =>
-  import("./upsells/pages").then(({ DependenciesUpsellPage }) => ({
-    Component: DependenciesUpsellPage,
-  }));
-
-const libraryUpsellPage = () =>
-  import("./upsells/pages").then(({ LibraryUpsellPage }) => ({
-    Component: LibraryUpsellPage,
-  }));
-
 const schemaViewerUpsellPage = () =>
-  import("./upsells/pages").then(({ SchemaViewerUpsellPage }) => ({
-    Component: SchemaViewerUpsellPage,
-  }));
+  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
+    ({ SchemaViewerUpsellPage }) => ({
+      Component: SchemaViewerUpsellPage,
+    }),
+  );
 
 export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (

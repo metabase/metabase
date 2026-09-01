@@ -1,5 +1,4 @@
 // @ts-check
-/* eslint-env node */
 
 const path = require("path");
 
@@ -76,7 +75,6 @@ const RESOLVE_ALIASES = {
     process.env.MB_EDITION === "ee"
       ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
       : SRC_PATH + "/plugins/noop",
-  "sdk-specific-imports": SRC_PATH + "/utils/noop",
 };
 
 module.exports = { RESOLVE_ALIASES };

@@ -11,9 +11,9 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Notification,
@@ -165,6 +165,18 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /send now/i })).toBeEnabled();
+  });
+
+  it("should disable 'Send now' when there is nowhere to send the alert to", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: false,
+      isSlackSetup: true,
+    });
+
+    expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
   });
 
   it("should show the editing alert data when in edit mode", async () => {

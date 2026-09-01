@@ -1,0 +1,188 @@
+# Writes the shared dependency caches. Every other job restores them and none of them writes.
+#
+# A single writer rather than the usual let-every-job-save arrangement, because a pull request here fans
+# out to roughly 200 jobs, ~75 of which install Cypress. Letting each of those save would have them all
+# build a 200MB archive and race for one reservation on every lockfile change, and all pull the Cypress
+# binary at once on a version bump.
+#
+# The ESLint cache is the exception and saves from the lint job itself: it is under a megabyte and only a
+# couple of jobs write it, so there is no herd to avoid.
+#
+# A cache is readable from the ref that saved it, from that ref's pull requests, and - for every ref -
+# from the default branch. Warming on push to each merge target therefore serves the pull requests aimed
+# at it, and master's copy backs up every ref that has none of its own.
+#
+# Keys are content-derived (see .github/scripts/cache-keys.sh), so a push whose dependencies already have
+# an entry does nothing but four lookups. There is no cron: nothing here is keyed by date.
+#
+#
+# PRINCIPLES:
+#   - The cache is never wrong!
+#   - Caches are immutable once created.
+#   - Caches are for speeding up builds, not for correctness.
+#   - It is faster to download a large cache than to re-resolve missing dependencies.
+
+name: Cache Warm
+
+on:
+  push:
+    branches:
+      - master
+      - "release-x.*.x"
+  workflow_dispatch:
+
+concurrency:
+  group: cache-warm-${{ github.ref }}
+  # Pushes to master land a median of 27 minutes apart and a full resolve takes longer, so cancelling in
+  # progress would abort most warms before they save and a ref could stay cold indefinitely. Queueing
+  # costs one wait instead: the queued run finds every key present and exits in about a minute.
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    # Forks read the upstream default branch's caches and cannot usefully write their own, so warming
+    # there would burn a runner for nothing.
+    if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache spec
+        id: cache-spec
+        run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
+
+      # `lookup-only` with no restore-keys asks whether this exact dependency set is already cached.
+      # Paths come from the spec, the same ones the save below declares - a lookup that named different
+      # paths would compute a different cache identity and report a miss every time.
+      - name: Look up M2 cache
+        id: m2-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.m2-path }}
+          key: ${{ steps.cache-spec.outputs.m2-key }}
+          lookup-only: true
+      - name: Look up bun store
+        id: bun-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.bun-store-path }}
+          key: ${{ steps.cache-spec.outputs.bun-store-key }}
+          lookup-only: true
+      - name: Look up Clojure CLI
+        id: clojure-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.clojure-path }}
+          key: ${{ steps.cache-spec.outputs.clojure-key }}
+          lookup-only: true
+      - name: Look up Cypress binary
+        id: cypress-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.cypress-path }}
+          key: ${{ steps.cache-spec.outputs.cypress-key }}
+          lookup-only: true
+
+      # Also runs when only the Clojure CLI entry is missing: installing it is what there is to save,
+      # and the pre-resolve below needs it either way.
+      - name: Prepare backend
+        if: steps.m2-lookup.outputs.cache-hit != 'true' || steps.clojure-lookup.outputs.cache-hit != 'true'
+        uses: ./.github/actions/prepare-backend
+
+      - name: Save Clojure CLI
+        if: steps.clojure-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.clojure-path }}
+          key: ${{ steps.cache-spec.outputs.clojure-key }}
+
+      # Pre-resolve every Clojure dependency classpath CI actually uses, so the saved cache is a SUPERSET
+      # of what each job resolves at runtime.
+      #
+      # Why a single `-P` is not enough: tools.deps selects dependency *versions* globally per classpath,
+      # so different alias combinations can resolve the same transitive lib to different versions (e.g.
+      # `org.clojure/data.json` 2.4.0 vs 2.5.x, `org.ow2.asm/asm` 9.2 vs newer). Resolving only one combo
+      # leaves the others to fetch their version-deltas straight from Maven Central / Clojars on every
+      # run -> intermittent 403s. See DEV-2094.
+      #
+      # Keep this list in sync with the `clojure` invocations across .github/. Each entry notes its
+      # consumer. We resolve the FULL alias strings (not a hand-reduced set) on purpose: if a currently
+      # dep-less alias later gains a dependency, this still covers it instead of silently drifting back
+      # into a cache gap.
+      - name: Pre-resolve Clojure dependencies
+        if: steps.m2-lookup.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          combos=(
+            ":build:dev:ee:ee-dev:drivers:drivers-dev:cljs"     # build + uberjar (combined classpath)
+            ":cljs"                                             # shadow-cljs (build:cljs); resolves :cljs alone -> covers asm:9.2
+            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # backend.yml (eastwood + eastwood/test)
+            ":dev:ci:ee:ee-dev:drivers:drivers-dev:test"        # test-driver.yml (ee) -> covers data.json:2.4.0
+            ":dev:ci:oss:oss-dev:drivers:drivers-dev:test"      # test-driver.yml (oss)
+            ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee)
+            ":dev:ci:test:oss:oss-dev"                          # backend.yml matrix (oss)
+            ":dev:ci:ee:ee-dev:test:cloverage"                  # backend-cloverage.yml
+            ":dev:drivers:drivers-dev:test"                     # reset-cloud-test-dataset.yml
+            ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
+            ":test"                                             # build-scripts.yml (bin/build unit tests)
+            ":ee:drivers:load-namespaces"                       # backend.yml (load-namespaces)
+            ":ee:doc"                                           # docs-generate-base.yml
+            ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
+            ":run:ee"                                           # cross-branch-migration-test
+            ":dev:ee:migrate"                                   # cross-branch-migration-test
+            ":whitespace-linter"                                # whitespace linter
+          )
+          for combo in "${combos[@]}"; do
+            echo "::group::clojure -P -A${combo}"
+            clojure -P -A"${combo}"
+            echo "::endgroup::"
+          done
+
+          echo "::group::./bin/mage"
+          ./bin/mage
+          echo "::endgroup::"
+
+      - name: Save M2 cache
+        if: steps.m2-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.m2-path }}
+          key: ${{ steps.cache-spec.outputs.m2-key }}
+
+      # `prepare-frontend` installs bun, points it at the store path, and runs a frozen-lockfile install,
+      # which is what fills the store. Patches are deliberately not applied: a store cached with patches
+      # already in place breaks any pull request that changes or upgrades a patched dependency.
+      #
+      # This also runs when only the Cypress cache is missing, because `bun run cypress install` below
+      # needs the node_modules this step creates. Narrowing the condition to the bun store alone would
+      # leave that step with no Cypress binary to run.
+      - name: Install front-end dependencies
+        if: steps.bun-lookup.outputs.cache-hit != 'true' || steps.cypress-lookup.outputs.cache-hit != 'true'
+        uses: ./.github/actions/prepare-frontend
+        with:
+          apply-patches: "false"
+
+      - name: Save bun store
+        if: steps.bun-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.bun-store-path }}
+          key: ${{ steps.cache-spec.outputs.bun-store-key }}
+
+      - name: Ensure that Cypress executable is ready
+        if: steps.cypress-lookup.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          bun run cypress install
+          bun run cypress cache path
+          bun run cypress cache list
+          bun run cypress verify
+
+      - name: Save Cypress binary
+        if: steps.cypress-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.cypress-path }}
+          key: ${{ steps.cache-spec.outputs.cypress-key }}

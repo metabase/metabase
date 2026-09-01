@@ -18,8 +18,8 @@ import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   Alert,

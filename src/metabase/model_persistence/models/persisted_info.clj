@@ -164,9 +164,10 @@
                          {:where [:and
                                   [:= :database_id database-id]
                                   [:= :type "model"]
-                                  [:not [:exists {:select [1]
-                                                  :from [:persisted_info]
-                                                  :where [:= :persisted_info.card_id :report_card.id]}]]]})]
+                                  [:not [:exists ^:allow-subquery
+                                         {:select [1]
+                                          :from [:persisted_info]
+                                          :where [:= :persisted_info.card_id :report_card.id]}]]]})]
     (t2/insert! :model/PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!

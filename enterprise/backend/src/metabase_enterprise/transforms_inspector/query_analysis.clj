@@ -120,7 +120,7 @@
     :macaw.ast/literal (let [{:keys [value]} node]
                          (cond
                            (nil? value) nil
-                           :else        [:inline value]))
+                           :else        [:lift value]))
     nil))
 
 (defn- macaw-condition->hsql

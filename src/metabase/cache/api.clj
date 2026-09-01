@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -43,8 +44,9 @@
 
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
-  [:multi {:description (deferred-tru "cache strategy :type must be one of :nocache, :ttl")
-           :dispatch    cache-strategy-dispatch
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
            :error/fn    (fn [{:keys [value]} _]
                           (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl"
                                (pr-str (:type value))))}
@@ -69,8 +71,9 @@
 ;;; the optional `:invalidated-at` keys
 (mr/def ::cache-strategy.ee
   "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
-  [:multi {:description (deferred-tru "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule")
-           :dispatch    cache-strategy-dispatch
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
            :error/fn    (fn [{:keys [value]} _]
                           (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl, :duration, :schedule"
                                (pr-str (:type value))))}

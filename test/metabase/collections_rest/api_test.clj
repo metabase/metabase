@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections-rest.api :as api.collection]
-   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
@@ -796,6 +795,35 @@
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
+(deftest collection-items-card-permission-checks-do-not-scale-with-card-count-test
+  (testing "listing a collection's cards issues no per-card query (#78848)"
+    ;; `:can_write` hydration runs `mi/can-write?` on every row, which since Cards became
+    ;; Document-scopable has to know each Card's `document_id`. If the listing query does not
+    ;; select that column, `parent-document-id` resolves it from the primary key instead — one
+    ;; extra `SELECT` per Card. Compare two collection sizes rather than asserting a fixed budget,
+    ;; so the test pins the *shape* (constant) and not an incidental number.
+    (let [items!     (fn [coll-id]
+                       (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items")
+                                             :models "card"))
+          call-count (fn [n]
+                       (mt/with-temp [:model/Collection {coll-id :id} {}]
+                         (doseq [i (range n)]
+                           (t2/insert! :model/Card
+                                       {:name                   (str "n1q card " i)
+                                        :type                   :question
+                                        :creator_id             (mt/user->id :crowberto)
+                                        :collection_id          coll-id
+                                        :database_id            (mt/id)
+                                        :dataset_query          (mt/mbql-query venues)
+                                        :display                "table"
+                                        :visualization_settings {}}))
+                         ;; warm any lazily-initialized caches the first request would otherwise pay for
+                         (items! coll-id)
+                         (t2/with-call-count [cc]
+                           (items! coll-id)
+                           (cc))))]
+      (is (= (call-count 2) (call-count 6))))))
+
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
@@ -1503,101 +1531,6 @@
                    {:name "subcollection" :authority_level "official"}}
                  (into #{} (map #(select-keys % [:name :authority_level]))
                        items))))))))
-
-(deftest collection-items-include-can-run-adhoc-query-test
-  (testing "GET /api/collection/:id/items and GET /api/collection/root/items"
-    (testing "include_can_run_adhoc_query parameter controls hydration of can_run_adhoc_query flag"
-      (mt/with-temp [:model/Collection {collection-id :id} {}
-                     :model/Card {card-id :id} {:collection_id collection-id}
-                     :model/Card {root-card-id :id} {:collection_id nil}]
-        (testing "When include_can_run_adhoc_query=false (default), can_run_adhoc_query is not included"
-          (let [collection-items (:data (mt/user-http-request :rasta :get 200
-                                                              (str "collection/" collection-id "/items")))
-                root-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))]
-            (is (not (contains? (first collection-items) :can_run_adhoc_query)))
-            (is (not (some #(contains? % :can_run_adhoc_query) root-items)))))
-        (testing "When include_can_run_adhoc_query=true, can_run_adhoc_query is included for cards"
-          (let [collection-items (:data (mt/user-http-request :rasta :get 200
-                                                              (str "collection/" collection-id "/items")
-                                                              :include_can_run_adhoc_query true))
-                root-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items"
-                                                        :include_can_run_adhoc_query true))
-                card-item (first (filter #(= (:id %) card-id) collection-items))
-                root-card-item (first (filter #(= (:id %) root-card-id) root-items))]
-            (is (contains? card-item :can_run_adhoc_query))
-            (is (boolean? (:can_run_adhoc_query card-item)))
-            (is (contains? root-card-item :can_run_adhoc_query))
-            (is (boolean? (:can_run_adhoc_query root-card-item)))))
-        (testing "can_run_adhoc_query is only added to card-like models (card, dataset, metric)"
-          (mt/with-temp [:model/Dashboard {dashboard-id :id} {:collection_id collection-id}
-                         :model/Collection {subcoll-id :id} {:location (collection/children-location
-                                                                        (t2/select-one :model/Collection :id collection-id))}]
-            (let [items (:data (mt/user-http-request :rasta :get 200
-                                                     (str "collection/" collection-id "/items")
-                                                     :include_can_run_adhoc_query true))
-                  dashboard-item (first (filter #(= (:id %) dashboard-id) items))
-                  collection-item (first (filter #(= (:id %) subcoll-id) items))]
-              (is (not (contains? dashboard-item :can_run_adhoc_query)))
-              (is (not (contains? collection-item :can_run_adhoc_query))))))))))
-
-(deftest can-run-adhoc-query-threshold-exceeded-test
-  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
-    (testing "When card count exceeds threshold, can_run_adhoc_query returns true (skips permission check)"
-      (let [card-query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 2]
-              (let [items (:data (mt/user-http-request :rasta :get 200
-                                                       (str "collection/" collection-id "/items")
-                                                       :include_can_run_adhoc_query true))]
-                ;; With 3 cards and threshold of 2, all cards should have can_run_adhoc_query=true
-                ;; even though user doesn't have data permissions (computation was skipped)
-                (is (= 3 (count items)))
-                (is (every? #(true? (:can_run_adhoc_query %)) items))))))))))
-
-(deftest can-run-adhoc-query-threshold-not-exceeded-test
-  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
-    (testing "When card count is at or below threshold, normal hydration occurs (returns false without perms)"
-      (let [card-query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 5]
-              (let [items (:data (mt/user-http-request :rasta :get 200
-                                                       (str "collection/" collection-id "/items")
-                                                       :include_can_run_adhoc_query true))]
-                ;; With 2 cards and threshold of 5, actual permission check occurs
-                ;; User doesn't have data permissions, so all should be false
-                (is (= 2 (count items)))
-                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
-
-(deftest can-run-adhoc-query-threshold-disabled-test
-  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
-    (testing "When threshold is 0, always compute permissions regardless of card count"
-      (let [card-query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 0]
-              (let [items (:data (mt/user-http-request :rasta :get 200
-                                                       (str "collection/" collection-id "/items")
-                                                       :include_can_run_adhoc_query true))]
-                ;; With threshold of 0, hydration should always occur
-                ;; User doesn't have data permissions, so all should be false
-                (is (= 3 (count items)))
-                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
 
 (deftest collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -4010,4 +3943,40 @@
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]
           (is (some? item))
-          (is (nil? (:last-edit-info item))))))))
+          (is (nil? (:last-edit-info item))))))
+    (testing "Document attached to an exploration bumps the exploration's last-edit-info"
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration e    {:name          "DocBumped"
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :collection_id (:id coll)}
+                     :model/Document    doc  {:name           "notes"
+                                              :collection_id  (:id coll)
+                                              :creator_id     (mt/user->id :crowberto)
+                                              :exploration_id (:id e)
+                                              :document       {:type "doc" :content []}}]
+        ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
+        ;; Insert directly so we control timestamps — within a `with-temp` transaction
+        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
+        ;; identical timestamps and tiebreak non-deterministically.
+        (let [t (java.time.OffsetDateTime/now)]
+          (t2/insert! :model/Revision
+                      {:model       "Exploration"
+                       :model_id    (:id e)
+                       :user_id     (mt/user->id :crowberto)
+                       :object      (revision/serialize-instance :model/Exploration (:id e)
+                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                       :timestamp   (.minusSeconds t 60)
+                       :is_creation true})
+          (t2/insert! :model/Revision
+                      {:model     "Document"
+                       :model_id  (:id doc)
+                       :user_id   (mt/user->id :rasta)
+                       :object    (revision/serialize-instance :model/Document (:id doc)
+                                                               (t2/select-one :model/Document :id (:id doc)))
+                       :timestamp t}))
+        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
+                                                                  (str "collection/" (:id coll) "/items")))
+                                     (:id e))]
+          (is (some? item))
+          (is (= (mt/user->id :rasta)
+                 (-> item :last-edit-info :id))))))))

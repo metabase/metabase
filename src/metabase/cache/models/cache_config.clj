@@ -165,12 +165,12 @@
                  [:collection.type :collection_type]]
      :from      [:cache_config]
      :left-join [:report_card      [:and
-                                    [:= :model [:inline "question"]]
+                                    [:= :model "question"]
                                     [:= :model_id :report_card.id]
                                     (when collection
                                       [:= :report_card.collection_id collection])]
                  :report_dashboard [:and
-                                    [:= :model [:inline "dashboard"]]
+                                    [:= :model "dashboard"]
                                     [:= :model_id :report_dashboard.id]
                                     (when collection
                                       [:= :report_dashboard.collection_id collection])]
@@ -180,8 +180,8 @@
      :where     [:and
                  [:in :model models]
                  [:case
-                  [:= :model [:inline "question"]]  [:!= :report_card.id nil]
-                  [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
+                  [:= :model "question"]  [:!= :report_card.id nil]
+                  [:= :model "dashboard"] [:!= :report_dashboard.id nil]
                   :else                             true]]}))
 
 (mu/defn get-list

@@ -28,6 +28,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
+import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
@@ -241,6 +242,7 @@ export type TableColumnOrderSetting = {
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
+export type StackValueFormat = "value" | "percentage";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
@@ -313,6 +315,9 @@ export type VisualizationSettings = {
 
   /** Show aggregate labels for stacked chart segments. */
   "graph.show_stack_values"?: StackValuesDisplay;
+
+  /** Render stacked chart segment labels as raw values or as percentages of the stack. */
+  "graph.stack_value_format"?: StackValueFormat;
 
   /** Limit the number of categories before grouping the rest into an "Other" bucket. */
   "graph.max_categories_enabled"?: boolean;
@@ -402,6 +407,10 @@ export type VisualizationSettings = {
 
   /** Explicit order, labels, colors, and enabled state for breakout series. */
   "graph.series_order"?: SeriesOrderSetting[];
+
+  // Timeline events settings
+  "timeline.selected_timeline_ids"?: TimelineId[];
+  "timeline.excluded_timeline_event_ids"?: TimelineEventId[];
 
   /** Result numeric column name used to size scatter plot bubbles. */
   "scatter.bubble"?: string;
@@ -572,6 +581,7 @@ export type CardFilterOption =
   | "recent"
   | "popular"
   | "using_model"
+  | "using_segment"
   | "archived";
 
 export type CardQueryMetadata = {
@@ -677,12 +687,20 @@ export type InvalidCardRequest = {
   collection_id?: CollectionId | null;
 } & PaginationRequest;
 
+export type StoredResultSort =
+  | "value_asc"
+  | "value_desc"
+  | "label_asc"
+  | "label_desc";
+
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
+  stored_result_id?: number;
+  sort?: StoredResultSort;
 };
 
 export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;

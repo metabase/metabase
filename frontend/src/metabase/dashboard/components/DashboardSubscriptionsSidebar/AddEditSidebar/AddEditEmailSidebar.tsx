@@ -15,13 +15,12 @@ import {
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
+import { canAccessSettings, getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
@@ -32,6 +31,7 @@ import {
   type ChannelSpec,
   type Dashboard,
   DataPermissionValue,
+  type DraftDashboardSubscription,
   type ScheduleSettings,
   type User,
 } from "metabase-types/api";

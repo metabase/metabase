@@ -151,16 +151,9 @@
       :and (some map-schema-keys (mc/children schema))
       nil)))
 
-(core/defn dispatched-map
-  "A `:multi` schema on `dispatch` whose every branch declares `common-entries` on top of its own entries.
-
-  This is what `[:merge [:map common-entries] [:multi ...]]` looks like it does, but does not: `:merge` pushes itself
-  inside each branch, nesting a second dispatch there instead of adding the common keys to it. A branch given
-  anything other than a vector of entries is used as its own schema."
-  [dispatch common-entries branches]
-  (into [:multi {:dispatch dispatch}]
-        (map (core/fn [[dispatch-value entries]]
-               [dispatch-value (if (vector? entries)
-                                 (into (into [:map] common-entries) entries)
-                                 entries)]))
-        branches))
+(core/defn refuse
+  "A schema that never validates; its `:decode/api` throws a 400 with `(message-fn)`. Intended as the last branch of
+  an `[:or ...]`."
+  [message-fn]
+  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
+   (constantly false)])

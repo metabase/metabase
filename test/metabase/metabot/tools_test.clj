@@ -94,14 +94,21 @@
         (is (not (contains? tools "search")))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
-  (let [tools (tools-for-profile :document-generate-content)]
+  (let [tools     (tools-for-profile :document-generate-content)
+        sql-tools (binding [scope/*current-user-scope* api-scope/unrestricted]
+                    (profiles/get-tools-for-profile :document-generate-content
+                                                    #{:permission-write-sql-queries}))]
     (is (map? tools))
-    (is (contains? tools "document_schema_collect"))
     (is (contains? tools "list_available_data_sources"))
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
-    (is (contains? tools "document_construct_sql_chart"))))
+    (testing "both SQL tools need the SQL capability, like the tools they delegate to"
+      (is (not (contains? tools "document_construct_sql_chart")))
+      (is (contains? sql-tools "document_construct_sql_chart")))
+    (testing "document_schema_collect is gated too -- it only feeds document_construct_sql_chart"
+      (is (not (contains? tools "document_schema_collect")))
+      (is (contains? sql-tools "document_schema_collect")))))
 
 (deftest ^:parallel get-tools-for-slackbot-profile-test
   (let [tools (tools-for-profile :slackbot)]
@@ -170,6 +177,29 @@
           (is (seq (:data-parts result)))
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
+
+(defn- construct-tool-output-for-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
+  the `:output` the LLM would see."
+  [e]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
+    (:output (binding [shared/*profile-id* :nlq]
+               (agent-tools/construct-notebook-query-tool
+                {:query       {:lib/type "mbql/query" :stages []}
+                 :title       "Seat check"
+                 :description "Total order count."})))))
+
+(deftest construct-notebook-query-tool-permission-error-test
+  (testing (str "a 403 reaches the LLM as the permission message itself: `api/read-check` throws "
+                "a bare one with no `:agent-error?`, and the user not being allowed the card they "
+                "named is not a failure to report as one")
+    (is (= "You don't have permissions to do that."
+           (construct-tool-output-for-thrown
+            (ex-info "You don't have permissions to do that." {:status-code 403})))))
+  (testing "anything else without `:agent-error?` still gets the generic wrapper"
+    (is (= "Failed to construct notebook query: something went sideways"
+           (construct-tool-output-for-thrown
+            (ex-info "something went sideways" {:status-code 400}))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"

@@ -50,7 +50,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -70,6 +70,7 @@
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -86,6 +87,7 @@
 
 (defsetting report-timezone-long
   "Current report timezone string"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -204,6 +206,10 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *impersonation-allow-write?*
+  "Whether write-back operations are permitted while connection impersonation is active. Normally `false`."
+  false)
+
 (def ^:dynamic *allow-testing-sqlite-connections*
   "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
   users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
@@ -257,6 +263,7 @@
 
 (defsetting engines
   "Available database engines"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn []

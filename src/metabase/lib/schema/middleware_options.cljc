@@ -60,4 +60,16 @@
      "Whether to process a question's visualization settings and include them in the result metadata so that they can
   incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
   `false`."}
+    [:maybe :boolean]]
+   [:js-int-to-string?
+    {:optional true
+     :description
+     "Whether to convert bigint values in results to strings so that they can be parsed losslessly by JavaScript
+  clients. Used by `metabase.query-processor.middleware.large-int`; default `false`."}
+    [:maybe :boolean]]
+   [:ignore-cached-results?
+    {:optional true
+     :description
+     "Whether to ignore any cached results and re-run the query. Used by the query results cache middleware; default
+  `false`."}
     [:maybe :boolean]]])

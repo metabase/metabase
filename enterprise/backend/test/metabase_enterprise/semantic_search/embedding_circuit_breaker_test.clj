@@ -61,7 +61,7 @@
       (is (= "https://openai.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "openai"}))))))
 
-(deftest ^:sequential request-failure-does-not-change-service-failure-history-test
+(deftest ^:synchronized request-failure-does-not-change-service-failure-history-test
   (testing "request- and model-specific failures neither trip the circuit nor reset service-failure history"
     (let [breaker (dh.cb/circuit-breaker {:failure-threshold 2 :success-threshold 1 :delay-ms 60000})]
       (with-redefs [semantic.embedding/embedder-circuit-breakers (atom {test-endpoint breaker})]
@@ -74,7 +74,7 @@
         (is (thrown? Exception (call-through boom)))
         (is (= :open (circuit-state)))))))
 
-(deftest ^:sequential unexpected-dimensions-do-not-trip-breaker-test
+(deftest ^:synchronized unexpected-dimensions-do-not-trip-breaker-test
   (testing "dimensions are model-specific, so an otherwise valid response does not count as a service failure"
     (with-redefs [semantic.embedding/embedder-circuit-breakers
                   (atom {test-endpoint (dh.cb/circuit-breaker
@@ -89,7 +89,7 @@
                   (ex-data e)))))
       (is (= :closed (circuit-state))))))
 
-(deftest ^:sequential invalid-vector-values-trip-breaker-test
+(deftest ^:synchronized invalid-vector-values-trip-breaker-test
   (testing "nonnumeric and non-finite values are invalid service responses"
     (doseq [[label value] [["nonnumeric" ::not-a-number]
                            ["NaN" Double/NaN]
@@ -107,7 +107,7 @@
                              e))))
           (is (= :open (circuit-state))))))))
 
-(deftest ^:sequential opens-after-threshold-and-fast-fails-test
+(deftest ^:synchronized opens-after-threshold-and-fast-fails-test
   (testing "consecutive failures trip the breaker; while open, calls fast-fail with the mapped 502 ex-info"
     ;; A fresh breaker (short threshold, stays open) so the test is isolated from the process-wide default.
     (with-redefs [semantic.embedding/embedder-circuit-breakers
@@ -120,7 +120,7 @@
               (try (call-through (constantly :never)) nil
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
-(deftest ^:sequential circuit-open-fast-failure-does-not-log-request-error-test
+(deftest ^:synchronized circuit-open-fast-failure-does-not-log-request-error-test
   (testing "the breaker transition reports the outage without an error log for every guarded request"
     (with-redefs [semantic.embedding/embedder-circuit-breakers
                   (atom {test-endpoint (dh.cb/circuit-breaker
@@ -141,7 +141,7 @@
                     (ex-data e)))))
         (is (empty? (messages)))))))
 
-(deftest ^:sequential throwable-releases-half-open-permit-test
+(deftest ^:synchronized throwable-releases-half-open-permit-test
   (testing "a JVM-level failure cannot strand the breaker's only half-open trial permit"
     (let [breaker (dh.cb/circuit-breaker
                    {:failure-threshold 1 :success-threshold 1 :delay-ms 0})]
@@ -151,7 +151,7 @@
         (is (= :ok (call-through (constantly :ok))))
         (is (= :closed (circuit-state)))))))
 
-(deftest ^:sequential interruption-releases-half-open-permit-test
+(deftest ^:synchronized interruption-releases-half-open-permit-test
   (testing "an interruption propagates unchanged and cannot strand the breaker's half-open trial permit"
     (let [breaker     (dh.cb/circuit-breaker
                        {:failure-threshold 1 :success-threshold 1 :delay-ms 0})
@@ -167,7 +167,7 @@
         (is (= :ok (call-through (constantly :ok))))
         (is (= :closed (circuit-state)))))))
 
-(deftest ^:sequential local-bookkeeping-failure-does-not-trip-breaker-test
+(deftest ^:synchronized local-bookkeeping-failure-does-not-trip-breaker-test
   (testing "a token-tracking failure propagates without being attributed to the embedding service"
     (with-redefs [semantic.embedding/embedder-circuit-breakers
                   (atom {"https://example.test/v1/embeddings"
@@ -192,7 +192,7 @@
                :snowplow?      false})))
         (is (= :closed (circuit-state "https://example.test/v1/embeddings")))))))
 
-(deftest ^:sequential malformed-response-trips-breaker-test
+(deftest ^:synchronized malformed-response-trips-breaker-test
   (testing "a successful HTTP response is not a circuit success until its vectors are validated"
     (let [endpoint "https://example.test/v1/embeddings"]
       (with-redefs [semantic.embedding/embedder-circuit-breakers
@@ -213,7 +213,7 @@
                  :record-tokens?    false})))
           (is (= :open (circuit-state endpoint))))))))
 
-(deftest ^:sequential endpoint-circuits-are-isolated-test
+(deftest ^:synchronized endpoint-circuits-are-isolated-test
   (let [endpoint-a "https://a.example/v1/embeddings"
         endpoint-b "https://b.example/v1/embeddings"
         breaker    #(dh.cb/circuit-breaker
@@ -225,7 +225,7 @@
       (is (= :ok (call-through (constantly :ok) :endpoint endpoint-b)))
       (is (= :closed (circuit-state endpoint-b))))))
 
-(deftest ^:sequential kill-switch-bypasses-breaker-test
+(deftest ^:synchronized kill-switch-bypasses-breaker-test
   (testing "with the breaker disabled the thunk runs directly: raw exception propagates, breaker untouched"
     (with-redefs [semantic.embedding/embedder-circuit-breakers
                   (atom {test-endpoint (dh.cb/circuit-breaker
@@ -235,7 +235,7 @@
                 (try (call-through boom) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))))
         (is (= :closed (circuit-state)) "a bypassed breaker records no failures")))))
 
-(deftest ^:sequential probe-bypass-flag-bypasses-breaker-test
+(deftest ^:synchronized probe-bypass-flag-bypasses-breaker-test
   (testing "*bypass-circuit-breaker* runs the thunk directly, without consulting or tripping the breaker"
     (with-redefs [semantic.embedding/embedder-circuit-breakers
                   (atom {test-endpoint (dh.cb/circuit-breaker
@@ -244,7 +244,7 @@
         (is (thrown? clojure.lang.ExceptionInfo (call-through boom)))
         (is (= :closed (circuit-state)))))))
 
-(deftest ^:sequential circuit-untrusted?-covers-half-open-test
+(deftest ^:synchronized circuit-untrusted?-covers-half-open-test
   (testing "embedder-circuit-untrusted? is true whenever the enabled breaker isn't closed -- both :open and
            :half-open -- so the health verdict can't flap as the breaker cycles between them"
     (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
@@ -267,7 +267,7 @@
       (is (string? (embedding-health/embedding-problem)))
       (is (= 1 @recoveries)))))
 
-(deftest ^:sequential open-circuit-recovery-waits-for-the-trial-window-test
+(deftest ^:synchronized open-circuit-recovery-waits-for-the-trial-window-test
   (let [breaker   (dh.cb/circuit-breaker {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})
         scheduled (atom nil)]
     (with-redefs [semantic.embedding/embedder-circuit-breakers (atom {test-endpoint breaker})
@@ -279,7 +279,7 @@
           (embedding-health/request-circuit-recovery!)
           (is (fn? @scheduled) "recovery is deferred until after the breaker permits a trial"))))))
 
-(deftest ^:sequential recovery-scheduling-failure-releases-claim-test
+(deftest ^:synchronized recovery-scheduling-failure-releases-claim-test
   (let [state (atom {:running? false, :last-start-ns nil})]
     (with-redefs [embedding-health/recovery-state state]
       (mt/with-dynamic-fn-redefs
@@ -288,7 +288,7 @@
         (is (nil? (embedding-health/request-circuit-recovery!)))
         (is (false? (:running? @state)))))))
 
-(deftest ^:sequential failed-idle-recovery-schedules-another-trial-test
+(deftest ^:synchronized failed-idle-recovery-schedules-another-trial-test
   (let [state   (atom {:running? true, :last-start-ns 0})
         retries (atom 0)]
     (with-redefs [embedding-health/recovery-state state]
@@ -307,7 +307,7 @@
       (#'embedding-health/request-recovery-on-open! :open)
       (is (= 1 @requests)))))
 
-(deftest ^:sequential state-change-persists-affected-checks-test
+(deftest ^:synchronized state-change-persists-affected-checks-test
   (testing "a breaker state transition runs the registered hooks, persisting both embedder-dependent health
            checks immediately"
     (let [persisted (atom [])
@@ -320,7 +320,7 @@
         (is (.await completed 5 TimeUnit/SECONDS) "state-change hooks did not finish")
         (is (= #{:semantic-search-index :nlq-retrieval} (set @persisted)))))))
 
-(deftest ^:sequential state-changes-run-serially-in-arrival-order-test
+(deftest ^:synchronized state-changes-run-serially-in-arrival-order-test
   (testing "transitions queue through one agent: a later transition's hooks can't overtake an earlier
            transition whose hook is still blocked (e.g. on a probe against a down service), so a slow
            pre-recovery check can't persist its stale result after the recovery one"

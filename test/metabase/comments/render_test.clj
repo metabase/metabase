@@ -171,7 +171,18 @@
                                   :content [{:type  "smartLink"
                                              :attrs {:entityId 1
                                                      :model    "unknown"
-                                                     :label    "My Thing"}}]})))))
+                                                     :label    "My Thing"}}]}))))
+  (testing "non-string text values are coerced and rendered as plain text"
+    (is (= "<p>42</p>"
+           (render/content->html {:type    "doc"
+                                  :content [{:type    "paragraph"
+                                             :content [{:type "text"
+                                                        :text 42}]}]})))
+    (is (= "<p>[&quot;em&quot; {} &quot;hello&quot;]</p>"
+           (render/content->html {:type    "doc"
+                                  :content [{:type    "paragraph"
+                                             :content [{:type "text"
+                                                        :text ["em" {} "hello"]}]}]})))))
 
 (deftest content->html-unknown-nodes-test
   (testing "unknown node type is dropped entirely"

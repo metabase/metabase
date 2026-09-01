@@ -21,7 +21,7 @@
   currently still allowed for backwards-compatibility purposes -- currently the FE client will just parrot back the
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [get-in mapv])
   (:require
    #?@(:clj
        ([flatland.ordered.map :as ordered-map]))
@@ -30,7 +30,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.performance :refer [get-in mapv]]))
 
 (defn- variadic-opts-first
   "Some clauses, like `:contains`, have optional `options` last in their binary form, and required options first in
@@ -237,7 +237,8 @@
 ;;; empty? Unclear. I don't think it matters tho.
 (mr/def ::dimension.options
   [:map
-   {:error/message "dimension options"}
+   {:error/message    "dimension options"
+    :decode/normalize lib.schema.common/normalize-map}
    [:stage-number {:optional true} :int]])
 
 ;;; TODO (Cam 8/8/25) -- seems really WACK to have dimension use MBQL 4 clause order even in Lib... I guess it's not a
@@ -352,14 +353,33 @@
     (vec (sort-by str param-value))
     param-value))
 
+(mr/def ::parameter.value.scalar
+  "A single scalar parameter value."
+  [:fn
+   {:error/message "Valid parameter value (cannot be a collection)"}
+   (complement coll?)])
+
+(defn- normalize-parameter-value
+  [x]
+  (letfn [(normalize-scalar-parameter-value [x]
+            (when-not (coll? x)
+              x))]
+    (if (sequential? x)
+      (mapv normalize-scalar-parameter-value x)
+      (normalize-scalar-parameter-value x))))
+
 (mr/def ::parameter.value
   [:schema
    {:encode/for-hashing #'sort-parameter-values}
-   :any])
+   [:or
+    {:decode/normalize normalize-parameter-value}
+    [:ref ::parameter.value.scalar]
+    [:sequential [:ref ::parameter.value.scalar]]]])
 
 (mr/def ::parameter.options
   "Options the frontend attaches to a parameter value."
   [:map
+   {:decode/normalize lib.schema.common/normalize-map}
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 

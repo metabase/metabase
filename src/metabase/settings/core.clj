@@ -106,6 +106,7 @@
   has-advanced-setting-access?
   migrate-encrypted-settings!
   obfuscate-value
+  obfuscated-value?
   read-setting
   registered-settings
   registered?
@@ -124,7 +125,8 @@
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms
   cache-last-updated-at
-  restore-cache!]
+  restore-cache!
+  restore-cache-if-needed!]
  [metabase.settings.models.setting.multi-setting
   define-multi-setting
   define-multi-setting-impl]

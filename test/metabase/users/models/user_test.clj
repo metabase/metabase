@@ -18,7 +18,6 @@
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -358,21 +357,6 @@
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
 
-(deftest password-sync-to-auth-identity-test
-  (testing "Password changes are automatically synced to AuthIdentity via lifecycle hooks"
-    (testing "Password update via t2/update! also syncs to AuthIdentity"
-      (mt/with-temp [:model/User {user-id :id} {:password "initial-password"}]
-        (let [initial-user (t2/select-one [:model/User :password] :id user-id)
-              initial-password-hash (:password initial-user)]
-          (t2/update! :model/User user-id {:password "another-new-password"})
-          (let [updated-user (t2/select-one [:model/User :password] :id user-id)
-                updated-password-hash (:password updated-user)
-                updated-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
-                auth-identity-hash (get-in updated-auth-identity [:credentials :password_hash])]
-            (is (not= initial-password-hash updated-password-hash) "Password should be updated in User table")
-            (is (some? updated-auth-identity) "AuthIdentity should still exist")
-            (is (= updated-password-hash auth-identity-hash) "AuthIdentity password hash should match User table")))))))
-
 (deftest validate-locale-test
   (testing "`:locale` should be validated"
     (testing "creating a new User"
@@ -425,31 +409,6 @@
           (is (pos? (t2/update! :model/User user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
-
-(deftest hash-password-on-update-test
-  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"
-    (let [plaintext-password "password-1234"]
-      (mt/with-temp [:model/User {user-id :id} {:password plaintext-password}]
-        (let [salt                     (fn [] (t2/select-one-fn :password_salt :model/User :id user-id))
-              hashed-password          (fn [] (t2/select-one-fn :password :model/User :id user-id))
-              original-hashed-password (hashed-password)]
-          (testing "sanity check: check that password can be verified"
-            (is (u.password/verify-password plaintext-password
-                                            (salt)
-                                            original-hashed-password)))
-          (is (= 1
-                 (t2/update! :model/User user-id {:password plaintext-password})))
-          (let [new-hashed-password (hashed-password)]
-            (testing "password should have been hashed"
-              (is (not= plaintext-password
-                        new-hashed-password)))
-            (testing "even tho the plaintext password is the same, hashed password should be different (different salts)"
-              (is (not= original-hashed-password
-                        new-hashed-password)))
-            (testing "salt should have been set; verify password was hashed correctly"
-              (is (u.password/verify-password plaintext-password
-                                              (salt)
-                                              new-hashed-password)))))))))
 
 (deftest last-acknowledged-version-can-be-read-and-set
   (testing "last-acknowledged-version can be read and set"
@@ -520,7 +479,7 @@
   (testing "add-attributes should add :attributes key with merged login attributes"
     (let [user {:login_attributes {"user_attr" "user_value"}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
-                :email "test@example.com"}
+                :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"
               "user_attr" "user_value"}
@@ -529,7 +488,7 @@
 
 (deftest add-attributes-handles-nil-login-attributes-test
   (testing "add-attributes should handle nil login_attributes"
-    (let [user {:email "test@example.com"
+    (let [user {:email "test@example.com", :type :personal
                 :jwt_attributes {"jwt_attr" "jwt_value"}}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"}
@@ -539,7 +498,7 @@
   (testing "add-attributes should handle empty login_attributes"
     (let [user {:login_attributes {}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
-                :email "test@example.com"}
+                :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"}
              (:attributes result))))))
@@ -550,7 +509,7 @@
                                    "user_only" "user_val"}
                 :jwt_attributes   {"shared_key" "jwt_value"
                                    "jwt_only" "jwt_val"}
-                :email "test@example.com"}
+                :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
       (is (= {"shared_key" "user_value"
               "jwt_only" "jwt_val"
@@ -560,7 +519,7 @@
 (deftest add-attributes-preserves-user-fields-test
   (testing "add-attributes should preserve all other user fields"
     (let [user {:id 123
-                :email "test@example.com"
+                :email "test@example.com", :type :personal
                 :first_name "John"
                 :last_name "Doe"
                 :jwt_attributes {"jwt_attr" "jwt_value"}
@@ -579,7 +538,7 @@
   (testing "add-attributes should merge tenant attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {"user_attr" "user_value"}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
@@ -589,7 +548,7 @@
 (deftest add-attributes-tenant-handles-nil-login-attributes-test
   (testing "add-attributes with tenant attributes should handle nil login_attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
-      (let [user {:email "test@example.com"}
+      (let [user {:email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
                (:attributes result)))))))
@@ -598,7 +557,7 @@
   (testing "add-attributes with tenant attributes should handle empty login_attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
                (:attributes result)))))))
@@ -607,7 +566,7 @@
   (testing "add-attributes should handle nil tenant attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
       (let [user {:login_attributes {"user_attr" "user_value"}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"user_attr" "user_value"}
                (:attributes result)))))))
@@ -615,10 +574,26 @@
 (deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
   (testing "add-attributes should handle both nil tenant and user attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
-      (let [user {:email "test@example.com"}
+      (let [user {:email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {}
                (:attributes result)))))))
+
+(deftest add-attributes-only-personal-users-test
+  (testing "add-attributes gives non-personal users NO attributes, even with stored login_attributes (UXW-4240)"
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+      (doseq [user-type [:api-key :internal]]
+        (testing user-type
+          (is (= {}
+                 (:attributes (user/add-attributes {:email "test@example.com"
+                                                    :type user-type
+                                                    :login_attributes {"user_attr" "user_value"}
+                                                    :jwt_attributes {"jwt_attr" "jwt_value"}}))))))
+      (testing "throws (in dev) when :type is missing from the user map, so callers can't forget to select it"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid input"
+                              (user/add-attributes {:email "test@example.com"
+                                                    :login_attributes {"user_attr" "user_value"}})))))))
 
 (deftest add-attributes-user-overrides-tenant-test
   (testing "add-attributes: user attributes should override tenant attributes with same keys"
@@ -626,7 +601,7 @@
                                                                       "tenant_only" "tenant_val"})]
       (let [user {:login_attributes {"shared_key" "user_value"
                                      "user_only" "user_val"}
-                  :email "test@example.com"}
+                  :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"shared_key" "user_value"
                 "tenant_only" "tenant_val"
@@ -637,7 +612,7 @@
   (testing "add-attributes with tenant attributes should preserve all other user fields"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:id 123
-                  :email "test@example.com"
+                  :email "test@example.com", :type :personal
                   :first_name "John"
                   :last_name "Doe"
                   :login_attributes {"user_attr" "user_value"}}

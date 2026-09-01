@@ -1,7 +1,6 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 
-import { AIDashboardAnalysisSidebar } from "./AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
 import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
@@ -33,8 +32,6 @@ export function DashboardSidebars() {
       return <DashboardSubscriptionsSidebar />;
     case SIDEBAR_NAME.info:
       return <DashboardInfoSidebar />;
-    case SIDEBAR_NAME.analyze:
-      return <AIDashboardAnalysisSidebar />;
     default:
       return null;
   }

@@ -155,6 +155,7 @@
   [query           :- :map
    current-user-id :- [:maybe ::lib.schema.id/user]]
   (mapv
+   ;; deprecated fn delegating to its deprecated private helper; both leave together
    #_{:clj-kondo/ignore [:deprecated-var]}
    ensure-legacy
    (result-metadata* query current-user-id)))

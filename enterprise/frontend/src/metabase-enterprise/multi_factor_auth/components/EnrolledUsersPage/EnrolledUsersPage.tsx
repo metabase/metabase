@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { ActionIcon, Icon, Menu, type TreeTableColumnDef } from "metabase/ui";
 import { useListEnrolledMfaUsersQuery } from "metabase-enterprise/api";
 import type { MfaEnrolledUser, UserId } from "metabase-types/api";

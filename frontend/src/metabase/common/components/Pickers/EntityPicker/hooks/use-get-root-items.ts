@@ -13,9 +13,9 @@ import {
   useGetPersonalCollection,
   useHasTokenFeature,
 } from "metabase/common/hooks";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import type {
   Collection,

@@ -17,6 +17,10 @@
 ;;; mistral-request-body tests
 ;;; ──────────────────────────────────────────────────────────────────
 
+(def ^:private byok-credentials
+  "What a resolved Mistral connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "mistral-key-byok" :base-url "https://api.mistral.ai/v1"})
+
 (deftest ^:parallel request-body-default-model-test
   (testing "the model defaults to mistral-medium-3-5"
     (is (= "mistral-medium-3-5"
@@ -199,9 +203,8 @@
 (deftest mistral-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-byok"
-                                         llm.settings/llm-proxy-base-url  "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
@@ -209,16 +212,22 @@
                      :url     "https://api.mistral.ai/v1/chat/completions"
                      :headers {"Authorization" "Bearer mistral-key-byok"}
                      :body    string?}
-                    (mistral/mistral-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key nil]
+                    (mistral/mistral-raw {:input       [{:role :user :content "hi"}]
+                                          :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Mistral API key is set"
+               (mistral/mistral-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Mistral API key is set"
-                 (mistral/mistral-raw {:input [{:role :user :content "hi"}]})))))
+                 (mistral/mistral-raw {:input       [{:role :user :content "hi"}]
+                                       :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key nil
-                                             llm.settings/llm-proxy-base-url  nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Mistral API key is set"
@@ -235,6 +244,31 @@
                                    :input [{:role :user :content "hi"}]
                                    :ai-proxy? true})))))))
 
+(deftest mistral-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key      "mistral-key-setting"
+                                       llm.settings/llm-mistral-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/chat/completions"
+                                                          :headers {"Authorization" "Bearer mistral-key-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (mistral/mistral-raw {:input       [{:role :user :content "hi"}]
+                                   :credentials {:api-key  "mistral-key-explicit"
+                                                 :base-url "https://explicit.example"}})))))))
+
+(deftest mistral-raw-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Mistral API key is set"
+           (mistral/mistral-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key ""}}))))))
+
 (deftest list-models-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
     (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key nil]
@@ -250,29 +284,27 @@
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models with the whitelist display name"
-    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:method  :get
-                                                          :url     "https://api.mistral.ai/v1/models"
-                                                          :headers {"Authorization" "Bearer mistral-key-test"}}
-                                                         req))
-                                                 {:status 200 :body {:data [{:id "mistral-large-2512"}
-                                                                            {:id "mistral-medium-3-5"}
-                                                                            {:id "codestral-2508"}]}})]
-        (is (= {:models [{:id "mistral-medium-3-5" :display_name "Mistral Medium 3.5"}]}
-               (mistral/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (=? {:method  :get
+                                                        :url     "https://api.mistral.ai/v1/models"
+                                                        :headers {"Authorization" "Bearer mistral-key-byok"}}
+                                                       req))
+                                               {:status 200 :body {:data [{:id "mistral-large-2512"}
+                                                                          {:id "mistral-medium-3-5"}
+                                                                          {:id "codestral-2508"}]}})]
+      (is (= {:models [{:id "mistral-medium-3-5" :display_name "Mistral Medium 3.5"}]}
+             (mistral/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-matches-aliases-and-dedupes-test
   (testing "a catalog entry whose alias is whitelisted resolves to the whitelisted id, deduped across entries"
-    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 {:status 200
-                                                  :body   {:data [{:id      "mistral-medium-latest"
-                                                                   :aliases ["mistral-medium-3-5"]}
-                                                                  {:id      "mistral-medium-3-5"
-                                                                   :aliases ["mistral-medium-latest"]}]}})]
-        (is (= {:models [{:id "mistral-medium-3-5" :display_name "Mistral Medium 3.5"}]}
-               (mistral/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               {:status 200
+                                                :body   {:data [{:id      "mistral-medium-latest"
+                                                                 :aliases ["mistral-medium-3-5"]}
+                                                                {:id      "mistral-medium-3-5"
+                                                                 :aliases ["mistral-medium-latest"]}]}})]
+      (is (= {:models [{:id "mistral-medium-3-5" :display_name "Mistral Medium 3.5"}]}
+             (mistral/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -284,15 +316,13 @@
         (is (= {:models []}
                (mistral/list-models {:credentials {:api-key "mistral-key-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer mistral-key-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (mistral/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Mistral API key is set"
+           (mistral/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -312,15 +342,14 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Mistral API key expired or invalid"
-             (mistral/list-models)))))))
+             (mistral/list-models {:credentials byok-credentials})))))))
 
 (deftest list-models-malformed-catalog-throws-test
   (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
     ;; Failing open here would let admin Connect succeed against a base URL we never reached,
     ;; leaving an empty model picker with no diagnostic.
-    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Mistral returned an unexpected model list response"
-             (mistral/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Mistral returned an unexpected model list response"
+           (mistral/list-models {:credentials byok-credentials}))))))

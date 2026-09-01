@@ -2,10 +2,12 @@ import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
-import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
+import {
+  getChartLayout,
+  getWaterfallChartModel,
+  getWaterfallChartOption,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 

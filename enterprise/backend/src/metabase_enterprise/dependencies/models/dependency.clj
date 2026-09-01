@@ -244,6 +244,13 @@
                                :else node))
                            children)))))
 
+(defn- ensure-entity-id
+  [id]
+  (when-not (pos-int? id)
+    (throw (ex-info "Dependency entity id must be a positive integer"
+                    {:status-code 400, :id id})))
+  id)
+
 (defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
@@ -262,7 +269,7 @@
                  {:from_entity_type entity-type
                   :from_entity_id entity-id
                   :to_entity_type to-entity-type
-                  :to_entity_id to-entity-id})]
+                  :to_entity_id (ensure-entity-id to-entity-id)})]
     (t2/with-transaction [_conn]
       (when (seq to-remove)
         (t2/delete! :model/Dependency :id [:in to-remove]))

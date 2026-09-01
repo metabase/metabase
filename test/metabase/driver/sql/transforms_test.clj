@@ -245,6 +245,33 @@
         (lib/aggregate (lib/count))
         qp/process-query mt/rows ffirst)))
 
+(defn- warehouse-row-count
+  "Row count read straight off the warehouse, bypassing Metabase sync."
+  [schema table]
+  (let [sql (format "SELECT count(*) AS c FROM %s" (sql.u/quote-name driver/*driver* :table schema table))]
+    (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+        mt/rows ffirst long)))
+
+(deftest transform-target-name-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms-basic}
+      (testing "a target name containing special characters is created and its rows round-trip"
+        (transforms.tu/with-transform-cleanup! [target {:type     :table
+                                                        :schema   (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                                                        :name     "qcq_a\\`b"
+                                                        :database (mt/id)}]
+          (let [expected (venues-row-count)
+                details  {:db-id          (mt/id)
+                          :database       (mt/db)
+                          :transform-type :table
+                          :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                          :query          (transforms-base.u/compile-source
+                                           {:source {:type "query" :query (venues-source-query)} :target target} nil)
+                          :output-schema  (:schema target)
+                          :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
+            (driver/run-transform! driver/*driver* details {})
+            (is (= expected (warehouse-row-count (:schema target) (:name target))))))))))
+
 (deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
   ;; Characterizes the CTAS row count per driver. BigQuery, Snowflake, and Redshift are excluded; they
   ;; declare `:transforms/accurate-rows-affected false`, so the transforms layer skips emitting
@@ -321,3 +348,21 @@
           (finally
             ;; with-transform-cleanup! has dropped the table by now, so the schema is empty
             (execute! (str "DROP SCHEMA IF EXISTS " quoted-schema))))))))
+
+(deftest rename-table-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :rename)
+    (mt/with-premium-features #{:transforms-basic}
+      ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
+      ;; `rnq_a_b`, so the rename lands on a different table instead of failing
+      (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
+        (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
+            (try
+              (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
+                                    {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+              (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
+              (is (= 0 (warehouse-row-count schema dst)))
+              (finally
+                (transforms.tu/drop-target! {:type :table :schema schema :name dst})
+                (transforms.tu/drop-target! {:type :table :schema schema :name src})))))))))

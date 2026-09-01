@@ -14,6 +14,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -21,6 +22,10 @@
    (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
+
+;; Initialize before any tests run. The index scopes below write search-index bookkeeping; a later lazy
+;; initialization would recreate the H2 test DB while a test is running.
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; We act on a random localized table, making this thread-safe.
 (defmacro with-index-contents
@@ -256,72 +261,80 @@
 ;; These require some related appdb content
 
 (deftest bookmark-test
-  (let [crowberto (mt/user->id :crowberto)
-        rasta     (mt/user->id :rasta)]
-    (mt/with-temp [:model/Card {c1 :id} {}
-                   :model/Card {c2 :id} {}]
-      (testing "bookmarked items are ranker higher"
-        (with-index-contents
-          [{:model "card" :id c1 :name "card normal"}
-           {:model "card" :id c2 :name "card crowberto loved"}]
-          (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
-                         :model/CardBookmark _ {:card_id c1 :user_id rasta}]
-            (is (= [["card" c2 "card crowberto loved"]
-                    ["card" c1 "card normal"]]
-                   (search-results :bookmarked "card" {:current-user-id crowberto})))))))
-    (mt/with-temp [:model/Dashboard {d1 :id} {}
-                   :model/Dashboard {d2 :id} {}]
-      (testing "bookmarked dashboard"
-        (with-index-contents
-          [{:model "dashboard" :id d1 :name "dashboard normal"}
-           {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
-          (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
-                         :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
-            (is (= [["dashboard" d2 "dashboard crowberto loved"]
-                    ["dashboard" d1 "dashboard normal"]]
-                   (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
-    (mt/with-temp [:model/Collection {c1 :id} {}
-                   :model/Collection {c2 :id} {}]
-      (testing "bookmarked collection"
-        (with-index-contents
-          [{:model "collection" :id c1 :name "collection normal"}
-           {:model "collection" :id c2 :name "collection crowberto loved"}]
-          (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
-                         :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
-            (is (= [["collection" c2 "collection crowberto loved"]
-                    ["collection" c1 "collection normal"]]
-                   (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table.
+  (search.tu/with-temp-index-table
+    (let [crowberto (mt/user->id :crowberto)
+          rasta     (mt/user->id :rasta)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/Card {c2 :id} {}]
+        (testing "bookmarked items are ranker higher"
+          (with-index-contents
+            [{:model "card" :id c1 :name "card normal"}
+             {:model "card" :id c2 :name "card crowberto loved"}]
+            (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
+                           :model/CardBookmark _ {:card_id c1 :user_id rasta}]
+              (is (= [["card" c2 "card crowberto loved"]
+                      ["card" c1 "card normal"]]
+                     (search-results :bookmarked "card" {:current-user-id crowberto})))))))
+      (mt/with-temp [:model/Dashboard {d1 :id} {}
+                     :model/Dashboard {d2 :id} {}]
+        (testing "bookmarked dashboard"
+          (with-index-contents
+            [{:model "dashboard" :id d1 :name "dashboard normal"}
+             {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
+            (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
+                           :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
+              (is (= [["dashboard" d2 "dashboard crowberto loved"]
+                      ["dashboard" d1 "dashboard normal"]]
+                     (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
+      (mt/with-temp [:model/Collection {c1 :id} {}
+                     :model/Collection {c2 :id} {}]
+        (testing "bookmarked collection"
+          (with-index-contents
+            [{:model "collection" :id c1 :name "collection normal"}
+             {:model "collection" :id c2 :name "collection crowberto loved"}]
+            (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
+                           :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
+              (is (= [["collection" c2 "collection crowberto loved"]
+                      ["collection" c1 "collection normal"]]
+                     (search-results :bookmarked "collection" {:current-user-id crowberto}))))))))))
 
 (deftest user-recency-test
-  (let [user-id     (mt/user->id :crowberto)
-        right-now   (Instant/now)
-        long-ago    (.minus right-now 10 ChronoUnit/DAYS)
-        forever-ago (.minus right-now 30 ChronoUnit/DAYS)
-        recent-view (fn [model-id timestamp]
-                      {:model     "card"
-                       :model_id  model-id
-                       :user_id   user-id
-                       :timestamp timestamp})]
-    (mt/with-temp [:model/Card        {c1 :id} {}
-                   :model/Card        {c2 :id} {}
-                   :model/Card        {c3 :id} {}
-                   :model/Card        {c4 :id} {}
-                   :model/RecentViews _ (recent-view c1 forever-ago)
-                   :model/RecentViews _ (recent-view c2 right-now)
-                   :model/RecentViews _ (recent-view c2 forever-ago)
-                   :model/RecentViews _ (recent-view c4 forever-ago)
-                   :model/RecentViews _ (recent-view c4 long-ago)]
-      (with-index-contents
-        [{:model "card"    :id c1 :name "card ancient"}
-         {:model "metric"  :id c2 :name "card recent"}
-         {:model "dataset" :id c3 :name "card unseen"}
-         {:model "dataset" :id c4 :name "card old"}]
-        (testing "We prefer results more recently viewed by the current user"
-          (is (= [["metric"  c2 "card recent"]
-                  ["dataset" c4 "card old"]
-                  ["card"    c1 "card ancient"]
-                  ["dataset" c3 "card unseen"]]
-                 (search-results :user-recency "card" {:current-user-id user-id}))))))))
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table.
+  (search.tu/with-temp-index-table
+    (let [user-id     (mt/user->id :crowberto)
+          right-now   (Instant/now)
+          long-ago    (.minus right-now 10 ChronoUnit/DAYS)
+          forever-ago (.minus right-now 30 ChronoUnit/DAYS)
+          recent-view (fn [model-id timestamp]
+                        {:model     "card"
+                         :model_id  model-id
+                         :user_id   user-id
+                         :timestamp timestamp})]
+      (mt/with-temp [:model/Card        {c1 :id} {}
+                     :model/Card        {c2 :id} {}
+                     :model/Card        {c3 :id} {}
+                     :model/Card        {c4 :id} {}
+                     :model/RecentViews _ (recent-view c1 forever-ago)
+                     :model/RecentViews _ (recent-view c2 right-now)
+                     :model/RecentViews _ (recent-view c2 forever-ago)
+                     :model/RecentViews _ (recent-view c4 forever-ago)
+                     :model/RecentViews _ (recent-view c4 long-ago)]
+        (with-index-contents
+          [{:model "card"    :id c1 :name "card ancient"}
+           {:model "metric"  :id c2 :name "card recent"}
+           {:model "dataset" :id c3 :name "card unseen"}
+           {:model "dataset" :id c4 :name "card old"}]
+          (testing "We prefer results more recently viewed by the current user"
+            (is (= [["metric"  c2 "card recent"]
+                    ["dataset" c4 "card old"]
+                    ["card"    c1 "card ancient"]
+                    ["dataset" c3 "card unseen"]]
+                   (search-results :user-recency "card" {:current-user-id user-id})))))))))
 
 (deftest mine-test
   (let [crowberto (mt/user->id :crowberto)
@@ -336,30 +349,34 @@
              (search-results :mine "card" {:current-user-id rasta}))))))
 
 (deftest library-test
-  (testing "Library-collection cards rank above non-library cards"
-    ;; Real Collections are needed in appdb so the `:root-collection-type` fn attr can resolve the
-    ;; top-level ancestor's `:type` from each row's `:collection_location` materialized path.
-    (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
-                   :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
-                   :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
-                   :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
-                   :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
-                   :model/Collection other     {:name "non-library"    :location "/"}]
-      (with-index-contents
-        [{:model "card" :id 1 :name "plain card"                    :collection_id (:id other)    :collection_location (:location other)}
-         {:model "card" :id 2 :name "lib-tree card library"         :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
-         {:model "card" :id 3 :name "lib-tree card library-data"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
-         {:model "card" :id 4 :name "lib-tree card library-metrics" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
-         {:model "card" :id 5 :name "lib-tree card sub"             :collection_id (:id sub)      :collection_location (:location sub)}
-         {:model "card" :id 6 :name "lib-tree card sub-sub"         :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
-         {:model "card" :id 7 :name "trashed card" :collection_type "trash"}]
-        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
-          (testing "with positive :library weight, items inside library trees come first"
-            (is (= [true true true true true false false]
-                   (map in-library? (with-weights {:library 1} (search-results* "card"))))))
-          (testing "with negative :library weight, library items come last"
-            (is (= [false false true true true true true]
-                   (map in-library? (with-weights {:library -1} (search-results* "card")))))))))))
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table.
+  (search.tu/with-temp-index-table
+    (testing "Library-collection cards rank above non-library cards"
+      ;; Use real Collections so the app DB index's `:root-collection-type` function attribute can resolve the
+      ;; top-level ancestor's `:type` from each row's materialized `:collection_location` path.
+      (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
+                     :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
+                     :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
+                     :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
+                     :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
+                     :model/Collection other     {:name "non-library"    :location "/"}]
+        (with-index-contents
+          [{:model "card" :id 1 :name "plain card"                    :collection_id (:id other)    :collection_location (:location other)}
+           {:model "card" :id 2 :name "lib-tree card library"         :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
+           {:model "card" :id 3 :name "lib-tree card library-data"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
+           {:model "card" :id 4 :name "lib-tree card library-metrics" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
+           {:model "card" :id 5 :name "lib-tree card sub"             :collection_id (:id sub)      :collection_location (:location sub)}
+           {:model "card" :id 6 :name "lib-tree card sub-sub"         :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
+           {:model "card" :id 7 :name "trashed card" :collection_type "trash"}]
+          (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
+            (testing "with positive :library weight, items inside library trees come first"
+              (is (= [true true true true true false false]
+                     (map in-library? (with-weights {:library 1} (search-results* "card"))))))
+            (testing "with negative :library weight, library items come last"
+              (is (= [false false true true true true true]
+                     (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
 (deftest ^:parallel data-layer-test
   (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"

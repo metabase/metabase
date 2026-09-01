@@ -11,21 +11,23 @@ import {
   retryPrompt,
   submitInput,
 } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import type { State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
 
 import {
   chatMessages,
+  conversationIdForAgent,
   createMockSSEStream,
   createPauses,
+  createTestMetabotState,
   enterChatMessage,
   lastChatMessage,
   lastReqBody,
   mockAgentEndpoint,
   setup,
   stopResponseButton,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -68,12 +70,8 @@ describe("metabot > retry", () => {
 
   it("should reuse the conversation profileOverride when retrying a response", async () => {
     const metabotInitialState = assocIn(
-      assocIn(
-        getMetabotInitialState(),
-        ["conversations", "omnibot", "visible"],
-        true,
-      ),
-      ["conversations", "omnibot", "profileOverride"],
+      assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
+      ["conversations", testConversationId("omnibot"), "profileOverride"],
       "nlq",
     );
     setup({ metabotInitialState });
@@ -113,6 +111,7 @@ describe("metabot > retry", () => {
       void,
       UnknownAction
     >;
+    const conversationId = conversationIdForAgent(store, "explorations");
 
     const firstSpy = mockAgentEndpoint({
       events: turnEvents({
@@ -127,7 +126,7 @@ describe("metabot > retry", () => {
           type: "text",
           message: "first prompt",
           context: emptyContext,
-          agentId: "explorations",
+          conversationId,
           profile: "explorations",
         }),
       );
@@ -135,7 +134,7 @@ describe("metabot > retry", () => {
     expect((await lastReqBody(firstSpy)).profile_id).toBe("explorations");
 
     const messageId = checkNotNull(
-      getMessages(store.getState(), "explorations").at(-1),
+      getMessages(store.getState(), conversationId).at(-1),
     ).id;
 
     const retrySpy = mockAgentEndpoint({
@@ -150,7 +149,7 @@ describe("metabot > retry", () => {
         retryPrompt({
           messageId,
           context: emptyContext,
-          agentId: "explorations",
+          conversationId,
           profile: "explorations",
         }),
       );
@@ -247,7 +246,7 @@ describe("metabot > retry", () => {
   it("should rewind convo state to before the retried turn", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [

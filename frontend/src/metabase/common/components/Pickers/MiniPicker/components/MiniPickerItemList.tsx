@@ -12,10 +12,7 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import {
-  canCollectionCardBeUsed,
-  getCollectionItemsOptions,
-} from "metabase/common/components/Pickers/utils";
+import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
@@ -432,7 +429,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   });
 
   const allItems: CollectionItem[] = (data?.data ?? []).filter(
-    (item) => canCollectionCardBeUsed(item) && !isHidden(item),
+    (item) => !isHidden(item),
   );
   const typeFilter = parent.childTypeFilter;
   const items = typeFilter

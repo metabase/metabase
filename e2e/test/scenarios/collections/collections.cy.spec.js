@@ -924,10 +924,8 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("toast-card")
-            .parent()
-            .button("Move to trash")
-            .click();
+          cy.findByTestId("toast-card").findByLabelText("More actions").click();
+          H.popover().findByText("Move to trash").click();
           H.modal().button("Move to trash").click();
 
           H.getUnpinnedSection().findByText("Orders").should("not.exist");

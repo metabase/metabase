@@ -121,7 +121,7 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
     // rendered in isolation (common in unit tests) has no router, so fall back
     // to a plain anchor with the resolved href. The real app always mounts a
     // router, so that path never runs there.
-    if (to == null || to === "" || !inRouter) {
+    if (to == null || to === "" || to === "#" || !inRouter) {
       const href = to == null || to === "" ? undefined : hrefFor(to);
       return (
         <a

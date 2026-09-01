@@ -1,8 +1,8 @@
 import _ from "underscore";
 
+import { getUser } from "metabase/current-user";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getUser } from "metabase/selectors/user";
 import type { User } from "metabase-types/api";
 
 import ModerationReviewIcon from "../../components/ModerationReviewIcon";

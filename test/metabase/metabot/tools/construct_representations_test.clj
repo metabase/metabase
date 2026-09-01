@@ -2,7 +2,7 @@
   "Tests for `execute-representations-query` - the representations-format entry point for
   `construct_notebook_query`.
 
-  Covers the happy path (external-query JSON -> resolved pMBQL wrapped in structured output),
+  Covers the happy path (external-query JSON -> resolved MBQL 5 wrapped in structured output),
   unknown table, the `:agent-error?` error-translation contract, and the database-id
   resolution from the query's first-stage `source-table:` (per `repr-plan.md` step 13:
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
@@ -722,7 +722,7 @@
 (deftest expression-map-shape-end-to-end-test
   (testing (str "The LLM-friendly `expressions: {Name: clause, …}` map shape is normalised\n"
                 "to the canonical sequential MBQL 5 form with `lib/expression-name` stamped,\n"
-                "and the resolved query carries the expression in its pMBQL.")
+                "and the resolved query carries the expression in its MBQL 5.")
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
@@ -1173,12 +1173,15 @@
   "Valid 21-char NanoID so `import-mbql` picks up the `[:metric …]` branch."
   "Metric123_456DefGhI78")
 
+(def ^:private mock-db-id
+  Integer/MAX_VALUE)
+
 (def ^:private mp-metric-base
   "ORDERS(10) and CAMPAIGNS(30) with NO foreign key between them."
   (lib.tu/mock-metadata-provider
-   {:database {:id 1 :name "Sample"}
-    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
-               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 1}]
+   {:database {:id mock-db-id :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id mock-db-id}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id mock-db-id}]
     :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
                {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
                {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
@@ -1197,14 +1200,14 @@
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
    mp-metric-base
-   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id 1 :table-id 10
+   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id mock-db-id :table-id 10
              :entity-id metric-eid :dataset-query metric-definition}]}))
 
 (defn- with-joined-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-metric)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                construct/resolve-database-id-from-first-stage (fn [_] mock-db-id)
                 construct/permission-aware-content-store (stub-content-store
-                                                          {:id 700 :database_id 1 :entity_id metric-eid})
+                                                          {:id 700 :database_id mock-db-id :entity_id metric-eid})
                 api/read-check  allow-read-check
                 api/query-check allow-read-check
                 ;; `metric-details` gates its base table and every surfaced column on app-db
@@ -1213,7 +1216,8 @@
                 ;; app-DB-free (see the fixture note above). That the surfaced dimensions ARE
                 ;; permission-filtered is covered against real tables in entity-details-test.
                 mi/can-read?                             (constantly true)
-                entity-details/permission-filter-columns identity
+                mi/can-query?                            (constantly true)
+                entity-details/permission-filter-columns (fn [cols & _] cols)
                 entity-details/verified-review?          (constantly false)]
     (f)))
 

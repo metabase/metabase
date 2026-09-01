@@ -2,7 +2,8 @@
   (:require
    [bencode.core :as bencode]
    [clojure.edn :as edn]
-   ^:clj-kondo/ignore
+   ;; mage runs on bb, where the expected `pprint` alias convention does not apply
+   ^{:clj-kondo/ignore [:consistent-alias]}
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -66,7 +67,7 @@
   It's basically a repl inside a repl. The code here will be
   executed in the context of the connected repl."
   [nns code]
-  ^:clj-kondo/ignore ;; ignore `eval`
+  ^{:clj-kondo/ignore [:discouraged-var]} ;; the form is built to be `eval`ed in the connected repl
   `(let [ns# (symbol ~nns)]
      (require ns# :reload)
      (in-ns ns#)

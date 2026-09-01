@@ -65,11 +65,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   {{:strs [file]} :multipart-params, :as _request} :- [:map
-                                                        [:multipart-params
-                                                         [:map
-                                                          [:file (mu/with ms/File {:description "File to upload"})]]]]]
+   {:keys [file]} :- [:map
+                      [:file (mu/with ms/File {:description "File to upload"})]]]
   {:id id :data file})
 
 (deftest ^:parallel defendpoint->openapi-test

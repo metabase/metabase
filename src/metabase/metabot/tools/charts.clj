@@ -94,7 +94,8 @@
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
             :new-chart-type new-viz
-            :charts-state (shared/current-charts-state)})
+            :charts-state (shared/current-charts-state)
+            :query query})
 
           structured (assoc result :result-type :chart)]
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.
