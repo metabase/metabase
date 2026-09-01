@@ -325,6 +325,7 @@
   :visibility :internal
   :default    :external-only
   :export?    false
+  :deprecated-name :http-channel-host-strategy
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))

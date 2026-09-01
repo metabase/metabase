@@ -250,6 +250,7 @@ config:
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
+    map-tile-server-allowed-networks: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []

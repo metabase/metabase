@@ -1716,6 +1716,18 @@ Options for displaying the illustration on the login page.
 
 The custom illustration for the login page.
 
+### `MB_MAP_TILE_SERVER_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for map tile servers.
+Options:
+- allow-private (external + private networks but NOT loopback or link-local)
+- external-only (only globally routable public addresses)
+- allow-all (no restrictions).
+Defaults to allow-private when self-hosted.
+
 ### `MB_MAP_TILE_SERVER_URL`
 
 - Type: string

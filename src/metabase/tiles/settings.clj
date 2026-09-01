@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n :refer [tru]])
@@ -26,15 +27,20 @@
        (not (str/starts-with? url "//"))))
 
 (defsetting map-tile-server-allowed-networks
-  (i18n/deferred-tru (str "Controls which networks Metabase may connect to for map tile servers.\n"
-                          "Options:\n"
-                          "- allow-private (default - external + private networks but NOT loopback or link-local)\n"
-                          "- external-only (only globally routable public addresses)\n"
-                          "- allow-all (no restrictions).\n"))
+  "Controls which networks Metabase may connect to for map tile servers.
+  Options:
+  - allow-private (external + private networks but NOT loopback or link-local)
+  - external-only (only globally routable public addresses)
+  - allow-all (no restrictions).
+  Defaults to external-only on Metabase Cloud and allow-private when self-hosted."
   :type       :keyword
   :visibility :internal
-  :default    :allow-private
   :export?    false
+  :getter     (fn []
+                (or (setting/get-value-of-type :keyword :map-tile-server-allowed-networks)
+                    (if (premium-features/is-hosted?)
+                      :external-only
+                      :allow-private)))
   :setter     (fn [new-value]
                 (when (some? new-value)
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
@@ -44,9 +50,10 @@
 (defn- valid-map-tile-server-url?
   "Whether `template` is safe to store. It must be http(s) and its host must be allowed
   by [[map-tile-server-allowed-networks]]. A host that cannot be resolved at all is rejected rather than
-  trusted. Defaults to `:allow-private`, not `:external-only`, because the browser is what fetches these
-  tiles: an on-prem instance with no internet egress can only show maps via a tile server on its own
-  network. The server-side fetch in [[metabase.channel.render.maps]] refuses internal addresses regardless."
+  trusted. Self-hosted that policy defaults to `:allow-private`, not `:external-only`, because the browser
+  is what fetches these tiles: an on-prem instance with no internet egress can only show maps via a tile
+  server on its own network. The server-side fetch in [[metabase.channel.render.maps]] applies the same
+  policy, so a tile server that is legal to configure is one subscription renders can actually reach."
   [template]
   (let [url (concrete-tile-url template)]
     (or (relative-template? url)

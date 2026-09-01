@@ -8,6 +8,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.tiles.settings :as tiles.settings]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
@@ -95,10 +96,11 @@
   (memoize/ttl
    (fn [template ^long z ^long x ^long y]
      (let [url (expand-tile-url template z x y)
-           {:keys [^bytes bytes]} (u.http/fetch-bytes url {:max-bytes  tile-max-bytes
-                                                           :timeout-ms 5000
+           {:keys [^bytes bytes]} (u.http/fetch-bytes url {:max-bytes      tile-max-bytes
+                                                           :timeout-ms     5000
+                                                           :network-policy (tiles.settings/map-tile-server-allowed-networks)
                                                            ;; OSM rejects requests without a valid User-Agent.
-                                                           :user-agent "Metabase static map renderer"})]
+                                                           :user-agent     "Metabase static map renderer"})]
        (when-not bytes
          (throw (ex-info "Tile fetch failed" {:url url})))
        (or (ImageIO/read (ByteArrayInputStream. bytes))
