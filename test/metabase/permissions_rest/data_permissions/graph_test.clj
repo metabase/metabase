@@ -577,8 +577,8 @@
 (deftest reduce-into-graph-test
   (let [reduce-into-graph @#'data-perms.graph/reduce-into-graph
         row               (fn [group-id db-id perm-type schema table-id value]
-                            {:group-id group-id :db-id db-id :type perm-type
-                             :schema schema :table-id table-id :value value})]
+                            {:group_id group-id :db_id db-id :type perm-type
+                             :schema schema :table_id table-id :value value})]
     (testing "rows ordered by (group, db) are folded into a nested group -> db -> perm-map graph"
       (is (= {1 {10 {:perms/view-data       :unrestricted
                      :perms/create-queries  {"PUBLIC" {100 :query-builder}}}}

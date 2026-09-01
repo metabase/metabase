@@ -1225,7 +1225,7 @@
                                         "transforms_codegen"
                                         {:role "user" :content "make a SQL transform"})]
         (binding [used-tables/*run-synchronously?* true]
-          (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
+          (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table_id orders-id}]})]
             (metabot-persistence/finalize-assistant-turn!
              assistant-msg-id
              (into [{:type :text :text "ok"}]
