@@ -59,7 +59,7 @@ export function ReplaceWithTransformModal({
     <Modal
       title={t`Convert this model to a transform?`}
       opened={opened}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />

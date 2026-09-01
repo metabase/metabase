@@ -83,7 +83,7 @@ export function SnippetFormModal({
   );
 
   return (
-    <Modal.Root padding="xl" opened onClose={onClose}>
+    <Modal.Root padding="xxl" opened onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header px="xxl">

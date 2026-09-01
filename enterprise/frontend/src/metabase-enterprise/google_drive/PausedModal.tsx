@@ -16,7 +16,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
   const isAdmin = useSelector(getUserIsAdmin);
 
   return (
-    <Modal opened onClose={onClose} padding="xl" withCloseButton={false}>
+    <Modal opened onClose={onClose} padding="xxl" withCloseButton={false}>
       <Stack gap="lg" pt="xl" ta="center">
         <Box component={databaseError} mx="auto" />
         <Text size="lg" fw="bold">

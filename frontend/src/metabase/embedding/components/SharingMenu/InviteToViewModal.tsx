@@ -206,7 +206,7 @@ export const InviteToViewModal = ({
   }
 
   return (
-    <Modal opened title={title} padding="xl" onClose={onClose}>
+    <Modal opened title={title} padding="xxl" onClose={onClose}>
       {body}
     </Modal>
   );

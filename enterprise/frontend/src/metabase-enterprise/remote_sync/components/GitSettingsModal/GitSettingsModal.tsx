@@ -24,7 +24,7 @@ export const GitSettingsModal = ({
         </Text>
       }
       size="xl"
-      padding="xl"
+      padding="xxl"
     >
       <Text c="text-secondary" size="md" fw={400} lh="1.25rem" mb="xl">
         {t`Keep your Library and transforms safely backed up in Git.`}

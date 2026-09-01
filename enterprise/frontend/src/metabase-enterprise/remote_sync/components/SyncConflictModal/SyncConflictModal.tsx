@@ -191,7 +191,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     <Modal
       onClose={onClose}
       opened
-      padding="xl"
+      padding="xxl"
       styles={{ title: { lineHeight: "2rem" } }}
       title={getModalTitle(variant, canMerge)}
       withCloseButton={false}

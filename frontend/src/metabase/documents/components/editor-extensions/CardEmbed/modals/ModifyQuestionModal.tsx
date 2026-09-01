@@ -122,7 +122,7 @@ export const ModifyQuestionModal = ({
       onClose={onClose}
       size="80%"
       title={t`Modify question`}
-      padding="lg"
+      padding="xl"
     >
       {question && modifiedQuestion ? (
         <>

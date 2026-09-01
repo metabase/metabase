@@ -90,7 +90,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
       title={t`Editing ${collection.name}`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       onKeyDown={stopPropagation}
     >
       <FormProvider

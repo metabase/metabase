@@ -118,7 +118,7 @@ export const EditUserStrategyModal = ({
       <Modal
         opened={!confirmationModal && !isApplyingAfterConfirm}
         title={t`Pick a user strategy`}
-        padding="xl"
+        padding="xxl"
         size="md"
         onClose={onClose}
       >

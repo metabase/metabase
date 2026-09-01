@@ -136,7 +136,7 @@ export function AddEntitiesModal({
       onClose={onClose}
       title={title}
       size="lg"
-      padding="xl"
+      padding="xxl"
     >
       <Stack gap="lg">
         <TextInput

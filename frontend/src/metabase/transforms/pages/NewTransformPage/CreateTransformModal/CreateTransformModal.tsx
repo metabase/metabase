@@ -122,7 +122,7 @@ export function CreateTransformModal({
     <Modal
       title={t`Save your transform`}
       opened
-      padding="xl"
+      padding="xxl"
       closeOnEscape={closeOnEscape}
       onClose={onClose}
     >

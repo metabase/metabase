@@ -46,7 +46,7 @@ export function DeleteTransformModal({
     <Modal
       title={getModalTitle(transform)}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />

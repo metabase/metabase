@@ -45,7 +45,7 @@ const RegenerateKeyModal = ({
   return (
     <Modal
       size="40rem"
-      padding="xl"
+      padding="xxl"
       opened
       onClose={() => setModal("edit")}
       title={t`Regenerate API key`}
@@ -134,7 +134,7 @@ export const EditApiKeyModal = ({
     return (
       <Modal
         size="40rem"
-        padding="xl"
+        padding="xxl"
         opened
         onClose={onClose}
         title={t`Edit API key`}

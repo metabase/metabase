@@ -195,7 +195,7 @@ export const BaseSMTPConnectionForm = ({
       title={t`SMTP Configuration`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       data-testid={dataTestId}
     >
       <Box data-testid="settings-updates" pt="xl">

@@ -20,6 +20,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import type { SpacingScaleKey } from "metabase/ui/theme";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting";
 import {
@@ -83,10 +84,10 @@ function RunEntityName({ run }: { run: TransformGraphRun }) {
 
 type RunNameProps = {
   run: TransformGraphRun;
-  gap?: MantineSize;
+  gap?: MantineSize | SpacingScaleKey;
 };
 
-export function RunName({ run, gap = "xs" }: RunNameProps) {
+export function RunName({ run, gap = "xxs" }: RunNameProps) {
   const count = dagDependencyCount(run);
   if (count == null) {
     return <RunEntityName run={run} />;

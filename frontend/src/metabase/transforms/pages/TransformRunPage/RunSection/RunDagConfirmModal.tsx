@@ -42,7 +42,7 @@ export function RunDagConfirmModal({
     <Modal
       opened={direction != null}
       title={title}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <Stack gap="xl">

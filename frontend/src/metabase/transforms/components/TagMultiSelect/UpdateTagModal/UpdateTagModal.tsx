@@ -29,7 +29,7 @@ export function UpdateTagModal({
     <Modal
       title={t`Rename the ${tag.name} tag`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />

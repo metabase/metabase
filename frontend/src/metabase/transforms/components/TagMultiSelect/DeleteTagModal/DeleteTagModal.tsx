@@ -25,7 +25,7 @@ export function DeleteTagModal({
     <Modal
       title={t`Delete the ${tag.name} tag?`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />

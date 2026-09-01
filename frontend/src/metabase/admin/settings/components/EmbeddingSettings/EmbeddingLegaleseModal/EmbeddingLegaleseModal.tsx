@@ -35,7 +35,7 @@ export const EmbeddingLegaleseModal = ({
       onClose={onClose}
       opened={opened}
       size={670}
-      padding="xl"
+      padding="xxl"
       withCloseButton={false}
       closeOnClickOutside={false}
     >

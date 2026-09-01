@@ -22,7 +22,7 @@ export interface ModalHeaderProps extends CommonModalProps {
 export const ModalHeader = ({
   children,
   className,
-  py = "xl",
+  py = "xxl",
   fullPageModal,
   centeredTitle,
   headerActions,

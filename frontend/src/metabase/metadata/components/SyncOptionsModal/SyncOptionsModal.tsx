@@ -21,7 +21,7 @@ export const SyncOptionsModal = ({
   return (
     <Modal
       opened={isOpen}
-      padding="xl"
+      padding="xxl"
       size={rem(512)}
       title={t`Syncing and scanning`}
       onClose={onClose}

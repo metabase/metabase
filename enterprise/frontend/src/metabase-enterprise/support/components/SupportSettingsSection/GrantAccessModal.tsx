@@ -61,7 +61,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
       onClose={onClose}
       opened
       title={t`Grant Access?`}
-      padding="xl"
+      padding="xxl"
     >
       <Stack>
         <Box mt="sm">

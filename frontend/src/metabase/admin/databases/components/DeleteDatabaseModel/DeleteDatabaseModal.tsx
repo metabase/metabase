@@ -117,7 +117,7 @@ export const DeleteDatabaseModal = ({
       opened={opened}
       title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       {...props}
     >
       <LoadingAndErrorWrapper loading={loading}>

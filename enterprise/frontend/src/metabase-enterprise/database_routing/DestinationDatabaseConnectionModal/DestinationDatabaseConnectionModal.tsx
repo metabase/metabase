@@ -104,7 +104,7 @@ export const DestinationDatabaseConnectionModal = () => {
       }
       opened
       onClose={handleCloseModal}
-      padding="xl"
+      padding="xxl"
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,

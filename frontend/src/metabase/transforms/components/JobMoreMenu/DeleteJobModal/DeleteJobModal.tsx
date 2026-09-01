@@ -25,7 +25,7 @@ export function DeleteJobModal({
     <Modal
       title={t`Delete this job?`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
       onClick={(event) => event.stopPropagation()}
     >

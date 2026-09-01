@@ -42,7 +42,7 @@ export function CreateMetricModal({
   onClose,
 }: CreateMetricModalProps) {
   return (
-    <Modal title={t`Save your metric`} opened padding="xl" onClose={onClose}>
+    <Modal title={t`Save your metric`} opened padding="xxl" onClose={onClose}>
       <CreateMetricForm
         query={query}
         defaultValues={defaultValues}

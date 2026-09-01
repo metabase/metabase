@@ -56,7 +56,7 @@ export const RemoteSyncDependencyModal = ({
     <Modal
       opened
       onClose={handleDismiss}
-      padding="xl"
+      padding="xxl"
       title={
         canSync
           ? t`Sync collections with dependencies?`

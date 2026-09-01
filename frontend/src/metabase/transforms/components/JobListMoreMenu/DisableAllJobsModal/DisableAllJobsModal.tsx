@@ -22,7 +22,7 @@ export function DisableAllJobsModal({
     <Modal
       title={t`Disable all jobs?`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
       onClick={(event) => event.stopPropagation()}
     >

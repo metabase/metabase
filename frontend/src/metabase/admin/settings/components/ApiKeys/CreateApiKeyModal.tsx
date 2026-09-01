@@ -40,7 +40,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
     return (
       <Modal
         size="40rem"
-        padding="xl"
+        padding="xxl"
         opened
         onClose={onClose}
         title={t`Create a new API key`}

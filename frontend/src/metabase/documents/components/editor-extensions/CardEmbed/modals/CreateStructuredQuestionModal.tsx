@@ -112,7 +112,7 @@ export const CreateStructuredQuestionModal = ({
       onClose={onClose}
       size="80%"
       title={t`Create new question`}
-      padding="lg"
+      padding="xl"
     >
       <Box h="70vh" className={S.notebookContainer}>
         <Notebook

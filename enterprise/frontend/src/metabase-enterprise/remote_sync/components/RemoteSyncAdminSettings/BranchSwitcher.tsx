@@ -199,7 +199,7 @@ export const BranchSwitcher = ({
       {branchMismatch && (
         <Modal
           opened
-          padding="xl"
+          padding="xxl"
           title={t`This view is out of date`}
           withCloseButton={false}
           onClose={() => setBranchMismatch(null)}

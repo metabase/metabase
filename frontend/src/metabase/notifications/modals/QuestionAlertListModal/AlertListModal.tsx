@@ -60,7 +60,7 @@ export const AlertListModal = ({
       opened={opened}
       size={rem(600)}
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       title={t`Edit alerts`}
     >
       <Stack gap="xl" mb="xl" mt="1rem">

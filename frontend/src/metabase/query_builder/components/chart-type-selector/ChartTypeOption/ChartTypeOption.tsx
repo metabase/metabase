@@ -48,7 +48,7 @@ export const ChartTypeOption = ({
         <ActionIcon
           w="3.125rem"
           h="3.125rem"
-          radius="xl"
+          radius="50%"
           onClick={() => {
             if (isSelected) {
               onOpenSettings?.();

@@ -68,7 +68,7 @@ export function CreateTransformCollectionModal({
       title={t`Transform folder`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       onKeyDown={stopPropagation}
     >
       <FormProvider

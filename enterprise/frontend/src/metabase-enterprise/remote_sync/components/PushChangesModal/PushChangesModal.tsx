@@ -74,7 +74,7 @@ export const PushChangesModal = ({
       title={t`Push to Git`}
       onClose={onClose}
       size="lg"
-      padding="xl"
+      padding="xxl"
     >
       <Box pt="lg">
         {errorMessage && (

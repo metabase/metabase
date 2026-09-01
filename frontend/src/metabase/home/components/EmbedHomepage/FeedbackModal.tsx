@@ -35,7 +35,7 @@ export const FeedbackModal = ({
   return (
     <Modal
       size={rem(530)}
-      padding="xl"
+      padding="xxl"
       opened={opened}
       withCloseButton={false}
       onClose={onClose}

@@ -24,7 +24,7 @@ export const FieldValuesModal = ({
   return (
     <Modal
       opened={isOpen}
-      padding="xl"
+      padding="xxl"
       size={rem(512)}
       title={t`Field values`}
       onClose={onClose}

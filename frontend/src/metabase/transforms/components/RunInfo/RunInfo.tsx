@@ -55,7 +55,7 @@ export function RunInfo({ status, message, endTime }: RunInfoProps) {
         <Modal
           title={getTitle(status, endTime)}
           size="xl"
-          padding="xl"
+          padding="xxl"
           opened
           onClick={handleModalClick}
           onClose={close}
