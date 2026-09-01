@@ -38,7 +38,7 @@ function createThemeViaApi(name = "Test theme") {
 
 function visitThemeEditor(themeId: number) {
   cy.intercept("GET", `/api/embed-theme/${themeId}`).as("getTheme");
-  cy.visit(`/embedding/appearance/${themeId}`);
+  cy.visit(`/embedding/appearance/theme/${themeId}`);
   cy.wait("@getTheme");
 }
 
@@ -70,8 +70,8 @@ describe(
       cy.log("editor panel should show the theme name");
       cy.findByLabelText("Theme name").should("have.value", "My custom theme");
 
-      cy.log("sidebar should be hidden on theme editor page");
-      cy.findByTestId("admin-layout-sidebar").should("not.exist");
+      cy.log("theme editor should render full width");
+      cy.findByTestId("embedding-hub-content-cap").should("not.exist");
 
       cy.log("save button should be disabled when no changes");
       cy.findByRole("button", { name: /Save theme/ }).should("be.disabled");
@@ -106,11 +106,11 @@ describe(
 
       cy.log("should navigate back to the themes listing");
       cy.url().should("include", "/embedding/appearance");
-      cy.url().should("not.match", /\/themes\/\d+/);
+      cy.url().should("not.match", /\/theme\/\d+/);
     });
 
     it("shows not found for invalid theme id", () => {
-      cy.visit("/embedding/appearance/99999");
+      cy.visit("/embedding/appearance/theme/99999");
 
       H.main().findByText("We're a little lost...").should("be.visible");
     });
@@ -139,7 +139,7 @@ describe(
       });
 
       cy.log("should remain on the editor page after cancelling");
-      cy.url().should("match", /\/themes\/\d+/);
+      cy.url().should("match", /\/theme\/\d+/);
 
       cy.log("confirm deletion");
       cy.findByRole("button", { name: /Delete theme/ }).click();
@@ -151,7 +151,7 @@ describe(
 
       cy.log("should navigate back to the themes listing");
       cy.url().should("include", "/embedding/appearance");
-      cy.url().should("not.match", /\/themes\/\d+/);
+      cy.url().should("not.match", /\/theme\/\d+/);
 
       H.main().within(() => {
         cy.findByText("Theme to delete").should("not.exist");
@@ -182,12 +182,12 @@ describe(
 
       cy.log("should land on the themes listing — not 404 or leave-prompt");
       cy.url().should("include", "/embedding/appearance");
-      cy.url().should("not.match", /\/themes\/\d+/);
+      cy.url().should("not.match", /\/theme\/\d+/);
       H.main().findByText("We're a little lost...").should("not.exist");
     });
 
     it("does not show the delete button when creating a new theme", () => {
-      cy.visit("/embedding/appearance/new");
+      cy.visit("/embedding/appearance/theme/new");
 
       cy.findByLabelText("Theme name").should("be.visible");
       cy.findByRole("button", { name: /Delete theme/ }).should("not.exist");
