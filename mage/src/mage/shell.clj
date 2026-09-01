@@ -8,7 +8,21 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- read-lines [^java.io.BufferedReader reader {:keys [quiet?]}]
+(defn- start-process!
+  "Start the command `args` as a subprocess. `dir` is its working directory. `env`, when given, replaces the
+  parent environment rather than adding to it."
+  ^Process [args env dir]
+  (let [builder (ProcessBuilder. ^java.util.List (mapv str args))]
+    (when dir
+      (.directory builder (File. ^String dir)))
+    (when env
+      (assert (map? env))
+      (doto (.environment builder)
+        (.clear)
+        (.putAll (into {} (map (fn [[k v]] [(name k) (str v)])) env))))
+    (.start builder)))
+
+(defn- read-lines [^BufferedReader reader {:keys [quiet?]}]
   (loop [lines []]
     (if-let [line (.readLine reader)]
       (do
@@ -94,15 +108,7 @@
                            opts)
         {:keys [env dir timeout-ms]
          :or   {timeout-ms command-timeout-ms}} opts
-        cmd-array         (into-array (map str args))
-        env-array         (when env
-                            (assert (map? env))
-                            (into-array String (for [[k v] env]
-                                                 (format "%s=%s" (name k) (str v)))))
-        proc              (.exec (Runtime/getRuntime)
-                                 ^"[Ljava.lang.String;" cmd-array
-                                 ^"[Ljava.lang.String;" env-array
-                                 ^File (when dir (File. ^String dir)))]
+        proc              (start-process! args env dir)]
     ;; Close child stdin so subprocesses that read from it see EOF immediately
     ;; instead of blocking forever on the JVM-owned pipe.
     (.close (.getOutputStream proc))
