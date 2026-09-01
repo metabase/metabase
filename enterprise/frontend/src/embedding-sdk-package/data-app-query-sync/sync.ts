@@ -175,7 +175,7 @@ export async function syncResources({
     log,
   );
 
-  const queryTableIds = await reconcileQueries({
+  await reconcileQueries({
     appRoot,
     slug,
     collectionId: app.resource_collection_id,
@@ -184,7 +184,7 @@ export async function syncResources({
     client,
     log,
   });
-  const modelTableIds = await reconcileModels({
+  await reconcileModels({
     appRoot,
     collectionId: app.resource_collection_id,
     actions,
@@ -192,10 +192,4 @@ export async function syncResources({
     client,
     log,
   });
-
-  const tableIds = [...new Set([...queryTableIds, ...modelTableIds])].sort(
-    (a, b) => a - b,
-  );
-
-  await client.reconcilePermissions(slug, tableIds);
 }

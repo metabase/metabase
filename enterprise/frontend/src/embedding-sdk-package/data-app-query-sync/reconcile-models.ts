@@ -5,7 +5,6 @@ import { writeResourceLockfile } from "./lockfile";
 import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
-import { collectTableIds } from "./table-ids";
 import type {
   ActionLockEntry,
   DiscoveredAction,
@@ -390,7 +389,7 @@ async function removeUnusedModels(
 /**
  * Makes the data app collection hold exactly the models its actions belong to,
  * copying a model when its first action appears and deleting it when its last
- * action goes away. Returns the tables those models and actions read.
+ * action goes away.
  */
 export async function reconcileModels({
   appRoot,
@@ -429,14 +428,4 @@ export async function reconcileModels({
   }
 
   await removeUnusedModels(context, previousModels, new Set(desired.keys()));
-
-  const modelQueries = [...sourceModels.values()].map(
-    (model) => model.dataset_query,
-  );
-
-  const actionQueries = resolved.flatMap(({ source }) =>
-    source.dataset_query ? [source.dataset_query] : [],
-  );
-
-  return collectTableIds([...modelQueries, ...actionQueries]);
 }

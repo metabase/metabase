@@ -93,13 +93,3 @@ export function jsonResponse(body: unknown, status = 200) {
     headers: { "content-type": "application/json" },
   });
 }
-
-export function isResourcePermissionsRequest(
-  pathname: string,
-  method: string,
-  slug: string,
-) {
-  return (
-    pathname === `/api/apps/${slug}/resources/permissions` && method === "PUT"
-  );
-}
