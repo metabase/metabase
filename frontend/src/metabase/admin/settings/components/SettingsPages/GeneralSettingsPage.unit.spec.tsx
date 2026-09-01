@@ -261,12 +261,8 @@ describe("GeneralSettingsPage", () => {
   });
 
   describe("Version pinning", () => {
-    it("should offer users version pinning when they have a cloud instance with the SDK and modular embedding features", async () => {
-      await setup({
-        isHosted: true,
-        hasEmbeddingSdk: true,
-        hasSimpleEmbedding: true,
-      });
+    it("should offer users version pinning when they have a cloud instance with the SDK", async () => {
+      await setup({ isHosted: true, hasEmbeddingSdk: true });
 
       expect(screen.getByText("Version pinning")).toBeInTheDocument();
       expect(
@@ -280,11 +276,7 @@ describe("GeneralSettingsPage", () => {
     });
 
     it("should not offer version pinning on self-hosted instances", async () => {
-      await setup({
-        isHosted: false,
-        hasEmbeddingSdk: true,
-        hasSimpleEmbedding: true,
-      });
+      await setup({ isHosted: false, hasEmbeddingSdk: true });
 
       expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
       expect(
@@ -293,24 +285,7 @@ describe("GeneralSettingsPage", () => {
     });
 
     it("should not offer version pinning without the SDK feature", async () => {
-      await setup({
-        isHosted: true,
-        hasEmbeddingSdk: false,
-        hasSimpleEmbedding: true,
-      });
-
-      expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("link", { name: "Request version pinning" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should not offer version pinning without the modular embedding feature", async () => {
-      await setup({
-        isHosted: true,
-        hasEmbeddingSdk: true,
-        hasSimpleEmbedding: false,
-      });
+      await setup({ isHosted: true, hasEmbeddingSdk: false });
 
       expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
       expect(

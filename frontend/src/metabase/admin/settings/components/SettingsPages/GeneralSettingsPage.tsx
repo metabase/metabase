@@ -28,7 +28,6 @@ export function GeneralSettingsPage() {
   const { value: cspImgEnabled } = useAdminSetting("csp-img-enabled");
   const { value: customVizEnabled } = useAdminSetting("custom-viz-enabled");
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
-  const hasSimpleEmbeddingFeature = useHasTokenFeature("embedding_simple");
   const isHosted = useSetting("is-hosted?");
 
   return (
@@ -89,7 +88,7 @@ export function GeneralSettingsPage() {
         </SettingsSection>
       )}
 
-      {isReactSdkFeatureAvailable && hasSimpleEmbeddingFeature && isHosted && (
+      {isReactSdkFeatureAvailable && isHosted && (
         <SettingsSection title={t`Version pinning`}>
           <Text c="text-secondary" lh="lg" mb="sm">
             {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
