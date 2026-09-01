@@ -4,11 +4,12 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 ConnectionCustomizer DataSources PoolBackedDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -182,6 +183,22 @@
        ;; the first place."
        3600)})
 
+;; Wall-clock bound on how long we wait for a newly-built pool to hand out its first connection when priming it (see
+;; `connection-pool-data-source`). Chosen so a slow first connect (cold DNS, TLS handshake, cross-region
+;; latency) does not trip us into a false-positive rebuild.
+(def ^:private prime-timeout-ms 3000)
+
+(defn- prime-pool!
+  "Do a bounded-wall-clock `.getConnection()` on `pool` to detect the born-wedged c3p0 state described in
+  https://github.com/metabase/metabase/issues/81440 (HelperThreads idle in `Object.wait()`, no acquire task ever
+  dispatched). Returns true if the pool handed out a connection within `timeout-ms`, false otherwise."
+  [^javax.sql.DataSource pool ^long timeout-ms]
+  (let [fut (future (with-open [_ (.getConnection pool)] true))]
+    (try
+      (true? (deref fut timeout-ms false))
+      (catch Throwable _ false)
+      (finally (future-cancel fut)))))
+
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
   `data-source` is already pooled, this will return `data-source` as-is."
@@ -190,7 +207,20 @@
   (if (instance? PoolBackedDataSource data-source)
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
-          pool-props (assoc (application-db-connection-pool-props) "dataSourceName" ds-name)]
-      (com.mchange.v2.c3p0.DataSources/pooledDataSource
-       data-source
-       (connection-pool/map->properties pool-props)))))
+          pool-props (assoc (application-db-connection-pool-props) "dataSourceName" ds-name)
+          build      (fn [] (DataSources/pooledDataSource
+                             data-source
+                             (connection-pool/map->properties pool-props)))
+          pool       (build)]
+      (if (prime-pool! pool prime-timeout-ms)
+        pool
+        ;; The pool did not respond to priming -- probably the c3p0 startup race in #81440. Destroy and try once
+        ;; more; if that also times out, log and hand the (possibly wedged) pool back so startup proceeds.
+        (do
+          (log/warnf "app-db pool did not hand out a connection within %d ms; rebuilding (see #81440)"
+                     prime-timeout-ms)
+          (DataSources/destroy pool)
+          (let [pool' (build)]
+            (when-not (prime-pool! pool' prime-timeout-ms)
+              (log/warn "app-db pool still unresponsive after rebuild; startup continuing (see #81440)"))
+            pool'))))))
