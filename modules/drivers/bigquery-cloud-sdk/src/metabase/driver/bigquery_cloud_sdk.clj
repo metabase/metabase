@@ -25,6 +25,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1150,6 +1151,15 @@
 (defmethod sql.pivot/pivot-grouping-hsql :bigquery-cloud-sdk
   [_driver exprs]
   (sql.pivot/synthesise-grouping-bitmask exprs))
+
+;; BigQuery infers untyped `NULL` in `UNION ALL` as `INT64` and then rejects the union against
+;; sibling `TIMESTAMP` / `STRING` columns. Emit `CAST(NULL AS <breakout-db-type>)` so the branch's
+;; null-padded column carries the same type as its counterpart in the full-breakout branch. Falls
+;; back to bare `NULL` for the unusual case where the breakout expression has no `:database-type`.
+(defmethod sql.pivot/null-pad-breakout-hsql :bigquery-cloud-sdk
+  [_driver breakout-expr]
+  (when-let [db-type (h2x/database-type breakout-expr)]
+    (h2x/cast db-type nil)))
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]

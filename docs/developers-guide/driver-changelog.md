@@ -33,6 +33,11 @@ title: Driver interface changelog
   form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
 
+- `metabase.driver.sql.pivot/null-pad-breakout-hsql` `[driver breakout-expr]` -- produces the
+  HoneySQL form used to null-pad a dropped-breakout column in a `UNION ALL` branch of the
+  pivot compiler's UNION ALL path (the fallback used when the driver lacks `:native-pivot-tables`
+  or the query has window-function aggregations). Default is bare `NULL`.
+
 - `:native-pivot-tables` is now enabled for `:hive-like` drivers.
   Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
 
