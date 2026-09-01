@@ -93,7 +93,9 @@ export const tableApi = Api.injectEndpoints({
         ]).map(({ originalArgs }) =>
           dispatch(
             patchCachedTableMetadata(originalArgs, (table) => {
-              Object.assign(table, body);
+              if (table.id === id) {
+                Object.assign(table, body);
+              }
             }),
           ),
         );
