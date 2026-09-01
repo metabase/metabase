@@ -49,17 +49,17 @@
                   user-id (conj [:= :c.user_id user-id])
                   (seq date) (conj (date-string->constraints :c.created_at date))
                   (and group-id (not= group-id (:id (perms/all-users-group))))
-                  (conj [:exists ^:allow-subquery {:select [1]
-                                                   :from   [[:permissions_group_membership :pgm]]
-                                                   :where  [:and
-                                                            [:= :pgm.user_id :c.user_id]
-                                                            [:= :pgm.group_id group-id]]}])
+                  (conj [:exists {'select [1]
+                                  'from   [['permissions_group_membership 'pgm]]
+                                  'where  ['and
+                                           ['= 'pgm.user_id 'c.user_id]
+                                           ['= 'pgm.group_id group-id]]}])
                   tenant-id
-                  (conj [:exists ^:allow-subquery {:select [1]
-                                                   :from   [[:core_user :u]]
-                                                   :where  [:and
-                                                            [:= :u.id :c.user_id]
-                                                            [:= :u.tenant_id tenant-id]]}]))
+                  (conj [:exists {'select [1]
+                                  'from   [['core_user 'u]]
+                                  'where  ['and
+                                           ['= 'u.id 'c.user_id]
+                                           ['= 'u.tenant_id tenant-id]]}]))
         clauses (remove nil? clauses)]
     (when (seq clauses)
       (into [:and] clauses))))
@@ -89,35 +89,35 @@
    a fork copied in from its origin are counted here — the list describes the
    thread as the reader sees it. `v_metabot_conversations.new_message_count` is
    the usage-metric counterpart that leaves them out."
-  {:select    [:c.*
-               [[:count :m.id] :message_count]
-               [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
-               [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
-               [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-               [[:max :m.created_at] :last_message_at]
-               [^:allow-subquery {:select   [:mm.profile_id]
-                                  :from     [[:metabot_message :mm]]
-                                  :where    [:and
-                                             [:= :mm.conversation_id :c.id]
-                                             [:= :mm.role "assistant"]]
-                                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
-                                  :limit    1}
-                :profile_id]
+  {'select    ['c.*
+               [['count 'm.id] 'message_count]
+               [['count ['case ['= 'm.role "user"] 1]] 'user_message_count]
+               [['count ['case ['= 'm.role "assistant"] 1]] 'assistant_message_count]
+               [['coalesce ['sum 'm.total_tokens] 0] 'total_tokens]
+               [['max 'm.created_at] 'last_message_at]
+               [{'select   ['mm.profile_id]
+                 'from     [['metabot_message 'mm]]
+                 'where    ['and
+                            ['= 'mm.conversation_id 'c.id]
+                            ['= 'mm.role "assistant"]]
+                 'order-by [['mm.created_at 'asc] ['mm.id 'asc]]
+                 'limit    1}
+                'profile_id]
                ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
                ;; (`metabot_message` stores prompt+completion only), so this is a
                ;; correlated subquery rather than another one-to-many join, which
                ;; would fan out against the `metabot_message` join and inflate
                ;; every aggregate above.
-               [[:coalesce
-                 ^:allow-subquery {:select [[[:sum :aul.cache_read_tokens]]]
-                                   :from   [[:ai_usage_log :aul]]
-                                   :where  [:= :aul.conversation_id :c.id]}
+               [['coalesce
+                 {'select [[['sum 'aul.cache_read_tokens]]]
+                  'from   [['ai_usage_log 'aul]]
+                  'where  ['= 'aul.conversation_id 'c.id]}
                  0]
-                :cache_read_tokens]]
-   :from      [[:metabot_conversation :c]]
-   :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
-               [:core_user :u]       [:= :u.id :c.user_id]]
-   :group-by  [:c.id]})
+                'cache_read_tokens]]
+   'from      [['metabot_conversation 'c]]
+   'left-join [['metabot_message 'm] ['= 'm.conversation_id 'c.id]
+               ['core_user 'u]       ['= 'u.id 'c.user_id]]
+   'group-by  ['c.id]})
 
 (defn- row->summary
   "Reshape a raw list-query row into the response shape the frontend expects:
@@ -179,8 +179,8 @@
         direction  (if (= sort-dir "asc") :asc :desc)
         order-by   (conj (mapv #(vector % direction) sort-exprs)
                          [:c.id :asc])
-        total      (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
-                                                  :from   [[:metabot_conversation :c]]}
+        total      (:count (t2/query-one (cond-> {'select [[['count '*] 'count]]
+                                                  'from   [['metabot_conversation 'c]]}
                                            where (assoc :where where))))
         rows       (t2/select :model/MetabotConversation
                               (cond-> (assoc list-query
@@ -207,22 +207,22 @@
    hydrated as `:user` for display."
   [conversation-id]
   (let [rows (t2/select :model/MetabotFeedback
-                        {:select   [:metabot_feedback.id
-                                    :metabot_feedback.message_id
-                                    :metabot_feedback.user_id
-                                    [:mm.external_id :external_id]
-                                    :metabot_feedback.positive
-                                    :metabot_feedback.issue_type
-                                    :metabot_feedback.freeform_feedback
-                                    :metabot_feedback.created_at
-                                    :metabot_feedback.updated_at]
-                         :from     [:metabot_feedback]
-                         :join     [[:metabot_message :mm]
-                                    [:= :mm.id :metabot_feedback.message_id]]
-                         :where    [:= :mm.conversation_id conversation-id]
-                         :order-by [[:metabot_feedback.created_at :asc]
-                                    [:metabot_feedback.message_id :asc]
-                                    [:metabot_feedback.user_id :asc]]})]
+                        {'select   ['metabot_feedback.id
+                                    'metabot_feedback.message_id
+                                    'metabot_feedback.user_id
+                                    ['mm.external_id 'external_id]
+                                    'metabot_feedback.positive
+                                    'metabot_feedback.issue_type
+                                    'metabot_feedback.freeform_feedback
+                                    'metabot_feedback.created_at
+                                    'metabot_feedback.updated_at]
+                         'from     ['metabot_feedback]
+                         'join     [['metabot_message 'mm]
+                                    ['= 'mm.id 'metabot_feedback.message_id]]
+                         'where    ['= 'mm.conversation_id conversation-id]
+                         'order-by [['metabot_feedback.created_at 'asc]
+                                    ['metabot_feedback.message_id 'asc]
+                                    ['metabot_feedback.user_id 'asc]]})]
     (t2/hydrate rows :user)))
 
 (defn- fork-boundary-external-id
@@ -243,7 +243,7 @@
     (api/check-404 conversation)
     (let [all-messages (t2/select :model/MetabotMessage
                                   'conversation_id conversation-id
-                                  {:order-by [[:created_at :asc] [:id :asc]]})
+                                  {'order-by [['created_at 'asc] ['id 'asc]]})
           forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]
       {:conversation_id             (:id conversation)

@@ -35,9 +35,9 @@
   Only groups that has at least one application permission enabled will be included."
   []
   (let [application-permissions (t2/select :model/Permissions
-                                           {:where [:or
-                                                    [:= :object "/"]
-                                                    [:like :object (h2x/literal "/application/%")]]})]
+                                           {'where ['or
+                                                    ['= 'object "/"]
+                                                    ['like 'object (h2x/literal "/application/%")]]})]
     (into {} (for [[group-id perms] (group-by :group_id application-permissions)]
                {group-id (set (map :object perms))}))))
 

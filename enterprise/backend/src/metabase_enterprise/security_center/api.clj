@@ -69,7 +69,7 @@
   "List all security advisories with match status."
   []
   (api/check-superuser)
-  (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
+  (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {'order-by [['published_at 'desc]]})
                                :acknowledged_by_user)]
     {:last_checked_at (settings/security-center-last-synced-at)
      :advisories      (mapv advisory-response advisories)}))

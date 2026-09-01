@@ -1186,15 +1186,15 @@
         (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
           (is (empty? (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
       (testing "with user-edits-only and one FieldUserSettings row: only that field appears as FieldUserSettings"
-        (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "edited"})
+        (t2/insert! :model/FieldUserSettings {'field_id f2-id 'description "edited"})
         (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
           (is (= #{["FieldUserSettings" f2-id]}
                  (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
         (t2/delete! :model/FieldUserSettings 'field_id f2-id))
       (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
-        (t2/insert! :model/FieldUserSettings {:field_id f1-id})
-        (t2/insert! :model/FieldUserSettings {:field_id f2-id})
-        (t2/insert! :model/FieldUserSettings {:field_id f3-id})
+        (t2/insert! :model/FieldUserSettings {'field_id f1-id})
+        (t2/insert! :model/FieldUserSettings {'field_id f2-id})
+        (t2/insert! :model/FieldUserSettings {'field_id f3-id})
         (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
           (is (= #{["FieldUserSettings" f1-id] ["FieldUserSettings" f2-id] ["FieldUserSettings" f3-id]}
                  (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc)))))))
@@ -1812,14 +1812,14 @@
         (is (= {(:id dc1) [s]}
                (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
         (is (=? (assoc dc1 :series [s])
-                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+                (u/rfirst (serdes/extract-query "DashboardCard" {'where ['= 'id (:id dc1)]})))))
       (let [spec (serdes/make-spec "Dashboard" nil)]
         (is (= {(:id d) [(assoc dc1 :series [s])]}
                (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
-                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+                (u/rfirst (serdes/extract-query "Dashboard" {'where ['= 'id (:id d)]}))))))))
 
 (deftest extract-nested-efficient-test
   (testing "extract-nested is efficient"
@@ -1843,7 +1843,7 @@
                          :tabs nil)}
                 (into #{} (map (fn [dashboard]
                                  (update dashboard :dashcards #(sort-by :id %))))
-                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                      (serdes/extract-query "Dashboard" {'where ['in 'id [(:id d1) (:id d2)]]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -2069,7 +2069,7 @@
                        :model/Card linked-card {:name "Linked Card"}
                        :model/Dashboard dashboard {:name "Smart Linked Dashboard"}
                        :model/Table table {:name "linked_table"}]
-      (t2/update! :model/Document 'id (u/the-id document) {:document {:type "doc"
+      (t2/update! :model/Document 'id (u/the-id document) {'document {:type "doc"
                                                                       :content [{:type "cardEmbed"
                                                                                  :attrs {:id (u/the-id card)}}
                                                                                 {:type "smartLink"

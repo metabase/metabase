@@ -23,22 +23,22 @@
   "Insert a new pending run. It becomes active when [[start-run!]] is called."
   [source-type source-id target-type target-id user-id]
   (t2/insert-returning-instance! :model/ReplacementRun
-                                 {:source_entity_type source-type
-                                  :source_entity_id   source-id
-                                  :target_entity_type target-type
-                                  :target_entity_id   target-id
-                                  :user_id            user-id
-                                  :status             :pending
-                                  :is_active          nil
-                                  :progress           0.0}))
+                                 {'source_entity_type source-type
+                                  'source_entity_id   source-id
+                                  'target_entity_type target-type
+                                  'target_entity_id   target-id
+                                  'user_id            user-id
+                                  'status             :pending
+                                  'is_active          nil
+                                  'progress           0.0}))
 
 (defn start-run!
   "Mark the active run as started."
   [run-id]
   (t2/update! :model/ReplacementRun
               'id run-id
-              {:status    :started
-               :is_active true}))
+              {'status    :started
+               'is_active true}))
 
 (defn update-progress!
   "Update progress on the active run."
@@ -46,7 +46,7 @@
   (t2/update! :model/ReplacementRun
               'id run-id
               'is_active true
-              {:progress progress}))
+              {'progress progress}))
 
 (defn succeed-run!
   "Mark the active run as succeeded."
@@ -54,10 +54,10 @@
   (t2/update! :model/ReplacementRun
               'id run-id
               'is_active true
-              {:status    :succeeded
-               :progress  1.0
-               :is_active nil
-               :end_time  :%now}))
+              {'status    :succeeded
+               'progress  1.0
+               'is_active nil
+               'end_time  :%now}))
 
 (defn fail-run!
   "Mark the active run as failed."
@@ -65,10 +65,10 @@
   (t2/update! :model/ReplacementRun
               'id run-id
               'is_active true
-              {:status    :failed
-               :is_active nil
-               :end_time  :%now
-               :message   message}))
+              {'status    :failed
+               'is_active nil
+               'end_time  :%now
+               'message   message}))
 
 (defn cancel-run!
   "Mark the active run as canceled."
@@ -76,10 +76,10 @@
   (t2/update! :model/ReplacementRun
               'id run-id
               'is_active true
-              {:status    :canceled
-               :is_active nil
-               :end_time  :%now
-               :message   "Canceled by user"}))
+              {'status    :canceled
+               'is_active nil
+               'end_time  :%now
+               'message   "Canceled by user"}))
 
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age."
@@ -87,10 +87,10 @@
   (t2/update! :model/ReplacementRun
               'is_active true
               'start_time ['< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-              {:status    :timeout
-               :is_active nil
-               :end_time  :%now
-               :message   "Timed out by metabase"}))
+              {'status    :timeout
+               'is_active nil
+               'end_time  :%now
+               'message   "Timed out by metabase"}))
 
 (defn active-run
   "Return the single active run, or nil."

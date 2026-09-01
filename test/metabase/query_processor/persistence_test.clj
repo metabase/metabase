@@ -105,7 +105,7 @@
                                      ;; card result_metadata is persisted in legacy shape
                                      #_{:clj-kondo/ignore [:deprecated-var]}
                                      (qp.metadata/legacy-result-metadata nil))]
-                    (t2/update! :model/Card id {:result_metadata metadata})))]
+                    (t2/update! :model/Card id {'result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
       (throw (ex-info "Query metadata not set in time for querying against model"

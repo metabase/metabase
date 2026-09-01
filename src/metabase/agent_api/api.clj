@@ -1219,7 +1219,7 @@
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
         (t2/select [:model/DashboardTab 'id 'name] 'dashboard_id dashboard-id
-                   {:order-by [[:position :asc] [:id :asc]]})))
+                   {'order-by [['position 'asc] ['id 'asc]]})))
 
 (mr/def ::create-dashboard-response
   [:map
@@ -1268,11 +1268,11 @@
           dash  (t2/with-transaction [_conn]
                   (let [dash (first (t2/insert-returning-instances!
                                      :model/Dashboard
-                                     {:name          dashboard-name
-                                      :description   description
-                                      :parameters    []
-                                      :creator_id    api/*current-user-id*
-                                      :collection_id collection_id}))]
+                                     {'name          dashboard-name
+                                      'description   description
+                                      'parameters    []
+                                      'creator_id    api/*current-user-id*
+                                      'collection_id collection_id}))]
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
@@ -1294,7 +1294,7 @@
        :description     (:description dash)
        ;; select-fn-vec returns nil, not [], when there are no rows
        :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard 'dashboard_id (:id dash)
-                                              {:order-by [[:row :asc] [:col :asc]]})
+                                              {'order-by [['row 'asc] ['col 'asc]]})
                             [])
        :tabs            (dashboard-tabs (:id dash))})))
 
@@ -1396,7 +1396,7 @@
   (let [current        (t2/select :model/DashboardCard 'dashboard_id dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
         tab-ids        (t2/select-pks-vec :model/DashboardTab 'dashboard_id dashboard-id
-                                          {:order-by [[:position :asc] [:id :asc]]})
+                                          {'order-by [['position 'asc] ['id 'asc]]})
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
         ;; frontend renders there; nil when the dashboard has no tabs
         default-tab-id (first tab-ids)
@@ -1466,7 +1466,7 @@
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
             (t2/update! :model/DashboardCard dashcard_id
-                        {:visualization_settings (assoc vs :text text)}))
+                        {'visualization_settings (assoc vs :text text)}))
 
           "remove"
           (let [existing (api/check-404
@@ -1504,7 +1504,7 @@
             (when (= position "top")
               (let [shift (:size_y existing)]
                 (doseq [{:keys [id row]} tab-placed]
-                  (t2/update! :model/DashboardCard id {:row (+ row shift)}))))
+                  (t2/update! :model/DashboardCard id {'row (+ row shift)}))))
             (t2/update! :model/DashboardCard dashcard_id
                         (select-keys new-pos [:row :col]))
             (swap! state #(-> %
@@ -1631,7 +1631,7 @@
        :archived        (boolean (:archived updated))
        ;; select-fn-vec returns nil, not [], when there are no rows
        :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard 'dashboard_id id
-                                              {:order-by [[:row :asc] [:col :asc]]})
+                                              {'order-by [['row 'asc] ['col 'asc]]})
                             [])
        :tabs            (dashboard-tabs id)})))
 

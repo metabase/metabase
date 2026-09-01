@@ -258,7 +258,7 @@
       (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
         (let [token (auth-identity/generate-reset-token user-id)]
           (t2/update! :model/AuthIdentity (:id auth-identity)
-                      {:credentials {:token_hash   (u.password/hash-bcrypt token)
+                      {'credentials {:token_hash   (u.password/hash-bcrypt token)
                                      :expires_at   (t/plus (t/instant) (t/hours 48))
                                      :grant_ends_at grant-ends-at
                                      :consumed_at  nil}})

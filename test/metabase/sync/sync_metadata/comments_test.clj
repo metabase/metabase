@@ -53,7 +53,7 @@
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
-          (t2/update! :model/Field {'id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
+          (t2/update! :model/Field {'id (mt/id "update_desc" "updated_desc")}, {'description "updated description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync/sync-table! (t2/select-one :model/Table 'id (mt/id "update_desc")))
           (is (= #{{:name (mt/format-name "id"), :description nil}
@@ -128,7 +128,7 @@
       (mt/dataset (basic-table "table_with_updated_desc" "table comment")
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
-          (t2/update! :model/Table {'id (mt/id "table_with_updated_desc")} {:description "updated table description"})
+          (t2/update! :model/Table {'id (mt/id "table_with_updated_desc")} {'description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync-tables/sync-tables-and-database! (mt/db))
           (is (= #{{:name (get-table-name driver/*driver* "table_with_updated_desc")

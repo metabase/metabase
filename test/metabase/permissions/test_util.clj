@@ -47,7 +47,7 @@
   (let [select-condition (if-not group-ids
                            true
                            [:in :group_id group-ids])
-        original-perms (t2/select :model/DataPermissions {:where select-condition})]
+        original-perms (t2/select :model/DataPermissions {'where select-condition})]
     (try
       ;; TODO -- should this disabled the cache [[data-perms/*use-perms-cache?*]] ??
       (thunk)
@@ -61,7 +61,7 @@
                                                 (or (nil? (:table_id p))
                                                     (contains? existing-table-ids (:table_id p)))))
                                    original-perms)]
-          (t2/delete! :model/DataPermissions {:where select-condition})
+          (t2/delete! :model/DataPermissions {'where select-condition})
           (t2/insert! :model/DataPermissions still-valid-perms))))))
 
 (defmacro with-restored-data-perms!
@@ -193,10 +193,10 @@
   (let [user-id        (u/the-id user-or-id)
         original-value (t2/select-one-fn :is_data_analyst :model/User 'id user-id)]
     (try
-      (t2/update! :model/User user-id {:is_data_analyst true})
+      (t2/update! :model/User user-id {'is_data_analyst true})
       (thunk)
       (finally
-        (t2/update! :model/User user-id {:is_data_analyst original-value})))))
+        (t2/update! :model/User user-id {'is_data_analyst original-value})))))
 
 (defmacro with-data-analyst-role!
   "Runs `body` with the given user's `is_data_analyst` column set to true.

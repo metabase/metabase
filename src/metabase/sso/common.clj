@@ -48,10 +48,10 @@
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
    (let [current-group-ids  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                              {:where
-                                               [:and
-                                                [:= :user_id  (u/the-id user-or-id)]
-                                                [:not-in :group_id (excluded-group-ids)]]})
+                                              {'where
+                                               ['and
+                                                ['= 'user_id  (u/the-id user-or-id)]
+                                                ['not-in 'group_id (excluded-group-ids)]]})
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
                                                                          (excluded-group-ids)))]
      (sync-group-memberships*! user-or-id to-remove to-add)))
@@ -59,11 +59,11 @@
    (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
                               (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                                {:where
-                                                 [:and
-                                                  [:= :user_id (u/the-id user-or-id)]
-                                                  [:in :group_id mapped-group-ids]
-                                                  [:not-in :group_id (excluded-group-ids)]]}))
+                                                {'where
+                                                 ['and
+                                                  ['= 'user_id (u/the-id user-or-id)]
+                                                  ['in 'group_id mapped-group-ids]
+                                                  ['not-in 'group_id (excluded-group-ids)]]}))
          new-group-ids      (-> (set (map u/the-id new-groups-or-ids))
                                 (set/intersection mapped-group-ids)
                                 (set/difference (excluded-group-ids)))

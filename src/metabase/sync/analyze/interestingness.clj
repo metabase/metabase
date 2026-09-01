@@ -27,7 +27,7 @@
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
     (let [dim-score (interestingness/dimension-interestingness field)]
       (t2/update! :model/Field (u/the-id field)
-                  {:dimension_interestingness dim-score}))))
+                  {'dimension_interestingness dim-score}))))
 
 (mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
   "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."
@@ -81,13 +81,13 @@
                     (update stats :fields-scored inc)))))
              {:fields-scored 0 :fields-failed 0}
              (t2/reducible-select :model/Field
-                                  {:where [:and
-                                           [:= :active true]
-                                           [:= :dimension_interestingness nil]
-                                           [:not-in :visibility_type ["sensitive" "retired"]]
-                                           [:in :table_id ^:allow-subquery {:select [:id]
-                                                                            :from   [(t2/table-name :model/Table)]
-                                                                            :where  [:= :db_id (u/the-id database)]}]]})))
+                                  {'where ['and
+                                           ['= 'active true]
+                                           ['= 'dimension_interestingness nil]
+                                           ['not-in 'visibility_type ["sensitive" "retired"]]
+                                           ['in 'table_id {'select ['id]
+                                                           'from   [(t2/table-name :model/Table)]
+                                                           'where  ['= 'db_id (u/the-id database)]}]]})))
 
 (mu/defn score-fields-for-db!
   "Score interestingness for all qualifying Fields in `database`."

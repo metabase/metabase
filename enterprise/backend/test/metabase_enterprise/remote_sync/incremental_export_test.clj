@@ -29,22 +29,22 @@
 (defn- new-task! []
   (t2/delete! :model/RemoteSyncTask)
   (t2/insert-returning-pk! :model/RemoteSyncTask
-                           {:sync_task_type "export" :initiated_by (mt/user->id :rasta)}))
+                           {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)}))
 
 (defn- written-version [task-id]
   (t2/select-one-fn :version :model/RemoteSyncTask 'id task-id))
 
 (defn- seed-synced-row! [model-type model-id]
   (t2/insert! :model/RemoteSyncObject
-              {:model_type model-type
-               :model_id model-id
-               :model_name (str model-type " " model-id)
-               :status "synced"
-               :status_changed_at (t/offset-date-time)}))
+              {'model_type model-type
+               'model_id model-id
+               'model_name (str model-type " " model-id)
+               'status "synced"
+               'status_changed_at (t/offset-date-time)}))
 
 (defn- set-status! [model-type model-id status]
   (t2/update! :model/RemoteSyncObject 'model_type model-type 'model_id model-id
-              {:status status :status_changed_at (t/offset-date-time)}))
+              {'status status 'status_changed_at (t/offset-date-time)}))
 
 (defn- seed-create-row!
   "Seeds a `create`-status RemoteSyncObject row, so the next export writes the entity (and records its
@@ -109,7 +109,7 @@
       (let [a-eid        (t2/select-one-fn :entity_id :model/Card 'id card-a)
             a-path       (path-for-eid mock a-eid)
             files-before (files mock)]
-        (t2/update! :model/Card card-a {:description "edited in place"})
+        (t2/update! :model/Card card-a {'description "edited in place"})
         (set-status! "Card" card-a "update")
         (let [task        (new-task!)
               result      (impl/export! (source.p/snapshot mock) task "edit")
@@ -126,8 +126,8 @@
 (deftest multiple-in-place-updates-use-incremental-path-test
   (with-exported-collection!
     (fn [{:keys [mock card-a card-b]}]
-      (t2/update! :model/Card card-a {:description "edit A"})
-      (t2/update! :model/Card card-b {:description "edit B"})
+      (t2/update! :model/Card card-a {'description "edit A"})
+      (t2/update! :model/Card card-b {'description "edit B"})
       (set-status! "Card" card-a "update")
       (set-status! "Card" card-b "update")
       (let [task        (new-task!)
@@ -141,7 +141,7 @@
 (deftest collection-in-place-edit-uses-incremental-path-test
   (with-exported-collection!
     (fn [{:keys [mock coll-id]}]
-      (t2/update! :model/Collection coll-id {:description "collection note"})
+      (t2/update! :model/Collection coll-id {'description "collection note"})
       (set-status! "Collection" coll-id "update")
       (let [task   (new-task!)
             result (impl/export! (source.p/snapshot mock) task "edit collection")]
@@ -154,7 +154,7 @@
     (fn [{:keys [mock card-a]}]
       (let [a-eid    (t2/select-one-fn :entity_id :model/Card 'id card-a)
             old-path (path-for-eid mock a-eid)]
-        (t2/update! :model/Card card-a {:name "Card A Renamed"})
+        (t2/update! :model/Card card-a {'name "Card A Renamed"})
         (set-status! "Card" card-a "update")
         (let [task        (new-task!)
               result      (impl/export! (source.p/snapshot mock) task "rename")
@@ -177,7 +177,7 @@
             b-path (path-for-eid mock b-eid)]
         ;; A real delete means the entity is archived, so it can't be re-serialized — the incremental
         ;; delete must work from the stored file_path alone, without re-extracting the entity.
-        (t2/update! :model/Card card-b {:archived true})
+        (t2/update! :model/Card card-b {'archived true})
         (set-status! "Card" card-b "delete")
         (let [task        (new-task!)
               result      (impl/export! (source.p/snapshot mock) task "delete B")
@@ -201,7 +201,7 @@
           ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality —
           ;; it is how a collection's contents are located when the collection is un-synced.
           (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id ['in [card-a card-b]]
-                      {:model_collection_id coll-id})
+                      {'model_collection_id coll-id})
           ;; Clear the initial-export task: a direct impl/export! never marks its task ended, so the
           ;; bulk-set-remote-sync guard would otherwise (correctly) refuse to run alongside it.
           (t2/delete! :model/RemoteSyncTask)
@@ -236,7 +236,7 @@
           ;; Production populates a content RSO's model_collection_id from the card's collection_id (see
           ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality.
           (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id ['in [card-a card-b]]
-                      {:model_collection_id coll-id})
+                      {'model_collection_id coll-id})
           ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
           (t2/delete! :model/RemoteSyncTask)
           ;; USER ACTION: disable the collection, then re-enable it before any export runs.
@@ -257,15 +257,15 @@
       (fn [{:keys [mock coll-id card-a card-b]}]
         ;; Mirror production: content RSOs carry model_collection_id, so the disable can find them.
         (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id ['in [card-a card-b]]
-                    {:model_collection_id coll-id})
+                    {'model_collection_id coll-id})
         (mt/with-temp [:model/Card {card-c :id} {:name "Card C" :collection_id coll-id}]
           ;; Card C is new and never pushed: a 'create' RSO with no file_path (as a card-create event
           ;; produces). It exists locally in the synced collection but is not yet on the remote.
           (t2/delete! :model/RemoteSyncObject 'model_type "Card" 'model_id card-c)
           (t2/insert! :model/RemoteSyncObject
-                      {:model_type "Card" :model_id card-c :model_name "Card C"
-                       :model_collection_id coll-id :status "create"
-                       :status_changed_at (t/offset-date-time)})
+                      {'model_type "Card" 'model_id card-c 'model_name "Card C"
+                       'model_collection_id coll-id 'status "create"
+                       'status_changed_at (t/offset-date-time)})
           (let [c-eid (t2/select-one-fn :entity_id :model/Card 'id card-c)]
             (is (not (entity-exported? mock c-eid)) "precondition: card C has never been pushed")
             ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
@@ -285,8 +285,8 @@
     (fn [{:keys [mock card-a]}]
       ;; Simulate the post-import state where file_path hasn't been recorded yet: a rename then can't
       ;; resolve the old path, so we fall back to the full export (which reconciles stale files).
-      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {:file_path nil})
-      (t2/update! :model/Card card-a {:name "Card A Renamed"})
+      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {'file_path nil})
+      (t2/update! :model/Card card-a {'name "Card A Renamed"})
       (set-status! "Card" card-a "update")
       (let [task   (new-task!)
             result (impl/export! (source.p/snapshot mock) task "rename")]
@@ -299,8 +299,8 @@
     (fn [{:keys [mock card-b]}]
       ;; A real delete (archive) with no stored file_path can't resolve its path incrementally, so it
       ;; falls back to full — which drops the archived entity's file, producing a real commit.
-      (t2/update! :model/Card card-b {:archived true})
-      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-b {:file_path nil})
+      (t2/update! :model/Card card-b {'archived true})
+      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-b {'file_path nil})
       (set-status! "Card" card-b "delete")
       (let [task   (new-task!)
             result (impl/export! (source.p/snapshot mock) task "delete")]
@@ -346,9 +346,9 @@
     (fn [{:keys [mock card-a card-b]}]
       ;; One incremental-able update batched with a delete that has no stored path (so it can't be
       ;; handled incrementally) -> the whole batch falls back to a full export.
-      (t2/update! :model/Card card-a {:description "edit A"})
+      (t2/update! :model/Card card-a {'description "edit A"})
       (set-status! "Card" card-a "update")
-      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-b {:file_path nil})
+      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-b {'file_path nil})
       (set-status! "Card" card-b "delete")
       (let [task   (new-task!)
             result (impl/export! (source.p/snapshot mock) task "mixed")]
@@ -363,10 +363,10 @@
             a-path (path-for-eid mock a-eid)]
         ;; No stored file_path (post-import), and the repo file at the computed path holds a DIFFERENT
         ;; entity (a dedup name collision). The safety check must reject the clobber → full export.
-        (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {:file_path nil})
+        (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {'file_path nil})
         (swap! (:files-atom mock) assoc-in ["main" a-path]
                (str/replace (get (files mock) a-path) a-eid "different0entity0id0x"))
-        (t2/update! :model/Card card-a {:description "edit A"})
+        (t2/update! :model/Card card-a {'description "edit A"})
         (set-status! "Card" card-a "update")
         (let [task   (new-task!)
               result (impl/export! (source.p/snapshot mock) task "collision")]
@@ -382,9 +382,9 @@
         ;; No stored file_path (post-import), and the repo file at the computed path is present but has
         ;; no readable entity_id. We can't tell whose file it is, so the safety check must treat it as
         ;; occupied — not free — and fall back to full rather than clobber an unidentifiable entity.
-        (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {:file_path nil})
+        (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {'file_path nil})
         (swap! (:files-atom mock) assoc-in ["main" a-path] "name: Not A Serialized Entity\nother: value\n")
-        (t2/update! :model/Card card-a {:description "edit A"})
+        (t2/update! :model/Card card-a {'description "edit A"})
         (set-status! "Card" card-a "update")
         (let [task   (new-task!)
               result (impl/export! (source.p/snapshot mock) task "unparseable occupant")]
@@ -400,9 +400,9 @@
         ;; No stored file_path, and the repo file at the computed path is malformed YAML that can't be
         ;; parsed. Reading it throws — the row must be treated as unsyncable and fall back to a full
         ;; export rather than crashing the whole export.
-        (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {:file_path nil})
+        (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-a {'file_path nil})
         (swap! (:files-atom mock) assoc-in ["main" a-path] "a: b: c")
-        (t2/update! :model/Card card-a {:description "edit A"})
+        (t2/update! :model/Card card-a {'description "edit A"})
         (set-status! "Card" card-a "update")
         (let [task   (new-task!)
               result (impl/export! (source.p/snapshot mock) task "malformed occupant")]
@@ -419,7 +419,7 @@
       (let [a-eid (t2/select-one-fn :entity_id :model/Card 'id card-a)]
         ;; A real content change keeps the staged commit non-empty, isolating the path-selection behavior
         ;; under test from the empty-commit skip.
-        (t2/update! :model/Card card-a {:description "re-created A"})
+        (t2/update! :model/Card card-a {'description "re-created A"})
         (set-status! "Card" card-a "create")
         (let [task (new-task!)]
           (impl/export! (source.p/snapshot mock) task "re-create A")
@@ -452,7 +452,7 @@
     (fn [{:keys [mock card-b]}]
       ;; A delete with no stored file_path forces a full export, but the entity still exists and
       ;; re-serializes identically — the full re-export matches the repo, so the empty commit is skipped.
-      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-b {:file_path nil})
+      (t2/update! :model/RemoteSyncObject 'model_type "Card" 'model_id card-b {'file_path nil})
       (set-status! "Card" card-b "delete")
       (let [files-before (files mock)
             task         (new-task!)
@@ -475,7 +475,7 @@
       ;; A stale file in a now-disabled content dir, alongside an ordinary card edit. The edit stays on
       ;; the incremental path AND the stale transforms file is deleted in the same commit.
       (swap! (:files-atom mock) assoc-in ["main" "transforms/old/old.yaml"] "stale transform")
-      (t2/update! :model/Card card-a {:description "edit A"})
+      (t2/update! :model/Card card-a {'description "edit A"})
       (set-status! "Card" card-a "update")
       (let [a-eid (t2/select-one-fn :entity_id :model/Card 'id card-a)
             task  (new-task!)]
@@ -533,7 +533,7 @@
           (seed-create-row! "Card" x-id)
           (impl/export! (source.p/snapshot mock) (new-task!) "add x") ; X now in repo, Y still not
           ;; Edit X to reference the external card Y, then export the single in-place change.
-          (t2/update! :model/Card x-id {:dataset_query (card-source-query y-id)})
+          (t2/update! :model/Card x-id {'dataset_query (card-source-query y-id)})
           (set-status! "Card" x-id "update")
           (let [task (new-task!)]
             (impl/export! (source.p/snapshot mock) task "reference Y")
@@ -576,7 +576,7 @@
               y-eid (t2/select-one-fn :entity_id :model/Card 'id y-id)]
           (impl/export! (source.p/snapshot mock) (new-task!) "init")
           (is (entity-exported? mock y-eid) "the referenced synced card is in the repo")
-          (t2/update! :model/Card x-id {:description "edit"})
+          (t2/update! :model/Card x-id {'description "edit"})
           (set-status! "Card" x-id "update")
           (let [task (new-task!)]
             (impl/export! (source.p/snapshot mock) task "edit")
@@ -592,11 +592,11 @@
   (testing "a repo produced by an incremental in-place edit imports back to the edited content"
     (with-exported-collection!
       (fn [{:keys [mock card-a]}]
-        (t2/update! :model/Card card-a {:description "edited via incremental"})
+        (t2/update! :model/Card card-a {'description "edited via incremental"})
         (set-status! "Card" card-a "update")
         (impl/export! (source.p/snapshot mock) (new-task!) "edit")
         ;; diverge the DB from the repo, then import the repo back over it
-        (t2/update! :model/Card card-a {:description "local divergence"})
+        (t2/update! :model/Card card-a {'description "local divergence"})
         (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true)))
             "import succeeds")
         (is (= "edited via incremental" (t2/select-one-fn :description :model/Card 'id card-a))
@@ -607,11 +607,11 @@
     (with-exported-collection!
       (fn [{:keys [mock card-a]}]
         (let [a-eid (t2/select-one-fn :entity_id :model/Card 'id card-a)]
-          (t2/update! :model/Card card-a {:name "Renamed A"})
+          (t2/update! :model/Card card-a {'name "Renamed A"})
           (set-status! "Card" card-a "update")
           (impl/export! (source.p/snapshot mock) (new-task!) "rename")
           ;; rename back locally, then import the repo
-          (t2/update! :model/Card card-a {:name "Card A"})
+          (t2/update! :model/Card card-a {'name "Card A"})
           (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true)))
               "import succeeds")
           (is (= "Renamed A" (t2/select-one-fn :name :model/Card 'id card-a))
@@ -654,7 +654,7 @@
         ;; Simulate the remote diverging: a new, non-colliding upstream file the local instance never imported.
         (swap! (:files-atom mock) assoc-in ["main" ghost-path]
                "name: Ghost\nentity_id: ghostUpstream00000001\nserdes/meta:\n- id: ghostUpstream00000001\n  model: Card\n")
-        (t2/update! :model/Card card-a {:description "local edit"})
+        (t2/update! :model/Card card-a {'description "local edit"})
         (set-status! "Card" card-a "update")
         (testing "an ordinary (incremental) export preserves the upstream file — so it is NOT an overwrite"
           (let [task (new-task!)]

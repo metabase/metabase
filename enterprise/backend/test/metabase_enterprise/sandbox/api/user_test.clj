@@ -36,7 +36,7 @@
                                             'group_id (u/the-id &group)
                                             'user_id (mt/user->id :rasta))]
               (t2/update! :model/PermissionsGroupMembership 'id (:id membership)
-                          {:is_group_manager true}))
+                          {'is_group_manager true}))
             (let [result (mt/user-http-request :rasta :get 200 "user/recipients")]
               (is (= ["rasta@metabase.com"]
                      (map :email (:data result))))

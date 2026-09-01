@@ -97,7 +97,7 @@
                             (t2/select-one :model/TaskHistory
                                            'db_id (u/the-id db)
                                            'task "persist-refresh"
-                                           {:order-by [[:id :desc]]})))
+                                           {'order-by [['id 'desc]]})))
               (testing "Deletes backing tables of models that have state='off'"
                 (let [unpersisted-ids (atom #{})
                       deleted?        (fn [{id :id}]
@@ -134,7 +134,7 @@
                             (t2/select-one :model/TaskHistory
                                            'db_id (u/the-id db)
                                            'task "persist-refresh"
-                                           {:order-by [[:id :desc]]}))))))))))
+                                           {'order-by [['id 'desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-3
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -160,7 +160,7 @@
                              :task_details {:success 2 :error 0, :skipped 0}}
                             (t2/select-one :model/TaskHistory
                                            'task "unpersist-tables"
-                                           {:order-by [[:id :desc]]}))))))))))
+                                           {'order-by [['id 'desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-4
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -186,7 +186,7 @@
                              :task_details {:success 1 :error 0, :skipped 1}}
                             (t2/select-one :model/TaskHistory
                                            'task "unpersist-tables"
-                                           {:order-by [[:id :desc]]}))))))))))
+                                           {'order-by [['id 'desc]]}))))))))))
 
 (deftest event-test
   (testing "In EE, new models are not persisted by default"

@@ -124,12 +124,12 @@
   (into {}
         (mapcat (fn [chunk]
                   (map (juxt :table_id :field_count)
-                       (t2/query {:select   [:table_id [:%count.* :field_count]]
-                                  :from     [:metabase_field]
-                                  :where    [:and
-                                             [:= :active true]
-                                             [:in :table_id chunk]]
-                                  :group-by [:table_id]}))))
+                       (t2/query {'select   ['table_id ['%count.* 'field_count]]
+                                  'from     ['metabase_field]
+                                  'where    ['and
+                                             ['= 'active true]
+                                             ['in 'table_id chunk]]
+                                  'group-by ['table_id]}))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names

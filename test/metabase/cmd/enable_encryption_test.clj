@@ -32,7 +32,7 @@
     (encryption-test/with-secret-key nil
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
-        (t2/insert! :model/Setting {:key "test-setting", :value "plain value"})
+        (t2/insert! :model/Setting {'key "test-setting", 'value "plain value"})
         ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
         (is (= "unencrypted" (raw-value "encryption-check")))
         (encryption-test/with-secret-key "key1"

@@ -22,7 +22,7 @@
       (mt/dataset test-data
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              _                    (t2/update! :model/Database (u/the-id db) {'dbms_version nil})
               db                   (t2/select-one :model/Database 'id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]

@@ -29,7 +29,7 @@
     (let [updated (t2/update! :model/TaskRun
                               {'status       :started
                                'process_uuid config/local-process-uuid}
-                              {:updated_at (mi/now)})]
+                              {'updated_at (mi/now)})]
       (when (pos? updated)
         (log/debugf "Sent heartbeat for %d running task runs" updated))
       updated)))
@@ -57,8 +57,8 @@
       (let [orphaned (t2/update! :model/TaskHistory
                                  {'status :started
                                   'run_id ['in orphaned-run-ids]}
-                                 {:status   :unknown
-                                  :ended_at (mi/now)})]
+                                 {'status   :unknown
+                                  'ended_at (mi/now)})]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

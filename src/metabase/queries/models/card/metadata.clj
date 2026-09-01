@@ -164,7 +164,7 @@ saved later when it is ready."
             (let [current-query (t2/select-one-fn :dataset_query [:model/Card 'dataset_query 'card_schema] 'id id)]
               (if (= (:dataset_query card) current-query)
                 (do
-                  (t2/update! :model/Card id {:result_metadata metadata})
+                  (t2/update! :model/Card id {'result_metadata metadata})
                   (log/infof "Metadata updated asynchronously for card %s" id))
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e

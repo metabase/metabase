@@ -123,11 +123,11 @@
                       'model_type "Collection"
                       'model_id transforms-root-id))
         (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "create"
-                     :status_changed_at timestamp}))
+                    {'model_type        "Collection"
+                     'model_id          transforms-root-id
+                     'model_name        "Transforms"
+                     'status            "create"
+                     'status_changed_at timestamp}))
       ;; When disabling and there's an existing RSO, update to 'delete' status
       existing-rso
       (do
@@ -135,11 +135,11 @@
                     'model_type "Collection"
                     'model_id transforms-root-id)
         (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "delete"
-                     :status_changed_at timestamp}))
+                    {'model_type        "Collection"
+                     'model_id          transforms-root-id
+                     'model_name        "Transforms"
+                     'status            "delete"
+                     'status_changed_at timestamp}))
       ;; When disabling and there's no existing RSO, do nothing
       ;; (this avoids creating spurious 'delete' entries when going from default false to explicitly false)
       :else

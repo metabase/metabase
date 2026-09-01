@@ -81,8 +81,8 @@
                                                                      :transform_id transform-id
                                                                      :status "canceling")]
           (t2/insert! :model/TransformRunCancelation
-                      {:run_id run-id
-                       :time   (.minusMinutes (OffsetDateTime/now) 5)})
+                      {'run_id run-id
+                       'time   (.minusMinutes (OffsetDateTime/now) 5)})
           (@#'canceling/cancel-old-transform-runs! nil)
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
@@ -92,7 +92,7 @@
           (let [audit (t2/select-one :model/AuditLog
                                      'topic "transform-run-canceled"
                                      'model_id run-id
-                                     {:order-by [[:id :desc]]})]
+                                     {'order-by [['id 'desc]]})]
             (is (some? audit))
             (is (= "canceled" (get-in audit [:details :status])))
             (is (= "timeout"  (get-in audit [:details :outcome]))))))
@@ -108,10 +108,10 @@
                        :model/TransformRun {r1 :id} (assoc run-defaults :transform_id t1 :status "canceling")
                        :model/TransformRun {r2 :id} (assoc run-defaults :transform_id t2 :status "canceling")]
           (let [old (.minusMinutes (OffsetDateTime/now) 5)]
-            (t2/insert! :model/TransformRunCancelation {:run_id r1 :time old})
-            (t2/insert! :model/TransformRunCancelation {:run_id r2 :time old}))
+            (t2/insert! :model/TransformRunCancelation {'run_id r1 'time old})
+            (t2/insert! :model/TransformRunCancelation {'run_id r2 'time old}))
           ;; Simulate r2 already finished by a concurrent path before the sweep fires.
-          (t2/update! :model/TransformRun 'id r2 {:is_active nil :status :canceled})
+          (t2/update! :model/TransformRun 'id r2 {'is_active nil 'status :canceled})
           (@#'canceling/cancel-old-transform-runs! nil)
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))
@@ -123,7 +123,7 @@
                                                                      :transform_id transform-id
                                                                      :status "canceling")]
           (t2/insert! :model/TransformRunCancelation
-                      {:run_id run-id :time (.minusMinutes (OffsetDateTime/now) 5)})
+                      {'run_id run-id 'time (.minusMinutes (OffsetDateTime/now) 5)})
           (with-redefs [t2/update! (fn [& _] (throw (ex-info "boom" {})))]
             (@#'canceling/cancel-old-transform-runs! nil))
           ;; Aggregate error: we don't know per-row magnitude after a rollback, just that the sweep failed.

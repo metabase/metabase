@@ -361,11 +361,11 @@
 
 (deftest questions-used-as-data-source-for-sandboxes-are-excluded
   (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
-    (let [gtap-card-id (:id (t2/query-one {:select [:c.id]
-                                           :from   [[:report_card :c]]
-                                           :left-join [[:sandboxes :s] [:= :s.card_id :c.id]]
-                                           :where     [:= :s.group_id (:id &group)]}))]
-      (t2/update! :model/Card 'id gtap-card-id {:last_used_at (datetime-months-ago 7)})
+    (let [gtap-card-id (:id (t2/query-one {'select ['c.id]
+                                           'from   [['report_card 'c]]
+                                           'left-join [['sandboxes 's] ['= 's.card_id 'c.id]]
+                                           'where     ['= 's.group_id (:id &group)]}))]
+      (t2/update! :model/Card 'id gtap-card-id {'last_used_at (datetime-months-ago 7)})
       (is (= {:rows []
               :total 0}
              (stale/find-candidates

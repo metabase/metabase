@@ -1587,7 +1587,7 @@
                                          google-auth-enabled true]
         (mt/with-temp [:model/User user {:sso_source :google}]
           (t2/update! :model/User (u/the-id user)
-                      {:is_active false})
+                      {'is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
@@ -1668,7 +1668,7 @@
     (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
       (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
-        (t2/update! (t2/table-name :model/User) (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
+        (t2/update! (t2/table-name :model/User) (:id user) {'password "not-a-bcrypt-hash", 'password_salt "stale"})
         (is (=? {:success true}
                 (mt/client {:username (:email user), :password "def"}
                            :put 200 (format "user/%d/password" (:id user))
@@ -1738,8 +1738,8 @@
 
 (deftest deactivate-missing-user-fails
   (testing "DELETE /api/user/:id"
-    (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
-                                         :from :core_user}))]
+    (let [max-id (:max_id (t2/query-one {'select [['%max.id 'max_id]]
+                                         'from 'core_user}))]
       (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
 
 (deftest deactivate-deactivated-user-again-succeeds

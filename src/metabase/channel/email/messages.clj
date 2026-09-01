@@ -171,7 +171,7 @@
                             'is_active    true
                             'last_login   ['not= nil]
                             'type         "personal"
-                            {:order-by [[:id :asc]]})))
+                            {'order-by [['id 'asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -254,17 +254,16 @@
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
         user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
-                                   (->> {:select   [:pgm.user_id]
-                                         :from     [[:permissions_group_membership :pgm]]
-                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                                         :where    [:and
-                                                    [:exists ^:allow-subquery
-                                                     {:select [1]
-                                                      :from [[:permissions :p]]
-                                                      :where [:and
-                                                              [:= :p.group_id :pg.id]
-                                                              [:= :p.object monitoring]]}]]
-                                         :group-by [:pgm.user_id]}
+                                   (->> {'select   ['pgm.user_id]
+                                         'from     [['permissions_group_membership 'pgm]]
+                                         'join     [['permissions_group 'pg] ['= 'pgm.group_id 'pg.id]]
+                                         'where    ['and
+                                                    ['exists {'select [1]
+                                                              'from [['permissions 'p]]
+                                                              'where ['and
+                                                                      ['= 'p.group_id 'pg.id]
+                                                                      ['= 'p.object monitoring]]}]]
+                                         'group-by ['pgm.user_id]}
                                         app-db/query
                                         (mapv :user_id)))
         user-ids (filter
@@ -276,9 +275,9 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email :model/User {:where [:and
-                                                      [:= :is_active true]
-                                                      [:in :id user-ids]]}))))))
+        (t2/select-fn-set :email :model/User {'where ['and
+                                                      ['= 'is_active true]
+                                                      ['in 'id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task.

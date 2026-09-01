@@ -466,7 +466,7 @@
           (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
     (testing "if the goal is met, notification is sent then archived"
       ;; flip the condition so the goal is met now
-      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
+      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {'send_condition :goal_above})
       (notification.tu/test-send-notification!
        (t2/select-one :model/Notification (:id notification))
        {:channel/email
@@ -567,7 +567,7 @@
       (is (=? [{:status :failed
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
               (t2/select [:model/TaskHistory 'status 'task_details] 'task "notification-send"
-                         {:order-by [[:started_at :asc]]}))))))
+                         {'order-by [['started_at 'asc]]}))))))
 
 (deftest orphaned-notification-deactivates-on-send-test
   (testing "A notification whose card no longer exists should deactivate itself instead of crashing forever"

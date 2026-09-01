@@ -120,7 +120,7 @@
   [existing slug message]
   (boolean
    (when (and existing (not= (:sync_error existing) message))
-     (t2/update! :model/DataApp 'name slug {:sync_error message})
+     (t2/update! :model/DataApp 'name slug {'sync_error message})
      true)))
 
 (defn- sync-app!

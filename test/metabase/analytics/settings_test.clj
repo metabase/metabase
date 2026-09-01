@@ -27,7 +27,7 @@
                    instance-creation)))))
       (finally
         (when original-value
-          (t2/update! :model/Setting {'key "instance-creation"} {:value original-value}))))))
+          (t2/update! :model/Setting {'key "instance-creation"} {'value original-value}))))))
 
 (deftest analytics-pii-retention-enabled-feature-gate-test
   (testing "analytics-pii-retention-enabled is gated behind the :audit-app premium feature"

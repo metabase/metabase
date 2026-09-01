@@ -72,17 +72,16 @@
                                'dataset_query
                                'card_schema
                                'last_used_at
-                               [^:allow-subquery
-                                {:select   [:status]
-                                 :from     [:moderation_review]
-                                 :where    [:and
-                                            [:= :moderated_item_type "card"]
-                                            [:= :moderated_item_id :report_card.id]
-                                            [:= :most_recent true]]
+                               [{'select   ['status]
+                                 'from     ['moderation_review]
+                                 'where    ['and
+                                            ['= 'moderated_item_type "card"]
+                                            ['= 'moderated_item_id 'report_card.id]
+                                            ['= 'most_recent true]]
                                  ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
                                  ;; protecting against potential bugs
-                                 :order-by [[:id :desc]]
-                                 :limit    1}
+                                 'order-by [['id 'desc]]
+                                 'limit    1}
                                 :moderated_status]]
                               'id ['in (set (map :id cards))])
                    :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])

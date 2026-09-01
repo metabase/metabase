@@ -178,24 +178,24 @@
   (mt/with-temp [:model/Card {card-id :id} {}]
     (testing "ParameterCard creation with valid parameterized_object_type"
       (is (some? (t2/insert! :model/ParameterCard
-                             {:parameterized_object_type "dashboard"
-                              :parameterized_object_id   1
-                              :parameter_id              "param1"
-                              :card_id                   card-id})))
+                             {'parameterized_object_type "dashboard"
+                              'parameterized_object_id   1
+                              'parameter_id              "param1"
+                              'card_id                   card-id})))
       (is (some? (t2/insert! :model/ParameterCard
-                             {:parameterized_object_type "card"
-                              :parameterized_object_id   1
-                              :parameter_id              "param2"
-                              :card_id                   card-id}))))
+                             {'parameterized_object_type "card"
+                              'parameterized_object_id   1
+                              'parameter_id              "param2"
+                              'card_id                   card-id}))))
     (testing "ParameterCard creation with invalid parameterized_object_type throws exception"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"invalid parameterized_object_type"
            (t2/insert! :model/ParameterCard
-                       {:parameterized_object_type "invalid"
-                        :parameterized_object_id   1
-                        :parameter_id              "param1"
-                        :card_id                   card-id}))))
+                       {'parameterized_object_type "invalid"
+                        'parameterized_object_id   1
+                        'parameter_id              "param1"
+                        'card_id                   card-id}))))
     (testing "ParameterCard update with invalid parameterized_object_type throws exception"
       (mt/with-temp [:model/ParameterCard {pc-id :id} {:parameterized_object_type "dashboard"
                                                        :parameterized_object_id   1
@@ -204,4 +204,4 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"invalid parameterized_object_type"
-             (t2/update! :model/ParameterCard pc-id {:parameterized_object_type "invalid"})))))))
+             (t2/update! :model/ParameterCard pc-id {'parameterized_object_type "invalid"})))))))

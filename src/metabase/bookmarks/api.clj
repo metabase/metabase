@@ -55,7 +55,7 @@
     (api/check (not (t2/exists? bookmark-model item-key id
                                 'user_id api/*current-user-id*))
                [400 "Bookmark already exists"])
-    (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
+    (first (t2/insert-returning-instances! bookmark-model {item-key id 'user_id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

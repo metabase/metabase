@@ -108,7 +108,7 @@
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select :model/Table
                                 'db_id (u/the-id db-or-id), 'active true, 'visibility_type nil
-                                {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+                                {'order-by [['%lower.schema 'asc] ['%lower.display_name 'asc]]})))
 
 (defn- field-details [field]
   (mt/derecordize
@@ -305,7 +305,7 @@
               :transform 2}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
-      (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
+      (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {'order-by [['id 'desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
@@ -841,9 +841,9 @@
             empty-dbdef        {:database-name database-name}
             _                  (tx/create-db! driver/*driver* empty-dbdef)
             connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
-            db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
-                                                                                       :engine  (u/qualified-name driver/*driver*)
-                                                                                       :details connection-details}))
+            db                 (first (t2/insert-returning-instances! :model/Database {'name    database-name
+                                                                                       'engine  (u/qualified-name driver/*driver*)
+                                                                                       'details connection-details}))
             _                  (sync/sync-database! db)
             ;; 2. start a long running process on another thread that uses a connection
             connections-stay-open? (future
@@ -1053,8 +1053,8 @@
           (mt/with-temp [:model/Database tmp-db {:name "Temp Autocomplete Pagination DB" :engine "h2"}]
             ;; insert more than 50 temporary tables and fields
             (doseq [i (range 60)]
-              (let [tmp-tbl (first (t2/insert-returning-instances! :model/Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
-                (t2/insert! :model/Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
+              (let [tmp-tbl (first (t2/insert-returning-instances! :model/Table {'name (format "My Table %d" i) 'db_id (u/the-id tmp-db) 'active true}))]
+                (t2/insert! :model/Field {'name (format "My Field %d" i) 'table_id (u/the-id tmp-tbl) 'base_type "type/Text" 'database_type "varchar"})))
             ;; for each type-specific prefix, we should get 50 fields
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Field"))))
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Table"))))
@@ -1977,9 +1977,9 @@
         (testing "a Database with internal details cannot be written directly (serialization import, config files)"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"private or internal network address"
-                                (t2/insert! :model/Database {:name    "internal"
-                                                             :engine  "postgres"
-                                                             :details private-details}))))))))
+                                (t2/insert! :model/Database {'name    "internal"
+                                                             'engine  "postgres"
+                                                             'details private-details}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
@@ -2709,7 +2709,7 @@
                                       :query "flozzlebarger"
                                       :include_dashboard_questions "true")))))
       (testing "sanity check: removing the `dashboard_id` lets us get it"
-        (t2/update! :model/Card 'id card-id {:dashboard_id nil})
+        (t2/update! :model/Card 'id card-id {'dashboard_id nil})
         (is (= 1
                (count
                 (mt/user-http-request :rasta :get 200

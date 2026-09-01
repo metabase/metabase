@@ -62,11 +62,11 @@
   - `:embedding?`   - whether this is a modular-embedding popup login"
   [{:keys [id continue-url origin embedding?]}]
   (t2/insert! :model/SsoRelayState
-              {:id           (hash-key id)
-               :continue_url continue-url
-               :origin       origin
-               :embedding    (boolean embedding?)
-               :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
+              {'id           (hash-key id)
+               'continue_url continue-url
+               'origin       origin
+               'embedding    (boolean embedding?)
+               'expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
   id)
 
 (defn find-unexpired

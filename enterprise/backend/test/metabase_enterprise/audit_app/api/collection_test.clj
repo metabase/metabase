@@ -90,7 +90,7 @@
                 (is (= (into #{}
                              (concat (instance-analytics-collection-names)
                                      public-collection-names
-                                     (t2/select-fn-set :name :model/Collection {:where [:and [:= :type nil] [:= :archived false]]})))
+                                     (t2/select-fn-set :name :model/Collection {'where ['and ['= 'type nil] ['= 'archived false]]})))
                        crowbertos))
                 (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
                              (concat (instance-analytics-collection-names) public-collection-names))

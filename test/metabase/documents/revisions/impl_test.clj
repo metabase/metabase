@@ -70,8 +70,8 @@
                                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
                                                                :creator_id (mt/user->id :crowberto)}]
       (let [original-serialized (revision/serialize-instance :model/Document doc-id document)
-            _ (t2/update! :model/Document doc-id {:name "Updated Document"
-                                                  :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
+            _ (t2/update! :model/Document doc-id {'name "Updated Document"
+                                                  'document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
             updated-document (t2/select-one :model/Document 'id doc-id)]
         (testing "document was updated"
           (is (= "Updated Document" (:name updated-document)))

@@ -116,7 +116,7 @@
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
                         (sql.tx/session-schema driver/*driver*))
         table       (sync-tables/create-or-reactivate-table! database {:name table-name :schema schema-name})]
-    (t2/update! :model/Table (:id table) {:is_upload true})
+    (t2/update! :model/Table (:id table) {'is_upload true})
     (binding [upload/*auxiliary-sync-steps* :synchronous]
       (#'upload/scan-and-sync-table! database table))
     (t2/select-one :model/Table (:id table))))
@@ -282,7 +282,7 @@
 (defn last-audit-event [topic]
   (t2/select-one [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
                  'topic topic
-                 {:order-by [[:id :desc]]}))
+                 {'order-by [['id 'desc]]}))
 
 (defn create-from-csv-and-sync-with-defaults!
   "Creates a table from a CSV file and syncs using [[upload/create-from-csv-and-sync!]]. Returns the synced Table."
@@ -325,8 +325,8 @@
    f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
-    (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
+    (t2/update! :model/Database 'uploads_enabled true {'uploads_enabled false})
+    (t2/update! :model/Database db-id {'uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
       (let [file        (or file (csv-file-with
                                   ["id, name"
@@ -368,8 +368,8 @@
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database (mt/id) {:uploads_enabled     true
-                                         :uploads_schema_name (sql.tx/session-schema driver/*driver*)})
+    (t2/update! :model/Database (mt/id) {'uploads_enabled     true
+                                         'uploads_schema_name (sql.tx/session-schema driver/*driver*)})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
@@ -380,7 +380,7 @@
   "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
+    (t2/update! :model/Database 'uploads_enabled true {'uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
@@ -1142,8 +1142,8 @@
           db-id                (u/the-id db)
           original-sync-values (select-keys db [:is_on_demand :is_full_sync])
           schema-name          (sql.tx/session-schema driver/*driver*)
-          _                    (t2/update! :model/Database db-id {:is_on_demand false
-                                                                  :is_full_sync false})]
+          _                    (t2/update! :model/Database db-id {'is_on_demand false
+                                                                  'is_full_sync false})]
       (try
         (testing "Happy path with schema, and without table-prefix"
           (do-with-uploaded-example-csv!
@@ -1360,7 +1360,7 @@
             schema-filter-prop (find-schema-filters-prop driver)
             filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
             patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
-        (t2/update! :model/Database (mt/id) {:details (-> (mt/db)
+        (t2/update! :model/Database (mt/id) {'details (-> (mt/db)
                                                           :details
                                                           (assoc filter-type-prop "exclusion"
                                                                  patterns-type-prop "public"))})
@@ -1426,10 +1426,10 @@
       ;; ensure we have the same display name for the auto-pk-column that a real upload would have
       (t2/update! :model/Field
                   {'table_id (:id table), 'name upload/auto-pk-column-name}
-                  {:display_name upload/auto-pk-column-name})
+                  {'display_name upload/auto-pk-column-name})
       ;; and preserve the other display names from the CSV
       (doseq [[nm dn] name->display]
-        (t2/update! :model/Field {'table_id (:id table), 'name nm} {:display_name dn}))
+        (t2/update! :model/Field {'table_id (:id table), 'name nm} {'display_name dn}))
       table)))
 
 (defn catch-ex-info* [f]
@@ -1477,7 +1477,7 @@
       (let [new-table (when (nil? table-id)
                         (create-upload-table!))
             table-id (or table-id (:id new-table))]
-        (t2/update! :model/Table table-id {:is_upload is-upload})
+        (t2/update! :model/Table table-id {'is_upload is-upload})
         (try (update-csv! action {:table-id table-id, :file file})
              (finally
                ;; Drop the table in the testdb if a new one was created.
@@ -1492,7 +1492,7 @@
       (testing (action-testing-str action)
         (mt/with-discard-model-updates! [:model/Database]
           ;; start with uploads disabled for all databases
-          (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
+          (t2/update! :model/Database 'uploads_enabled true {'uploads_enabled false})
           (testing "Updates fail if uploads are disabled for all databases."
             (is (= {:message "Uploads are not enabled."
                     :data    {:status-code 422}}
@@ -2521,7 +2521,7 @@
                      (column-display-names-for-table table))))
             (testing "But we can configure it"
               (t2/update! :model/Field {'name "a" 'table_id (:id table)}
-                          {:display_name bespoke-name})
+                          {'display_name bespoke-name})
               (is (= (header-with-auto-pk [bespoke-name])
                      (column-display-names-for-table table))))
             (let [file (csv-file-with data (mt/random-name))]

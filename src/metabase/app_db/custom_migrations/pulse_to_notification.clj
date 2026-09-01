@@ -98,7 +98,7 @@
   (let [pulse-id   (:id pulse)
         pcs        (hydrate-recipients (t2/select :pulse_channel 'pulse_id pulse-id 'enabled true))
         ;; alerts have one pulse-card, but to be safe we select the latest one by id
-        pulse-card (t2/select-one :pulse_card 'pulse_id pulse-id {:order-by [[:id :desc]]})]
+        pulse-card (t2/select-one :pulse_card 'pulse_id pulse-id {'order-by [['id 'desc]]})]
     ;; the old schema allow one alert to have multiple pulse-channels. Practically they all have the same schedule
     ;; but to be safe we group them by schedule and create a notification for each group
     (doall
@@ -156,9 +156,9 @@
   #_{:clj-kondo/ignore [:unresolved-symbol]}
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (run! #(alert->notification! scheduler %)
-          (t2/reducible-query {:select [:*]
-                               :from   [:pulse]
-                               :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]}))))
+          (t2/reducible-query {'select ['*]
+                               'from   ['pulse]
+                               'where  ['and ['in 'alert_condition ["rows" "goal"]] ['not 'archived]]}))))
 
 (comment
   (t2/delete! :model/Notification)

@@ -16,9 +16,9 @@
 (defn- query-view
   "Query v_mcp_tool_calls, returning only rows for the given tool-call ids."
   [tool-call-ids]
-  (t2/query {:select [:*]
-             :from   [:v_mcp_tool_calls]
-             :where  [:in :tool_call_id tool-call-ids]}))
+  (t2/query {'select ['*]
+             'from   ['v_mcp_tool_calls]
+             'where  ['in 'tool_call_id tool-call-ids]}))
 
 (defn- find-row [rows tool-call-id]
   (some #(when (= (:tool_call_id %) tool-call-id) %) rows))

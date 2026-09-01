@@ -28,8 +28,8 @@
   ([user-id] (temp-thread! user-id nil))
   ([user-id prompt]
    (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                            {:name "runner-test"
-                                                             :creator_id user-id}))]
+                                                            {'name "runner-test"
+                                                             'creator_id user-id}))]
      (first (t2/insert-returning-instances! :model/ExplorationThread
                                             (cond-> {:exploration_id (:id exploration)
                                                      :position       0}
@@ -40,24 +40,24 @@
   Query rows require a non-null page_id (FK to exploration_page)."
   [thread-id card-id]
   (let [block-id (t2/insert-returning-pk! :model/ExplorationBlock
-                                          {:exploration_thread_id thread-id})]
+                                          {'exploration_thread_id thread-id})]
     (t2/insert-returning-pk! :model/ExplorationPage
-                             {:exploration_block_id block-id
-                              :card_id              card-id
-                              :dimension_id         "d1"
-                              :query_type           "default"})))
+                             {'exploration_block_id block-id
+                              'card_id              card-id
+                              'dimension_id         "d1"
+                              'query_type           "default"})))
 
 (defn- pending-query!
   [thread-id card-id mbql]
   (first (t2/insert-returning-instances! :model/ExplorationQuery
-                                         {:exploration_thread_id thread-id
-                                          :card_id               card-id
-                                          :database_id           (mt/id)
-                                          :page_id               (thread-page! thread-id card-id)
-                                          :dimension_id          "d1"
-                                          :dataset_query         mbql
-                                          :status                "pending"
-                                          :position              0})))
+                                         {'exploration_thread_id thread-id
+                                          'card_id               card-id
+                                          'database_id           (mt/id)
+                                          'page_id               (thread-page! thread-id card-id)
+                                          'dimension_id          "d1"
+                                          'dataset_query         mbql
+                                          'status                "pending"
+                                          'position              0})))
 
 (defn- drain-until-terminal!
   "Run `row-id` the way its queue does: execute it, and if it throws, record the terminal `error`
@@ -349,15 +349,15 @@
   running top-K discovery against the warehouse — before the row is executed."
   [thread-id card-id]
   (first (t2/insert-returning-instances! :model/ExplorationQuery
-                                         {:exploration_thread_id thread-id
-                                          :card_id               card-id
-                                          :database_id           (mt/id)
-                                          :page_id               (thread-page! thread-id card-id)
-                                          :dimension_id          "d1"
-                                          :query_type            "top-n-other"
-                                          :dataset_query         nil
-                                          :status                "pending"
-                                          :position              0})))
+                                         {'exploration_thread_id thread-id
+                                          'card_id               card-id
+                                          'database_id           (mt/id)
+                                          'page_id               (thread-page! thread-id card-id)
+                                          'dimension_id          "d1"
+                                          'query_type            "top-n-other"
+                                          'dataset_query         nil
+                                          'status                "pending"
+                                          'position              0})))
 
 (deftest finalize-row-resolves-deferred-mbql-as-the-creator-test
   (testing "resolving a deferred row's MBQL runs top-K discovery queries against the warehouse, so it
@@ -391,26 +391,26 @@
         sr-id (first
                (t2/insert-returning-pks!
                 :model/StoredResult
-                {:result_data   bytes
-                 :database_id   (mt/id)
-                 :dataset_query (let [mp (mt/metadata-provider)]
+                {'result_data   bytes
+                 'database_id   (mt/id)
+                 'dataset_query (let [mp (mt/metadata-provider)]
                                   (lib/query mp (lib.metadata/table mp (mt/id :venues))))}))]
     (t2/insert! :model/ExplorationQueryResult
-                {:exploration_query_id query-id
-                 :stored_result_id     sr-id})))
+                {'exploration_query_id query-id
+                 'stored_result_id     sr-id})))
 
 (defn- done-query-with-fake-result!
   [thread-id card-id]
   (let [q (first (t2/insert-returning-instances!
                   :model/ExplorationQuery
-                  {:exploration_thread_id thread-id
-                   :card_id               card-id
-                   :database_id           (mt/id)
-                   :page_id               (thread-page! thread-id card-id)
-                   :dimension_id          "d1"
-                   :dataset_query         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))
-                   :status                "done"
-                   :position              0}))]
+                  {'exploration_thread_id thread-id
+                   'card_id               card-id
+                   'database_id           (mt/id)
+                   'page_id               (thread-page! thread-id card-id)
+                   'dimension_id          "d1"
+                   'dataset_query         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))
+                   'status                "done"
+                   'position              0}))]
     (store-fake-result! (:id q) {:status :completed
                                  :data   {:cols [{:name "x"} {:name "y"}]
                                           :rows [["a" 1] ["b" 2]]}})
@@ -427,7 +427,7 @@
   [thread-id]
   (let [now (OffsetDateTime/now)]
     (t2/update! :model/ExplorationThread thread-id
-                {:canceled_at now :completed_at now})))
+                {'canceled_at now 'completed_at now})))
 
 (deftest run-query-skips-canceled-thread-test
   (testing "A delivered query whose thread was canceled after the message was published is a no-op:
@@ -510,7 +510,7 @@
     (mt/with-temp [:model/User u {:email "cancel-plan@example.com"}]
       (let [thread (temp-thread! (:id u))
             called (atom 0)]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread (:id thread) {'started_at (OffsetDateTime/now)})
         (cancel-thread! (:id thread))
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
                                     (fn [_] (swap! called inc) :ok)]
@@ -526,7 +526,7 @@
         ;; means the two NOT-EXISTS predicates trivially hold — without canceled_at IS NULL, the
         ;; CAS would fire.
         (t2/update! :model/ExplorationThread (:id thread)
-                    {:started_at (OffsetDateTime/now)})
+                    {'started_at (OffsetDateTime/now)})
         (cancel-thread! (:id thread))
         (is (false? (claim-analysis-if-ready! (:id thread)))
             "CAS must not fire on a canceled thread")
@@ -540,7 +540,7 @@
             completed_at nil, stranding the client on a spinner forever."
     (mt/with-temp [:model/User u {:email "atomic-complete@example.com"}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread (:id thread) {'started_at (OffsetDateTime/now)})
         ;; no pending queries → the claim fires
         (is (true? (claim-analysis-if-ready! (:id thread))))
         (let [after (t2/select-one :model/ExplorationThread 'id (:id thread))]
@@ -553,7 +553,7 @@
             write cannot be lost to a crash after the claim commits"
     (mt/with-temp [:model/User u {:email "sync-complete@example.com"}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread (:id thread) {'started_at (OffsetDateTime/now)})
         (runner/maybe-complete-thread! (:id thread))
         (is (some? (:completed_at (t2/select-one :model/ExplorationThread 'id (:id thread))))
             "completed_at is set by the time maybe-complete-thread! returns")))))
@@ -597,7 +597,7 @@
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             called (atom 0)]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread (:id thread) {'started_at (OffsetDateTime/now)})
         (pending-query! (:id thread) (:id card)
                         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
@@ -615,8 +615,8 @@
             called (atom 0)]
         ;; a planner that claimed this thread long ago and died before inserting anything
         (t2/update! :model/ExplorationThread (:id thread)
-                    {:started_at            (.minusMinutes (OffsetDateTime/now) 30)
-                     :query_plan_started_at (.minusMinutes (OffsetDateTime/now) 30)})
+                    {'started_at            (.minusMinutes (OffsetDateTime/now) 30)
+                     'query_plan_started_at (.minusMinutes (OffsetDateTime/now) 30)})
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
                                     (fn [_] (swap! called inc) :ok)]
           (is (true? (runner/plan-thread! (:id thread)))
@@ -633,8 +633,8 @@
             called (atom 0)]
         ;; the thread planned, produced no queries, and its analysis was already claimed/completed
         (t2/update! :model/ExplorationThread (:id thread)
-                    {:started_at          (OffsetDateTime/now)
-                     :analysis_started_at (OffsetDateTime/now)})
+                    {'started_at          (OffsetDateTime/now)
+                     'analysis_started_at (OffsetDateTime/now)})
         (mt/with-dynamic-fn-redefs [metabase.explorations.query-plan/generate-query-plan!
                                     (fn [_] (swap! called inc) :ok)]
           (is (false? (runner/plan-thread! (:id thread)))))
@@ -647,7 +647,7 @@
             polling and the failure is diagnosable"
     (mt/with-temp [:model/User u {:email "fail-plan@example.com"}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread (:id thread) {'started_at (OffsetDateTime/now)})
         (runner/fail-plan! (:id thread) "the queue gave up")
         (let [after (t2/select-one :model/ExplorationThread 'id (:id thread))]
           (is (some? (:completed_at after))
@@ -667,7 +667,7 @@
                                      :creator_id (:id u)
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))]
-        (t2/update! :model/ExplorationThread (:id thread) {:started_at (OffsetDateTime/now)})
+        (t2/update! :model/ExplorationThread (:id thread) {'started_at (OffsetDateTime/now)})
         (pending-query! (:id thread) (:id card)
                         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
         (runner/fail-plan! (:id thread) "a duplicate delivery ran out of retries")
@@ -708,6 +708,6 @@
         ;; Backdate our pending row 100s; the global oldest-age must be at least that (MIN(created_at)
         ;; is no later than our row), regardless of other tests' pending rows.
         (t2/update! :model/ExplorationQuery (:id row)
-                    {:created_at (.minusSeconds (OffsetDateTime/now) 100)})
+                    {'created_at (.minusSeconds (OffsetDateTime/now) 100)})
         (is (>= (oldest-pending-age-seconds) 100)
             "oldest-pending-age is at least the age of our backdated pending row")))))

@@ -69,13 +69,13 @@
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
      (pos? (t2/update! :model/Query
                        {'query_hash query-hash, 'query nil}
-                       {:query                 (json/encode query)
-                        :average_execution_time avg-execution-time}))
+                       {'query                 (json/encode query)
+                        'average_execution_time avg-execution-time}))
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)
      (pos? (t2/update! :model/Query
                        {'query_hash query-hash}
-                       {:average_execution_time avg-execution-time})))))
+                       {'average_execution_time avg-execution-time})))))
 
 (defn- rolling-average-coefficients
   "Collapse applying the rolling-average formula (see [[smoothing-factor]]) once per execution time into a single
@@ -120,12 +120,12 @@
     (let [hash+exprs (vec (for [group groups]
                             [(:query-hash (first group))
                              (rolling-average-update-expr (map :execution-time-ms group))]))]
-      (t2/query {:update (t2/table-name :model/Query)
-                 :set    {:average_execution_time (into [:case]
+      (t2/query {'update (t2/table-name :model/Query)
+                 'set    {'average_execution_time (into [:case]
                                                         (mapcat (fn [[query-hash expr]]
                                                                   [[:= :query_hash query-hash] expr]))
                                                         hash+exprs)}
-                 :where  [:in :query_hash (mapv first hash+exprs)]}))))
+                 'where  ['in 'query_hash (mapv first hash+exprs)]}))))
 
 (defn- insert-query-entries!
   "Insert new Query rows for `groups` (each a sequence of entries sharing a query hash) with a single INSERT."
@@ -150,9 +150,9 @@
                   (if (contains? #{true 1} missing_query)
                     :needs-query-backfill
                     :up-to-date)]))
-          (t2/reducible-query {:select [:query_hash [[:= :query nil] :missing_query]]
-                               :from   [(t2/table-name :model/Query)]
-                               :where  [:in :query_hash query-hashes]}))))
+          (t2/reducible-query {'select ['query_hash [['= 'query nil] 'missing_query]]
+                               'from   [(t2/table-name :model/Query)]
+                               'where  ['in 'query_hash query-hashes]}))))
 
 (defn save-queries-and-update-average-execution-times!
   "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,

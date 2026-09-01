@@ -311,7 +311,7 @@
                                                         'ticket_number "TICKET-FIRST"))))
             ;; Deactivate the support user (simulates admin action or cleanup)
             (let [support-user (t2/select-one [:model/User 'id 'is_active] 'email email)]
-              (t2/update! :model/User (:id support-user) {:is_active false})
+              (t2/update! :model/User (:id support-user) {'is_active false})
               (is (false? (:is_active (t2/select-one [:model/User 'is_active]
                                                      'id (:id support-user))))
                   "User should be deactivated"))
@@ -451,7 +451,7 @@
             (testing "past the grant window the support session is rejected"
               ;; Sessions cannot be updated through the model and the clock cannot be wound forward, so
               ;; simulate the grant window elapsing by moving expires_at into the past.
-              (t2/query-one {:update (t2/table-name :model/Session)
-                             :set    {:expires_at (t/minus (t/instant) (t/minutes 1))}
-                             :where  [:= :id (:id session)]})
+              (t2/query-one {'update (t2/table-name :model/Session)
+                             'set    {'expires_at (t/minus (t/instant) (t/minutes 1))}
+                             'where  ['= 'id (:id session)]})
               (is (= "Unauthenticated" (mt/client session-key :get 401 "user/current"))))))))))

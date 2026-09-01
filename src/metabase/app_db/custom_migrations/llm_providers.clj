@@ -92,7 +92,7 @@
 
 (defn- setting-value
   [setting-key]
-  (some-> (t2/query-one {:select [:value] :from :setting :where [:= :key setting-key]})
+  (some-> (t2/query-one {'select ['value] 'from 'setting 'where ['= 'key setting-key]})
           :value
           encryption/maybe-decrypt-accepting-plaintext))
 
@@ -105,8 +105,8 @@
   "Writes `value` for `setting-key`, encrypted only when `encrypt?` — a setting declared `:encryption :no` should
   not come out of a downgrade holding ciphertext, even though reads would decrypt it opportunistically."
   [setting-key value encrypt?]
-  (t2/query {:delete-from :setting :where [:= :key setting-key]})
-  (t2/insert! :setting {:key setting-key :value (cond-> value encrypt? encryption/maybe-encrypt)}))
+  (t2/query {'delete-from 'setting 'where ['= 'key setting-key]})
+  (t2/insert! :setting {'key setting-key 'value (cond-> value encrypt? encryption/maybe-encrypt)}))
 
 ;;; ------------------------------------------------------ Up ------------------------------------------------------
 
@@ -156,7 +156,7 @@
                    (count conns) connections-setting (str/join ", " (map :key conns)))
         ;; the list holds every credential, and the live setting is declared :when-encryption-key-set
         (write-setting! connections-setting (json/encode conns) true))))
-  (t2/query {:delete-from :setting :where [:in :key credential-setting-keys]}))
+  (t2/query {'delete-from 'setting 'where ['in 'key credential-setting-keys]}))
 
 ;;; ----------------------------------------------------- Down -----------------------------------------------------
 
@@ -205,5 +205,5 @@
                    (count dropped) (str/join ", " (map :key dropped))))
       (if-let [model-ref (downgraded-model-ref (setting-value model-ref-setting) conns)]
         (write-setting! model-ref-setting model-ref false)
-        (t2/query {:delete-from :setting :where [:= :key model-ref-setting]}))
-      (t2/query {:delete-from :setting :where [:= :key connections-setting]}))))
+        (t2/query {'delete-from 'setting 'where ['= 'key model-ref-setting]}))
+      (t2/query {'delete-from 'setting 'where ['= 'key connections-setting]}))))

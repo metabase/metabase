@@ -95,7 +95,7 @@
       (mdb/setup-db! :create-sample-content? true)
       (is (= 1
              (appearance/example-dashboard-id)))
-      (t2/update! :model/Dashboard 1 {:archived true})
+      (t2/update! :model/Dashboard 1 {'archived true})
       (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test
@@ -171,7 +171,7 @@
             (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" 'key "encryption-check")))))
           (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
             (t2/delete! :setting 'key "encryption-check")
-            (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
+            (t2/insert! :setting {'key "encryption-check", 'value "unencrypted"})
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
             (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" 'key "encryption-check")))))
@@ -190,7 +190,7 @@
 (defn- set-encryption-check-raw! [value]
   (t2/delete! :setting 'key "encryption-check")
   (when value
-    (t2/insert! :setting {:key "encryption-check", :value value})))
+    (t2/insert! :setting {'key "encryption-check", 'value value})))
 
 (deftest sentinel-state-never-triggers-encryption-test
   (testing "a restart must never encrypt a pre-existing plaintext row, whatever state the sentinel is in"
@@ -204,7 +204,7 @@
                            (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                            (mdb/setup-db! :create-sample-content? false))]
           (is (encryption/decryptable-string? (raw-detail)))
-          (t2/update! :metabase_database {'id db-id} {:details plaintext})
+          (t2/update! :metabase_database {'id db-id} {'details plaintext})
           (testing "with the sentinel deleted"
             (set-encryption-check-raw! nil)
             (is (thrown-with-msg? Exception #"not marked as encrypted and already contains data" (restart!)))
@@ -231,16 +231,16 @@
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
-                  {:keys [id value]} (t2/select [table 'id [column :value]] {:where [:!= column nil]})]
+                  {:keys [id value]} (t2/select [table 'id [column :value]] {'where ['!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-string? value)))))
         (testing "encrypted-at-rest bytes columns"
           (doseq [[table column] @#'mdb.encryption/encrypted-bytes-columns
-                  {:keys [id value]} (t2/select [table 'id [column :value]] {:where [:!= column nil]})]
+                  {:keys [id value]} (t2/select [table 'id [column :value]] {'where ['!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-bytes? (#'mdb.encryption/maybe-blob->bytes value))))))
         (testing "settings that are encrypted at rest"
-          (doseq [{k :key v :value} (t2/select :setting {:where [:!= :value nil]})
+          (doseq [{k :key v :value} (t2/select :setting {'where ['!= 'value nil]})
                   :let [definition (get @setting/registered-settings (keyword k))]
                   :when (and definition (not= :no (:encryption definition)))]
             (testing k

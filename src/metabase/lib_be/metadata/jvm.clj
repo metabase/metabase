@@ -81,7 +81,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
+         {'select ['id 'engine 'name 'dbms_version 'settings 'is_audit 'is_attached_dwh 'details 'write_data_details 'admin_details 'timezone 'router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -107,7 +107,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
+         {'select ['id 'db_id 'name 'display_name 'schema 'active 'visibility_type 'database_require_filter]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -150,42 +150,42 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:field/active
-                :field/base_type
-                :field/coercion_strategy
-                :field/database_partitioned
-                :field/database_type
-                :field/description
-                :field/display_name
-                :field/effective_type
-                :field/fingerprint
-                :field/fk_target_field_id
-                :field/id
-                :field/name
-                :field/nfc_path
-                :field/parent_id
-                :field/position
-                :field/semantic_type
-                :field/settings
-                :field/table_id
-                :field/visibility_type
-                :dimension/human_readable_field_id
-                :dimension/id
-                :dimension/name
-                :dimension/type
-                :values/human_readable_values
-                :values/values]
-    :from      [[(t2/table-name :model/Field) :field]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :field/table_id :table/id]
-                [(t2/table-name :model/Dimension) :dimension]
-                [:and
-                 [:= :dimension/field_id :field/id]
-                 [:in :dimension/type ["external" "internal"]]]
-                [(t2/table-name :model/FieldValues) :values]
-                [:and
-                 [:= :values/field_id :field/id]
-                 [:= :values/type "full"]]]}))
+   {'select    ['field/active
+                'field/base_type
+                'field/coercion_strategy
+                'field/database_partitioned
+                'field/database_type
+                'field/description
+                'field/display_name
+                'field/effective_type
+                'field/fingerprint
+                'field/fk_target_field_id
+                'field/id
+                'field/name
+                'field/nfc_path
+                'field/parent_id
+                'field/position
+                'field/semantic_type
+                'field/settings
+                'field/table_id
+                'field/visibility_type
+                'dimension/human_readable_field_id
+                'dimension/id
+                'dimension/name
+                'dimension/type
+                'values/human_readable_values
+                'values/values]
+    'from      [[(t2/table-name :model/Field) 'field]]
+    'left-join [[(t2/table-name :model/Table) 'table]
+                ['= 'field/table_id 'table/id]
+                [(t2/table-name :model/Dimension) 'dimension]
+                ['and
+                 ['= 'dimension/field_id 'field/id]
+                 ['in 'dimension/type ["external" "internal"]]]
+                [(t2/table-name :model/FieldValues) 'values]
+                ['and
+                 ['= 'values/field_id 'field/id]
+                 ['= 'values/type "full"]]]}))
 
 (t2/define-after-select :metadata/column
   [field]
@@ -245,26 +245,26 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:card/collection_id
-                :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.queries.models.card]].
-                :card/card_schema  ; Needed for after-select logic to work.
-                :card/database_id
-                :card/dataset_query
-                :card/id
-                :card/entity_id
-                :card/name
-                :card/result_metadata
-                :card/table_id
-                :card/type
-                :card/visualization_settings
-                :persisted/active
-                :persisted/state
-                :persisted/definition
-                :persisted/query_hash
-                :persisted/table_name]
-    :from      [[(t2/table-name :model/Card) :card]]
-    :left-join [[(t2/table-name :model/PersistedInfo) :persisted]
-                [:= :persisted/card_id :card/id]]}))
+   {'select    ['card/collection_id
+                'card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.queries.models.card]].
+                'card/card_schema  ; Needed for after-select logic to work.
+                'card/database_id
+                'card/dataset_query
+                'card/id
+                'card/entity_id
+                'card/name
+                'card/result_metadata
+                'card/table_id
+                'card/type
+                'card/visualization_settings
+                'persisted/active
+                'persisted/state
+                'persisted/definition
+                'persisted/query_hash
+                'persisted/table_name]
+    'from      [[(t2/table-name :model/Card) 'card]]
+    'left-join [[(t2/table-name :model/PersistedInfo) 'persisted]
+                ['= 'persisted/card_id 'card/id]]}))
 
 (defn- parse-persisted-info-definition [x]
   ((get-in (t2/transforms :model/PersistedInfo) [:definition :out] identity) x))
@@ -318,15 +318,15 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:segment/id
-                :segment/table_id
-                :segment/name
-                :segment/description
-                :segment/archived
-                :segment/definition]
-    :from      [[(t2/table-name :model/Segment) :segment]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :segment/table_id :table/id]]}))
+   {'select    ['segment/id
+                'segment/table_id
+                'segment/name
+                'segment/description
+                'segment/archived
+                'segment/definition]
+    'from      [[(t2/table-name :model/Segment) 'segment]]
+    'left-join [[(t2/table-name :model/Table) 'table]
+                ['= 'segment/table_id 'table/id]]}))
 
 (t2/define-after-select :metadata/segment
   [segment]
@@ -359,17 +359,17 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:measure/id
-                :measure/table_id
-                :measure/name
-                :measure/description
-                :measure/archived
-                :measure/definition
-                :measure/dimensions
-                :measure/dimension_mappings]
-    :from      [[(t2/table-name :model/Measure) :measure]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :measure/table_id :table/id]]}))
+   {'select    ['measure/id
+                'measure/table_id
+                'measure/name
+                'measure/description
+                'measure/archived
+                'measure/definition
+                'measure/dimensions
+                'measure/dimension_mappings]
+    'from      [[(t2/table-name :model/Measure) 'measure]]
+    'left-join [[(t2/table-name :model/Table) 'table]
+                ['= 'measure/table_id 'table/id]]}))
 
 (t2/define-after-select :metadata/measure
   [measure]
@@ -391,7 +391,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :description :content :archived :collection_id :template_tags]}))
+         {'select ['id 'name 'description 'content 'archived 'collection_id 'template_tags]}))
 
 (t2/define-after-select :metadata/native-query-snippet
   [snippet]
@@ -413,7 +413,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :source :target]}))
+         {'select ['id 'name 'source 'target]}))
 
 (t2/define-after-select :metadata/transform
   [snippet]

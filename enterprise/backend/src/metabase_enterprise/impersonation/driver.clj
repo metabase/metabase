@@ -33,12 +33,12 @@
         perm-values                (when (seq non-impersonated-group-ids)
                                      (t2/select-fn-set :perm_value
                                                        :model/DataPermissions
-                                                       {:where
-                                                        [:and
-                                                         [:= :db_id (u/the-id db-or-id)]
-                                                         [:= :table_id nil]
-                                                         [:= :perm_type (u/qualified-name :perms/view-data)]
-                                                         [:in :group_id non-impersonated-group-ids]]}))]
+                                                       {'where
+                                                        ['and
+                                                         ['= 'db_id (u/the-id db-or-id)]
+                                                         ['= 'table_id nil]
+                                                         ['= 'perm_type (u/qualified-name :perms/view-data)]
+                                                         ['in 'group_id non-impersonated-group-ids]]}))]
     ;; Just check if any other non-impersonated groups have unrestricted access to the DB. We don't need to worry
     ;; about block permissions here because it would have been enforced earlier in the QP middleware stack.
     (not (contains? perm-values :unrestricted))))

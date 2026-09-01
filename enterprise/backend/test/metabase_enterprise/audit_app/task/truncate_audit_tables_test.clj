@@ -37,14 +37,14 @@
           (testing "When on postgres, nothing in query_execution is truncated."
             (#'task.truncate-audit-tables/truncate-audit-tables!)
             (is (= #{qe1-id qe2-id qe3-id}
-                   (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))
+                   (t2/select-fn-set :id :model/QueryExecution {'where ['in 'id [qe1-id qe2-id qe3-id]]}))))
           ;; Mock a cloud environment so that we can change the setting value via env var
           (with-redefs [premium-features/is-hosted? (constantly true)]
             (testing "When the threshold is 0 (representing infinity), no rows are deleted"
               (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
                 (#'task.truncate-audit-tables/truncate-audit-tables!)
                 (is (= #{qe1-id qe2-id qe3-id}
-                       (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))))))))
+                       (t2/select-fn-set :id :model/QueryExecution {'where ['in 'id [qe1-id qe2-id qe3-id]]})))))))))))
 
 (defn- audit-log-defaults
   []
@@ -66,7 +66,7 @@
             (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
               (#'task.truncate-audit-tables/truncate-audit-tables!)
               (is (= #{al1-id}
-                     (t2/select-fn-set :id :model/AuditLog {:where [:in :id [al1-id al2-id al3-id]]}))))))))))
+                     (t2/select-fn-set :id :model/AuditLog {'where ['in 'id [al1-id al2-id al3-id]]}))))))))))
 
 (defn- view-log-defaults
   []
@@ -89,4 +89,4 @@
             (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
               (#'task.truncate-audit-tables/truncate-audit-tables!)
               (is (= #{vl1-id}
-                     (t2/select-fn-set :id :model/ViewLog {:where [:in :id [vl1-id vl2-id vl3-id]]}))))))))))
+                     (t2/select-fn-set :id :model/ViewLog {'where ['in 'id [vl1-id vl2-id vl3-id]]}))))))))))

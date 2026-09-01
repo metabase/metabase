@@ -537,4 +537,4 @@
                 (number? where) [:= :id where]
                 (string? where) [:= :entity_id where]
                 :else           where)]
-    (u/rfirst (serdes/extract-all model-name {:where where}))))
+    (u/rfirst (serdes/extract-all model-name {'where where}))))

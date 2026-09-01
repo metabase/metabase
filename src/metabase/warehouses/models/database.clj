@@ -256,7 +256,7 @@
                                   (let [keys-remaining (-> test-details keys set)
                                         [_ removed _] (data/diff keys-remaining (-> details keys set))]
                                     (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-                                    (t2/update! :model/Database (:id database) {:details test-details})
+                                    (t2/update! :model/Database (:id database) {'details test-details})
                                     test-details)
                                   (recur tail))
                                 ;; if we go through the list and we can't fine a working detail to test, keep original value
@@ -315,7 +315,7 @@
                  (log/info (u/format-color :blue "Provider detection: updating database {:id %d} from '%s' to '%s'"
                                            (:id database)
                                            (:provider_name database) provider))
-                 (t2/update! :model/Database (:id database) {:provider_name provider})
+                 (t2/update! :model/Database (:id database) {'provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
@@ -342,13 +342,13 @@
   instances with 3k+ databases exist in the wild, and realizing every Database row (including details decryption)
   just to pick one per engine would defeat the point."
   []
-  (let [ids (map :id (t2/query {:select   [[:%min.id :id]]
-                                :from     [(t2/table-name :model/Database)]
-                                :where    [:and
-                                           [:= :is_audit false]
-                                           [:= :is_sample false]
-                                           [:= :router_database_id nil]]
-                                :group-by [:engine]}))]
+  (let [ids (map :id (t2/query {'select   [['%min.id 'id]]
+                                'from     [(t2/table-name :model/Database)]
+                                'where    ['and
+                                           ['= 'is_audit false]
+                                           ['= 'is_sample false]
+                                           ['= 'router_database_id nil]]
+                                'group-by ['engine]}))]
     (when (seq ids)
       (t2/select :model/Database 'id ['in ids]))))
 
@@ -424,9 +424,9 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (let [table-ids-query ^:allow-subquery {:from   [(t2/table-name :model/Table)]
-                                          :select [:id]
-                                          :where  [:= :db_id database-id]}]
+  (let [table-ids-query {'from   [(t2/table-name :model/Table)]
+                         'select ['id]
+                         'where  ['= 'db_id database-id]}]
     ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
     ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
     ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
@@ -434,21 +434,21 @@
       (let [no-children-clause (if (= (mdb/db-type) :mysql)
                                  ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
                                  ;; DELETE target
-                                 [:not-in :id ^:allow-subquery {:select [:parent_id]
-                                                                :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                            :from   [(t2/table-name :model/Field)]
-                                                                                            :where  [:and
-                                                                                                     [:not= :parent_id nil]
-                                                                                                     [:in :table_id table-ids-query]]}
-                                                                          :parent_fields]]}]
-                                 [:not [:exists ^:allow-subquery {:select [1]
-                                                                  :from   [[(t2/table-name :model/Field) :child_field]]
-                                                                  :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                                 [:not-in :id {'select ['parent_id]
+                                               'from   [[{'select ['parent_id]
+                                                          'from   [(t2/table-name :model/Field)]
+                                                          'where  ['and
+                                                                   ['not= 'parent_id nil]
+                                                                   ['in 'table_id table-ids-query]]}
+                                                         'parent_fields]]}]
+                                 [:not [:exists {'select [1]
+                                                 'from   [[(t2/table-name :model/Field) 'child_field]]
+                                                 'where  ['= 'child_field.parent_id 'metabase_field.id]}]])]
         (loop []
           (let [deleted (t2/query-one
-                         {:delete-from (t2/table-name :model/Field)
-                          :where       [:and
-                                        [:in :table_id table-ids-query]
+                         {'delete-from (t2/table-name :model/Field)
+                          'where       ['and
+                                        ['in 'table_id table-ids-query]
                                         no-children-clause]})]
             (when (pos? deleted)
               (recur))))))))
@@ -469,18 +469,18 @@
         ;; mysql and h2 both do not support `returning`, so we do the correct thing for postgres and
         ;; then some sad version for those two
         (t2/reducible-query (if (= :postgres (mdb/db-type))
-                              {:delete-from (t2/table-name :model/Card)
-                               :where       [:= :database_id id]
-                               :returning   [:id]}
-                              {:from   [(t2/table-name :model/Card)]
-                               :select [:id]
-                               :where  [:= :database_id id]})))
+                              {'delete-from (t2/table-name :model/Card)
+                               'where       ['= 'database_id id]
+                               'returning   ['id]}
+                              {'from   [(t2/table-name :model/Card)]
+                               'select ['id]
+                               'where  ['= 'database_id id]})))
        (run! (fn [batch]
                ;; damn circular deps
                ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
-    (t2/query {:delete-from (t2/table-name :model/Card)
-               :where       [:= :database_id id]}))
+    (t2/query {'delete-from (t2/table-name :model/Card)
+               'where       ['= 'database_id id]}))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -490,7 +490,7 @@
   "This function maintains the invariant that only one database can have uploads_enabled=true."
   [db]
   (when (:uploads_enabled db)
-    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+    (t2/update! :model/Database 'uploads_enabled true {'uploads_enabled false 'uploads_table_prefix nil 'uploads_schema_name nil}))
   db)
 
 (defn- assert-router-database-id-not-mutated!
@@ -634,7 +634,7 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (t2/select :model/Table 'db_id id 'active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table 'db_id id 'active true {'order-by [['%lower.display_name 'asc]]}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :tables]
   "Batch hydrate `Tables` for the given `Database`."
@@ -646,7 +646,7 @@
               (t2/select :model/Table
                          'db_id  ['in (map :id databases)]
                          'active true
-                         {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+                         {'order-by [['db_id 'asc] [['lower 'display_name] 'asc]]}))
    :id
    {:default []}))
 
@@ -753,7 +753,7 @@
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
   (t2/reducible-select (keyword "model" model-name)
-                       {:where (cond-> [:and
+                       {'where (cond-> [:and
                                         (or where true)
                                         [:= :router_database_id nil]
                                         ;; never export the sample database, regardless of its driver

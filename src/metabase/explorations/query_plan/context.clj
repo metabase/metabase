@@ -354,9 +354,9 @@
   (let [card       (t2/select-one :model/Card 'id card_id)
         block      (when page_id
                      (t2/select-one :model/ExplorationBlock
-                                    {:join  [[:exploration_page :p]
-                                             [:= :p.exploration_block_id :exploration_block.id]]
-                                     :where [:= :p.id page_id]}))
+                                    {'join  [['exploration_page 'p]
+                                             ['= 'p.exploration_block_id 'exploration_block.id]]
+                                     'where ['= 'p.id page_id]}))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
         dim-by-id  (u/index-by :dimension-id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]

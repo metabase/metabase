@@ -968,7 +968,7 @@
                                   [:model/Dashboard dashboard-id]
                                   [:model/Collection collection-id]
                                   [:model/Card model-id]]]
-                (t2/update! model id {:name (format "New %s name" (name model))}))
+                (t2/update! model id {'name (format "New %s name" (name model))}))
               (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                        {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                        {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
@@ -1019,7 +1019,7 @@
                                   [:model/Dashboard dashboard-id]
                                   [:model/Collection collection-id]
                                   [:model/Card model-id]]]
-                (t2/update! model id {:name (format "New %s name" (name model))}))
+                (t2/update! model id {'name (format "New %s name" (name model))}))
               (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
                        {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                        {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
@@ -1148,7 +1148,7 @@
                                                        :row                    2
                                                        :visualization_settings {:text "Card 2 tab-2"}}]
         ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
-        (t2/update! :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
+        (t2/update! :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id nil {'dashboard_tab_id tab-id-1})
         (thunk)))
     :assert
     {:email

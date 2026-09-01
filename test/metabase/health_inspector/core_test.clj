@@ -56,10 +56,10 @@
     (doseq [[check-name run-at] [["expired" (t/minus now (t/days 31))]
                                  ["recent"  (t/minus now (t/days 29))]]]
       (t2/insert! :health_inspector_runs
-                  {:check_name check-name
-                   :health     100
-                   :message    check-name
-                   :run_at     run-at})))
+                  {'check_name check-name
+                   'health     100
+                   'message    check-name
+                   'run_at     run-at})))
   (with-redefs [hi/checks (atom {})]
     (hi/save-report))
   (is (= #{"recent"} (set (map :check_name (hi/list-runs 32))))

@@ -39,17 +39,17 @@
     ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
     ;; query naming a table that does not exist.
     (set (t2/select-pks-set :model/Table
-                            {:where [:and
-                                     [:= :db_id database-id]
+                            {'where ['and
+                                     ['= 'db_id database-id]
                                      ;; `lower()` cannot use an index on the name column, but it still beats fetching every
                                      ;; row for the Database.
-                                     [:in [:lower :name] names]
+                                     ['in ['lower 'name] names]
                                      ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
                                      ;; `:id` lookup does not apply it, so it has to happen here.
-                                     [:= :active true]
-                                     [:or
-                                      [:= :visibility_type nil]
-                                      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
+                                     ['= 'active true]
+                                     ['or
+                                      ['= 'visibility_type nil]
+                                      ['not-in 'visibility_type ["hidden" "technical" "cruft"]]]]}))
     #{}))
 
 (defn find-table-or-transform

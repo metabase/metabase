@@ -15,9 +15,9 @@
 (defn- query-view
   "Query v_agent_api_calls, returning only rows for the given call ids."
   [call-ids]
-  (t2/query {:select [:*]
-             :from   [:v_agent_api_calls]
-             :where  [:in :call_id call-ids]}))
+  (t2/query {'select ['*]
+             'from   ['v_agent_api_calls]
+             'where  ['in 'call_id call-ids]}))
 
 (defn- find-row [rows call-id]
   (some #(when (= (:call_id %) call-id) %) rows))

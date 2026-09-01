@@ -337,7 +337,7 @@
 
 (defn- app-db-now
   []
-  (:now (t2/query-one {:select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) :now]]})))
+  (:now (t2/query-one {'select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) 'now]]})))
 
 (defn run-transforms!
   "Run the transforms of `plan`, honoring the DAG.

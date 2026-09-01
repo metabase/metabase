@@ -38,7 +38,7 @@
                                                           :expires_at (:expires_at auth-identity))
                     (when provider-str
                       (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
-                      (t2/update! :model/AuthIdentity auth-identity-id {:last_used_at :%now}))
+                      (t2/update! :model/AuthIdentity auth-identity-id {'last_used_at :%now}))
                     (when device-info
                       (login-history/record-login-history! session-id user device-info))))]
     (assoc session

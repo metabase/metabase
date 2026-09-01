@@ -152,10 +152,10 @@
             (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
             (testing "authenticates before deactivation"
               (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User user-id {:is_active false})
+            (t2/update! :model/User user-id {'is_active false})
             (testing "after deactivation the token no longer authenticates"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User user-id {:is_active true})
+            (t2/update! :model/User user-id {'is_active true})
             (testing "after reactivation the same token STILL does not authenticate"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))))))))
 

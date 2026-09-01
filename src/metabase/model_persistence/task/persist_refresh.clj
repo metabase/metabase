@@ -63,13 +63,13 @@
             definition            (persisted-info/metadata->definition (:result_metadata card)
                                                                        (:table_name persisted-info))
             _                     (t2/update! :model/PersistedInfo (u/the-id persisted-info)
-                                              {:definition      definition,
-                                               :query_hash      (persisted-info/query-hash (:dataset_query card))
-                                               :active          false,
-                                               :refresh_begin   :%now,
-                                               :refresh_end     nil,
-                                               :state           "refreshing"
-                                               :state_change_at :%now})
+                                              {'definition      definition,
+                                               'query_hash      (persisted-info/query-hash (:dataset_query card))
+                                               'active          false,
+                                               'refresh_begin   :%now,
+                                               'refresh_end     nil,
+                                               'state           "refreshing"
+                                               'state_change_at :%now})
             {:keys [state error]} (try
                                     (refresh! refresher database definition card)
                                     (catch Exception e
@@ -77,11 +77,11 @@
                                                  (:card_id persisted-info) (ex-message e))
                                       {:state :error :error (ex-message e)}))]
         (t2/update! :model/PersistedInfo (u/the-id persisted-info)
-                    {:active          (= state :success),
-                     :refresh_end     :%now,
-                     :state           (if (= state :success) "persisted" "error")
-                     :state_change_at :%now
-                     :error           (when (= state :error) error)})
+                    {'active          (= state :success),
+                     'refresh_end     :%now,
+                     'state           (if (= state :success) "persisted" "error")
+                     'state_change_at :%now
+                     'error           (when (= state :error) error)})
         (if (= :success state)
           (update stats :success inc)
           (-> stats

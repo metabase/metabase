@@ -29,7 +29,7 @@
   ([s wrap]
    ;; `::literal` rather than [:inline "!"]: with a driver bound, inline strings compile via driver-specific
    ;; `inline-value` (MySQL emits `_utf8mb4 X'21'`, whose collation can clash with LIKE's other operands)
-   [:escape (wrap (escape-like-pattern s)) [::literal "!"]]))
+   ['escape (wrap (escape-like-pattern s)) ['metabase.util.honey-sql-2/literal "!"]]))
 
 (defn like-substring
   "`LIKE` right-hand side matching `s` case-insensitively as a literal substring; compare it against a lowercased column."
@@ -215,7 +215,7 @@
 
 (sql/register-fn! ::literal #'format-literal)
 
-(def Literal "A `literal` tagged string or keyword" [:tuple [:= ::literal] :string])
+(def Literal "A `literal` tagged string or keyword" [:tuple [:= 'metabase.util.honey-sql-2/literal] :string])
 
 (mu/defn literal :- Literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
@@ -225,7 +225,7 @@
 
   DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
   [s]
-  [::literal (u/qualified-name s)])
+  ['metabase.util.honey-sql-2/literal (u/qualified-name s)])
 
 (defn- format-at-time-zone [_tag [expr zone]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
@@ -394,7 +394,7 @@
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr [:raw (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
@@ -628,7 +628,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
+  [:timestampdiff [:raw "MICROSECOND"] start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

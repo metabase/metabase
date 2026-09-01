@@ -73,8 +73,8 @@
   its primary key."
   [channel payload]
   (t2/insert-returning-pk! :queue_message_outbox
-                           {:queue_name (name channel)
-                            :payload    payload}))
+                           {'queue_name (name channel)
+                            'payload    payload}))
 
 (defn insert-outbox-rows!
   "before-commit callback: for every channel buffered in `*transaction-state*`, apply the queue's
@@ -155,17 +155,17 @@
   (t2/with-transaction [_conn]
     (let [now    (Instant/now)
           now-ts (Timestamp/from now)
-          rows (t2/query {:select   [:id :queue_name :payload :publish_attempts]
-                          :from     [:queue_message_outbox]
-                          :where    [:and
-                                     [:> :id after-id]
-                                     [:or
-                                      [:and [:= :next_attempt_at nil]
-                                       [:< :created_at (Timestamp/from (.minusMillis now recovery-age-ms))]]
-                                      [:<= :next_attempt_at now-ts]]]
-                          :order-by [[:id :asc]]
-                          :limit    recovery-page-size
-                          :for      (for-update-clause)})
+          rows (t2/query {'select   ['id 'queue_name 'payload 'publish_attempts]
+                          'from     ['queue_message_outbox]
+                          'where    ['and
+                                     ['> 'id after-id]
+                                     ['or
+                                      ['and ['= 'next_attempt_at nil]
+                                       ['< 'created_at (Timestamp/from (.minusMillis now recovery-age-ms))]]
+                                      ['<= 'next_attempt_at now-ts]]]
+                          'order-by [['id 'asc]]
+                          'limit    recovery-page-size
+                          'for      (for-update-clause)})
           {:keys [recover-ids bumps backend-down?]}
           (reduce (fn [acc {:keys [id queue_name payload] :as row}]
                     (try
@@ -183,8 +183,8 @@
       (when (seq recover-ids) (t2/delete! :queue_message_outbox 'id ['in recover-ids]))
       (doseq [{:keys [id next-attempt-at]} bumps]
         (t2/update! :queue_message_outbox 'id id
-                    {:publish_attempts [:+ :publish_attempts [:inline 1]]
-                     :next_attempt_at  next-attempt-at}))
+                    {'publish_attempts [:+ :publish_attempts [:inline 1]]
+                     'next_attempt_at  next-attempt-at}))
       (when backend-down?
         (log/info "Outbox recovery: backend unavailable, remaining rows retry next run"))
       ;; nil next-after-id stops the sweep: no more due rows, or the backend is down.

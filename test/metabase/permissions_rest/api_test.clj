@@ -283,7 +283,7 @@
             (let [audit-entry (t2/select-one :model/AuditLog
                                              'topic "group-create"
                                              'model_id group-id
-                                             {:order-by [[:id :desc]]})]
+                                             {'order-by [['id 'desc]]})]
               (is (some? audit-entry))
               (is (= "PermissionsGroup" (:model audit-entry)))
               (is (= group-id (:model_id audit-entry)))
@@ -292,14 +292,14 @@
 (deftest delete-group-audit-test
   (mt/with-premium-features #{:audit-app}
     (testing "permissions group delete is audited"
-      (let [{group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup {:name "Delete Me"})
+      (let [{group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup {'name "Delete Me"})
             before-delete-count (t2/count :model/AuditLog)]
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
         (is (= (inc before-delete-count) (t2/count :model/AuditLog)))
         (let [audit-entry (t2/select-one :model/AuditLog
                                          'topic "group-delete"
                                          'model_id group-id
-                                         {:order-by [[:id :desc]]})]
+                                         {'order-by [['id 'desc]]})]
           (is (some? audit-entry))
           (is (= "PermissionsGroup" (:model audit-entry)))
           (is (= group-id (:model_id audit-entry)))
@@ -315,7 +315,7 @@
           (let [audit-entry (t2/select-one :model/AuditLog
                                            'topic "group-update"
                                            'model_id group-id
-                                           {:order-by [[:id :desc]]})]
+                                           {'order-by [['id 'desc]]})]
             (is (some? audit-entry))
             (is (= "PermissionsGroup" (:model audit-entry)))
             (is (= group-id (:model_id audit-entry)))

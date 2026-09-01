@@ -54,7 +54,7 @@
             (is (= [ref] @nudges) "nudged once, after commit"))
           (testing "update"
             (t2/with-transaction [_conn]
-              (t2/update! :model/OsiAiContext 'entity_type "table" 'entity_local_id 42 {:ai_context {:instructions "changed"}})
+              (t2/update! :model/OsiAiContext 'entity_type "table" 'entity_local_id 42 {'ai_context {:instructions "changed"}})
               (is (= [ref] @nudges) "still only the insert's nudge while open"))
             (is (= [ref ref] @nudges) "nudged again, after commit"))
           (testing "delete"
@@ -93,7 +93,7 @@
       (let [k [(:entity_type row) (:entity_local_id row)]]
         (testing "update"
           (is (pos? (t2/update! :model/OsiAiContext 'entity_type (k 0) 'entity_local_id (k 1)
-                                {:ai_context {:instructions "u"}})))
+                                {'ai_context {:instructions "u"}})))
           (is (= {:instructions "u"} (:ai_context (by-key entity)))))
         (testing "delete"
           (is (pos? (t2/delete! :model/OsiAiContext 'entity_type (k 0) 'entity_local_id (k 1))))

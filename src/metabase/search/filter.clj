@@ -148,13 +148,13 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                     :from   [[:collection :pc]]
-                                     :where  [:and
-                                              [:not= :pc.personal_owner_id nil]
-                                              [:= :pc.location "/"]
-                                              [:like :collection.location
-                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+          [:exists {'select [[['inline 1]]]
+                    'from   [['collection 'pc]]
+                    'where  ['and
+                             ['not= 'pc.personal_owner_id nil]
+                             ['= 'pc.location "/"]
+                             ['like 'collection.location
+                              ['concat (h2x/literal "/") 'pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
         [:or

@@ -36,7 +36,7 @@
                       (when group-manager?
                         (t2/update! :model/PermissionsGroupMembership {'user_id  user-id
                                                                        'group_id group-id}
-                                    {:is_group_manager true}))
+                                    {'is_group_manager true}))
                       (mt/user-http-request user
                                             :delete status
                                             (format "permissions/group/%d" group-id))))))]
@@ -64,7 +64,7 @@
             (testing "succeed if users access group that they are manager of"
               (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
                                                              'group_id (:id group)}
-                          {:is_group_manager true})
+                          {'is_group_manager true})
               (testing "non-admin user can only view groups that are manager of"
                 (is (= #{(:id group)}
                        (set (map :id (get-groups user 200))))))
@@ -159,7 +159,7 @@
             (testing "succeed if users access group that they are manager of"
               (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user-2)
                                                              'group_id (:id group-2)}
-                          {:is_group_manager true})
+                          {'is_group_manager true})
               (get-membership user-2 200)
               (add-membership! user-2 200 group-2 false)
               (update-membership! user-2 200 group-2 false)
@@ -180,7 +180,7 @@
           (testing "succeed if users access group that they are manager of,"
             (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
                                                            'group_id (:id group)}
-                        {:is_group_manager true})
+                        {'is_group_manager true})
             (testing "can set is_group_manager=true"
               (add-membership! :crowberto 200 group true)
               (add-membership! user 200 group true))
@@ -220,7 +220,7 @@
             (testing "succeed if users is a group manager and returns additional fields"
               (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
                                                              'group_id (:id group)}
-                          {:is_group_manager true})
+                          {'is_group_manager true})
               (is (subset? (set user/group-manager-visible-columns)
                            (-> (:data (get-users user 200))
                                first
@@ -273,7 +273,7 @@
             (testing "succeed if users is a group manager and returns additional fields"
               (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
                                                              'group_id (:id group)}
-                          {:is_group_manager true})
+                          {'is_group_manager true})
               (is (= [{:id               (:id (perms-group/all-users))
                        :is_group_manager false}]
                      (:user_group_memberships (get-user user 200)))))))))))
@@ -337,7 +337,7 @@
                 (testing "Group Managers"
                   (t2/update! :model/PermissionsGroupMembership {'user_id  (:id user)
                                                                  'group_id (:id group)}
-                              {:is_group_manager true})
+                              {'is_group_manager true})
                   (testing "Can't edit users' info"
                     (let [current-user-first-name (t2/select-one-fn :first_name :model/User 'id (:id user))]
                       (update-user-firstname! user 200)

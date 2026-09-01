@@ -113,13 +113,13 @@
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
     (t2/update! :model/PersistedInfo {'card_id (u/the-id card)}
-                {:definition (json/encode
+                {'definition (json/encode
                               (persisted-info/metadata->definition
                                (:result_metadata card)
                                (:table_name persisted-info)))
-                 :active true
-                 :state "persisted"
-                 :query_hash (persisted-info/query-hash (:dataset_query card))})))
+                 'active true
+                 'state "persisted"
+                 'query_hash (persisted-info/query-hash (:dataset_query card))})))
 
 (deftest persistence-and-permissions
   (mt/with-model-cleanup [:model/PersistedInfo]

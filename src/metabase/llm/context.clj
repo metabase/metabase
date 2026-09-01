@@ -72,9 +72,9 @@
         (if (seq tables)
           (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table
-                                          {:where [:and
-                                                   [:= :db_id database-id]
-                                                   [:= :active true]
+                                          {'where ['and
+                                                   ['= 'db_id database-id]
+                                                   ['= 'active true]
                                                    (into [:or] match-clauses)]})]
             (into #{} (map :id) matched-tables))
           #{}))
@@ -115,7 +115,7 @@
                             'db_id database-id
                             'active true
                             'visibility_type nil
-                            (cond-> {:where clause}
+                            (cond-> {'where clause}
                               with (assoc :with with)))]
       (into {} (map (juxt :id identity)) tables))))
 

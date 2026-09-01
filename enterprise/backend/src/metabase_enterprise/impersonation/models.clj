@@ -25,7 +25,7 @@
   (m/deep-merge
    graph
    (let [impersonations (t2/select :model/ConnectionImpersonation
-                                   {:where [:and
+                                   {'where ['and
                                             (when db-id [:= :db_id db-id])
                                             (when group-id [:= :group_id group-id])
                                             (when group-ids [:in :group_id group-ids])

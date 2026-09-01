@@ -171,10 +171,10 @@
   (let [current-perms-set (t2/select-fn-set
                            (juxt :object :group_id)
                            :permissions
-                           {:where [:or
-                                    [:like :object (h2x/literal "/db/%")]
-                                    [:like :object (h2x/literal "/data/db/%")]
-                                    [:like :object (h2x/literal "/query/db/%")]]})
+                           {'where ['or
+                                    ['like 'object (h2x/literal "/db/%")]
+                                    ['like 'object (h2x/literal "/data/db/%")]
+                                    ['like 'object (h2x/literal "/query/db/%")]]})
         v2-perms-set      (into #{} (mapcat
                                      (fn [[v1-path group-id]]
                                        (for [v2-path (->v2-paths v1-path)]
@@ -182,12 +182,12 @@
                                      current-perms-set))
         new-v2-perms      (into [] (set/difference v2-perms-set current-perms-set))]
     (when (seq new-v2-perms)
-      (t2.execute/query-one {:insert-into :permissions
-                             :columns     [:object :group_id]
-                             :values      new-v2-perms})))
-  (t2.execute/query-one {:delete-from :permissions
-                         :where [:or [:like :object (h2x/literal "/data/db/%")]
-                                 [:like :object (h2x/literal "/query/db/%")]]}))
+      (t2.execute/query-one {'insert-into 'permissions
+                             'columns     ['object 'group_id]
+                             'values      new-v2-perms})))
+  (t2.execute/query-one {'delete-from 'permissions
+                         'where ['or ['like 'object (h2x/literal "/data/db/%")]
+                                 ['like 'object (h2x/literal "/query/db/%")]]}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Quartz Scheduler Helpers                                             |
@@ -199,27 +199,27 @@
     (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))))
 
 (define-migration FillJSONUnfoldingDefault
-  (let [db-ids-to-not-update (->> (t2/query {:select [:id :details]
-                                             :from   [:metabase_database]})
+  (let [db-ids-to-not-update (->> (t2/query {'select ['id 'details]
+                                             'from   ['metabase_database]})
                                   ;; if json-unfolding is nil it's treated as if it were true
                                   ;; so we need to remove databases that have it set to false
                                   (filter (fn [{:keys [details]}]
                                             (when details
                                               (false? (:json-unfolding (json/decode+kw details))))))
                                   (map :id))
-        field-ids-to-update  (->> (t2/query {:select [:f.id]
-                                             :from   [[:metabase_field :f]]
-                                             :join   [[:metabase_table :t] [:= :t.id :f.table_id]]
-                                             :where  (if (seq db-ids-to-not-update)
+        field-ids-to-update  (->> (t2/query {'select ['f.id]
+                                             'from   [['metabase_field 'f]]
+                                             'join   [['metabase_table 't] ['= 't.id 'f.table_id]]
+                                             'where  (if (seq db-ids-to-not-update)
                                                        [:and
                                                         [:not-in :t.db_id db-ids-to-not-update]
                                                         [:= :f.base_type "type/JSON"]]
                                                        [:= :f.base_type "type/JSON"])})
                                   (map :id))]
     (when (seq field-ids-to-update)
-      (t2/query-one {:update :metabase_field
-                     :set    {:json_unfolding true}
-                     :where  [:in :metabase_field.id field-ids-to-update]}))))
+      (t2/query-one {'update 'metabase_field
+                     'set    {'json_unfolding true}
+                     'where  ['in 'metabase_field.id field-ids-to-update]}))))
 
 (defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
@@ -246,26 +246,26 @@
 
 (define-migration MigrateLegacyColumnSettingsFieldRefs
   (let [update! (fn [{:keys [id visualization_settings]}]
-                  (t2/query-one {:update :report_card
-                                 :set    {:visualization_settings visualization_settings}
-                                 :where  [:= :id id]}))]
+                  (t2/query-one {'update 'report_card
+                                 'set    {'visualization_settings visualization_settings}
+                                 'where  ['= 'id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id visualization_settings]}]
                                     (let [parsed  (json/decode visualization_settings)
                                           updated (update-legacy-field-refs-in-viz-settings parsed)]
                                       (when (not= parsed updated)
                                         {:id                     id
                                          :visualization_settings (json/encode updated)}))))
-                            (t2/reducible-query {:select [:id :visualization_settings]
-                                                 :from   [:report_card]
-                                                 :where  [:or
+                            (t2/reducible-query {'select ['id 'visualization_settings]
+                                                 'from   ['report_card]
+                                                 'where  ['or
                                                           ;; these match legacy field refs in column_settings
-                                                          [:like :visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
-                                                          [:like :visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
-                                                          [:like :visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
+                                                          ['like 'visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
+                                                          ['like 'visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
+                                                          ['like 'visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
                                                           ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                          [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
-                                                          [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
-                                                          [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]})))))
+                                                          ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                          ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                          ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]})))))
 
 (defn- update-legacy-field-refs-in-result-metadata [result-metadata]
   (let [old-to-new (fn [ref]
@@ -287,20 +287,20 @@
 
 (define-migration MigrateLegacyResultMetadataFieldRefs
   (let [update! (fn [{:keys [id result_metadata]}]
-                  (t2/query-one {:update :report_card
-                                 :set    {:result_metadata result_metadata}
-                                 :where  [:= :id id]}))]
+                  (t2/query-one {'update 'report_card
+                                 'set    {'result_metadata result_metadata}
+                                 'where  ['= 'id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id result_metadata]}]
                                     (let [updated (update-legacy-field-refs-in-result-metadata result_metadata)]
                                       (when (not= result_metadata updated)
                                         {:id                     id
                                          :result_metadata updated}))))
-                            (t2/reducible-query {:select [:id :result_metadata]
-                                                 :from   [:report_card]
-                                                 :where  [:or
-                                                          [:like :result_metadata "%field-id%"]
-                                                          [:like :result_metadata "%field-literal%"]
-                                                          [:like :result_metadata "%fk->%"]]})))))
+                            (t2/reducible-query {'select ['id 'result_metadata]
+                                                 'from   ['report_card]
+                                                 'where  ['or
+                                                          ['like 'result_metadata "%field-id%"]
+                                                          ['like 'result_metadata "%field-literal%"]
+                                                          ['like 'result_metadata "%fk->%"]]})))))
 
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
@@ -348,46 +348,46 @@
   (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
                       (let [updated (add-join-alias-to-column-settings-refs card)]
                         (when (not= visualization_settings updated)
-                          (t2/query-one {:update :report_card
-                                         :set    {:visualization_settings updated}
-                                         :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                           :from   [:report_card]
-                                           :where  [:and
-                                                    [:or
-                                                     [:= :query_type nil]
-                                                     [:= :query_type "query"]]
-                                                    [:or
-                                                     [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                          (t2/query-one {'update 'report_card
+                                         'set    {'visualization_settings updated}
+                                         'where  ['= 'id id]}))))]
+    (run! update-one! (t2/reducible-query {'select ['id 'visualization_settings 'result_metadata]
+                                           'from   ['report_card]
+                                           'where  ['and
+                                                    ['or
+                                                     ['= 'query_type nil]
+                                                     ['= 'query_type "query"]]
+                                                    ['or
+                                                     ['like 'visualization_settings "%ref\\\\\",[\\\\\"field%"]
                                                      ; MySQL with NO_BACKSLASH_ESCAPES disabled
-                                                     [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                    [:like :result_metadata "%join-alias%"]]})))
+                                                     ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    ['like 'result_metadata "%join-alias%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
                   (let [updated (-> visualization_settings
                                     json/decode
                                     remove-join-alias-from-column-settings-field-refs
                                     json/encode)]
                     (when (not= visualization_settings updated)
-                      (t2/query-one {:update :report_card
-                                     :set    {:visualization_settings updated}
-                                     :where  [:= :id id]}))))]
-    (run! update! (t2/reducible-query {:select [:id :visualization_settings]
-                                       :from   [:report_card]
-                                       :where  [:and
-                                                [:or
-                                                 [:= :query_type nil]
-                                                 [:= :query_type "query"]]
-                                                [:or
-                                                 [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
-                                                 [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                [:like :visualization_settings "%join-alias%"]]}))))
+                      (t2/query-one {'update 'report_card
+                                     'set    {'visualization_settings updated}
+                                     'where  ['= 'id id]}))))]
+    (run! update! (t2/reducible-query {'select ['id 'visualization_settings]
+                                       'from   ['report_card]
+                                       'where  ['and
+                                                ['or
+                                                 ['= 'query_type nil]
+                                                 ['= 'query_type "query"]]
+                                                ['or
+                                                 ['like 'visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                 ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                ['like 'visualization_settings "%join-alias%"]]}))))
 
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
-  (let [tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
-                                  :from      [:report_dashboardcard]
-                                  :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
-                                  :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+  (let [tab+cards (->> (t2/query {'select    ['report_dashboardcard.* ['dashboard_tab.position 'tab_position]]
+                                  'from      ['report_dashboardcard]
+                                  'where     ['= 'report_dashboardcard.dashboard_id dashboard-id]
+                                  'left-join ['dashboard_tab ['= 'dashboard_tab.id 'report_dashboardcard.dashboard_tab_id]]})
                        (group-by :tab_position)
                        ;; sort by tab position
                        (sort-by first))
@@ -398,16 +398,16 @@
         (if (zero? tab-pos)
           (recur (rest position+cards) (long (cards->max-height cards)))
           (do
-            (t2/query {:update :report_dashboardcard
-                       :set    {:row [:+ :row next-tab-row]}
-                       :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
+            (t2/query {'update 'report_dashboardcard
+                       'set    {'row ['+ 'row next-tab-row]}
+                       'where  ['= 'dashboard_tab_id (:dashboard_tab_id (first cards))]})
             (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
 
 (define-reversible-migration DowngradeDashboardTab
   (log/info "No forward migration for DowngradeDashboardTab")
   (run! update-card-row-on-downgrade-for-dashboard-tab
-        (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
-                                                           :from            [:dashboard_tab]}))))
+        (eduction (map :dashboard_id) (t2/reducible-query {'select-distinct ['dashboard_id]
+                                                           'from            ['dashboard_tab]}))))
 
 (defn- destructure-revision-card-sizes
   "Perform the best effort to destructure card sizes in revision.
@@ -467,43 +467,43 @@
   (let [migrate! (fn [revision]
                    (let [object (json/decode+kw (:object revision))]
                      (when (seq (:cards object))
-                       (t2/query {:update :revision
-                                  :set {:object (json/encode (update object :cards #(map migrate-dashboard-grid-from-18-to-24 %)))}
-                                  :where [:= :id (:id revision)]}))))]
-    (run! migrate! (t2/reducible-query {:select [:*]
-                                        :from   [:revision]
-                                        :where  [:= :model "Dashboard"]})))
+                       (t2/query {'update 'revision
+                                  'set {'object (json/encode (update object :cards #(map migrate-dashboard-grid-from-18-to-24 %)))}
+                                  'where ['= 'id (:id revision)]}))))]
+    (run! migrate! (t2/reducible-query {'select ['*]
+                                        'from   ['revision]
+                                        'where  ['= 'model "Dashboard"]})))
   (let [roll-back! (fn [revision]
                      (let [object (json/decode+kw (:object revision))]
                        (when (seq (:cards object))
-                         (t2/query {:update :revision
-                                    :set {:object (json/encode (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
-                                    :where [:= :id (:id revision)]}))))]
-    (run! roll-back! (t2/reducible-query {:select [:*]
-                                          :from   [:revision]
-                                          :where  [:= :model "Dashboard"]}))))
+                         (t2/query {'update 'revision
+                                    'set {'object (json/encode (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
+                                    'where ['= 'id (:id revision)]}))))]
+    (run! roll-back! (t2/reducible-query {'select ['*]
+                                          'from   ['revision]
+                                          'where  ['= 'model "Dashboard"]}))))
 
 (define-migration RevisionMigrateLegacyColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id object]}]
                       (let [object  (json/decode object)
                             updated (update object "visualization_settings" update-legacy-field-refs-in-viz-settings)]
                         (when (not= updated object)
-                          (t2/query-one {:update :revision
-                                         :set    {:object (json/encode updated)}
-                                         :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:id :object]
-                                           :from   [:revision]
-                                           :where  [:and
-                                                    [:= :model "Card"]
-                                                    [:or
+                          (t2/query-one {'update 'revision
+                                         'set    {'object (json/encode updated)}
+                                         'where  ['= 'id id]}))))]
+    (run! update-one! (t2/reducible-query {'select ['id 'object]
+                                           'from   ['revision]
+                                           'where  ['and
+                                                    ['= 'model "Card"]
+                                                    ['or
                                                      ;; these match legacy field refs in column_settings
-                                                     [:like :object "%ref\\\\\",[\\\\\"field-id%"]
-                                                     [:like :object "%ref\\\\\",[\\\\\"field-literal%"]
-                                                     [:like :object "%ref\\\\\",[\\\\\"fk->%"]
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field-id%"]
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field-literal%"]
+                                                     ['like 'object "%ref\\\\\",[\\\\\"fk->%"]
                                                      ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field-id%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
 
 (define-reversible-migration RevisionAddJoinAliasToColumnSettingsFieldRefs
   ;; This migration is essentially the same as `AddJoinAliasToColumnSettingsFieldRefs`, but for card revisions.
@@ -535,19 +535,19 @@
             (when (not= (get card "query_type") "native") ; native queries won't have join aliases, so we can exclude them straight away
               (let [updated (add-join-aliases card)]
                 (when (not= updated (get "visualization_settings" card))
-                  (t2/query {:update :revision
-                             :set {:object (json/encode (assoc card "visualization_settings" updated))}
-                             :where [:= :id (:id revision)]}))))))]
-    (run! update-one! (t2/reducible-query {:select [:*]
-                                           :from   [:revision]
-                                           :where  [:and
+                  (t2/query {'update 'revision
+                             'set {'object (json/encode (assoc card "visualization_settings" updated))}
+                             'where ['= 'id (:id revision)]}))))))]
+    (run! update-one! (t2/reducible-query {'select ['*]
+                                           'from   ['revision]
+                                           'where  ['and
                                                     ;; only include cards with field refs in column_settings
-                                                    [:or
-                                                     [:like :object "%ref\\\\\",[\\\\\"field%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    ['or
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                     ;; only include cards with joins
-                                                    [:like :object "%joins%"]
-                                                    [:= :model "Card"]]})))
+                                                    ['like 'object "%joins%"]
+                                                    ['= 'model "Card"]]})))
   ;; Reverse migration
   (let [update-one!
         (fn [revision]
@@ -556,79 +556,79 @@
               (let [viz-settings (get card "visualization_settings")
                     updated      (remove-join-alias-from-column-settings-field-refs viz-settings)]
                 (when (not= updated viz-settings)
-                  (t2/query {:update :revision
-                             :set {:object (json/encode (assoc card "visualization_settings" updated))}
-                             :where [:= :id (:id revision)]}))))))]
-    (run! update-one! (t2/reducible-query {:select [:*]
-                                           :from   [:revision]
-                                           :where  [:and
-                                                    [:or
-                                                     [:like :object "%ref\\\\\",[\\\\\"field%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                    [:like :object "%join-alias%"]
-                                                    [:= :model "Card"]]}))))
+                  (t2/query {'update 'revision
+                             'set {'object (json/encode (assoc card "visualization_settings" updated))}
+                             'where ['= 'id (:id revision)]}))))))]
+    (run! update-one! (t2/reducible-query {'select ['*]
+                                           'from   ['revision]
+                                           'where  ['and
+                                                    ['or
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    ['like 'object "%join-alias%"]
+                                                    ['= 'model "Card"]]}))))
 
 (define-migration MigrateLegacyDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings]}]
                       (let [parsed  (json/decode visualization_settings)
                             updated (update-legacy-field-refs-in-viz-settings parsed)]
                         (when (not= parsed updated)
-                          (t2/query-one {:update :report_dashboardcard
-                                         :set    {:visualization_settings (json/encode updated)}
-                                         :where  [:= :id id]}))))]
+                          (t2/query-one {'update 'report_dashboardcard
+                                         'set    {'visualization_settings (json/encode updated)}
+                                         'where  ['= 'id id]}))))]
     (run! update-one! (t2/reducible-query
-                       {:select [:id :visualization_settings]
-                        :from   [:report_dashboardcard]
-                        :where  [:and
-                                 [:<> :card_id nil]
-                                 [:or
+                       {'select ['id 'visualization_settings]
+                        'from   ['report_dashboardcard]
+                        'where  ['and
+                                 ['<> 'card_id nil]
+                                 ['or
                                   ;; these match legacy field refs in column_settings
-                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
-                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
-                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
+                                  ['like 'visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
+                                  ['like 'visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
+                                  ['like 'visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
                                   ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
-                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
-                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
+                                  ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                  ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                  ['like 'visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
 
 (define-reversible-migration AddJoinAliasToDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
                       (let [updated (add-join-alias-to-column-settings-refs {:visualization_settings visualization_settings
                                                                              :result_metadata        result_metadata})]
                         (when (not= visualization_settings updated)
-                          (t2/query-one {:update :report_dashboardcard
-                                         :set    {:visualization_settings updated}
-                                         :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
-                                           :from   [[:report_card :c]]
-                                           :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                                           :where  [:and
-                                                    [:or
-                                                     [:= :c.query_type nil]
-                                                     [:= :c.query_type "query"]]
-                                                    [:or
-                                                     [:like :dc.visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                          (t2/query-one {'update 'report_dashboardcard
+                                         'set    {'visualization_settings updated}
+                                         'where  ['= 'id id]}))))]
+    (run! update-one! (t2/reducible-query {'select ['dc.id 'dc.visualization_settings 'c.result_metadata]
+                                           'from   [['report_card 'c]]
+                                           'join   [['report_dashboardcard 'dc] ['= 'dc.card_id 'c.id]]
+                                           'where  ['and
+                                                    ['or
+                                                     ['= 'c.query_type nil]
+                                                     ['= 'c.query_type "query"]]
+                                                    ['or
+                                                     ['like 'dc.visualization_settings "%ref\\\\\",[\\\\\"field%"]
                                                      ; MySQL with NO_BACKSLASH_ESCAPES disabled
-                                                     [:like :dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                    [:like :c.result_metadata "%join-alias%"]]})))
+                                                     ['like 'dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    ['like 'c.result_metadata "%join-alias%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
                   (let [parsed  (json/decode visualization_settings)
                         updated (remove-join-alias-from-column-settings-field-refs parsed)]
                     (when (not= parsed updated)
-                      (t2/query-one {:update :report_dashboardcard
-                                     :set    {:visualization_settings (json/encode updated)}
-                                     :where  [:= :id id]}))))]
-    (run! update! (t2/reducible-query {:select [:dc.id :dc.visualization_settings]
-                                       :from   [[:report_card :c]]
-                                       :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                                       :where  [:and
-                                                [:or
-                                                 [:= :c.query_type nil]
-                                                 [:= :c.query_type "query"]]
-                                                [:or
-                                                 [:like :dc.visualization_settings "%ref\\\\\",[\\\\\"field%"]
-                                                 [:like :dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                [:like :dc.visualization_settings "%join-alias%"]]}))))
+                      (t2/query-one {'update 'report_dashboardcard
+                                     'set    {'visualization_settings (json/encode updated)}
+                                     'where  ['= 'id id]}))))]
+    (run! update! (t2/reducible-query {'select ['dc.id 'dc.visualization_settings]
+                                       'from   [['report_card 'c]]
+                                       'join   [['report_dashboardcard 'dc] ['= 'dc.card_id 'c.id]]
+                                       'where  ['and
+                                                ['or
+                                                 ['= 'c.query_type nil]
+                                                 ['= 'c.query_type "query"]]
+                                                ['or
+                                                 ['like 'dc.visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                 ['like 'dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                ['like 'dc.visualization_settings "%join-alias%"]]}))))
 
 (define-migration RevisionMigrateLegacyDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id object]}]
@@ -636,36 +636,36 @@
                             updated (update object "cards" (fn [cards]
                                                              (map #(update % "visualization_settings" update-legacy-field-refs-in-viz-settings) cards)))]
                         (when (not= updated object)
-                          (t2/query-one {:update :revision
-                                         :set    {:object (json/encode updated)}
-                                         :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:id :object]
-                                           :from   [:revision]
-                                           :where  [:and
-                                                    [:= :model "Dashboard"]
-                                                    [:or
+                          (t2/query-one {'update 'revision
+                                         'set    {'object (json/encode updated)}
+                                         'where  ['= 'id id]}))))]
+    (run! update-one! (t2/reducible-query {'select ['id 'object]
+                                           'from   ['revision]
+                                           'where  ['and
+                                                    ['= 'model "Dashboard"]
+                                                    ['or
                                                      ;; these match legacy field refs in column_settings
-                                                     [:like :object "%ref\\\\\",[\\\\\"field-id%"]
-                                                     [:like :object "%ref\\\\\",[\\\\\"field-literal%"]
-                                                     [:like :object "%ref\\\\\",[\\\\\"fk->%"]
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field-id%"]
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field-literal%"]
+                                                     ['like 'object "%ref\\\\\",[\\\\\"fk->%"]
                                                      ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field-id%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
 
 (define-reversible-migration RevisionAddJoinAliasToDashboardCardColumnSettingsFieldRefs
   (let [add-join-aliases
         (fn [dashcard]
-          (if-let [{:keys [dataset_query]} (t2/query-one {:select [:dataset_query]
-                                                          :from   [:report_card]
-                                                          :where  [:and
-                                                                   [:or
+          (if-let [{:keys [dataset_query]} (t2/query-one {'select ['dataset_query]
+                                                          'from   ['report_card]
+                                                          'where  ['and
+                                                                   ['or
                                                                     ;; native queries won't have join aliases, so we can exclude them
-                                                                    [:= :query_type nil]
-                                                                    [:= :query_type "query"]]
-                                                                   [:= :id (get dashcard "card_id")]
+                                                                    ['= 'query_type nil]
+                                                                    ['= 'query_type "query"]]
+                                                                   ['= 'id (get dashcard "card_id")]
                                                                    ;; only include cards with joins
-                                                                   [:like :dataset_query "%joins%"]]})]
+                                                                   ['like 'dataset_query "%joins%"]]})]
             (if-let [join-aliases (->> (get-in (json/decode dataset_query) ["query" "joins"])
                                        (map #(get % "alias"))
                                        set
@@ -690,17 +690,17 @@
                 updated   (update dashboard "cards" (fn [dashcards]
                                                       (map add-join-aliases dashcards)))]
             (when (not= updated dashboard)
-              (t2/query {:update :revision
-                         :set    {:object (json/encode updated)}
-                         :where  [:= :id (:id revision)]}))))]
-    (run! update-one! (t2/reducible-query {:select [:*]
-                                           :from   [:revision]
-                                           :where  [:and
-                                                    [:= :model "Dashboard"]
+              (t2/query {'update 'revision
+                         'set    {'object (json/encode updated)}
+                         'where  ['= 'id (:id revision)]}))))]
+    (run! update-one! (t2/reducible-query {'select ['*]
+                                           'from   ['revision]
+                                           'where  ['and
+                                                    ['= 'model "Dashboard"]
                                                     ;; only include cards with field refs in column_settings
-                                                    [:or
-                                                     [:like :object "%ref\\\\\",[\\\\\"field%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]]})))
+                                                    ['or
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field%"]]]})))
   ;; Reverse migration
   (let [update-one!
         (fn [revision]
@@ -710,42 +710,42 @@
                                     (map #(update % "visualization_settings" remove-join-alias-from-column-settings-field-refs)
                                          dashcards)))]
             (when (not= updated dashboard)
-              (t2/query {:update :revision
-                         :set    {:object (json/encode updated)}
-                         :where  [:= :id (:id revision)]}))))]
-    (run! update-one! (t2/reducible-query {:select [:*]
-                                           :from   [:revision]
-                                           :where  [:and
-                                                    [:= :model "Dashboard"]
-                                                    [:or
-                                                     [:like :object "%ref\\\\\",[\\\\\"field%"]
-                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                    [:like :object "%join-alias%"]]}))))
+              (t2/query {'update 'revision
+                         'set    {'object (json/encode updated)}
+                         'where  ['= 'id (:id revision)]}))))]
+    (run! update-one! (t2/reducible-query {'select ['*]
+                                           'from   ['revision]
+                                           'where  ['and
+                                                    ['= 'model "Dashboard"]
+                                                    ['or
+                                                     ['like 'object "%ref\\\\\",[\\\\\"field%"]
+                                                     ['like 'object "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    ['like 'object "%join-alias%"]]}))))
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
                       (let [settings     (encrypted-json-out settings)
                             options      (json-out options true)
                             new-settings (encrypted-json-in (merge settings options))]
-                        (t2/query {:update :metabase_database
-                                   :set    {:settings new-settings}
-                                   :where  [:= :id id]})))]
-    (run! update-one! (t2/reducible-query {:select [:id :settings :options]
-                                           :from   [:metabase_database]
-                                           :where  [:and
-                                                    [:not= :options ""]
-                                                    [:not= :options "{}"]
-                                                    [:not= :options nil]]})))
+                        (t2/query {'update 'metabase_database
+                                   'set    {'settings new-settings}
+                                   'where  ['= 'id id]})))]
+    (run! update-one! (t2/reducible-query {'select ['id 'settings 'options]
+                                           'from   ['metabase_database]
+                                           'where  ['and
+                                                    ['not= 'options ""]
+                                                    ['not= 'options "{}"]
+                                                    ['not= 'options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
                         (let [settings (encrypted-json-out settings)
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
-                            (t2/query {:update :metabase_database
-                                       :set    {:options (json/encode (select-keys settings [:persist-models-enabled]))
-                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
-                                       :where  [:= :id id]}))))]
-    (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
-                                             :from   [:metabase_database]}))))
+                            (t2/query {'update 'metabase_database
+                                       'set    {'options (json/encode (select-keys settings [:persist-models-enabled]))
+                                                'settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                       'where  ['= 'id id]}))))]
+    (run! rollback-one! (t2/reducible-query {'select ['id 'settings 'options]
+                                             'from   ['metabase_database]}))))
 
 ;;; Fix click through migration
 
@@ -853,24 +853,24 @@
              (completing
               (fn [_ {:keys [id visualization_settings]}]
                 (t2/update! :report_dashboardcard id
-                            {:visualization_settings (json/encode visualization_settings)})))
+                            {'visualization_settings (json/encode visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
-             (t2/query {:select [:dashcard.id
-                                 [:card.visualization_settings :card_visualization]
-                                 [:dashcard.visualization_settings :dashcard_visualization]]
-                        :from   [[:report_dashboardcard :dashcard]]
-                        :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
-                        :where  [:or
-                                 [:like
-                                  :card.visualization_settings "%\"link_template\":%"]
-                                 [:like
-                                  :card.visualization_settings "%\"click_link_template\":%"]
-                                 [:like
-                                  :dashcard.visualization_settings "%\"link_template\":%"]
-                                 [:like
-                                  :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+             (t2/query {'select ['dashcard.id
+                                 ['card.visualization_settings 'card_visualization]
+                                 ['dashcard.visualization_settings 'dashcard_visualization]]
+                        'from   [['report_dashboardcard 'dashcard]]
+                        'join   [['report_card 'card] ['= 'dashcard.card_id 'card.id]]
+                        'where  ['or
+                                 ['like
+                                  'card.visualization_settings "%\"link_template\":%"]
+                                 ['like
+                                  'card.visualization_settings "%\"click_link_template\":%"]
+                                 ['like
+                                  'dashcard.visualization_settings "%\"link_template\":%"]
+                                 ['like
+                                  'dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 (define-migration MigrateClickThrough
   (migrate-click-through!))
@@ -893,7 +893,7 @@
                            {}))]
     (when-not (empty? mapping)
       (t2/update! :setting {'key (name mapping-setting-key)}
-                  {:value
+                  {'value
                    (->> mapping
                         (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
                         (into {})
@@ -925,21 +925,21 @@
   "Each unified column is 3 items sequence [table-name, column-name, is-nullable?]"
   [db-type]
   (let [query (case db-type
-                :postgres {:select [:table_name :column_name :is_nullable]
-                           :from   [:information_schema.columns]
-                           :where  [:and
-                                    [:= :data_type "timestamp without time zone"]
-                                    [:= :table_schema :%current_schema]
-                                    [:= :table_catalog :%current_database]]}
+                :postgres {'select ['table_name 'column_name 'is_nullable]
+                           'from   ['information_schema.columns]
+                           'where  ['and
+                                    ['= 'data_type "timestamp without time zone"]
+                                    ['= 'table_schema '%current_schema]
+                                    ['= 'table_catalog '%current_database]]}
 
-                :mysql    {:select [:table_name :column_name :is_nullable]
-                           :from   [:information_schema.columns]
-                           :where  [:and
-                                    [:= :data_type "datetime"]
-                                    [:= :table_schema :%database]]}
-                :h2      {:select [:table_name :column_name :is_nullable]
-                          :from   [:information_schema.columns]
-                          :where  [:= :data_type "TIMESTAMP"]})]
+                :mysql    {'select ['table_name 'column_name 'is_nullable]
+                           'from   ['information_schema.columns]
+                           'where  ['and
+                                    ['= 'data_type "datetime"]
+                                    ['= 'table_schema '%database]]}
+                :h2      {'select ['table_name 'column_name 'is_nullable]
+                          'from   ['information_schema.columns]
+                          'where  ['= 'data_type "TIMESTAMP"]})]
     (->> (t2/query query)
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
@@ -1053,12 +1053,12 @@
                            new-object (assoc object :type (if (:dataset object)
                                                             "model"
                                                             "question"))]
-                       (t2/query {:update :revision
-                                  :set    {:object (json/encode new-object)}
-                                  :where  [:= :id (:id revision)]})))]
-      (run! migrate! (t2/reducible-query {:select [:*]
-                                          :from   [:revision]
-                                          :where  [:= :model "Card"]}))))
+                       (t2/query {'update 'revision
+                                  'set    {'object (json/encode new-object)}
+                                  'where  ['= 'id (:id revision)]})))]
+      (run! migrate! (t2/reducible-query {'select ['*]
+                                          'from   ['revision]
+                                          'where  ['= 'model "Card"]}))))
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
@@ -1093,12 +1093,12 @@
                             new-object (-> object
                                            (assoc :dataset (= (:type object) "model"))
                                            (dissoc :type))]
-                        (t2/query {:update :revision
-                                   :set    {:object (json/encode new-object)}
-                                   :where  [:= :id (:id revision)]})))]
-      (run! rollback! (t2/reducible-query {:select [:*]
-                                           :from   [:revision]
-                                           :where  [:= :model "Card"]})))))
+                        (t2/query {'update 'revision
+                                   'set    {'object (json/encode new-object)}
+                                   'where  ['= 'id (:id revision)]})))]
+      (run! rollback! (t2/reducible-query {'select ['*]
+                                           'from   ['revision]
+                                           'where  ['= 'model "Card"]})))))
 
 (define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
   ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"
@@ -1113,7 +1113,7 @@
       (doseq [db dbs]
         (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
       ;; use the table, not model/Database because we don't want to trigger the hooks
-      (t2/update! :metabase_database 'id ['in (map :id dbs)] {:cache_field_values_schedule nil}))))
+      (t2/update! :metabase_database 'id ['in (map :id dbs)] {'cache_field_values_schedule nil}))))
 
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
@@ -1123,7 +1123,7 @@
   (BCrypt/hashpw password (BCrypt/gensalt)))
 
 (defn- internal-user-exists? []
-  (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
+  (pos? (first (vals (t2/query-one {'select ['%count.*] 'from 'core_user 'where ['= 'id config/internal-mb-user-id]})))))
 
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
@@ -1133,30 +1133,30 @@
           password (hash-bcrypt (str salt (random-uuid)))
           user     {;; we insert the internal user ID directly because it's
                     ;; deliberately high enough to not conflict with any other
-                    :id               config/internal-mb-user-id
-                    :password_salt    salt
-                    :password         password
-                    :email            "internal@metabase.com"
-                    :first_name       "Metabase"
-                    :locale           nil
-                    :last_login       nil
-                    :is_active        false
-                    :settings         nil
-                    :type             "internal"
-                    :is_qbnewb        true
-                    :updated_at       nil
-                    :reset_triggered  nil
-                    :is_superuser     false
-                    :login_attributes nil
-                    :reset_token      nil
-                    :last_name        "Internal"
-                    :date_joined      :%now
-                    :sso_source       nil
-                    :is_datasetnewb   true}]
-      (t2/query {:insert-into :core_user :values [user]}))
-    (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
-          perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
-      (t2/query {:insert-into :permissions_group_membership :values [perms-group]}))))
+                    'id               config/internal-mb-user-id
+                    'password_salt    salt
+                    'password         password
+                    'email            "internal@metabase.com"
+                    'first_name       "Metabase"
+                    'locale           nil
+                    'last_login       nil
+                    'is_active        false
+                    'settings         nil
+                    'type             "internal"
+                    'is_qbnewb        true
+                    'updated_at       nil
+                    'reset_triggered  nil
+                    'is_superuser     false
+                    'login_attributes nil
+                    'reset_token      nil
+                    'last_name        "Internal"
+                    'date_joined      '%now
+                    'sso_source       nil
+                    'is_datasetnewb   true}]
+      (t2/query {'insert-into 'core_user 'values [user]}))
+    (let [all-users-id (first (vals (t2/query-one {'select ['id] 'from 'permissions_group 'where ['= 'name "All Users"]})))
+          perms-group  {'user_id config/internal-mb-user-id 'group_id all-users-id}]
+      (t2/query {'insert-into 'permissions_group_membership 'values [perms-group]}))))
 
 (defn- load-edn
   "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
@@ -1167,13 +1167,13 @@
 (defn- no-user?
   "If there is a user that is not the internal user, we know it's not a fresh install."
   []
-  (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
+  (zero? (first (vals (t2/query-one {'select ['%count.*] 'from 'core_user 'where ['not= 'id config/internal-mb-user-id]})))))
 
 (defn- no-db?
   "We check there is no database is not present, because the sample database could have been installed from a previous version and be out of
   date. In that (rare) case we will be conservative and not add the sample content."
   []
-  (nil? (t2/query-one {:select [:*] :from :metabase_database})))
+  (nil? (t2/query-one {'select ['*] 'from 'metabase_database})))
 
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
@@ -1212,14 +1212,14 @@
             expected-sample-db-id 1
             dbs                   (map #(update % :details encryption/maybe-encrypt)
                                        (table-name->rows table-name->raw-rows :metabase_database))
-            _                     (t2/query {:insert-into :metabase_database :values dbs})
-            db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
+            _                     (t2/query {'insert-into 'metabase_database 'values dbs})
+            db-ids                (set (map :id (t2/query {'select 'id 'from 'metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
         ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database rows
         ;; and do nothing else, to be safe.
         (if (not= db-ids #{expected-sample-db-id})
           (when (seq db-ids)
-            (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
+            (t2/query {'delete-from 'metabase_database 'where ['in 'id db-ids]}))
           (do (doseq [table-name [:collection
                                   :metabase_table
                                   :metabase_field
@@ -1233,18 +1233,18 @@
                                   :data_permissions
                                   :dimension]]
                 (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
-                  (t2/query {:insert-into table-name :values values})))
-              (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
-                (t2/query {:insert-into :permissions
-                           :values      [{:object        (format "/collection/%s/" example-collection-id)
-                                          :group_id      group-id
-                                          :perm_type     "perms/collection-access"
-                                          :perm_value    "read-and-write"
-                                          :collection_id example-collection-id}]}))
+                  (t2/query {'insert-into table-name 'values values})))
+              (let [group-id (:id (t2/query-one {'select 'id 'from 'permissions_group 'where ['= 'name "All Users"]}))]
+                (t2/query {'insert-into 'permissions
+                           'values      [{'object        (format "/collection/%s/" example-collection-id)
+                                          'group_id      group-id
+                                          'perm_type     "perms/collection-access"
+                                          'perm_value    "read-and-write"
+                                          'collection_id example-collection-id}]}))
               ;; `example-dashboard-id` is encrypted at rest (`:setter :none` defaults to `:when-encryption-key-set`)
-              (t2/query {:insert-into :setting
-                         :values      [{:key   "example-dashboard-id"
-                                        :value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
+              (t2/query {'insert-into 'setting
+                         'values      [{'key   "example-dashboard-id"
+                                        'value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
@@ -1277,7 +1277,7 @@
                               :dashboardcard_series
                               :data_permissions
                               :dimension]
-                  :let [query (cond-> {:select [:*] :from table-name}
+                  :let [query (cond-> {'select ['*] 'from table-name}
                                 (= table-name :collection) (assoc :where [:and
                                                                           ;; exclude the analytics namespace
                                                                           [:= :namespace nil]
@@ -1384,10 +1384,10 @@
 
 (define-migration MigrateStackedAreaBarComboDisplaySettings
   (let [update! (fn [{:keys [id display visualization_settings] :as card}]
-                  (t2/query-one {:update :report_card
-                                 :set    {:visualization_settings visualization_settings
-                                          :display                display}
-                                 :where  [:= :id id]}))]
+                  (t2/query-one {'update 'report_card
+                                 'set    {'visualization_settings visualization_settings
+                                          'display                display}
+                                 'where  ['= 'id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id display visualization_settings]}]
                                     (let [parsed-viz           (json/decode+kw visualization_settings)
                                           partial-card         {:display display :visualization_settings parsed-viz}
@@ -1398,16 +1398,16 @@
                                           {:id                     id
                                            :display                (name updated-display)
                                            :visualization_settings (json/encode updated-viz)})))))
-                            (t2/reducible-query {:select [:id :display :visualization_settings]
-                                                 :from   [:report_card]
-                                                 :where  [:like :visualization_settings "%stackable%"]})))))
+                            (t2/reducible-query {'select ['id 'display 'visualization_settings]
+                                                 'from   ['report_card]
+                                                 'where  ['like 'visualization_settings "%stackable%"]})))))
 
 (define-reversible-migration MigrateMetricsToV2
   (metrics-v2/migrate-up!)
   (metrics-v2/migrate-down!))
 
 (defn- raw-setting-value [key]
-  (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
+  (some-> (t2/query-one {'select ['value], 'from 'setting, 'where ['= 'key key]})
           :value
           encryption/maybe-decrypt-accepting-plaintext))
 
@@ -1416,17 +1416,17 @@
         (when-let [db-id (some-> (raw-setting-value "uploads-database-id") parse-long)]
           (let [uploads-table-prefix (raw-setting-value "uploads-table-prefix")
                 uploads-schema-name  (raw-setting-value "uploads-schema-name")]
-            (t2/query {:update :metabase_database
-                       :set    {:uploads_enabled      true
-                                :uploads_table_prefix uploads-table-prefix
-                                :uploads_schema_name  uploads-schema-name}
-                       :where  [:= :id db-id]}))))
-      (t2/query {:delete-from :setting
-                 :where       [:in :key ["uploads-enabled"
+            (t2/query {'update 'metabase_database
+                       'set    {'uploads_enabled      true
+                                'uploads_table_prefix uploads-table-prefix
+                                'uploads_schema_name  uploads-schema-name}
+                       'where  ['= 'id db-id]}))))
+      (t2/query {'delete-from 'setting
+                 'where       ['in 'key ["uploads-enabled"
                                          "uploads-database-id"
                                          "uploads-schema-name"
                                          "uploads-table-prefix"]]}))
-  (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
+  (when-let [db (t2/query-one {'select ['*], 'from 'metabase_database, 'where 'uploads_enabled})]
     (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
                     {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
                     {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
@@ -1437,7 +1437,7 @@
 
 (define-migration DecryptCacheSettings
   (let [decrypt! (fn [k]
-                   (t2/update! :setting 'key k {:value (raw-setting-value k)}))]
+                   (t2/update! :setting 'key k {'value (raw-setting-value k)}))]
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
@@ -1491,9 +1491,9 @@
 
 (defn- json-column-key-like-clause
   [key column]
-  [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
+  ['or ['like column (str "%\\\\\"" key "\\\\\"%")]
    ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-   [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
+   ['like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
 
 (defn- update-legacy-column-keys-in-card-viz-settings
   "Updates `:visualization_settings` of each card that contains `:column_settings` by calling `update-viz-settings`
@@ -1505,14 +1505,14 @@
                             result-metadata      (json/decode result-metadata)
                             updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
                         (when (not= viz-settings updated-viz-settings)
-                          (t2/query-one {:update :report_card
-                                         :set    {:visualization_settings (json/encode updated-viz-settings)}
-                                         :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                           :from   [:report_card]
-                                           :where  [:and [:not= :result_metadata nil]
-                                                    [:like :visualization_settings "%column_settings%"]
-                                                    (json-column-key-like-clause column-key-tag :visualization_settings)]}))))
+                          (t2/query-one {'update 'report_card
+                                         'set    {'visualization_settings (json/encode updated-viz-settings)}
+                                         'where  ['= 'id id]}))))]
+    (run! update-one! (t2/reducible-query {'select ['id 'visualization_settings 'result_metadata]
+                                           'from   ['report_card]
+                                           'where  ['and ['not= 'result_metadata nil]
+                                                    ['like 'visualization_settings "%column_settings%"]
+                                                    (json-column-key-like-clause column-key-tag (quote visualization_settings))]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInCardVizSettings
   (update-legacy-column-keys-in-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
@@ -1529,15 +1529,15 @@
                             result-metadata      (json/decode result-metadata)
                             updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
                         (when (not= viz-settings updated-viz-settings)
-                          (t2/query-one {:update :report_dashboardcard
-                                         :set    {:visualization_settings (json/encode updated-viz-settings)}
-                                         :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
-                                           :from   [[:report_card :c]]
-                                           :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                                           :where  [:and [:not= :c.result_metadata nil]
-                                                    [:like :dc.visualization_settings "%column_settings%"]
-                                                    (json-column-key-like-clause column-key-tag :dc.visualization_settings)]}))))
+                          (t2/query-one {'update 'report_dashboardcard
+                                         'set    {'visualization_settings (json/encode updated-viz-settings)}
+                                         'where  ['= 'id id]}))))]
+    (run! update-one! (t2/reducible-query {'select ['dc.id 'dc.visualization_settings 'c.result_metadata]
+                                           'from   [['report_card 'c]]
+                                           'join   [['report_dashboardcard 'dc] ['= 'dc.card_id 'c.id]]
+                                           'where  ['and ['not= 'c.result_metadata nil]
+                                                    ['like 'dc.visualization_settings "%column_settings%"]
+                                                    (json-column-key-like-clause column-key-tag (quote dc.visualization_settings))]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
   (update-legacy-column-keys-in-dashboard-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
@@ -1589,15 +1589,15 @@
                             (vreset! prev-card-last-stage [card-id ls])
                             ls))]
          (when-let [new-mappings (set-parameter-stage-numbers record last-stage)]
-           (t2/query {:update :report_dashboardcard
-                      :set    {:parameter_mappings (json/encode new-mappings)}
-                      :where  [:= :id (:dc_id record)]}))))
-     (t2/reducible-query {:select     [[:c.id :c_id] [:c.type :c_type] :c.dataset_query
-                                       [:dc.id :dc_id] :dc.parameter_mappings]
-                          :from       [[:report_card :c]]
-                          :inner-join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                          :where      [:!= :dc.parameter_mappings "[]"]
-                          :order-by   [:c.id]}))))
+           (t2/query {'update 'report_dashboardcard
+                      'set    {'parameter_mappings (json/encode new-mappings)}
+                      'where  ['= 'id (:dc_id record)]}))))
+     (t2/reducible-query {'select     [['c.id 'c_id] ['c.type 'c_type] 'c.dataset_query
+                                       ['dc.id 'dc_id] 'dc.parameter_mappings]
+                          'from       [['report_card 'c]]
+                          'inner-join [['report_dashboardcard 'dc] ['= 'dc.card_id 'c.id]]
+                          'where      ['!= 'dc.parameter_mappings "[]"]
+                          'order-by   ['c.id]}))))
 
 (defn- remove-target-stage-number
   [mapping]
@@ -1619,12 +1619,12 @@
   (run!
    (fn [record]
      (when-let [new-mappings (remove-parameter-stage-numbers record)]
-       (t2/query {:update :report_dashboardcard
-                  :set    {:parameter_mappings (json/encode new-mappings)}
-                  :where  [:= :id (:id record)]})))
-   (t2/reducible-query {:select [:id :parameter_mappings]
-                        :from   [:report_dashboardcard]
-                        :where  [:!= :parameter_mappings "[]"]})))
+       (t2/query {'update 'report_dashboardcard
+                  'set    {'parameter_mappings (json/encode new-mappings)}
+                  'where  ['= 'id (:id record)]})))
+   (t2/reducible-query {'select ['id 'parameter_mappings]
+                        'from   ['report_dashboardcard]
+                        'where  ['!= 'parameter_mappings "[]"]})))
 
 (define-reversible-migration AddStageNumberToParameterMappingTargets
   (add-stage-numbers-to-parameter-mapping-targets)
@@ -1701,11 +1701,11 @@
   (let [id-viz-settings                 ; based on Hosting Insights, a few hundred records are expected
         (into []
               (map (juxt :id (comp json/decode+kw :visualization_settings)))
-              (t2/reducible-query {:select [:id :visualization_settings]
-                                   :from   [:report_dashboardcard]
-                                   :where  [:and
-                                            [:like :visualization_settings "%\"click_behavior\"%"]
-                                            [:like :visualization_settings "%[\"dimension\"%"]]}))
+              (t2/reducible-query {'select ['id 'visualization_settings]
+                                   'from   ['report_dashboardcard]
+                                   'where  ['and
+                                            ['like 'visualization_settings "%\"click_behavior\"%"]
+                                            ['like 'visualization_settings "%[\"dimension\"%"]]}))
 
         target-card-ids                 ; this is not expected much more either
         (into #{}
@@ -1717,17 +1717,17 @@
         card-id->last-stage             ; this is expected to make just a few queries (one in known cases)
         (into {}
               (comp (partition-all card-query-batch-size)
-                    (mapcat #(t2/reducible-query {:select [:id :dataset_query [:type :c_type]]
-                                                  :from   [:report_card]
-                                                  :where  [:in :id %]}))
+                    (mapcat #(t2/reducible-query {'select ['id 'dataset_query ['type 'c_type]]
+                                                  'from   ['report_card]
+                                                  'where  ['in 'id %]}))
                     (map (juxt :id card->last-stage)))
               target-card-ids)]
     (run!
      (fn [[id viz-settings]]
        (when-let [new-viz-settings (set-viz-settings-parameter-stage-numbers viz-settings card-id->last-stage)]
-         (t2/query {:update :report_dashboardcard
-                    :set    {:visualization_settings (json/encode new-viz-settings)}
-                    :where  [:= :id id]})))
+         (t2/query {'update 'report_dashboardcard
+                    'set    {'visualization_settings (json/encode new-viz-settings)}
+                    'where  ['= 'id id]})))
      id-viz-settings)))
 
 (defn- remove-viz-settings-parameter-stage-numbers
@@ -1745,14 +1745,14 @@
   (run!
    (fn [record]
      (when-let [new-mappings (remove-viz-settings-parameter-stage-numbers record)]
-       (t2/query {:update :report_dashboardcard
-                  :set    {:visualization_settings (json/encode new-mappings)}
-                  :where  [:= :id (:id record)]})))
-   (t2/reducible-query {:select [:id :visualization_settings]
-                        :from   [:report_dashboardcard]
-                        :where  [:and
-                                 [:like :visualization_settings "%\"click_behavior\"%"]
-                                 [:like :visualization_settings "%[\"dimension\"%"]]})))
+       (t2/query {'update 'report_dashboardcard
+                  'set    {'visualization_settings (json/encode new-mappings)}
+                  'where  ['= 'id (:id record)]})))
+   (t2/reducible-query {'select ['id 'visualization_settings]
+                        'from   ['report_dashboardcard]
+                        'where  ['and
+                                 ['like 'visualization_settings "%\"click_behavior\"%"]
+                                 ['like 'visualization_settings "%[\"dimension\"%"]]})))
 
 (define-reversible-migration AddStageNumberToVizSettingsParameterMappingTargets
   (add-stage-numbers-to-viz-settings-parameter-mapping-targets)
@@ -1781,12 +1781,12 @@
                                                (when-not scan-all-databases?
                                                  {:db-filters-patterns db-filters-patterns}))
                             encrypted-details (encrypted-json-in new-details)]
-                        (t2/query {:update :metabase_database
-                                   :set    {:details encrypted-details}
-                                   :where  [:= :id id]})))]
-    (run! update-one! (t2/reducible-query {:select [:id :details]
-                                           :from   [:metabase_database]
-                                           :where  [:= :engine "clickhouse"]})))
+                        (t2/query {'update 'metabase_database
+                                   'set    {'details encrypted-details}
+                                   'where  ['= 'id id]})))]
+    (run! update-one! (t2/reducible-query {'select ['id 'details]
+                                           'from   ['metabase_database]
+                                           'where  ['= 'engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
                         (let [decrypted-details (encrypted-json-out details)
                               new-details (dissoc decrypted-details
@@ -1794,12 +1794,12 @@
                                                   :db-filters-type
                                                   :db-filters-patterns)
                               encrypted-details (encrypted-json-in new-details)]
-                          (t2/query {:update :metabase_database
-                                     :set    {:details encrypted-details}
-                                     :where  [:= :id id]})))]
-    (run! rollback-one! (t2/reducible-query {:select [:id :details]
-                                             :from   [:metabase_database]
-                                             :where  [:= :engine "clickhouse"]}))))
+                          (t2/query {'update 'metabase_database
+                                     'set    {'details encrypted-details}
+                                     'where  ['= 'id id]})))]
+    (run! rollback-one! (t2/reducible-query {'select ['id 'details]
+                                             'from   ['metabase_database]
+                                             'where  ['= 'engine "clickhouse"]}))))
 
 ;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
 ;; This was commented out before the 57 release since this was a migration purely to avoid any breakages internally.
@@ -1814,8 +1814,8 @@
                                    (and (map? query)
                                         (= (count (:stages query)) 1)
                                         (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
-          transforms             (t2/query {:select [:id :source]
-                                            :from   [:transform]})]
+          transforms             (t2/query {'select ['id 'source]
+                                            'from   ['transform]})]
       (doseq [{:keys [id source]} transforms]
         (let [parsed-source  (parse-transform-source source)
               source-type    (:type parsed-source)
@@ -1825,7 +1825,7 @@
                                :query  (if (native-only-query? query) "native" "mbql")
                                (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
                                                {:transform-id id :source-type source-type})))]
-          (t2/update! :transform id {:source_type transform-type})))))
+          (t2/update! :transform id {'source_type transform-type})))))
 
 (define-migration BackfillTransformTargetDbId
   ;; Backfills the target_db_id column for existing transform records.
@@ -1836,10 +1836,10 @@
   ;;
   ;; Skips transforms whose referenced database no longer exists (leaves target_db_id NULL),
   ;; since the subsequent FK constraint migration would fail if stale DB references were set.
-  (let [existing-db-ids (into #{} (map :id) (t2/query {:select [:id] :from [:metabase_database]}))]
-    (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
-                                                  :from   [:transform]
-                                                  :where  [:= :target_db_id nil]})]
+  (let [existing-db-ids (into #{} (map :id) (t2/query {'select ['id] 'from ['metabase_database]}))]
+    (doseq [{:keys [id source target]} (t2/query {'select ['id 'source 'target]
+                                                  'from   ['transform]
+                                                  'where  ['= 'target_db_id nil]})]
       (let [source-map (json-out source false)
             target-map (json-out target false)
             ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
@@ -1847,7 +1847,7 @@
             db-id      (or (get-in source-map ["query" "database"])
                            (get target-map "database"))]
         (when (and db-id (existing-db-ids db-id))
-          (t2/update! :transform id {:target_db_id db-id}))))))
+          (t2/update! :transform id {'target_db_id db-id}))))))
 
 (define-migration SetTransformSourceDatabaseId
   (doseq [transform (t2/select [:transform :id :source])]
@@ -1856,7 +1856,7 @@
                         :query (get-in parsed-source [:query :database])
                         :python (parsed-source :source-database)
                         nil)]
-      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+      (t2/update! :transform (:id transform) {'source_database_id db-id}))))
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
@@ -1868,8 +1868,8 @@
                   (= "python" (get (json-out source false) "type")))
         all-rows (into []
                        (mapcat (fn [{:keys [table pks] w :where}]
-                                 (->> (t2/query (cond-> {:select (into [:source] pks)
-                                                         :from   [table]}
+                                 (->> (t2/query (cond-> {'select (into [:source] pks)
+                                                         'from   [table]}
                                                   w (assoc :where w)))
                                       (filter #(or w (python? (:source %))))
                                       (map #(assoc % ::table table ::pks pks)))))
@@ -1884,9 +1884,9 @@
                    (into {}
                          (map (fn [{:keys [id db_id schema name]}]
                                 [id {"database_id" db_id "schema" schema "table" name}]))
-                         (t2/query {:select [:id :db_id :schema :name]
-                                    :from   [:metabase_table]
-                                    :where  [:in :id all-ids]})))]
+                         (t2/query {'select ['id 'db_id 'schema 'name]
+                                    'from   ['metabase_table]
+                                    'where  ['in 'id all-ids]})))]
     (doseq [{:keys [source] :as row} all-rows]
       (let [parsed (json-out source false)
             st     (get parsed "source-tables")]
@@ -1901,9 +1901,9 @@
                                   (assoc v "alias" alias)))
                               st)
                 pks     (::pks row)]
-            (t2/query {:update (::table row)
-                       :set    {:source (json-in (assoc parsed "source-tables" entries))}
-                       :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+            (t2/query {'update (::table row)
+                       'set    {'source (json-in (assoc parsed "source-tables" entries))}
+                       'where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
   (let [convert-back
         (fn [source-json]
           (let [parsed (json-out source-json false)]
@@ -1919,14 +1919,14 @@
         python? (fn [source]
                   (= "python" (get (json-out source false) "type")))]
     (doseq [{:keys [table pks] w :where} tables]
-      (doseq [row (cond->> (t2/query (cond-> {:select (into [:source] pks)
-                                              :from   [table]}
+      (doseq [row (cond->> (t2/query (cond-> {'select (into [:source] pks)
+                                              'from   [table]}
                                        w (assoc :where w)))
                     (not w) (filter #(python? (:source %))))]
         (when-let [new-source (convert-back (:source row))]
-          (t2/query {:update table
-                     :set    {:source new-source}
-                     :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+          (t2/query {'update table
+                     'set    {'source new-source}
+                     'where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
 (define-migration FixClickHouseUploadDBSchemaNames
   "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
    We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.
@@ -1953,51 +1953,51 @@
    We create models based on upload tables, and since the upload tables got marked as inactive, attempting to access
    these models would give an inactive table error."
   ;; Look for a clickhouse DB with uploads_enabled
-  (let [clickhouse-upload-db (t2/query {:select [:id :details :uploads_schema_name]
-                                        :from [:metabase_database]
-                                        :where [:and
-                                                [:= :engine "clickhouse"]
-                                                [:= :uploads_enabled true]]})
+  (let [clickhouse-upload-db (t2/query {'select ['id 'details 'uploads_schema_name]
+                                        'from ['metabase_database]
+                                        'where ['and
+                                                ['= 'engine "clickhouse"]
+                                                ['= 'uploads_enabled true]]})
         ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
         set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
                                    (let [decrypted-details (encrypted-json-out details)
                                          db-name (:dbname decrypted-details)]
                                      (when (and db-name (not uploads_schema_name))
-                                       (t2/query {:update :metabase_database
-                                                  :set    {:uploads_schema_name db-name}
-                                                  :where  [:= :id id]}))))]
+                                       (t2/query {'update 'metabase_database
+                                                  'set    {'uploads_schema_name db-name}
+                                                  'where  ['= 'id id]}))))]
     (if (< 1 (count clickhouse-upload-db))
       (log/warn "FixClickHouseUploadDBSchemaNames: expected at most 1 ClickHouse upload database, found" (count clickhouse-upload-db))
       (do
         (run! set-uploads-schema-name! clickhouse-upload-db)
         ;; Look for any inactive upload tables with a null schema
-        (let [inactive-upload-tables (t2/query {:select [:mt.id :mt.name :mt.db_id :md.uploads_schema_name]
-                                                :from [[:metabase_table :mt]]
-                                                :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
-                                                :where [:and
-                                                        [:= :md.engine "clickhouse"]
-                                                        [:= :md.uploads_enabled true]
-                                                        [:not= :md.uploads_schema_name nil]
-                                                        [:= :mt.schema nil]
-                                                        [:= :mt.active false]
-                                                        [:= :mt.is_upload true]]})
+        (let [inactive-upload-tables (t2/query {'select ['mt.id 'mt.name 'mt.db_id 'md.uploads_schema_name]
+                                                'from [['metabase_table 'mt]]
+                                                'join [['metabase_database 'md] ['= 'mt.db_id 'md.id]]
+                                                'where ['and
+                                                        ['= 'md.engine "clickhouse"]
+                                                        ['= 'md.uploads_enabled true]
+                                                        ['not= 'md.uploads_schema_name nil]
+                                                        ['= 'mt.schema nil]
+                                                        ['= 'mt.active false]
+                                                        ['= 'mt.is_upload true]]})
               retire-and-revive-upload-table! (fn [{:keys [id name db_id uploads_schema_name]}]
                                                 ;; Look for an active non-upload table with the same name and the correct `uploads_schema_name`
                                                 ;; Set it to be inactive and rename it to satisfy the (db_id, name, schema) unique key
-                                                (t2/query {:update :metabase_table
-                                                           :set {:active false
-                                                                 :name (str name "_retired_69667")}
-                                                           :where [:and
-                                                                   [:= :name name]
-                                                                   [:= :schema uploads_schema_name]
-                                                                   [:= :active true]
-                                                                   [:= :is_upload false]
-                                                                   [:= :db_id db_id]]})
+                                                (t2/query {'update 'metabase_table
+                                                           'set {'active false
+                                                                 'name (str name "_retired_69667")}
+                                                           'where ['and
+                                                                   ['= 'name name]
+                                                                   ['= 'schema uploads_schema_name]
+                                                                   ['= 'active true]
+                                                                   ['= 'is_upload false]
+                                                                   ['= 'db_id db_id]]})
                                                 ;; Set the inactive upload table to be active and set the schema to the correct `uploads_schema_name`
-                                                (t2/query {:update :metabase_table
-                                                           :set {:active true
-                                                                 :schema uploads_schema_name}
-                                                           :where [:= :id id]}))]
+                                                (t2/query {'update 'metabase_table
+                                                           'set {'active true
+                                                                 'schema uploads_schema_name}
+                                                           'where ['= 'id id]}))]
           (run! retire-and-revive-upload-table! inactive-upload-tables))))))
 
 (defn- legacy-checkpoint-column-name
@@ -2050,13 +2050,13 @@
                                    (-> s
                                        (dissoc :checkpoint-filter-unique-key :checkpoint-filter)
                                        (assoc :checkpoint-filter-field-id field-id))))]
-            (t2/query {:update :transform
-                       :set    {:source (json-in migrated)}
-                       :where  [:= :id id]}))
+            (t2/query {'update 'transform
+                       'set    {'source (json-in migrated)}
+                       'where  ['= 'id id]}))
           ;; Can't migrate: strip incremental strategy
-          (t2/query {:update :transform
-                     :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
-                     :where  [:= :id id]}))))))
+          (t2/query {'update 'transform
+                     'set    {'source (json-in (dissoc parsed :source-incremental-strategy))}
+                     'where  ['= 'id id]}))))))
 
 (defn- batched-data-layer-update!
   "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
@@ -2065,27 +2065,27 @@
   [from-values case-expr]
   (let [batch-size 500000
         {:keys [min-id max-id]} (t2/query-one
-                                 {:select [[[:min :id] :min-id]
-                                           [[:max :id] :max-id]]
-                                  :from   [:metabase_table]})]
+                                 {'select [[['min 'id] 'min-id]
+                                           [['max 'id] 'max-id]]
+                                  'from   ['metabase_table]})]
     (when (and min-id max-id)
       (loop [start (long min-id)]
         (when (<= start (long max-id))
           (t2.execute/query-one
-           {:update :metabase_table
-            :set    {:data_layer case-expr}
-            :where  [:and
-                     [:>= :id start]
-                     [:< :id (+ start batch-size)]
-                     [:not-in :data_layer from-values]]})
+           {'update 'metabase_table
+            'set    {'data_layer case-expr}
+            'where  ['and
+                     ['>= 'id start]
+                     ['< 'id (+ start batch-size)]
+                     ['not-in 'data_layer from-values]]})
           (recur (+ start batch-size))))
       ;; catch any rows inserted above the original max-id during the migration
       (t2.execute/query-one
-       {:update :metabase_table
-        :set    {:data_layer case-expr}
-        :where  [:and
-                 [:> :id max-id]
-                 [:not-in :data_layer from-values]]}))))
+       {'update 'metabase_table
+        'set    {'data_layer case-expr}
+        'where  ['and
+                 ['> 'id max-id]
+                 ['not-in 'data_layer from-values]]}))))
 
 ;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
 ;; A single long transaction on millions of rows can hit connection/transaction timeouts.
@@ -2116,24 +2116,24 @@
   "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
    preferring an exact case match when one exists."
   [db-id schema table-name]
-  (:id (first (t2/query {:select   [:id]
-                         :from     [:metabase_table]
-                         :where    [:and
-                                    [:= :db_id db-id]
+  (:id (first (t2/query {'select   ['id]
+                         'from     ['metabase_table]
+                         'where    ['and
+                                    ['= 'db_id db-id]
                                     (if (some? schema)
                                       [:= [:lower :schema] [:lower schema]]
                                       [:is :schema nil])
-                                    [:= [:lower :name] [:lower table-name]]]
-                         :order-by [[[:case
-                                      [:and
-                                       [:= :name table-name]
+                                    ['= ['lower 'name] ['lower table-name]]]
+                         'order-by [[['case
+                                      ['and
+                                       ['= 'name table-name]
                                        (if (some? schema)
                                          [:= :schema schema]
                                          [:is :schema nil])]
                                       0
-                                      :else 1]
-                                     :asc]]
-                         :limit    1}))))
+                                      'else 1]
+                                     'asc]]
+                         'limit    1}))))
 
 (define-migration BackfillTransformTargetTables
   ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
@@ -2156,18 +2156,18 @@
         upsert-table! (fn [db-id schema table-name]
                         (or (find-table-id db-id schema table-name)
                             (try
-                              (t2/query {:insert-into :metabase_table
-                                         :values      [{:db_id               db-id
-                                                        :schema              schema
-                                                        :name                table-name
-                                                        :display_name        (humanize table-name)
-                                                        :active              false
-                                                        :transform_target    true
-                                                        :data_source         "metabase-transform"
-                                                        :data_authority      "computed"
-                                                        :initial_sync_status "complete"
-                                                        :created_at          :%now
-                                                        :updated_at          :%now}]})
+                              (t2/query {'insert-into 'metabase_table
+                                         'values      [{'db_id               db-id
+                                                        'schema              schema
+                                                        'name                table-name
+                                                        'display_name        (humanize table-name)
+                                                        'active              false
+                                                        'transform_target    true
+                                                        'data_source         "metabase-transform"
+                                                        'data_authority      "computed"
+                                                        'initial_sync_status "complete"
+                                                        'created_at          '%now
+                                                        'updated_at          '%now}]})
                               (find-table-id db-id schema table-name)
                               (catch Exception _
                                 (find-table-id db-id schema table-name)))))]
@@ -2178,9 +2178,9 @@
                 (let [schema (get target-map "schema")
                       db-id  target_db_id]
                   (upsert-table! db-id schema table-name)))))
-          (t2/reducible-query {:select [:target :target_db_id]
-                               :from   [:transform]
-                               :where  [:not= :target_db_id nil]}))))
+          (t2/reducible-query {'select ['target 'target_db_id]
+                               'from   ['transform]
+                               'where  ['not= 'target_db_id nil]}))))
 
 (define-migration BackfillTransformTargetTableId
   ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
@@ -2192,14 +2192,14 @@
                                (when-let [table-name (get target-map "name")]
                                  (find-table-id target_db_id (get target-map "schema") table-name)))]
             (when table-id
-              (t2/query {:update :transform
-                         :set    {:target_table_id table-id}
-                         :where  [:= :id id]}))))
-        (t2/reducible-query {:select [:id :target :target_db_id]
-                             :from   [:transform]
-                             :where  [:and
-                                      [:not= :target_db_id nil]
-                                      [:= :target_table_id nil]]})))
+              (t2/query {'update 'transform
+                         'set    {'target_table_id table-id}
+                         'where  ['= 'id id]}))))
+        (t2/reducible-query {'select ['id 'target 'target_db_id]
+                             'from   ['transform]
+                             'where  ['and
+                                      ['not= 'target_db_id nil]
+                                      ['= 'target_table_id nil]]})))
 
 (define-migration BackfillMetabotConversationEmbeddingHostname
   ;; Carry over the hostname portion of metabot_conversation.embed_url into the
@@ -2211,14 +2211,14 @@
                 host                 (some-> parsed .getHost not-empty)
                 host*                (when host (subs host 0 (min (count host) 512)))]
             (when host*
-              (t2/query {:update :metabot_conversation
-                         :set    {:embedding_hostname host*}
-                         :where  [:= :id id]}))))
-        (t2/reducible-query {:select [:id :embed_url]
-                             :from   [:metabot_conversation]
-                             :where  [:and
-                                      [:not= :embed_url nil]
-                                      [:= :embedding_hostname nil]]})))
+              (t2/query {'update 'metabot_conversation
+                         'set    {'embedding_hostname host*}
+                         'where  ['= 'id id]}))))
+        (t2/reducible-query {'select ['id 'embed_url]
+                             'from   ['metabot_conversation]
+                             'where  ['and
+                                      ['not= 'embed_url nil]
+                                      ['= 'embedding_hostname nil]]})))
 
 (define-migration BackfillMfaConfirmedAt
   ;; MFA enrollment confirmation used to live only inside the credentials JSON — encrypted at
@@ -2233,14 +2233,14 @@
                                  (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
                                  (catch Exception _ nil)))]
             (when confirmed-at
-              (t2/query {:update :auth_identity
-                         :set    {:confirmed_at confirmed-at}
-                         :where  [:= :id id]}))))
-        (t2/reducible-query {:select [:id :credentials]
-                             :from   [:auth_identity]
-                             :where  [:and
-                                      [:= :provider "totp"]
-                                      [:= :confirmed_at nil]]})))
+              (t2/query {'update 'auth_identity
+                         'set    {'confirmed_at confirmed-at}
+                         'where  ['= 'id id]}))))
+        (t2/reducible-query {'select ['id 'credentials]
+                             'from   ['auth_identity]
+                             'where  ['and
+                                      ['= 'provider "totp"]
+                                      ['= 'confirmed_at nil]]})))
 
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
@@ -2250,32 +2250,32 @@
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id credentials]}]
             (when (not (encryption/decryptable-string? credentials))
-              (t2/query {:update :auth_identity
-                         :set    {:credentials (encryption/encrypt credentials)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :credentials]
-                               :from   [:auth_identity]
-                               :where  [:!= :credentials nil]}))))
+              (t2/query {'update 'auth_identity
+                         'set    {'credentials (encryption/encrypt credentials)}
+                         'where  ['= 'id id]})))
+          (t2/reducible-query {'select ['id 'credentials]
+                               'from   ['auth_identity]
+                               'where  ['!= 'credentials nil]}))))
 
 (define-reversible-migration EncryptApiKeys
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
             (when (not (encryption/decryptable-string? k))
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/encrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]
-                               :where  [:!= :key nil]})))
+              (t2/query {'update 'api_key
+                         'set    {'key (encryption/encrypt k)}
+                         'where  ['= 'id id]})))
+          (t2/reducible-query {'select ['id 'key]
+                               'from   ['api_key]
+                               'where  ['!= 'key nil]})))
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
             (when (encryption/decryptable-string? k)
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/decrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]
-                               :where  [:!= :key nil]}))))
+              (t2/query {'update 'api_key
+                         'set    {'key (encryption/decrypt k)}
+                         'where  ['= 'id id]})))
+          (t2/reducible-query {'select ['id 'key]
+                               'from   ['api_key]
+                               'where  ['!= 'key nil]}))))
 
 (defn encrypt-settings
   "Encrypt at rest the plaintext value of every setting in `setting-keys`, so the strict decrypting read of an
@@ -2292,12 +2292,12 @@
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
             (when (not (encryption/decryptable-string? value))
-              (t2/query {:update :setting
-                         :set    {:value (encryption/encrypt value)}
-                         :where  [:= :key key]})))
-          (t2/reducible-query {:select [:key :value]
-                               :from   [:setting]
-                               :where  [:and [:in :key setting-keys] [:!= :value nil]]}))))
+              (t2/query {'update 'setting
+                         'set    {'value (encryption/encrypt value)}
+                         'where  ['= 'key key]})))
+          (t2/reducible-query {'select ['key 'value]
+                               'from   ['setting]
+                               'where  ['and ['in 'key setting-keys] ['!= 'value nil]]}))))
 
 (defn decrypt-settings
   "Reverse of [[encrypt-settings]]: store the plaintext value of every setting in `setting-keys` that is encrypted with
@@ -2307,12 +2307,12 @@
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
             (when (encryption/decryptable-string? value)
-              (t2/query {:update :setting
-                         :set    {:value (encryption/decrypt value)}
-                         :where  [:= :key key]})))
-          (t2/reducible-query {:select [:key :value]
-                               :from   [:setting]
-                               :where  [:and [:in :key setting-keys] [:!= :value nil]]}))))
+              (t2/query {'update 'setting
+                         'set    {'value (encryption/decrypt value)}
+                         'where  ['= 'key key]})))
+          (t2/reducible-query {'select ['key 'value]
+                               'from   ['setting]
+                               'where  ['and ['in 'key setting-keys] ['!= 'value nil]]}))))
 
 (def ^:private encrypted-settings-v58
   "Every registered setting stored in the setting table that is encrypted at rest as of v58: the ones whose
@@ -2390,44 +2390,44 @@
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
               (when (not (encryption/decryptable-string? public_uuid))
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/encrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]}))))
+                (t2/query {'update table
+                           'set    {'public_uuid (encryption/encrypt public_uuid)}
+                           'where  ['= 'id id]})))
+            (t2/reducible-query {'select ['id 'public_uuid]
+                                 'from   [table]
+                                 'where  ['!= 'public_uuid nil]}))))
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
               (when (encryption/decryptable-string? public_uuid)
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/decrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]})))))
+                (t2/query {'update table
+                           'set    {'public_uuid (encryption/decrypt public_uuid)}
+                           'where  ['= 'id id]})))
+            (t2/reducible-query {'select ['id 'public_uuid]
+                                 'from   [table]
+                                 'where  ['!= 'public_uuid nil]})))))
 
 (define-reversible-migration EncryptNotificationAndPulseChannelDetails
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
               (when (not (encryption/decryptable-string? details))
-                (t2/query {:update table
-                           :set    {:details (encryption/encrypt details)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :details]
-                                 :from   [table]
-                                 :where  [:!= :details nil]}))))
+                (t2/query {'update table
+                           'set    {'details (encryption/encrypt details)}
+                           'where  ['= 'id id]})))
+            (t2/reducible-query {'select ['id 'details]
+                                 'from   [table]
+                                 'where  ['!= 'details nil]}))))
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
               (when (encryption/decryptable-string? details)
-                (t2/query {:update table
-                           :set    {:details (encryption/decrypt details)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :details]
-                                 :from   [table]
-                                 :where  [:!= :details nil]})))))
+                (t2/query {'update table
+                           'set    {'details (encryption/decrypt details)}
+                           'where  ['= 'id id]})))
+            (t2/reducible-query {'select ['id 'details]
+                                 'from   [table]
+                                 'where  ['!= 'details nil]})))))
 
 (def ^:private encrypt-remaining-columns-v58
   "Encrypted-at-rest string columns that predate any backfill: pre-v53 encryption was write-time only, and the
@@ -2452,18 +2452,18 @@
       (run! (fn [{:keys [id value]}]
               (when (and (string? value)
                          (not (encryption/possibly-encrypted-string? value)))
-                (t2/query {:update table
-                           :set    {column (encryption/maybe-encrypt value)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id [column :value]]
-                                 :from   [table]
-                                 :where  [:!= column nil]})))
+                (t2/query {'update table
+                           'set    {column (encryption/maybe-encrypt value)}
+                           'where  ['= 'id id]})))
+            (t2/reducible-query {'select ['id [column 'value]]
+                                 'from   [table]
+                                 'where  ['!= column nil]})))
     (run! (fn [{:keys [id value]}]
             (let [value (secret-value->bytes value)]
               (when (and value (not (encryption/possibly-encrypted-bytes? value)))
-                (t2/query {:update :secret
-                           :set    {:value (encryption/maybe-encrypt-bytes value)}
-                           :where  [:= :id id]}))))
-          (t2/reducible-query {:select [:id :value]
-                               :from   [:secret]
-                               :where  [:!= :value nil]}))))
+                (t2/query {'update 'secret
+                           'set    {'value (encryption/maybe-encrypt-bytes value)}
+                           'where  ['= 'id id]}))))
+          (t2/reducible-query {'select ['id 'value]
+                               'from   ['secret]
+                               'where  ['!= 'value nil]}))))

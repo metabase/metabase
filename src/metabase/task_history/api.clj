@@ -10,7 +10,6 @@
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -156,13 +155,13 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (t2/query {:select   [:run_id
-                                             [[:count :id] :task_count]
-                                             [[:sum [:case [:= :status [::h2x/literal "success"]] [:inline 1] :else [:inline 0]]] :success_count]
-                                             [[:sum [:case [:= :status [::h2x/literal "failed"]] [:inline 1] :else [:inline 0]]] :failed_count]]
-                                  :from     :task_history
-                                  :where    [:in :run_id run-ids]
-                                  :group-by [:run_id]})
+          counts       (t2/query {'select   ['run_id
+                                             [['count 'id] 'task_count]
+                                             [['sum ['case ['= 'status ['??_h2x_??/literal "success"]] ['inline 1] 'else ['inline 0]]] 'success_count]
+                                             [['sum ['case ['= 'status ['??_h2x_??/literal "failed"]] ['inline 1] 'else ['inline 0]]] 'failed_count]]
+                                  'from     'task_history
+                                  'where    ['in 'run_id run-ids]
+                                  'group-by ['run_id]})
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -202,7 +201,7 @@
                      status      (conj [:= :task_run.status status])
                      started-at  (conj (timestamp-constraint :task_run.started_at started-at)))]
     (if (seq conditions)
-      {:where (into [:and] conditions)}
+      {'where (into [:and] conditions)}
       {})))
 
 (defn- runs-order-by
@@ -214,23 +213,23 @@
   (let [secondary [:task_run.id :desc]]
     (case col
       :entity_name
-      {:select    [:task_run.*]
-       :left-join [[:metabase_database :sort_db]
-                   [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
-                   [:report_card :sort_card]
-                   [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
-                   [:report_dashboard :sort_dash]
-                   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
-       :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] dir] secondary]}
+      {'select    ['task_run.*]
+       'left-join [['metabase_database 'sort_db]
+                   ['and ['= 'task_run.entity_type "database"]  ['= 'task_run.entity_id 'sort_db.id]]
+                   ['report_card 'sort_card]
+                   ['and ['= 'task_run.entity_type "card"]      ['= 'task_run.entity_id 'sort_card.id]]
+                   ['report_dashboard 'sort_dash]
+                   ['and ['= 'task_run.entity_type "dashboard"] ['= 'task_run.entity_id 'sort_dash.id]]]
+       'order-by  [[['coalesce 'sort_db.name 'sort_card.name 'sort_dash.name] dir] secondary]}
 
       :task_count
-      {:select    [:task_run.*]
-       :left-join [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
-                                      :from     [:task_history]
-                                      :group-by [:run_id]}
-                    :sort_tc]
-                   [:= :sort_tc.run_id :task_run.id]]
-       :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] dir] secondary]}
+      {'select    ['task_run.*]
+       'left-join [[{'select   ['run_id [['count '*] 'task_count]]
+                     'from     ['task_history]
+                     'group-by ['run_id]}
+                    'sort_tc]
+                   ['= 'sort_tc.run_id 'task_run.id]]
+       'order-by  [[['coalesce 'sort_tc.task_count ['inline 0]] dir] secondary]}
 
       {:order-by [[col dir] secondary]})))
 
@@ -256,7 +255,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (t2/select-one :model/TaskRun 'id id))
-        tasks (t2/select :model/TaskHistory 'run_id id {:order-by [[:started_at :asc]]})]
+        tasks (t2/select :model/TaskHistory 'run_id id {'order-by [['started_at 'asc]]})]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -272,8 +271,8 @@
   (perms/check-has-application-permission :monitoring)
   (let [where-conditions [[:= :run_type (:run-type params)]
                           (timestamp-constraint :started_at (:started-at params))]]
-    (->> (t2/query {:select-distinct [:entity_type :entity_id]
-                    :from            :task_run
-                    :where           (into [:and] where-conditions)})
+    (->> (t2/query {'select-distinct ['entity_type 'entity_id]
+                    'from            'task_run
+                    'where           (into [:and] where-conditions)})
          (map #(update % :entity_type keyword))
          hydrate-entity-names)))

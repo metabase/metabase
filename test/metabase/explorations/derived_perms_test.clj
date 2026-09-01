@@ -35,32 +35,32 @@
   [snapshot-specs]
   (let [creator (mt/user->id :lucky)
         card    (t2/insert-returning-pk! :model/Card
-                                         {:name "m" :type :metric :creator_id creator
-                                          :database_id (mt/id) :dataset_query (count-query :venues)
-                                          :display "table" :visualization_settings {}})
-        expl    (t2/insert-returning-pk! :model/Exploration {:name "derived" :creator_id creator})
-        thread  (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
-        block   (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread})]
+                                         {'name "m" 'type :metric 'creator_id creator
+                                          'database_id (mt/id) 'dataset_query (count-query :venues)
+                                          'display "table" 'visualization_settings {}})
+        expl    (t2/insert-returning-pk! :model/Exploration {'name "derived" 'creator_id creator})
+        thread  (t2/insert-returning-pk! :model/ExplorationThread {'exploration_id expl 'position 0})
+        block   (t2/insert-returning-pk! :model/ExplorationBlock {'exploration_thread_id thread})]
     (doseq [[i {:keys [creator-id table token query]}] (map-indexed vector snapshot-specs)]
       (let [dq   (or query (count-query table))
             page (t2/insert-returning-pk! :model/ExplorationPage
-                                          {:exploration_block_id block :card_id card
-                                           :dimension_id "d1" :query_type "default"})
+                                          {'exploration_block_id block 'card_id card
+                                           'dimension_id "d1" 'query_type "default"})
             q    (t2/insert-returning-pk! :model/ExplorationQuery
-                                          {:exploration_thread_id thread :card_id card
-                                           :database_id (mt/id) :page_id page
-                                           :dimension_id "d1" :dataset_query dq
-                                           :data_access_token token
-                                           :status "done" :position i})
+                                          {'exploration_thread_id thread 'card_id card
+                                           'database_id (mt/id) 'page_id page
+                                           'dimension_id "d1" 'dataset_query dq
+                                           'data_access_token token
+                                           'status "done" 'position i})
             sr   (t2/insert-returning-pk! :model/StoredResult
-                                          {:result_data       (byte-array [0])
-                                           :creator_id        creator-id
-                                           :database_id       (mt/id)
-                                           :dataset_query     dq
-                                           :row_count         1
-                                           :data_access_token token})]
+                                          {'result_data       (byte-array [0])
+                                           'creator_id        creator-id
+                                           'database_id       (mt/id)
+                                           'dataset_query     dq
+                                           'row_count         1
+                                           'data_access_token token})]
         (t2/insert! :model/ExplorationQueryResult
-                    {:exploration_query_id q :stored_result_id sr})))
+                    {'exploration_query_id q 'stored_result_id sr})))
     thread))
 
 (defn- visible? [thread-id user-kw]
@@ -75,34 +75,34 @@
   [token]
   (let [creator (mt/user->id :lucky)
         card    (t2/insert-returning-pk! :model/Card
-                                         {:name "m" :type :metric :creator_id creator
-                                          :database_id (mt/id) :dataset_query (count-query :venues)
-                                          :display "table" :visualization_settings {}})
-        expl    (t2/insert-returning-pk! :model/Exploration {:name "drill" :creator_id creator})
-        src     (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
-        srcblk  (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id src})
+                                         {'name "m" 'type :metric 'creator_id creator
+                                          'database_id (mt/id) 'dataset_query (count-query :venues)
+                                          'display "table" 'visualization_settings {}})
+        expl    (t2/insert-returning-pk! :model/Exploration {'name "drill" 'creator_id creator})
+        src     (t2/insert-returning-pk! :model/ExplorationThread {'exploration_id expl 'position 0})
+        srcblk  (t2/insert-returning-pk! :model/ExplorationBlock {'exploration_thread_id src})
         srcpage (t2/insert-returning-pk! :model/ExplorationPage
-                                         {:exploration_block_id srcblk :card_id card
-                                          :dimension_id "d1" :query_type "default"})
+                                         {'exploration_block_id srcblk 'card_id card
+                                          'dimension_id "d1" 'query_type "default"})
         thread  (t2/insert-returning-pk! :model/ExplorationThread
-                                         {:exploration_id    expl
-                                          :position          1
-                                          :name              "Number of Orders → Customer: ACME Corp"
-                                          :source_page_id    srcpage
-                                          :data_access_token token})
+                                         {'exploration_id    expl
+                                          'position          1
+                                          'name              "Number of Orders → Customer: ACME Corp"
+                                          'source_page_id    srcpage
+                                          'data_access_token token})
         block   (t2/insert-returning-pk! :model/ExplorationBlock
-                                         {:exploration_thread_id thread
-                                          :metrics               [{:card_id card}]
-                                          :position              0})
+                                         {'exploration_thread_id thread
+                                          'metrics               [{:card_id card}]
+                                          'position              0})
         page    (t2/insert-returning-pk! :model/ExplorationPage
-                                         {:exploration_block_id block :card_id card
-                                          :dimension_id "d1" :query_type "default"})]
+                                         {'exploration_block_id block 'card_id card
+                                          'dimension_id "d1" 'query_type "default"})]
     (t2/insert! :model/ExplorationQuery
-                {:exploration_thread_id thread :card_id card
-                 :database_id (mt/id) :page_id page
-                 :dimension_id "d1" :dataset_query (count-query :venues)
-                 :data_access_token token
-                 :status "done" :position 0})
+                {'exploration_thread_id thread 'card_id card
+                 'database_id (mt/id) 'page_id page
+                 'dimension_id "d1" 'dataset_query (count-query :venues)
+                 'data_access_token token
+                 'status "done" 'position 0})
     thread))
 
 (deftest thread-with-no-results-stays-visible-test
@@ -373,10 +373,10 @@
 
 (defn- page-id-for-thread [thread-id]
   (t2/select-one-fn :id :model/ExplorationPage
-                    {:select [:p.id]
-                     :from   [[:exploration_page :p]]
-                     :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
-                     :where  [:= :b.exploration_thread_id thread-id]}))
+                    {'select ['p.id]
+                     'from   [['exploration_page 'p]]
+                     'join   [['exploration_block 'b] ['= 'b.id 'p.exploration_block_id]]
+                     'where  ['= 'b.exploration_thread_id thread-id]}))
 
 (defn- comment-contexts [exploration-id user-kw]
   (->> (mt/user-http-request user-kw :get 200 "comment/"
@@ -393,7 +393,7 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         ;; Put the exploration somewhere the viewer can read, so anything withheld below is withheld
         ;; by the data-access gate rather than by collection permissions.
-        (t2/update! :model/Exploration expl-id {:collection_id coll-id})
+        (t2/update! :model/Exploration expl-id {'collection_id coll-id})
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (mt/user-http-request :lucky :post 200 "comment/"
                               {:target_type     "exploration"
@@ -429,11 +429,11 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (let [card-ids (vec (for [_ (range 10)]
                               (t2/insert-returning-pk! :model/Card
-                                                       {:name "c" :creator_id (mt/user->id :lucky)
-                                                        :database_id (mt/id)
-                                                        :dataset_query (count-query :venues)
-                                                        :display "table" :visualization_settings {}
-                                                        :collection_id coll-id :document_id doc-id})))]
+                                                       {'name "c" 'creator_id (mt/user->id :lucky)
+                                                        'database_id (mt/id)
+                                                        'dataset_query (count-query :venues)
+                                                        'display "table" 'visualization_settings {}
+                                                        'collection_id coll-id 'document_id doc-id})))]
           (request/with-current-user (mt/user->id :rasta)
             (let [cards (t2/select :model/Card 'id ['in card-ids])
                   measure (fn [instances]

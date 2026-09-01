@@ -188,7 +188,7 @@
                               ::graph/stop
                               [node-id new-metadata]))))))]
     (doseq [[card-id new-metadata] updates]
-      (t2/update! :model/Card card-id {:result_metadata new-metadata}))))
+      (t2/update! :model/Card card-id {'result_metadata new-metadata}))))
 
 (events/derive! ::update-card-dependents-metadata :metabase/event)
 (events/derive! :event/card-update ::update-card-dependents-metadata)

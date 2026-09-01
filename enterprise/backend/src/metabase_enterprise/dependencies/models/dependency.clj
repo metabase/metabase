@@ -42,7 +42,7 @@
                        (let [full-filter (conj base-filter
                                                [:= src-type (name entity-type)]
                                                [:in src-id entity-keys])
-                             deps (t2/select :model/Dependency {:where full-filter})]
+                             deps (t2/select :model/Dependency {'where full-filter})]
                          (u/group-by (juxt src-type src-id)
                                      (juxt dst-type dst-id)
                                      conj #{}
@@ -299,4 +299,4 @@
       (t2/update! :model/Dependency
                   {'from_entity_type entity-type 'from_entity_id entity-id
                    'to_entity_type old-source-type 'to_entity_id old-source-id}
-                  {:to_entity_type new-source-type :to_entity_id new-source-id}))))
+                  {'to_entity_type new-source-type 'to_entity_id new-source-id}))))

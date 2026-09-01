@@ -24,14 +24,14 @@
                                             'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update :report_card
-                   :set    {:archived true}
-                   :where  [:in :id metric-ids]})
+        (t2/query {'update 'report_card
+                   'set    {'archived true}
+                   'where  ['in 'id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update :report_card
-                     :set    {:archived false}
-                     :where  [:in :id metric-ids]})))
+          (t2/query {'update 'report_card
+                     'set    {'archived false}
+                     'where  ['in 'id metric-ids]})))
       (thunk))))
 
 (defmacro with-sample-metrics-archived
@@ -218,7 +218,7 @@
                                     %)
                                  dimension_mappings)]
         (is (some? orphan-mapping))
-        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (t2/update! :model/Card (:id metric) {'dimension_mappings mappings})
         (let [response             (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               response-ids         (into #{} (map :id) (:dimensions response))
               response-mapping-ids (into #{} (map :dimension_id) (:dimension_mappings response))]
@@ -433,7 +433,7 @@
   []
   (t2/select :model/QueryExecution
              'executor_id (mt/user->id :rasta)
-             {:order-by [[:started_at :desc]]}))
+             {'order-by [['started_at 'desc]]}))
 
 (deftest dataset-leaf-records-query-execution-test
   (testing "POST /api/metric/dataset (leaf path) writes a QueryExecution row with :context :metric"

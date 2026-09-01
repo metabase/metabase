@@ -107,8 +107,8 @@
   [task-name]
   (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
                     :model/TaskHistory
-                    {:order-by [[:started_at :desc]]
-                     :where [:= :task (name task-name)]}))
+                    {'order-by [['started_at 'desc]]
+                     'where ['= 'task (name task-name)]}))
 
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
@@ -135,7 +135,7 @@
                                  :notification_id (:id n)
                                  :recipient_ids   (mt/malli=? [:sequential :int])}}]
                 (t2/select [:model/TaskHistory 'task 'task_details] 'task ['in ["channel-send" "notification-send"]]
-                           {:order-by [[:started_at :asc]]})))))))
+                           {'order-by [['started_at 'asc]]})))))))
 
 (deftest notification-send-retrying-test
   (notification.tu/with-notification-testing-setup!
@@ -205,7 +205,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (testing "sending to a deactivated channel fails with a human-readable error, without retries (#76802)"
-          (t2/update! :model/Channel (:id chn) {:active false})
+          (t2/update! :model/Channel (:id chn) {'active false})
           (let [send-count (atom 0)]
             (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
               (#'notification.send/send-notification-sync! n))

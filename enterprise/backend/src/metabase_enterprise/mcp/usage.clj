@@ -78,7 +78,7 @@
   [session-id]
   (try
     (when session-id
-      (t2/update! :model/McpSessionLog 'id session-id {:ended_at :%now}))
+      (t2/update! :model/McpSessionLog 'id session-id {'ended_at :%now}))
     (catch Throwable e
       (log/warnf "Failed to record MCP session end: %s" (ex-message e)))))
 

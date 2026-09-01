@@ -172,7 +172,7 @@
         parameters'   (swap-parameter-source-card-id parameters old-source new-source)
         params-changed? (not= parameters parameters')]
     (when params-changed?
-      (t2/update! :model/Dashboard (:id dashboard) {:parameters parameters'}))
+      (t2/update! :model/Dashboard (:id dashboard) {'parameters parameters'}))
     (when (or any-dashcard-changed? params-changed?)
       (events/publish-event!
        :event/dashboard-update {:object  (t2/select-one :model/Dashboard 'id (:id dashboard))

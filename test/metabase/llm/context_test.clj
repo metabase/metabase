@@ -451,9 +451,9 @@
                                   :has_field_values :none}))
             eligible-field    (first (t2/insert-returning-instances!
                                       :model/Field
-                                      [{:table_id (:id restricted-table) :name "eligible"
-                                        :database_type "VARCHAR" :base_type :type/Text
-                                        :has_field_values :list}]))
+                                      [{'table_id (:id restricted-table) 'name "eligible"
+                                        'database_type "VARCHAR" 'base_type :type/Text
+                                        'has_field_values :list}]))
             all-columns (mapv (fn [f] {:id (:id f) :table-id (:id restricted-table)})
                               (concat ineligible-fields [eligible-field]))
             calls (atom 0)]

@@ -14,7 +14,7 @@
   [setting-keys]
   (into {}
         (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt-accepting-plaintext value)]))
-        (t2/query {:select [:key :value] :from :setting :where [:in :key setting-keys]})))
+        (t2/query {'select ['key 'value] 'from 'setting 'where ['in 'key setting-keys]})))
 
 (defn- insert-llm-settings!
   [settings]
@@ -112,13 +112,13 @@
         (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"
                                "llm-metabot-provider"  "anthropic/claude-opus-4-1"})
         (migrate!)
-        (t2/query {:update :setting
-                   :set    {:value (encryption/maybe-encrypt
+        (t2/query {'update 'setting
+                   'set    {'value (encryption/maybe-encrypt
                                     (json/encode [{:key    "anthropic"
                                                    :type   "anthropic"
                                                    :name   "Anthropic"
                                                    :config {:api-key "sk-ant-rotated"}}]))}
-                   :where  [:= :key "llm-providers"]})
+                   'where  ['= 'key "llm-providers"]})
         (migrate! :down 63)
         (testing "the rotated credential is what older code finds, not the one the upgrade started from"
           (is (= {"llm-anthropic-api-key" "sk-ant-rotated"}
@@ -131,13 +131,13 @@
     (impl/test-migrations ["v64.7qmx3p"] [migrate!]
       (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"})
       (migrate!)
-      (t2/query {:update :setting
-                 :set    {:value (encryption/maybe-encrypt
+      (t2/query {'update 'setting
+                 'set    {'value (encryption/maybe-encrypt
                                   (json/encode [{:key    "anthropic-evals"
                                                  :type   "anthropic"
                                                  :name   "Anthropic (evals)"
                                                  :config {:api-key "sk-ant-evals"}}]))}
-                 :where  [:= :key "llm-providers"]})
+                 'where  ['= 'key "llm-providers"]})
       (insert-llm-settings! {"llm-metabot-provider" "anthropic-evals/claude-opus-4-1"})
       (migrate! :down 63)
       (testing "its credentials are not written under a provider they did not belong to"
@@ -152,13 +152,13 @@
     (impl/test-migrations ["v64.7qmx3p"] [migrate!]
       (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"})
       (migrate!)
-      (t2/query {:update :setting
-                 :set    {:value (encryption/maybe-encrypt
+      (t2/query {'update 'setting
+                 'set    {'value (encryption/maybe-encrypt
                                   (json/encode [{:key    "deepseek"
                                                  :type   "deepseek"
                                                  :name   "DeepSeek"
                                                  :config {:api-key "sk-deepseek"}}]))}
-                 :where  [:= :key "llm-providers"]})
+                 'where  ['= 'key "llm-providers"]})
       (insert-llm-settings! {"llm-metabot-provider" "deepseek/deepseek-v4-flash"})
       (migrate! :down 63)
       (testing "the credential is dropped rather than written to a setting nothing reads"
@@ -177,9 +177,9 @@
         (migrate! :down 63)
         (let [raw (into {}
                         (map (juxt :key :value))
-                        (t2/query {:select [:key :value]
-                                   :from   :setting
-                                   :where  [:in :key ["llm-anthropic-api-key"
+                        (t2/query {'select ['key 'value]
+                                   'from   'setting
+                                   'where  ['in 'key ["llm-anthropic-api-key"
                                                       "llm-anthropic-api-base-url"
                                                       "llm-metabot-provider"]]}))]
           (testing "the API key is sensitive, so it comes back as ciphertext"

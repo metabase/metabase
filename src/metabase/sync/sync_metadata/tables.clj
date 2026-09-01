@@ -96,7 +96,7 @@
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
   (t2/update! :model/Database (u/the-id database)
-              {:details
+              {'details
                (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map
@@ -237,7 +237,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (t2/update! :model/Table {'id ['in table-ids] 'active true} {:active false})))
+    (t2/update! :model/Table {'id ['in table-ids] 'active true} {'active false})))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -358,7 +358,7 @@
     (t2/update! :model/Table
                 'db_id (:id database)
                 'schema schema
-                {:schema new-schema})))
+                {'schema new-schema})))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -401,8 +401,8 @@
                   [(t2/update! :model/Table
                                {'id (:id table)
                                 'active false}
-                               {:archived_at (mi/now)
-                                :name new-name})]
+                               {'archived_at (mi/now)
+                                'name new-name})]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

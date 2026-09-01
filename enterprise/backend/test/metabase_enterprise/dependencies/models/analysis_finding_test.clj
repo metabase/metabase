@@ -14,12 +14,12 @@
         (t2/with-transaction [_conn]
           ;; Insert a finding with stale = true
           (t2/insert! :model/AnalysisFinding
-                      {:analyzed_entity_type :card
-                       :analyzed_entity_id   card-id
-                       :analysis_version     (dec models.analysis-finding/*current-analysis-finding-version*)
-                       :analyzed_at          (java.time.OffsetDateTime/now)
-                       :result               true
-                       :stale                true})
+                      {'analyzed_entity_type :card
+                       'analyzed_entity_id   card-id
+                       'analysis_version     (dec models.analysis-finding/*current-analysis-finding-version*)
+                       'analyzed_at          (java.time.OffsetDateTime/now)
+                       'result               true
+                       'stale                true})
           ;; Verify it's stale
           (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                        'analyzed_entity_type :card
@@ -59,12 +59,12 @@
           (let [base   (java.time.OffsetDateTime/of 2020 1 1 0 0 0 0 java.time.ZoneOffset/UTC)
                 stale! (fn [card-id minutes]
                          (t2/insert! :model/AnalysisFinding
-                                     {:analyzed_entity_type :card
-                                      :analyzed_entity_id   card-id
-                                      :analysis_version     models.analysis-finding/*current-analysis-finding-version*
-                                      :analyzed_at          (.plusMinutes base minutes)
-                                      :result               true
-                                      :stale                true}))]
+                                     {'analyzed_entity_type :card
+                                      'analyzed_entity_id   card-id
+                                      'analysis_version     models.analysis-finding/*current-analysis-finding-version*
+                                      'analyzed_at          (.plusMinutes base minutes)
+                                      'result               true
+                                      'stale                true}))]
             ;; Insert newest-analyzed first (c4 -> c1) so the unordered scan order is the OPPOSITE of
             ;; what the tiebreak must produce: without the fix this returns [c4 c3], with it [c1 c2].
             (stale! c4 3)

@@ -843,7 +843,7 @@
                       :base_type     :type/Date
                       :database_position 2}]
                     (t2/select :model/Field 'table_id ingestion-time-partitioned-table-id
-                               'database_partitioned true {:order-by [[:name :desc]]}))))
+                               'database_partitioned true {'order-by [['name 'desc]]}))))
           (testing "and query this table should return the column pseudocolumn as well"
             (is (malli=
                  [:tuple :boolean ms/TemporalString ms/TemporalString]
@@ -889,7 +889,7 @@
           (testing "Dispatcher identifies this as a non-batch-able table"
             (is (false? (#'sync.field-values/can-batch-distinct? table))))
           (testing "Distinct values come back correctly via the fallback per-field path"
-            (t2/update! :model/Field category-field-id {:has_field_values :list})
+            (t2/update! :model/Field category-field-id {'has_field_values :list})
             (t2/delete! :model/FieldValues 'field_id category-field-id)
             (sync.field-values/sync-fields-grouped-by-table! [category-field])
             (is (= #{"coffee" "tea" "matcha"}
@@ -910,7 +910,7 @@
                                     (catch Exception e
                                       (sync/sync-database! (mt/db) {:scan :schema})
                                       (throw e))))]
-          (t2/update! :model/Field category-field-id {:has_field_values :search})
+          (t2/update! :model/Field category-field-id {'has_field_values :search})
           (t2/delete! :model/FieldValues 'field_id category-field-id)
           (= [["coffee"]]
              (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
@@ -924,7 +924,7 @@
         native-dataset
         ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
         ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
-        (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+        (t2/update! :model/Field (mt/id :cf_product :category_id) {'fk_target_field_id (mt/id :cf_category :id)})
         (mt/with-temp
           [:model/Card          card-category {:database_id   (mt/id)
                                                :table_id      (mt/id :cf_category)
@@ -1456,7 +1456,7 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (pos? (t2/update! :model/Database db-id {:details {:dataset-id "my-dataset"}}))]
+          (let [updated? (pos? (t2/update! :model/Database db-id {'details {:dataset-id "my-dataset"}}))]
             (is updated?)
             (let [updated (t2/select-one :model/Database 'id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))

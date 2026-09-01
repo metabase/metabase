@@ -109,8 +109,8 @@
               "Document read event should publish successfully"))
         (testing "Document with higher view count appears in search"
           ;; Set the view count directly to test its search integration.
-          (t2/update! :model/Document doc-id {:view_count 5
-                                              :last_viewed_at (t/offset-date-time)})
+          (t2/update! :model/Document doc-id {'view_count 5
+                                              'last_viewed_at (t/offset-date-time)})
           (search.tu/with-temp-index-table
             (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
                   doc-results (filter #(= "document" (:model %)) (:data results))]
@@ -121,7 +121,7 @@
                   (is (some #(= "view-count" (:name %)) (:scores doc-result))))))))
         (testing "Document with recent view appears in search results"
           (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
-            (t2/update! :model/Document doc-id {:last_viewed_at recent-time})
+            (t2/update! :model/Document doc-id {'last_viewed_at recent-time})
             (search.tu/with-temp-index-table
               (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
                     doc-results (filter #(= "document" (:model %)) (:data results))]
@@ -176,7 +176,7 @@
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "initial" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
         (t2/update! :model/Document doc-id
-                    {:document (documents.test-util/text->prose-mirror-ast "revised projections and forecasts")})
+                    {'document (documents.test-util/text->prose-mirror-ast "revised projections and forecasts")})
         (testing "found by a term that appears only in the revised body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "forecasts" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))

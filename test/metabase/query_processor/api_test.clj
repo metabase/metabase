@@ -72,7 +72,7 @@
   (letfn [(thunk []
             (t2/select-one :model/QueryExecution
                            'hash (qp.util/query-hash query)
-                           {:order-by [[:started_at :desc]]}))]
+                           {'order-by [['started_at 'desc]]}))]
     (loop [retries 3]
       (or (thunk)
           (when (pos? retries)
@@ -1203,7 +1203,7 @@
           (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
                          :model/Collection collection {}]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/update! :model/Table (mt/id :venues) {'is_published true 'collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)

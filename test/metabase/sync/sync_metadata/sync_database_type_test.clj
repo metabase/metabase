@@ -15,7 +15,7 @@
       (let [venues-table (t2/select-one :model/Table 'db_id (u/the-id db), 'display_name "Venues")]
         ;; ok, now give all the Fields `?` as their `database_type`. (This is what the DB migration does for existing
         ;; Fields)
-        (t2/update! :model/Field {'table_id (u/the-id venues-table)}, {:database_type "?"})
+        (t2/update! :model/Field {'table_id (u/the-id venues-table)}, {'database_type "?"})
         ;; now sync the DB again
         (let [{:keys [step-info task-history]} (sync.util-test/sync-database! "sync-fields" db)]
           (is (= {:total-fields 52, :updated-fields 6}
@@ -38,7 +38,7 @@
       (let [{new-step-info :step-info, new-task-history :task-history} (sync.util-test/sync-database! "sync-fields" db)
             venues-table                                               (t2/select-one :model/Table 'db_id (u/the-id db), 'display_name "Venues")]
         ;; ok, now give all the Fields `:type/*` as their `base_type`
-        (t2/update! :model/Field {'table_id (u/the-id venues-table)}, {:base_type "type/*"})
+        (t2/update! :model/Field {'table_id (u/the-id venues-table)}, {'base_type "type/*"})
         ;; now sync the DB again
         (let [{after-step-info :step-info, after-task-history :task-history} (sync.util-test/sync-database! "sync-fields" db)]
           (is (= {:updated-fields 52, :total-fields 52}

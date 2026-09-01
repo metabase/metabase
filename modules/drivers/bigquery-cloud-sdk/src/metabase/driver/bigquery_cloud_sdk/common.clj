@@ -83,5 +83,5 @@
                      (u/the-id database) creds-proj-id write-proj-id))))
     (t2/update! :model/Database
                 (u/the-id database)
-                {:details (assoc details :project-id-from-credentials creds-proj-id)})
+                {'details (assoc details :project-id-from-credentials creds-proj-id)})
     creds-proj-id))

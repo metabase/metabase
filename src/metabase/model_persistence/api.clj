@@ -80,12 +80,12 @@
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
-                                               :join [[:report_card :c] [:= :c.id :p.card_id]]
-                                               :where [:and
-                                                       [:in :p.database_id writable-db-ids]
-                                                       [:= :c.type "model"]
-                                                       [:not :c.archived]]})
+               (t2/count :model/PersistedInfo {'from [['persisted_info 'p]]
+                                               'join [['report_card 'c] ['= 'c.id 'p.card_id]]
+                                               'where ['and
+                                                       ['in 'p.database_id writable-db-ids]
+                                                       ['= 'c.type "model"]
+                                                       ['not 'c.archived]]})
                0)
      :limit  (request/limit)
      :offset (request/offset)}))
@@ -170,7 +170,7 @@
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
       (t2/update! :model/Database (u/the-id db)
-                  {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
+                  {'settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -284,7 +284,7 @@
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
-            (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
+            (do (t2/update! :model/Database id {'settings (assoc (:settings database) :persist-models-enabled true)})
                 (task.persist-refresh/schedule-persistence-for-database!
                  database
                  (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -304,7 +304,7 @@
   (api/let-404 [database (t2/select-one :model/Database 'id id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (t2/update! :model/Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
+      (do (t2/update! :model/Database id {'settings (dissoc (:settings database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)

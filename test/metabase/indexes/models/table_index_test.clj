@@ -18,9 +18,9 @@
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
       (let [{:keys [id]} (t2/insert-returning-instance!
                           :model/TableIndex
-                          {:transform_id transform-id
-                           :index_name   "by_cat"
-                           :structured   {:kind :btree :name "by_cat" :columns [{:name "category" :direction :asc}]}})
+                          {'transform_id transform-id
+                           'index_name   "by_cat"
+                           'structured   {:kind :btree :name "by_cat" :columns [{:name "category" :direction :asc}]}})
             back (t2/select-one :model/TableIndex 'id id)]
         (is (= :create-pending (:status back)) "before-insert defaults status to :create-pending")
         (is (= :btree (get-in back [:structured :kind])) "kind re-keywordized on read")
@@ -32,9 +32,9 @@
       (is (thrown?
            Exception
            (t2/insert! :model/TableIndex
-                       {:transform_id transform-id
-                        :index_name   "bad"
-                        :structured   {:kind :not-a-kind :columns [{:name "a"}]}}))))))
+                       {'transform_id transform-id
+                        'index_name   "bad"
+                        'structured   {:kind :not-a-kind :columns [{:name "a"}]}}))))))
 
 (deftest invalid-status-rejected-test
   (testing "the :status transform rejects values outside the enum"
@@ -42,10 +42,10 @@
       (is (thrown?
            Exception
            (t2/insert! :model/TableIndex
-                       {:transform_id transform-id
-                        :index_name   "bad-status"
-                        :status       :bogus
-                        :structured   {:kind :btree :name "x" :columns [{:name "a"}]}}))))))
+                       {'transform_id transform-id
+                        'index_name   "bad-status"
+                        'status       :bogus
+                        'structured   {:kind :btree :name "x" :columns [{:name "a"}]}}))))))
 
 (deftest running-transition-helpers-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
@@ -81,7 +81,7 @@
       (is (= :running (t2/select-one-fn :status :model/TableIndex failed-id)))
       (is (= :running (t2/select-one-fn :status :model/TableIndex running-id)))
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
-      (t2/update! :model/TableIndex create-id {:status :succeeded})
+      (t2/update! :model/TableIndex create-id {'status :succeeded})
       (table-index/mark-unverified-running-indexes-failed! ids "not verified")
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex create-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex update-id)))
@@ -134,7 +134,7 @@
       ;; :failed is included: its index DDL already ran against a materialized table, so only a full rebuild
       ;; safely re-attempts it instead of appending duplicate rows from the stale checkpoint.
       (doseq [status [:create-pending :update-pending :delete-pending :running :failed]]
-        (t2/update! :model/TableIndex index-id {:status status})
+        (t2/update! :model/TableIndex index-id {'status status})
         (is (true? (table-index/pending-changes-for-transform? transform-id))
             (str status " forces a full rebuild")))))
   (testing "a nil transform-id is not pending"
@@ -193,7 +193,7 @@
                                                        :status       :delete-pending
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "c"}]}}]
-      (t2/update! :model/Transform transform-id {:target (assoc (:target transform) :name (mt/random-name))})
+      (t2/update! :model/Transform transform-id {'target (assoc (:target transform) :name (mt/random-name))})
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex create-id)))
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex succeeded-id)))
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id))))))
@@ -201,9 +201,9 @@
 (deftest deleting-transform-removes-its-indexes-test
   (testing "the transform_id FK cascades, so deleting a transform drops its index requests"
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
-      (t2/insert! :model/TableIndex {:transform_id transform-id
-                                     :index_name   "idx"
-                                     :structured   {:kind :btree :name "idx" :columns [{:name "a"}]}})
+      (t2/insert! :model/TableIndex {'transform_id transform-id
+                                     'index_name   "idx"
+                                     'structured   {:kind :btree :name "idx" :columns [{:name "a"}]}})
       (is (t2/exists? :model/TableIndex 'transform_id transform-id))
       (t2/delete! :model/Transform transform-id)
       (is (not (t2/exists? :model/TableIndex 'transform_id transform-id))))))

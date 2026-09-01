@@ -73,10 +73,10 @@
       (into parameter-cards
             (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id id)
                     (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                                      {:where [:in :dashboardcard_id
-                                               ^:allow-subquery {:select [:id]
-                                                                 :from   [(t2/table-name :model/DashboardCard)]
-                                                                 :where  [:= :dashboard_id id]}]})))
+                                      {'where ['in 'dashboardcard_id
+                                               {'select ['id]
+                                                'from   [(t2/table-name :model/DashboardCard)]
+                                                'where  ['= 'dashboard_id id]}]})))
       parameter-cards)))
 
 (defn- revision-parameter-field-ids

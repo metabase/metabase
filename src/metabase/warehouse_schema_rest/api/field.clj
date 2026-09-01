@@ -69,13 +69,13 @@
   "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
    the target field does not exist or belongs to a different database. Uses a single query."
   [source-field-id target-field-id param-name]
-  (let [result (first (t2/query {:select [[:source_t.db_id :source_db_id]
-                                          [:target_t.db_id :target_db_id]]
-                                 :from   [[(t2/table-name :model/Field) :sf]]
-                                 :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
-                                          [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
-                                          [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
-                                 :where  [:= :sf.id source-field-id]}))]
+  (let [result (first (t2/query {'select [['source_t.db_id 'source_db_id]
+                                          ['target_t.db_id 'target_db_id]]
+                                 'from   [[(t2/table-name :model/Field) 'sf]]
+                                 'join   [[(t2/table-name :model/Table) 'source_t] ['= 'sf.table_id 'source_t.id]
+                                          [(t2/table-name :model/Field) 'tf] ['= 'tf.id target-field-id]
+                                          [(t2/table-name :model/Table) 'target_t] ['= 'tf.table_id 'target_t.id]]
+                                 'where  ['= 'sf.id source-field-id]}))]
     (api/checkp result param-name "Invalid target field")
     (api/checkp (= (:source_db_id result) (:target_db_id result))
                 param-name "Target field must belong to the same database")))
@@ -125,7 +125,7 @@
       (let [update-result (t2/update! :model/Field
                                       'table_id (:table_id old-field)
                                       'nfc_path ['like (str "[\"" (:name old-field) "\",%]")]
-                                      {:active true})]
+                                      {'active true})]
         (when (zero? update-result)
           ;; Sync the table if no nested fields exist. This means the table hasn't previously
           ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
@@ -135,7 +135,7 @@
       (t2/update! :model/Field
                   'table_id (:table_id old-field)
                   'nfc_path ['like (str "[\"" (:name old-field) "\",%]")]
-                  {:active false})))
+                  {'active false})))
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -189,7 +189,7 @@
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
-      (t2/update! :model/Dimension 'field_id id {:name display-name}))
+      (t2/update! :model/Dimension 'field_id id {'name display-name}))
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]
@@ -261,14 +261,14 @@
                                :human_readable_field_id)
     (if-let [dimension existing-dimension]
       (t2/update! :model/Dimension (u/the-id dimension)
-                  {:type                    dimension-type
-                   :name                    dimension-name
-                   :human_readable_field_id human-readable-field-id})
+                  {'type                    dimension-type
+                   'name                    dimension-name
+                   'human_readable_field_id human-readable-field-id})
       (t2/insert! :model/Dimension
-                  {:field_id                id
-                   :type                    dimension-type
-                   :name                    dimension-name
-                   :human_readable_field_id human-readable-field-id})))
+                  {'field_id                id
+                   'type                    dimension-type
+                   'name                    dimension-name
+                   'human_readable_field_id human-readable-field-id})))
   (t2/select-one :model/Dimension 'field_id id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -139,7 +139,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (t2/hydrate (t2/select :model/Table 'db_id db-id {:order-by [:name]}) :fields)
+                 (->> (t2/hydrate (t2/select :model/Table 'db_id db-id {'order-by ['name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -176,8 +176,8 @@
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
                  (->> (t2/hydrate (t2/select :model/Table 'db_id db-id
-                                             {:where    [:in :name ["groupby_test" "v_groupby_test"]]
-                                              :order-by [:name]}) :fields)
+                                             {'where    ['in 'name ["groupby_test" "v_groupby_test"]]
+                                              'order-by ['name]}) :fields)
                       (map table-fingerprint)))))))))
 
 (defn- default-table-result [table-name]

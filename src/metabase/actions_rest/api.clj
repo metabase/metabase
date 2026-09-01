@@ -45,10 +45,10 @@
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
-                   (t2/select :model/Card {:where
-                                           [:and
-                                            [:= :type "model"]
-                                            [:= :archived false]
+                   (t2/select :model/Card {'where
+                                           ['and
+                                            ['= 'type "model"]
+                                            ['= 'archived false]
                                             ;; action permission keyed off of model permission
                                             (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
@@ -175,8 +175,8 @@
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
                  (t2/update! :model/Action id
-                             {:public_uuid <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                             {'public_uuid <>
+                              'made_public_by_id api/*current-user-id*})))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -195,7 +195,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
+  (t2/update! :model/Action id {'public_uuid nil, 'made_public_by_id nil})
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]

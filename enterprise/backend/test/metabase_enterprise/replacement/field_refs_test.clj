@@ -202,7 +202,7 @@
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}]
         ;; simulate a broken query by updating the dataset_query directly
-        (t2/update! :model/Card card-id {:dataset_query {}})
+        (t2/update! :model/Card card-id {'dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:dataset_query {}}
                 (t2/select-one :model/Card card-id)))))))
@@ -220,7 +220,7 @@
                                                                      {:card_id broken-card-id
                                                                       :value_field [:field 1 nil]}}]}]
         ;; simulate a broken source card
-        (t2/update! :model/Card broken-card-id {:dataset_query {}})
+        (t2/update! :model/Card broken-card-id {'dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id broken-card-id
@@ -316,9 +316,9 @@
                                                           :source {:type "query" :query (lib/native-query mp "SELECT 1")}
                                                           :target {:database (mt/id) :table "out"}}]
         ;; simulate a broken query by updating source directly in the DB
-        (t2/query-one {:update :transform
-                       :set    {:source "{\"type\":\"query\",\"query\":{}}"}
-                       :where  [:= :id transform-id]})
+        (t2/query-one {'update 'transform
+                       'set    {'source "{\"type\":\"query\",\"query\":{}}"}
+                       'where  ['= 'id transform-id]})
         (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
 
 (deftest transform-upgrade-field-refs!-no-changes-test
@@ -340,9 +340,9 @@
                     (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
                                                       :definition query}]
-        (t2/query-one {:update :segment
-                       :set    {:definition "{\"x\": \"y\"}"}
-                       :where  [:= :id segment-id]})
+        (t2/query-one {'update 'segment
+                       'set    {'definition "{\"x\": \"y\"}"}
+                       'where  ['= 'id segment-id]})
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
         ;; segments return nil when the query is not valid
         (is (nil? (:definition (t2/select-one :model/Segment segment-id))))))))
@@ -381,9 +381,9 @@
       (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
                                                       :name       "test measure"
                                                       :definition query}]
-        (t2/query-one {:update :measure
-                       :set    {:definition "{\"x\": \"y\"}"}
-                       :where  [:= :id measure-id]})
+        (t2/query-one {'update 'measure
+                       'set    {'definition "{\"x\": \"y\"}"}
+                       'where  ['= 'id measure-id]})
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         ;; Measure return {} when query is invalid
         (is (= {} (:definition (t2/select-one :model/Measure measure-id))))))))
@@ -448,7 +448,7 @@
                                                                                     :card_id      card-id
                                                                                     :target       (dimension-field-id-ref mp (mt/id :orders :id))}]}]
         ;; simulate a broken card
-        (t2/update! :model/Card card-id {:dataset_query {}})
+        (t2/update! :model/Card card-id {'dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (=? {:parameter_mappings [{:target (dimension-field-id-ref mp (mt/id :orders :id))}]}
                 (t2/select-one :model/DashboardCard dashcard-id)))))))

@@ -16,11 +16,11 @@
   "Insert a succeeded transform run completing at `end-time`."
   [transform-id end-time]
   (t2/insert-returning-instance! :model/TransformRun
-                                 {:transform_id transform-id
-                                  :run_method   :cron
-                                  :status       :succeeded
-                                  :is_active    nil
-                                  :end_time     end-time}))
+                                 {'transform_id transform-id
+                                  'run_method   :cron
+                                  'status       :succeeded
+                                  'is_active    nil
+                                  'end_time     end-time}))
 
 (deftest fresh-dep-ids-test
   ;; pinned to a Wednesday at 10:30 (local) so cron fire boundaries are deterministic: the hourly
@@ -101,9 +101,9 @@
         (testing "no runs at all"
           (is (= #{} (freshness/fresh-dep-ids now #{(:id t)}))))
         (testing "only a failed run does not count as fresh"
-          (t2/insert! :model/TransformRun {:transform_id (:id t)
-                                           :run_method   :cron
-                                           :status       :failed
-                                           :is_active    nil
-                                           :end_time     (t/minus now (t/minutes 1))})
+          (t2/insert! :model/TransformRun {'transform_id (:id t)
+                                           'run_method   :cron
+                                           'status       :failed
+                                           'is_active    nil
+                                           'end_time     (t/minus now (t/minutes 1))})
           (is (= #{} (freshness/fresh-dep-ids now #{(:id t)}))))))))

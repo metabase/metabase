@@ -41,7 +41,7 @@
                   (let [initial-rows (transforms.tu/table-rows table-name)]
                     (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
                     (t2/update! :model/Transform (:id transform)
-                                {:source {:type            "python"
+                                {'source {:type            "python"
                                           :source-tables   []
                                           :source-database (mt/id)
                                           :body            (str "import pandas as pd\n"
@@ -124,7 +124,7 @@
                                                ;; We expect this to fail due to timeout
                                                {:run_id (t2/select-one-fn :id :model/TransformRun
                                                                           'transform_id (:id transform)
-                                                                          {:order-by [[:start_time :desc]]})}))
+                                                                          {'order-by [['start_time 'desc]]})}))
                           run-status (t2/select-one-fn :status :model/TransformRun 'id run_id)]
                       (testing "Transform run should have timeout status"
                         (is (= :timeout run-status)

@@ -32,8 +32,8 @@
     (thunk)
     (finally
       (u/ignore-exceptions
-        (t2/update! :model/User {} {:login_attributes nil})
-        (t2/update! :model/User {'email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
+        (t2/update! :model/User {} {'login_attributes nil})
+        (t2/update! :model/User {'email "rasta@metabase.com"} {'first_name "Rasta" 'last_name "Toucan" 'sso_source nil})))))
 
 (defn do-with-other-sso-types-disabled!
   "Execute `thunk` with LDAP and Slack Connect SSO types disabled.

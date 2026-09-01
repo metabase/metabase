@@ -24,16 +24,16 @@
   "A `stored_result`, back-dated past the sweep's grace period unless `:fresh?`."
   [& {:keys [fresh?]}]
   (let [id (t2/insert-returning-pk! :model/StoredResult
-                                    {:result_data       (byte-array [7 7 7])
-                                     :creator_id        (mt/user->id :lucky)
-                                     :database_id       (mt/id)
-                                     :dataset_query     {}
-                                     :row_count         1
-                                     :data_access_token {}})]
+                                    {'result_data       (byte-array [7 7 7])
+                                     'creator_id        (mt/user->id :lucky)
+                                     'database_id       (mt/id)
+                                     'dataset_query     {}
+                                     'row_count         1
+                                     'data_access_token {}})]
     (when-not fresh?
-      (t2/query-one {:update :stored_result
-                     :set    {:created_at (t/minus (t/offset-date-time) (t/hours 6))}
-                     :where  [:= :id id]}))
+      (t2/query-one {'update 'stored_result
+                     'set    {'created_at (t/minus (t/offset-date-time) (t/hours 6))}
+                     'where  ['= 'id id]}))
     id))
 
 (defn- exploration-with-query!
@@ -42,19 +42,19 @@
   []
   (let [creator (mt/user->id :lucky)
         card    (t2/insert-returning-pk! :model/Card
-                                         {:name "m" :type :metric :creator_id creator
-                                          :database_id (mt/id) :dataset_query (venues-count-query)
-                                          :display "table" :visualization_settings {}})
-        expl    (t2/insert-returning-pk! :model/Exploration {:name "sweep" :creator_id creator})
-        thread  (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
-        block   (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread})
+                                         {'name "m" 'type :metric 'creator_id creator
+                                          'database_id (mt/id) 'dataset_query (venues-count-query)
+                                          'display "table" 'visualization_settings {}})
+        expl    (t2/insert-returning-pk! :model/Exploration {'name "sweep" 'creator_id creator})
+        thread  (t2/insert-returning-pk! :model/ExplorationThread {'exploration_id expl 'position 0})
+        block   (t2/insert-returning-pk! :model/ExplorationBlock {'exploration_thread_id thread})
         page    (t2/insert-returning-pk! :model/ExplorationPage
-                                         {:exploration_block_id block :card_id card
-                                          :dimension_id "d1" :query_type "default"})
+                                         {'exploration_block_id block 'card_id card
+                                          'dimension_id "d1" 'query_type "default"})
         eq      (t2/insert-returning-pk! :model/ExplorationQuery
-                                         {:exploration_thread_id thread :card_id card :page_id page
-                                          :database_id (mt/id) :dimension_id "d1"
-                                          :status "done" :position 0})]
+                                         {'exploration_thread_id thread 'card_id card 'page_id page
+                                          'database_id (mt/id) 'dimension_id "d1"
+                                          'status "done" 'position 0})]
     {:exploration-id expl :query-id eq}))
 
 (deftest collects-blobs-left-behind-by-a-deleted-exploration-test
@@ -65,9 +65,9 @@
     (let [{:keys [exploration-id query-id]} (exploration-with-query!)
           orphan (blob!)]
       (t2/insert! :model/ExplorationQueryResult
-                  {:exploration_query_id query-id :stored_result_id orphan})
+                  {'exploration_query_id query-id 'stored_result_id orphan})
       (t2/insert! :model/StoredResultUse
-                  {:stored_result_id orphan :exploration_id exploration-id})
+                  {'stored_result_id orphan 'exploration_id exploration-id})
       (testing "control: while the exploration lives, the blob is reachable and kept"
         (collect/collect-orphaned-results!)
         (is (true? (t2/exists? :model/StoredResult 'id orphan))))
@@ -85,9 +85,9 @@
     (let [{:keys [exploration-id query-id]} (exploration-with-query!)
           orphan (blob!)]
       (t2/insert! :model/ExplorationQueryResult
-                  {:exploration_query_id query-id :stored_result_id orphan})
+                  {'exploration_query_id query-id 'stored_result_id orphan})
       (t2/insert! :model/StoredResultUse
-                  {:stored_result_id orphan :exploration_id exploration-id})
+                  {'stored_result_id orphan 'exploration_id exploration-id})
       ;; what `reset-thread-for-rerun!` does
       (t2/delete! :model/ExplorationQuery 'id query-id)
       (is (= 1 (t2/count :model/StoredResultUse 'stored_result_id orphan))
@@ -100,7 +100,7 @@
     (let [{:keys [query-id]} (exploration-with-query!)
           live               (blob!)]
       (t2/insert! :model/ExplorationQueryResult
-                  {:exploration_query_id query-id :stored_result_id live})
+                  {'exploration_query_id query-id 'stored_result_id live})
       (collect/collect-orphaned-results!)
       (is (true? (t2/exists? :model/StoredResult 'id live)))))
   (testing "an unreferenced blob inside the grace period is left alone, so a writer that links its
@@ -115,7 +115,7 @@
     (let [{:keys [exploration-id]} (exploration-with-query!)
           orphan                   (blob!)]
       (t2/insert! :model/StoredResultUse
-                  {:stored_result_id orphan :exploration_id exploration-id})
+                  {'stored_result_id orphan 'exploration_id exploration-id})
       (collect/collect-orphaned-results!)
       (is (false? (t2/exists? :model/StoredResult 'id orphan)))
       (is (zero? (t2/count :model/StoredResultUse 'stored_result_id orphan))))))
@@ -126,16 +126,16 @@
   [exploration-id]
   (let [creator (mt/user->id :lucky)
         doc     (t2/insert-returning-pk! :model/Document
-                                         {:name           "Summary"
-                                          :document       {:type "doc" :content []}
-                                          :content_type   prose-mirror/prose-mirror-content-type
-                                          :creator_id     creator
-                                          :exploration_id exploration-id})]
+                                         {'name           "Summary"
+                                          'document       {:type "doc" :content []}
+                                          'content_type   prose-mirror/prose-mirror-content-type
+                                          'creator_id     creator
+                                          'exploration_id exploration-id})]
     (t2/insert-returning-pk! :model/Card
-                             {:name "embed" :type :question :creator_id creator
-                              :database_id (mt/id) :dataset_query (venues-count-query)
-                              :display "table" :visualization_settings {}
-                              :document_id doc})))
+                             {'name "embed" 'type :question 'creator_id creator
+                              'database_id (mt/id) 'dataset_query (venues-count-query)
+                              'display "table" 'visualization_settings {}
+                              'document_id doc})))
 
 (deftest keeps-composite-blobs-a-summary-card-renders-from-test
   (testing "a composite blob is built by combining source snapshots and has no
@@ -146,7 +146,7 @@
           card                     (summary-embed-card! exploration-id)
           composite                (blob!)]
       (t2/insert! :model/StoredResultUse
-                  {:stored_result_id composite :card_id card})
+                  {'stored_result_id composite 'card_id card})
       (collect/collect-orphaned-results!)
       (is (true? (t2/exists? :model/StoredResult 'id composite))))))
 
@@ -158,9 +158,9 @@
           card                              (summary-embed-card! exploration-id)
           shared                            (blob!)]
       (t2/insert! :model/ExplorationQueryResult
-                  {:exploration_query_id query-id :stored_result_id shared})
+                  {'exploration_query_id query-id 'stored_result_id shared})
       (t2/insert! :model/StoredResultUse
-                  {:stored_result_id shared :card_id card})
+                  {'stored_result_id shared 'card_id card})
       (t2/delete! :model/ExplorationQuery 'id query-id)
       (collect/collect-orphaned-results!)
       (is (true? (t2/exists? :model/StoredResult 'id shared))))))
@@ -173,7 +173,7 @@
           card                     (summary-embed-card! exploration-id)
           composite                (blob!)]
       (t2/insert! :model/StoredResultUse
-                  {:stored_result_id composite :card_id card})
+                  {'stored_result_id composite 'card_id card})
       (t2/delete! :model/Card 'id card)
       (is (zero? (t2/count :model/StoredResultUse 'stored_result_id composite))
           "sanity: the card_id FK cascade takes the use row with the Card")

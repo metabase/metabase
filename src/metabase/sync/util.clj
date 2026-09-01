@@ -425,7 +425,7 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
+    (t2/update! :model/Table (u/the-id table) {'initial_sync_status "complete"})))
 
 (def ^:private sync-tables-kv-args
   {:active          true
@@ -441,13 +441,13 @@
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set."
   [database-or-id]
-  (let [where-clause {:where (into [:and]
+  (let [where-clause {'where (into [:and]
                                    (map (partial into [:=]))
                                    (merge sync-tables-kv-args
                                           {:db_id (u/the-id database-or-id)}))}
         ids (t2/select-fn-vec :id :model/Table where-clause)]
     (reduce (fn [acc ids']
-              (+ acc (t2/update! :model/Table 'id ['in ids'] {:initial_sync_status "complete"})))
+              (+ acc (t2/update! :model/Table 'id ['in ids'] {'initial_sync_status "complete"})))
             0
             (partition-all *batch-size* ids))))
 
@@ -455,13 +455,13 @@
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (t2/update! :model/Database (u/the-id database) {:initial_sync_status "complete"})))
+    (t2/update! :model/Database (u/the-id database) {'initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (t2/update! :model/Database (u/the-id database) {:initial_sync_status "aborted"})))
+    (t2/update! :model/Database (u/the-id database) {'initial_sync_status "aborted"})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
@@ -484,16 +484,16 @@
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
                                  'db_id (u/the-id database-or-id)
-                                 {:where [:and sync-tables-clause
+                                 {'where ['and sync-tables-clause
                                           (when (seq schema-names) [:in :schema schema-names])
                                           (when (seq table-names) [:in :name table-names])]
-                                  :order-by [[:schema :asc]
-                                             [:name :asc]]})))
+                                  'order-by [['schema 'asc]
+                                             ['name 'asc]]})))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."
   [database-or-id]
-  (t2/count :model/Table 'db_id (u/the-id database-or-id) {:where sync-tables-clause}))
+  (t2/count :model/Table 'db_id (u/the-id database-or-id) {'where sync-tables-clause}))
 
 (defn refingerprint-reducible-sync-tables
   "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the
@@ -501,23 +501,23 @@
   [database-or-id]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
-                                 {:select    [:t.*]
-                                  :from      [[(t2/table-name :model/Table) :t]]
-                                  :left-join [[^:allow-subquery {:select   [:table_id
-                                                                            [[:min :last_analyzed] :earliest_last_analyzed]]
-                                                                 :from     [(t2/table-name :model/Field)]
-                                                                 :group-by [:table_id]} :sub]
-                                              [:= :t.id :sub.table_id]]
-                                  :where     [:and sync-tables-clause [:= :t.db_id (u/the-id database-or-id)]]
-                                  :order-by  [[:sub.earliest_last_analyzed :asc]]})))
+                                 {'select    ['t.*]
+                                  'from      [[(t2/table-name :model/Table) 't]]
+                                  'left-join [[{'select   ['table_id
+                                                           [['min 'last_analyzed] 'earliest_last_analyzed]]
+                                                'from     [(t2/table-name :model/Field)]
+                                                'group-by ['table_id]} 'sub]
+                                              ['= 't.id 'sub.table_id]]
+                                  'where     ['and sync-tables-clause ['= 't.db_id (u/the-id database-or-id)]]
+                                  'order-by  [['sub.earliest_last_analyzed 'asc]]})))
 
 (defn sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database-or-id`.
   Assumes the database supports schemas."
   [database-or-id]
-  (vec (map :schema (t2/query {:select-distinct [:schema]
-                               :from            [:metabase_table]
-                               :where           [:and sync-tables-clause [:= :db_id (u/the-id database-or-id)]]}))))
+  (vec (map :schema (t2/query {'select-distinct ['schema]
+                               'from            ['metabase_table]
+                               'where           ['and sync-tables-clause ['= 'db_id (u/the-id database-or-id)]]}))))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like

@@ -102,9 +102,9 @@
                 'field_id
                 'predicate
                 [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :field_id :predicate]
-                :order-by [[:total_count :desc]]})))
+               {'where    where
+                'group-by ['source_type 'source_id 'field_id 'predicate]
+                'order-by [['total_count 'desc]]})))
 
 (defn- grouped-metric-rows
   "Group + sum `source_metric_daily` counts for a source filter."
@@ -123,9 +123,9 @@
                 'temporal_field_id
                 'temporal_unit
                 [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :agg_type :agg_field_id :temporal_field_id :temporal_unit]
-                :order-by [[:total_count :desc]]})))
+               {'where    where
+                'group-by ['source_type 'source_id 'agg_type 'agg_field_id 'temporal_field_id 'temporal_unit]
+                'order-by [['total_count 'desc]]})))
 
 (defn- grouped-dimension-rows
   "Group + sum `source_dimension_daily` counts for a source filter."
@@ -143,9 +143,9 @@
                 'temporal_unit
                 'binning
                 [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :field_id :temporal_unit :binning]
-                :order-by [[:total_count :desc]]})))
+               {'where    where
+                'group-by ['source_type 'source_id 'field_id 'temporal_unit 'binning]
+                'order-by [['total_count 'desc]]})))
 
 (defn- decode-atom-fingerprints [x]
   (cond
@@ -172,9 +172,9 @@
                      'atom_fingerprints
                      'atom_count
                      [[:sum :count] :total_count]]
-                    {:where    where
-                     :group-by [:source_type :source_id :clause :atom_fingerprints :atom_count]
-                     :order-by [[:total_count :desc]]})
+                    {'where    where
+                     'group-by ['source_type 'source_id 'clause 'atom_fingerprints 'atom_count]
+                     'order-by [['total_count 'desc]]})
          (mapv (fn [row]
                  (update row :atom_fingerprints decode-atom-fingerprints))))))
 
@@ -194,9 +194,9 @@
                 'observation_type
                 'observation_value
                 [[:sum :count] :total_count]]
-               {:where    where
-                :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
-                :order-by [[:total_count :desc]]})))
+               {'where    where
+                'group-by ['source_type 'source_id 'field_id 'source_basis 'observation_type 'observation_value]
+                'order-by [['total_count 'desc]]})))
 
 (defn- wrap-query
   "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."
@@ -224,7 +224,7 @@
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment 'id 'table_id 'definition] {:where where})
+        segments  (t2/select [:model/Segment 'id 'table_id 'definition] {'where where})
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
@@ -487,7 +487,7 @@
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment 'id 'table_id 'definition] {:where where})
+        segments  (t2/select [:model/Segment 'id 'table_id 'definition] {'where where})
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}

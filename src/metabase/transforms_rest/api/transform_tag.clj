@@ -32,7 +32,7 @@
   (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
   (api/check-400 (not (transforms.core/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (t2/insert-returning-instance! :model/TransformTag {:name name}))
+  (t2/insert-returning-instance! :model/TransformTag {'name name}))
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag."
@@ -45,7 +45,7 @@
   (api/write-check (t2/select-one :model/TransformTag 'id tag-id))
   (api/check-400 (not (transforms.core/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (t2/update! :model/TransformTag tag-id {:name name})
+  (t2/update! :model/TransformTag tag-id {'name name})
   (t2/select-one :model/TransformTag 'id tag-id))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
@@ -63,7 +63,7 @@
    _query-params]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
+  (t2/hydrate (t2/select :model/TransformTag {'order-by [['name 'asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-tag` routes."

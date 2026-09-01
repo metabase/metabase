@@ -36,7 +36,7 @@
                                                    :position   1}]
       (let [hyd (t2/hydrate (t2/select :model/ExplorationQuery
                                        'id ['in [(:id q-seg) (:id q-bare)]]
-                                       {:order-by [[:position :asc]]})
+                                       {'order-by [['position 'asc]]})
                             :segment_name)]
         (is (= [{:id (:id q-seg)  :segment_id (:id s) :segment_name "my-seg"}
                 {:id (:id q-bare) :segment_id nil     :segment_name nil}]

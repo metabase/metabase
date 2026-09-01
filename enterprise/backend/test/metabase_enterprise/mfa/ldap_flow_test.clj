@@ -37,10 +37,10 @@
               user-id (t2/select-one-fn :id :model/User 'email sally-email)
               secret  (totp/generate-secret)]
           (try
-            (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                             :provider    "totp"
-                                             :confirmed_at (t/instant)
-                                             :credentials  {:secret secret}})
+            (t2/insert! :model/AuthIdentity {'user_id     user-id
+                                             'provider    "totp"
+                                             'confirmed_at (t/instant)
+                                             'credentials  {:secret secret}})
             (testing "an enrolled user's LDAP login gets a challenge, not a session"
               (let [resp (mt/client :post 200 "session" {:username sally-email
                                                          :password sally-directory-password})]
@@ -87,10 +87,10 @@
               user-id           (t2/select-one-fn :id :model/User 'email sally-email)
               secret            (totp/generate-secret)]
           (try
-            (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                             :provider    "totp"
-                                             :confirmed_at (t/instant)
-                                             :credentials  {:secret secret}})
+            (t2/insert! :model/AuthIdentity {'user_id     user-id
+                                             'provider    "totp"
+                                             'confirmed_at (t/instant)
+                                             'credentials  {:secret secret}})
             (with-redefs [sso/find-user (fn [& _] (throw (ex-info "connection refused" {})))]
               (testing "enroll re-auth with the directory down is a 400, not a 500"
                 (is (=? {:errors {:password some?}}

@@ -1580,11 +1580,11 @@
   (let [token   (str (random-uuid))
         expired (- (quot (System/currentTimeMillis) 1000) 3600)]
     (t2/insert! :model/OAuthAccessToken
-                {:token     token
-                 :user_id   user-id
-                 :client_id client-id
-                 :scope     ["openid"]
-                 :expiry    expired})
+                {'token     token
+                 'user_id   user-id
+                 'client_id client-id
+                 'scope     ["openid"]
+                 'expiry    expired})
     token))
 
 (deftest expired-oauth-bearer-token-returns-401-test

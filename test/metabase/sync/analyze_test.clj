@@ -26,9 +26,9 @@
     (data/with-temp-copy-of-db
       ;; mark all the Fields as analyzed with so they won't be subject to analysis
       (t2/update! :model/Field {'table_id (data/id :venues)}
-                  {:last_analyzed       #t "2017-08-01T00:00"
-                   :semantic_type       nil
-                   :fingerprint_version Short/MAX_VALUE})
+                  {'last_analyzed       #t "2017-08-01T00:00"
+                   'semantic_type       nil
+                   'fingerprint_version Short/MAX_VALUE})
       ;; the type of the value that comes back may differ a bit between different application DBs
       (let [analysis-date (t2/select-one-fn :last_analyzed :model/Field 'table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
@@ -158,7 +158,7 @@
   (t2/select-one-fn :last_analyzed :model/Field
                     'last_analyzed ['not= nil]
                     'table_id      (u/the-id table)
-                    {:order-by [[:last_analyzed :desc]]}))
+                    {'order-by [['last_analyzed 'desc]]}))
 
 (defn- set-table-visibility-type-via-api!
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side

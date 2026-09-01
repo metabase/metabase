@@ -23,11 +23,11 @@
   (if (nil? max-usage)
     (t2/delete! :model/MetabotInstanceLimit 'tenant_id tenant-id)
     (if-let [existing (instance-limit tenant-id)]
-      (t2/update! :model/MetabotInstanceLimit (:id existing) {:max_usage max-usage})
-      (t2/insert! :model/MetabotInstanceLimit {:tenant_id tenant-id :max_usage max-usage})))
+      (t2/update! :model/MetabotInstanceLimit (:id existing) {'max_usage max-usage})
+      (t2/insert! :model/MetabotInstanceLimit {'tenant_id tenant-id 'max_usage max-usage})))
   (instance-limit tenant-id))
 
 (defn all-tenant-limits
   "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
   []
-  (t2/select :model/MetabotInstanceLimit 'tenant_id ['not= nil] {:order-by [[:tenant_id :asc]]}))
+  (t2/select :model/MetabotInstanceLimit 'tenant_id ['not= nil] {'order-by [['tenant_id 'asc]]}))

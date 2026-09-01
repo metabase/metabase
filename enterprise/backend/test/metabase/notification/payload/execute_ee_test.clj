@@ -116,7 +116,7 @@
                 (is (= 1 (t2/count :model/QueryCache))
                     "The query should have been cached exactly once")))
             (let [first-updated-at (cache-updated-at)]
-              (t2/update! :model/Card card-id {:visualization_settings edited-setting})
+              (t2/update! :model/Card card-id {'visualization_settings edited-setting})
               (testing "after card edit, cache-hit run reflects the two-column setting"
                 (let [result (run-sub!)]
                   (is (= 1 (t2/count :model/QueryCache))

@@ -42,10 +42,10 @@
                    :target ["field" {} (mt/id :venues :price)]}]]
     (first (t2/insert-returning-instances!
             :model/ExplorationBlock
-            {:exploration_thread_id tid
-             :metrics               [{:card_id cid :dimension_mappings mappings}]
-             :dimensions            [{:dimension-id dim-id :display-name disp :effective-type etype}]
-             :position              0}))))
+            {'exploration_thread_id tid
+             'metrics               [{:card_id cid :dimension_mappings mappings}]
+             'dimensions            [{:dimension-id dim-id :display-name disp :effective-type etype}]
+             'position              0}))))
 
 (defn- block-of
   "The block id a query belongs to, via its page. `page-by-id` indexes ExplorationPage by id."
@@ -149,10 +149,10 @@
       (let [cid    (:id metric)
             g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
             orphan (t2/insert-returning-pk! :model/ExplorationPage
-                                            {:exploration_block_id (:id g)
-                                             :card_id              cid
-                                             :dimension_id         "ghost"
-                                             :query_type           "default"})]
+                                            {'exploration_block_id (:id g)
+                                             'card_id              cid
+                                             'dimension_id         "ghost"
+                                             'query_type           "default"})]
         (is (some? (t2/select-one-pk :model/ExplorationPage 'id orphan)) "orphan page seeded")
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (is (nil? (t2/select-one-pk :model/ExplorationPage 'id orphan))
@@ -261,10 +261,10 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       ;; a block with a metric but no dimensions → nothing to cross → :skip-empty
       (t2/insert! :model/ExplorationBlock
-                  {:exploration_thread_id (:id t)
-                   :metrics               [{:card_id (:id metric) :dimension_mappings []}]
-                   :dimensions            []
-                   :position              0})
+                  {'exploration_thread_id (:id t)
+                   'metrics               [{:card_id (:id metric) :dimension_mappings []}]
+                   'dimensions            []
+                   'position              0})
       (is (= :skip-empty (query-plan/generate-query-plan! (:id t))))
       (let [{:keys [analysis_started_at completed_at]} (terminal-stamps (:id t))]
         (is (some? completed_at) "completed_at stamped so the client stops polling")
@@ -338,15 +338,15 @@
             ;; stand in for the delivery that wins the race and commits its plan first
             winner (fn []
                      (t2/insert! :model/ExplorationQuery
-                                 {:exploration_thread_id (:id t)
-                                  :card_id               cid
-                                  :database_id           (mt/id)
-                                  :page_id               (orphan-page! (:id g) cid "d1")
-                                  :dimension_id          "d1"
-                                  :query_type            "default"
-                                  :dataset_query         (count-metric-query)
-                                  :status                "pending"
-                                  :position              0}))]
+                                 {'exploration_thread_id (:id t)
+                                  'card_id               cid
+                                  'database_id           (mt/id)
+                                  'page_id               (orphan-page! (:id g) cid "d1")
+                                  'dimension_id          "d1"
+                                  'query_type            "default"
+                                  'dataset_query         (count-metric-query)
+                                  'status                "pending"
+                                  'position              0}))]
         (mt/with-dynamic-fn-redefs [query-plan/materialize-item
                                     (fn [metric-by-key item]
                                       (when (compare-and-set! raced? false true)
@@ -368,14 +368,14 @@
             g       (mk-block! (:id t) cid "d1" "Price" "type/Number")
             page-id (orphan-page! (:id g) cid "d1")
             q-id    (t2/insert-returning-pk! :model/ExplorationQuery
-                                             {:exploration_thread_id (:id t)
-                                              :card_id               cid
-                                              :database_id           (mt/id)
-                                              :page_id               page-id
-                                              :dimension_id          "d1"
-                                              :dataset_query         (count-metric-query)
-                                              :status                "pending"
-                                              :position              0})]
+                                             {'exploration_thread_id (:id t)
+                                              'card_id               cid
+                                              'database_id           (mt/id)
+                                              'page_id               page-id
+                                              'dimension_id          "d1"
+                                              'dataset_query         (count-metric-query)
+                                              'status                "pending"
+                                              'position              0})]
         ;; an empty used set marks every page orphan; the query must still protect its page
         (#'query-plan/gc-orphan-pages! (:id t) [])
         (is (some? (t2/select-one-pk :model/ExplorationPage 'id page-id)))
@@ -389,16 +389,16 @@
       (let [cid (:id metric)
             a   (first (t2/insert-returning-instances!
                         :model/ExplorationBlock
-                        {:exploration_thread_id (:id t)
-                         :metrics    [{:card_id cid
+                        {'exploration_thread_id (:id t)
+                         'metrics    [{:card_id cid
                                        :dimension_mappings
                                        [{:dimension-id "d1" :table-id (mt/id :venues)
                                          :target ["field" {} (mt/id :venues :price)]}
                                         {:dimension-id "d2" :table-id (mt/id :venues)
                                          :target ["field" {} (mt/id :venues :name)]}]}]
-                         :dimensions [{:dimension-id "d1" :display-name "Price" :effective-type "type/Number"}
+                         'dimensions [{:dimension-id "d1" :display-name "Price" :effective-type "type/Number"}
                                       {:dimension-id "d2" :display-name "Name" :effective-type "type/Text"}]
-                         :position   0}))
+                         'position   0}))
             b   (mk-block! (:id t) cid "d1" "Price" "type/Number")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (doseq [block [a b]]

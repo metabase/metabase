@@ -52,7 +52,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
+          (t2/update! :model/Collection (:id collection) {'name new-collection-name}))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -226,8 +226,8 @@
                    group_id
                    distinct)
          :total  (-> (t2/query
-                      (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                              :from   :core_user}
+                      (merge {'select [[['count ['distinct 'core_user.id]] 'count]]
+                              'from   'core_user}
                              (users/filter-clauses-without-paging clauses)))
                      first
                      :count)
@@ -314,7 +314,7 @@
   [user]
   (let [collection-filter (collection/visible-collection-filter-clause)
         entity-exists? (fn [model & additional-clauses] (t2/exists? model
-                                                                    {:where (into [:and
+                                                                    {'where (into [:and
                                                                                    [:= :archived false]
                                                                                    collection-filter
                                                                                    (mi/exclude-internal-content-hsql model)]
@@ -330,7 +330,7 @@
   [{:keys [id] :as user}]
   (let [ts (or
             (:timestamp (t2/select-one [:model/LoginHistory 'timestamp] 'user_id id
-                                       {:order-by [[:timestamp :asc]]}))
+                                       {'order-by [['timestamp 'asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
@@ -351,7 +351,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
+             (t2/exists? :model/Collection {'where (collection/visible-collection-filter-clause
                                                     :id
                                                     {:include-trash-collection? false
                                                      :include-archived-items :exclude
@@ -587,11 +587,11 @@
 
 (defn- reactivate-user! [existing-user]
   (t2/update! :model/User (u/the-id existing-user)
-              {:is_active     true
-               :is_superuser  false
+              {'is_active     true
+               'is_superuser  false
                ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
-               :sso_source   (case (:sso_source existing-user)
+               'sso_source   (case (:sso_source existing-user)
                                :google (when (sso/google-auth-enabled) :google)
                                :ldap   (when (sso/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
@@ -698,7 +698,7 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (api/check-404 (t2/exists? :model/User 'id id))
-  (t2/update! :model/User id {:type :personal} {:is_active false})
+  (t2/update! :model/User id {:type :personal} {'is_active false})
   (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User 'id id) :user-id api/*current-user-id*})
   {:success true})
 

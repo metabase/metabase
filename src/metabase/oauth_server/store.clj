@@ -167,7 +167,7 @@
 
   (consume-authorization-code [_ code]
     (t2/with-transaction [_conn]
-      (when-let [row (t2/select-one :model/OAuthAuthorizationCode 'code code {:for :update})]
+      (when-let [row (t2/select-one :model/OAuthAuthorizationCode 'code code {'for 'update})]
         (t2/delete! :model/OAuthAuthorizationCode 'code code)
         (db-row->auth-code row)))))
 
@@ -204,8 +204,8 @@
         db-row->refresh-token))
 
   (revoke-token [_ token]
-    (t2/update! :model/OAuthAccessToken {'token token} {:revoked_at :%now})
-    (t2/update! :model/OAuthRefreshToken {'token token} {:revoked_at :%now})
+    (t2/update! :model/OAuthAccessToken {'token token} {'revoked_at :%now})
+    (t2/update! :model/OAuthRefreshToken {'token token} {'revoked_at :%now})
     true))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------

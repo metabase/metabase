@@ -27,10 +27,10 @@
                                           'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update :report_card :set {:archived true} :where [:in :id metric-ids]})
+        (t2/query {'update 'report_card 'set {'archived true} 'where ['in 'id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update :report_card :set {:archived false} :where [:in :id metric-ids]})))
+          (t2/query {'update 'report_card 'set {'archived false} 'where ['in 'id metric-ids]})))
       (thunk))))
 
 (defn- insert-n-metrics!
@@ -39,14 +39,14 @@
   (let [q (count-metric-query :orders)]
     (set (for [_ (range n)]
            (t2/insert-returning-pk! :model/Card
-                                    {:name                   (mt/random-name)
-                                     :type                   :metric
-                                     :creator_id             (mt/user->id :crowberto)
-                                     :database_id            (mt/id)
-                                     :table_id               (mt/id :orders)
-                                     :display                :scalar
-                                     :visualization_settings {}
-                                     :dataset_query          q})))))
+                                    {'name                   (mt/random-name)
+                                     'type                   :metric
+                                     'creator_id             (mt/user->id :crowberto)
+                                     'database_id            (mt/id)
+                                     'table_id               (mt/id :orders)
+                                     'display                :scalar
+                                     'visualization_settings {}
+                                     'dataset_query          q})))))
 
 (deftest target-resolvable?-test
   (testing "target-resolvable? reuses a prebuilt query and breakoutable columns"
@@ -404,7 +404,7 @@
 (defn- wipe-dimensions!
   "Simulate a metric row whose dimensions were never synced, bypassing Card transforms/hooks."
   [metric-id]
-  (t2/update! (t2/table-name :model/Card) metric-id {:dimensions nil :dimension_mappings nil}))
+  (t2/update! (t2/table-name :model/Card) metric-id {'dimensions nil 'dimension_mappings nil}))
 
 (deftest exploration-data-heals-missing-dimensions-test
   (testing "a metric on an MBQL model with NULL dimensions is synced and persisted on read"
@@ -457,7 +457,7 @@
                                         :database_id   (mt/id)
                                         :dataset_query (mt/native-query
                                                         {:query "SELECT ID, NAME FROM VENUES"})}]
-        (t2/update! (t2/table-name :model/Card) (:id model) {:result_metadata nil})
+        (t2/update! (t2/table-name :model/Card) (:id model) {'result_metadata nil})
         (mt/with-temp [:model/Card metric {:name          "Metric on metadata-less model"
                                            :type          :metric
                                            :database_id   (mt/id)

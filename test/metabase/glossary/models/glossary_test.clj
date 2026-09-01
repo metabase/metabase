@@ -40,6 +40,6 @@
               (is (= "Second" (get-in creators-by-id [(:id glossary2) :first_name]))))))
         (testing "Glossary created without creator_id defaults to internal user"
           (let [glossary-no-creator (t2/insert-returning-instance! :model/Glossary
-                                                                   {:term       "SQL"
-                                                                    :definition "Structured Query Language"})]
+                                                                   {'term       "SQL"
+                                                                    'definition "Structured Query Language"})]
             (is (= config/internal-mb-user-id (:creator_id glossary-no-creator)))))))))

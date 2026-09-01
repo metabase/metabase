@@ -40,7 +40,7 @@
                                   (t2/select :model/ModerationReview
                                              'moderated_item_type ['in item-types]
                                              'moderated_item_id ['in item-ids]
-                                             {:order-by [[:id :desc]]})))]
+                                             {'order-by [['id 'desc]]})))]
       (for [item items]
         (if (nil? item)
           nil
@@ -71,7 +71,7 @@
                                             'moderated_item_type ['in item-types]
                                             'moderated_item_id ['in item-ids]
                                             'most_recent true
-                                            {:order-by [[:id :desc]]})
+                                            {'order-by [['id 'desc]]})
                                  (group-by (juxt :moderated_item_type :moderated_item_id))
                                  (m/map-vals #(:status (first %)))))]
       (for [item items]

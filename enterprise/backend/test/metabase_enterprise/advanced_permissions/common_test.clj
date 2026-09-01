@@ -705,7 +705,7 @@
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
           (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
-        (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {:values [10 20 30 40]})
+        (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {'values [10 20 30 40]})
         (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, 'field_id (mt/id :venues :price))))
         (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
@@ -841,7 +841,7 @@
       (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
         (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
     (testing "A non-admin with blocked data access can discard field values if they have DB details permissions"
-      (t2/insert! :model/FieldValues {:field_id field-id, :values [1 2 3 4]})
+      (t2/insert! :model/FieldValues {'field_id field-id, 'values [1 2 3 4]})
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                    :create-queries :no
                                                    :details        :yes}}
@@ -861,7 +861,7 @@
         (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
       (testing "A non-admin with blocked data access can rescan field values if they have DB details permissions"
-        (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {:values [10 20 30 40]})
+        (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {'values [10 20 30 40]})
         (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, 'field_id (mt/id :venues :price))))
         (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                        :create-queries :no

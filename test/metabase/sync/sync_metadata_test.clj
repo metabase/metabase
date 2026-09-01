@@ -53,7 +53,7 @@
     (testing "information_schema lacks generation_expression, so describe-fields throws, GHY-3943),"
       (testing "the initial sync status is marked aborted instead of falsely reporting \"complete\""
         (mt/with-temp-copy-of-db
-          (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
+          (t2/update! :model/Database (mt/id) {'initial_sync_status "incomplete"})
           (with-redefs [fetch-metadata/fields-metadata
                         (fn [& _]
                           (throw (doto (java.sql.SQLSyntaxErrorException.

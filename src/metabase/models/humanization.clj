@@ -48,7 +48,7 @@
               (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
                          (name model) internal-name display-name new-strategy-display-name)
               (t2/update! model id
-                          {:display_name new-strategy-display-name}))))
+                          {'display_name new-strategy-display-name}))))
         (t2/reducible-select [model :id :name :display_name])))
 
 (mu/defn- re-humanize-table-and-field-names!

@@ -64,9 +64,9 @@
   manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
   [task-id]
   (t2/update! :model/RemoteSyncTask task-id
-              {:cancelled true
-               :ended_at (mi/now)
-               :error_message "Task cancelled"}))
+              {'cancelled true
+               'ended_at (mi/now)
+               'error_message "Task cancelled"}))
 
 (defn update-progress!
   "Updates the progress of a sync task.
@@ -81,8 +81,8 @@
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
   (t2/update! :model/RemoteSyncTask task-id
-              {:progress progress
-               :last_progress_report_at (mi/now)}))
+              {'progress progress
+               'last_progress_report_at (mi/now)}))
 
 (def ^:private default-progress-throttle-ms
   "Minimum ms between throttled (non-boundary) progress writes."
@@ -125,7 +125,7 @@
   Returns the number of rows updated (should be 1 if successful)."
   [task-id version]
   (t2/update! :model/RemoteSyncTask task-id
-              {:version version}))
+              {'version version}))
 
 (defn complete-sync-task!
   "Marks a sync task as completed.
@@ -138,9 +138,9 @@
   ([task-id] (complete-sync-task! task-id nil))
   ([task-id outcome]
    (t2/update! :model/RemoteSyncTask task-id
-               {:progress 1.0
-                :ended_at (mi/now)
-                :outcome  outcome})))
+               {'progress 1.0
+                'ended_at (mi/now)
+                'outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.
@@ -150,8 +150,8 @@
   Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
   (t2/update! :model/RemoteSyncTask task-id
-              {:ended_at (mi/now)
-               :error_message error-msg}))
+              {'ended_at (mi/now)
+               'error_message error-msg}))
 
 (defn current-task
   "Gets the current active sync task.
@@ -160,15 +160,15 @@
   within the time limit), or nil if no active task exists."
   []
   (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]
-                          [:= :ended_at nil]
-                          [:<
+                 {'where ['and
+                          ['<> 'started_at nil]
+                          ['= 'ended_at nil]
+                          ['<
                            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
-                           :last_progress_report_at]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+                           'last_progress_report_at]]
+                  'limit 1
+                  'order-by [['started_at 'desc]
+                             ['id 'desc]]}))
 
 (defn supersede-stale-tasks!
   "Marks any genuinely stale task rows as cancelled and terminated.
@@ -187,14 +187,14 @@
   []
   (let [cutoff (t/minus (t/offset-date-time)
                         (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
-    (t2/query {:update (t2/table-name :model/RemoteSyncTask)
-               :set    {:cancelled     true
-                        :ended_at      (mi/now)
-                        :error_message "Superseded after staleness timeout"}
-               :where  [:and
-                        [:<> :started_at nil]
-                        [:= :ended_at nil]
-                        [:< :last_progress_report_at cutoff]]})))
+    (t2/query {'update (t2/table-name :model/RemoteSyncTask)
+               'set    {'cancelled     true
+                        'ended_at      (mi/now)
+                        'error_message "Superseded after staleness timeout"}
+               'where  ['and
+                        ['<> 'started_at nil]
+                        ['= 'ended_at nil]
+                        ['< 'last_progress_report_at cutoff]]})))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
@@ -202,11 +202,11 @@
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
   []
   (t2/select-one :model/RemoteSyncTask
-                 {:where [:and
-                          [:<> :started_at nil]]
-                  :limit 1
-                  :order-by [[:started_at :desc]
-                             [:id :desc]]}))
+                 {'where ['and
+                          ['<> 'started_at nil]]
+                  'limit 1
+                  'order-by [['started_at 'desc]
+                             ['id 'desc]]}))
 
 (defn last-version
   "Gets the version that any changes are built off of.
@@ -215,14 +215,14 @@
   tasks exist."
   []
   (:version (t2/select-one :model/RemoteSyncTask
-                           {:where [:and
-                                    [:<> nil :ended_at]
-                                    [:= false :cancelled]
-                                    [:= nil :error_message]
-                                    [:<> nil :version]]
-                            :limit 1
-                            :order-by [[:started_at :desc]
-                                       [:id :desc]]})))
+                           {'where ['and
+                                    ['<> nil 'ended_at]
+                                    ['= false 'cancelled]
+                                    ['= nil 'error_message]
+                                    ['<> nil 'version]]
+                            'limit 1
+                            'order-by [['started_at 'desc]
+                                       ['id 'desc]]})))
 
 (defn running?
   "Checks if a task is currently running.
@@ -296,8 +296,8 @@
   Returns the number of rows updated (should be 1 if successful)."
   [task-id conflicts]
   (t2/update! :model/RemoteSyncTask task-id
-              {:ended_at (mi/now)
-               :conflicts conflicts}))
+              {'ended_at (mi/now)
+               'conflicts conflicts}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 

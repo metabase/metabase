@@ -406,7 +406,7 @@
                                                  :type     "query"
                                                  :query    {:source-table (mt/id :orders)}})]
         ;; simulate a row created before the column existed
-        (t2/update! (t2/table-name :model/Transform) id {:table_dependencies nil})
+        (t2/update! (t2/table-name :model/Transform) id {'table_dependencies nil})
         (mt/with-metadata-provider (mt/id)
           (let [all (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
                 {:keys [uncached]} (ordering/transform-ordering #{id} all)]

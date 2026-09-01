@@ -216,8 +216,8 @@
                           "document"   (save-to-document! args))]
               (when-let [conversation-id (shared/current-conversation-id)]
                 (t2/update! (t2/table-name :model/Card) (:id (:card saved))
-                            {:metabot_conversation_id conversation-id
-                             :metabot_chart_id        chart_id}))
+                            {'metabot_conversation_id conversation-id
+                             'metabot_chart_id        chart_id}))
               saved))
           _ (events/publish-event! :event/card-create
                                    {:object card :user-id api/*current-user-id*})

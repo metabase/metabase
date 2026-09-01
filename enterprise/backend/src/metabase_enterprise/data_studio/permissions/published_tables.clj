@@ -16,9 +16,9 @@
   [user-id perm-type table-id]
   (when (and (= perm-type :perms/create-queries)
              (t2/exists? :model/Table
-                         {:where [:and
-                                  [:= :id table-id]
-                                  [:= :is_published true]
+                         {'where ['and
+                                  ['= 'id table-id]
+                                  ['= 'is_published true]
                                   (collection/visible-collection-filter-clause
                                    :collection_id {} {:current-user-id user-id
                                                       :is-superuser?   (perms/is-superuser? user-id)})]}))
@@ -29,8 +29,8 @@
   :feature :library
   []
   (t2/exists? :model/Table
-              {:where [:and
-                       [:= :is_published true]
+              {'where ['and
+                       ['= 'is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
 
 (defenterprise user-has-published-table-permission-for-database?
@@ -38,9 +38,9 @@
   :feature :library
   [database-id]
   (t2/exists? :model/Table
-              {:where [:and
-                       [:= :db_id database-id]
-                       [:= :is_published true]
+              {'where ['and
+                       ['= 'db_id database-id]
+                       ['= 'is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
 
 (defenterprise can-access-via-collection?
@@ -55,11 +55,10 @@
   :feature :library
   [table-id-column {:keys [user-id is-superuser?]}]
   [:in table-id-column
-   ^:allow-subquery
-   {:select [:id]
-    :from   [:metabase_table]
-    :where  [:and
-             [:= :is_published true]
+   {'select ['id]
+    'from   ['metabase_table]
+    'where  ['and
+             ['= 'is_published true]
              (collection/visible-collection-filter-clause
               :collection_id
               {}
@@ -76,12 +75,11 @@
   :feature :library
   [{:keys [user-id is-superuser?]} perm-types active-only?]
   (when (contains? (set perm-types) :perms/create-queries)
-    ^:allow-subquery
-    {:select [[:mt.id :id]
-              [(h2x/literal :perms/create-queries) :perm_type]
-              [(h2x/literal :query-builder) :perm_value]]
-     :from   [[:metabase_table :mt]]
-     :where  (cond-> [:and
+    {'select [['mt.id 'id]
+              [(h2x/literal :perms/create-queries) 'perm_type]
+              [(h2x/literal :query-builder) 'perm_value]]
+     'from   [['metabase_table 'mt]]
+     'where  (cond-> [:and
                       [:= :mt.is_published true]
                       (collection/visible-collection-filter-clause
                        :mt.collection_id

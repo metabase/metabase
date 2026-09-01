@@ -620,7 +620,7 @@
                       (mt/user-http-request :crowberto :get 200
                                             (str "metabot/conversations/" convo-id))))))
             (testing "archived cards drop out of saved_entities"
-              (t2/update! :model/Card (:id created) {:archived true})
+              (t2/update! :model/Card (:id created) {'archived true})
               (is (= []
                      (:saved_entities
                       (mt/user-http-request :crowberto :get 200

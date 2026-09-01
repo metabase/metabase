@@ -19,8 +19,8 @@
   (let [existing (t2/select-one :model/FieldValues 'field_id field-id 'type :full)]
     (try
       (if existing
-        (t2/update! :model/FieldValues (:id existing) {:values values, :last_used_at :%now})
-        (t2/insert! :model/FieldValues {:field_id field-id, :type :full, :values values, :last_used_at :%now}))
+        (t2/update! :model/FieldValues (:id existing) {'values values, 'last_used_at :%now})
+        (t2/insert! :model/FieldValues {'field_id field-id, 'type :full, 'values values, 'last_used_at :%now}))
       (thunk)
       (finally
         (t2/delete! :model/FieldValues 'field_id field-id 'type :advanced)

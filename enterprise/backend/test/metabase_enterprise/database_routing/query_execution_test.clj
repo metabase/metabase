@@ -15,7 +15,7 @@
    [toucan2.core :as t2]))
 
 (defn- latest-query-execution []
-  (t2/select-one :model/QueryExecution {:order-by [[:id :desc]]}))
+  (t2/select-one :model/QueryExecution {'order-by [['id 'desc]]}))
 
 (deftest is-db-routed-true-when-routed-to-destination-test
   (mt/with-premium-features #{:database-routing}

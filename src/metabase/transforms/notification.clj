@@ -20,12 +20,12 @@
   "Cron job runs that failed or timed out in `[start, end)`, oldest first."
   [start end]
   (t2/select [:model/TransformJobRun 'job_id 'start_time 'message]
-             {:where    [:and
-                         [:= :run_method "cron"]
-                         [:in :status ["failed" "timeout"]]
-                         [:>= :start_time start]
-                         [:< :start_time end]]
-              :order-by [[:start_time :asc]]}))
+             {'where    ['and
+                         ['= 'run_method "cron"]
+                         ['in 'status ["failed" "timeout"]]
+                         ['>= 'start_time start]
+                         ['< 'start_time end]]
+              'order-by [['start_time 'asc]]}))
 
 (defn failing-jobs
   "Summarize failed/timed-out cron job runs in `[start, end)`, one entry per job."

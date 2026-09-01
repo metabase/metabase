@@ -175,7 +175,7 @@
   [db-id user-info permission-mapping table-id-field]
   (let [{:keys [clause with]} (mi/visible-filter-clause :model/Table table-id-field user-info permission-mapping)]
     (t2/select-pks-set [:model/Table]
-                       (cond-> {:where [:and [:= :db_id db-id] clause]}
+                       (cond-> {'where ['and ['= 'db_id db-id] clause]}
                          with (assoc :with with)))))
 
 (defn- superuser-info
@@ -486,30 +486,30 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :transform}))))
+             (t2/update! :model/Table table-id {'data_source :transform}))))
       (testing "to nil"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source nil}))))))
+             (t2/update! :model/Table table-id {'data_source nil}))))))
   (testing "Cannot change data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
       (testing "from another value"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot set data_source to metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+             (t2/update! :model/Table table-id {'data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
-        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (some? (t2/update! :model/Table table-id {'data_source :ingested})))
         (is (= :ingested (t2/select-one-fn :data_source :model/Table 'id table-id))))
       (testing "can also change it to nil"
-        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (some? (t2/update! :model/Table table-id {'data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table 'id table-id))))))
   (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
     (testing "can set data_source to metabase-transform on an existing synced table"
       (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
         (binding [mi/*deserializing?* true]
-          (is (some? (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+          (is (some? (t2/update! :model/Table table-id {'data_source :metabase-transform}))))
         (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table 'id table-id)))))
     (testing "reverse direction stays blocked even during deserialization"
       (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
@@ -517,7 +517,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Cannot change data_source from metabase-transform"
-               (t2/update! :model/Table table-id {:data_source nil}))))))))
+               (t2/update! :model/Table table-id {'data_source nil}))))))))
 
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"
@@ -745,12 +745,12 @@
     (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
       ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
       (mt/with-temp [:model/Database {db-id :id} {}]
-        (t2/query-one {:insert-into :metabase_table
-                       :values      [{:name       "raw-insert-probe"
-                                      :db_id      db-id
-                                      :active     true
-                                      :created_at :%now
-                                      :updated_at :%now}]})
+        (t2/query-one {'insert-into 'metabase_table
+                       'values      [{'name       "raw-insert-probe"
+                                      'db_id      db-id
+                                      'active     true
+                                      'created_at '%now
+                                      'updated_at '%now}]})
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table 'data_layer 'data_authority]
                                'name "raw-insert-probe" 'db_id db-id)))))))

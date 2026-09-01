@@ -171,7 +171,7 @@
                         (swap! extract-calls inc)
                         ;; simulate extract by inserting a sample row
                         (t2/insert! :model/Database
-                                    {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
+                                    {'name "Sample Database" 'engine :h2 'details {} 'is_sample true}))]
           (is (= :ok
                  (advanced-config.file/initialize!
                   {:version 1
@@ -283,7 +283,7 @@
         (deref sync-future 5000 :timeout)
         (is (= 1 (t2/count :model/Database 'name test-db-name)))
         (let [db (t2/select-one :model/Database 'name test-db-name)
-              _hide_tables-> (t2/update! :model/Table 'db_id (u/the-id db) {:visibility_type :hidden})
+              _hide_tables-> (t2/update! :model/Table 'db_id (u/the-id db) {'visibility_type :hidden})
               vis-types (t2/select-fn-vec :visibility_type :model/Table 'db_id (u/the-id db))]
           ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
           ;; and make sure they are still hidden:

@@ -332,9 +332,9 @@
                    :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
       (let [dangling {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]}}}]
         ;; Inject the dangling ref via raw SQL so model hooks don't rewrite it on write.
-        (t2/query-one {:update (t2/table-name :model/DashboardCard)
-                       :set    {:visualization_settings (json/encode dangling)}
-                       :where  [:= :id (:id dc)]})
+        (t2/query-one {'update (t2/table-name :model/DashboardCard)
+                       'set    {'visualization_settings (json/encode dangling)}
+                       'where  ['= 'id (:id dc)]})
         (testing "the read does not throw and the unresolved ref is left untouched"
           (let [loaded (t2/select-one :model/DashboardCard 'id (:id dc))]
             (is (= [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]
@@ -347,9 +347,9 @@
                    :model/Card          src  {}
                    :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
       (let [viz {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (:entity_id src))}]}}}]
-        (t2/query-one {:update (t2/table-name :model/DashboardCard)
-                       :set    {:visualization_settings (json/encode viz)}
-                       :where  [:= :id (:id dc)]})
+        (t2/query-one {'update (t2/table-name :model/DashboardCard)
+                       'set    {'visualization_settings (json/encode viz)}
+                       'where  ['= 'id (:id dc)]})
         (let [loaded (t2/select-one :model/DashboardCard 'id (:id dc))]
           (is (= [{:sourceId (str "card:" (:id src))}]
                  (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1]))))))))
@@ -361,26 +361,26 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"must be an integer"
              (t2/insert! :model/DashboardCard
-                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                          :visualization_settings
+                         {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                          'visualization_settings
                           {:virtual_card {:display "link"}
                            :link {:entity {:id {:raw "x"} :model "card"}}}}))))
       (testing "the dashboard is still readable afterwards"
         (is (=? {:id dash-id} (mt/user-http-request :crowberto :get 200 (str "dashboard/" dash-id)))))
       (testing "a map id is rejected on update too, not just insert"
         (let [dc (t2/insert-returning-instance! :model/DashboardCard
-                                                {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                                                 :visualization_settings {}})]
+                                                {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                                                 'visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
                (t2/update! :model/DashboardCard (:id dc)
-                           {:visualization_settings
+                           {'visualization_settings
                             {:link {:entity {:id {:raw "x"} :model "card"}}}})))))
       (testing "a legitimate integer id still works"
         (mt/with-temp [:model/Card {card-id :id} {}]
           (is (some? (t2/insert! :model/DashboardCard
-                                 {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                                  :visualization_settings
+                                 {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                                  'visualization_settings
                                   {:link {:entity {:id card-id :model "card"}}}}))))))))
 
 (deftest click-behavior-target-id-validated-on-write-test
@@ -390,32 +390,32 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"must be an integer"
              (t2/insert! :model/DashboardCard
-                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                          :visualization_settings
+                         {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                          'visualization_settings
                           {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}}))))
       (testing "a map target id in column settings is rejected on insert"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"must be an integer"
              (t2/insert! :model/DashboardCard
-                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                          :visualization_settings
+                         {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                          'visualization_settings
                           {:column_settings
                            {"[\"name\",\"abc\"]"
                             {:click_behavior {:type "link" :linkType "dashboard" :targetId {:raw "x"}}}}}}))))
       (testing "a map target id is rejected on update too, not just insert"
         (let [dc (t2/insert-returning-instance! :model/DashboardCard
-                                                {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                                                 :visualization_settings {}})]
+                                                {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                                                 'visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
                (t2/update! :model/DashboardCard (:id dc)
-                           {:visualization_settings
+                           {'visualization_settings
                             {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}})))))
       (testing "a legitimate integer target id still works"
         (mt/with-temp [:model/Card {card-id :id} {}]
           (is (some? (t2/insert! :model/DashboardCard
-                                 {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
-                                  :visualization_settings
+                                 {'dashboard_id dash-id 'row 0 'col 0 'size_x 4 'size_y 4
+                                  'visualization_settings
                                   {:click_behavior {:type "link" :linkType "question" :targetId card-id}
                                    :column_settings
                                    {"[\"name\",\"abc\"]"

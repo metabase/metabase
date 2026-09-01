@@ -323,7 +323,7 @@
 (deftest snippet-event-when-library-not-synced-no-entry-test
   (testing "snippet events don't create entries when Library is not synced"
     (when-let [library (collection/library-collection)]
-      (t2/update! :model/Collection (:id library) {:is_remote_synced false}))
+      (t2/update! :model/Collection (:id library) {'is_remote_synced false}))
     (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                    :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                       :content "SELECT 1"
@@ -833,7 +833,7 @@
                                         :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
       ;; Trash the doc
-      (t2/update! :model/Document (:id doc) {:archived true})
+      (t2/update! :model/Document (:id doc) {'archived true})
       (events/publish-event! :event/document-update
                              {:object (assoc doc :archived true)
                               :user-id (mt/user->id :rasta)})
@@ -916,13 +916,13 @@
                                        :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
       ;; First, create an entry with status "synced" directly
-      (t2/insert! :model/RemoteSyncObject {:model_type "Table"
-                                           :model_id (:id table)
-                                           :model_name "Test Table"
-                                           :model_table_id (:id table)
-                                           :model_table_name "Test Table"
-                                           :status "synced"
-                                           :status_changed_at (t/offset-date-time)})
+      (t2/insert! :model/RemoteSyncObject {'model_type "Table"
+                                           'model_id (:id table)
+                                           'model_name "Test Table"
+                                           'model_table_id (:id table)
+                                           'model_table_name "Test Table"
+                                           'status "synced"
+                                           'status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject 'model_type "Table" 'model_id (:id table))]
         (is (= "synced" (:status initial-entry)))
         ;; Now unpublish the table
@@ -941,13 +941,13 @@
                                        :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
       ;; First, create an entry with status "synced" directly
-      (t2/insert! :model/RemoteSyncObject {:model_type "Table"
-                                           :model_id (:id table)
-                                           :model_name "Test Table"
-                                           :model_table_id (:id table)
-                                           :model_table_name "Test Table"
-                                           :status "synced"
-                                           :status_changed_at (t/offset-date-time)})
+      (t2/insert! :model/RemoteSyncObject {'model_type "Table"
+                                           'model_id (:id table)
+                                           'model_name "Test Table"
+                                           'model_table_id (:id table)
+                                           'model_table_name "Test Table"
+                                           'status "synced"
+                                           'status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject 'model_type "Table" 'model_id (:id table))]
         (is (= "synced" (:status initial-entry)))
         ;; Now move to normal collection
@@ -1091,13 +1091,13 @@
                                                         :filter [:> [:field 1 nil] 0]}}]
       (t2/delete! :model/RemoteSyncObject)
       ;; First create a synced entry
-      (t2/insert! :model/RemoteSyncObject {:model_type "Segment"
-                                           :model_id (:id segment)
-                                           :model_name "Test Segment"
-                                           :model_table_id (:id table)
-                                           :model_table_name "Test Table"
-                                           :status "synced"
-                                           :status_changed_at (t/offset-date-time)})
+      (t2/insert! :model/RemoteSyncObject {'model_type "Segment"
+                                           'model_id (:id segment)
+                                           'model_name "Test Segment"
+                                           'model_table_id (:id table)
+                                           'model_table_name "Test Table"
+                                           'status "synced"
+                                           'status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject 'model_type "Segment" 'model_id (:id segment))]
         (is (= "synced" (:status initial-entry)))
         ;; Now "unpublish" the table by simulating an update where the segment's table is no longer in sync scope
@@ -1158,7 +1158,7 @@
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
-      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (t2/insert! :model/FieldUserSettings {'field_id (:id field) 'description "curated"})
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
@@ -1213,13 +1213,13 @@
       (try
         (t2/delete! :model/RemoteSyncObject)
         (t2/insert! :model/RemoteSyncObject
-                    [{:model_type "Collection" :model_id coll-id :model_name "Race-Sync"
-                      :status "synced" :status_changed_at (t/offset-date-time)
-                      :file_path "collections/rs/rs.yaml"}
-                     {:model_type "Card" :model_id (:id card) :model_name "Race Card"
-                      :model_collection_id coll-id :status "synced"
-                      :status_changed_at (t/offset-date-time)
-                      :file_path "collections/rs/cards/race.yaml"}])
+                    [{'model_type "Collection" 'model_id coll-id 'model_name "Race-Sync"
+                      'status "synced" 'status_changed_at (t/offset-date-time)
+                      'file_path "collections/rs/rs.yaml"}
+                     {'model_type "Card" 'model_id (:id card) 'model_name "Race Card"
+                      'model_collection_id coll-id 'status "synced"
+                      'status_changed_at (t/offset-date-time)
+                      'file_path "collections/rs/cards/race.yaml"}])
         (f coll-id card)
         (finally
           (t2/delete! :model/RemoteSyncObject))))))
@@ -1286,7 +1286,7 @@
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T" :is_published false :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
-      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (t2/insert! :model/FieldUserSettings {'field_id (:id field) 'description "curated"})
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (is (empty? (t2/select :model/RemoteSyncObject))))))
@@ -1296,7 +1296,7 @@
     (mt/with-temp [:model/Collection coll  {:name "Normal" :type "library-data"}
                    :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
-      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (t2/insert! :model/FieldUserSettings {'field_id (:id field) 'description "curated"})
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (is (empty? (t2/select :model/RemoteSyncObject))))))
@@ -1307,15 +1307,15 @@
                    :model/Collection normal {:name "Normal" :type "library-data"}
                    :model/Table      table  {:name "T" :is_published true :collection_id (:id synced)}
                    :model/Field      field  {:name "f" :table_id (:id table) :base_type :type/Text}]
-      (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
+      (t2/insert! :model/FieldUserSettings {'field_id (:id field) 'description "curated"})
       (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type        "FieldUserSettings"
-                                           :model_id          (:id field)
-                                           :model_name        "f"
-                                           :model_table_id    (:id table)
-                                           :status            "synced"
-                                           :status_changed_at (t/offset-date-time)})
-      (t2/update! :model/Table (:id table) {:collection_id (:id normal)})
+      (t2/insert! :model/RemoteSyncObject {'model_type        "FieldUserSettings"
+                                           'model_id          (:id field)
+                                           'model_name        "f"
+                                           'model_table_id    (:id table)
+                                           'status            "synced"
+                                           'status_changed_at (t/offset-date-time)})
+      (t2/update! :model/Table (:id table) {'collection_id (:id normal)})
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)) "still only one RSO — no Field RSO added")

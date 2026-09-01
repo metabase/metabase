@@ -121,43 +121,40 @@
   New rows participate via `metabot_message.user_id`; legacy rows created before
   message authors were stamped fall back to the conversation originator."
   [user-id]
-  (let [participation-exists [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                                        :from   [[:metabot_message :participation_message]]
-                                                        :where  [:and
-                                                                 [:= :participation_message.conversation_id :c.id]
-                                                                 [:= :participation_message.user_id user-id]]}]]
+  (let [participation-exists [:exists {'select [[['inline 1]]]
+                                       'from   [['metabot_message 'participation_message]]
+                                       'where  ['and
+                                                ['= 'participation_message.conversation_id 'c.id]
+                                                ['= 'participation_message.user_id user-id]]}]]
     [:or
      [:= :c.user_id user-id]
      participation-exists]))
 
 (defn- last-live-message-profile-id-subquery
   []
-  ^:allow-subquery
-  {:select   [:last_message.profile_id]
-   :from     [[:metabot_message :last_message]]
-   :where    [:and
-              [:= :last_message.conversation_id :c.id]
-              [:= :last_message.deleted_at nil]]
-   :order-by [[:last_message.created_at :desc] [:last_message.id :desc]]
-   :limit    1})
+  {'select   ['last_message.profile_id]
+   'from     [['metabot_message 'last_message]]
+   'where    ['and
+              ['= 'last_message.conversation_id 'c.id]
+              ['= 'last_message.deleted_at nil]]
+   'order-by [['last_message.created_at 'desc] ['last_message.id 'desc]]
+   'limit    1})
 
 (defn- live-message-count-subquery
   []
-  ^:allow-subquery
-  {:select [[[:count :*]]]
-   :from   [[:metabot_message :counted_message]]
-   :where  [:and
-            [:= :counted_message.conversation_id :c.id]
-            [:= :counted_message.deleted_at nil]]})
+  {'select [[['count '*]]]
+   'from   [['metabot_message 'counted_message]]
+   'where  ['and
+            ['= 'counted_message.conversation_id 'c.id]
+            ['= 'counted_message.deleted_at nil]]})
 
 (defn- last-live-message-at-subquery
   []
-  ^:allow-subquery
-  {:select [[[:max :recent_message.created_at]]]
-   :from   [[:metabot_message :recent_message]]
-   :where  [:and
-            [:= :recent_message.conversation_id :c.id]
-            [:= :recent_message.deleted_at nil]]})
+  {'select [[['max 'recent_message.created_at]]]
+   'from   [['metabot_message 'recent_message]]
+   'where  ['and
+            ['= 'recent_message.conversation_id 'c.id]
+            ['= 'recent_message.deleted_at nil]]})
 
 (defn- activity-at-expression
   []
@@ -183,24 +180,24 @@
         limit   (or (request/limit) default-limit)
         offset  (or (request/offset) default-offset)
         where   (list-where-clause user-id profile_id)
-        total   (:count (t2/query-one {:select [[[:count :*] :count]]
-                                       :from   [[:metabot_conversation :c]]
-                                       :where  where}))
+        total   (:count (t2/query-one {'select [[['count '*] 'count]]
+                                       'from   [['metabot_conversation 'c]]
+                                       'where  where}))
         ;; Aggregates are per-row correlated subqueries so pagination stays on the outer
         ;; `metabot_conversation` scan rather than grouping every message the user owns.
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
         rows    (t2/select :model/MetabotConversation
-                           {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
-                                       [(live-message-count-subquery) :message_count]
-                                       [(last-live-message-at-subquery) :last_message_at]
-                                       [(last-live-message-profile-id-subquery) :profile_id]]
-                            :from     [[:metabot_conversation :c]]
-                            :where    where
-                            :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
-                            :limit    limit
-                            :offset   offset})]
+                           {'select   ['c.id 'c.created_at 'c.title 'c.user_id 'c.forked_from_conversation_id
+                                       [(live-message-count-subquery) 'message_count]
+                                       [(last-live-message-at-subquery) 'last_message_at]
+                                       [(last-live-message-profile-id-subquery) 'profile_id]]
+                            'from     [['metabot_conversation 'c]]
+                            'where    where
+                            'order-by [[(activity-at-expression) 'desc] ['c.id 'asc]]
+                            'limit    limit
+                            'offset   offset})]
     {:data   (mapv #(-> %
                         (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
                                       :forked_from_conversation_id])
@@ -285,8 +282,8 @@
                             {:id api/*current-user-id*}
                             :delay-event)
                     (t2/update! (t2/table-name :model/Card) (:id <>)
-                                {:metabot_conversation_id id
-                                 :metabot_chart_id        chart_id})))]
+                                {'metabot_conversation_id id
+                                 'metabot_chart_id        chart_id})))]
     (events/publish-event! :event/card-create
                            {:object created :user-id api/*current-user-id*})
     (assoc created

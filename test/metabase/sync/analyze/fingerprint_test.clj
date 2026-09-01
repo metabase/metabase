@@ -47,88 +47,88 @@
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
                 "`*fingerprint-version->types-that-should-be-re-fingerprinted*`")
-    (is (= {:where
-            [:and
-             [:= :active true]
-             [:or
-              [:not (app-db/isa :semantic_type :type/PK)]
-              [:= :semantic_type nil]]
-             [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not-in :base_type skip-fingerprint-base-types]
-             [:or
-              [:and
-               [:< :fingerprint_version 1]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
+    (is (= {'where
+            ['and
+             ['= 'active true]
+             ['or
+              ['not (app-db/isa :semantic_type :type/PK)]
+              ['= 'semantic_type nil]]
+             ['not-in 'visibility_type ["retired" "sensitive"]]
+             ['not-in 'base_type skip-fingerprint-base-types]
+             ['or
+              ['and
+               ['< 'fingerprint_version 1]
+               ['in 'base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
            (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/URL}}]
              (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-2
-  (is (= {:where
-          [:and
-           [:= :active true]
-           [:or
-            [:not (app-db/isa :semantic_type :type/PK)]
-            [:= :semantic_type nil]]
-           [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not-in :base_type skip-fingerprint-base-types]
-           [:or
-            [:and
-             [:< :fingerprint_version 2]
-             [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
+  (is (= {'where
+          ['and
+           ['= 'active true]
+           ['or
+            ['not (app-db/isa :semantic_type :type/PK)]
+            ['= 'semantic_type nil]]
+           ['not-in 'visibility_type ["retired" "sensitive"]]
+           ['not-in 'base_type skip-fingerprint-base-types]
+           ['or
+            ['and
+             ['< 'fingerprint_version 2]
+             ['in 'base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
                                "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
-            [:and
-             [:< :fingerprint_version 1]
-             [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
+            ['and
+             ['< 'fingerprint_version 1]
+             ['in 'base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
          (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/ImageURL :type/AvatarURL}
                                                                                    2 #{:type/Float}}]
            (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-3
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
-    (is (= {:where
-            [:and
-             [:= :active true]
-             [:or
-              [:not (app-db/isa :semantic_type :type/PK)]
-              [:= :semantic_type nil]]
-             [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not-in :base_type skip-fingerprint-base-types]
-             [:or
-              [:and
-               [:< :fingerprint_version 2]
-               [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
+    (is (= {'where
+            ['and
+             ['= 'active true]
+             ['or
+              ['not (app-db/isa :semantic_type :type/PK)]
+              ['= 'semantic_type nil]]
+             ['not-in 'visibility_type ["retired" "sensitive"]]
+             ['not-in 'base_type skip-fingerprint-base-types]
+             ['or
+              ['and
+               ['< 'fingerprint_version 2]
+               ['in 'base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
                                  "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
               ;; no type/Float stuff should be included for 1
-              [:and
-               [:< :fingerprint_version 1]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
+              ['and
+               ['< 'fingerprint_version 1]
+               ['in 'base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
            (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/Float :type/URL}
                                                                                      2 #{:type/Float}}]
              (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-4
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
-    (is (= {:where
-            [:and
-             [:= :active true]
-             [:or
-              [:not (app-db/isa :semantic_type :type/PK)]
-              [:= :semantic_type nil]]
-             [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not-in :base_type skip-fingerprint-base-types]
-             [:or
-              [:and
-               [:< :fingerprint_version 4]
-               [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
+    (is (= {'where
+            ['and
+             ['= 'active true]
+             ['or
+              ['not (app-db/isa :semantic_type :type/PK)]
+              ['= 'semantic_type nil]]
+             ['not-in 'visibility_type ["retired" "sensitive"]]
+             ['not-in 'base_type skip-fingerprint-base-types]
+             ['or
+              ['and
+               ['< 'fingerprint_version 4]
+               ['in 'base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
                                  "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
-              [:and
-               [:< :fingerprint_version 3]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]
+              ['and
+               ['< 'fingerprint_version 3]
+               ['in 'base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]
               ;; version 2 can be eliminated completely since everything relevant there is included in 4
               ;; The only things that should go in 1 should be `:type/City` since `:type/Coordinate` is included in 4
-              [:and
-               [:< :fingerprint_version 1]
-               [:in :base_type #{"type/City"}]]]]}
+              ['and
+               ['< 'fingerprint_version 1]
+               ['in 'base_type #{"type/City"}]]]]}
            (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/Coordinate :type/City}
                                                                                      2 #{:type/Coordinate}
                                                                                      3 #{:type/URL}
@@ -137,13 +137,13 @@
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-5
   (testing "when refingerprinting doesn't check for versions"
-    (is (= {:where [:and
-                    [:= :active true]
-                    [:or
-                     [:not (app-db/isa :semantic_type :type/PK)]
-                     [:= :semantic_type nil]]
-                    [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not-in :base_type skip-fingerprint-base-types]]}
+    (is (= {'where ['and
+                    ['= 'active true]
+                    ['or
+                     ['not (app-db/isa :semantic_type :type/PK)]
+                     ['= 'semantic_type nil]]
+                    ['not-in 'visibility_type ["retired" "sensitive"]]
+                    ['not-in 'base_type skip-fingerprint-base-types]]}
            (binding [sync.fingerprint/*refingerprint?* true]
              (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
@@ -356,13 +356,13 @@
                   ;; but it is bounded! it's less than the max fingerprint count PLUS the number of fields in the
                   ;; biggest table in (mt/db).
                   (+ @#'sync.fingerprint/max-refingerprint-field-count
-                     (:count (t2/query-one {:select [[:%count.* :count]]
-                                            :from :metabase_field
-                                            :join [[:metabase_table :table] [:= :table.id :table_id]]
-                                            :where [:= :table.db_id (mt/id)]
-                                            :group-by [:table_id]
-                                            :order-by [[:count :desc]]
-                                            :limit 1}))))))))))
+                     (:count (t2/query-one {'select [['%count.* 'count]]
+                                            'from 'metabase_field
+                                            'join [['metabase_table 'table] ['= 'table.id 'table_id]]
+                                            'where ['= 'table.db_id (mt/id)]
+                                            'group-by ['table_id]
+                                            'order-by [['count 'desc]]
+                                            'limit 1}))))))))))
 
 (defn- fingerprint-version-after-failure!
   "Create a fresh text Field at fingerprint_version 0 (eligible for fingerprinting up to version 5), run

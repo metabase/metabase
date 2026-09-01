@@ -39,7 +39,7 @@
           (log/infof "Marking Field %d as indexed" field-id))
         (if (or (seq adding) (seq removing))
           (do (t2/update! :model/Field {'table_id (:id table)}
-                          {:database_indexed (if (seq indexed-field-ids)
+                          {'database_indexed (if (seq indexed-field-ids)
                                                [:case [:in :id indexed-field-ids] true :else false]
                                                false)})
               {:total-indexes   (count indexed-field-ids)
@@ -58,12 +58,12 @@
    (completing
     (fn [accum index-batch]
       (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) index-batch)
-            query (t2/reducible-query {:select [[:f.id]]
-                                       :from [[(t2/table-name :model/Field) :f]]
-                                       :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-                                       :where [:and [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] normal-indexes]
-                                               [:= :t.db_id database-id]
-                                               [:= :parent_id nil]]})]
+            query (t2/reducible-query {'select [['f.id]]
+                                       'from [[(t2/table-name :model/Field) 'f]]
+                                       'inner-join [[(t2/table-name :model/Table) 't] ['= 'f.table_id 't.id]]
+                                       'where ['and ['in ['composite ['coalesce 't.schema "__null__"] 't.name 'f.name] normal-indexes]
+                                               ['= 't.db_id database-id]
+                                               ['= 'parent_id nil]]})]
         (into accum (keep :id) query))))
    #{}
    indexes))
@@ -85,10 +85,9 @@
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
           existing-indexed-field-ids (t2/select-pks-set :model/Field
-                                                        'table_id ['in ^:allow-subquery
-                                                                   {:select [[:t.id]]
-                                                                    :from [[(t2/table-name :model/Table) :t]]
-                                                                    :where [:= :t.db_id database-id]}]
+                                                        'table_id ['in                                                                    {'select [['t.id]]
+                                                                                                                                           'from [[(t2/table-name :model/Table) 't]]
+                                                                                                                                           'where ['= 't.db_id database-id]}]
                                                         'parent_id nil
                                                         'database_indexed true)
           [removing adding]           (data/diff existing-indexed-field-ids indexed-field-ids)
@@ -100,14 +99,14 @@
         (log/tracef "Unmarking Fields as indexed: %s" (pr-str field-ids)))
       (doseq [field-ids (partition-all *update-partition-size* removing)]
         (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (t2/update! :model/Field 'parent_id nil 'id ['in field-ids] {:database_indexed false}))
+        (t2/update! :model/Field 'parent_id nil 'id ['in field-ids] {'database_indexed false}))
       ;; Set database_indexed of fields having index.
       (log/infof "Marking %d fields as indexed" adding-count)
       (doseq [field-ids (partition-all 100 adding)]
         (log/tracef "Marking Fields as indexed: %s" (pr-str field-ids)))
       (doseq [field-ids (partition-all *update-partition-size* adding)]
         (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (t2/update! :model/Field 'parent_id nil 'id ['in field-ids] {:database_indexed true}))
+        (t2/update! :model/Field 'parent_id nil 'id ['in field-ids] {'database_indexed true}))
       (if (or (seq adding) (seq removing))
         {:total-indexes   (count indexed-field-ids)
          :added-indexes   adding-count

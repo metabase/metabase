@@ -95,7 +95,7 @@
                                    :document_id document-id
                                    :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document document-id {:collection_id new-collection-id})
+      (t2/update! :model/Document document-id {'collection_id new-collection-id})
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id card2-id)))))))
@@ -110,7 +110,7 @@
                                   :document_id document-id
                                   :collection_id collection-id}]
       ;; Move document to no collection (nil)
-      (t2/update! :model/Document document-id {:collection_id nil})
+      (t2/update! :model/Document document-id {'collection_id nil})
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card 'id card-id)))))))
 
@@ -134,7 +134,7 @@
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document document-id {:collection_id new-collection-id})
+      (t2/update! :model/Document document-id {'collection_id new-collection-id})
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card 'id in-document-card-id))))
       ;; Verify other cards were NOT updated
@@ -157,14 +157,14 @@
         (testing "moving document to personal collection moves associated cards"
           (mt/with-current-user user-id
             ;; As the personal collection owner, update should succeed
-            (t2/update! :model/Document document-id {:collection_id personal-collection-id})
+            (t2/update! :model/Document document-id {'collection_id personal-collection-id})
             ;; Verify both document and card moved to personal collection
             (is (= personal-collection-id (:collection_id (t2/select-one :model/Document 'id document-id))))
             (is (= personal-collection-id (:collection_id (t2/select-one :model/Card 'id card-id))))))
         (testing "moving document from personal collection works"
           (mt/with-current-user user-id
             ;; Move back to regular collection
-            (t2/update! :model/Document document-id {:collection_id regular-collection-id})
+            (t2/update! :model/Document document-id {'collection_id regular-collection-id})
             ;; Verify both document and card moved back
             (is (= regular-collection-id (:collection_id (t2/select-one :model/Document 'id document-id))))
             (is (= regular-collection-id (:collection_id (t2/select-one :model/Card 'id card-id))))))))))
@@ -417,11 +417,11 @@
         (testing "collection_position is stored and retrieved correctly"
           (is (= 5 (:collection_position document)))))
       (testing "collection_position can be updated"
-        (t2/update! :model/Document document-id {:collection_position 10})
+        (t2/update! :model/Document document-id {'collection_position 10})
         (let [updated-document (t2/select-one :model/Document 'id document-id)]
           (is (= 10 (:collection_position updated-document)))))
       (testing "collection_position can be set to nil"
-        (t2/update! :model/Document document-id {:collection_position nil})
+        (t2/update! :model/Document document-id {'collection_position nil})
         (let [updated-document (t2/select-one :model/Document 'id document-id)]
           (is (nil? (:collection_position updated-document))))))))
 
@@ -797,13 +797,13 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
           (testing "events fire normally"
-            (t2/update! :model/Document doc-id {:name "Updated Name"})
+            (t2/update! :model/Document doc-id {'name "Updated Name"})
             (is (= 1 (count @events-published)))
             (is (= :event/document-update (ffirst @events-published))))
           (reset! events-published [])
           (testing "events are suppressed during deserialization"
             (binding [mi/*deserializing?* true]
-              (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
+              (t2/update! :model/Document doc-id {'name "Deserialized Name"}))
             (is (empty? @events-published))))))))
 
 (defn- export-document-ast
@@ -860,7 +860,7 @@
             ;; (untargeted) export takes, where the Collection descendants filter never runs.
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Document" {:where [:in :id [plain-id summary-id]]}))]
+                            (serdes/extract-all "Document" {'where ['in 'id [plain-id summary-id]]}))]
         (is (contains? extracted (eid plain-id))
             "an ordinary document is still exported")
         (is (not (contains? extracted (eid summary-id)))

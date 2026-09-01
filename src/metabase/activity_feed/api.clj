@@ -32,8 +32,8 @@
                   [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(app-db/qualify model-symb %)]
-     {:where [:in (self-qualify :id) ids]
-      :left-join (case model
+     {'where ['in (self-qualify :id) ids]
+      'left-join (case model
                    "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
                    "card" [:collection [:= :collection.id (self-qualify :collection_id)]
                            [:report_dashboard :dashboard] [:= :dashboard.id (self-qualify :dashboard_id)]]
@@ -75,32 +75,32 @@
                                               'model_id
                                               [[:max [:coalesce :d.view_count :t.view_count]] :cnt]
                                               [:%max.timestamp :max_ts]]
-                                             {:group-by  [:model :model_id]
-                                              :where     [:and
-                                                          [:= :context "view"]
-                                                          [:in :model #{"dashboard" "table"}]
-                                                          [:or [:= :active true] [:= :active nil]]
-                                                          [:or [:= :archived false] [:= :archived nil]]]
-                                              :order-by  [[:max_ts :desc] [:model :desc]]
-                                              :limit     views-limit
-                                              :left-join [[:report_dashboard :d]
-                                                          [:and
-                                                           [:= :model "dashboard"]
-                                                           [:= :d.id :model_id]]
-                                                          [:metabase_table :t]
-                                                          [:and
-                                                           [:= :model "table"]
-                                                           [:= :t.id :model_id]]]})
+                                             {'group-by  ['model 'model_id]
+                                              'where     ['and
+                                                          ['= 'context "view"]
+                                                          ['in 'model #{"dashboard" "table"}]
+                                                          ['or ['= 'active true] ['= 'active nil]]
+                                                          ['or ['= 'archived false] ['= 'archived nil]]]
+                                              'order-by  [['max_ts 'desc] ['model 'desc]]
+                                              'limit     views-limit
+                                              'left-join [['report_dashboard 'd]
+                                                          ['and
+                                                           ['= 'model "dashboard"]
+                                                           ['= 'd.id 'model_id]]
+                                                          ['metabase_table 't]
+                                                          ['and
+                                                           ['= 'model "table"]
+                                                           ['= 't.id 'model_id]]]})
         card-runs                 (->> (t2/select [:model/QueryExecution
                                                    [:%min.executor_id :user_id]
                                                    [(app-db/qualify :model/QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(app-db/qualify :model/QueryExecution :card_id) :context]
-                                                   :where    [:and
-                                                              [:= :context (h2x/literal :question)]]
-                                                   :order-by [[:max_ts :desc]]
-                                                   :limit    card-runs-limit})
+                                                  {'group-by [(app-db/qualify :model/QueryExecution :card_id) 'context]
+                                                   'where    ['and
+                                                              ['= 'context (h2x/literal :question)]]
+                                                   'order-by [['max_ts 'desc]]
+                                                   'limit    card-runs-limit})
                                        (mapv #(-> %
                                                   (dissoc :row_count)
                                                   (assoc :model "card"))))]

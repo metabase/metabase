@@ -186,7 +186,7 @@
                      (mdb/migrate! (mdb/data-source) :down version)
                      ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
                      (reset! restart-id (t2/select-one-pk (liquibase/changelog-table-name conn)
-                                                          {:order-by [[:orderexecuted :desc]]}))))))]
+                                                          {'order-by [['orderexecuted 'desc]]}))))))]
         (f migrate))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 

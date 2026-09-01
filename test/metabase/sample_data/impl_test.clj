@@ -59,15 +59,15 @@
     (mt/with-model-cleanup [:model/Database :model/Card]
       ;; Install the pre-upgrade (v62-shape) H2 sample database and a user question that references a field.
       (let [h2-db (t2/insert-returning-instance! :model/Database
-                                                 {:name "Sample Database" :engine :h2 :is_sample true
-                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+                                                 {'name "Sample Database" 'engine :h2 'is_sample true
+                                                  'details (#'sample-data/try-to-extract-sample-database! :h2)})]
         (sync/sync-database! h2-db)
         (let [orders-id  (t2/select-one-pk :model/Table 'db_id (:id h2-db) 'name "ORDERS")
               total-id   (t2/select-one-pk :model/Field 'table_id orders-id 'name "TOTAL")
               user-card  (t2/insert-returning-instance! :model/Card
-                                                        {:name "user q" :database_id (:id h2-db) :table_id orders-id
-                                                         :display "scalar" :visualization_settings {} :creator_id (mt/user->id :rasta)
-                                                         :dataset_query {:database (:id h2-db) :type :query
+                                                        {'name "user q" 'database_id (:id h2-db) 'table_id orders-id
+                                                         'display "scalar" 'visualization_settings {} 'creator_id (mt/user->id :rasta)
+                                                         'dataset_query {:database (:id h2-db) :type :query
                                                                          :query {:source-table orders-id
                                                                                  :aggregation [[:sum [:field total-id nil]]]}}})
               before-tables  (t2/select-fn-set :id :model/Table 'db_id (:id h2-db))
@@ -96,15 +96,15 @@
       ;; Install the SQLite sample database (the state a newer version leaves behind) and a user question
       ;; that references a field.
       (let [sqlite-db (t2/insert-returning-instance! :model/Database
-                                                     {:name "Sample Database" :engine :sqlite :is_sample true
-                                                      :details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
+                                                     {'name "Sample Database" 'engine :sqlite 'is_sample true
+                                                      'details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
         (sync/sync-database! sqlite-db)
         (let [orders-id (t2/select-one-pk :model/Table 'db_id (:id sqlite-db) 'name "ORDERS")
               total-id  (t2/select-one-pk :model/Field 'table_id orders-id 'name "TOTAL")
               user-card (t2/insert-returning-instance! :model/Card
-                                                       {:name "user q" :database_id (:id sqlite-db) :table_id orders-id
-                                                        :display "scalar" :visualization_settings {} :creator_id (mt/user->id :rasta)
-                                                        :dataset_query {:database (:id sqlite-db) :type :query
+                                                       {'name "user q" 'database_id (:id sqlite-db) 'table_id orders-id
+                                                        'display "scalar" 'visualization_settings {} 'creator_id (mt/user->id :rasta)
+                                                        'dataset_query {:database (:id sqlite-db) :type :query
                                                                         :query {:source-table orders-id
                                                                                 :aggregation [[:sum [:field total-id nil]]]}}})
               before-tables (t2/select-fn-set :id :model/Table 'db_id (:id sqlite-db))
@@ -132,10 +132,10 @@
            upgrade because SQLite doesn't support actions)."
     (mt/with-model-cleanup [:model/Database]
       (let [h2-db (t2/insert-returning-instance! :model/Database
-                                                 {:name "Sample Database" :engine :h2 :is_sample true
-                                                  :settings {:database-enable-actions       true
+                                                 {'name "Sample Database" 'engine :h2 'is_sample true
+                                                  'settings {:database-enable-actions       true
                                                              :database-enable-table-editing true}
-                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+                                                  'details (#'sample-data/try-to-extract-sample-database! :h2)})]
         (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database 'id (:id h2-db)))
         (let [db (t2/select-one :model/Database 'id (:id h2-db))]
           (testing "the migration succeeds"
@@ -153,8 +153,8 @@
                      :model/User                       user  {}
                      :model/PermissionsGroupMembership _     {:user_id (:id user) :group_id (:id group)}]
         (let [h2-db (t2/insert-returning-instance! :model/Database
-                                                   {:name "Sample Database" :engine :h2 :is_sample true
-                                                    :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+                                                   {'name "Sample Database" 'engine :h2 'is_sample true
+                                                    'details (#'sample-data/try-to-extract-sample-database! :h2)})]
           (sync/sync-database! h2-db)
           (let [db-id     (:id h2-db)
                 orders-id (t2/select-one-pk :model/Table 'db_id db-id 'name "ORDERS")

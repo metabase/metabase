@@ -81,7 +81,7 @@
   [transform-id]
   (t2/select :model/TableIndex
              'transform_id transform-id
-             {:order-by [[:id :asc]]}))
+             {'order-by [['id 'asc]]}))
 
 (defn select-applicable-for-transform
   "Rows whose structured definitions should be applied to `transform-id`'s target table."
@@ -89,7 +89,7 @@
   (t2/select :model/TableIndex
              'transform_id transform-id
              'status ['not= :delete-pending]
-             {:order-by [[:index_name :asc]]}))
+             {'order-by [['index_name 'asc]]}))
 
 (defn select-for-verification
   "Rows the current execution can update while verifying indexes.
@@ -104,11 +104,11 @@
                 'transform_id transform-id
                 'id ['in index-request-ids]
                 'status :running
-                {:order-by [[:id :asc]]}))
+                {'order-by [['id 'asc]]}))
    (t2/select :model/TableIndex
               'transform_id transform-id
               'status :delete-pending
-              {:order-by [[:id :asc]]})))
+              {'order-by [['id 'asc]]})))
 
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
@@ -131,7 +131,7 @@
     (when (seq ids)
       (t2/update! :model/TableIndex
                   {'id ['in ids] 'status ['in runnable-statuses]}
-                  {:status :running}))
+                  {'status :running}))
     ids))
 
 (defn mark-unverified-running-indexes-failed!
@@ -140,9 +140,9 @@
   (when (seq ids)
     (t2/update! :model/TableIndex
                 {'id ['in ids] 'status :running}
-                {:status           :failed
-                 :error_message    message
-                 :last_executed_at :%now})))
+                {'status           :failed
+                 'error_message    message
+                 'last_executed_at :%now})))
 
 (defn mark-for-revalidation!
   "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
@@ -152,7 +152,7 @@
     (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
       (t2/update! :model/TableIndex
                   {'id ['in ids]}
-                  {:status :update-pending, :error_message nil}))))
+                  {'status :update-pending, 'error_message nil}))))
 
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."

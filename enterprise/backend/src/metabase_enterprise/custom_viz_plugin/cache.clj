@@ -418,7 +418,7 @@
   [id dev-bundle-url]
   (let [url (not-empty dev-bundle-url)]
     (some-> url (validate-url! "Dev bundle URL"))
-    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
+    (t2/update! :model/CustomVizPlugin id {'dev_bundle_url url})))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.

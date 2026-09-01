@@ -396,10 +396,10 @@
                            (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
           version-str  (get-in manifest [:metabase :version])]
       (t2/update! :model/CustomVizPlugin id
-                  {:display_name     (or (:name manifest) (:identifier plugin))
-                   :icon             (:icon manifest)
-                   :manifest         manifest
-                   :metabase_version version-str})
+                  {'display_name     (or (:name manifest) (:identifier plugin))
+                   'icon             (:icon manifest)
+                   'manifest         manifest
+                   'metabase_version version-str})
       (let [result (custom-viz-plugin/select-one-non-blob :id id)]
         (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                                 :previous-object plugin

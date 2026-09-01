@@ -286,8 +286,8 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
       ;; Set result_metadata directly via SQL to bypass Card hooks that recompute metadata
-      (t2/query-one {:update :report_card
-                     :set    {:result_metadata
+      (t2/query-one {'update 'report_card
+                     'set    {'result_metadata
                               (json/encode [{:name          "TOTAL"
                                              :display_name  "Order Total"
                                              :description   "The total amount"
@@ -297,7 +297,7 @@
                                              :display_name  "Order Date"
                                              :semantic_type "type/CreationTimestamp"
                                              :base_type     "type/DateTimeWithLocalTZ"}])}
-                     :where  [:= :id card-id]})
+                     'where  ['= 'id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (testing "Field records are updated with overrides from model metadata"
         (let [field-1 (t2/select-one :model/Field 'id field-1-id)
@@ -334,14 +334,14 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
       ;; result_metadata has :name "ID" but :lib/desired-column-alias "Products__ID"
-      (t2/query-one {:update :report_card
-                     :set    {:result_metadata
+      (t2/query-one {'update 'report_card
+                     'set    {'result_metadata
                               (json/encode [{:name                      "ID"
                                              :lib/desired-column-alias  "Products__ID"
                                              :display_name              "Product ID"
                                              :description               "The product identifier"
                                              :base_type                 "type/Integer"}])}
-                     :where  [:= :id card-id]})
+                     'where  ['= 'id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (let [field (t2/select-one :model/Field 'id field-id)]
         (is (= "Product ID" (:display_name field)))

@@ -31,16 +31,16 @@
   [bucket-date]
   {:segments   (t2/select :model/SourceSegmentDaily
                           'bucket_date bucket-date
-                          {:order-by [[:count :desc]]})
+                          {'order-by [['count 'desc]]})
    :metrics    (t2/select :model/SourceMetricDaily
                           'bucket_date bucket-date
-                          {:order-by [[:count :desc]]})
+                          {'order-by [['count 'desc]]})
    :dimensions (t2/select :model/SourceDimensionDaily
                           'bucket_date bucket-date
-                          {:order-by [[:count :desc]]})
+                          {'order-by [['count 'desc]]})
    :profiles   (t2/select :model/SourceDimensionProfileDaily
                           'bucket_date bucket-date
-                          {:order-by [[:count :desc]]})})
+                          {'order-by [['count 'desc]]})})
 
 (defn rollup-counts-for-day
   "Return the number of rollup rows present for `bucket-date`."

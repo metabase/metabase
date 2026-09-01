@@ -349,7 +349,7 @@
                                   (mt/formatted-rows [int])))]
               (is (= original-result (query-fn)))
               (let [transform-future (future
-                                       (t2/update! :model/Transform transform-id {:source {:type :query
+                                       (t2/update! :model/Transform transform-id {'source {:type :query
                                                                                            :query new-query}})
                                        (let [new-transform (t2/select-one :model/Transform transform-id)]
                                          (transforms.execute/execute! new-transform {:run-method :manual})))
@@ -519,7 +519,7 @@
                 schema              (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                 old-write-details   (:write_data_details (mt/db))]
             (when-not old-write-details
-              (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+              (t2/update! :model/Database db-id {'write_data_details (:details (mt/db))}))
             (try
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
               (testing "transform pool does not exist before transform execution"
@@ -541,7 +541,7 @@
                     (testing "transform pool is created during transform execution"
                       (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
               (finally
-                (t2/update! :model/Database db-id {:write_data_details old-write-details})
+                (t2/update! :model/Database db-id {'write_data_details old-write-details})
                 (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))
 
 (deftest transform-run-refreshes-target-stats-test

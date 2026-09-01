@@ -670,7 +670,7 @@
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [nonexistent-id (inc (t2/select-one-pk :model/Action {:order-by [[:id :desc]]}))]
+      (let [nonexistent-id (inc (t2/select-one-pk :model/Action {'order-by [['id 'desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto

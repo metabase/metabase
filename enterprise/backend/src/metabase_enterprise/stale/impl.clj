@@ -30,9 +30,9 @@
   (map #(staleness/find-stale-query % args) models))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
-  (cond-> {:select [:id :model]
-           :from [[^:allow-subquery {:union-all (queries args)} :dummy_alias]]
-           :order-by [[(sort-column (:sort-column args))
+  (cond-> {'select ['id 'model]
+           'from [[{'union-all (queries args)} 'dummy_alias]]
+           'order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
     (some? limit) ;; limit
     (assoc :limit limit)
@@ -40,8 +40,8 @@
     (assoc :offset offset)))
 
 (mu/defn ^:private total-query [args :- FindStaleContentArgs]
-  {:select [[:%count.* :count]]
-   :from [[^:allow-subquery {:union-all (queries args)} :dummy_alias]]})
+  {'select [['%count.* 'count]]
+   'from [[{'union-all (queries args)} 'dummy_alias]]})
 
 (mu/defn find-candidates :- [:map
                              [:rows [:sequential [:map

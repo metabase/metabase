@@ -270,7 +270,7 @@
                                (assoc-in % [:target 2] (mt/id :users :name))
                                %)
                             dimension_mappings)]
-        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (t2/update! :model/Card (:id metric) {'dimension_mappings mappings})
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "metric/" (:id metric) "/dimension"))]
           (is (not (some #(= orphan-id (:id %)) (:added response)))))
@@ -514,7 +514,7 @@
             b        (:id (second added))
             defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
         (t2/update! :model/Card (:id metric)
-                    {:dimensions (mapv #(assoc % :default true)
+                    {'dimensions (mapv #(assoc % :default true)
                                        (t2/select-one-fn :dimensions :model/Card 'id (:id metric)))})
         (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
                                                     (str "metric/" (:id metric) "/dimension/set-default")
@@ -628,11 +628,11 @@
       ;; Force the previous release's card_schema (23) and clear the dimensions the insert hook
       ;; seeded, so the row looks like a metric created before curated dimensions shipped.
       ;; Done with a raw UPDATE to bypass before-update, so nothing bumps the schema back up.
-      (t2/query-one {:update :report_card
-                     :set    {:card_schema        23
-                              :dimensions         nil
-                              :dimension_mappings nil}
-                     :where  [:= :id (:id metric)]})
+      (t2/query-one {'update 'report_card
+                     'set    {'card_schema        23
+                              'dimensions         nil
+                              'dimension_mappings nil}
+                     'where  ['= 'id (:id metric)]})
       (f (:id metric)))))
 
 (deftest pre-curation-metric-modernized-to-full-dimension-set-on-read-test

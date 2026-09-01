@@ -278,7 +278,7 @@
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-data-analyst)
-  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
+  (let [jobs (t2/select :model/TransformJob {'order-by [['created_at 'desc]]})]
     (into []
           (comp (map add-next-run)
                 (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)

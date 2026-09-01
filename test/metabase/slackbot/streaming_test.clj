@@ -115,7 +115,7 @@
                                             :finished        true}
                                      error (assoc :error error))))]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         ;; The clean row is the control: without it a green assertion cannot tell the filter
         ;; working apart from the fixture never producing tool parts at all.
         (insert! clean-ts   "call-clean")
@@ -366,14 +366,14 @@
                 ;; agent loop produces no turn-state of its own. Taking the conversation id
                 ;; from the captured opts keeps this independent of how it is derived.
                 (t2/insert! :model/MetabotMessage
-                            {:conversation_id (:conversation-id (last @ai-request-calls))
-                             :role            "assistant"
-                             :profile_id      "slackbot"
-                             :total_tokens    0
-                             :data            []
-                             :data_version    2
-                             :finished        true
-                             :state           {:queries {"q1" {:database 1}}}})
+                            {'conversation_id (:conversation-id (last @ai-request-calls))
+                             'role            "assistant"
+                             'profile_id      "slackbot"
+                             'total_tokens    0
+                             'data            []
+                             'data_version    2
+                             'finished        true
+                             'state           {:queries {"q1" {:database 1}}}})
                 (send!)
                 (wait! 2)
                 (testing "the next turn in the same thread picks it up instead of {}"

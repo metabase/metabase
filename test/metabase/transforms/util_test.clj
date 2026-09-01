@@ -431,13 +431,13 @@
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
-                                                          {:db_id          (:id database)
-                                                           :name           (:name table-map)
-                                                           :schema         (:schema table-map)
-                                                           :active         true
-                                                           :is_writable    (:is_writable table-map)
-                                                           :data_source    (:data_source table-map)
-                                                           :data_authority (:data_authority table-map)})]
+                                                          {'db_id          (:id database)
+                                                           'name           (:name table-map)
+                                                           'schema         (:schema table-map)
+                                                           'active         true
+                                                           'is_writable    (:is_writable table-map)
+                                                           'data_source    (:data_source table-map)
+                                                           'data_authority (:data_authority table-map)})]
                                              (reset! synced-table created)
                                              created))
                       sync/sync-table!     (constantly nil)
@@ -781,13 +781,13 @@
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
-                                                          {:db_id          (:id database)
-                                                           :name           (:name table-map)
-                                                           :schema         (:schema table-map)
-                                                           :active         true
-                                                           :is_writable    (:is_writable table-map)
-                                                           :data_source    (:data_source table-map)
-                                                           :data_authority (:data_authority table-map)})]
+                                                          {'db_id          (:id database)
+                                                           'name           (:name table-map)
+                                                           'schema         (:schema table-map)
+                                                           'active         true
+                                                           'is_writable    (:is_writable table-map)
+                                                           'data_source    (:data_source table-map)
+                                                           'data_authority (:data_authority table-map)})]
                                              (reset! synced-table created)
                                              created))
                       sync/sync-table!   (constantly nil)
@@ -806,13 +806,13 @@
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
-                                                          {:db_id          (:id database)
-                                                           :name           (:name table-map)
-                                                           :schema         (:schema table-map)
-                                                           :active         true
-                                                           :is_writable    (:is_writable table-map)
-                                                           :data_source    (:data_source table-map)
-                                                           :data_authority (:data_authority table-map)})]
+                                                          {'db_id          (:id database)
+                                                           'name           (:name table-map)
+                                                           'schema         (:schema table-map)
+                                                           'active         true
+                                                           'is_writable    (:is_writable table-map)
+                                                           'data_source    (:data_source table-map)
+                                                           'data_authority (:data_authority table-map)})]
                                              (reset! synced-table created)
                                              created))
                       sync/sync-table!   (constantly nil)

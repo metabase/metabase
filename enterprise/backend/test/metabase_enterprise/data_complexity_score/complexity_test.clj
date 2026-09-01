@@ -345,11 +345,11 @@
       ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
       ;; directly to fabricate the routed table this exclusion test needs.
       (let [routed           (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                      {:db_id      routed-db
-                                                       :name       "routed_table"
-                                                       :active     true
-                                                       :created_at :%now
-                                                       :updated_at :%now})
+                                                      {'db_id      routed-db
+                                                       'name       "routed_table"
+                                                       'active     true
+                                                       'created_at :%now
+                                                       'updated_at :%now})
             metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
             ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"
@@ -1218,7 +1218,7 @@
           stale   (.minusHours (java.time.LocalDateTime/now) 13)
           insert! (fn [f source created-at]
                     (t2/insert! :model/DataComplexityScore
-                                {:fingerprint f :source source :score_data {} :created_at created-at}))]
+                                {'fingerprint f 'source source 'score_data {} 'created_at created-at}))]
       (try
         (t2/delete! :model/DataComplexityScore 'fingerprint ['in [fp other]])
         (insert! other "appdb" recent)

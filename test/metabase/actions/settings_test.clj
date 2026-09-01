@@ -39,12 +39,12 @@
             ;; `no-writable-tables`). A destination can't have tables in production, so a normal
             ;; `with-temp :model/Table` trips the destination-permission guard — insert it directly.
             (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                     {:db_id       (:id target-db)
-                                      :name        "destination-table"
-                                      :is_writable true
-                                      :active      true
-                                      :created_at  :%now
-                                      :updated_at  :%now})
+                                     {'db_id       (:id target-db)
+                                      'name        "destination-table"
+                                      'is_writable true
+                                      'active      true
+                                      'created_at  :%now
+                                      'updated_at  :%now})
             (is (= [:setting/database-routing]
                    (disabled-reasons router-db)))
             (is (= [:setting/database-routing]

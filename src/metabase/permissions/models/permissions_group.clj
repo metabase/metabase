@@ -154,25 +154,25 @@
   [_model k groups]
   (mi/instances-with-hydrated-data
    groups k
-   #(group-by :group_id (t2/select :model/User {:select    [:u.id
+   #(group-by :group_id (t2/select :model/User {'select    ['u.id
                                                             ;; user_id is for legacy reasons, we should remove it
-                                                            [:u.id :user_id]
-                                                            :u.first_name
-                                                            :u.last_name
-                                                            :u.email
-                                                            :u.is_superuser
-                                                            :u.type
-                                                            :pgm.group_id
-                                                            [:pgm.id :membership_id]
+                                                            ['u.id 'user_id]
+                                                            'u.first_name
+                                                            'u.last_name
+                                                            'u.email
+                                                            'u.is_superuser
+                                                            'u.type
+                                                            'pgm.group_id
+                                                            ['pgm.id 'membership_id]
                                                             (when (premium-features/enable-advanced-permissions?)
                                                               [:pgm.is_group_manager :is_group_manager])]
-                                                :from      [[:core_user :u]]
-                                                :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
-                                                :where     [:and
-                                                            [:= :u.is_active true]
-                                                            [:in :pgm.group_id (map :id groups)]]
-                                                :order-by  [[[:lower :u.first_name] :asc]
-                                                            [[:lower :u.last_name] :asc]]}))
+                                                'from      [['core_user 'u]]
+                                                'left-join [['permissions_group_membership 'pgm] ['= 'u.id 'pgm.user_id]]
+                                                'where     ['and
+                                                            ['= 'u.is_active true]
+                                                            ['in 'pgm.group_id (map :id groups)]]
+                                                'order-by  [[['lower 'u.first_name] 'asc]
+                                                            [['lower 'u.last_name] 'asc]]}))
    :id
    {:default []}))
 
@@ -184,7 +184,7 @@
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
+  (t2/select :model/PermissionsGroup {'where ['= 'magic_group_type nil]}))
 
 (defn is-tenant-group?
   "Returns a boolean representing whether this group is a tenant group."
@@ -215,11 +215,11 @@
   groups.)"
   []
   (let [results (mdb/query
-                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
-                  :from      [[:permissions_group_membership :pgm]]
-                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                  :where     [:= :user.is_active true]
-                  :group-by  [:pgm.group_id]})]
+                 {'select    [['pgm.group_id 'group_id] [['count 'pgm.id] 'members]]
+                  'from      [['permissions_group_membership 'pgm]]
+                  'left-join [['core_user 'user] ['= 'pgm.user_id 'user.id]]
+                  'where     ['= 'user.is_active true]
+                  'group-by  ['pgm.group_id]})]
     (zipmap
      (map :group_id results)
      (map :members results))))
@@ -270,14 +270,14 @@
         (t2/with-transaction [_conn]
           ;; Rename and demote the existing group to a normal visible group
           (t2/update! :model/PermissionsGroup (:id existing-group)
-                      {:name             (unique-converted-group-name (:name existing-group))
-                       :magic_group_type nil})
+                      {'name             (unique-converted-group-name (:name existing-group))
+                       'magic_group_type nil})
           ;; Create new empty magic group with default library permissions, reusing the old name
           (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
-                                                                  {:name             (:name existing-group)
-                                                                   :magic_group_type data-analyst-magic-group-type})]
+                                                                  {'name             (:name existing-group)
+                                                                   'magic_group_type data-analyst-magic-group-type})]
             (grant-library-permissions! new-group-id))
-          (t2/update! :model/User {'is_data_analyst true} {:is_data_analyst false}))))))
+          (t2/update! :model/User {'is_data_analyst true} {'is_data_analyst false}))))))
 
 (def ^:private seconds-to-sleep-per-attempt 1)
 

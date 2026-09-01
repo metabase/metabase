@@ -174,7 +174,7 @@
     (mt/with-temp [:model/Dashboard     {dashboard-id :id, :as dashboard} {}
                    :model/Card          {card-id :id}                     (card-properties)
                    :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
-      (t2/update! :model/DashboardCard (:id dashcard) {:size_x 3})
+      (t2/update! :model/DashboardCard (:id dashcard) {'size_x 3})
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -227,7 +227,7 @@
        :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
-      (t2/update! :model/DashboardTab dashtab-id {:name "New name"})
+      (t2/update! :model/DashboardTab dashtab-id {'name "New name"})
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id

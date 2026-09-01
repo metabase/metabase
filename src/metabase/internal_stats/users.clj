@@ -6,15 +6,14 @@
 (defn email-domain-count
   "Count all unique normalized domains found in active user emails"
   []
-  (:count (t2/query-one {:select [[:%count.* :count]]
-                         :from [[^:allow-subquery
-                                 {:select-distinct (condp contains? (db/db-type)
+  (:count (t2/query-one {'select [['%count.* 'count]]
+                         'from [[{'select-distinct (condp contains? (db/db-type)
                                                      #{:postgres}  [[[:split_part :email "@" [:inline 2]]]]
                                                      #{:h2 :mysql} [[[:substring :email [:locate "@" :email]]]])
-                                  :from [:core_user]
-                                  :where [:and
-                                          [:= :is_active true]
-                                          [:= :type "personal"]]} :distinct_emails]]})))
+                                  'from ['core_user]
+                                  'where ['and
+                                          ['= 'is_active true]
+                                          ['= 'type "personal"]]} 'distinct_emails]]})))
 
 (defn external-users-count
   "Number of users with sso-source: JWT as a proxy for tenant users of embedded views"
@@ -33,9 +32,9 @@
 (defn tenants-with-active-users-count
   "Number of tenants that have at least one active user."
   []
-  (:count (t2/query-one {:select [[[:count [:distinct :tenant_id]] :count]]
-                         :from   [(t2/table-name :model/User)]
-                         :where  [:and
-                                  [:= :is_active true]
-                                  [:= :type "personal"]
-                                  [:not= :tenant_id nil]]})))
+  (:count (t2/query-one {'select [[['count ['distinct 'tenant_id]] 'count]]
+                         'from   [(t2/table-name :model/User)]
+                         'where  ['and
+                                  ['= 'is_active true]
+                                  ['= 'type "personal"]
+                                  ['not= 'tenant_id nil]]})))

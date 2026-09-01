@@ -31,7 +31,7 @@
   []
   (log/info "Trimming old Data Complexity Score snapshots.")
   (let [cutoff  (retention-cutoff-timestamp retention-months)
-        deleted (t2/delete! :model/DataComplexityScore {:where [:< :created_at cutoff]})]
+        deleted (t2/delete! :model/DataComplexityScore {'where ['< 'created_at cutoff]})]
     (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
 
 (task/defjob ^{DisallowConcurrentExecution true

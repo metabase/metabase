@@ -29,8 +29,8 @@
   (:size
    (jdbc/execute-one!
     pgvector
-    (sql/format {:select [[[:count :*] :size]]
-                 :from [[[:raw table-name-str]]]}))))
+    (sql/format {'select [[['count '*] 'size]]
+                 'from [[['raw table-name-str]]]}))))
 
 (defn- collect-gate-size!
   [pgvector]
@@ -49,8 +49,8 @@
   (if (semantic.u/table-exists? pgvector (:control-table-name index-metadata))
     (:id (jdbc/execute-one!
           pgvector
-          (sql/format {:select [[:active_id :id]]
-                       :from [[[:raw (:control-table-name index-metadata)]]]})
+          (sql/format {'select [['active_id 'id]]
+                       'from [[['raw (:control-table-name index-metadata)]]]})
           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
     (log/warn "Control table does not exist. Index may not have been initialized.")))
 

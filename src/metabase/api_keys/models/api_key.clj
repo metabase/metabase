@@ -35,13 +35,13 @@
   (when (seq api-keys)
     (let [api-key-id->permissions-groups
           (group-by :api-key-id
-                    (t2/query {:select [[:pg.name :group-name]
-                                        [:pg.id :group-id]
-                                        [:api_key.id :api-key-id]]
-                               :from   [[:permissions_group :pg]]
-                               :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                                        :api_key [:= :api_key.user_id :pgm.user_id]]
-                               :where  [:in :api_key.id (map u/the-id api-keys)]}))
+                    (t2/query {'select [['pg.name 'group-name]
+                                        ['pg.id 'group-id]
+                                        ['api_key.id 'api-key-id]]
+                               'from   [['permissions_group 'pg]]
+                               'join   [['permissions_group_membership 'pgm] ['= 'pgm.group_id 'pg.id]
+                                        'api_key ['= 'api_key.user_id 'pgm.user_id]]
+                               'where  ['in 'api_key.id (map u/the-id api-keys)]}))
           api-key-id->group
           (fn [api-key-id]
             (let [{name :group-name
@@ -138,7 +138,7 @@
     (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
       ;; update the user name associated with this API key if it was created just for this API key.
       (when-let [new-name (:name (t2/changes api-key))]
-        (t2/update! :model/User 'id user-id, 'type :api-key, {:first_name new-name, :last_name ""}))
+        (t2/update! :model/User 'id user-id, 'type 'api-key, {'first_name new-name, 'last_name ""}))
       ;; update user group as well.
       (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
         (assert (= (t2/select-one-fn :type :model/User 'id user-id) :api-key)
@@ -166,7 +166,7 @@
                    (t2/hydrate :group))
       :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
-    (t2/update! :model/User user-id, 'type :api-key, {:is_active false})))
+    (t2/update! :model/User user-id, 'type :api-key, {'is_active false})))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -214,18 +214,18 @@
         email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
     (t2/with-transaction [_conn]
       (let [user-id (t2/insert-returning-pk! :model/User
-                                             {:email      email
-                                              :first_name key-name
-                                              :last_name  ""
-                                              :type       :api-key})]
+                                             {'email      email
+                                              'first_name key-name
+                                              'last_name  ""
+                                              'type       :api-key})]
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (t2/insert-returning-instance! :model/ApiKey
-                                           {:user_id                user-id
-                                            :name                   key-name
+                                           {'user_id                user-id
+                                            'name                   key-name
                                             ::api-keys/unhashed-key unhashed-key
-                                            :updated_by_id          api/*current-user-id*
-                                            :creator_id             api/*current-user-id*})
+                                            'updated_by_id          api/*current-user-id*
+                                            'creator_id             api/*current-user-id*})
             (assoc :unmasked_key unhashed-key))))))
 
 (mu/defn regenerate! :- [:map
@@ -238,9 +238,9 @@
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (t2/update! :model/ApiKey 'id id {:key           (hash-bcrypt new-key)
-                                        :key_prefix    new-prefix
-                                        :updated_by_id api/*current-user-id*})
+      (t2/update! :model/ApiKey 'id id {'key           (hash-bcrypt new-key)
+                                        'key_prefix    new-prefix
+                                        'updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate
                              (let [key-before (-> api-key-before
                                                   (t2/hydrate :group))]

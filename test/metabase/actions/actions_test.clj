@@ -292,7 +292,7 @@
   (t2/update! :model/Field
               {'table_id      table-id
                'semantic_type :type/PK}
-              {:semantic_type nil}))
+              {'semantic_type nil}))
 
 (deftest table-row-create-no-pk
   (testing "table.row/create"
@@ -614,7 +614,7 @@
               (let [details (t2/select-one-fn :details 'Database 'id (mt/id))]
                 (t2/update! 'Database (mt/id)
                             ;; enable ssh tunnel
-                            {:details (assoc details
+                            {'details (assoc details
                                              :tunnel-enabled true
                                              :tunnel-host "localhost"
                                              :tunnel-auth-option "password"

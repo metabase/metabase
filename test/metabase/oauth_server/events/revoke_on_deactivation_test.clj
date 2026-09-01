@@ -10,29 +10,29 @@
 
 (defn- insert-access-token! [user-id]
   (let [token (str (random-uuid))]
-    (t2/insert! :model/OAuthAccessToken {:token     token
-                                         :user_id   user-id
-                                         :client_id "test-client"
-                                         :scope     ["openid"]
-                                         :expiry    (in-one-hour)})
+    (t2/insert! :model/OAuthAccessToken {'token     token
+                                         'user_id   user-id
+                                         'client_id "test-client"
+                                         'scope     ["openid"]
+                                         'expiry    (in-one-hour)})
     token))
 
 (defn- insert-refresh-token! [user-id]
   (let [token (str (random-uuid))]
-    (t2/insert! :model/OAuthRefreshToken {:token     token
-                                          :user_id   user-id
-                                          :client_id "test-client"
-                                          :scope     ["openid"]})
+    (t2/insert! :model/OAuthRefreshToken {'token     token
+                                          'user_id   user-id
+                                          'client_id "test-client"
+                                          'scope     ["openid"]})
     token))
 
 (defn- insert-auth-code! [user-id]
   (let [code (str (random-uuid))]
-    (t2/insert! :model/OAuthAuthorizationCode {:code         code
-                                               :user_id      user-id
-                                               :client_id    "test-client"
-                                               :redirect_uri "http://localhost/callback"
-                                               :scope        ["openid"]
-                                               :expiry       (in-one-hour)})
+    (t2/insert! :model/OAuthAuthorizationCode {'code         code
+                                               'user_id      user-id
+                                               'client_id    "test-client"
+                                               'redirect_uri "http://localhost/callback"
+                                               'scope        ["openid"]
+                                               'expiry       (in-one-hour)})
     code))
 
 (defn- revoked? [model token]
@@ -68,12 +68,12 @@
             auth-code    (insert-auth-code! user-id)]
         (is (not (revoked? :model/OAuthAccessToken access-token))
             "token is live while the user is active")
-        (t2/update! :model/User user-id {:is_active false})
+        (t2/update! :model/User user-id {'is_active false})
         (is (revoked? :model/OAuthAccessToken access-token)
             "deactivation revokes the token")
         (is (not (t2/exists? :model/OAuthAuthorizationCode 'code auth-code))
             "deactivation deletes the pending authorization code")
         (let [revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken 'token access-token)]
-          (t2/update! :model/User user-id {:is_active true})
+          (t2/update! :model/User user-id {'is_active true})
           (is (= revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken 'token access-token))
               "reactivation does not un-revoke the pre-deactivation token"))))))

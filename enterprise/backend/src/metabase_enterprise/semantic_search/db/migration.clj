@@ -61,8 +61,8 @@
   [index-metadata tx]
   (or (:max_version
        (jdbc/execute-one! tx
-                          (sql/format {:select [[[:max :version] :max_version]]
-                                       :from [(migration-table-kw index-metadata)]})))
+                          (sql/format {'select [[['max 'version] 'max_version]]
+                                       'from [(migration-table-kw index-metadata)]})))
       -1))
 
 (defn- write-successful-migration!
@@ -105,8 +105,8 @@
   (or (when (index-metadata-table-exists? index-metadata tx)
         (:min_index
          (jdbc/execute-one! tx
-                            (sql/format {:select [[[:min :index_version] :min_index]]
-                                         :from [(keyword (:metadata-table-name index-metadata))]}))))
+                            (sql/format {'select [[['min 'index_version] 'min_index]]
+                                         'from [(keyword (:metadata-table-name index-metadata))]}))))
       0))
 
 (defn maybe-migrate-dynamic-schema!

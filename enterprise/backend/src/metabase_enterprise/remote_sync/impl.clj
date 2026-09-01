@@ -78,7 +78,7 @@
       ;; Scoped model with no collections to scope to — nothing to delete
       (nil? clauses) nil
       ;; A predicate — delete matching rows
-      (seq clauses)  (t2/delete! model-key {:where (if (= 1 (count clauses))
+      (seq clauses)  (t2/delete! model-key {'where (if (= 1 (count clauses))
                                                      (first clauses)
                                                      (into [:and] clauses))})
       ;; No predicate (global model, no imported ids or conditions) — delete all
@@ -487,10 +487,10 @@
       (doseq [[model-key ds] (group-by :model-key deletes)]
         (t2/delete! model-key 'id ['in (mapv :model_id ds)]))
       (when (seq deletes)
-        (t2/delete! :model/RemoteSyncObject {:where (rso-where-for deletes)}))
+        (t2/delete! :model/RemoteSyncObject {'where (rso-where-for deletes)}))
       (when (seq sync-rows)
         ;; fold file_path + content_hash into the insert so the touched rows are written once (chunked)
-        (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
+        (t2/delete! :model/RemoteSyncObject {'where (rso-where-for sync-rows)})
         (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
       (when finalize! (finalize!)))
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
@@ -510,7 +510,7 @@
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
   Captured before a local-only merge so they can be restored afterwards (see [[import-merged!]])."
   []
-  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+  (t2/select :model/RemoteSyncObject {'where ['not= 'status "synced"]}))
 
 (defn- restore-dirty-objects!
   "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
@@ -520,7 +520,7 @@
   (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
     (if-let [existing (t2/select-one :model/RemoteSyncObject 'model_type model_type 'model_id model_id)]
       (t2/update! :model/RemoteSyncObject (:id existing)
-                  {:status status :status_changed_at timestamp})
+                  {'status status 'status_changed_at timestamp})
       (t2/insert! :model/RemoteSyncObject
                   (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
@@ -1406,7 +1406,7 @@
   [result task-id & [branch]]
   (let [proceed?
         (t2/with-transaction [_conn]
-          (let [task (t2/select-one :model/RemoteSyncTask 'id task-id {:for :update})]
+          (let [task (t2/select-one :model/RemoteSyncTask 'id task-id {'for 'update})]
             (cond
               (nil? task)
               (do (log/warnf "Task %s missing during result handling; skipping" task-id)

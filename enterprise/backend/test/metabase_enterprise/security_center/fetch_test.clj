@@ -99,7 +99,7 @@
           (fetch/sync-advisories!)
           (let [row (t2/select-one :model/SecurityAdvisory 'advisory_id "SC-2026-001")]
             (is (some? row))
-            (is (= {:default {:select [1] :from [:core_user] :where [:= :email "x"] :limit 1}}
+            (is (= {:default {'select [1] 'from ['core_user] 'where ['= 'email "x"] 'limit 1}}
                    (:matching_query row)))
             (is (=? {:advisory_id "SC-2026-001"
                      :severity    :high

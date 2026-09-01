@@ -83,31 +83,31 @@
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file))
-              (t2/insert! :model/Setting {:key "nocrypt", :value "unencrypted value"})
-              (t2/insert! :model/Setting {:key "settings-last-updated", :value original-timestamp})
-              (let [u (first (t2/insert-returning-instances! :model/User {:email        "nobody@nowhere.com"
-                                                                          :first_name   "No"
-                                                                          :last_name    "Body"
-                                                                          :password     "nopassword"
-                                                                          :is_active    true
-                                                                          :is_superuser false}))]
+              (t2/insert! :model/Setting {'key "nocrypt", 'value "unencrypted value"})
+              (t2/insert! :model/Setting {'key "settings-last-updated", 'value original-timestamp})
+              (let [u (first (t2/insert-returning-instances! :model/User {'email        "nobody@nowhere.com"
+                                                                          'first_name   "No"
+                                                                          'last_name    "Body"
+                                                                          'password     "nopassword"
+                                                                          'is_active    true
+                                                                          'is_superuser false}))]
                 (reset! user-id (u/the-id u)))
-              (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (plaintext)"
-                                                                                 :kind       "password"
-                                                                                 :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                                                                 :creator_id @user-id}))]
+              (let [secret (first (t2/insert-returning-instances! :model/Secret {'name       "My Secret (plaintext)"
+                                                                                 'kind       "password"
+                                                                                 'value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                                 'creator_id @user-id}))]
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
-                (t2/insert! :model/Setting {:key "k1crypted", :value "encrypted with k1"})
+                (t2/insert! :model/Setting {'key "k1crypted", 'value "encrypted with k1"})
                 (mdb.encryption/encrypt-db driver/*driver* data-source nil)
-                (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
+                (t2/update! :model/Database 1 {'details {:db "/tmp/test.db"}})
                 ;; other encrypted-json columns that must also be re-encrypted on rotation
-                (t2/update! :model/Database 1 {:settings {:database-enable-actions true}})
-                (t2/update! :model/User @user-id {:settings {:locale "en"}})
-                (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (encrypted)"
-                                                                                   :kind       "password"
-                                                                                   :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                                                                   :creator_id @user-id}))]
+                (t2/update! :model/Database 1 {'settings {:database-enable-actions true}})
+                (t2/update! :model/User @user-id {'settings {:locale "en"}})
+                (let [secret (first (t2/insert-returning-instances! :model/Secret {'name       "My Secret (encrypted)"
+                                                                                   'kind       "password"
+                                                                                   'value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                                   'creator_id @user-id}))]
                   (reset! secret-id-enc (u/the-id secret))))
               (testing "rotating with the same key is a noop"
                 (encryption-test/with-secret-key k1
@@ -146,11 +146,11 @@
                                  (t2/select-one-fn :value :model/Secret 'id @secret-id-unenc))))))
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
-                  (let [db (first (t2/insert-returning-instances! :model/Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
+                  (let [db (first (t2/insert-returning-instances! :model/Database {'name "k3", 'engine :mysql, 'details {:db "/tmp/k3.db"}}))]
                     (is (=? {:name "k3"}
                             db))))
                 (encryption-test/with-secret-key k2
-                  (let [db (first (t2/insert-returning-instances! :model/Database {:name "k2", :engine :mysql, :details {:db "/tmp/k2.db"}}))]
+                  (let [db (first (t2/insert-returning-instances! :model/Database {'name "k2", 'engine :mysql, 'details {:db "/tmp/k2.db"}}))]
                     (is (=? {:name "k2"}
                             db)))
                   (is (thrown-with-msg?
@@ -161,8 +161,8 @@
                   (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database 'name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database 'name "k3")))))
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
-                (t2/update! :model/Database {'name "k3"} {:details {:db "/tmp/test.db"}})
+                (t2/update! :model/Database 1 {'details {:db "/tmp/test.db"}})
+                (t2/update! :model/Database {'name "k3"} {'details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
@@ -177,32 +177,32 @@
   "Set the raw value of the `encryption-check` sentinel setting, replacing any existing row."
   [value]
   (t2/delete! :setting 'key "encryption-check")
-  (t2/insert! :setting {:key "encryption-check" :value value}))
+  (t2/insert! :setting {'key "encryption-check" 'value value}))
 
 (defn- insert-user-with-raw-settings!
   "Insert a row directly into the `core_user` table (bypassing model transforms) and return its id."
   [raw-settings]
-  (first (t2/insert-returning-pks! :core_user {:email         (str (mt/random-name) "@nowhere.test")
-                                               :first_name    "No"
-                                               :last_name     "Body"
-                                               :password      "nopassword"
-                                               :password_salt "nosalt"
-                                               :date_joined   :%now
-                                               :is_superuser  false
-                                               :is_active     true
+  (first (t2/insert-returning-pks! :core_user {'email         (str (mt/random-name) "@nowhere.test")
+                                               'first_name    "No"
+                                               'last_name     "Body"
+                                               'password      "nopassword"
+                                               'password_salt "nosalt"
+                                               'date_joined   :%now
+                                               'is_superuser  false
+                                               'is_active     true
                                                ;; NOT NULL, and the model hook that fills it is bypassed
-                                               :entity_id     (u/generate-nano-id)
-                                               :settings      raw-settings})))
+                                               'entity_id     (u/generate-nano-id)
+                                               'settings      raw-settings})))
 
 (defn- insert-channel-with-raw-details!
   "Insert a row directly into the `channel` table (bypassing model transforms) and return its id."
   [raw-details]
-  (first (t2/insert-returning-pks! :channel {:name       (mt/random-name)
-                                             :type       "channel/http"
-                                             :details    raw-details
-                                             :active     true
-                                             :created_at :%now
-                                             :updated_at :%now})))
+  (first (t2/insert-returning-pks! :channel {'name       (mt/random-name)
+                                             'type       "channel/http"
+                                             'details    raw-details
+                                             'active     true
+                                             'created_at :%now
+                                             'updated_at :%now})))
 
 (deftest decrypt-db-undecryptable-values-test
   (let [k1        "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="

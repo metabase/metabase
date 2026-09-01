@@ -37,15 +37,15 @@
   [thread-id metric-id {:keys [metrics dimensions]} dim-id]
   (let [block   (first (t2/insert-returning-instances!
                         :model/ExplorationBlock
-                        {:exploration_thread_id thread-id
-                         :metrics               metrics
-                         :dimensions            dimensions
-                         :position              0}))
+                        {'exploration_thread_id thread-id
+                         'metrics               metrics
+                         'dimensions            dimensions
+                         'position              0}))
         page-id (t2/insert-returning-pk! :model/ExplorationPage
-                                         {:exploration_block_id (:id block)
-                                          :card_id              metric-id
-                                          :dimension_id         dim-id
-                                          :query_type           "default"})]
+                                         {'exploration_block_id (:id block)
+                                          'card_id              metric-id
+                                          'dimension_id         dim-id
+                                          'query_type           "default"})]
     page-id))
 
 (deftest per-block-context-scopes-applicability-test
@@ -195,16 +195,16 @@
                        :target ["field" {} (mt/id :venues :price)]}]
             block    (first (t2/insert-returning-instances!
                              :model/ExplorationBlock
-                             {:exploration_thread_id (:id t)
-                              :metrics               [{:card_id cid :dimension_mappings mappings}]
-                              :dimensions            [{:dimension-id "d1" :display-name "Price"
+                             {'exploration_thread_id (:id t)
+                              'metrics               [{:card_id cid :dimension_mappings mappings}]
+                              'dimensions            [{:dimension-id "d1" :display-name "Price"
                                                        :effective-type "type/Number"}]
-                              :position              0}))
+                              'position              0}))
             page-id  (t2/insert-returning-pk! :model/ExplorationPage
-                                              {:exploration_block_id (:id block)
-                                               :card_id              cid
-                                               :dimension_id         "d1"
-                                               :query_type           "default"})
+                                              {'exploration_block_id (:id block)
+                                               'card_id              cid
+                                               'dimension_id         "d1"
+                                               'query_type           "default"})
             row      {:card_id cid :dimension_id "d1" :page_id page-id :params {}}
             ctx      (qp.context/build-row-context row)]
         (is (some? ctx))

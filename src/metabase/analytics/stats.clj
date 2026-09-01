@@ -26,7 +26,6 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -192,16 +191,16 @@
           library-metrics-ids (collection-and-descendant-ids "library-metrics")]
       {:library_data    (if (seq library-data-ids)
                           (t2/count :model/Table
-                                    {:where [:and
-                                             [:= :is_published true]
-                                             [:in :collection_id library-data-ids]]})
+                                    {'where ['and
+                                             ['= 'is_published true]
+                                             ['in 'collection_id library-data-ids]]})
                           0)
        :library_metrics (if (seq library-metrics-ids)
                           (t2/count :model/Card
-                                    {:where [:and
-                                             [:= :type "metric"]
-                                             [:= :archived false]
-                                             [:in :collection_id library-metrics-ids]]})
+                                    {'where ['and
+                                             ['= 'type "metric"]
+                                             ['= 'archived false]
+                                             ['in 'collection_id library-metrics-ids]]})
                           0)})))
 
 (defn- group-metrics
@@ -233,11 +232,11 @@
   TODO characterize by # of revisions, and created by an admin"
   []
   (let [dashboards (t2/select [:model/Dashboard 'creator_id 'public_uuid 'parameters 'enable_embedding 'embedding_params]
-                              {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
-        dashcards  (t2/query {:select :dc.*
-                              :from [[(t2/table-name :model/DashboardCard) :dc]]
-                              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
-                              :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)})]
+                              {'where (mi/exclude-internal-content-hsql :model/Dashboard)})
+        dashcards  (t2/query {'select 'dc.*
+                              'from [[(t2/table-name :model/DashboardCard) 'dc]]
+                              'join [[(t2/table-name :model/Dashboard) 'd] ['= 'd.id 'dc.dashboard_id]]
+                              'where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)})]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -279,7 +278,7 @@
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
-                                              (merge {:group-by [column]}
+                                              (merge {'group-by [column]}
                                                      additonal-honeysql))]
              [k count])))
 
@@ -290,10 +289,10 @@
      ;; Pulses only (filter out Alerts)
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
-  (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                     :from      [:pulse]
-                     :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                     :where     (into
+  (-> (app-db/query {'select    [[['??_h2x_??/distinct-count 'pulse.id] 'count]]
+                     'from      ['pulse]
+                     'left-join ['pulse_card ['= 'pulse.id 'pulse_card.pulse_id]]
+                     'where     (into
                                  [:and
                                   [:or
                                    [:= :pulse_card.include_csv true]
@@ -306,7 +305,7 @@
   "Get metrics based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
-  (let [pulse-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:= :pulse.alert_condition nil]}]
+  (let [pulse-conditions {'left-join ['pulse ['= 'pulse.id 'pulse_id]], 'where ['= 'pulse.alert_condition nil]}]
     {:pulses               (t2/count :model/Pulse 'alert_condition nil)
      ;; "Table Cards" are Cards that include a Table you can download
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
@@ -317,7 +316,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
+  (let [alert-conditions {'left-join ['pulse ['= 'pulse.id 'pulse_id]], 'where ['not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
     {:alerts               (t2/count :model/Pulse 'alert_condition ['not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count :model/Pulse 'alert_condition ['not= nil], 'alert_first_only true)
@@ -330,9 +329,9 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card 'collection_id 'card_schema] {:where
-                                                                          [:and (mi/exclude-internal-content-hsql :model/Card)]})]
+  (let [collections (t2/count :model/Collection {'where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [:model/Card 'collection_id 'card_schema] {'where
+                                                                          ['and (mi/exclude-internal-content-hsql :model/Card)]})]
     {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -343,7 +342,7 @@
   "Get metrics based on Databases."
   []
   (let [databases (t2/select [:model/Database 'is_full_sync 'engine 'dbms_version]
-                             {:where (mi/exclude-internal-content-hsql :model/Database)})]
+                             {'where (mi/exclude-internal-content-hsql :model/Database)})]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -357,10 +356,10 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (t2/query {:select [:t.db_id :t.schema]
-                          :from   [[(t2/table-name :model/Table) :t]]
-                          :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-                          :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
+  (let [tables (t2/query {'select ['t.db_id 't.schema]
+                          'from   [[(t2/table-name :model/Table) 't]]
+                          'join   [[(t2/table-name :model/Database) 'd] ['= 'd.id 't.db_id]]
+                          'where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -368,11 +367,11 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (t2/query {:select [:f.table_id]
-                          :from [[(t2/table-name :model/Field) :f]]
-                          :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
-                                 [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-                          :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
+  (let [fields (t2/query {'select ['f.table_id]
+                          'from [[(t2/table-name :model/Field) 'f]]
+                          'join [[(t2/table-name :model/Table) 't] ['= 't.id 'f.table_id]
+                                 [(t2/table-name :model/Database) 'd] ['= 'd.id 't.db_id]]
+                          'where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
@@ -559,13 +558,13 @@
   than or equal to `num-users`"
   [num-users]
   (let [users-in-activation-period
-        (t2/count :model/User {:where [:and
-                                       [:<=
-                                        :date_joined
+        (t2/count :model/User {'where ['and
+                                       ['<=
+                                        'date_joined
                                         (t/plus (t/offset-date-time (analytics.settings/instance-creation))
                                                 (t/days activation-days))]
                                        (mi/exclude-internal-content-hsql :model/User)]
-                               :limit (inc num-users)})]
+                               'limit (inc num-users)})]
     (>= users-in-activation-period num-users)))
 
 (defn- sufficient-queries?
@@ -575,10 +574,10 @@
   (let [sample-db-id (t2/select-one-pk :model/Database 'is_sample true)
         ;; QueryExecution can be large, so let's avoid counting everything
         queries      (t2/select-fn-set :id :model/QueryExecution
-                                       {:where [:or
-                                                [:not= :database_id sample-db-id]
-                                                [:= :database_id nil]]
-                                        :limit (inc num-queries)})]
+                                       {'where ['or
+                                                ['not= 'database_id sample-db-id]
+                                                ['= 'database_id nil]]
+                                        'limit (inc num-queries)})]
     (>= (count queries) num-queries)))
 
 (defn- completed-activation-signals?
@@ -783,7 +782,7 @@
    (let [major-version (config/current-major-version)
          minor-version (config/current-minor-version)
          engines       (t2/select-fn-set :engine :model/Database
-                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+                                         {'where ['in 'engine (map name (keys csv-upload-version-availability))]})]
      (when (and major-version minor-version)
        (some
         (fn [engine]
@@ -893,7 +892,7 @@
     :enabled   (t2/exists? :model/ModerationReview)}
    {:name      :dashboard-subscription-filters
     :available (premium-features/enable-content-verification?)
-    :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
+    :enabled   (t2/exists? :model/Pulse {'where ['not= 'parameters "[]"]})}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)
     :enabled   (not (session.settings/enable-password-login))}

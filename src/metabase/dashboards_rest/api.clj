@@ -61,11 +61,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- dashboards-list [filter-option]
-  (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
+  (as-> (t2/select :model/Dashboard {'where    ['and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
-                                                [:= :archived (= (keyword filter-option) :archived)]]
-                                     :order-by [:%lower.name]}) <>
+                                                ['= 'archived (= (keyword filter-option) :archived)]]
+                                     'order-by ['%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
@@ -152,10 +152,10 @@
                                          'parameterized_object_id   dashboard-id))
                   (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id dashboard-id)
                           (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                                            {:where [:in :dashboardcard_id
-                                                     ^:allow-subquery {:select [:id]
-                                                                       :from   [(t2/table-name :model/DashboardCard)]
-                                                                       :where  [:= :dashboard_id dashboard-id]}]})))
+                                            {'where ['in 'dashboardcard_id
+                                                     {'select ['id]
+                                                      'from   [(t2/table-name :model/DashboardCard)]
+                                                      'where  ['= 'dashboard_id dashboard-id]}]})))
    :actions (set (t2/select-fn-vec :action_id :model/DashboardCard 'dashboard_id dashboard-id))})
 
 (def ^:private no-references {:cards #{} :actions #{}})
@@ -725,29 +725,29 @@
   ;; the case, but if you change one, you'll want to change both.
   (let [dashboard  (api/read-check :model/Dashboard id)
         query      (merge
-                    {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                              :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
-                              :c.dashboard_id
-                              [nil :location]
-                              [(h2x/literal "card")  :model]
-                              [^:allow-subquery {:select   [:status]
-                                                 :from     [:moderation_review]
-                                                 :where    [:and
-                                                            [:= :moderated_item_type "card"]
-                                                            [:= :moderated_item_id :c.id]
-                                                            [:= :most_recent true]]
-                                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                                 ;; protecting against potential bugs
-                                                 :order-by [[:id :desc]]
-                                                 :limit    1}
-                               :moderated_status]]
-                     :from      [[:report_card :c]]
-                     :where     [:and
-                                 [:= :c.dashboard_id id]
-                                 [:exists ^:allow-subquery {:select 1
-                                                            :from [[:report_dashboardcard :dc]]
-                                                            :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
-                                 [:= :c.archived false]]}
+                    {'select ['c.id 'c.name 'c.description 'c.entity_id 'c.collection_position 'c.display 'c.collection_preview
+                              'last_used_at 'c.collection_id 'c.archived_directly 'c.archived 'c.database_id
+                              'c.dashboard_id
+                              [nil 'location]
+                              [(h2x/literal "card")  'model]
+                              [{'select   ['status]
+                                'from     ['moderation_review]
+                                'where    ['and
+                                           ['= 'moderated_item_type "card"]
+                                           ['= 'moderated_item_id 'c.id]
+                                           ['= 'most_recent true]]
+                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                ;; protecting against potential bugs
+                                'order-by [['id 'desc]]
+                                'limit    1}
+                               'moderated_status]]
+                     'from      [['report_card 'c]]
+                     'where     ['and
+                                 ['= 'c.dashboard_id id]
+                                 ['exists {'select 1
+                                           'from [['report_dashboardcard 'dc]]
+                                           'where ['and ['= 'c.id 'dc.card_id] ['= 'c.dashboard_id 'dc.dashboard_id]]}]
+                                 ['= 'c.archived false]]}
                     (when (request/paged?)
                       {:limit (request/limit)
                        :offset (request/offset)}))
@@ -874,10 +874,10 @@
   (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
       (api/check-400 (not (t2/exists? :model/Card
-                                      {:where [:and
-                                               [:not= :dashboard_id (u/the-id existing-dashboard)]
-                                               [:not= :dashboard_id nil]
-                                               [:in :id (set card-ids)]]}))))))
+                                      {'where ['and
+                                               ['not= 'dashboard_id (u/the-id existing-dashboard)]
+                                               ['not= 'dashboard_id nil]
+                                               ['in 'id (set card-ids)]]}))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
@@ -993,7 +993,7 @@
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (t2/select :model/Pulse 'dashboard_id dashboard-id 'archived false {:order-by [[:id :asc]]})
+      (->> (t2/select :model/Pulse 'dashboard_id dashboard-id 'archived false {'order-by [['id 'asc]]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1241,8 +1241,8 @@
                                           {:object-id dashboard-id
                                            :user-id api/*current-user-id*})
                    (t2/update! :model/Dashboard dashboard-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
+                               {'public_uuid       <>
+                                'made_public_by_id api/*current-user-id*})))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1260,8 +1260,8 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
+              {'public_uuid       nil
+               'made_public_by_id nil})
   (events/publish-event! :event/dashboard-public-link-deleted
                          {:object-id dashboard-id
                           :user-id api/*current-user-id*})

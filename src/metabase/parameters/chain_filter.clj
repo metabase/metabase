@@ -202,22 +202,22 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
-                                     [:fk-table.id :t1]
-                                     [:pk-field.id :f2]
-                                     [:pk-field.table_id :t2]]
-                         :from      [[:metabase_field :fk-field]]
-                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                     :fk-table.active]
-                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                     :pk-field.active]]
-                         :where     [:and
-                                     [:= :database.id database-id]
-                                     [:not= :fk-field.fk_target_field_id nil]
-                                     :fk-field.active]
-                         :order-by [[:fk-field.id :desc]
-                                    [:pk-field.id :desc]]})
+  (let [rows (mdb/query {'select    [['fk-field.id 'f1]
+                                     ['fk-table.id 't1]
+                                     ['pk-field.id 'f2]
+                                     ['pk-field.table_id 't2]]
+                         'from      [['metabase_field 'fk-field]]
+                         'left-join [['metabase_table 'fk-table]    ['and ['= 'fk-field.table_id 'fk-table.id]
+                                                                     'fk-table.active]
+                                     ['metabase_database 'database] ['= 'fk-table.db_id 'database.id]
+                                     ['metabase_field 'pk-field]    ['and ['= 'fk-field.fk_target_field_id 'pk-field.id]
+                                                                     'pk-field.active]]
+                         'where     ['and
+                                     ['= 'database.id database-id]
+                                     ['not= 'fk-field.fk_target_field_id nil]
+                                     'fk-field.active]
+                         'order-by [['fk-field.id 'desc]
+                                    ['pk-field.id 'desc]]})
         joins (for [{:keys [t1 f1 t2 f2]} rows]
                 {:lhs {:table t1, :field f1}
                  :rhs {:table t2, :field f2}})
@@ -559,16 +559,15 @@
 
 (defn- implicit-pk->name-mapping-query
   [field-id mapping-type]
-  ^:allow-subquery
-  {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
-   :from      [[:metabase_field :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [:metabase_field :dest] [:= :dest.table_id :table.id]]
-   :where     [:and
-               [:= :source.id field-id]
+  {'select    [['dest.id 'id] [['inline mapping-type] 'mapping_type]]
+   'from      [['metabase_field 'source]]
+   'left-join [['metabase_table 'table] ['= 'source.table_id 'table.id]
+               ['metabase_field 'dest] ['= 'dest.table_id 'table.id]]
+   'where     ['and
+               ['= 'source.id field-id]
                (mdb/isa :source.semantic_type :type/PK)
                (mdb/isa :dest.semantic_type :type/Name)]
-   :limit     1})
+   'limit     1})
 
 (def ^:dynamic *allow-implicit-uuid-field-remapping*
   "Should implicit remapping be allowed _for uuid fields_? Not eg. for
@@ -577,31 +576,28 @@
   true)
 
 (defn- remapped-field-id-query [field-id]
-  {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-   :from   [[^:allow-subquery
-             {::union (into [;; Explicit FK Field->Field remapping
-                             ^:allow-subquery
-                             {:select [[:dimension.human_readable_field_id :id] [^:allow-raw-sql [:inline "fk->field"] :mapping_type]]
-                              :from   [[:dimension :dimension]]
-                              :where  [:and
-                                       [:= :dimension.field_id field-id]
-                                       [:not= :dimension.human_readable_field_id nil]]
-                              :limit  1}]
-                            (when *allow-implicit-uuid-field-remapping*
-                              [;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                               (implicit-pk->name-mapping-query
-                                ^:allow-subquery
-                                {:select    [:fk_target_field_id]
-                                 :from      [:metabase_field]
-                                 :where     [:and
-                                             [:= :id field-id]
-                                             (mdb/isa :semantic_type :type/FK)]
-                                 :limit     1}
-                                "fk->pk->name")
-                               ;; Implicit PK Field-> [Name] Field remapping
-                               (implicit-pk->name-mapping-query field-id "pk->name")]))}
-             :mapping]]
-   :limit  1})
+  {'select [['mapping.id 'id] ['mapping.mapping_type 'mapping_type]]
+   'from   [[{'?_current-ns_?/union (into [;; Explicit FK Field->Field remapping
+                                           {'select [['dimension.human_readable_field_id 'id] [['inline "fk->field"] 'mapping_type]]
+                                            'from   [['dimension 'dimension]]
+                                            'where  ['and
+                                                     ['= 'dimension.field_id field-id]
+                                                     ['not= 'dimension.human_readable_field_id nil]]
+                                            'limit  1}]
+                                          (when *allow-implicit-uuid-field-remapping*
+                                            [;; Implicit FK Field -> PK Field -> [Name] Field remapping
+                                             (implicit-pk->name-mapping-query
+                                              {'select    ['fk_target_field_id]
+                                               'from      ['metabase_field]
+                                               'where     ['and
+                                                           ['= 'id field-id]
+                                                           (mdb/isa :semantic_type :type/FK)]
+                                               'limit     1}
+                                              "fk->pk->name")
+                                             ;; Implicit PK Field-> [Name] Field remapping
+                                             (implicit-pk->name-mapping-query field-id "pk->name")]))}
+             'mapping]]
+   'limit  1})
 
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ::lib.schema.id/field]

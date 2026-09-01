@@ -58,18 +58,17 @@
   (t2/update! :model/Field
               (merge (sync.fingerprint/incomplete-analysis-kvs)
                      {:table_id (:id table)})
-              {:last_analyzed :%now}))
+              {'last_analyzed :%now}))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
   (t2/update! :model/Field
               (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id [:in ^:allow-subquery
-                                 {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
-                                  :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
-              {:last_analyzed :%now}))
+                     {:table_id [:in                                  {'select ['id]
+                                                                       'from   [(t2/table-name :model/Table)]
+                                                                       'where  ['and sync-util/sync-tables-clause ['= 'db_id (:id database)]]}]})
+              {'last_analyzed :%now}))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."

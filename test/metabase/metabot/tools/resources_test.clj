@@ -1013,11 +1013,11 @@
         ;; `with-temp :model/Table` trips the destination-permission guard. Insert it directly to work
         ;; around that guard and confirm the metabot guard rejects it anyway. (Cascades away with the db.)
         (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {:db_id      destination-id
-                                                 :name       "destination-table"
-                                                 :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
+                                                {'db_id      destination-id
+                                                 'name       "destination-table"
+                                                 'active     true
+                                                 'created_at :%now
+                                                 'updated_at :%now})]
           (mt/with-temp [:model/Card    {model-id :id}    {:type :model :database_id destination-id}
                          :model/Card    {question-id :id} {:type :question :database_id destination-id}
                          :model/Card    {metric-id :id}   {:type :metric :database_id destination-id}
@@ -1222,9 +1222,9 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {}]
       (doseq [i (range 1 31)]
-        (t2/insert! :model/Table {:name   (format "TABLE-%03d" i)
-                                  :db_id  db-id
-                                  :active true}))
+        (t2/insert! :model/Table {'name   (format "TABLE-%03d" i)
+                                  'db_id  db-id
+                                  'active true}))
       (testing "page 1 returns first 25 tables, with page/pages metadata"
         (let [result (read-resource/read-resource
                       {:uris [(str "metabase://database/" db-id "/tables")]})
@@ -1249,9 +1249,9 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {}]
         (doseq [i (range 1 31)]
-          (t2/insert! :model/Table {:name   (format "TBL-%03d" i)
-                                    :db_id  db-id
-                                    :active true}))
+          (t2/insert! :model/Table {'name   (format "TBL-%03d" i)
+                                    'db_id  db-id
+                                    'active true}))
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://database/" db-id "/tables")]})]
           (is (str/includes? output "page=\"1\""))
@@ -1264,9 +1264,9 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {}]
         (doseq [i (range 1 31)]
-          (t2/insert! :model/Table {:name   (format "TBL-%03d" i)
-                                    :db_id  db-id
-                                    :active true}))
+          (t2/insert! :model/Table {'name   (format "TBL-%03d" i)
+                                    'db_id  db-id
+                                    'active true}))
         (let [{:keys [output]} (read-resource/read-resource
                                 {:uris [(str "metabase://database/" db-id "/tables?page=1")]})]
           (is (str/includes? output (str "metabase://database/" db-id "/tables?page=2")))

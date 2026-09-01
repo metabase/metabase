@@ -69,14 +69,14 @@
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
                             (t2/select-pks-set :model/Card
-                                               {:where [:and
-                                                        [:in :id card-ids]
+                                               {'where ['and
+                                                        ['in 'id card-ids]
                                                         ;; skip when archived
-                                                        [:= :archived false]
+                                                        ['= 'archived false]
                                                         ;; belong to this dashboard, or are not Dashboard Questions
-                                                        [:or
-                                                         [:= :dashboard_id dashboard-id]
-                                                         [:= :dashboard_id nil]]]}))
+                                                        ['or
+                                                         ['= 'dashboard_id dashboard-id]
+                                                         ['= 'dashboard_id nil]]]}))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -87,9 +87,9 @@
   (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
         active-card-ids (when (seq card-ids)
                           (t2/select-pks-set :model/Card
-                                             {:where [:and
-                                                      [:in :id card-ids]
-                                                      [:= :archived false]]}))
+                                             {'where ['and
+                                                      ['in 'id card-ids]
+                                                      ['= 'archived false]]}))
         invalid-card-ids (set/difference card-ids active-card-ids)]
     (if (empty? invalid-card-ids)
       parameters

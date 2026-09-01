@@ -698,7 +698,7 @@
                        :started_at (t/offset-date-time 2025 9 30 14 0 0)
                        :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
          (testing "event published with re-fetched task after version is set"
-           (t2/update! :model/RemoteSyncTask task-id {:version "abc123"})
+           (t2/update! :model/RemoteSyncTask task-id {'version "abc123"})
            (let [completed-task (t2/select-one :model/RemoteSyncTask task-id)]
              (events/publish-event! :event/remote-sync-import
                                     {:object completed-task

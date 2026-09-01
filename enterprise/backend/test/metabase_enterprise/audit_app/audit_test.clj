@@ -52,18 +52,18 @@
       (with-redefs [ee-audit/analytics-dir-resource nil]
         (is (nil? @#'ee-audit/analytics-dir-resource))
         (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
+        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {'where ['= 'is_audit true]}))
             "Audit DB is installed.")
-        (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
+        (is (= 0 (t2/count :model/Card {'where ['= 'database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
       (t2/delete! :model/Database 'is_audit true)
       (audit/last-analytics-checksum! 0))
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
+      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {'where ['= 'is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
-      (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
+      (is (not= 0 (t2/count :model/Card {'where ['= 'database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
       (let [audit-cards             (t2/select [:model/Card 'id 'name 'result_metadata 'card_schema]
@@ -92,10 +92,10 @@
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (mt/with-dynamic-fn-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! :model/Database 'is_audit true {:engine "datomic"})
+        (t2/update! :model/Database 'is_audit true {'engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! :model/Database 'is_audit true {:engine "h2"})))))
+        (t2/update! :model/Database 'is_audit true {'engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
@@ -287,7 +287,7 @@
                (t2/select-one-fn :name :model/Table 'id single-table-id))))
       (testing "Tables with nil schemas should not be changed if a table with a schema exists"
         (is (= 2
-               (t2/count :model/Table {:where [:= :name "accounts"]}))))
+               (t2/count :model/Table {'where ['= 'name "accounts"]}))))
       (testing "Tables with nil schemas have their schema set to \"public\""
         (is (= "public"
                (t2/select-one-fn :schema :model/Table 'id no-schema-table))))
@@ -307,7 +307,7 @@
   (t2/select-one [:model/Table 'id 'name 'schema 'active]
                  'db_id audit/audit-db-id
                  'active true
-                 {:where [:= [:lower :name] view-name]}))
+                 {'where ['= ['lower 'name] view-name]}))
 
 (deftest audit-db-self-heals-duplicate-rows-from-stale-schema-test
   ;; GHY-3974 Mode A: when an interrupted or raced `adjust-audit-db-to-host!` leaves an audit
@@ -329,7 +329,7 @@
                                         :query    {:source-table orig-id}}}]
           (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
             ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (t2/update! :model/Table orig-id {'schema (if (nil? (:schema v-content)) "public" nil)})
             (sync/sync-database! (t2/select-one :model/Database 'is_audit true) {:scan :schema})
             (is (= 2 (t2/count :model/Table 'db_id audit/audit-db-id 'name (:name v-content)))
                 "stale-schema sync should produce a duplicate pair")
@@ -339,7 +339,7 @@
             (ee-audit/ensure-audit-db-installed!)
             (let [rows (t2/select [:model/Table 'id 'name 'active]
                                   'db_id audit/audit-db-id
-                                  {:where [:= [:lower :name] "v_content"]})]
+                                  {'where ['= ['lower 'name] "v_content"]})]
               (is (= 1 (count rows)) "exactly one metabase_table row per view after heal")
               (is (every? :active rows) "the surviving row is active"))
             (testing "the customer card still points at an active table"
@@ -367,10 +367,10 @@
                         :table_id      orig-id
                         :dataset_query {:database audit/audit-db-id :type :query :query {:source-table orig-id}}}]
           (testing "precondition: a real Mode A duplicate pair, customer card on the new/active row"
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (t2/update! :model/Table orig-id {'schema (if (nil? (:schema v-content)) "public" nil)})
             (sync/sync-database! (t2/select-one :model/Database 'is_audit true) {:scan :schema})
             (let [rows   (t2/select [:model/Table 'id 'active] 'db_id audit/audit-db-id
-                                    {:where [:= [:lower :name] "v_content"]})
+                                    {'where ['= ['lower 'name] "v_content"]})
                   new-id (:id (first (filter :active rows)))]
               (is (= 2 (count rows)) "stale-schema sync should produce a duplicate pair")
               (is (some? new-id) "a freshly-synced active row exists")

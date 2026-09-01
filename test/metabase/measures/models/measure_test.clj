@@ -49,7 +49,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Measure measure-id {:definition (measure-definition-referencing 99999)})))))
+           (t2/update! :model/Measure measure-id {'definition (measure-definition-referencing 99999)})))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
                                                     :table_id (mt/id :venues)
@@ -58,7 +58,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure measure-id {:definition (measure-definition-referencing measure-id)})))))
+           (t2/update! :model/Measure measure-id {'definition (measure-definition-referencing measure-id)})))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :table_id (mt/id :venues)
@@ -71,7 +71,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure measure-1-id {:definition (measure-definition-referencing measure-2-id)})))))
+           (t2/update! :model/Measure measure-1-id {'definition (measure-definition-referencing measure-2-id)})))))
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
   (defn- metric-query
@@ -90,10 +90,10 @@
                Exception
                #"[Mm]easures cannot reference metrics"
                (t2/insert! :model/Measure
-                           {:name "Bad Measure"
-                            :table_id (mt/id :venues)
-                            :creator_id (mt/user->id :rasta)
-                            :definition (measure-definition (lib.metadata/metric mp metric-id))})))))))
+                           {'name "Bad Measure"
+                            'table_id (mt/id :venues)
+                            'creator_id (mt/user->id :rasta)
+                            'definition (measure-definition (lib.metadata/metric mp metric-id))})))))))
   (deftest insert-measure-with-nested-metric-reference-test
     (testing "Inserting a measure with metric nested in arithmetic expression should fail"
       (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
@@ -106,11 +106,11 @@
                Exception
                #"[Mm]easures cannot reference metrics"
                (t2/insert! :model/Measure
-                           {:name "Bad Measure"
-                            :table_id (mt/id :venues)
-                            :creator_id (mt/user->id :rasta)
+                           {'name "Bad Measure"
+                            'table_id (mt/id :venues)
+                            'creator_id (mt/user->id :rasta)
                             ;; Metric nested in an arithmetic expression: metric + 1
-                            :definition (measure-definition
+                            'definition (measure-definition
                                          (lib/+ (lib.metadata/metric mp metric-id)
                                                 1))})))))))
   (deftest update-measure-with-metric-reference-test
@@ -129,7 +129,7 @@
                Exception
                #"[Mm]easures cannot reference metrics"
                (t2/update! :model/Measure measure-id
-                           {:definition (measure-definition (lib.metadata/metric mp metric-id))}))))))))
+                           {'definition (measure-definition (lib.metadata/metric mp metric-id))}))))))))
 
 ;;; ------------------------------------------------ MBQL4 Rejection Tests ------------------------------------------------
 ;;; The model layer should only accept MBQL5 definitions. MBQL4 conversion still happens at the API/serdes layer.
@@ -141,20 +141,20 @@
            Exception
            #"Invalid measure definition"
            (t2/insert! :model/Measure
-                       {:name "Bad Measure"
-                        :table_id (mt/id :venues)
-                        :creator_id (mt/user->id :rasta)
-                        :definition {:source-table (mt/id :venues)
+                       {'name "Bad Measure"
+                        'table_id (mt/id :venues)
+                        'creator_id (mt/user->id :rasta)
+                        'definition {:source-table (mt/id :venues)
                                      :aggregation [[:count]]}}))))
     (testing "MBQL4 full query"
       (is (thrown-with-msg?
            Exception
            #"Invalid measure definition"
            (t2/insert! :model/Measure
-                       {:name "Bad Measure"
-                        :table_id (mt/id :venues)
-                        :creator_id (mt/user->id :rasta)
-                        :definition {:database (mt/id)
+                       {'name "Bad Measure"
+                        'table_id (mt/id :venues)
+                        'creator_id (mt/user->id :rasta)
+                        'definition {:database (mt/id)
                                      :type :query
                                      :query {:source-table (mt/id :venues)
                                              :aggregation [[:count]]}}}))))))
@@ -170,14 +170,14 @@
              Exception
              #"Invalid measure definition"
              (t2/update! :model/Measure measure-id
-                         {:definition {:source-table (mt/id :venues)
+                         {'definition {:source-table (mt/id :venues)
                                        :aggregation [[:count]]}}))))
       (testing "MBQL4 full query"
         (is (thrown-with-msg?
              Exception
              #"Invalid measure definition"
              (t2/update! :model/Measure measure-id
-                         {:definition {:database (mt/id)
+                         {'definition {:database (mt/id)
                                        :type :query
                                        :query {:source-table (mt/id :venues)
                                                :aggregation [[:count]]}}})))))))

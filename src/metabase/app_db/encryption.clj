@@ -150,8 +150,8 @@
   plaintext \"unencrypted\" marker when `encrypt-fn` is nil (the database is being decrypted)."
   [conn encrypt-fn]
   (t2/delete! :conn conn :setting 'key encryption-check-key)
-  (t2/insert! :conn conn :setting {:key   encryption-check-key
-                                   :value (if encrypt-fn
+  (t2/insert! :conn conn :setting {'key   encryption-check-key
+                                   'value (if encrypt-fn
                                             (encrypt-fn (str (random-uuid)))
                                             "unencrypted")}))
 
@@ -302,7 +302,7 @@
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
                   (t2/update! :conn conn table {'id id} {column (encryption/encrypt value)})))
-              (t2/reducible-select [table 'id [column :value]] {:where [:!= column nil]}))))))
+              (t2/reducible-select [table 'id [column :value]] {'where ['!= column nil]}))))))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -328,11 +328,11 @@
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
                                                                                        (h2x/current-datetime-honeysql-form db-type))]
-                                    (t2/update! :conn conn :setting {'key key} {:value current-timestamp-as-string-honeysql}))
+                                    (t2/update! :conn conn :setting {'key key} {'value current-timestamp-as-string-honeysql}))
           "encryption-check" nil
           (t2/update! :conn conn :setting
                       {'key key}
-                      {:value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))})))
+                      {'value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))})))
       (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))

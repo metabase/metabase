@@ -64,11 +64,11 @@
   [user-id]
   (when (zero?
          (t2/count :model/PermissionsGroupMembership
-                   {:join   [[:core_user :user] [:= :user.id :user_id]]
-                    :where  [:and
-                             [:= :group_id (u/the-id (perms-group/admin))]
-                             [:= :user.is_active true]
-                             [:not= :user.id user-id]]}))
+                   {'join   [['core_user 'user] ['= 'user.id 'user_id]]
+                    'where  ['and
+                             ['= 'group_id (u/the-id (perms-group/admin))]
+                             ['= 'user.is_active true]
+                             ['not= 'user.id user-id]]}))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
@@ -99,10 +99,10 @@
     (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false})))
+      (t2/update! 'User user_id {'is_superuser false})))
   ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
   (when (= group_id (:id (perms-group/data-analyst)))
-    (t2/update! 'User user_id {:is_data_analyst false})))
+    (t2/update! 'User user_id {'is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the
@@ -126,17 +126,16 @@
                                            [:tuple pos-int? pos-int?]
                                            :boolean]]
   (when (seq user-id-group-id->is-group-manager?)
-    {:insert-into [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
-                   ^:allow-subquery
-                   {:select [:g.id :u.id [(into [:case]
+    {'insert-into [['permissions_group_membership ['group_id 'user_id 'is_group_manager]]
+                   {'select ['g.id 'u.id [(into [:case]
                                                 (mapcat (fn [[[user-id group-id] is-group-manager?]]
                                                           [[[:and
                                                              [:= :u.id user-id]
                                                              [:= :g.id group-id]]]
                                                            is-group-manager?])
                                                         user-id-group-id->is-group-manager?))]]
-                    :from [[:permissions_group :g]]
-                    :join [[:core_user :u] (into [:or]
+                    'from [['permissions_group 'g]]
+                    'join [['core_user 'u] (into [:or]
                                                  (for [[[user-id group-id] _] user-id-group-id->is-group-manager?]
                                                    [:and
                                                     [:= :u.id user-id]
@@ -225,9 +224,9 @@
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
-          (t2/update! :model/User 'id ['in new-admin-ids] {:is_superuser true}))
+          (t2/update! :model/User 'id ['in new-admin-ids] {'is_superuser true}))
         (when (seq new-data-analyst-ids)
-          (t2/update! :model/User 'id ['in new-data-analyst-ids] {:is_data_analyst true}))
+          (t2/update! :model/User 'id ['in new-data-analyst-ids] {'is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create

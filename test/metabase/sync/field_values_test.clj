@@ -40,7 +40,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
-      (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {:values [10 20 30 40]})
+      (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {'values [10 20 30 40]})
       ;; sync to make sure the field values are filled
       (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
@@ -56,7 +56,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
-      (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {:values [10 20 30 40]})
+      (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {'values [10 20 30 40]})
       (sync/sync-table! (t2/select-one :model/Table 'id (mt/id :venues)))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
@@ -69,7 +69,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
-      (t2/update! :model/FieldValues (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full) {:values [1 2 3]})
+      (t2/update! :model/FieldValues (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full) {'values [1 2 3]})
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
@@ -85,8 +85,8 @@
       (mt/with-full-data-perms-for-all-users!
         (t2/update! :model/FieldValues
                     (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
-                    {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                     :values       [1 2 3]})
+                    {'last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                     'values       [1 2 3]})
         (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
                (sync-database-counts! "update-field-values" (data/db))))
         (is (= [1 2 3] (venues-price-field-values)))
@@ -98,7 +98,7 @@
           (testing "Field is syncing after usage"
             (t2/update! :model/FieldValues
                         (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
-                        {:values [1 2 3]})
+                        {'values [1 2 3]})
             (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                    (sync-database-counts! "update-field-values" (data/db))))
             (is (partial= {:values [[1] [2] [3] [4]]}
@@ -106,12 +106,12 @@
         (testing "If only advanced fields have been used recently, still sync"
           (t2/update! :model/FieldValues
                       (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
-                      {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                       :values       [1 2 3]})
-          (t2/insert! :model/FieldValues {:field_id     (mt/id :venues :price)
-                                          :type         :advanced
-                                          :hash_key     "random-key"
-                                          :last_used_at (t/instant)})
+                      {'last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                       'values       [1 2 3]})
+          (t2/insert! :model/FieldValues {'field_id     (mt/id :venues :price)
+                                          'type         :advanced
+                                          'hash_key     "random-key"
+                                          'last_used_at (t/instant)})
           (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                  (sync-database-counts! "update-field-values" (data/db)))))
         (is (= [1 2 3 4] (venues-price-field-values)))))
@@ -133,39 +133,39 @@
            new-full-id]             (t2/insert-returning-pks!
                                      (t2/table-name :model/FieldValues)
                                      [;; expired sandbox fieldvalues
-                                      {:field_id   field-id
-                                       :type       "advanced"
-                                       :hash_key   "random-hash"
-                                       :created_at expired-created-at
-                                       :updated_at expired-created-at}
+                                      {'field_id   field-id
+                                       'type       "advanced"
+                                       'hash_key   "random-hash"
+                                       'created_at expired-created-at
+                                       'updated_at expired-created-at}
                                       ;; expired linked-filter fieldvalues
-                                      {:field_id   field-id
-                                       :type       "advanced"
-                                       :hash_key   "random-hash"
-                                       :created_at expired-created-at
-                                       :updated_at expired-created-at}
+                                      {'field_id   field-id
+                                       'type       "advanced"
+                                       'hash_key   "random-hash"
+                                       'created_at expired-created-at
+                                       'updated_at expired-created-at}
                                       ;; valid sandbox fieldvalues
-                                      {:field_id   field-id
-                                       :type       "advanced"
-                                       :hash_key   "random-hash"
-                                       :created_at now
-                                       :updated_at now}
+                                      {'field_id   field-id
+                                       'type       "advanced"
+                                       'hash_key   "random-hash"
+                                       'created_at now
+                                       'updated_at now}
                                       ;; valid linked-filter fieldvalues
-                                      {:field_id   field-id
-                                       :type       "advanced"
-                                       :hash_key   "random-hash"
-                                       :created_at now
-                                       :updated_at now}
+                                      {'field_id   field-id
+                                       'type       "advanced"
+                                       'hash_key   "random-hash"
+                                       'created_at now
+                                       'updated_at now}
                                       ;; old full fieldvalues
-                                      {:field_id   field-id
-                                       :type       "full"
-                                       :created_at expired-created-at
-                                       :updated_at expired-created-at}
+                                      {'field_id   field-id
+                                       'type       "full"
+                                       'created_at expired-created-at
+                                       'updated_at expired-created-at}
                                       ;; new full fieldvalues
-                                      {:field_id   field-id
-                                       :type       "full"
-                                       :created_at now
-                                       :updated_at now}])]
+                                      {'field_id   field-id
+                                       'type       "full"
+                                       'created_at now
+                                       'updated_at now}])]
       (is (= (repeat 2 {:deleted 2})
              (sync-database!' "delete-expired-advanced-field-values" (data/db))))
       (testing "The expired Advanced FieldValues should be deleted"
@@ -191,9 +191,9 @@
              (into {} (t2/select-one [:model/FieldValues 'values 'human_readable_values 'has_more_values]
                                      'field_id (mt/id :blueberries_consumed :str))))))
     ;; Manually add an advanced field values to test whether or not it got deleted later
-    (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
-                                    :type :advanced
-                                    :hash_key "random-key"})
+    (t2/insert! :model/FieldValues {'field_id (mt/id :blueberries_consumed :str)
+                                    'type :advanced
+                                    'hash_key "random-key"})
     (testing "We mark the field values as :has_more_values when it grows too big."
       ;; now insert enough bloobs to put us over the limit and re-sync.
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 analyze/auto-list-cardinality-threshold)))
@@ -242,14 +242,14 @@
       ;; change has_field_values to list
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
-      (t2/update! :model/Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
+      (t2/update! :model/Field (mt/id :blueberries_consumed :str) {'has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
                (t2/select-one-fn :has_more_values :model/FieldValues 'field_id (mt/id :blueberries_consumed :str)))))
       ;; Manually add an advanced field values to test whether or not it got deleted later
-      (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
-                                      :type :advanced
-                                      :hash_key "random-key"})
+      (t2/insert! :model/FieldValues {'field_id (mt/id :blueberries_consumed :str)
+                                      'type :advanced
+                                      'hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
         (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*distinct-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
@@ -275,7 +275,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; change has_field_values to list
-      (t2/update! :model/Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
+      (t2/update! :model/Field (mt/id :blueberries_consumed :str) {'has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
                (t2/select-one-fn :has_more_values :model/FieldValues 'field_id (mt/id :blueberries_consumed :str)))))
@@ -408,7 +408,7 @@
                                                'table_id (mt/id :people)
                                                'active true
                                                'visibility_type "normal"
-                                               {:order-by [[:name :asc]]}))
+                                               {'order-by [['name 'asc]]}))
               eligible-count   (count (filter field-values/field-should-have-field-values? fields))
               counts           (sync.field-values/sync-fields-grouped-by-table! fields)]
           (is (= eligible-count (:probed counts))

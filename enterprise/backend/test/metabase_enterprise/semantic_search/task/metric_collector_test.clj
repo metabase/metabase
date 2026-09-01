@@ -35,9 +35,9 @@
   [pgvector index-metadata documents]
   (jdbc/execute!
    pgvector
-   (sql/format {:insert-into [[:raw (:gate-table-name index-metadata)]]
-                :columns [:id :model :model_id :updated_at]
-                :values documents})))
+   (sql/format {'insert-into [['raw (:gate-table-name index-metadata)]]
+                'columns ['id 'model 'model_id 'updated_at]
+                'values documents})))
 
 (defn- mock-documents-into-dlq-table!
   [pgvector index-metadata docs]
@@ -47,9 +47,9 @@
                       (-> active-index :metadata-row :id))]
     (jdbc/execute!
      pgvector
-     (sql/format {:insert-into dlq-table-kw
-                  :columns [:gate_id :retry_count :attempt_at :last_attempted_at :error_gated_at]
-                  :values docs}))))
+     (sql/format {'insert-into dlq-table-kw
+                  'columns ['gate_id 'retry_count 'attempt_at 'last_attempted_at 'error_gated_at]
+                  'values docs}))))
 
 (defn- drop-dlq-table-entries!
   [pgvector index-metadata]
@@ -59,13 +59,13 @@
                       (-> active-index :metadata-row :id))]
     (jdbc/execute!
      pgvector
-     (sql/format {:delete-from dlq-table-kw}))))
+     (sql/format {'delete-from dlq-table-kw}))))
 
 (defn- drop-gate-table-entries!
   [pgvector index-metadata]
   (jdbc/execute!
    pgvector
-   (sql/format {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
+   (sql/format {'delete-from [['raw (:gate-table-name index-metadata)]]})))
 
 (deftest shared-index-metrics-survive-semantic-collector-failure-test
   (let [refreshes (atom 0)]

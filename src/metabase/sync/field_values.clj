@@ -39,7 +39,7 @@
   [table limit]
   (t2/select :model/Field
              'table_id (u/the-id table), 'active true, 'visibility_type "normal"
-             {:order-by [[:id :asc]] :limit limit}))
+             {'order-by [['id 'asc]] 'limit limit}))
 
 (defn- warn-too-many-fields!
   "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first

@@ -110,7 +110,7 @@
                                                :updated_by_id         (mt/user->id :crowberto)}]
     ;; `mt/with-temp` creates Users with `last_login = nil`, which the recipient filter treats as
     ;; "invited but not accepted." Mark one as having logged in to represent an accepted admin.
-    (t2/update! :model/User (:id accepted-admin) {:last_login :%now})
+    (t2/update! :model/User (:id accepted-admin) {'last_login :%now})
     (let [emails (set (#'messages/all-admin-recipients))]
       (testing "includes admins who have accepted their invitation"
         (is (contains? emails "accepted-admin@example.com")))

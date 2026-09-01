@@ -677,21 +677,21 @@
   (hydrate-notification (t2/select :model/Notification
                                    'active true
                                    'payload_type :notification/card
-                                   'payload_id ['in ^:allow-subquery {:select [:id]
-                                                                      :from   [:notification_card]
-                                                                      :where  [:= :card_id card-id]}])))
+                                   'payload_id ['in {'select ['id]
+                                                     'from   ['notification_card]
+                                                     'where  ['= 'card_id card-id]}])))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
   [event-name]
   (t2/select :model/Notification
-             {:select    [:n.*]
-              :from      [[:notification :n]]
-              :left-join [[:notification_subscription :ns] [:= :n.id :ns.notification_id]]
-              :where     [:and
-                          [:= :n.active true]
-                          [:= :ns.event_name (u/qualified-name event-name)]
-                          [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
+             {'select    ['n.*]
+              'from      [['notification 'n]]
+              'left-join [['notification_subscription 'ns] ['= 'n.id 'ns.notification_id]]
+              'where     ['and
+                          ['= 'n.active true]
+                          ['= 'ns.event_name (u/qualified-name event-name)]
+                          ['= 'ns.type (u/qualified-name :notification-subscription/system-event)]]}))
 
 (defn create-notification!
   "Create a new notification with `subsciptions`.
@@ -737,6 +737,6 @@
   [notification-id user-id]
   (t2/delete! :model/NotificationRecipient
               'user_id user-id
-              'notification_handler_id ['in ^:allow-subquery {:select [:id]
-                                                              :from   [:notification_handler]
-                                                              :where  [:= :notification_id notification-id]}]))
+              'notification_handler_id ['in {'select ['id]
+                                             'from   ['notification_handler]
+                                             'where  ['= 'notification_id notification-id]}]))

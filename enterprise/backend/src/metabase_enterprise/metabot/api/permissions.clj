@@ -78,10 +78,10 @@
       (let [perm-type-kw  (keyword perm_type)
             perm-value-kw (keyword perm_value)]
         (if (t2/exists? :model/MetabotPermissions 'group_id group_id 'perm_type perm-type-kw)
-          (t2/update! :model/MetabotPermissions {'group_id group_id 'perm_type perm-type-kw} {:perm_value perm-value-kw})
-          (t2/insert! :model/MetabotPermissions {:group_id   group_id
-                                                 :perm_type  perm-type-kw
-                                                 :perm_value perm-value-kw})))))
+          (t2/update! :model/MetabotPermissions {'group_id group_id 'perm_type perm-type-kw} {'perm_value perm-value-kw})
+          (t2/insert! :model/MetabotPermissions {'group_id   group_id
+                                                 'perm_type  perm-type-kw
+                                                 'perm_value perm-value-kw})))))
   (permissions-response))
 
 (defn- switch-mode!
@@ -92,7 +92,7 @@
   [advanced?]
   (try
     (t2/with-transaction [_conn]
-      (t2/delete! :model/MetabotPermissions {:where (metabot-perms/hidden-groups-clause advanced?)})
+      (t2/delete! :model/MetabotPermissions {'where (metabot-perms/hidden-groups-clause advanced?)})
       (metabot-settings/metabot-advanced-permissions! advanced?))
     (catch Throwable e
       (setting/restore-cache!)

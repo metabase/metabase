@@ -425,7 +425,7 @@
       (mt/dataset (router-dataset driver/*driver*)
         (let [router (mt/db)]
           (t2/update! :model/Database (u/the-id router)
-                      {:details (merge (:details router)
+                      {'details (merge (:details router)
                                        (router-dataset-details driver/*driver*))})
           (let [router (t2/select-one :model/Database 'id (u/the-id router))]
             (sync/sync-database! router {:scan :schema})
@@ -484,7 +484,7 @@
                                             ["us-east-1-bar"]]]])
         (let [router (mt/db)]
           (t2/update! :model/Database (u/the-id router)
-                      {:details (assoc (:details router) :dbname nil)})
+                      {'details (assoc (:details router) :dbname nil)})
           (let [router (t2/select-one :model/Database 'id (u/the-id router))]
             (sync/sync-database! router {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal

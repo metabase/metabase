@@ -57,7 +57,7 @@
 
 (defn- most-recent-cache-entry
   []
-  (t2/select-one :model/QueryCache {:order-by [[:updated_at :desc]] :limit 1}))
+  (t2/select-one :model/QueryCache {'order-by [['updated_at 'desc]] 'limit 1}))
 
 (defn- delete-cache-entry!
   [entry]

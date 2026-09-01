@@ -1000,7 +1000,7 @@
 
 (deftest detail-404-for-missing-id-test
   (testing "GET /:id returns 404 for a non-existent notification id"
-    (let [max-id (or (t2/select-one-fn :id :model/Notification {:order-by [[:id :desc]]}) 0)]
+    (let [max-id (or (t2/select-one-fn :id :model/Notification {'order-by [['id 'desc]]}) 0)]
       (mt/user-http-request :crowberto :get 404
                             (str "notification/admin/" (+ max-id 100000))))))
 
@@ -1499,21 +1499,21 @@
       ;; create 12 runs, each with a matching notification-send row so the per-notification filter passes
       (doseq [i (range 12)]
         (let [run-id (t2/insert-returning-pk! :model/TaskRun
-                                              {:run_type        "alert"
-                                               :entity_type     "card"
-                                               :entity_id       card-id
-                                               :notification_id nid
-                                               :status          "success"
-                                               :started_at   (t/minus (t/instant) (t/hours (inc i)))
-                                               :ended_at     (t/minus (t/instant) (t/hours (inc i)))
-                                               :process_uuid "test"})]
+                                              {'run_type        "alert"
+                                               'entity_type     "card"
+                                               'entity_id       card-id
+                                               'notification_id nid
+                                               'status          "success"
+                                               'started_at   (t/minus (t/instant) (t/hours (inc i)))
+                                               'ended_at     (t/minus (t/instant) (t/hours (inc i)))
+                                               'process_uuid "test"})]
           (t2/insert! :model/TaskHistory
-                      {:task         "notification-send"
-                       :run_id       run-id
-                       :status       "success"
-                       :started_at   (t/minus (t/instant) (t/hours (inc i)))
-                       :ended_at     (t/minus (t/instant) (t/hours (inc i)))
-                       :task_details (str "{\"notification_id\":" nid "}")})))
+                      {'task         "notification-send"
+                       'run_id       run-id
+                       'status       "success"
+                       'started_at   (t/minus (t/instant) (t/hours (inc i)))
+                       'ended_at     (t/minus (t/instant) (t/hours (inc i)))
+                       'task_details (str "{\"notification_id\":" nid "}")})))
       (let [resp (mt/user-http-request :crowberto :get 200 (str "notification/admin/" nid))]
         (is (<= (count (:check_history resp)) 10))))))
 

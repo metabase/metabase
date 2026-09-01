@@ -397,9 +397,9 @@
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
         (t2/update! :model/Dashboard dashboard-id
-                    {:name               "Revert Test"
-                     :auto_apply_filters false
-                     :description        "something"})
+                    {'name               "Revert Test"
+                     'auto_apply_filters false
+                     'description        "something"})
         (testing "capture updated Dashboard state"
           (let [dashboard (t2/select-one :model/Dashboard 'id dashboard-id)]
             (is (= (assoc empty-dashboard :auto_apply_filters false)
@@ -455,8 +455,8 @@
   To revert 1 action, you should have n=2."
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
-  (let [ids (t2/select-pks-vec :model/Revision 'model (name model) 'model_id model-id {:order-by [[:id :desc]]
-                                                                                       :limit    n})]
+  (let [ids (t2/select-pks-vec :model/Revision 'model (name model) 'model_id model-id {'order-by [['id 'desc]]
+                                                                                       'limit    n})]
     (assert (= n (count ids)), "There are less revisions than required to revert")
     (mt/with-test-user :crowberto
       (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)}))))
@@ -467,29 +467,29 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add 2 tabs
-      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
-                                                                                :position     0
-                                                                                :dashboard_id dashboard-id}
-                                                                               {:name         "Tab 2"
-                                                                                :position     1
-                                                                                :dashboard_id dashboard-id}])
+      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{'name         "Tab 1"
+                                                                                'position     0
+                                                                                'dashboard_id dashboard-id}
+                                                                               {'name         "Tab 2"
+                                                                                'position     1
+                                                                                'dashboard_id dashboard-id}])
             _                   (create-dashboard-revision! dashboard-id false)
 
             ;; 2. add another tab for revision
-            tab-3-id            (first (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 3"
-                                                                                       :position     2
-                                                                                       :dashboard_id dashboard-id}]))]
+            tab-3-id            (first (t2/insert-returning-pks! :model/DashboardTab [{'name         "Tab 3"
+                                                                                       'position     2
+                                                                                       'dashboard_id dashboard-id}]))]
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}
                  {:id tab-3-id :name "Tab 3" :position 2}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-basic-test-2
   (testing "revert renaming tabs"
@@ -497,25 +497,25 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add 2 tabs
-      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
-                                                                                :position     0
-                                                                                :dashboard_id dashboard-id}
-                                                                               {:name         "Tab 2"
-                                                                                :position     1
-                                                                                :dashboard_id dashboard-id}])]
+      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{'name         "Tab 1"
+                                                                                'position     0
+                                                                                'dashboard_id dashboard-id}
+                                                                               {'name         "Tab 2"
+                                                                                'position     1
+                                                                                'dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
         ;; 2. update a tab name
-        (t2/update! :model/DashboardTab tab-1-id {:name "Tab 1 with new name"})
+        (t2/update! :model/DashboardTab tab-1-id {'name "Tab 1 with new name"})
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-1-id :name "Tab 1 with new name" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-basic-test-3
   (testing "revert deleting tabs"
@@ -523,90 +523,90 @@
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add 2 tabs
-      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
-                                                                                :position     0
-                                                                                :dashboard_id dashboard-id}
-                                                                               {:name         "Tab 2"
-                                                                                :position     1
-                                                                                :dashboard_id dashboard-id}])]
+      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{'name         "Tab 1"
+                                                                                'position     0
+                                                                                'dashboard_id dashboard-id}
+                                                                               {'name         "Tab 2"
+                                                                                'position     1
+                                                                                'dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
         ;; 2. delete the 1st tab and re-position the second tab
         (t2/delete! :model/DashboardTab tab-1-id)
-        (t2/update! :model/DashboardTab tab-2-id {:position 0})
+        (t2/update! :model/DashboardTab tab-2-id {'position 0})
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-advanced-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
     ;; 0. create a dashboard
     (create-dashboard-revision! dashboard-id true)
     ;; 1. add 2 tabs, each with 2 cards
-    (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
-                                                                              :position     0
-                                                                              :dashboard_id dashboard-id}
-                                                                             {:name         "Tab 2"
-                                                                              :position     1
-                                                                              :dashboard_id dashboard-id}])
+    (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{'name         "Tab 1"
+                                                                              'position     0
+                                                                              'dashboard_id dashboard-id}
+                                                                             {'name         "Tab 2"
+                                                                              'position     1
+                                                                              'dashboard_id dashboard-id}])
           [card-1-tab-1 card-2-tab-1] (t2/insert-returning-pks! :model/DashboardCard
-                                                                [{:dashboard_id     dashboard-id
-                                                                  :dashboard_tab_id tab-1-id
-                                                                  :row              0
-                                                                  :col              0
-                                                                  :size_x           4
-                                                                  :size_y           4}
-                                                                 {:dashboard_id     dashboard-id
-                                                                  :dashboard_tab_id tab-1-id
-                                                                  :row              4
-                                                                  :col              4
-                                                                  :size_x           4
-                                                                  :size_y           4}
-                                                                 {:dashboard_id     dashboard-id
-                                                                  :dashboard_tab_id tab-2-id
-                                                                  :row              0
-                                                                  :col              0
-                                                                  :size_x           4
-                                                                  :size_y           4}
-                                                                 {:dashboard_id     dashboard-id
-                                                                  :dashboard_tab_id tab-2-id
-                                                                  :row              4
-                                                                  :col              4
-                                                                  :size_x           4
-                                                                  :size_y           4}])]
+                                                                [{'dashboard_id     dashboard-id
+                                                                  'dashboard_tab_id tab-1-id
+                                                                  'row              0
+                                                                  'col              0
+                                                                  'size_x           4
+                                                                  'size_y           4}
+                                                                 {'dashboard_id     dashboard-id
+                                                                  'dashboard_tab_id tab-1-id
+                                                                  'row              4
+                                                                  'col              4
+                                                                  'size_x           4
+                                                                  'size_y           4}
+                                                                 {'dashboard_id     dashboard-id
+                                                                  'dashboard_tab_id tab-2-id
+                                                                  'row              0
+                                                                  'col              0
+                                                                  'size_x           4
+                                                                  'size_y           4}
+                                                                 {'dashboard_id     dashboard-id
+                                                                  'dashboard_tab_id tab-2-id
+                                                                  'row              4
+                                                                  'col              4
+                                                                  'size_x           4
+                                                                  'size_y           4}])]
       (create-dashboard-revision! dashboard-id false)
       ;; 2.a: tab 1: delete the 2nd card, add 2 cards and update position of one card,
-      (t2/insert! :model/DashboardCard [{:dashboard_id     dashboard-id
-                                         :dashboard_tab_id tab-1-id
-                                         :row              0
-                                         :col              0
-                                         :size_x           4
-                                         :size_y           4}
-                                        {:dashboard_id     dashboard-id
-                                         :dashboard_tab_id tab-1-id
-                                         :row              0
-                                         :col              0
-                                         :size_x           4
-                                         :size_y           4}])
+      (t2/insert! :model/DashboardCard [{'dashboard_id     dashboard-id
+                                         'dashboard_tab_id tab-1-id
+                                         'row              0
+                                         'col              0
+                                         'size_x           4
+                                         'size_y           4}
+                                        {'dashboard_id     dashboard-id
+                                         'dashboard_tab_id tab-1-id
+                                         'row              0
+                                         'col              0
+                                         'size_x           4
+                                         'size_y           4}])
       (t2/delete! :model/DashboardCard card-2-tab-1)
-      (t2/update! :model/DashboardCard card-1-tab-1 {:row 10 :col 10})
+      (t2/update! :model/DashboardCard card-1-tab-1 {'row 10 'col 10})
       ;; 2.b: delete tab 2
       (t2/delete! :model/DashboardTab tab-2-id)
       ;; 2.c: create a new tab with 1 card
-      (let [new-tab-id (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
-                                                                      :position     1
-                                                                      :dashboard_id dashboard-id})]
-        (t2/insert! :model/DashboardCard {:dashboard_id     dashboard-id
-                                          :dashboard_tab_id new-tab-id
-                                          :row              0
-                                          :col              0
-                                          :size_x           4
-                                          :size_y           4}))
+      (let [new-tab-id (t2/insert-returning-pks! :model/DashboardTab {'name         "Tab 3"
+                                                                      'position     1
+                                                                      'dashboard_id dashboard-id})]
+        (t2/insert! :model/DashboardCard {'dashboard_id     dashboard-id
+                                          'dashboard_tab_id new-tab-id
+                                          'row              0
+                                          'col              0
+                                          'size_x           4
+                                          'size_y           4}))
       (create-dashboard-revision! dashboard-id false)
       ;; revert
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
@@ -633,40 +633,40 @@
     (create-dashboard-revision! dashboard-id true)
     ;; 1. add 3 cards and 1 text card
     (t2/insert! :model/DashboardCard
-                [{:dashboard_id     dashboard-id
-                  :dashboard_tab_id nil
-                  :card_id          will-be-archived-card
-                  :row              0
-                  :col              0
-                  :size_x           4
-                  :size_y           4}
-                 {:dashboard_id     dashboard-id
-                  :dashboard_tab_id nil
-                  :card_id          will-be-deleted-card
-                  :row              4
-                  :col              4
-                  :size_x           4
-                  :size_y           4}
-                 {:dashboard_id     dashboard-id
-                  :dashboard_tab_id nil
-                  :card_id          unchanged-card
-                  :row              0
-                  :col              0
-                  :size_x           4
-                  :size_y           4}
-                 {:dashboard_id           dashboard-id
-                  :dashboard_tab_id       nil
-                  :row                    4
-                  :col                    4
-                  :size_x                 4
-                  :size_y                 4
-                  :visualization_settings {:text "Metabase"}}])
+                [{'dashboard_id     dashboard-id
+                  'dashboard_tab_id nil
+                  'card_id          will-be-archived-card
+                  'row              0
+                  'col              0
+                  'size_x           4
+                  'size_y           4}
+                 {'dashboard_id     dashboard-id
+                  'dashboard_tab_id nil
+                  'card_id          will-be-deleted-card
+                  'row              4
+                  'col              4
+                  'size_x           4
+                  'size_y           4}
+                 {'dashboard_id     dashboard-id
+                  'dashboard_tab_id nil
+                  'card_id          unchanged-card
+                  'row              0
+                  'col              0
+                  'size_x           4
+                  'size_y           4}
+                 {'dashboard_id           dashboard-id
+                  'dashboard_tab_id       nil
+                  'row                    4
+                  'col                    4
+                  'size_x                 4
+                  'size_y                 4
+                  'visualization_settings {:text "Metabase"}}])
     (create-dashboard-revision! dashboard-id false)
     ;; 2. delete all the dashcards
     (t2/delete! :model/DashboardCard 'dashboard_id dashboard-id)
     (create-dashboard-revision! dashboard-id false)
     (t2/delete! :model/Card will-be-deleted-card)
-    (t2/update! :model/Card 'id will-be-archived-card {:archived true})
+    (t2/update! :model/Card 'id will-be-archived-card {'archived true})
     (testing "revert should not include archived or deleted card ids (#34884)"
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (is (=? #{{:card_id                unchanged-card
@@ -686,7 +686,7 @@
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add two parameters - one with a card that will be deleted, one with a card that stays
       (t2/update! :model/Dashboard dashboard-id
-                  {:parameters [{:id                    "deleted-source"
+                  {'parameters [{:id                    "deleted-source"
                                  :name                  "Filter with deleted source"
                                  :slug                  "deleted_source"
                                  :type                  "category"
@@ -706,7 +706,7 @@
                                  :type "category"}]})
       (create-dashboard-revision! dashboard-id false)
       ;; 2. remove the parameters (simulating user changing the filter settings)
-      (t2/update! :model/Dashboard dashboard-id {:parameters []})
+      (t2/update! :model/Dashboard dashboard-id {'parameters []})
       (create-dashboard-revision! dashboard-id false)
       ;; 3. delete one card and archive another scenario - here we just delete
       (t2/delete! :model/Card value-source-card)
@@ -738,7 +738,7 @@
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add a parameter with a card source
       (t2/update! :model/Dashboard dashboard-id
-                  {:parameters [{:id                    "archived-source"
+                  {'parameters [{:id                    "archived-source"
                                  :name                  "Filter with archived source"
                                  :slug                  "archived_source"
                                  :type                  "category"
@@ -747,10 +747,10 @@
                                                          :value_field [:field 1 nil]}}]})
       (create-dashboard-revision! dashboard-id false)
       ;; 2. remove the parameters
-      (t2/update! :model/Dashboard dashboard-id {:parameters []})
+      (t2/update! :model/Dashboard dashboard-id {'parameters []})
       (create-dashboard-revision! dashboard-id false)
       ;; 3. archive the card
-      (t2/update! :model/Card will-be-archived-card {:archived true})
+      (t2/update! :model/Card will-be-archived-card {'archived true})
       ;; 4. revert to the revision that had parameters referencing the now-archived card
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (let [reverted-params (:parameters (t2/select-one :model/Dashboard 'id dashboard-id))]

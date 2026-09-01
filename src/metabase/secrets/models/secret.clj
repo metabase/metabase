@@ -46,7 +46,7 @@
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
   {:added "0.42.0"}
   [id]
-  (t2/select-one :model/Secret 'id id {:order-by [[:version :desc]]}))
+  (t2/select-one :model/Secret 'id id {'order-by [['version 'desc]]}))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.

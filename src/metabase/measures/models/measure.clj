@@ -240,5 +240,5 @@
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (t2/update! :model/Measure measure-id
-                {:dimensions         dimensions
-                 :dimension_mappings dimension-mappings})))
+                {'dimensions         dimensions
+                 'dimension_mappings dimension-mappings})))

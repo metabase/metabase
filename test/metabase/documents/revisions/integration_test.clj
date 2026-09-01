@@ -92,7 +92,7 @@
             (is (=? @rasta-revision-info (:user revision)))
             (is (= config/mb-version-string (:metabase_version revision))))))
       (testing "Multiple revisions are returned in correct order"
-        (t2/update! :model/Document doc-id {:name "Updated Document"})
+        (t2/update! :model/Document doc-id {'name "Updated Document"})
         (create-document-revision! doc-id false :rasta)
         (let [revisions (get-document-revisions doc-id)]
           (is (= 2 (count revisions)))
@@ -109,8 +109,8 @@
                                                  :creator_id (mt/user->id :rasta)}]
       (create-document-revision! doc-id true :rasta)
       (testing "Document can be updated and reverted"
-        (t2/update! :model/Document doc-id {:name "Updated Document"
-                                            :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
+        (t2/update! :model/Document doc-id {'name "Updated Document"
+                                            'document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
         (create-document-revision! doc-id false :rasta)
         (let [revisions (revision/revisions :model/Document doc-id)
               [_ {original-revision-id :id}] revisions]
@@ -143,7 +143,7 @@
                                                :document {:type "doc" :content []}
                                                :creator_id (mt/user->id :crowberto)}]
         (create-document-revision! (:id document) true :crowberto)
-        (t2/update! :model/Document (:id document) {:name "Updated Private Document"})
+        (t2/update! :model/Document (:id document) {'name "Updated Private Document"})
         (create-document-revision! (:id document) false :crowberto)
         (let [document-id (u/the-id document)
               [_ {prev-rev-id :id}] (revision/revisions :model/Document document-id)]
@@ -176,7 +176,7 @@
           (is (every? #(contains? % :is_creation) revisions-response))
           (is (every? #(contains? % :description) revisions-response))))
       (testing "Document reversion integrates with OSS revert endpoint"
-        (t2/update! :model/Document doc-id {:name "Modified Document"})
+        (t2/update! :model/Document doc-id {'name "Modified Document"})
         (create-document-revision! doc-id false :rasta)
         (let [[_ {original-rev-id :id}] (revision/revisions :model/Document doc-id)
               revert-response (mt/user-http-request :rasta :post "revision/revert"
@@ -205,7 +205,7 @@
           (testing "Update event triggers revision creation"
             (let [updated-document (assoc document :name "Updated Event Document")]
               (events/publish-event! :event/document-update {:object updated-document :user-id (mt/user->id :rasta)})
-              (let [revisions (t2/select :model/Revision 'model "Document" 'model_id doc-id {:order-by [[:id :desc]]})]
+              (let [revisions (t2/select :model/Revision 'model "Document" 'model_id doc-id {'order-by [['id 'desc]]})]
                 (is (= 2 (count revisions)))
                 (let [latest-revision (first revisions)]
                   (is (not (:is_creation latest-revision)))
@@ -222,7 +222,7 @@
                                                  :creator_id (mt/user->id :rasta)}]
       (create-document-revision! doc-id true :rasta)
       (testing "Name change produces correct diff and description"
-        (t2/update! :model/Document doc-id {:name "Updated Title"})
+        (t2/update! :model/Document doc-id {'name "Updated Title"})
         (create-document-revision! doc-id false :rasta)
         (let [revisions (get-document-revisions doc-id)
               update-revision (first revisions)]
@@ -230,7 +230,7 @@
           (is (= "Updated Title" (get-in update-revision [:diff :after :name])))
           (is (str/includes? (:description update-revision) "renamed"))))
       (testing "Content change produces diff"
-        (t2/update! :model/Document doc-id {:document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "New content"}]}]}})
+        (t2/update! :model/Document doc-id {'document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "New content"}]}]}})
         (create-document-revision! doc-id false :rasta)
         (let [revisions (get-document-revisions doc-id)
               content-revision (first revisions)]

@@ -78,20 +78,20 @@
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
               user  (first
                      (t2/insert-returning-instances! :model/User
-                                                     {:email      email
-                                                      :first_name name
-                                                      :last_name  ""
-                                                      :type       :api-key
-                                                      :password   (str (random-uuid))}))]
+                                                     {'email      email
+                                                      'first_name name
+                                                      'last_name  ""
+                                                      'type       :api-key
+                                                      'password   (str (random-uuid))}))]
           ;; Set permissions groups for the user
           (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
           ;; Create the API key
           (t2/insert-returning-instance! :model/ApiKey
-                                         {:user_id               (u/the-id user)
-                                          :name                  name
+                                         {'user_id               (u/the-id user)
+                                          'name                  name
                                           ::api-key/unhashed-key unhashed-key
-                                          :creator_id            (u/the-id creator)
-                                          :updated_by_id         (u/the-id creator)}))))))
+                                          'creator_id            (u/the-id creator)
+                                          'updated_by_id         (u/the-id creator)}))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]

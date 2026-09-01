@@ -106,14 +106,14 @@
   [metric dimensions dimension-mappings]
   (when-let [metric-id (:id metric)]
     (t2/update! :model/Card metric-id
-                {:dimensions         dimensions
-                 :dimension_mappings dimension-mappings})))
+                {'dimensions         dimensions
+                 'dimension_mappings dimension-mappings})))
 
 (defmethod metrics/dimensions-initialized? :metadata/metric
   [metric]
-  (some? (:dimensions (t2/query-one {:select [:dimensions]
-                                     :from   [:report_card]
-                                     :where  [:= :id (:id metric)]}))))
+  (some? (:dimensions (t2/query-one {'select ['dimensions]
+                                     'from   ['report_card]
+                                     'where  ['= 'id (:id metric)]}))))
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
@@ -227,10 +227,10 @@
   (mi/instances-with-hydrated-data
    cards k
    (fn []
-     (->> (t2/query {:select    [[:%count.* :count] :card_id]
-                     :from      [:report_dashboardcard]
-                     :where     [:in :card_id (map :id cards)]
-                     :group-by  [:card_id]})
+     (->> (t2/query {'select    [['%count.* 'count] 'card_id]
+                     'from      ['report_dashboardcard]
+                     'where     ['in 'card_id (map :id cards)]
+                     'group-by  ['card_id]})
           (map (juxt :card_id :count))
           (into {})))
    :id
@@ -242,33 +242,33 @@
    cards k
    (fn []
      (let [card-ids       (map u/the-id cards)
-           all-dashboards (t2/query {:union-all [;; First get dashboards from direct card connections
-                                                 ^:allow-subquery {:nest
-                                                                   ^:allow-subquery {:select   [[:dc.card_id :card_id]
-                                                                                                :d.name
-                                                                                                :d.collection_id
-                                                                                                :d.description
-                                                                                                :d.id
-                                                                                                :d.archived
-                                                                                                :d.enable_embedding]
-                                                                                     :from     [[:report_dashboardcard :dc]]
-                                                                                     :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                                                                     :where    [:in :dc.card_id [:inline card-ids]]
-                                                                                     :order-by [[:d.id :asc]]}}
+           all-dashboards (t2/query {'union-all [;; First get dashboards from direct card connections
+                                                 {'nest
+                                                  {'select   [['dc.card_id 'card_id]
+                                                              'd.name
+                                                              'd.collection_id
+                                                              'd.description
+                                                              'd.id
+                                                              'd.archived
+                                                              'd.enable_embedding]
+                                                   'from     [['report_dashboardcard 'dc]]
+                                                   'join     [['report_dashboard 'd] ['= 'dc.dashboard_id 'd.id]]
+                                                   'where    ['in 'dc.card_id ['inline card-ids]]
+                                                   'order-by [['d.id 'asc]]}}
                                                  ;; Then get dashboards from series
-                                                 ^:allow-subquery {:nest
-                                                                   ^:allow-subquery {:select   [[:dcs.card_id :card_id]
-                                                                                                :d.name
-                                                                                                :d.collection_id
-                                                                                                :d.description
-                                                                                                :d.id
-                                                                                                :d.archived
-                                                                                                :d.enable_embedding]
-                                                                                     :from     [[:dashboardcard_series :dcs]]
-                                                                                     :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                                                                [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                                                                                     :where    [:in :dcs.card_id [:inline card-ids]]
-                                                                                     :order-by [[:d.id :asc]]}}]})]
+                                                 {'nest
+                                                  {'select   [['dcs.card_id 'card_id]
+                                                              'd.name
+                                                              'd.collection_id
+                                                              'd.description
+                                                              'd.id
+                                                              'd.archived
+                                                              'd.enable_embedding]
+                                                   'from     [['dashboardcard_series 'dcs]]
+                                                   'join     [['report_dashboardcard 'dc] ['= 'dc.id 'dcs.dashboardcard_id]
+                                                              ['report_dashboard 'd] ['= 'd.id 'dc.dashboard_id]]
+                                                   'where    ['in 'dcs.card_id ['inline card-ids]]
+                                                   'order-by [['d.id 'asc]]}}]})]
        (update-vals
         (group-by :card_id all-dashboards)
         (fn [dashes]
@@ -299,10 +299,10 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
-                    :from      [:parameter_card]
-                    :where     [:in :card_id (map :id cards)]
-                    :group-by  [:card_id]})
+   #(->> (t2/query {'select    [[['count '*] 'count] 'card_id]
+                    'from      ['parameter_card]
+                    'where     ['in 'card_id (map :id cards)]
+                    'group-by  ['card_id]})
          (map (juxt :card_id :count))
          (into {}))
    :id
@@ -312,13 +312,13 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select [[:%avg.running_time :running_time] :card_id]
-                    :from   [:query_execution]
-                    :where  [:and
-                             [:not= :running_time nil]
-                             [:not= :cache_hit true]
-                             [:in :card_id (map :id cards)]]
-                    :group-by [:card_id]})
+   #(->> (t2/query {'select [[['avg 'running_time] 'running_time] 'card_id]
+                    'from   ['query_execution]
+                    'where  ['and
+                             ['not= 'running_time nil]
+                             ['not= 'cache_hit true]
+                             ['in 'card_id (map :id cards)]]
+                    'group-by ['card_id]})
          (map (juxt :card_id :running_time))
          (into {}))
    :id))
@@ -327,13 +327,13 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select [[:%max.started_at :started_at] :card_id]
-                    :from   [:query_execution]
-                    :where  [:and
-                             [:not= :running_time nil]
-                             [:not= :cache_hit true]
-                             [:in :card_id (map :id cards)]]
-                    :group-by [:card_id]})
+   #(->> (t2/query {'select [[['max 'started_at] 'started_at] 'card_id]
+                    'from   ['query_execution]
+                    'where  ['and
+                             ['not= 'running_time nil]
+                             ['not= 'cache_hit true]
+                             ['in 'card_id (map :id cards)]]
+                    'group-by ['card_id]})
          (map (juxt :card_id :started_at))
          (into {}))
    :id))
@@ -347,7 +347,7 @@
                               'source_card_id ['in (map :id cards)],
                               'archived false,
                               'type :metric,
-                              {:order-by [[:name :asc]]})
+                              {'order-by [['name 'asc]]})
                    (filter mi/can-read?)))
    :id))
 
@@ -440,14 +440,14 @@
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
       (doseq [{:keys [field-id field-name table-name field-db-id]} (app-db/query
-                                                                    {:select    [[:field.id :field-id]
-                                                                                 [:field.name :field-name]
-                                                                                 [:table.name :table-name]
-                                                                                 [:table.db_id :field-db-id]]
-                                                                     :from      [[:metabase_field :field]]
-                                                                     :left-join [[:metabase_table :table]
-                                                                                 [:= :field.table_id :table.id]]
-                                                                     :where     [:in :field.id (set field-ids)]})]
+                                                                    {'select    [['field.id 'field-id]
+                                                                                 ['field.name 'field-name]
+                                                                                 ['table.name 'table-name]
+                                                                                 ['table.db_id 'field-db-id]]
+                                                                     'from      [['metabase_field 'field]]
+                                                                     'left-join [['metabase_table 'table]
+                                                                                 ['= 'field.table_id 'table.id]]
+                                                                     'where     ['in 'field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
                                     (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database 'id db-id))))]
@@ -623,7 +623,7 @@
                                       parameter))
                                   parameters)]
           (when-not (= parameters new-parameters)
-            (t2/update! model po-id {:parameters new-parameters})))))))
+            (t2/update! model po-id {'parameters new-parameters})))))))
 
 (mu/defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -640,11 +640,11 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set :model/Action {:select [:action.id]
-                                                          :from   [:action]
-                                                          :join   [:implicit_action
-                                                                   [:= :action.id :implicit_action.action_id]]
-                                                          :where  [:= :action.model_id model-id]})]
+  (when-let [action-ids (t2/select-pks-set :model/Action {'select ['action.id]
+                                                          'from   ['action]
+                                                          'join   ['implicit_action
+                                                                   ['= 'action.id 'implicit_action.action_id]]
+                                                          'where  ['= 'action.model_id model-id]})]
     (t2/delete! :model/Action 'id ['in action-ids])))
 
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
@@ -683,7 +683,7 @@
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
-        (t2/update! :model/Action {'model_id id 'type ['not= :implicit]} {:archived true})
+        (t2/update! :model/Action {'model_id id 'type ['not= :implicit]} {'archived true})
         (t2/delete! :model/Action 'model_id id, 'type :implicit))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
@@ -951,9 +951,9 @@
   ;; return empty by the time the actual DELETE executes.
   (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
                                                       'payload_type :notification/card
-                                                      'payload_id ['in ^:allow-subquery {:select [:id]
-                                                                                         :from   [:notification_card]
-                                                                                         :where  [:= :card_id id]}]))]
+                                                      'payload_id ['in {'select ['id]
+                                                                        'from   ['notification_card]
+                                                                        'where  ['= 'card_id id]}]))]
     (t2/delete! :model/Notification 'id ['in notification-ids])))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
@@ -990,13 +990,13 @@
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
   (t2/delete! :model/DashboardCard 'card_id card-id 'dashboard_id dashboard-id)
-  (when-let [dashcard-ids (seq (map :id (t2/query {:select [[:dcs.id]]
-                                                   :from [[:dashboardcard_series :dcs]]
-                                                   :join [[:report_dashboardcard :dc]
-                                                          [:= :dc.id :dcs.dashboardcard_id]]
-                                                   :where [:and
-                                                           [:= :dc.dashboard_id dashboard-id]
-                                                           [:= :dcs.card_id card-id]]})))]
+  (when-let [dashcard-ids (seq (map :id (t2/query {'select [['dcs.id]]
+                                                   'from [['dashboardcard_series 'dcs]]
+                                                   'join [['report_dashboardcard 'dc]
+                                                          ['= 'dc.id 'dcs.dashboardcard_id]]
+                                                   'where ['and
+                                                           ['= 'dc.dashboard_id dashboard-id]
+                                                           ['= 'dcs.card_id card-id]]})))]
     (t2/delete! :model/DashboardCardSeries 'id ['in (set dashcard-ids)]))
   (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
                                                   :user-id api/*current-user-id*}))
@@ -1053,12 +1053,12 @@
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
       (t2/delete! :model/DashboardCard 'card_id card-id 'dashboard_id ['not= new-dashboard-id])
-      (when-let [ids (seq (map :id (t2/query {:select [[:dcs.id]]
-                                              :from [[:dashboardcard_series :dcs]]
-                                              :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
-                                              :where [:and
-                                                      [:= :dcs.card_id card-id]
-                                                      [:not= :dc.dashboard_id new-dashboard-id]]})))]
+      (when-let [ids (seq (map :id (t2/query {'select [['dcs.id]]
+                                              'from [['dashboardcard_series 'dcs]]
+                                              'join [['report_dashboardcard 'dc] ['= 'dc.id 'dcs.dashboardcard_id]]
+                                              'where ['and
+                                                      ['= 'dcs.card_id card-id]
+                                                      ['not= 'dc.dashboard_id new-dashboard-id]]})))]
         (t2/delete! :model/DashboardCardSeries 'id ['in ids])))))
 
 (defn create-card!
@@ -1310,7 +1310,7 @@
     (when (and old-db-id new-db-id (not= old-db-id new-db-id))
       (let [cards-to-update (dependent-cards-to-update card-id old-db-id)]
         (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
-          (t2/update! :model/Card dep-id {:dataset_query (assoc dep-query :database new-db-id)}))))))
+          (t2/update! :model/Card dep-id {'dataset_query (assoc dep-query :database new-db-id)}))))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
@@ -1562,9 +1562,9 @@
   dangling reference even setting the lens question aside."
   [:or
    [:= :document_id nil]
-   [:in :document_id ^:allow-subquery {:select [:id]
-                                       :from   [:document]
-                                       :where  [:= :exploration_id nil]}]])
+   [:in :document_id {'select ['id]
+                      'from   ['document]
+                      'where  ['= 'exploration_id nil]}]])
 
 (defmethod serdes/extract-query "Card"
   [model-name opts]
@@ -1597,9 +1597,9 @@
                   :collection-id        true
                   :creator-id           true
                   :dashboard-id         true
-                  :dashboardcard-count  ^:allow-subquery {:select [:%count.*]
-                                                          :from   [:report_dashboardcard]
-                                                          :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :dashboardcard-count  {'select ['%count.*]
+                                         'from   ['report_dashboardcard]
+                                         'where  ['= 'report_dashboardcard.card_id 'this.id]}
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
@@ -1661,35 +1661,35 @@
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]
-  ^:allow-subquery {:select [:report_card.id
-                             [(h2x/literal "Card") :model]
-                             [:report_card.name :name]
-                             :last_used_at]
-                    :from :report_card
-                    :left-join [:moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_card.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "card")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]
-                                :pulse_card [:= :pulse_card.card_id :report_card.id]
-                                :pulse [:and
-                                        [:= :pulse_card.pulse_id :pulse.id]
-                                        [:= :pulse.archived false]]
-                                :sandboxes [:= :sandboxes.card_id :report_card.id]
-                                :collection [:= :collection.id :report_card.collection_id]]
-                    :where [:and
-                            [:= :sandboxes.id nil]
-                            [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_card.archived false]
-                            [:<= :report_card.last_used_at (-> args :cutoff-date)]
-                            ;; find things only in regular collections, not the `instance-analytics` collection.
-                            [:= :collection.type nil]
-                            (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_card.enable_embedding false])
-                            (when (setting/get :enable-public-sharing)
-                              [:= :report_card.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_card.collection_id nil])
-                             [:in :report_card.collection_id (-> args :collection-ids)]]]})
+  {'select ['report_card.id
+            [(h2x/literal "Card") 'model]
+            ['report_card.name 'name]
+            'last_used_at]
+   'from 'report_card
+   'left-join ['moderation_review ['and
+                                   ['= 'moderation_review.moderated_item_id 'report_card.id]
+                                   ['= 'moderation_review.moderated_item_type (h2x/literal "card")]
+                                   ['= 'moderation_review.most_recent true]
+                                   ['= 'moderation_review.status (h2x/literal "verified")]]
+               'pulse_card ['= 'pulse_card.card_id 'report_card.id]
+               'pulse ['and
+                       ['= 'pulse_card.pulse_id 'pulse.id]
+                       ['= 'pulse.archived false]]
+               'sandboxes ['= 'sandboxes.card_id 'report_card.id]
+               'collection ['= 'collection.id 'report_card.collection_id]]
+   'where ['and
+           ['= 'sandboxes.id nil]
+           ['= 'pulse.id nil]
+           ['= 'moderation_review.id nil]
+           ['= 'report_card.archived false]
+           ['<= 'report_card.last_used_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           ['= 'collection.type nil]
+           (when (embed.settings/some-embedding-enabled?)
+             [:= :report_card.enable_embedding false])
+           (when (setting/get :enable-public-sharing)
+             [:= :report_card.public_uuid nil])
+           ['or
+            (when (contains? (:collection-ids args) nil)
+              [:is :report_card.collection_id nil])
+            ['in 'report_card.collection_id (-> args :collection-ids)]]]})

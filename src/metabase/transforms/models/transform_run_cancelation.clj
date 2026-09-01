@@ -25,7 +25,7 @@
       run-id run-id])
     (t2/update! :model/TransformRun
                 'id run-id
-                {:status "canceling"})
+                {'status "canceling"})
     (log/infof "Cancelation requested for transform run %s" run-id)
     (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})
     nil
@@ -40,23 +40,22 @@
 
 (defn- no-active-run-clause
   []
-  [:not [:exists ^:allow-subquery
-         {:select [1]
-          :from   [[:transform_run :wr]]
-          :where  [:and
-                   [:= :wr.id :transform_run_cancelation.run_id]
-                   :wr.is_active]}]])
+  [:not [:exists          {'select [1]
+                           'from   [['transform_run 'wr]]
+                           'where  ['and
+                                    ['= 'wr.id 'transform_run_cancelation.run_id]
+                                    'wr.is_active]}]])
 
 (defn delete-cancelation!
   "Delete a cancelation once it has been handled."
   [run-id]
   (t2/delete! :model/TransformRunCancelation
-              {:where [:and
-                       [:= :run_id run-id]
+              {'where ['and
+                       ['= 'run_id run-id]
                        (no-active-run-clause)]}))
 
 (defn delete-old-canceling-runs!
   "Delete cancelations for runs that are no longer running."
   []
   (t2/delete! :model/TransformRunCancelation
-              {:where (no-active-run-clause)}))
+              {'where (no-active-run-clause)}))

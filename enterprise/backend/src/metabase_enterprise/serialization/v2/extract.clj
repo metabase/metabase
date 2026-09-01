@@ -60,11 +60,11 @@
 
   Does not export ee-only analytics collections."
   [user-id]
-  (let [roots (t2/select :model/Collection {:where [:and [:= :location "/"]
-                                                    [:or [:= :personal_owner_id nil]
-                                                     [:= :personal_owner_id user-id]]
-                                                    [:or [:= :namespace nil]
-                                                     [:!= :namespace "analytics"]]]})]
+  (let [roots (t2/select :model/Collection {'where ['and ['= 'location "/"]
+                                                    ['or ['= 'personal_owner_id nil]
+                                                     ['= 'personal_owner_id user-id]]
+                                                    ['or ['= 'namespace nil]
+                                                     ['!= 'namespace "analytics"]]]})]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
@@ -98,7 +98,7 @@
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
    These collections are intentionally excluded from serialization."
   []
-  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+  (let [analytics-roots (t2/select :model/Collection {'where ['= 'namespace "analytics"]})]
     (into (set (map :id analytics-roots))
           (mapcat collection/descendant-ids)
           analytics-roots)))
@@ -113,9 +113,9 @@
       (into #{}
             (comp (partition-all serdes/query-batch-size)
                   (mapcat (fn [batch]
-                            (t2/select-pks-set :model/Card {:where [:and
-                                                                    [:in :id (vec batch)]
-                                                                    [:in :collection_id (vec analytics-colls)]]}))))
+                            (t2/select-pks-set :model/Card {'where ['and
+                                                                    ['in 'id (vec batch)]
+                                                                    ['in 'collection_id (vec analytics-colls)]]}))))
             card-ids)
       #{})))
 

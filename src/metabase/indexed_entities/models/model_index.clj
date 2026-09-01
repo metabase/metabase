@@ -127,9 +127,9 @@
                                               (t2/select :model/ModelIndexValue
                                                          'model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
-                                                       :error      error-message
-                                                       :indexed_at :%now})
+      (t2/update! :model/ModelIndex (:id model-index) {'state      "error"
+                                                       'error      error-message
+                                                       'indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -152,9 +152,9 @@
                                     :model_index_id (:id model-index)})
                                  additions-part)))))
           (t2/update! :model/ModelIndex (:id model-index)
-                      {:indexed_at :%now
-                       :error      nil
-                       :state      (if (> (count values-to-index) max-indexed-values)
+                      {'indexed_at :%now
+                       'error      nil
+                       'state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
         (run! search/update! (t2/reducible-select :model/ModelIndexValue 'model_index_id (:id model-index)))
@@ -162,9 +162,9 @@
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))
           (t2/update! :model/ModelIndex (:id model-index)
-                      {:state      "error"
-                       :error      (ex-message e)
-                       :indexed_at :%now}))))))
+                      {'state      "error"
+                       'error      (ex-message e)
+                       'indexed_at :%now}))))))
 
 ;;;; creation
 
@@ -177,13 +177,13 @@
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
   (t2/insert-returning-instance! :model/ModelIndex
-                                 [{:model_id   model-id
+                                 [{'model_id   model-id
                                    ;; todo: sanitize these?
-                                   :pk_ref     pk-ref
-                                   :value_ref  value-ref
-                                   :schedule   (default-schedule)
-                                   :state      "initial"
-                                   :creator_id creator-id}]))
+                                   'pk_ref     pk-ref
+                                   'value_ref  value-ref
+                                   'schedule   (default-schedule)
+                                   'state      "initial"
+                                   'creator_id creator-id}]))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

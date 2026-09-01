@@ -29,7 +29,7 @@
 (defn- new-session! []
   (let [session-id test-id]
     (try
-      (t2/insert-returning-instance! :model/Session {:id session-id :key_hashed (session/hash-session-key (str test-uuid)), :user_id (mt/user->id :trashbird)})
+      (t2/insert-returning-instance! :model/Session {'id session-id 'key_hashed (session/hash-session-key (str test-uuid)), 'user_id (mt/user->id :trashbird)})
       (finally
         (t2/delete! :model/Session 'id test-id)))))
 

@@ -618,9 +618,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (mdb/query {:select [:value]
-                  :from   [:setting]
-                  :where  [:= :key (name setting-key)]})
+  (-> (mdb/query {'select ['value]
+                  'from   ['setting]
+                  'where  ['= 'key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test
@@ -712,7 +712,7 @@
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
       (t2/update! :model/Setting {'key "uncached-setting"}
-                  {:value "123456"})
+                  {'value "123456"})
       (is (= "123456"
              (uncached-setting))))
     (testing "make sure that updating the setting doesn't update the last-updated timestamp in the cache $$"
@@ -787,7 +787,7 @@
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
-    (t2/insert! :model/Setting {:key "toucan-name", :value "Reggae"})
+    (t2/insert! :model/Setting {'key "toucan-name", 'value "Reggae"})
     ;; ok, now try to set the Setting the correct way
     (toucan-name! "Banana Beak")
     ;; ok, make sure the setting was set
@@ -1772,7 +1772,7 @@
     (mdb/setup-db! :create-sample-content? false)
     (testing "It works when a secret key is set"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
+        (t2/insert! :setting {'key "test-never-encrypted-setting" 'value (encryption/maybe-encrypt "foobar")})
         ;; Sanity check: the value is encrypted
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
         (setting/migrate-encrypted-settings!)
@@ -1782,7 +1782,7 @@
     (testing "It doesn't do anything when the secret key is not set"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
         (t2/delete! :setting 'key "test-never-encrypted-setting")
-        (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
+        (t2/insert! :setting {'key "test-never-encrypted-setting" 'value (encryption/maybe-encrypt "foobar")}))
       (encryption-test/with-secret-key nil
         (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
         (setting/migrate-encrypted-settings!)
@@ -1797,7 +1797,7 @@
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
+      (t2/insert! :setting {'key "toucan-name" 'value "Lenny"})
       (binding [config/*disable-setting-cache* false]
         ;; Simulate a fresh JVM. `setting.cache/cache*` is the atom holding this app DB's in-memory settings map; nil
         ;; means never populated, so the next cached read must do the full (strictly decrypting) restore. And
@@ -1816,7 +1816,7 @@
     (mdb/setup-db! :create-sample-content? false)
     (testing "a plaintext row of a setting that encrypts is encrypted at rest on startup (e.g. after a downgraded boot decrypted it)"
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
+        (t2/insert! :setting {'key "toucan-name" 'value "Lenny"})
         (is (not (encryption/decryptable-string? (actual-value-in-db :toucan-name))))
         (setting/migrate-encrypted-settings!)
         (is (encryption/decryptable-string? (actual-value-in-db :toucan-name)))
@@ -1828,7 +1828,7 @@
     (testing "without an encryption key nothing happens"
       (encryption-test/with-secret-key nil
         (t2/delete! :setting 'key "toucan-name")
-        (t2/insert! :setting {:key "toucan-name" :value "Lenny"})
+        (t2/insert! :setting {'key "toucan-name" 'value "Lenny"})
         (setting/migrate-encrypted-settings!)
         (is (= "Lenny" (actual-value-in-db :toucan-name)))))))
 
@@ -1931,8 +1931,8 @@
      (binding [setting/*deprecated-db-key-warned* (atom #{})]
        (try
          (if (t2/select-one :model/Setting 'key k#)
-           (t2/update! :model/Setting 'key k# {:value ~v})
-           (t2/insert! :model/Setting {:key k# :value ~v}))
+           (t2/update! :model/Setting 'key k# {'value ~v})
+           (t2/insert! :model/Setting {'key k# 'value ~v}))
          (setting.cache/restore-cache!)
          ~@body
          (finally

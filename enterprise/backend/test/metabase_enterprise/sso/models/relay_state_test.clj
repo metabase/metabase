@@ -70,7 +70,7 @@
     (mt/with-model-cleanup [:model/SsoRelayState]
       (let [key (store! {:continue-url "http://localhost:3000/auth/sso"})]
         ;; backdate so the entry is already expired
-        (t2/update! :model/SsoRelayState (stored-id key) {:expires_at (t/minus (t/offset-date-time) (t/seconds 1))})
+        (t2/update! :model/SsoRelayState (stored-id key) {'expires_at (t/minus (t/offset-date-time) (t/seconds 1))})
         (is (nil? (relay-state/find-unexpired key))))))
   (testing "find-unexpired ignores values that aren't our keys (legacy Base64 RelayState)"
     (is (nil? (relay-state/find-unexpired "aHR0cDovL2xvY2FsaG9zdA==")))))
@@ -90,7 +90,7 @@
     (mt/with-model-cleanup [:model/SsoRelayState]
       (let [live    (store! {:continue-url "http://localhost:3000/auth/sso" :origin "*"})
             expired (store! {:continue-url "http://localhost:3000/auth/sso" :origin "*"})]
-        (t2/update! :model/SsoRelayState (stored-id expired) {:expires_at (t/minus (t/offset-date-time) (t/seconds 1))})
+        (t2/update! :model/SsoRelayState (stored-id expired) {'expires_at (t/minus (t/offset-date-time) (t/seconds 1))})
         ;; delete-expired! operates globally, so don't assert an exact count (other tests may leave rows) —
         ;; just confirm our expired entry is purged and the live one survives.
         (is (pos? (relay-state/delete-expired!)))

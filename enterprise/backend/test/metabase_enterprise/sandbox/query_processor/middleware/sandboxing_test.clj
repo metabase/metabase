@@ -1135,7 +1135,7 @@
                       qp/process-query))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (t2/update! :model/Card card-id {:result_metadata metadata})))
+    (t2/update! :model/Card card-id {'result_metadata metadata})))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"

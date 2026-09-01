@@ -297,7 +297,7 @@
   (let [collection-or-root (or collection-id
                                {:metabase.collections.models.collection.root/is-root? true})]
     (or (t2/select-fn-set :group_id :model/Permissions
-                          {:where [:in :object
+                          {'where ['in 'object
                                    [(permissions.path/collection-read-path collection-or-root)
                                     (permissions.path/collection-readwrite-path collection-or-root)]]})
         #{})))
@@ -403,7 +403,7 @@
   `revoke-data-perms!` elsewhere instead of calling this directly."
   [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
   (let [paths (conj (perms.u/->v2-path path) path)
-        where {:where (apply list
+        where {'where (apply list
                              :and
                              [:= :group_id (u/the-id group-or-id)]
                              (into [:or

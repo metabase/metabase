@@ -90,15 +90,15 @@
 ;; Cards that are using a given model.
 (defmethod cards-for-filter-option* :using_model
   [_filter-option model-id]
-  (->> (t2/select :model/Card {:select [:c.*]
-                               :from [[:report_card :m]]
-                               :join [[:report_card :c] [:and
-                                                         [:= :c.database_id :m.database_id]
-                                                         [:or
-                                                          [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                                          [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                               :where [:and [:= :m.id model-id] [:not :c.archived]]
-                               :order-by [[[:lower :c.name] :asc]]})
+  (->> (t2/select :model/Card {'select ['c.*]
+                               'from [['report_card 'm]]
+                               'join [['report_card 'c] ['and
+                                                         ['= 'c.database_id 'm.database_id]
+                                                         ['or
+                                                          ['like 'c.dataset_query (format "%%card__%s%%" model-id)]
+                                                          ['like 'c.dataset_query (format "%%#%s%%" model-id)]]]]
+                               'where ['and ['= 'm.id model-id] ['not 'c.archived]]
+                               'order-by [[['lower 'c.name] 'asc]]})
        ;; now check if model-id really occurs as a card ID
        (filter (fn [card]
                  (some-> card :dataset_query not-empty lib/all-source-card-ids (contains? model-id))))))
@@ -107,7 +107,7 @@
   [model-type :- [:enum :segment :metric]
    model-id   :- pos-int?]
   (->> (t2/select :model/Card (merge order-by-name
-                                     {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
+                                     {'where ['like 'dataset_query (str "%" (name model-type) "%" model-id "%")]}))
        ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
        (filter (fn [{query :dataset_query, :as _card}]
                  (when (seq query)
@@ -155,10 +155,10 @@
 
 (defn- db-id-via-table
   [model model-id]
-  (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
-                                         :from [[:metabase_table :t]]
-                                         :join [[model :m] [:= :t.id :m.table_id]]
-                                         :where [:= :m.id model-id]}))
+  (t2/select-one-fn :db_id :model/Table {'select ['t.db_id]
+                                         'from [['metabase_table 't]]
+                                         'join [[model 'm] ['= 't.id 'm.table_id]]
+                                         'where ['= 'm.id model-id]}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -391,8 +391,8 @@
                                    'archived false
                                    'display ['in supported-series-display-type]
                                    'id ['not= (:id card)]
-                                   (cond-> {:order-by [[:id :desc]]
-                                            :where    [:and]}
+                                   (cond-> {'order-by [['id 'desc]]
+                                            'where    ['and]}
                                      last-cursor
                                      (update :where conj [:< :id last-cursor])
 
@@ -823,8 +823,8 @@
             ;; that appended to the end
             (t2/update! :model/Card
                         (u/the-id card)
-                        {:collection_position idx
-                         :collection_id       new-collection-id-or-nil}))
+                        {'collection_position idx
+                         'collection_id       new-collection-id-or-nil}))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
           ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
           ;; can avoid changing the index of cards we haven't yet updated
@@ -838,8 +838,8 @@
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards (t2/select [:model/Card 'id 'collection_id 'collection_position 'dataset_query 'card_schema]
-                           {:where [:and [:in :id (set card-ids)]
-                                    [:or [:not= :collection_id new-collection-id-or-nil]
+                           {'where ['and ['in 'id (set card-ids)]
+                                    ['or ['not= 'collection_id new-collection-id-or-nil]
                                      (when new-collection-id-or-nil
                                        [:= :collection_id nil])]]})] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
@@ -863,7 +863,7 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
                       {'id ['in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil}))
+                      {'collection_id new-collection-id-or-nil}))
         (doseq [card cards]
           (collection/check-for-remote-sync-update card)))))
 
@@ -1022,8 +1022,8 @@
                                           {:object-id card-id
                                            :user-id api/*current-user-id*})
                    (t2/update! :model/Card card-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
+                               {'public_uuid       <>
+                                'made_public_by_id api/*current-user-id*})))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1041,8 +1041,8 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (t2/update! :model/Card card-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
+              {'public_uuid       nil
+               'made_public_by_id nil})
   (events/publish-event! :event/card-public-link-deleted
                          {:object-id card-id
                           :user-id api/*current-user-id*})

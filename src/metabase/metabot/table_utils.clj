@@ -50,9 +50,9 @@
                                 'db_id           database-id
                                 'active          true
                                 'visibility_type nil
-                                (cond-> {:where    table-where-clause
-                                         :order-by [[:view_count :desc]]
-                                         :limit    all-tables-limit}
+                                (cond-> {'where    table-where-clause
+                                         'order-by [['view_count 'desc]]
+                                         'limit    all-tables-limit}
                                   table-cte (assoc :with table-cte)))
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
@@ -118,7 +118,7 @@
                                                                                 :is-superuser? api/*is-superuser?*}
                                                                                {:perms/view-data      :unrestricted
                                                                                 :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
+    (cond-> {'where table-where-clause}
       table-cte (assoc :with table-cte))))
 
 (defn find-matching-tables
@@ -256,7 +256,7 @@
                            'db_id database
                            'active true
                            'visibility_type nil
-                           {:limit (inc all-tables-limit)})
+                           {'limit (inc all-tables-limit)})
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)

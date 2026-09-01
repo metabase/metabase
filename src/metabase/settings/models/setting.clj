@@ -382,7 +382,7 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (t2/update! 'User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
+    (t2/update! 'User api/*current-user-id* {'settings (json/encode @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -781,7 +781,7 @@
   (assert (not= setting-name setting.cache/settings-last-updated-key)
           (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (t2/update! :model/Setting 'key setting-name {:value new-value}))
+  (t2/update! :model/Setting 'key setting-name {'value new-value}))
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
@@ -1745,18 +1745,18 @@
       (let [{encrypting true, plaintext false} (group-by (comp boolean encrypts?) (vals @registered-settings))]
         (t2/with-transaction [_conn]
           (doseq [{v :value k :key}
-                  (t2/select :setting {:for :update :where [:and
-                                                            [:in :key (map setting-name plaintext)]
+                  (t2/select :setting {'for 'update 'where ['and
+                                                            ['in 'key (map setting-name plaintext)]
                                                             ;; these are *definitely* decrypted already, let's not bother looking
-                                                            [:not [:in :value ["true" "false"]]]]})
+                                                            ['not ['in 'value ["true" "false"]]]]})
                   :when (encryption/decryptable-string? v)]
-            (t2/update! :setting 'key k {:value (encryption/decrypt v)}))
+            (t2/update! :setting 'key k {'value (encryption/decrypt v)}))
           (doseq [{v :value k :key}
-                  (t2/select :setting {:for :update :where [:and
-                                                            [:in :key (map setting-name encrypting)]
-                                                            [:!= :value nil]]})
+                  (t2/select :setting {'for 'update 'where ['and
+                                                            ['in 'key (map setting-name encrypting)]
+                                                            ['!= 'value nil]]})
                   :when (not (encryption/decryptable-string? v))]
-            (t2/update! :setting 'key k {:value (encryption/encrypt v)})))))))
+            (t2/update! :setting 'key k {'value (encryption/encrypt v)})))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't

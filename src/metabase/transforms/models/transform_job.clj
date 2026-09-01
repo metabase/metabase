@@ -66,7 +66,7 @@
           tag-mappings    (group-by :job_id
                                     (t2/select [:model/TransformJobTransformTag 'job_id 'tag_id 'position]
                                                'job_id ['in job-ids]
-                                               {:order-by [[:position :asc]]}))
+                                               {'order-by [['position 'asc]]}))
           ;; Sort each job's tags by position
           sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
       (for [job jobs]
@@ -97,7 +97,7 @@
   write."
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (t2/update! :model/TransformJob {'id job-id, 'active false} {:active true}))
+    (when (pos? (t2/update! :model/TransformJob {'id job-id, 'active false} {'active true}))
       (transforms.schedule/initialize-job! (t2/select-one :model/TransformJob 'id job-id)))))
 
 (defn deactivate-job!
@@ -109,7 +109,7 @@
   [[activate-job!]]."
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (t2/update! :model/TransformJob {'id job-id, 'active true} {:active false}))
+    (when (pos? (t2/update! :model/TransformJob {'id job-id, 'active true} {'active false}))
       (transforms.schedule/delete-trigger! job-id))))
 
 (defn update-job-tags!
@@ -124,7 +124,7 @@
             ;; Get current associations
             current-associations (t2/select [:model/TransformJobTransformTag 'tag_id 'position]
                                             'job_id job-id
-                                            {:order-by [[:position :asc]]})
+                                            {'order-by [['position 'asc]]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
@@ -151,7 +151,7 @@
           (let [new-pos (get new-positions tag-id)]
             (t2/update! :model/TransformJobTransformTag
                         {'job_id job-id 'tag_id tag-id}
-                        {:position new-pos})))
+                        {'position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (t2/insert! :model/TransformJobTransformTag
@@ -204,7 +204,7 @@
           tag-mappings (group-by :job_id
                                  (t2/select :model/TransformJobTransformTag
                                             'job_id ['in job-ids]
-                                            {:order-by [[:position :asc]]}))]
+                                            {'order-by [['position 'asc]]}))]
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 

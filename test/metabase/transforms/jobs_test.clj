@@ -332,14 +332,14 @@
       (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
                                               :schedule "0 0 * * * ? *"}]
         (let [run (t2/insert-returning-instance! :model/TransformJobRun
-                                                 {:job_id     (:id job)
-                                                  :run_method :cron
-                                                  :status     :started
-                                                  :is_active  true})]
+                                                 {'job_id     (:id job)
+                                                  'run_method :cron
+                                                  'status     :started
+                                                  'is_active  true})]
           ;; push last_heartbeat past the heartbeat-staleness threshold so the reaper fires
           (t2/update! :model/TransformJobRun
                       'id (:id run)
-                      {:last_heartbeat #t "2000-01-01T00:00:00Z"})
+                      {'last_heartbeat #t "2000-01-01T00:00:00Z"})
           (#'jobs/reap-orphaned-runs!)
           (is (=? {:status    :timeout
                    :is_active nil

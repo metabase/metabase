@@ -872,16 +872,16 @@
   [user-id]
   (let [conv-id     (str (random-uuid))
         external-id (str (random-uuid))]
-    (t2/insert! :model/MetabotConversation {:id conv-id :user_id user-id})
+    (t2/insert! :model/MetabotConversation {'id conv-id 'user_id user-id})
     (let [msg-id (first (t2/insert-returning-pks!
                          :model/MetabotMessage
-                         {:conversation_id conv-id
-                          :role            "assistant"
-                          :profile_id      "slackbot"
-                          :external_id     external-id
-                          :total_tokens    5
-                          :data            [{:type "text" :text "hi"}]
-                          :data_version    2}))]
+                         {'conversation_id conv-id
+                          'role            "assistant"
+                          'profile_id      "slackbot"
+                          'external_id     external-id
+                          'total_tokens    5
+                          'data            [{:type "text" :text "hi"}]
+                          'data_version    2}))]
       {:conv-id conv-id :external-id external-id :message-id msg-id})))
 
 (defn- tear-down-slackbot-feedback!
@@ -977,13 +977,13 @@
       (try
         ;; lucky becomes a participant by authoring a user-turn message in the thread
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :role            "user"
-                     :profile_id      "slackbot"
-                     :user_id         lucky-id
-                     :total_tokens    0
-                     :data            [{:type "text" :text "+1"}]
-                     :data_version    2})
+                    {'conversation_id conv-id
+                     'role            "user"
+                     'profile_id      "slackbot"
+                     'user_id         lucky-id
+                     'total_tokens    0
+                     'data            [{:type "text" :text "+1"}]
+                     'data_version    2})
         (let [rasta-result (#'slackbot/handle-feedback-modal-submission
                             (modal-submission-payload {:conv-id     conv-id
                                                        :external-id external-id
@@ -1000,7 +1000,7 @@
           @rasta-result
           @lucky-result)
         (let [rows    (t2/select :model/MetabotFeedback 'message_id message-id
-                                 {:order-by [[:user_id :asc]]})
+                                 {'order-by [['user_id 'asc]]})
               by-user (into {} (map (juxt :user_id identity)) rows)]
           (is (= 2 (count rows)) "both submissions produce distinct rows")
           (is (true?  (:positive (get by-user rasta-id))))
@@ -1023,9 +1023,9 @@
           result   (#'slackbot/handle-feedback-modal-submission payload)]
       (is (nil? result) "handler returns nil and does not schedule async work")
       (is (zero? (t2/count :model/MetabotFeedback 'user_id rasta-id
-                           {:where [:in :message_id
-                                    ^:allow-subquery {:select [:id] :from [:metabot_message]
-                                                      :where [:= :external_id "nothing-to-match"]}]}))
+                           {'where ['in 'message_id
+                                    {'select ['id] 'from ['metabot_message]
+                                     'where ['= 'external_id "nothing-to-match"]}]}))
           "no feedback row written for unresolvable submissions"))))
 
 (deftest handle-feedback-modal-submission-lurker-test
@@ -1054,18 +1054,18 @@
           channel-id  "C-FALLBACK"
           message-ts  "1700000000.123456"]
       (try
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id rasta-id})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id rasta-id})
         (let [message-id (first (t2/insert-returning-pks!
                                  :model/MetabotMessage
-                                 {:conversation_id conv-id
-                                  :role            "assistant"
-                                  :profile_id      "slackbot"
-                                  :external_id     external-id
-                                  :channel_id      channel-id
-                                  :slack_msg_id    message-ts
-                                  :total_tokens    5
-                                  :data            [{:type "text" :text "hi"}]
-                                  :data_version    2}))
+                                 {'conversation_id conv-id
+                                  'role            "assistant"
+                                  'profile_id      "slackbot"
+                                  'external_id     external-id
+                                  'channel_id      channel-id
+                                  'slack_msg_id    message-ts
+                                  'total_tokens    5
+                                  'data            [{:type "text" :text "hi"}]
+                                  'data_version    2}))
               ;; external-id intentionally omitted from the button payload — only channel + ts are present
               payload    (modal-submission-payload {:conv-id     conv-id
                                                     :external-id nil

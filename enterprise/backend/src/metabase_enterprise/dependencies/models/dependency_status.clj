@@ -67,28 +67,28 @@
         table-wildcard (keyword (name table-name) "*")
         now (t/offset-date-time)]
     (t2/select model
-               {:select [table-wildcard]
-                :from table-name
-                :left-join [:dependency_status [:and
-                                                [:= :dependency_status.entity_id id-field]
-                                                [:= :dependency_status.entity_type (name entity-type)]]]
-                :where [:or
+               {'select [table-wildcard]
+                'from table-name
+                'left-join ['dependency_status ['and
+                                                ['= 'dependency_status.entity_id id-field]
+                                                ['= 'dependency_status.entity_type (name entity-type)]]]
+                'where ['or
                         ;; No status row yet — needs initial processing.
-                        [:= :dependency_status.entity_id nil]
-                        [:and
+                        ['= 'dependency_status.entity_id nil]
+                        ['and
                          ;; Needs processing: stale or version outdated
-                         [:or
-                          [:= :dependency_status.stale true]
-                          [:< :dependency_status.dependency_analysis_version
+                         ['or
+                          ['= 'dependency_status.stale true]
+                          ['< 'dependency_status.dependency_analysis_version
                            models.dependency/current-dependency-analysis-version]]
                          ;; Not terminally broken
-                         [:= :dependency_status.terminal false]
+                         ['= 'dependency_status.terminal false]
                          ;; Retry delay has elapsed (or no delay set)
-                         [:or
-                          [:is :dependency_status.next_retry_at nil]
-                          [:<= :dependency_status.next_retry_at now]]]]
-                :order-by [[[:case [:= :dependency_status.stale true] [:inline 0] :else [:inline 1]]]]
-                :limit batch-size})))
+                         ['or
+                          ['is 'dependency_status.next_retry_at nil]
+                          ['<= 'dependency_status.next_retry_at now]]]]
+                'order-by [[['case ['= 'dependency_status.stale true] ['inline 0] 'else ['inline 1]]]]
+                'limit batch-size})))
 
 (defn has-pending-retries?
   "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."

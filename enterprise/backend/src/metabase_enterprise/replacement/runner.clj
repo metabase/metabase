@@ -54,7 +54,7 @@
                                    :transform :model/Transform
                                    :segment   :model/Segment
                                    :measure   :model/Measure)
-                                 {:where [:in :id ids]})))))]
+                                 {'where ['in 'id ids]})))))]
     (let [cards      (id->instances :card)
           tables     (id->instances :table)
           dashboards (id->instances :dashboard)
@@ -209,4 +209,4 @@
      (when-let [persisted-info (t2/select-one :model/PersistedInfo 'card_id card-id)]
        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
      ;; phase 4: convert the model to a saved question
-     (t2/update! :model/Card card-id {:type :question}))))
+     (t2/update! :model/Card card-id {'type :question}))))

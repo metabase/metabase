@@ -15,16 +15,16 @@
   (testing "malformed stored v2 parts are rejected before slack history replay"
     (let [conv-id (str (random-uuid))]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    "1709567890.000099"
-                     :role            "assistant"
-                     :profile_id      "test"
-                     :total_tokens    0
+                    {'conversation_id conv-id
+                     'slack_msg_id    "1709567890.000099"
+                     'role            "assistant"
+                     'profile_id      "test"
+                     'total_tokens    0
                      ;; invalid v2: a tool part with no :state to dispatch on
-                     :data            [{:type "tool-search" :toolCallId "z"}]
-                     :data_version    2})
+                     'data            [{:type "tool-search" :toolCallId "z"}]
+                     'data_version    2})
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid slack history replay metabot_message.data"
                               (slackbot.persistence/message-history conv-id #{"1709567890.000099"})))))))
@@ -32,27 +32,27 @@
 (deftest message-history-test
   (let [conv-id (str (random-uuid))]
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
       ;; User message - should be excluded (query filters by role=assistant)
       (t2/insert! :model/MetabotMessage
-                  {:conversation_id conv-id
-                   :slack_msg_id    "1709567890.000001"
-                   :role            "user"
-                   :profile_id      "test"
-                   :total_tokens    0
-                   :data            [{:type "text" :text "what is 2+2?"}]
-                   :data_version    2})
+                  {'conversation_id conv-id
+                   'slack_msg_id    "1709567890.000001"
+                   'role            "user"
+                   'profile_id      "test"
+                   'total_tokens    0
+                   'data            [{:type "text" :text "what is 2+2?"}]
+                   'data_version    2})
       ;; Assistant message with a resolved tool call
       (t2/insert! :model/MetabotMessage
-                  {:conversation_id conv-id
-                   :slack_msg_id    "1709567890.000002"
-                   :role            "assistant"
-                   :profile_id      "test"
-                   :total_tokens    10
-                   :data            [{:type "text" :text "hi"}
+                  {'conversation_id conv-id
+                   'slack_msg_id    "1709567890.000002"
+                   'role            "assistant"
+                   'profile_id      "test"
+                   'total_tokens    10
+                   'data            [{:type "text" :text "hi"}
                                      {:type "tool-search" :toolCallId "x" :state "output-available"
                                       :input {} :output {:output "y"}}]
-                   :data_version    2})
+                   'data_version    2})
       (testing "only tool parts are included, text is filtered out"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
           (is (= 2 (count (get result "1709567890.000002"))))
@@ -66,16 +66,16 @@
       (testing "soft-deleted messages are excluded from message-history but included in deleted-message-ids"
         (let [deleted-ts "1709567890.000003"]
           (t2/insert! :model/MetabotMessage
-                      {:conversation_id    conv-id
-                       :slack_msg_id       deleted-ts
-                       :role               "assistant"
-                       :profile_id         "test"
-                       :total_tokens       10
-                       :data               [{:type "tool-search" :toolCallId "y" :state "output-available"
+                      {'conversation_id    conv-id
+                       'slack_msg_id       deleted-ts
+                       'role               "assistant"
+                       'profile_id         "test"
+                       'total_tokens       10
+                       'data               [{:type "tool-search" :toolCallId "y" :state "output-available"
                                              :input {} :output {:output "z"}}]
-                       :data_version       2
-                       :deleted_at         (java.time.OffsetDateTime/now)
-                       :deleted_by_user_id (mt/user->id :rasta)})
+                       'data_version       2
+                       'deleted_at         (java.time.OffsetDateTime/now)
+                       'deleted_by_user_id (mt/user->id :rasta)})
           (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
           (is (= #{deleted-ts}
                  (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
@@ -103,7 +103,7 @@
           in-flight "1712100000.000003"
           legacy    "1712100000.000004"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         (insert! clean     "call-clean"     :finished true)
         (insert! errored   "call-errored"   :finished true :error "boom")
         (insert! in-flight "call-in-flight" :finished nil)
@@ -132,14 +132,14 @@
           orphan-id  "call-orphan"
           failed-id  "call-failed"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    slack-ts
-                     :role            "assistant"
-                     :profile_id      "slackbot"
-                     :total_tokens    10
-                     :data            [{:type "text" :text "Let me check."}
+                    {'conversation_id conv-id
+                     'slack_msg_id    slack-ts
+                     'role            "assistant"
+                     'profile_id      "slackbot"
+                     'total_tokens    10
+                     'data            [{:type "text" :text "Let me check."}
                                        {:type         "tool-search"
                                         :toolCallId   search-id
                                         :state        "output-available"
@@ -160,7 +160,7 @@
                                         :state        "output-error"
                                         :input        {:query "boom"}
                                         :errorText    "it broke"}]
-                     :data_version    2})
+                     'data_version    2})
         (let [result (slackbot.persistence/message-history conv-id #{slack-ts})
               msgs   (get result slack-ts)]
           (testing "text parts and unresolved tool parts are skipped"
@@ -193,19 +193,19 @@
           slack-ts "1712000000.000002"
           call-id  "call-degenerate"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    slack-ts
-                     :role            "assistant"
-                     :profile_id      "slackbot"
-                     :total_tokens    10
-                     :data            [{:type       "tool-search"
+                    {'conversation_id conv-id
+                     'slack_msg_id    slack-ts
+                     'role            "assistant"
+                     'profile_id      "slackbot"
+                     'total_tokens    10
+                     'data            [{:type       "tool-search"
                                         :toolCallId call-id
                                         :state      "output-available"
                                         :input      nil
                                         :output     {}}]
-                     :data_version    2})
+                     'data_version    2})
         (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
           (testing "nil input encodes as an empty JSON object, not \"null\""
             (is (= "{}" (-> msgs first :tool_calls first :arguments))))
@@ -221,19 +221,19 @@
           slack-ts "1712000000.000003"
           call-id  "call-flat"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    slack-ts
-                     :role            "assistant"
-                     :profile_id      "slackbot"
-                     :total_tokens    3
-                     :data            [{:type       "tool-search"
+                    {'conversation_id conv-id
+                     'slack_msg_id    slack-ts
+                     'role            "assistant"
+                     'profile_id      "slackbot"
+                     'total_tokens    3
+                     'data            [{:type       "tool-search"
                                         :toolCallId call-id
                                         :state      "output-available"
                                         :input      {:q "x"}
                                         :output     "just a string"}]
-                     :data_version    2})
+                     'data_version    2})
         (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
           (is (= {:role         :tool
                   :tool_call_id call-id
@@ -245,21 +245,21 @@
     (let [conv-id  (str (random-uuid))
           slack-ts "1712000000.000002"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    slack-ts
-                     :role            "assistant"
-                     :profile_id      "slackbot"
-                     :total_tokens    5
-                     :data            [{:_type      "TOOL_CALL"
+                    {'conversation_id conv-id
+                     'slack_msg_id    slack-ts
+                     'role            "assistant"
+                     'profile_id      "slackbot"
+                     'total_tokens    5
+                     'data            [{:_type      "TOOL_CALL"
                                         :role       "assistant"
                                         :tool_calls [{:id "legacy-1" :name "search" :arguments "{}"}]}
                                        {:_type        "TOOL_RESULT"
                                         :role         "tool"
                                         :tool_call_id "legacy-1"
                                         :content      "legacy output"}]
-                     :data_version    1})
+                     'data_version    1})
         (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
           (is (= [{:role       :assistant
                    :tool_calls [{:id "legacy-1" :name "search" :arguments "{}"}]}
@@ -275,16 +275,16 @@
             slack-ts   "1709567890.111111"
             user-id    (mt/user->id :rasta)
             conv-id    (str (random-uuid))]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id user-id})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id user-id})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    slack-ts
-                     :channel_id      channel-id
-                     :role            "assistant"
-                     :profile_id      "test"
-                     :total_tokens    5
-                     :data            []
-                     :data_version    2})
+                    {'conversation_id conv-id
+                     'slack_msg_id    slack-ts
+                     'channel_id      channel-id
+                     'role            "assistant"
+                     'profile_id      "test"
+                     'total_tokens    5
+                     'data            []
+                     'data_version    2})
         (testing "returns true when a message is soft-deleted"
           (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id))))
         (let [msg (t2/select-one :model/MetabotMessage
@@ -309,17 +309,17 @@
             later-user-id  (mt/user->id :crowberto)
             conv-id        (str (random-uuid))]
         ;; Simulate a later user having overwritten MetabotConversation.user_id
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id later-user-id})
+        (t2/insert! :model/MetabotConversation {'id conv-id 'user_id later-user-id})
         (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    slack-ts
-                     :channel_id      channel-id
-                     :role            "assistant"
-                     :user_id         requester-id
-                     :profile_id      "test"
-                     :total_tokens    5
-                     :data            []
-                     :data_version    2})
+                    {'conversation_id conv-id
+                     'slack_msg_id    slack-ts
+                     'channel_id      channel-id
+                     'role            "assistant"
+                     'user_id         requester-id
+                     'profile_id      "test"
+                     'total_tokens    5
+                     'data            []
+                     'data_version    2})
         (testing "returns the requester, not the (potentially overwritten) conversation owner"
           (is (= requester-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
         (testing "returns nil for an untracked message ts"
@@ -329,15 +329,15 @@
         (testing "two users in the same thread each own only their own bot response"
           (let [second-slack-ts "1709567890.333333"]
             (t2/insert! :model/MetabotMessage
-                        {:conversation_id conv-id
-                         :slack_msg_id    second-slack-ts
-                         :channel_id      channel-id
-                         :role            "assistant"
-                         :user_id         later-user-id
-                         :profile_id      "test"
-                         :total_tokens    5
-                         :data            []
-                         :data_version    2})
+                        {'conversation_id conv-id
+                         'slack_msg_id    second-slack-ts
+                         'channel_id      channel-id
+                         'role            "assistant"
+                         'user_id         later-user-id
+                         'profile_id      "test"
+                         'total_tokens    5
+                         'data            []
+                         'data_version    2})
             (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
             (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts)))))))))
 
@@ -360,7 +360,7 @@
                                  deleted? (assoc :deleted_at         (java.time.OffsetDateTime/now)
                                                  :deleted_by_user_id (mt/user->id :rasta)))))]
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      (t2/insert! :model/MetabotConversation {'id conv-id 'user_id (mt/user->id :rasta)})
       (testing "a thread with no turns reconstructs to {}"
         (is (= {} (state-of))))
       (testing "a finished assistant turn's state becomes the baseline"

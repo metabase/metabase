@@ -82,7 +82,7 @@
       (let [query (:query source)
             query' (source-swap/upgrade-field-refs-in-query query)]
         (when (not= query query')
-          (t2/update! :model/Transform (:id transform) {:source (assoc source :query query')}))))))
+          (t2/update! :model/Transform (:id transform) {'source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a segment."
@@ -91,7 +91,7 @@
     (let [query  (:definition segment)
           query' (source-swap/upgrade-field-refs-in-query query)]
       (when (not= query query')
-        (t2/update! :model/Segment (:id segment) {:definition query'})))))
+        (t2/update! :model/Segment (:id segment) {'definition query'})))))
 
 (defn- measure-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a measure."
@@ -100,7 +100,7 @@
     (let [query  (:definition measure)
           query' (source-swap/upgrade-field-refs-in-query query)]
       (when (not= query query')
-        (t2/update! :model/Measure (:id measure) {:definition query'})))))
+        (t2/update! :model/Measure (:id measure) {'definition query'})))))
 
 (defn- upgrade-parameter-target
   "Upgrade field refs in a parameter target."

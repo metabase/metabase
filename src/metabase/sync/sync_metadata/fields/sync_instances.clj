@@ -126,7 +126,7 @@
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
       (t2/update! :model/Field {'id ['in (map u/the-id fields-to-reactivate)]}
-                  {:active true}))
+                  {'active true}))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
@@ -184,7 +184,7 @@
   [table          :- i/TableInstance
    metabase-field :- common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active false}))
+  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {'active false}))
     1))
 
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero

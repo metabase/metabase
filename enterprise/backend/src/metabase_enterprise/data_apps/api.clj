@@ -154,7 +154,7 @@
    {:keys [enabled]} :- [:map [:enabled :boolean]]]
   (api/check-superuser)
   (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (t2/update! :model/DataApp 'id (:id app) {:enabled enabled})
+    (t2/update! :model/DataApp 'id (:id app) {'enabled enabled})
     (data-app/select-one-non-blob :id (:id app))))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil

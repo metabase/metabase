@@ -306,7 +306,7 @@
                                        :details details})))]
           (sync/sync-database! database {:scan :schema})
           (t2/update! :model/Database 'id (u/the-id database)
-                      {:details (cond-> (impersonation-details driver source-db)
+                      {'details (cond-> (impersonation-details driver source-db)
                                   (driver/database-supports? driver :connection-impersonation-requires-role nil)
                                   (assoc :role (impersonation-default-role driver)))})
           ;; the pools opened during sync authenticate as the granting user; tests must not inherit them

@@ -25,7 +25,7 @@
   `last-version` advances for the next pull), and return the result."
   [src version & {:keys [force?] :or {force? false}}]
   (let [task   (t2/insert-returning-pk! :model/RemoteSyncTask
-                                        {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                                        {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
         result (impl/import! (source.p/snapshot-at src version) task :force? force?)]
     (impl/handle-task-result! result task)
     result))

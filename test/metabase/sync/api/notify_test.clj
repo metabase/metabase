@@ -173,11 +173,11 @@
   (let [attached (t2/select-fn-set :id :model/Database 'is_attached_dwh true)]
     (try
       (when (seq attached)
-        (t2/update! :model/Database 'id ['in attached] {:is_attached_dwh false}))
+        (t2/update! :model/Database 'id ['in attached] {'is_attached_dwh false}))
       (f)
       (finally
         (when (seq attached)
-          (t2/update! :model/Database 'id ['in attached] {:is_attached_dwh true}))))))
+          (t2/update! :model/Database 'id ['in attached] {'is_attached_dwh true}))))))
 
 (defmacro with-no-attached-data-warehouses
   [& body]

@@ -19,7 +19,7 @@
   [id->raw-deps]
   (doseq [[id raw-deps] id->raw-deps]
     (try
-      (t2/update! (t2/table-name :model/Transform) id {:table_dependencies (json/encode (vec raw-deps))})
+      (t2/update! (t2/table-name :model/Transform) id {'table_dependencies (json/encode (vec raw-deps))})
       (catch Throwable e
         (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e))))))
 
@@ -56,12 +56,12 @@
         yesterday-utc (t/minus today-utc (t/days 1))
         counts-for    (fn [date]
                         (into {} (map (juxt :metered_as :cnt))
-                              (t2/query {:select   [:r.metered_as [[:count :r.id] :cnt]]
-                                         :from     [[:transform_run :r]]
-                                         :where    [:and
-                                                    [:= :r.status "succeeded"]
-                                                    [:= [:cast :r.end_time :date] [:cast date :date]]]
-                                         :group-by [:r.metered_as]})))
+                              (t2/query {'select   ['r.metered_as [['count 'r.id] 'cnt]]
+                                         'from     [['transform_run 'r]]
+                                         'where    ['and
+                                                    ['= 'r.status "succeeded"]
+                                                    ['= ['cast 'r.end_time 'date] ['cast date 'date]]]
+                                         'group-by ['r.metered_as]})))
         yesterday     (counts-for yesterday-utc)
         today         (counts-for today-utc)]
     {:transform-basic-runs            (get yesterday "transform-basic" 0)

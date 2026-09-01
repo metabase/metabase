@@ -30,7 +30,7 @@
   []
   (log/infof "Attempting to delete remote_sync_task records older than %d days." retention-days)
   (let [cutoff-date (t/minus (t/offset-date-time) (t/days retention-days))
-        deleted-count (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff-date]})]
+        deleted-count (t2/delete! :model/RemoteSyncTask {'where ['< 'started_at cutoff-date]})]
     (log/infof "Deleted %d remote_sync_task records. Cleanup successful." deleted-count)
     deleted-count))
 

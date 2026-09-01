@@ -86,9 +86,9 @@
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
     {:data   (t2/select :model/OsiAiContext
-                        {:order-by [[:entity_type :asc] [:entity_local_id :asc]]
-                         :limit    limit
-                         :offset   offset})
+                        {'order-by [['entity_type 'asc] ['entity_local_id 'asc]]
+                         'limit    limit
+                         'offset   offset})
      :total  (t2/count :model/OsiAiContext)
      :limit  limit
      :offset offset}))

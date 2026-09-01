@@ -169,9 +169,9 @@
           (serdes.load/load-metabase! (ingestion-in-memory (extract-source))))
         (ts/with-db source-db
           (t2/update! :model/Card (-> source :card :id)
-                      {:dimensions         (filterv #(= dim-a-id (:id %))
+                      {'dimensions         (filterv #(= dim-a-id (:id %))
                                                     (-> source :card :dimensions))
-                       :dimension_mappings (filterv #(= dim-a-id (:dimension-id %))
+                       'dimension_mappings (filterv #(= dim-a-id (:dimension-id %))
                                                     (-> source :card :dimension_mappings))}))
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory (extract-source)))

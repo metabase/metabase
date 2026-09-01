@@ -160,14 +160,14 @@
 (defn- seed-composite-row!
   [{:keys [source-type source-id clause atom-fingerprints atom-count]} cnt]
   (t2/insert! :model/SourceSegmentCompositeDaily
-              {:source_type       source-type
-               :source_id         source-id
-               :ownership_mode    :direct
-               :clause            clause
-               :atom_fingerprints (json/encode atom-fingerprints)
-               :atom_count        atom-count
-               :bucket_date       composite-test-bucket-date
-               :count             cnt}))
+              {'source_type       source-type
+               'source_id         source-id
+               'ownership_mode    :direct
+               'clause            clause
+               'atom_fingerprints (json/encode atom-fingerprints)
+               'atom_count        atom-count
+               'bucket_date       composite-test-bucket-date
+               'count             cnt}))
 
 (defn- cleanup-composite-rows! []
   (t2/delete! :model/SourceSegmentCompositeDaily 'bucket_date composite-test-bucket-date))

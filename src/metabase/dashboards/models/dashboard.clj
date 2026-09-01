@@ -145,7 +145,7 @@
    dashboards k
    #(group-by :dashboard_id (t2/select :model/DashboardTab
                                        'dashboard_id ['in (map :id dashboards)]
-                                       {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
+                                       {'order-by [['dashboard_id 'asc] ['position 'asc] ['id 'asc]]}))
    :id
    {:default []}))
 
@@ -155,22 +155,22 @@
    dashboards k
    #(group-by :dashboard_id
               (t2/select :model/DashboardCard
-                         {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-                          :from      [[:report_dashboardcard :dashcard]]
-                          :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                                      [:collection :collection] [:= :collection.id :card.collection_id]]
-                          :where     [:and
-                                      [:in :dashcard.dashboard_id (map :id dashboards)]
-                                      [:or
+                         {'select    ['dashcard.* ['collection.authority_level 'collection_authority_level]]
+                          'from      [['report_dashboardcard 'dashcard]]
+                          'left-join [['report_card 'card] ['= 'dashcard.card_id 'card.id]
+                                      ['collection 'collection] ['= 'collection.id 'card.collection_id]]
+                          'where     ['and
+                                      ['in 'dashcard.dashboard_id (map :id dashboards)]
+                                      ['or
                                        ;; show it if:
                                        ;; - the card isn't archived
-                                       [:= :card.archived false]
+                                       ['= 'card.archived false]
                                        ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
-                                       [:and
-                                        [:not= :card.dashboard_id nil]
-                                        [:= :card.archived_directly false]]
-                                       [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                          :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
+                                       ['and
+                                        ['not= 'card.dashboard_id nil]
+                                        ['= 'card.archived_directly false]]
+                                       ['= 'card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+                          'order-by  [['dashcard.dashboard_id] ['dashcard.created_at 'asc]]}))
    :id
    {:default []}))
 
@@ -181,10 +181,10 @@
   (when (seq dashboards)
     (let [coll-id->level (into {}
                                (map (juxt :id :authority_level))
-                               (app-db/query {:select    [:dashboard.id :collection.authority_level]
-                                              :from      [[:report_dashboard :dashboard]]
-                                              :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-                                              :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+                               (app-db/query {'select    ['dashboard.id 'collection.authority_level]
+                                              'from      [['report_dashboard 'dashboard]]
+                                              'left-join [['collection 'collection] ['= 'collection.id 'dashboard.collection_id]]
+                                              'where     ['in 'dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
@@ -204,9 +204,9 @@
         ;; DQs that ARE used get unarchived
         internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
     (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (t2/update! :model/Card 'id ['in ids] {:archived true :archived_directly true}))
+      (t2/update! :model/Card 'id ['in ids] {'archived true 'archived_directly true}))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (t2/update! :model/Card 'id ['in ids] {:archived false :archived_directly false}))))
+      (t2/update! :model/Card 'id ['in ids] {'archived false 'archived_directly false}))))
 
 (defn cascade-card-state-from-dashboard-update!
   "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
@@ -222,15 +222,15 @@
         (t2/update! :model/Card
                     'dashboard_id id
                     'archived false
-                    {:archived true :archived_directly false})
+                    {'archived true 'archived_directly false})
         (t2/update! :model/Card
                     'dashboard_id id
                     'archived true
                     'archived_directly false
-                    {:archived false})))
+                    {'archived false})))
     (when (api/column-will-change? :collection_id current-dash updates)
       (t2/update! :model/Card 'dashboard_id id
-                  {:collection_id (:collection_id updates)}))))
+                  {'collection_id (:collection_id updates)}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -585,32 +585,32 @@
 
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]
-  ^:allow-subquery {:select [:report_dashboard.id
-                             [(h2x/literal "Dashboard") :model]
-                             [:report_dashboard.name :name]
-                             [:last_viewed_at :last_used_at]]
-                    :from :report_dashboard
-                    :left-join [:pulse [:and
-                                        [:= :pulse.archived false]
-                                        [:= :pulse.dashboard_id :report_dashboard.id]]
-                                :collection [:= :collection.id :report_dashboard.collection_id]
-                                :moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
-                    :where [:and
-                            [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_dashboard.archived false]
-                            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
-                            ;; find things only in regular collections, not the `instance-analytics` collection.
-                            [:= :collection.type nil]
-                            (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_dashboard.enable_embedding false])
-                            (when (setting/get :enable-public-sharing)
-                              [:= :report_dashboard.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_dashboard.collection_id nil])
-                             [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+  {'select ['report_dashboard.id
+            [(h2x/literal "Dashboard") 'model]
+            ['report_dashboard.name 'name]
+            ['last_viewed_at 'last_used_at]]
+   'from 'report_dashboard
+   'left-join ['pulse ['and
+                       ['= 'pulse.archived false]
+                       ['= 'pulse.dashboard_id 'report_dashboard.id]]
+               'collection ['= 'collection.id 'report_dashboard.collection_id]
+               'moderation_review ['and
+                                   ['= 'moderation_review.moderated_item_id 'report_dashboard.id]
+                                   ['= 'moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   ['= 'moderation_review.most_recent true]
+                                   ['= 'moderation_review.status (h2x/literal "verified")]]]
+   'where ['and
+           ['= 'pulse.id nil]
+           ['= 'moderation_review.id nil]
+           ['= 'report_dashboard.archived false]
+           ['<= 'report_dashboard.last_viewed_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           ['= 'collection.type nil]
+           (when (embed.settings/some-embedding-enabled?)
+             [:= :report_dashboard.enable_embedding false])
+           (when (setting/get :enable-public-sharing)
+             [:= :report_dashboard.public_uuid nil])
+           ['or
+            (when (contains? (:collection-ids args) nil)
+              [:is :report_dashboard.collection_id nil])
+            ['in 'report_dashboard.collection_id (-> args :collection-ids)]]]})

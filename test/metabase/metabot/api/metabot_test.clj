@@ -76,8 +76,8 @@
                               (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
                   added-prompts (t2/select [:model/MetabotPrompt [:card.name :model_name] 'prompt]
                                            'metabot_id metabot-id
-                                           {:join     [[:report_card :card] [:= :card.id :card_id]]
-                                            :order-by [:metabot_prompt.id]})]
+                                           {'join     [['report_card 'card] ['= 'card.id 'card_id]]
+                                            'order-by ['metabot_prompt.id]})]
               (is (=? {:status       "generated"
                        :prompt_count (reduce + (map count (vals prompts)))}
                       response))

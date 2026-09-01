@@ -316,7 +316,7 @@
   (let [all (t2/select [:model/Database 'id 'name 'engine 'description 'is_audit]
                        'is_audit false
                        'router_database_id nil
-                       {:order-by [[:%lower.name :asc]]})
+                       {'order-by [['%lower.name 'asc]]})
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)
@@ -335,8 +335,8 @@
                    (not tree?) (conj [:= :location "/"]))
         colls    (->> (t2/select [:model/Collection 'id 'name 'location 'authority_level
                                   'description 'personal_owner_id]
-                                 {:where    where
-                                  :order-by [[:location :asc] [:%lower.name :asc]]})
+                                 {'where    where
+                                  'order-by [['location 'asc] ['%lower.name 'asc]]})
                       (filter mi/can-read?))
         ;; For tree mode, compute path names by chaining ancestor names.
         id->name (when tree? (into {} (map (juxt :id :name)) colls))
@@ -387,7 +387,7 @@
         tables (->> (t2/select [:model/Table 'id 'name 'display_name 'schema 'db_id 'description]
                                'db_id  db-id
                                'active true
-                               {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
+                               {'order-by [['%lower.schema 'asc] ['%lower.name 'asc]]})
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-tables tables query-params)))
@@ -400,7 +400,7 @@
                                'type        :model
                                'database_id db-id
                                'archived    false
-                               {:order-by [[:%lower.name :asc]]})
+                               {'order-by [['%lower.name 'asc]]})
                     (filter mi/can-read?)
                     (mapv present-card))]
     (list-result :database-models models query-params)))
@@ -409,10 +409,10 @@
   (let [db-id   (parse-long id-str)
         _       (warehouses/get-database db-id)
         rows    (t2/query
-                 {:select-distinct [:schema]
-                  :from            [:metabase_table]
-                  :where           [:and [:= :db_id db-id] [:= :active true]]
-                  :order-by        [[:schema :asc]]})
+                 {'select-distinct ['schema]
+                  'from            ['metabase_table]
+                  'where           ['and ['= 'db_id db-id] ['= 'active true]]
+                  'order-by        [['schema 'asc]]})
         schemas (->> rows
                      (keep :schema)
                      (mapv (fn [s]
@@ -429,7 +429,7 @@
                                'db_id  db-id
                                'schema schema-name
                                'active true
-                               {:order-by [[:%lower.name :asc]]})
+                               {'order-by [['%lower.name 'asc]]})
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
@@ -446,26 +446,26 @@
           coll           (api/read-check :model/Collection coll-id)
           cards          (->> (t2/select [:model/Card 'id 'name 'type 'description 'card_schema
                                           'collection_id 'database_id 'table_id]
-                                         {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
-                                          :order-by [[:%lower.name :asc]]})
+                                         {'where    ['and ['= 'collection_id coll-id] ['= 'archived false]]
+                                          'order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
           dashboards     (->> (t2/select [:model/Dashboard 'id 'name 'description 'collection_id]
                                          'collection_id coll-id
                                          'archived      false
-                                         {:order-by [[:%lower.name :asc]]})
+                                         {'order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
           documents      (->> (t2/select [:model/Document 'id 'name 'collection_id 'exploration_id]
                                          'collection_id  coll-id
                                          'archived       false
                                          'exploration_id nil
-                                         {:order-by [[:%lower.name :asc]]})
+                                         {'order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
           subcollections (->> (t2/select [:model/Collection 'id 'name 'location 'authority_level
                                           'description 'personal_owner_id]
                                          'location (str (:location coll) coll-id "/")
                                          'archived false
-                                         {:order-by [[:%lower.name :asc]]})
+                                         {'order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -480,7 +480,7 @@
                                  'description 'personal_owner_id]
                                 'location (str (:location coll) coll-id "/")
                                 'archived false
-                                {:order-by [[:%lower.name :asc]]})
+                                {'order-by [['%lower.name 'asc]]})
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -552,7 +552,7 @@
                                     'collection_id 'database_id 'table_id]
                                    'table_id table-id
                                    'archived false
-                                   {:order-by [[:%lower.name :asc]]})
+                                   {'order-by [['%lower.name 'asc]]})
                         (filter mi/can-read?)
                         (mapv present-card))
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
@@ -563,7 +563,7 @@
                      (->> (t2/select [:model/Transform 'id 'name 'description
                                       'source_database_id 'source]
                                      'source_database_id db-id
-                                     {:order-by [[:%lower.name :asc]]})
+                                     {'order-by [['%lower.name 'asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)
                           (mapv present-transform)))]
@@ -710,11 +710,11 @@
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
         tabs         (t2/select [:model/DashboardTab 'id 'name] 'dashboard_id dashboard-id
-                                {:order-by [[:position :asc] [:id :asc]]})
+                                {'order-by [['position 'asc] ['id 'asc]]})
         dashcards    (t2/select [:model/DashboardCard 'id 'card_id 'action_id 'dashboard_tab_id
                                  'visualization_settings]
                                 'dashboard_id dashboard-id
-                                {:order-by [[:row :asc] [:col :asc]]})
+                                {'order-by [['row 'asc] ['col 'asc]]})
         card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
                        (->> (t2/select [:model/Card 'id 'name 'type 'description 'card_schema

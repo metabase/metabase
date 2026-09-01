@@ -92,14 +92,14 @@
             tenant-after-update  (t2/select-one :model/Tenant tenant-id)]
         (when (false? is_active)
           (t2/update! :model/User {'is_active true 'tenant_id tenant-id}
-                      {:is_active false :deactivated_with_tenant true})
+                      {'is_active false 'deactivated_with_tenant true})
           (some-> (t2/select-one :model/Collection
                                  'id (:tenant_collection_id tenant-before-update)
                                  'archived false)
                   collection/archive-collection!))
         (when (true? is_active)
           (t2/update! :model/User {'is_active false 'tenant_id tenant-id 'deactivated_with_tenant true}
-                      {:is_active true :deactivated_with_tenant nil})
+                      {'is_active true 'deactivated_with_tenant nil})
           (some-> (t2/select-one :model/Collection
                                  'id (:tenant_collection_id tenant-before-update)
                                  'archived true)

@@ -11,7 +11,7 @@
                  'user_id  user-id
                  'model_id model-id
                  'model    model-type
-                 {:order-by [[:id :desc]]}))
+                 {'order-by [['id 'desc]]}))
 
 (deftest card-query-test
   (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]

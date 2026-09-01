@@ -11,10 +11,10 @@
       (t2/delete! :model/CacheConfig)
       (is (false? (cache.settings/enable-query-caching))))
     (testing "returns true when CacheConfig rows exist"
-      (t2/insert! :model/CacheConfig {:model    "root"
-                                      :model_id 0
-                                      :strategy :ttl
-                                      :config   {:multiplier 1
+      (t2/insert! :model/CacheConfig {'model    "root"
+                                      'model_id 0
+                                      'strategy :ttl
+                                      'config   {:multiplier 1
                                                  :min_duration_ms 1}})
       (is (true? (cache.settings/enable-query-caching))))))
 

@@ -183,8 +183,8 @@
                                                          :schema nil
                                                          :name "test_table_null_schema"
                                                          :db_id db-id}}]
-      (t2/update! :model/Transform (:id transform1) {:target_table_id table-with-schema-id})
-      (t2/update! :model/Transform (:id transform2) {:target_table_id table-null-schema-id})
+      (t2/update! :model/Transform (:id transform1) {'target_table_id table-with-schema-id})
+      (t2/update! :model/Transform (:id transform2) {'target_table_id table-null-schema-id})
       (let [transform1 (t2/select-one :model/Transform 'id (:id transform1))
             transform2 (t2/select-one :model/Transform 'id (:id transform2))]
         (testing "Hydrates table with non-NULL schema"
@@ -333,7 +333,7 @@
             (is (= "42" (:last_checkpoint_value t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
           (t2/update! :model/Transform transform-id
-                      {:source {:type "query"
+                      {'source {:type "query"
                                 :query {:database db-id
                                         :type "native"
                                         :native {:query "SELECT 1"
@@ -345,9 +345,9 @@
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
           (t2/update! :model/Transform transform-id
-                      {:last_checkpoint_value "99"})
+                      {'last_checkpoint_value "99"})
           (t2/update! :model/Transform transform-id
-                      {:source {:type "query"
+                      {'source {:type "query"
                                 :query {:database db-id
                                         :type "native"
                                         :native {:query "SELECT 2"

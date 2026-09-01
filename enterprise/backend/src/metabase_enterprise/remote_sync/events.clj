@@ -91,31 +91,31 @@
       (not existing)
       (let [model-details (hydrate-details-fn model-id)]
         (t2/insert! :model/RemoteSyncObject
-                    {:model_type model-type
-                     :model_id model-id
-                     :model_name (:name model-details)
-                     :model_collection_id (:collection_id model-details)
-                     :model_display (some-> model-details :display name)
-                     :model_table_id (:table_id model-details)
-                     :model_table_name (:table_name model-details)
-                     :status status
-                     :status_changed_at (t/offset-date-time)}))
+                    {'model_type model-type
+                     'model_id model-id
+                     'model_name (:name model-details)
+                     'model_collection_id (:collection_id model-details)
+                     'model_display (some-> model-details :display name)
+                     'model_table_id (:table_id model-details)
+                     'model_table_name (:table_name model-details)
+                     'status status
+                     'status_changed_at (t/offset-date-time)}))
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
       (t2/delete! :model/RemoteSyncObject (:id existing))
       (= "delete" (:status existing))
       (t2/update! :model/RemoteSyncObject (:id existing)
-                  {:status status
-                   :status_changed_at (t/offset-date-time)})
+                  {'status status
+                   'status_changed_at (t/offset-date-time)})
       (not (= "create" (:status existing)))
       (let [model-details (hydrate-details-fn model-id)]
         (t2/update! :model/RemoteSyncObject (:id existing)
-                    {:status (resolve-status model-type model-id status existing)
-                     :status_changed_at (t/offset-date-time)
-                     :model_name (:name model-details)
-                     :model_collection_id (:collection_id model-details)
-                     :model_display (some-> model-details :display name)
-                     :model_table_id (:table_id model-details)
-                     :model_table_name (:table_name model-details)})))))
+                    {'status (resolve-status model-type model-id status existing)
+                     'status_changed_at (t/offset-date-time)
+                     'model_name (:name model-details)
+                     'model_collection_id (:collection_id model-details)
+                     'model_display (some-> model-details :display name)
+                     'model_table_id (:table_id model-details)
+                     'model_table_name (:table_name model-details)})))))
 
 ;;; ----------------------------------------- Spec-based Event Handling ------------------------------------------------
 
@@ -138,8 +138,8 @@
   (t2/with-transaction [_conn]
     (let [model-type (:model-type model-spec)
           existing   (t2/select-one :model/RemoteSyncObject
-                                    {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
-                                     :for   :update})]
+                                    {'where ['and ['= 'model_type model-type] ['= 'model_id model-id]]
+                                     'for   'update})]
       (cond
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking
@@ -172,8 +172,8 @@
 
         (= "delete" (:status existing))
         (t2/update! :model/RemoteSyncObject (:id existing)
-                    {:status            status
-                     :status_changed_at (t/offset-date-time)})
+                    {'status            status
+                     'status_changed_at (t/offset-date-time)})
 
         (not= "create" (:status existing))
         (let [model-details (spec/hydrate-model-details model-spec model-id)

@@ -391,8 +391,8 @@
 
   ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1
-              {:is_attached_dwh true
-               :settings
+              {'is_attached_dwh true
+               'settings
                (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"
                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 

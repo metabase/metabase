@@ -401,7 +401,7 @@
                              [:after [:fn #(= % {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})]]
                              [:user_id [:= (mt/user->id :crowberto)]]
                              [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
-                            (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
+                            (t2/select-one :model/CollectionPermissionGraphRevision {'order-by [['id 'desc]]})))))))))))
 
 (deftest collection-namespace-update-non-default-test
   (testing "Should be able to update the graph for a non-default namespace"
@@ -446,7 +446,7 @@
                            [:after [:fn #(= % {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})]]
                            [:user_id [:= (mt/user->id :crowberto)]]
                            [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
-                          (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
+                          (t2/select-one :model/CollectionPermissionGraphRevision {'order-by [['id 'desc]]}))))))))))
 
 (deftest collection-namespace-update-root-default-test
   (testing "Should be able to update permissions for the Root Collection in the default namespace"
@@ -490,7 +490,7 @@
               (is (=? {:before {:namespace nil
                                 :groups {}}
                        :after {(keyword (str group-id)) {:root "read"}}}
-                      (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
+                      (t2/select-one :model/CollectionPermissionGraphRevision {'order-by [['id 'desc]]}))))))))))
 
 (deftest collection-namespace-update-root-non-default-test
   (testing "Should be able to update permissions for Root Collection in non-default namespace"
@@ -535,7 +535,7 @@
               (is (=? {:before {:namespace "currency"
                                 :groups {}}
                        :after {(keyword (str group-id)) {:root "write"}}}
-                      (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
+                      (t2/select-one :model/CollectionPermissionGraphRevision {'order-by [['id 'desc]]}))))))))))
 
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [:model/User :model/Collection]
@@ -546,12 +546,12 @@
                               :date_joined :%now
                               :id %)
                       user-ids)]
-      (t2/query {:insert-into (t2/table-name :model/User)
-                 :values values})
+      (t2/query {'insert-into (t2/table-name :model/User)
+                 'values values})
       (assert (= (count user-ids) num-users))
       ;; insert the Collections
-      (t2/query {:insert-into (t2/table-name :model/Collection)
-                 :values (for [user-id user-ids
+      (t2/query {'insert-into (t2/table-name :model/Collection)
+                 'values (for [user-id user-ids
                                :let [collection (mt/with-temp-defaults :model/Collection)]]
                            (assoc collection
                                   :personal_owner_id user-id

@@ -11,10 +11,10 @@
 (deftest ^:parallel inline-Ratio-test
   (testing ":inline behavior for clojure.lang.Ratio should make sense (#28354)"
     (is (= ["SELECT 4 / (1.0 / 3.0) AS x"]
-           (sql/format {:select [[[:/
-                                   [:inline 4]
-                                   [:inline (/ 1 3)]]
-                                  :x]]})))))
+           (sql/format {'select [[['/
+                                   ['inline 4]
+                                   ['inline (/ 1 3)]]
+                                  'x]]})))))
 
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract
@@ -49,69 +49,69 @@
 (deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"
     (is (= ["SELECT setting"]
-           (sql/format {:select [[:setting]]} {:quoted false}))))
+           (sql/format {'select [['setting]]} {:quoted false}))))
   (testing "`:h2` quoting will uppercase and quote the identifier"
     (is (= ["SELECT \"SETTING\""]
-           (sql/format {:select [[:setting]]} {:dialect :h2})))))
+           (sql/format {'select [['setting]]} {:dialect :h2})))))
 
 (deftest ^:parallel literal-test
   (testing "`literal` should be compiled to a single-quoted literal"
     (is (= ["WHERE name = 'Cam'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam")]}
+           (sql/format {'where ['= 'name (h2x/literal "Cam")]}
                        {:quoted false}))))
   (testing (str "`literal` should properly escape single-quotes inside the literal string double-single-quotes is how "
                 "to escape them in SQL")
     (is (= ["WHERE name = 'Cam''s'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam's")]}
+           (sql/format {'where ['= 'name (h2x/literal "Cam's")]}
                        {:quoted false}))))
   (testing "`literal` escapes every single quote unconditionally -- no \"already escaped\" exception"
     (is (= ["WHERE name = 'Cam''''s'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam''s")]}
+           (sql/format {'where ['= 'name (h2x/literal "Cam''s")]}
                        {:quoted false})))
     (is (= ["WHERE name = 'Cam\\''s'"]
-           (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}
+           (sql/format {'where ['= 'name (h2x/literal "Cam\\'s")]}
                        {:quoted false}))))
   (testing "`literal` should escape strings that start with a single quote"
     (is (= ["WHERE name = '''s'"]
-           (sql/format {:where [:= :name (h2x/literal "'s")]}
+           (sql/format {'where ['= 'name (h2x/literal "'s")]}
                        {:quoted false}))))
   (testing "`literal` should handle namespaced keywords correctly"
     (is (= ["WHERE name = 'ab/c'"]
-           (sql/format {:where [:= :name (h2x/literal :ab/c)]}
+           (sql/format {'where ['= 'name (h2x/literal :ab/c)]}
                        {:quoted false})))))
 
 (deftest ^:parallel identifier-test
   (testing "make sure `identifier` properly handles components with dots and both strings & keywords"
     (is (= ["SELECT `A`.`B`.`C.D`.`E.F`"]
-           (sql/format {:select [[(h2x/identifier :field "A" :B "C.D" :E.F)]]}
+           (sql/format {'select [[(h2x/identifier :field "A" :B "C.D" :E.F)]]}
                        {:dialect :mysql}))))
   (testing "`identifer` should handle slashes"
     (is (= ["SELECT `A/B`.`C\\D`.`E/F`"]
-           (sql/format {:select [[(h2x/identifier :field "A/B" "C\\D" :E/F)]]}
+           (sql/format {'select [[(h2x/identifier :field "A/B" "C\\D" :E/F)]]}
                        {:dialect :mysql}))))
   (testing "`identifier` should also handle strings with quotes in them (ANSI)"
     ;; two double-quotes to escape, e.g. "A""B"
     (is (= ["SELECT \"A\"\"B\""]
-           (sql/format {:select [[(h2x/identifier :field "A\"B")]]}
+           (sql/format {'select [[(h2x/identifier :field "A\"B")]]}
                        {:dialect :ansi}))))
   (testing "`identifier` should also handle strings with quotes in them (MySQL)"
     ;; double-backticks to escape backticks seems to be the way to do it
     (is (= ["SELECT `A``B`"]
-           (sql/format {:select [[(h2x/identifier :field "A`B")]]}
+           (sql/format {'select [[(h2x/identifier :field "A`B")]]}
                        {:dialect :mysql}))))
   (testing "`identifier` shouldn't try to change `lisp-case` to `snake-case` or vice-versa"
     (is (= ["SELECT \"A-B\".\"c-d\".\"D_E\".\"f_g\""]
-           (sql/format {:select [[(h2x/identifier :field "A-B" :c-d "D_E" :f_g)]]}
+           (sql/format {'select [[(h2x/identifier :field "A-B" :c-d "D_E" :f_g)]]}
                        {:dialect :ansi}))))
   (testing "`identifier` should ignore `nil` or empty components."
     (is (= ["SELECT \"A\".\"B\".\"C\""]
-           (sql/format {:select [[(h2x/identifier :field "A" "B" nil "C")]]}
+           (sql/format {'select [[(h2x/identifier :field "A" "B" nil "C")]]}
                        {:dialect :ansi}))))
   (testing "`identifier` should handle nested identifiers"
     (is (= (h2x/identifier :field "A" "B" "C" "D")
            (h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")))
     (is (= ["SELECT \"A\".\"B\".\"C\".\"D\""]
-           (sql/format {:select [[(h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")]]}
+           (sql/format {'select [[(h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")]]}
                        {:dialect :ansi}))))
   (testing "the `identifier` function should unnest identifiers for you so drivers that manipulate `:components` don't need to worry about that"
     (is (= (h2x/identifier :field "A" "B" "C" "D")
@@ -126,7 +126,7 @@
     ;; Apparently you have to wrap the alias form in ANOTHER vector to make it work -- see
     ;; https://clojurians.slack.com/archives/C1Q164V29/p1675301408026759
     (is (= ["SELECT \"A\".\"B\" AS \"C\""]
-           (sql/format {:select [[(h2x/identifier :field "A" "B") [(h2x/identifier :field-alias "C")]]]}
+           (sql/format {'select [[(h2x/identifier :field "A" "B") [(h2x/identifier :field-alias "C")]]]}
                        {:dialect :ansi})))))
 
 (deftest h2-quoting-test
@@ -137,7 +137,7 @@
                 "locale to Turkish")
     (mt/with-locale! "tr"
       (is (= ["SELECT \"SETTING\""]
-             (sql/format {:select [:setting]} {:dialect :h2}))))))
+             (sql/format {'select ['setting]} {:dialect :h2}))))))
 
 (deftest ^:parallel ratios-test
   (testing (str "test behavior for Ratios (#9246). In Honey SQL 1, we converted this to a double in the query itself. "
@@ -147,15 +147,15 @@
     (is (= [{:one_tenth (case (mdb.connection/db-type)
                           (:h2 :postgres) 0.1
                           :mysql          0.1M)}]
-           (app-db/query {:select [[(/ 1 10) :one_tenth]]})))))
+           (app-db/query {'select [[(/ 1 10) 'one_tenth]]})))))
 
 (deftest ^:parallel cast-test
   (testing "a sane bare type-name token is emitted raw, since most dialects reject a quoted type name in a CAST"
     (is (= ["SELECT CAST(? AS date)" "toucan"]
-           (sql/format {:select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
+           (sql/format {'select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
   (testing "a type name that isn't a bare token is quoted, so a hostile type cannot inject SQL"
     (is (= ["SELECT CAST(? AS \"date) UNION SELECT 1 --\")" "toucan"]
-           (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
+           (sql/format {'select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
                        {:quoted true, :dialect :ansi})))))
 
 (deftest ^:parallel raw-type-name?-test
@@ -171,7 +171,7 @@
     false "decimal(10, 2); --"))
 
 (defn- ->sql [expr]
-  (sql/format {:select [[expr]]} {:quoted false}))
+  (sql/format {'select [[expr]]} {:quoted false}))
 
 (deftest ^:parallel maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"
@@ -310,15 +310,15 @@
       (is (empty? (re-seq #"(?<!!)[%_]" (second (h2x/like-pattern input)))) (pr-str input))))
   (testing "wrap is applied to the escaped string and the ESCAPE character is named explicitly"
     (is (= ["SELECT * FROM t WHERE name LIKE ? ESCAPE '!'" "a!%b%"]
-           (sql/format {:select [:*] :from [:t]
-                        :where  [:like :name (h2x/like-pattern "a%b" #(str % "%"))]}))))
+           (sql/format {'select ['*] 'from ['t]
+                        'where  ['like 'name (h2x/like-pattern "a%b" #(str % "%"))]}))))
   (testing "like-substring lowercases, escapes and wraps in %"
     (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "%a!%b!_c%"]
-           (sql/format {:select [:*] :from [:t]
-                        :where  [:like [:lower :name] (h2x/like-substring "A%b_C")]}))))
+           (sql/format {'select ['*] 'from ['t]
+                        'where  ['like ['lower 'name] (h2x/like-substring "A%b_C")]}))))
   (testing "like-prefix"
     (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "a!%b%"]
-           (sql/format {:select [:*] :from [:t]
-                        :where  [:like [:lower :name] (h2x/like-prefix "A%b")]}))))
+           (sql/format {'select ['*] 'from ['t]
+                        'where  ['like ['lower 'name] (h2x/like-prefix "A%b")]}))))
   (testing "passes the app-DB HoneySQL guard"
-    (is (honeysql-guard/safe-syntax? {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]}))))
+    (is (honeysql-guard/safe-syntax? {'select ['*] 'from ['t] 'where ['like 'name (h2x/like-substring "a%b")]}))))

@@ -260,16 +260,16 @@
         (testing "migration table has expected columns"
           (is (map-contains-keys?
                (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                  (sql/format {:select [:*]
-                                               :from [:migration]}))
+                                  (sql/format {'select ['*]
+                                               'from ['migration]}))
                (qualify :migration [:migrated_at
                                     :status
                                     :version]))))
         (testing "control table has expected columns"
           (is (map-contains-keys?
                (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                  (sql/format {:select [:*]
-                                               :from [:index_control]}))
+                                  (sql/format {'select ['*]
+                                               'from ['index_control]}))
                (qualify :index_control [:active_id
                                         :active_updated_at
                                         :id
@@ -277,8 +277,8 @@
         (testing "metadata table has expected columns"
           (is  (map-contains-keys?
                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                   (sql/format {:select [:*]
-                                                :from [:index_metadata]}))
+                                   (sql/format {'select ['*]
+                                                'from ['index_metadata]}))
                 (qualify :index_metadata [:id
                                           :index_created_at
                                           :index_version
@@ -295,10 +295,10 @@
         (testing "index table has expected columns"
           (let [index-table (->
                              (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                                (sql/format {:select [[:im.table_name]]
-                                                             :from [[:index_control :ic]]
-                                                             :join [[:index_metadata :im]
-                                                                    [:= :ic.active_id :im.id]]}))
+                                                (sql/format {'select [['im.table_name]]
+                                                             'from [['index_control 'ic]]
+                                                             'join [['index_metadata 'im]
+                                                                    ['= 'ic.active_id 'im.id]]}))
                              :index_metadata/table_name)]
             (is (=? #{"archived"
                       "collection_id"
@@ -332,17 +332,17 @@
                       "verified"
                       "view_count"}
                     (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                                         (sql/format {:select [:column_name]
-                                                      :from [:information_schema.columns]
-                                                      :where [[:= :table_name [:inline index-table]]]}))
+                                         (sql/format {'select ['column_name]
+                                                      'from ['information_schema.columns]
+                                                      'where [['= 'table_name ['inline index-table]]]}))
                           (map :columns/column_name)
                           set)))))
         (testing "index table has expected columns"
           (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
                  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                                     (sql/format {:select [:column_name]
-                                                  :from [:information_schema.columns]
-                                                  :where [[:= :table_name [:inline "index_gate"]]]}))
+                                     (sql/format {'select ['column_name]
+                                                  'from ['information_schema.columns]
+                                                  'where [['= 'table_name ['inline "index_gate"]]]}))
                       (map :columns/column_name)
                       sort
                       vec))))))
@@ -352,11 +352,11 @@
 
 (defn- has-column?!
   [tx table-name column-name]
-  (seq (jdbc/execute-one! tx (sql/format {:select [[[:raw 1] :contains]]
-                                          :from [:information_schema.columns]
-                                          :where [:and
-                                                  [:= :table_name [:inline table-name]]
-                                                  [:= :column_name [:inline column-name]]]}))))
+  (seq (jdbc/execute-one! tx (sql/format {'select [[['raw 1] 'contains]]
+                                          'from ['information_schema.columns]
+                                          'where ['and
+                                                  ['= 'table_name ['inline table-name]]
+                                                  ['= 'column_name ['inline column-name]]]}))))
 
 (deftest current-schema-version-adds-health-metric-columns-test
   (mt/with-premium-features #{:semantic-search}
@@ -382,18 +382,18 @@
         (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
                          (fn [tx _opts]
                            (let [table_names (->> (jdbc/execute! tx
-                                                                 (sql/format {:select [:table_name]
-                                                                              :from [:index_metadata]
-                                                                              :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
-                                                                              :group-by [:table_name]}))
+                                                                 (sql/format {'select ['table_name]
+                                                                              'from ['index_metadata]
+                                                                              'where [['< 'index_version semantic.db.migration.impl/dynamic-schema-version]]
+                                                                              'group-by ['table_name]}))
                                                   (map :index_metadata/table_name)
                                                   set)]
                              (doseq [table_name table_names]
                                (when-not (has-column?! tx table_name "new_col")
                                  (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
-                             (jdbc/execute! tx (sql/format {:update :index_metadata
-                                                            :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
-                                                            :where [[:in :table_name table_names]]}))))
+                             (jdbc/execute! tx (sql/format {'update 'index_metadata
+                                                            'set {'index_version semantic.db.migration.impl/dynamic-schema-version}
+                                                            'where [['in 'table_name table_names]]}))))
                          #'semantic.db.migration.impl/dynamic-schema-version (inc original-dynamic-schema)}
           (fn []
             ;; Trigger migration by next initialization attempt
@@ -401,8 +401,8 @@
             (let [#:index_metadata{:keys [index_version table_name]}
                   (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
                                      (sql/format
-                                      {:select [:*]
-                                       :from [:index_metadata]}))]
+                                      {'select ['*]
+                                       'from ['index_metadata]}))]
               (testing "Index metadata table ids were updated"
                 (is (= index_version semantic.db.migration.impl/dynamic-schema-version)))
               (testing "Index table contains new column"
@@ -419,9 +419,9 @@
   [pgvector index-metadata]
   (let [{:keys [control-table-name metadata-table-name]} index-metadata]
     (->> (jdbc/execute-one! pgvector
-                            (sql/format {:select [:im.table_name]
-                                         :from   [[(keyword metadata-table-name) :im]]
-                                         :join   [[(keyword control-table-name) :ic] [:= :ic.active_id :im.id]]}))
+                            (sql/format {'select ['im.table_name]
+                                         'from   [[(keyword metadata-table-name) 'im]]
+                                         'join   [[(keyword control-table-name) 'ic] ['= 'ic.active_id 'im.id]]}))
          vals
          first)))
 
@@ -431,8 +431,8 @@
   collection_type, root_collection_type)."
   [pgvector kw-tbl row]
   (jdbc/execute! pgvector
-                 (sql/format {:insert-into kw-tbl
-                              :values      [(merge {:name                                 [:inline ""]
+                 (sql/format {'insert-into kw-tbl
+                              'values      [(merge {:name                                 [:inline ""]
                                                     :content                              [:inline ""]
                                                     :text_search_vector                   [:to_tsvector [:inline "simple"] [:inline ""]]
                                                     :text_search_with_native_query_vector [:to_tsvector [:inline "simple"] [:inline ""]]
@@ -493,25 +493,25 @@
                                                 :root_collection_type [:inline "library-data"]})
             ;; Gate doc for row 1 — JSON includes root_collection_type
             (jdbc/execute! pgvector
-                           (sql/format {:insert-into gate-tbl
-                                        :values [{:id            [:inline "card_1"]
-                                                  :model         [:inline "card"]
-                                                  :model_id      [:inline "1"]
-                                                  :updated_at    [:now]
-                                                  :document      [:cast [:inline "{\"root_collection_type\":\"library\"}"] :jsonb]
-                                                  :document_hash [:inline "h"]}]}
+                           (sql/format {'insert-into gate-tbl
+                                        'values [{'id            ['inline "card_1"]
+                                                  'model         ['inline "card"]
+                                                  'model_id      ['inline "1"]
+                                                  'updated_at    ['now]
+                                                  'document      ['cast ['inline "{\"root_collection_type\":\"library\"}"] 'jsonb]
+                                                  'document_hash ['inline "h"]}]}
                                        :quoted true))
             ;; Roll metadata.index_version back to 3 so migration 4 re-runs against the table.
             (jdbc/execute! pgvector
-                           (sql/format {:update meta-tbl
-                                        :set    {:index_version 3}}))
+                           (sql/format {'update meta-tbl
+                                        'set    {'index_version 3}}))
             ;; Trigger re-migration via init.
             (semantic.core/init! (semantic.tu/mock-documents) nil)
             ;; Verify each backfill branch.
             (let [rows-by-id (->> (jdbc/execute! pgvector
-                                                 (sql/format {:select   [:model_id :root_collection_type]
-                                                              :from     [kw-tbl]
-                                                              :order-by [:model_id]}
+                                                 (sql/format {'select   ['model_id 'root_collection_type]
+                                                              'from     [kw-tbl]
+                                                              'order-by ['model_id]}
                                                              :quoted true)
                                                  {:builder-fn jdbc.rs/as-unqualified-maps})
                                   (map (juxt :model_id :root_collection_type))

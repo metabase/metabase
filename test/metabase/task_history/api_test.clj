@@ -546,8 +546,8 @@
         (testing "sort by db_engine (aaa-engine < zzz-engine)"
           ;; Relabel engines via raw SQL (no Toucan hooks, so no driver init) purely to exercise ordering on the
           ;; `engine` column; reset to h2 before with-temp teardown so deletion doesn't init a bogus driver.
-          (t2/query {:update :metabase_database :set {:engine "aaa-engine"} :where [:= :id (:id db-a)]})
-          (t2/query {:update :metabase_database :set {:engine "zzz-engine"} :where [:= :id (:id db-b)]})
+          (t2/query {'update 'metabase_database 'set {'engine "aaa-engine"} 'where ['= 'id (:id db-a)]})
+          (t2/query {'update 'metabase_database 'set {'engine "zzz-engine"} 'where ['= 'id (:id db-b)]})
           (try
             (let [asc  (tracked :sort_column :db_engine :sort_direction :asc)
                   desc (tracked :sort_column :db_engine :sort_direction :desc)]
@@ -555,8 +555,8 @@
               (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
               (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc))))
             (finally
-              (t2/query {:update :metabase_database :set {:engine "h2"}
-                         :where  [:in :id [(:id db-a) (:id db-b)]]}))))))))
+              (t2/query {'update 'metabase_database 'set {'engine "h2"}
+                         'where  ['in 'id [(:id db-a) (:id db-b)]]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Task Runs API tests                                               |

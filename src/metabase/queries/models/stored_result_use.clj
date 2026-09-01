@@ -49,17 +49,17 @@
       (doseq [[new-card-id sr-id] distinct-pairs
               :when (contains? reachable sr-id)]
         (t2/insert! :model/StoredResultUse
-                    {:stored_result_id sr-id
-                     :card_id          new-card-id})))))
+                    {'stored_result_id sr-id
+                     'card_id          new-card-id})))))
 
 (mu/defn assert-can-view-card-snapshots!
   "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
   from."
   [card-id :- ms/PositiveInt]
   (let [snapshots (t2/select :model/StoredResult
-                             'id ['in ^:allow-subquery {:select [:stored_result_id]
-                                                        :from   [:stored_result_use]
-                                                        :where  [:= :card_id card-id]}])]
+                             'id ['in {'select ['stored_result_id]
+                                       'from   ['stored_result_use]
+                                       'where  ['= 'card_id card-id]}])]
     (when (empty? snapshots)
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
     (doseq [snapshot snapshots]

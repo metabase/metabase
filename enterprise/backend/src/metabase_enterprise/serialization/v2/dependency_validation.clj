@@ -72,7 +72,7 @@
   (into #{}
         (comp (distinct)
               (partition-all serdes/query-batch-size)
-              (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]})))
+              (mapcat #(t2/select-pks-set (keyword "model" model) {'where ['in 'id %]})))
         ids))
 
 (def ^:private structural-content-models

@@ -57,7 +57,7 @@
             (let [run! (fn [transform-id end-time]
                          (let [{id :id} (transform-run/start-run! transform-id {:run_method "manual"})]
                            (transform-run/succeed-started-run! id)
-                           (t2/update! :model/TransformRun 'id id {:end_time end-time})))]
+                           (t2/update! :model/TransformRun 'id id {'end_time end-time})))]
               (testing "with no premium features, mbql runs are not metered"
                 (mt/with-premium-features #{}
                   (run! mbql-id frozen-yesterday)

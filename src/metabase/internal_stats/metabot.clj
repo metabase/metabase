@@ -8,10 +8,10 @@
   "Aggregate combined tokens by provider:model for a given UTC date."
   [date-utc]
   (let [rows (t2/select [:model/AiUsageLog 'model [:%sum.total_tokens :tokens]]
-                        {:where    [:and
-                                    :ai_proxied
-                                    [:= [:cast :created_at :date] [:cast date-utc :date]]]
-                         :group-by [:model]})]
+                        {'where    ['and
+                                    'ai_proxied
+                                    ['= ['cast 'created_at 'date] ['cast date-utc 'date]]]
+                         'group-by ['model]})]
     (->> (for [{:keys [model tokens]} rows
                :let [k (-> model
                            (str/replace-first "metabase/" "")
@@ -30,9 +30,9 @@
         user-id-expr  [:coalesce :m.user_id :c.user_id]
         tokens        (or (t2/select-one-fn :sum
                                             [:model/AiUsageLog [:%sum.total_tokens :sum]]
-                                            {:where [:and
-                                                     :ai_proxied
-                                                     [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
+                                            {'where ['and
+                                                     'ai_proxied
+                                                     ['= ['cast 'created_at 'date] ['cast yesterday-utc 'date]]]})
                           0)
         rolling-usage (usage-by-model today-utc)]
     (when (or (pos? tokens) (seq rolling-usage))
@@ -44,19 +44,19 @@
                                                       [:model/MetabotMessage [:%count.id :cnt]]
                                                       'role "user"
                                                       'forked_from_message_id nil
-                                                      {:where [:and
-                                                               :ai_proxied
-                                                               [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
+                                                      {'where ['and
+                                                               'ai_proxied
+                                                               ['= ['cast 'created_at 'date] ['cast yesterday-utc 'date]]]})
                 ;; New rows stamp `metabot_message.user_id`; legacy rows fall back
                 ;; to `metabot_conversation.user_id` so historical usage doesn't
                 ;; disappear until old messages are backfilled.
-                :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct user-id-expr]] :cnt]]
-                                                         :from   [[:metabot_message :m]]
-                                                         :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
-                                                         :where  [:and
-                                                                  :ai_proxied
-                                                                  [:= :m.forked_from_message_id nil]
-                                                                  [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]]}))
+                :metabot-users      (:cnt (t2/query-one {'select [[['count ['distinct user-id-expr]] 'cnt]]
+                                                         'from   [['metabot_message 'm]]
+                                                         'join   [['metabot_conversation 'c] ['= 'c.id 'm.conversation_id]]
+                                                         'where  ['and
+                                                                  'ai_proxied
+                                                                  ['= 'm.forked_from_message_id nil]
+                                                                  ['= ['cast 'm.created_at 'date] ['cast yesterday-utc 'date]]]}))
                 :metabot-usage-date (str (t/local-date yesterday-utc))})
         (seq rolling-usage)
         (merge {:metabot-rolling-usage      rolling-usage

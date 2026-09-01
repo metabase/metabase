@@ -22,12 +22,12 @@
     (t2/delete! :model/ApiKey 'scope :scim)
     (let [unhashed-key (api-key/generate-key)]
       (->
-       (t2/insert-returning-instance! :model/ApiKey {:user_id               nil
-                                                     :scope                 :scim
-                                                     :name                  (scim-api-key-name)
+       (t2/insert-returning-instance! :model/ApiKey {'user_id               nil
+                                                     'scope                 :scim
+                                                     'name                  (scim-api-key-name)
                                                      ::api-key/unhashed-key unhashed-key
-                                                     :creator_id            user-id
-                                                     :updated_by_id         user-id})
+                                                     'creator_id            user-id
+                                                     'updated_by_id         user-id})
        (assoc :unmasked_key (u.secret/expose unhashed-key))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

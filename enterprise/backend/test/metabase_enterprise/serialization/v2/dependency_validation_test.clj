@@ -220,18 +220,18 @@
             (is (= #{[{:model "Collection" :id parent-id}]} (deps "Collection" child-id)))
             (is (empty? (deps "Collection" parent-id)) "a root collection has no parent dependency"))
           (testing "Timeline references its containing collection"
-            (let [tl-id (t2/insert-returning-pk! :model/Timeline {:name "TL" :icon "star" :collection_id child-id :creator_id (mt/user->id :rasta)})]
+            (let [tl-id (t2/insert-returning-pk! :model/Timeline {'name "TL" 'icon "star" 'collection_id child-id 'creator_id (mt/user->id :rasta)})]
               (is (= #{[{:model "Collection" :id child-id}]} (deps "Timeline" tl-id)))))
           (testing "NativeQuerySnippet references its containing collection"
             (let [snip-id (t2/insert-returning-pk! :model/NativeQuerySnippet
-                                                   {:name "snip" :content "1=1" :collection_id snip-coll-id
-                                                    :creator_id (mt/user->id :rasta)})]
+                                                   {'name "snip" 'content "1=1" 'collection_id snip-coll-id
+                                                    'creator_id (mt/user->id :rasta)})]
               (is (= #{[{:model "Collection" :id snip-coll-id}]} (deps "NativeQuerySnippet" snip-id)))))
           (testing "Action (query) references its model Card, Database, and the tables/fields in its query"
-            (let [action-id (t2/insert-returning-pk! :model/Action {:name "A" :type :query :model_id model-card-id})]
-              (t2/insert! :model/QueryAction {:action_id     action-id
-                                              :database_id   db-id
-                                              :dataset_query {:database db-id
+            (let [action-id (t2/insert-returning-pk! :model/Action {'name "A" 'type :query 'model_id model-card-id})]
+              (t2/insert! :model/QueryAction {'action_id     action-id
+                                              'database_id   db-id
+                                              'dataset_query {:database db-id
                                                               :type     :query
                                                               :query    {:source-table table-id
                                                                          :filter       [:> [:field field-id nil] 1]}}})
@@ -242,11 +242,11 @@
                      (deps "Action" action-id)))))
           (testing "Document references its embedded cards and its containing collection"
             (let [doc-id (t2/insert-returning-pk! :model/Document
-                                                  {:name          "D"
-                                                   :collection_id child-id
-                                                   :creator_id    (mt/user->id :rasta)
-                                                   :content_type  prose-mirror/prose-mirror-content-type
-                                                   :document      {:type    "doc"
+                                                  {'name          "D"
+                                                   'collection_id child-id
+                                                   'creator_id    (mt/user->id :rasta)
+                                                   'content_type  prose-mirror/prose-mirror-content-type
+                                                   'document      {:type    "doc"
                                                                    :content [{:type  "cardEmbed"
                                                                               :attrs {:id embed-card-id}}]}})]
               (is (= #{[{:model "Collection" :id child-id}]

@@ -160,10 +160,10 @@
   `(t2/with-transaction []
      (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
        (try
-         (t2/update! :model/Table where-clause# {:is_upload true})
+         (t2/update! :model/Table where-clause# {'is_upload true})
          ~@body
          (finally
-           (t2/update! :model/Table where-clause# {:is_upload false}))))))
+           (t2/update! :model/Table where-clause# {'is_upload false}))))))
 
 (deftest ^:parallel get-table-test
   (testing "GET /api/table/:id"
@@ -1325,12 +1325,12 @@
         ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
         ;; directly to fabricate the mirror-db table this 404 test needs.
         (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {:db_id      mirror-db-id
-                                                 :schema     "PUBLIC"
-                                                 :name       "mirror_table"
-                                                 :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
+                                                {'db_id      mirror-db-id
+                                                 'schema     "PUBLIC"
+                                                 'name       "mirror_table"
+                                                 'active     true
+                                                 'created_at :%now
+                                                 'updated_at :%now})]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" table-id)))))))))
 

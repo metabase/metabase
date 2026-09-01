@@ -75,7 +75,7 @@
     (t2/update! :model/AnalysisFinding
                 'analyzed_entity_type entity-type
                 'analyzed_entity_id ['in batch]
-                {:stale true})))
+                {'stale true})))
 
 (defn has-stale-entities?
   "Check if there are any stale analysis records."
@@ -98,18 +98,18 @@
         id-field (keyword (name table-name) "id")
         table-wildcard (keyword (name table-name) "*")]
     (t2/select model
-               {:select [table-wildcard]
-                :from table-name
-                :left-join [:analysis_finding [:and
-                                               [:= :analysis_finding.analyzed_entity_id id-field]
-                                               [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
-                :where [:or
-                        [:= :analysis_finding.stale true] ; stale analysis
-                        [:<                               ; missing or outdated analysis
-                         [:coalesce :analysis_finding.analysis_version 0]
+               {'select [table-wildcard]
+                'from table-name
+                'left-join ['analysis_finding ['and
+                                               ['= 'analysis_finding.analyzed_entity_id id-field]
+                                               ['= 'analysis_finding.analyzed_entity_type (name entity-type)]]]
+                'where ['or
+                        ['= 'analysis_finding.stale true] ; stale analysis
+                        ['<                               ; missing or outdated analysis
+                         ['coalesce 'analysis_finding.analysis_version 0]
                          *current-analysis-finding-version*]]
                 ;; stale first, then oldest-analyzed first so a sub-backlog batch round-robins through
                 ;; the stale set instead of starving a DB-arbitrary subset.
-                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]
-                           [:analysis_finding.analyzed_at :asc]]
-                :limit batch-size})))
+                'order-by [[['case ['= 'analysis_finding.stale true] ['inline 0] 'else ['inline 1]]]
+                           ['analysis_finding.analyzed_at 'asc]]
+                'limit batch-size})))

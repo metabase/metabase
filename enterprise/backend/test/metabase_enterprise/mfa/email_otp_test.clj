@@ -70,7 +70,7 @@
         ;; back-date the expiry
         (let [ai (t2/select-one :model/AuthIdentity 'id ai-id)]
           (t2/update! :model/AuthIdentity ai-id
-                      {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
+                      {'credentials (assoc-in (:credentials ai) [:email_otp :exp]
                                               (dec (quot (System/currentTimeMillis) 1000)))}))
         (is (false? (verification/verify-attempt! user-id code (fresh-jti))))))))
 
@@ -79,10 +79,10 @@
     (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (let [secret (totp/generate-secret)
             sent   (atom nil)]
-        (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
-                                         :provider    "totp"
-                                         :confirmed_at (t/instant)
-                                         :credentials  {:secret secret}})
+        (t2/insert! :model/AuthIdentity {'user_id     (mt/user->id :rasta)
+                                         'provider    "totp"
+                                         'confirmed_at (t/instant)
+                                         'credentials  {:secret secret}})
         (try
           (mt/with-dynamic-fn-redefs [channel.settings/email-configured?    (constantly true)
                                       channel.email/send-message-or-throw! (fn [msg] (reset! sent msg) msg)]
@@ -108,10 +108,10 @@
   (mt/with-premium-features #{:multi-factor-auth}
     (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (let [secret (totp/generate-secret)]
-        (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
-                                         :provider    "totp"
-                                         :confirmed_at (t/instant)
-                                         :credentials  {:secret secret}})
+        (t2/insert! :model/AuthIdentity {'user_id     (mt/user->id :rasta)
+                                         'provider    "totp"
+                                         'confirmed_at (t/instant)
+                                         'credentials  {:secret secret}})
         (try
           (mt/with-dynamic-fn-redefs [channel.settings/email-configured?    (constantly true)
                                       channel.email/send-message-or-throw! (fn [& _]
@@ -126,10 +126,10 @@
   (mt/with-premium-features #{:multi-factor-auth}
     (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (let [secret (totp/generate-secret)]
-        (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
-                                         :provider    "totp"
-                                         :confirmed_at (t/instant)
-                                         :credentials  {:secret secret}})
+        (t2/insert! :model/AuthIdentity {'user_id     (mt/user->id :rasta)
+                                         'provider    "totp"
+                                         'confirmed_at (t/instant)
+                                         'credentials  {:secret secret}})
         (try
           (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)]
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]

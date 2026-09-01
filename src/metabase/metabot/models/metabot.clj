@@ -31,7 +31,7 @@
   (mi/instances-with-hydrated-data
    metabots k
    #(group-by :metabot_id
-              (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+              (t2/select :model/MetabotPrompt {'where ['in 'metabot_id (map :id metabots)]}))
    :id
    {:default []}))
 

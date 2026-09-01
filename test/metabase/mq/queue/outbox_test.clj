@@ -122,10 +122,10 @@
                        {:queue/outbox-chunked ["a" "b" "c" "d" "e"]}})]
         (outbox/insert-outbox-rows!))
       (is (= 3 (outbox-count "outbox-chunked")) "5 messages, max-batch 2 -> 3 rows (2,2,1)")
-      (let [payloads (->> (t2/query {:select   [:payload]
-                                     :from     [:queue_message_outbox]
-                                     :where    [:= :queue_name "outbox-chunked"]
-                                     :order-by [[:id :asc]]})
+      (let [payloads (->> (t2/query {'select   ['payload]
+                                     'from     ['queue_message_outbox]
+                                     'where    ['= 'queue_name "outbox-chunked"]
+                                     'order-by [['id 'asc]]})
                           (map (comp payload/decode :payload)))]
         (is (= [["a" "b"] ["c" "d"] ["e"]] payloads))))))
 
@@ -137,9 +137,9 @@
                        {:queue/outbox-dedup ["a" "a" "b" "a"]}})]
         (outbox/insert-outbox-rows!))
       (is (= 1 (outbox-count "outbox-dedup")))
-      (let [msgs (->> (t2/query {:select [:payload]
-                                 :from   [:queue_message_outbox]
-                                 :where  [:= :queue_name "outbox-dedup"]})
+      (let [msgs (->> (t2/query {'select ['payload]
+                                 'from   ['queue_message_outbox]
+                                 'where  ['= 'queue_name "outbox-dedup"]})
                       (mapcat (comp payload/decode :payload)))]
         (is (= ["a" "b"] (vec msgs)))))))
 
@@ -193,9 +193,9 @@
       {:queue/outbox-recover (fn [m] (swap! heard conj m))}
       (testing "a row a crash left behind is republished and deleted by the recovery sweep"
         (t2/insert! :queue_message_outbox
-                    {:queue_name "outbox-recover"
-                     :payload    (payload/encode ["recovered"])
-                     :created_at (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))})
+                    {'queue_name "outbox-recover"
+                     'payload    (payload/encode ["recovered"])
+                     'created_at (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))})
         (is (= 1 (outbox-count "outbox-recover")))
         (is (= 1 (outbox/recover-outbox!)) "one row republished")
         (mq.tu/eventually! ctx #(= ["recovered"] @heard) 5000)
@@ -207,7 +207,7 @@
     (mq.tu/with-test-mq [_ctx]
       (let [pl (payload/encode ["keep-me"])
             id (t2/insert-returning-pk! :queue_message_outbox
-                                        {:queue_name "outbox-require" :payload pl})]
+                                        {'queue_name "outbox-require" 'payload pl})]
         ;; Point the active backend at quartz with no scheduler so publish! throws; the per-row
         ;; try/catch in publish-outbox-rows! must then leave the row in place for recovery.
         (binding [q.backend/*backend*          q.quartz/backend
@@ -228,7 +228,7 @@
       (mt/with-temp-scheduler!
         (let [pl (payload/encode ["keep-me-too"])
               id (t2/insert-returning-pk! :queue_message_outbox
-                                          {:queue_name "outbox-require" :payload pl})]
+                                          {'queue_name "outbox-require" 'payload pl})]
           (binding [q.backend/*backend* q.quartz/backend]
             (with-redefs [task/scheduler-disabled? (constantly true)]
               (outbox/publish-outbox-rows!
@@ -244,10 +244,10 @@
             bad     (payload/encode ["bad"])
             old     (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))
             good-id (t2/insert-returning-pk! :queue_message_outbox
-                                             {:queue_name "outbox-recover" :payload good :created_at old})
+                                             {'queue_name "outbox-recover" 'payload good 'created_at old})
             ;; higher id -> published after the good row (order-by id asc)
             bad-id  (t2/insert-returning-pk! :queue_message_outbox
-                                             {:queue_name "outbox-recover" :payload bad :created_at old})
+                                             {'queue_name "outbox-recover" 'payload bad 'created_at old})
             published (atom [])
             ;; capture the unpatched fn via original-fn — a bare var ref would resolve to the
             ;; with-dynamic-fn-redefs proxy and recurse (see that macro's docstring).
@@ -271,9 +271,9 @@
       (let [p1   (payload/encode ["one"])
             p2   (payload/encode ["two"])
             p3   (payload/encode ["three"])
-            id1  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p1})
-            id2  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p2})
-            id3  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p3})
+            id1  (t2/insert-returning-pk! :queue_message_outbox {'queue_name "outbox-require" 'payload p1})
+            id2  (t2/insert-returning-pk! :queue_message_outbox {'queue_name "outbox-require" 'payload p2})
+            id3  (t2/insert-returning-pk! :queue_message_outbox {'queue_name "outbox-require" 'payload p3})
             published (atom [])
             real-publish (dynamic-redefs/original-fn #'transport/publish-encoded!)]
         (with-dynamic-fn-redefs [transport/publish-encoded!
@@ -296,8 +296,8 @@
   (mq.tu/with-test-mq [_ctx]
     (testing "rows younger than the recovery age are left for the normal after-commit path"
       (t2/insert! :queue_message_outbox
-                  {:queue_name "outbox-recover"
-                   :payload    (payload/encode ["fresh"])})
+                  {'queue_name "outbox-recover"
+                   'payload    (payload/encode ["fresh"])})
       (is (= 0 (outbox/recover-outbox!)) "no rows old enough to recover")
       (is (= 1 (outbox-count "outbox-recover")) "fresh row left in place"))))
 
@@ -314,7 +314,7 @@
 
 (defn- insert-stale-row! [payload]
   (t2/insert-returning-pk! :queue_message_outbox
-                           {:queue_name "outbox-recover" :payload payload :created_at stale-ts}))
+                           {'queue_name "outbox-recover" 'payload payload 'created_at stale-ts}))
 
 (defn- always-fail-publish []
   (fn [_channel _payload] (throw (ex-info "always boom" {}))))
@@ -348,7 +348,7 @@
               "a row that is not yet due is not re-attempted before its backoff elapses")
           ;; force the row due and sweep again: re-attempted, attempt count grows, still retained
           (t2/update! :queue_message_outbox 'id id
-                      {:next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
+                      {'next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
           (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
               "a due row is re-attempted and its attempt count keeps growing")

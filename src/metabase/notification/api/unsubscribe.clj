@@ -27,9 +27,9 @@
 (defn- notification-name-by-handler-id
   [notification-handler-id]
   (let [notification (t2/hydrate (t2/select-one :model/Notification
-                                                'id ['in ^:allow-subquery {:select [:notification_id]
-                                                                           :from  :notification_handler
-                                                                           :where [:= :id notification-handler-id]}])
+                                                'id ['in {'select ['notification_id]
+                                                          'from  'notification_handler
+                                                          'where ['= 'id notification-handler-id]}])
                                  :payload)]
     (case (:payload_type notification)
       ;; use the card name
@@ -83,9 +83,9 @@
                                         'type :notification-recipient/raw-value)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if-not matching-recipient
-        (t2/insert! :model/NotificationRecipient {:type                    :notification-recipient/raw-value
-                                                  :details                 {:value email}
-                                                  :notification_handler_id notification-handler-id})
+        (t2/insert! :model/NotificationRecipient {'type                    :notification-recipient/raw-value
+                                                  'details                 {:value email}
+                                                  'notification_handler_id notification-handler-id})
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:details {:email email}
                                                                   :object {:id notification-handler-id}})

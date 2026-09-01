@@ -105,13 +105,13 @@
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
       (let [card (t2/select-one :model/Card
-                                {:select [:c.id]
-                                 :from   [[:sandboxes :s]]
-                                 :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
-                                          [:report_card :c] [:= :c.id :s.card_id]]
-                                 :where  [:= :pg.id (u/the-id &group)]})]
+                                {'select ['c.id]
+                                 'from   [['sandboxes 's]]
+                                 'join   [['permissions_group 'pg] ['= 's.group_id 'pg.id]
+                                          ['report_card 'c] ['= 'c.id 's.card_id]]
+                                 'where  ['= 'pg.id (u/the-id &group)]})]
         ;; Forcibly clear result_metadata to simulate the async-not-yet-complete or failed-extraction state.
-        (t2/update! :model/Card 'id (:id card) {:result_metadata nil})
+        (t2/update! :model/Card 'id (:id card) {'result_metadata nil})
         (testing "sandboxed user sees zero fields (fail-closed)"
           (let [{:keys [fields]} (mt/user-http-request :rasta :get 200
                                                        (format "table/%d/query_metadata"

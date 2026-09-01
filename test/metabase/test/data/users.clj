@@ -72,12 +72,12 @@
       (locking create-user-lock
         (or (t2/select-one :model/User 'email email)
             (u/prog1 (t2/insert-returning-instance! :model/User
-                                                    {:email        email
-                                                     :first_name   first-name
-                                                     :last_name    last-name
-                                                     :is_superuser superuser
-                                                     :is_qbnewb    true
-                                                     :is_active    active})
+                                                    {'email        email
+                                                     'first_name   first-name
+                                                     'last_name    last-name
+                                                     'is_superuser superuser
+                                                     'is_qbnewb    true
+                                                     'is_active    active})
               (auth-identity/set-password! (u/the-id <>) password))))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
@@ -242,10 +242,10 @@
       ;; Write the row rather than the model. `:model/Session`'s after-insert hook publishes `:event/user-login`,
       ;; which stamps `User.last_login`, and `:event/user-joined` for a User that has never logged in. Deleting the
       ;; Session does not undo either, so they leak into whatever runs next.
-      (t2/insert! :core_session {:id         session-id
-                                 :key_hashed (session/hash-session-key session-key)
-                                 :user_id    user-id
-                                 :created_at (mi/now)})
+      (t2/insert! :core_session {'id         session-id
+                                 'key_hashed (session/hash-session-key session-key)
+                                 'user_id    user-id
+                                 'created_at (mi/now)})
       (try
         (apply the-client session-key args)
         (finally

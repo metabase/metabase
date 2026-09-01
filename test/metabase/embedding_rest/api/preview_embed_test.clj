@@ -632,8 +632,8 @@
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                           :embedding_params {"static_category"       "enabled"
+        (t2/update! :model/Dashboard (u/the-id dashboard) {'enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                           'embedding_params {"static_category"       "enabled"
                                                                               "static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
@@ -660,8 +660,8 @@
   (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                           :embedding_params {"static_category_label" "enabled"}})
+        (t2/update! :model/Dashboard (u/the-id dashboard) {'enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                           'embedding_params {"static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               search-url   (format "preview_embed/dashboard/%s/params/%s/search/%s" signed-token "_STATIC_CATEGORY_LABEL_" "AF")]
           (testing "Should work if the param we're fetching values for is enabled"

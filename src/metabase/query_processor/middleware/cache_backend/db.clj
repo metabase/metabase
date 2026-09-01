@@ -92,7 +92,7 @@
   (pos? (t2/update! (t2/table-name :model/QueryCache)
                     {'query_hash                                         query-hash
                      [:coalesce :refresh_started_at lease-free-sentinel] ['< (ms-ago lease-ms)]}
-                    {:refresh_started_at (t/offset-date-time)})))
+                    {'refresh_started_at (t/offset-date-time)})))
 
 (defn delete-entry!
   "Delete the cache entry for `query-hash`, if one exists. Deleting the row also releases any held refresh lease, so

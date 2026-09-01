@@ -110,7 +110,7 @@
           (is (= "[\"https://api.example.com\"]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))
       (testing "an app with no allowed_hosts still sends the header as an empty JSON array"
-        (t2/update! :model/DataApp 'name "demo" {:allowed_hosts []})
+        (t2/update! :model/DataApp 'name "demo" {'allowed_hosts []})
         (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
           (is (= "[]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
@@ -197,7 +197,7 @@
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V1"})))
-    (t2/update! :model/DataApp 'name "a" {:enabled false})
+    (t2/update! :model/DataApp 'name "a" {'enabled false})
     ;; a new bundle must not flip the admin's enabled toggle back on
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V2"})))

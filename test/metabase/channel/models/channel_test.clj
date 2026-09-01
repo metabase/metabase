@@ -48,11 +48,11 @@
                                          :channel_type "metabase-test"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (is (pos? (t2/update! :model/Channel id {:name "New name"})))
-      (is (zero? (t2/update! :model/Channel id {:active true})))
+      (is (pos? (t2/update! :model/Channel id {'name "New name"})))
+      (is (zero? (t2/update! :model/Channel id {'active true})))
       (is (t2/exists? :model/PulseChannel pc-id)))
     (testing "deactivate channel"
-      (t2/update! :model/Channel id {:active false})
+      (t2/update! :model/Channel id {'active false})
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel pc-id))))
       (testing "will change the name"
@@ -97,9 +97,9 @@
     (mt/with-prometheus-system! [_ system]
       (mt/with-model-cleanup [:model/ChannelTemplate]
         (t2/insert-returning-instance! :model/ChannelTemplate
-                                       {:channel_type :channel/email
-                                        :name         "Test Template"
-                                        :details      {:type    :email/handlebars-text
+                                       {'channel_type :channel/email
+                                        'name         "Test Template"
+                                        'details      {:type    :email/handlebars-text
                                                        :subject "Hello {{name}}"
                                                        :body    "Welcome {{name}}"}})
         (is (= 1.0 (mt/metric-value system :metabase-notification/template-create
@@ -113,7 +113,7 @@
                                                       :details      {:type    :email/handlebars-text
                                                                      :subject "Hello"
                                                                      :body    "Original body"}}]
-        (t2/update! :model/ChannelTemplate id {:details {:type    :email/handlebars-text
+        (t2/update! :model/ChannelTemplate id {'details {:type    :email/handlebars-text
                                                          :subject "Hello"
                                                          :body    "Updated body"}})
         (is (= 1.0 (mt/metric-value system :metabase-notification/template-update
@@ -124,9 +124,9 @@
     (mt/with-log-messages-for-level [messages :info]
       (mt/with-model-cleanup [:model/ChannelTemplate]
         (t2/insert-returning-instance! :model/ChannelTemplate
-                                       {:channel_type :channel/email
-                                        :name         "Test Template"
-                                        :details      {:type    :email/handlebars-text
+                                       {'channel_type :channel/email
+                                        'name         "Test Template"
+                                        'details      {:type    :email/handlebars-text
                                                        :subject "Hello"
                                                        :body    "Secret {{password}}"}})
         (is (some (fn [{:keys [message]}]

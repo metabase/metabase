@@ -271,7 +271,7 @@
   (let [hi-value (:value (:hi source-range-params))]
     (t2/update! :model/Transform
                 transform-id
-                {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+                {'last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -531,7 +531,7 @@
      ;; the driver's default schema. If so, fix the Table record before syncing.
      (let [table (if (nil? (:schema table))
                    (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                     (do (t2/update! :model/Table (:id table) {'schema actual-schema})
                          (-> (t2/select-one :model/Table (:id table))
                              (t2/hydrate :db)))
                      table)
@@ -548,7 +548,7 @@
                                                 :is_writable false)
                                 {:create? true})]
     (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
+      (t2/update! :model/Table (:id table) {'active true}))
     table))
 
 (defn sync-target!
@@ -563,7 +563,7 @@
   [database target]
   (when-let [table (sync-table! database target)]
     ;; TODO this should probably be a function in the sync module
-    (t2/update! :model/Table (:id table) {:active false})))
+    (t2/update! :model/Table (:id table) {'active false})))
 
 (defn delete-target-table!
   "Drop a transform's output table and deactivate its app-db Table row."
@@ -642,7 +642,7 @@
   (when transform-id
     (t2/update! :model/TableIndex
                 'transform_id transform-id 'index_name (reconcile/index-name index)
-                {:status :failed :error_message (ex-message t) :last_executed_at :%now})))
+                {'status :failed 'error_message (ex-message t) 'last_executed_at :%now})))
 
 (defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
@@ -729,8 +729,8 @@
         database (t2/select-one :model/Database db-id)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when-let [table (sync-target! target database)]
-      (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
-      (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
+      (t2/update! :model/Transform (:id transform) {'target_table_id (:id table)})
+      (t2/update! :model/Table (:id table) {'transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try
@@ -764,7 +764,7 @@
   (when-let [table (output-table transform)]
     (not-empty (t2/select-fn-vec :name [:model/Field 'name 'position]
                                  'table_id (:id table) 'active true
-                                 {:order-by [[:position :asc]]}))))
+                                 {'order-by [['position 'asc]]}))))
 
 (defn validate-merge-unique-key!
   "Throws if any of `unique-key` is not present in `columns`. Returns `unique-key`."
@@ -799,7 +799,7 @@
           fetch-batch (fn [batch]
                         (t2/select-fn->fn (juxt :db_id :schema :name) :id
                                           [:model/Table 'id 'db_id 'schema 'name]
-                                          {:where (into [:or] (map ref->clause batch))}))]
+                                          {'where (into [:or] (map ref->clause batch))}))]
       (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
 (defn- source-table-ref->key

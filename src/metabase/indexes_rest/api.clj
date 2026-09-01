@@ -96,10 +96,10 @@
     (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
     (try
       (t2/insert-returning-instance! :model/TableIndex
-                                     {:transform_id transform_id
-                                      :index_name   idx-name
-                                      :structured   structured
-                                      :created_by   api/*current-user-id*})
+                                     {'transform_id transform_id
+                                      'index_name   idx-name
+                                      'structured   structured
+                                      'created_by   api/*current-user-id*})
       (catch Exception e
         ;; the pre-check races a concurrent create; if the row exists now, surface the same 400
         (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
@@ -125,7 +125,7 @@
     (assert-stable-key! existing structured)
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
-      (t2/update! :model/TableIndex id {:structured structured})
+      (t2/update! :model/TableIndex id {'structured structured})
       (t2/select-one :model/TableIndex 'id id))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
@@ -135,5 +135,5 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (t2/update! :model/TableIndex id {:status :delete-pending}))
+    (t2/update! :model/TableIndex id {'status :delete-pending}))
   api/generic-204-no-content)

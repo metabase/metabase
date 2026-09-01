@@ -98,13 +98,13 @@
           all-codes (recovery-codes/generate-codes)
           code      (first all-codes)]
       (tu/with-model-cleanup [:model/User :model/AuthIdentity]
-        (let [{user-id :id} (t2/insert-returning-instance! :model/User {:first_name "Conc" :last_name "Test"
-                                                                        :email      (str (random-uuid) "@test.com")
-                                                                        :password   "unused"})]
-          (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                           :provider    "totp"
-                                           :confirmed_at (t/instant)
-                                           :credentials {:secret         secret
+        (let [{user-id :id} (t2/insert-returning-instance! :model/User {'first_name "Conc" 'last_name "Test"
+                                                                        'email      (str (random-uuid) "@test.com")
+                                                                        'password   "unused"})]
+          (t2/insert! :model/AuthIdentity {'user_id     user-id
+                                           'provider    "totp"
+                                           'confirmed_at (t/instant)
+                                           'credentials {:secret         secret
                                                          :recovery_codes (mapv u.password/hash-bcrypt all-codes)}})
           (let [latch   (java.util.concurrent.CountDownLatch. 1)
                 threads 8
@@ -136,13 +136,13 @@
   (testing "only one of N concurrent threads can consume the same TOTP time step"
     (let [secret (totp/generate-secret)]
       (tu/with-model-cleanup [:model/User :model/AuthIdentity]
-        (let [{user-id :id} (t2/insert-returning-instance! :model/User {:first_name "Conc" :last_name "Totp"
-                                                                        :email      (str (random-uuid) "@test.com")
-                                                                        :password   "unused"})]
-          (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                           :provider    "totp"
-                                           :confirmed_at (t/instant)
-                                           :credentials  {:secret secret}})
+        (let [{user-id :id} (t2/insert-returning-instance! :model/User {'first_name "Conc" 'last_name "Totp"
+                                                                        'email      (str (random-uuid) "@test.com")
+                                                                        'password   "unused"})]
+          (t2/insert! :model/AuthIdentity {'user_id     user-id
+                                           'provider    "totp"
+                                           'confirmed_at (t/instant)
+                                           'credentials  {:secret secret}})
           (let [code    (totp/generate-code secret)
                 latch   (java.util.concurrent.CountDownLatch. 1)
                 threads 8
@@ -177,10 +177,10 @@
             k2     "fedcba9876543210-key-B"]
         (mt/with-temp [:model/User {user-id :id} {}]
           (encryption-test/with-secret-key k1
-            (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                             :provider    "totp"
-                                             :confirmed_at (t/instant)
-                                             :credentials  {:secret secret}}))
+            (t2/insert! :model/AuthIdentity {'user_id     user-id
+                                             'provider    "totp"
+                                             'confirmed_at (t/instant)
+                                             'credentials  {:secret secret}}))
           (let [ai-id     (t2/select-one-fn :id :auth_identity 'user_id user-id 'provider "totp")
                 raw       (t2/select-one-fn :credentials :auth_identity 'id ai-id)
                 plaintext (encryption-test/with-secret-key k1
@@ -188,7 +188,7 @@
                 rotated   (encryption-test/with-secret-key k2
                             (encryption/maybe-encrypt plaintext))]
             (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
-            (t2/update! :auth_identity ai-id {:credentials rotated}))
+            (t2/update! :auth_identity ai-id {'credentials rotated}))
           (encryption-test/with-secret-key k2
             (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))
                 "the rotated enrollment verifies under the new key"))
@@ -211,10 +211,10 @@
             k2     "totally-different-key-B!"]
         (mt/with-temp [:model/User {user-id :id} {}]
           (encryption-test/with-secret-key k1
-            (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                             :provider    "totp"
-                                             :confirmed_at (t/instant)
-                                             :credentials  {:secret secret}}))
+            (t2/insert! :model/AuthIdentity {'user_id     user-id
+                                             'provider    "totp"
+                                             'confirmed_at (t/instant)
+                                             'credentials  {:secret secret}}))
           (encryption-test/with-secret-key k2
             (testing "verification fails closed — an error, never a false-positive login"
               (is (thrown? Exception

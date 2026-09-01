@@ -431,10 +431,10 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         ;; Create a dependency_status entry with an old version (not stale, but outdated)
-        (t2/insert! :model/DependencyStatus {:entity_type :card
-                                             :entity_id card-id
-                                             :dependency_analysis_version 0
-                                             :stale false})
+        (t2/insert! :model/DependencyStatus {'entity_type :card
+                                             'entity_id card-id
+                                             'dependency_analysis_version 0
+                                             'stale false})
         (backfill-dependencies-single-trigger!)
         (assert-processed :card card-id)
         (is (t2/exists? :model/Dependency 'from_entity_type :card 'from_entity_id card-id

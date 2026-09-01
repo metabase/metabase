@@ -82,7 +82,7 @@
               'database_partitioned 'json_unfolding 'position 'preview_display]
              'table_id  (u/the-id table)
              'active    true
-             {:order-by table/field-order-rule}))
+             {'order-by table/field-order-rule}))
 
 (mu/defn our-metadata :- [:set common/TableMetadataFieldWithID]
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

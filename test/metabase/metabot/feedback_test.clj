@@ -51,7 +51,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (let [returned (metabot.feedback/persist-feedback!
@@ -78,7 +78,7 @@
             external-id-1   (str (random-uuid))
             external-id-2   (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
           (let [msg-id-1 (insert-message! conversation-id external-id-1)
                 msg-id-2 (insert-message! conversation-id external-id-2)]
             (mt/with-current-user user-id
@@ -103,7 +103,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (metabot.feedback/persist-feedback!
@@ -146,7 +146,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id owner-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id owner-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user stranger-id
               (is (thrown-with-msg? ExceptionInfo #"Not found"
@@ -165,7 +165,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id owner-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id owner-id})
           (insert-message! conversation-id (str (random-uuid)) "user" participant-id)
           (let [assistant-msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user participant-id
@@ -188,7 +188,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id owner-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id owner-id})
           (insert-message! conversation-id (str (random-uuid)) "user" participant-id)
           (let [assistant-msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user owner-id
@@ -198,7 +198,7 @@
               (metabot.feedback/persist-feedback!
                (payload {:message-id external-id :positive false :issue-type "ui-bug" :freeform "not for me"})))
             (let [rows (t2/select :model/MetabotFeedback 'message_id assistant-msg-id
-                                  {:order-by [[:user_id :asc]]})
+                                  {'order-by [['user_id 'asc]]})
                   by-user (into {} (map (juxt :user_id identity)) rows)]
               (is (= 2 (count rows)) "both submissions are persisted as distinct rows")
               (is (true?  (:positive (get by-user owner-id))))
@@ -216,7 +216,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (let [returned (metabot.feedback/persist-source-feedback!
@@ -243,7 +243,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (is (thrown-with-msg? ExceptionInfo
@@ -263,7 +263,7 @@
       (let [conversation-id (str (random-uuid))
             external-id     (str (random-uuid))]
         (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+          (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (metabot.feedback/persist-source-feedback!

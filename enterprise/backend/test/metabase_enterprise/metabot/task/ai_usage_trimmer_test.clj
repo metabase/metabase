@@ -28,7 +28,7 @@
                                                 :created_at (t/minus (t/offset-date-time) (t/days 200)))]
       (#'ai-usage-trimmer/trim-old-usage-data!)
       (is (= #{recent-id}
-             (t2/select-fn-set :id :model/AiUsageLog {:where [:in :id [recent-id old-id]]}))))))
+             (t2/select-fn-set :id :model/AiUsageLog {'where ['in 'id [recent-id old-id]]}))))))
 
 (deftest trims-rows-older-than-custom-retention-test
   (testing "with retention set to 30 days, rows older than 30 days are deleted"
@@ -42,7 +42,7 @@
       (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 30]
         (#'ai-usage-trimmer/trim-old-usage-data!)
         (is (= #{recent-id}
-               (t2/select-fn-set :id :model/AiUsageLog {:where [:in :id [recent-id boundary-id old-id]]})))))))
+               (t2/select-fn-set :id :model/AiUsageLog {'where ['in 'id [recent-id boundary-id old-id]]})))))))
 
 (deftest skips-deletion-when-retention-is-infinite-test
   (testing "when retention is set to 0 (infinite), no rows are deleted"
@@ -54,4 +54,4 @@
       (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 0]
         (#'ai-usage-trimmer/trim-old-usage-data!)
         (is (= #{recent-id old-id}
-               (t2/select-fn-set :id :model/AiUsageLog {:where [:in :id [recent-id old-id]]})))))))
+               (t2/select-fn-set :id :model/AiUsageLog {'where ['in 'id [recent-id old-id]]})))))))

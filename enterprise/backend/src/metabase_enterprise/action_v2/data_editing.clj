@@ -141,13 +141,13 @@
         ln->ids     (when (seq lower-names)
                       (u/group-by
                        :lower_name :id
-                       (t2/query {:select [:id [[:lower :name] :lower_name]]
-                                  :from   [(t2/table-name :model/Field)]
-                                  :where  [:and
-                                           [:= :table_id table-id]
-                                           [:in [:lower :name] lower-names]
-                                           [:in :has_field_values ["list" "auto-list"]]
-                                           [:= :semantic_type "type/Category"]]})))
+                       (t2/query {'select ['id [['lower 'name] 'lower_name]]
+                                  'from   [(t2/table-name :model/Field)]
+                                  'where  ['and
+                                           ['= 'table_id table-id]
+                                           ['in ['lower 'name] lower-names]
+                                           ['in 'has_field_values ["list" "auto-list"]]
+                                           ['= 'semantic_type "type/Category"]]})))
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
                                       old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues

@@ -302,7 +302,7 @@
                   (testing "The calculated hash should be different"
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
                               (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
-                  (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
+                  (t2/update! :model/Database (mt/id) {'details (:details db-perturbed)})
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2 (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
@@ -327,7 +327,7 @@
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
-            (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
+            (t2/update! :model/Database (mt/id) {'details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
@@ -366,9 +366,9 @@
     (when config/ee-available?
       ;; TODO (Cam 9/30/25) -- sort of evil to delete databases like this in a test, shouldn't we do this in a
       ;; transaction or something?
-      (t2/delete! :model/Database {:where [:= :is_audit true]})
+      (t2/delete! :model/Database {'where ['= 'is_audit true]})
       (let [status      (mbc/ensure-audit-db-installed!)
-            audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
+            audit-db-id (t2/select-one-fn :id :model/Database {'where ['= 'is_audit true]})
             _           (is (= :metabase-enterprise.audit-app.audit/installed status))
             _           (is (= 13371337 audit-db-id))
             first-pool  (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
@@ -487,7 +487,7 @@
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
             (let [new-details (assoc original-details :user "baduser")
                   start (t/instant)]
-              (t2/update! :model/Database 'id (mt/id) {:details new-details})
+              (t2/update! :model/Database 'id (mt/id) {'details new-details})
               (mt/with-db (assoc db :details new-details)
                 (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
                 ;; Should be around 1 second
@@ -613,14 +613,14 @@
                                    :tunnel-pass ssh-test/ssh-password)]
      (try
        (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-       (t2/update! :model/Database (mt/id) {:details tunnel-db-details#})
+       (t2/update! :model/Database (mt/id) {'details tunnel-db-details#})
        (mt/with-db (t2/select-one :model/Database (mt/id))
          (try
            ~@body
            (finally
              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))
        (finally
-         (t2/update! :model/Database (mt/id) {:details original-details#})))))
+         (t2/update! :model/Database (mt/id) {'details original-details#})))))
 
 (defn- check-row []
   (is (= [["Polo Lounge"]]

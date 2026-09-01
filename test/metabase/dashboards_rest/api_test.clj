@@ -132,7 +132,7 @@
     (mt/with-temp [:model/Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
-        (t2/update! :model/Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
+        (t2/update! :model/Dashboard (u/the-id dashboard-or-id) {'collection_id (u/the-id collection)}))
       (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection! [dashboards-or-ids & body]
@@ -144,7 +144,7 @@
 (defn- move-cards-to-dashboard-collection!
   [dashboard-or-id card-ids]
   (t2/update! :model/Card {'id ['in card-ids]}
-              {:collection_id (t2/select-one-fn :collection_id :model/Dashboard 'id (u/the-id dashboard-or-id))}))
+              {'collection_id (t2/select-one-fn :collection_id :model/Dashboard 'id (u/the-id dashboard-or-id))}))
 
 (defn- implicit-fk-column-ref
   "The legacy `[:field id {:source-field fk-id}]` ref for the column with `target-field-id`, as reached implicitly via
@@ -671,7 +671,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (t2/update! :model/Collection collection-id {:authority_level "official"}))
+              (t2/update! :model/Collection collection-id {'authority_level "official"}))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -1622,10 +1622,10 @@
                                                                :description "A new description"}))
                 original-tabs      (t2/select [:model/DashboardTab 'id 'position 'name]
                                               'dashboard_id dashboard-id
-                                              {:order-by [[:position :asc]]})
+                                              {'order-by [['position 'asc]]})
                 new-tabs           (t2/select [:model/DashboardTab 'id 'position 'name]
                                               'dashboard_id new-dash-id
-                                              {:order-by [[:position :asc]]})
+                                              {'order-by [['position 'asc]]})
                 new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
             (testing "Cards are located correctly between tabs"
               (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
@@ -2574,7 +2574,7 @@
           (testing "Both updated card ids should be reflected after making the dashcard changes."
             (is (partial= [{:card_id model-id-2}
                            {:card_id model-id-2}]
-                          (t2/select :model/DashboardCard 'dashboard_id dashboard-id {:order-by [:id]})))))))))
+                          (t2/select :model/DashboardCard 'dashboard_id dashboard-id {'order-by ['id]})))))))))
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
@@ -3284,7 +3284,7 @@
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! :model/Card {'id model-id}
-                      {:result_metadata (assoc-in metadata [0 :id]
+                      {'result_metadata (assoc-in metadata [0 :id]
                                                   (mt/id :products :category))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
@@ -3363,7 +3363,7 @@
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
         (t2/update! :model/DashboardCard (:id dashcard)
-                    {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                    {'parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                           {:parameter_id "_PRICE_"
@@ -5185,12 +5185,12 @@
                  :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                          :dashboard_id dashboard-id
                                                          :parameter_mappings []}]
-    (t2/update! :model/Dashboard 'id dashboard-id {:parameters [{:name "TIME Gr"
+    (t2/update! :model/Dashboard 'id dashboard-id {'parameters [{:name "TIME Gr"
                                                                  :slug "tgr"
                                                                  :id "30d7efb0"
                                                                  :type :temporal-unit
                                                                  :sectionId "temporal-unit"}]})
-    (t2/update! :model/DashboardCard 'id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
+    (t2/update! :model/DashboardCard 'id dashcard-id {'parameter_mappings [{:parameter_id "30d7efb0"
                                                                             :type :temporal-unit
                                                                             :card_id card-id
                                                                             :target [:dimension

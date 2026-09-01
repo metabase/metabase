@@ -13,7 +13,7 @@
 (defn last-audit-event []
   (t2/select-one [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
                  'topic :cache-config-update
-                 {:order-by [[:id :desc]]}))
+                 {'order-by [['id 'desc]]}))
 
 (deftest cache-config-test
   (mt/with-model-cleanup [:model/CacheConfig]

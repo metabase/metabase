@@ -258,8 +258,8 @@
             query (lib/query mp table)
             fk-field (mt/id :long_col_name :fk)
             id-2-field (mt/id :long_col_name_2 :foo_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abc)]
-        (t2/update! :model/Field fk-field {:semantic_type :type/FK
-                                           :fk_target_field_id id-2-field})
+        (t2/update! :model/Field fk-field {'semantic_type :type/FK
+                                           'fk_target_field_id id-2-field})
         (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
           (let [breakoutable-cols (lib/breakoutable-columns query)
                 ;; Use case-insensitive matching because H2 stores column names in uppercase

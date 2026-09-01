@@ -66,9 +66,9 @@
 
 (defn- insert-query! [query-hash query]
   (t2/insert! :model/Query
-              {:query_hash             query-hash
-               :query                  query
-               :average_execution_time 1}))
+              {'query_hash             query-hash
+               'query                  query
+               'average_execution_time 1}))
 
 (defn- insert-query-execution! [query-hash started-at]
   (t2/insert-returning-instances! :model/QueryExecution
@@ -84,9 +84,9 @@
 
 (defn- delete-query-executions-for-day! [bucket-date]
   (t2/delete! :model/QueryExecution
-              {:where [:and
-                       [:>= :started_at (t/offset-date-time bucket-date (t/local-time 0) (t/zone-offset "Z"))]
-                       [:< :started_at (t/offset-date-time (t/plus bucket-date (t/days 1)) (t/local-time 0) (t/zone-offset "Z"))]]}))
+              {'where ['and
+                       ['>= 'started_at (t/offset-date-time bucket-date (t/local-time 0) (t/zone-offset "Z"))]
+                       ['< 'started_at (t/offset-date-time (t/plus bucket-date (t/days 1)) (t/local-time 0) (t/zone-offset "Z"))]]}))
 
 (deftest target-days-test
   (is (= [(t/local-date "2026-04-13")
@@ -118,7 +118,7 @@
     (try
       (delete-query-executions-for-day! bucket-date)
       (delete-day! bucket-date)
-      (t2/update! :model/Field 'id user-id-field {:fingerprint {:global {:distinct-count 1, :nil% 0.0}}})
+      (t2/update! :model/Field 'id user-id-field {'fingerprint {:global {:distinct-count 1, :nil% 0.0}}})
       (insert-query! query-hash valid-query)
       (insert-query-execution! query-hash execution-at)
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-13T13:00Z"))
@@ -141,7 +141,7 @@
         (is (= "2026-04-13"
                (usage-metadata.settings/usage-metadata-last-completed-day))))
       (finally
-        (t2/update! :model/Field 'id user-id-field {:fingerprint original-fp})
+        (t2/update! :model/Field 'id user-id-field {'fingerprint original-fp})
         (delete-query! query-hash)
         (delete-query-executions-for-day! bucket-date)
         (delete-day! bucket-date)))))
@@ -244,13 +244,13 @@
       (insert-query-execution! missing-hash (t/offset-date-time "2026-04-14T14:00Z"))
       (insert-query-execution! unsupported-hash (t/offset-date-time "2026-04-14T15:00Z"))
       (t2/insert! :model/SourceSegmentDaily
-                  {:source_type :table
-                   :source_id   1
-                   :ownership_mode :direct
-                   :field_id    1
-                   :predicate   "old"
-                   :bucket_date old-day
-                   :count       1})
+                  {'source_type :table
+                   'source_id   1
+                   'ownership_mode :direct
+                   'field_id    1
+                   'predicate   "old"
+                   'bucket_date old-day
+                   'count       1})
       (mt/with-temporary-setting-values [usage-metadata-last-completed-day nil
                                          usage-metadata-retention-days     2]
         (let [summary (usage-metadata.batch/run-batch!
@@ -294,13 +294,13 @@
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-13T12:00Z"))
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-14T12:00Z"))
       (t2/insert! :model/SourceSegmentDaily
-                  {:source_type    :table
-                   :source_id      1
-                   :ownership_mode :direct
-                   :field_id       1
-                   :predicate      "old"
-                   :bucket_date    old-day
-                   :count          1})
+                  {'source_type    :table
+                   'source_id      1
+                   'ownership_mode :direct
+                   'field_id       1
+                   'predicate      "old"
+                   'bucket_date    old-day
+                   'count          1})
       (mt/with-temporary-setting-values [usage-metadata-last-completed-day nil
                                          usage-metadata-retention-days     2]
         (with-redefs [usage-metadata.store/replace-day! (fn [bucket-date payload]

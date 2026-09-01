@@ -370,9 +370,9 @@
                        (mdb/db-type)
                        @#'mdb.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
-                                                             {:name    "Application Database"
-                                                              :engine  (mdb/db-type)
-                                                              :details details}))]
+                                                             {'name    "Application Database"
+                                                              'engine  (mdb/db-type)
+                                                              'details details}))]
           (sync/sync-database! app-db)
           app-db))))
 

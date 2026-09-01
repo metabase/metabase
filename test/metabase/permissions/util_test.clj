@@ -231,7 +231,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (perms.u/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
         (let [final-count (t2/count :model/CollectionPermissionGraphRevision)
-              latest-revision (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})]
+              latest-revision (t2/select-one :model/CollectionPermissionGraphRevision {'order-by [['id 'desc]]})]
           (is (= (inc initial-count) final-count)
               "Should insert exactly one new revision record")
           (is (= (mt/user->id :rasta) (:user_id latest-revision))
@@ -255,6 +255,6 @@
           remark "Test ID increment"]
       (mt/with-current-user (mt/user->id :rasta)
         (perms.u/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision remark)
-        (let [latest-revision (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})]
+        (let [latest-revision (t2/select-one :model/CollectionPermissionGraphRevision {'order-by [['id 'desc]]})]
           (is (= (inc initial-latest-id) (:id latest-revision))
               "Should set ID to incremented value of latest-id"))))))

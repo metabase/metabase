@@ -27,8 +27,8 @@
    UUID). No-op (with a warning) if the client row cannot be found."
   [client-id]
   (if-let [oauth-client-id (client-pk client-id)]
-    (t2/insert! :model/OAuthClientEvent {:oauth_client_id oauth-client-id
-                                         :event_type      "registered"})
+    (t2/insert! :model/OAuthClientEvent {'oauth_client_id oauth-client-id
+                                         'event_type      "registered"})
     (log/warnf "Cannot record OAuth registration event: no client found for client_id %s" client-id)))
 
 (defn record-decision!
@@ -36,7 +36,7 @@
    (with a warning) if the client row cannot be found."
   [client-id user-id approved?]
   (if-let [oauth-client-id (client-pk client-id)]
-    (t2/insert! :model/OAuthClientEvent {:oauth_client_id oauth-client-id
-                                         :user_id         user-id
-                                         :event_type      (if approved? "approved" "denied")})
+    (t2/insert! :model/OAuthClientEvent {'oauth_client_id oauth-client-id
+                                         'user_id         user-id
+                                         'event_type      (if approved? "approved" "denied")})
     (log/warnf "Cannot record OAuth decision event: no client found for client_id %s" client-id)))

@@ -137,12 +137,12 @@
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
                     'type :notification-subscription/cron
-                    {:select [:ns.*]
-                     :from   [[:notification_subscription :ns]]
-                     :join   [[:notification :n] [:= :ns.notification_id :n.id]]
-                     :where   [:and
-                               [:= :ns.type "notification-subscription/cron"]
-                               [:= :n.active true]]}))
+                    {'select ['ns.*]
+                     'from   [['notification_subscription 'ns]]
+                     'join   [['notification 'n] ['= 'ns.notification_id 'n.id]]
+                     'where   ['and
+                               ['= 'ns.type "notification-subscription/cron"]
+                               ['= 'n.active true]]}))
 
 (defn update-send-notification-triggers-timezone!
   "Update the timezone of all SendNotification triggers if the report timezone changes."

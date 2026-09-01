@@ -161,15 +161,15 @@
   ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
+  (t2/reducible-select :model/NativeQuerySnippet (cond-> {'where ['and
                                                                   (when skip-archived [:not :archived])
-                                                                  [:or
+                                                                  ['or
                                                                    (when-let [collection-ids (not-empty (remove nil? collection-set))]
                                                                      [:in :collection_id collection-ids])
                                                                    (when (some nil? collection-set)
                                                                      [:= :collection_id nil])]]
                                                           ;; stable filename de-dup suffixes across exports, see GHY-3754
-                                                          :order-by serdes/stable-storage-order}
+                                                          'order-by serdes/stable-storage-order}
                                                    where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
