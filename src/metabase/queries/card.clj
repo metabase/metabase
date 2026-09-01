@@ -41,14 +41,20 @@
   another card is returned in full, as it is on a dashboard."
   [card        :- ::queries.schema/card
    slug->value :- [:maybe [:map-of :any :any]]]
-  (let [slug->param (into {} (map (juxt (comp keyword :slug) identity)) (:parameters card))]
+  (let [;; the same source [[get-param-or-throw]] uses: a native card may carry no `:parameters` at all and be
+        ;; described entirely by its template tags
+        slug->param (into {}
+                          (map (juxt (comp keyword :slug) identity))
+                          (or (seq (:parameters card))
+                              (card/template-tag-parameters card)))]
     (vec (for [[slug value] slug->value
-               ;; an empty collection means "no value", as it does in `validate-and-merge-params`
-               :let  [value (if (and (not (string? value)) (seqable? value)) (not-empty value) value)
-                      param (or (get slug->param (keyword slug))
+               ;; an empty collection means "no value", as it does in `validate-and-merge-params`, and a parameter
+               ;; with no value constrains nothing whether or not it still exists
+               :let  [value (if (and (not (string? value)) (seqable? value)) (not-empty value) value)]
+               :when (some? value)
+               :let  [param (or (get slug->param (keyword slug))
                                 (throw (ex-info (tru "The parameter {0} does not exist on this card." (name slug))
                                                 {:status-code 400})))]
-               :when (some? value)
                ;; a parameter targeting a raw `{{variable}}` resolves to no Field and so cannot constrain, the same as
                ;; on a dashboard
                :let  [field-id (param->field-id card param)]
