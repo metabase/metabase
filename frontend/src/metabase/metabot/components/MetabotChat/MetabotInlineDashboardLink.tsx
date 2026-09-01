@@ -6,10 +6,7 @@ import type {
   GeneratedDashboard,
 } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import {
-  getSavedDashboardId,
-  markDashboardSaved,
-} from "metabase/metabot/state";
+import { getSavedEntityId, markEntitySaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
@@ -29,7 +26,7 @@ export function MetabotInlineDashboardLink({
   conversationId: string;
 }) {
   const savedDashboardId = useSelector((state) =>
-    value.id != null ? getSavedDashboardId(state, value.id) : undefined,
+    value.id != null ? getSavedEntityId(state, value.id) : undefined,
   );
   const url =
     savedDashboardId != null
@@ -83,9 +80,7 @@ function SaveDashboardAction({
     useDisclosure(false);
 
   const handleSaved = (saved: SaveMetabotDashboardResponse) => {
-    dispatch(
-      markDashboardSaved({ entityId: dashboard.id, dashboardId: saved.id }),
-    );
+    dispatch(markEntitySaved({ entityId: dashboard.id, savedId: saved.id }));
     dispatch(
       addUndo({
         icon: "check_filled",

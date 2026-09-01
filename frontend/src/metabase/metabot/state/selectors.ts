@@ -47,16 +47,10 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-export const getSavedChartCardId = createSelector(
+export const getSavedEntityId = createSelector(
   [getMetabotState, (_state: State, entityId: string) => entityId],
   (metabotState, entityId): number | undefined =>
-    metabotState.savedChartCardIds[entityId],
-);
-
-export const getSavedDashboardId = createSelector(
-  [getMetabotState, (_state: State, entityId: string) => entityId],
-  (metabotState, entityId): number | undefined =>
-    metabotState.savedDashboardIds[entityId],
+    metabotState.savedEntityIds[entityId],
 );
 
 export const getMetabotReactionsState = createSelector(

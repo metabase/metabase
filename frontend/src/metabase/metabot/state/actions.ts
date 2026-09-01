@@ -98,8 +98,7 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setIsPollingForTitle,
-  markChartSaved,
-  markDashboardSaved,
+  markEntitySaved,
 } = metabot.actions;
 
 const TITLE_POLL_INTERVAL_MS = 1500;
@@ -591,20 +590,10 @@ export const sendAgentRequest = createAsyncThunk<
                 navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                if (part.data.card_id != null) {
+                const savedId = part.data.card_id ?? part.data.dashboard_id;
+                if (savedId != null) {
                   dispatch(
-                    markChartSaved({
-                      entityId: part.data.chart_id,
-                      cardId: part.data.card_id,
-                    }),
-                  );
-                }
-                if (part.data.dashboard_id != null) {
-                  dispatch(
-                    markDashboardSaved({
-                      entityId: part.data.chart_id,
-                      dashboardId: part.data.dashboard_id,
-                    }),
+                    markEntitySaved({ entityId: part.data.chart_id, savedId }),
                   );
                 }
                 const { tool_call_id, title } = part.data;
