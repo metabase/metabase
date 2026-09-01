@@ -3,6 +3,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 import { createMockSettings } from "metabase-types/api/mocks";
 import {
@@ -12,6 +13,7 @@ import {
 
 import {
   selectMetadataProvider,
+  selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
 } from "./provider";
@@ -61,5 +63,40 @@ describe("selectMetricMetadataProvider", () => {
     expect(LibMetric.metadataProvider(metadata)).not.toBe(
       LibMetric.metadataProvider(metadata),
     );
+  });
+});
+
+describe("selectMetadataProviderFactory", () => {
+  it("returns the same factory for the same state", () => {
+    expect(selectMetadataProviderFactory(state)).toBe(
+      selectMetadataProviderFactory(state),
+    );
+  });
+
+  it("agrees with selectMetadataProvider", () => {
+    const viaFactory = selectMetadataProviderFactory(state)(SAMPLE_DB_ID);
+    const direct = selectMetadataProvider(state, SAMPLE_DB_ID);
+
+    // compared as a boolean: a failing toBe would deep-diff a huge CLJS object
+    expect(viaFactory === direct).toBe(true);
+  });
+});
+
+describe("the Metadata object these selectors build on", () => {
+  it("is the one plain getMetadata callers already hold", () => {
+    // getMetadata is memoised per argument list, so passing an explicit
+    // undefined would build a second Metadata, and with it a second set of
+    // metabase-lib caches over the same data.
+    const provider = selectMetadataProvider(state, SAMPLE_DB_ID);
+    const fromPlainSelector = Lib.metadataProvider(
+      SAMPLE_DB_ID,
+      getMetadata(state),
+    );
+
+    expect(provider === fromPlainSelector).toBe(true);
+  });
+
+  it("splits when getMetadata is called with a different arity", () => {
+    expect(getMetadata(state) === getMetadata(state, undefined)).toBe(false);
   });
 });
