@@ -398,7 +398,9 @@
   [:and
    {:description "parameter must be a map with a :type key"}
    [:map
-    {:decode/normalize #'normalize-parameter}
+    {:decode/normalize #'normalize-parameter
+     :decode/api       #'lib.schema.common/remove-internal-keys
+     :encode/serialize #'lib.schema.common/remove-internal-keys}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
