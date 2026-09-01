@@ -11,7 +11,6 @@ export type PluginSeries = PluginProps["series"];
 export type PluginSettings = PluginProps["settings"];
 
 const pluginSeriesCache = new WeakMap<Series, PluginSeries>();
-// Keyed by prefix so translating one settings object for two plugins doesn't evict the other.
 const pluginSettingsCache = new WeakMap<
   VisualizationSettings,
   Map<string, PluginSettings>
