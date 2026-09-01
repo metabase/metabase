@@ -8,7 +8,7 @@
    (com.google.common.net InetAddresses)
    (java.io ByteArrayOutputStream InputStream)
    (java.net Inet6Address InetAddress Proxy Proxy$Type ProxySelector URI URL)
-   (java.util Locale)
+   (java.util Arrays Locale)
    (org.apache.http.conn DnsResolver)
    (org.apache.http.impl.conn SystemDefaultDnsResolver)))
 
@@ -80,7 +80,6 @@
   ;; https://www.iana.org/assignments/iana-ipv6-special-registry
   [(address-prefix "192.0.0.9" 32)       ; PCP anycast
    (address-prefix "192.0.0.10" 32)      ; TURN anycast
-   (address-prefix "64:ff9b::" 96)       ; IPv4/IPv6 translation (NAT64 well-known prefix)
    (address-prefix "2001:1::1" 128)      ; PCP anycast
    (address-prefix "2001:1::2" 128)      ; TURN anycast
    (address-prefix "2001:1::3" 128)      ; DNS-SD service registration anycast
@@ -123,15 +122,31 @@
   "Every prefix `:external-only` refuses, unless [[globally-reachable-special-prefixes]] carves it back out."
   (into non-global-special-prefixes reserved-global-unicast-prefixes))
 
+(def ^:private nat64-well-known-prefix
+  ;; 64:ff9b::/96, whose low 32 bits are the IPv4 address a NAT64 gateway translates to (RFC 6052).
+  (address-prefix "64:ff9b::" 96))
+
+(defn- translated-address
+  "The address a connection to `addr` actually reaches: the IPv4 embedded in the NAT64 well-known prefix, or `addr`
+  itself. RFC 6052 says the well-known prefix may not carry a non-global IPv4, but nothing on this side of the
+  gateway enforces that, and `64:ff9b::7f00:1` would otherwise be a public address that reaches 127.0.0.1."
+  ^InetAddress [^InetAddress addr]
+  (if (address-in-prefix? addr nat64-well-known-prefix)
+    (InetAddress/getByAddress (Arrays/copyOfRange (.getAddress addr) 12 16))
+    addr))
+
 (defn public-address?
   "True only for globally reachable unicast IP addresses.
 
   In addition to the address classes recognized by `java.net.InetAddress`, this rejects the non-global blocks in the
   IANA IPv4 and IPv6 Special-Purpose Address Registries while preserving their more-specific globally reachable
   entries. IPv6 addresses outside the *allocated* part of the global-unicast space are rejected unless a registry
-  marks them globally reachable: an internal network can route reserved space."
+  marks them globally reachable: an internal network can route reserved space.
+
+  A NAT64 address is judged by the IPv4 it translates to; see [[translated-address]]."
   [^InetAddress addr]
-  (let [b     (.getAddress addr)
+  (let [addr  (translated-address addr)
+        b     (.getAddress addr)
         ipv4? (= 4 (alength b))
         b0    (bit-and (aget b 0) 0xff)]
     (and (not (or (.isLoopbackAddress addr)
@@ -154,7 +169,8 @@
 (defn- private-address?
   "True for addresses that are private but may be intentionally reachable from a self-hosted deployment."
   [^InetAddress addr]
-  (let [b     (.getAddress addr)
+  (let [addr  (translated-address addr)
+        b     (.getAddress addr)
         ipv4? (= 4 (alength b))]
     (or (.isSiteLocalAddress addr)
         (and (instance? Inet6Address addr)                    ; IPv6 unique-local fc00::/7
