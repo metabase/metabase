@@ -34,13 +34,13 @@
 (def ^:private ns-per-ms 1000000)
 
 ;; How long a signalled process gets to wind itself down before the next, harsher signal.
-(def ^:private kill-grace-period-ms (* 5 1000)) ; 5 seconds
+(def ^:private kill-grace-period-ms (* 5 1000))
 
-;; How often we re-ask a signalled process whether it has exited yet.
+;; How often we check whether a signalled process has exited.
 (def ^:private exit-poll-interval-ms 50)
 
 ;; After a command exits, its output readers receive at least this much time to finish.
-(def ^:private drain-floor-ms (* 2 1000)) ; 2 seconds
+(def ^:private drain-floor-ms (* 2 1000))
 
 (def ^:private drain-failed-message
   ;; Returning partial output as complete would hide data loss, so this is an error.
@@ -49,7 +49,7 @@
 (defn- deadline-in
   "Returns the `System/nanoTime` deadline `timeout-ms` milliseconds from now."
   [timeout-ms]
-  ;; A monotonic reading, so an NTP correction or a DST shift cannot move the deadline.
+  ;; A monotonic reading, so an NTP correction or a manual clock change cannot move the deadline.
   (+ (System/nanoTime) (* timeout-ms ns-per-ms)))
 
 (defn- remaining-ms
@@ -98,7 +98,7 @@
           handles)
     (wait-for-exit handles kill-grace-period-ms)))
 
-(def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
+(def ^:private command-timeout-ms (* 15 60 1000))
 
 (defn sh*
   "Runs a command and returns a map with `:exit`, `:out`, and `:err`; output values are vectors of lines.
@@ -133,8 +133,8 @@
                            {:dir u/project-root-directory}
                            opts)
         {:keys [env dir]}  opts
-        ;; `or` rather than `:or`, which fills in a default only when the key is absent. A caller that
-        ;; computes the timeout and comes up with nil would otherwise get nil.
+        ;; `or` selects the default for a missing key or an explicit nil.
+        ;; Destructuring `:or` only covers a missing key.
         timeout-ms        (or (:timeout-ms opts) command-timeout-ms)
         proc              (start-process! args env dir)]
     ;; Closing child stdin tells subprocesses that no input is coming, so they do not wait forever.
@@ -163,10 +163,10 @@
             (kill-process! proc))
           (throw e))
         (finally
-          ;; Close the pipes rather than the readers. `BufferedReader.close` waits on the same lock a
-          ;; blocked `readLine` holds, so it cannot return until EOF -- and a process the command left
-          ;; holding our stdout can withhold EOF for as long as it lives. Closing the stream underneath
-          ;; ends the read at once.
+          ;; Close the streams rather than the readers.
+          ;; `BufferedReader.close` waits for the lock a blocked `readLine` holds, so it cannot return until EOF.
+          ;; A process left holding the pipe can withhold EOF for as long as it lives; closing the stream
+          ;; underneath ends the read at once.
           (close-quietly out-stream)
           (close-quietly err-stream))))))
 
