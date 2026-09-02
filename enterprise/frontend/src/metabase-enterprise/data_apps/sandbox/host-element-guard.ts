@@ -1,6 +1,9 @@
 import DOMPurify from "dompurify";
 
-import { getXmlElementLocalName } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
+import {
+  getXmlElementLocalName,
+  toString,
+} from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 /**
  * Blocks realm-creating elements for every creator in the data-app document: guest
@@ -110,8 +113,9 @@ class HostRealmElementGuard {
     };
 
     const guardedCreate = (tag: string, options?: ElementCreationOptions) => {
-      rejectIfBlocked(tag, "createElement");
-      return createElement(tag, options);
+      const tagName = toString(tag);
+      rejectIfBlocked(tagName, "createElement");
+      return createElement(tagName, options);
     };
 
     const guardedCreateNS = (
@@ -119,8 +123,9 @@ class HostRealmElementGuard {
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) => {
-      rejectIfBlocked(qualifiedName, "createElementNS");
-      return createElementNS(namespaceURI, qualifiedName, options);
+      const name = toString(qualifiedName);
+      rejectIfBlocked(name, "createElementNS");
+      return createElementNS(namespaceURI, name, options);
     };
 
     // The natives carry tag-name overloads the guards don't reproduce; assert back to
