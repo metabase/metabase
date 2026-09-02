@@ -80,15 +80,14 @@
    payload still reaches the query processor as a native stage and must trip the guard."
   #{"query" "source-query"})
 
-(defn- try-decode-query
-  "`s` parsed as a JSON object, or nil when it is not one.
+(defn- try-decode-json
+  "`s` parsed as JSON, or nil when it does not parse.
 
-   Only used to look INSIDE a query edge that arrived as a string; a parse failure is not an error here, it
-   just means the value is not a query and the caller falls back to its usual scan."
+   Only used to look INSIDE a structural edge that arrived as a string; a parse failure is not an error here,
+   it just means the value is not a query fragment and the caller falls back to its usual scan."
   [s]
   (try
-    (let [decoded (json/decode s true)]
-      (when (map? decoded) decoded))
+    (json/decode s true)
     (catch Exception _ nil)))
 
 (defn native-query?
@@ -129,6 +128,13 @@
             (cond
               (nil? node)        false
               (sequential? node) (boolean (some scan-map node))
+              ;; Decoded for the same reason as the map edge below, and kept symmetric with it deliberately:
+              ;; no edge accepts a JSON string here today, so if one ever does its contents must not become
+              ;; the one shape the scan cannot see.
+              (string? node)     (let [decoded (try-decode-json node)]
+                                   (if (sequential? decoded)
+                                     (boolean (some scan-map decoded))
+                                     (deep-scan node)))
               :else              (deep-scan node)))
           ;; `:query`/`:source-query`: normally a nested stage/query map. A JSON STRING is decoded first —
           ;; `POST /api/dataset/:export-format` accepts `query` that way for `<form>`-submit back-compat and
@@ -144,9 +150,10 @@
             (cond
               (nil? node)    false
               (map? node)    (scan-map node)
-              (string? node) (if-let [decoded (try-decode-query node)]
-                               (scan-map decoded)
-                               (deep-scan node))
+              (string? node) (let [decoded (try-decode-json node)]
+                               (if (map? decoded)
+                                 (scan-map decoded)
+                                 (deep-scan node)))
               :else          (deep-scan node)))
           ;; Fail-closed fallback for a malformed sub-tree: match a marker anywhere within it.
           (deep-scan [node]
@@ -240,7 +247,8 @@
   Applying it to the whole `/api/dataset` tree rather than to the two executing routes is deliberate: the
   guard is keyed on `:mcp-ui-credential`, which the session middleware attaches only for the routes on the
   credential's own allowlist, so every other route short-circuits before the body is read. That also means a
-  route later added to the allowlist is covered the day it is added — which is why the scan decodes a
+  `/api/dataset` route later added to the allowlist is covered the day it is added — a route added ELSEWHERE
+  is not, because this middleware wraps only that tree — which is why the scan decodes a
   JSON-string `query` edge rather than assuming the already-decoded shape: `/api/dataset/:export-format`
   takes one, this middleware runs ahead of Malli's `:decode/api`, and that route is off the allowlist only
   for now."
