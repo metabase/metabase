@@ -1,79 +1,91 @@
 import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  TimelineSidebar as SharedTimelineSidebar,
-  type TimelineSidebarProps as SharedTimelineSidebarProps,
-} from "metabase/timelines/panel/components/TimelineSidebar";
-import type { Timeline } from "metabase-types/api";
+import { TimelineSidebar as SharedTimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import { hideTimeline, showTimeline } from "../../../../actions/timelines";
-import { onOpenTimelines } from "../../../../store/actions";
 import {
-  getTimeseriesDataInterval,
+  deselectTimelineEvents,
+  hideTimeline,
+  hideTimelineEvents,
+  selectTimelineEvents,
+  showCreatedTimelineEvent,
+  showTimeline,
+  showTimelineEvents,
+} from "../../../../actions/timelines";
+import { onCloseTimelines, onOpenTimelines } from "../../../../store/actions";
+import {
+  getFilteredTimelines,
+  getQuestion,
+  getSelectedTimelineEventIds,
+  getTimeseriesXAxis,
   getUiControls,
+  getVisibleTimelineEventIds,
 } from "../../../../store/selectors";
 
-export type TimelineSidebarProps = Omit<
-  SharedTimelineSidebarProps,
-  | "focusedTimelineEventIds"
-  | "dataInterval"
-  | "onShowAllEvents"
-  | "onShowTimeline"
-  | "onHideTimeline"
->;
-
-export const TimelineSidebar = ({
-  collectionId,
-  timelines,
-  visibleTimelineEventIds,
-  selectedTimelineEventIds,
-  xDomain,
-  onShowTimelineEvents,
-  onHideTimelineEvents,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
-  onOpenModal,
-  onClose,
-}: TimelineSidebarProps) => {
+export const TimelineSidebar = () => {
   const dispatch = useDispatch();
+  const question = useSelector(getQuestion);
+  const timelines = useSelector(getFilteredTimelines);
+  const visibleEventIds = useSelector(getVisibleTimelineEventIds);
+  const selectedEventIds = useSelector(getSelectedTimelineEventIds);
   const { focusedTimelineEventIds } = useSelector(getUiControls);
-  const dataInterval = useSelector(getTimeseriesDataInterval);
+  const xAxis = useSelector(getTimeseriesXAxis);
 
-  const handleShowAllEvents = useCallback(() => {
-    dispatch(onOpenTimelines());
-  }, [dispatch]);
-
-  // Selecting a whole timeline is recorded as such in the question's
-  // visualization settings, rather than as its events one by one.
+  const handleShowTimelineEvents = useCallback(
+    (events: TimelineEvent[]) => dispatch(showTimelineEvents(events)),
+    [dispatch],
+  );
+  const handleHideTimelineEvents = useCallback(
+    (events: TimelineEvent[]) => dispatch(hideTimelineEvents(events)),
+    [dispatch],
+  );
   const handleShowTimeline = useCallback(
     (timeline: Timeline) => dispatch(showTimeline(timeline)),
     [dispatch],
   );
-
   const handleHideTimeline = useCallback(
     (timeline: Timeline) => dispatch(hideTimeline(timeline)),
+    [dispatch],
+  );
+  const handleSelectEvents = useCallback(
+    (events: TimelineEvent[]) => dispatch(selectTimelineEvents(events)),
+    [dispatch],
+  );
+  const handleDeselectEvents = useCallback(
+    () => dispatch(deselectTimelineEvents()),
+    [dispatch],
+  );
+  const handleEventCreated = useCallback(
+    (event: TimelineEvent) => dispatch(showCreatedTimelineEvent(event)),
+    [dispatch],
+  );
+  const handleShowAllEvents = useCallback(
+    () => dispatch(onOpenTimelines()),
+    [dispatch],
+  );
+  const handleClose = useCallback(
+    () => dispatch(onCloseTimelines()),
     [dispatch],
   );
 
   return (
     <SharedTimelineSidebar
-      collectionId={collectionId}
+      collectionId={question?.collectionId()}
       timelines={timelines}
-      visibleTimelineEventIds={visibleTimelineEventIds}
-      selectedTimelineEventIds={selectedTimelineEventIds}
-      focusedTimelineEventIds={focusedTimelineEventIds}
-      dataInterval={dataInterval}
-      xDomain={xDomain}
-      onShowTimelineEvents={onShowTimelineEvents}
-      onHideTimelineEvents={onHideTimelineEvents}
-      onSelectTimelineEvents={onSelectTimelineEvents}
-      onDeselectTimelineEvents={onDeselectTimelineEvents}
+      visibleEventIds={visibleEventIds}
+      selectedEventIds={selectedEventIds}
+      focusedEventIds={focusedTimelineEventIds}
+      xAxis={xAxis}
+      onShowTimelineEvents={handleShowTimelineEvents}
+      onHideTimelineEvents={handleHideTimelineEvents}
       onShowTimeline={handleShowTimeline}
       onHideTimeline={handleHideTimeline}
+      onSelectEvents={handleSelectEvents}
+      onDeselectEvents={handleDeselectEvents}
+      onEventCreated={handleEventCreated}
       onShowAllEvents={handleShowAllEvents}
-      onOpenModal={onOpenModal}
-      onClose={onClose}
+      onClose={handleClose}
     />
   );
 };

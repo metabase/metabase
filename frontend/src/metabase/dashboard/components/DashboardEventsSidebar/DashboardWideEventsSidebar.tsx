@@ -42,7 +42,6 @@ export function DashboardWideEventsSidebar() {
         </SidebarContent>
       ) : (
         <EventsPanel
-          title={t`Events`}
           dashcardIds={dashcardIds}
           timelines={displayedTimelines}
           visibleEventIds={visibleEventIds}

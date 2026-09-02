@@ -21,7 +21,7 @@ describe("TimelineSidebar", () => {
     });
   });
 
-  it("renders Edit/Move/New modals internally when onOpenModal is absent", async () => {
+  it("opens the new event modal", async () => {
     const timeline = createMockTimeline({
       id: 1,
       name: "Releases",
@@ -34,10 +34,12 @@ describe("TimelineSidebar", () => {
       <TimelineSidebar
         collectionId="root"
         timelines={[timeline]}
-        visibleTimelineEventIds={[1]}
-        selectedTimelineEventIds={[]}
+        visibleEventIds={[1]}
+        selectedEventIds={[]}
         onShowTimelineEvents={jest.fn()}
         onHideTimelineEvents={jest.fn()}
+        onShowTimeline={jest.fn()}
+        onHideTimeline={jest.fn()}
       />,
     );
 

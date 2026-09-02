@@ -51,9 +51,7 @@ import {
   closeObjectDetail,
   closeQbNewbModal,
   closeSnippetModal,
-  deselectTimelineEvents,
   followForeignKey,
-  hideTimelineEvents,
   initializeQB,
   insertSnippet,
   loadObjectDetailFKReferences,
@@ -73,7 +71,6 @@ import {
   runDirtyQuestionQuery,
   runOrCancelQuestionOrSelectedQuery,
   runQuestionQuery,
-  selectTimelineEvents,
   setCurrentState,
   setDatasetEditorTab,
   setDatasetQuery,
@@ -89,7 +86,6 @@ import {
   setSnippetCollectionId,
   setTemplateTag,
   setTemplateTagConfig,
-  showTimelineEvents,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -112,7 +108,6 @@ import {
   onCloseQuestionSettings,
   onCloseSidebars,
   onCloseSummary,
-  onCloseTimelines,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
@@ -126,7 +121,6 @@ import {
   getDataReferenceStack,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
-  getFilteredTimelines,
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
@@ -157,9 +151,7 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
-  getTimeseriesXDomain,
   getUiControls,
-  getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
   getZoomedObjectRowIndex,
@@ -193,11 +185,8 @@ const mapStateToProps = (state: State) => {
 
     metadata: getMetadata(state),
 
-    timelines: getFilteredTimelines(state),
     timelineEvents: getVisibleTimelineEvents(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
-    visibleTimelineEventIds: getVisibleTimelineEventIds(state),
-    xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -258,7 +247,6 @@ const mapDispatchToProps = {
   onCloseQuestionSettings,
   onCloseSidebars,
   onCloseSummary,
-  onCloseTimelines,
   editSummary,
   onOpenChartSettings,
   onOpenChartType,
@@ -273,9 +261,7 @@ const mapDispatchToProps = {
   cancelQuestionChanges,
   closeObjectDetail,
   closeSnippetModal,
-  deselectTimelineEvents,
   followForeignKey,
-  hideTimelineEvents,
   initializeQB,
   insertSnippet,
   loadObjectDetailFKReferences,
@@ -295,7 +281,6 @@ const mapDispatchToProps = {
   runDirtyQuestionQuery,
   runOrCancelQuestionOrSelectedQuery,
   runQuestionQuery,
-  selectTimelineEvents,
   setCurrentState,
   setDatasetEditorTab,
   setDatasetQuery,
@@ -311,7 +296,6 @@ const mapDispatchToProps = {
   setSnippetCollectionId,
   setTemplateTag,
   setTemplateTagConfig,
-  showTimelineEvents,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -416,15 +400,12 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
 
   const openModal = useCallback(
-    (
-      modal: QueryBuilderUIControls["modal"],
-      modalContext: QueryBuilderUIControls["modalContext"],
-    ) => setUIControls({ modal, modalContext }),
+    (modal: QueryBuilderUIControls["modal"]) => setUIControls({ modal }),
     [setUIControls],
   );
 
   const closeModal = useCallback(
-    () => setUIControls({ modal: null, modalContext: null }),
+    () => setUIControls({ modal: null }),
     [setUIControls],
   );
 

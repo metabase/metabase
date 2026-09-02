@@ -11,11 +11,7 @@ import {
 } from "metabase/dashboard/timeline-events";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import {
-  filterTimelinesByXAxis,
-  getFocusedTimelines,
-  getTimelineSidebarTitle,
-} from "metabase/timelines/panel/utils";
+import { filterTimelinesByXAxis } from "metabase/timelines/panel/utils";
 import type { DashCardId, TimelineEventId } from "metabase-types/api";
 
 import { EventsPanel } from "./EventsPanel";
@@ -52,12 +48,8 @@ export function DashCardEventsSidebar({
     getDashCardTimeseriesXAxis(state, dashcardId),
   );
   const displayedTimelines = useMemo(
-    () =>
-      getFocusedTimelines(
-        filterTimelinesByXAxis(timelines, xAxis),
-        focusedEventIds ?? null,
-      ),
-    [timelines, xAxis, focusedEventIds],
+    () => filterTimelinesByXAxis(timelines, xAxis),
+    [timelines, xAxis],
   );
   const visibleEventIds = useMemo(
     () => visibleEvents.map((event) => event.id),
@@ -65,7 +57,6 @@ export function DashCardEventsSidebar({
   );
   const dashcardIds = useMemo(() => [dashcardId], [dashcardId]);
 
-  const isFocused = focusedEventIds != null;
   const handleShowAllEvents = useCallback(() => {
     dispatch(openEventsSidebar({ dashcardId }));
   }, [dispatch, dashcardId]);
@@ -77,17 +68,14 @@ export function DashCardEventsSidebar({
   return (
     <Sidebar data-testid="dashboard-events-sidebar">
       <EventsPanel
-        title={getTimelineSidebarTitle({
-          focusedTimelines: displayedTimelines,
-          isFocused,
-          xAxis,
-        })}
-        onShowAllEvents={isFocused ? handleShowAllEvents : undefined}
         dashcardIds={dashcardIds}
         selectionDashcardId={dashcardId}
         timelines={displayedTimelines}
         visibleEventIds={visibleEventIds}
         selectedEventIds={selectedEventIds}
+        focusedEventIds={focusedEventIds}
+        xAxis={xAxis}
+        onShowAllEvents={handleShowAllEvents}
       />
     </Sidebar>
   );
