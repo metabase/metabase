@@ -28,8 +28,8 @@ export const HomeCard = ({
       onClick={onClick}
       bg="background_page-primary"
       maw={{ base: "100%", sm: "50%" }}
-      p={{ base: "md", lg: "lg" }}
-      radius="md"
+      p={{ base: "lg", lg: "xl" }}
+      radius="sm"
       withBorder
     >
       <Flex align="center">{children}</Flex>

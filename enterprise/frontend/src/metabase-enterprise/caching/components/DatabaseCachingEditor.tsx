@@ -289,7 +289,7 @@ export const DatabaseCachingEditor = () => {
               "data-testid": `policy-row-${row.original.targetId}`,
             })}
             emptyState={
-              <Center p="xl">
+              <Center p="xxl">
                 <Text fw="bold" c="text-secondary">{t`No results`}</Text>
               </Center>
             }

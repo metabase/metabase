@@ -302,6 +302,8 @@
     (when (not-empty mb-trace-str)
       (log/warn "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords.")
       (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
+        ;; tracing namespaces are supplied by the user at runtime
+        #_{:clj-kondo/ignore [:metabase/modules]}
         (try (require namespace)
              (catch Throwable _
                (throw (ex-info "A namespace you specified with MB_NS_TRACE could not be required" {:namespace namespace}))))

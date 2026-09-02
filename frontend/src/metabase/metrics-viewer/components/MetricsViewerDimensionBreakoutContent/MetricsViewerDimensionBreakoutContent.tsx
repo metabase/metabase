@@ -175,7 +175,7 @@ export function MetricsViewerDimensionBreakoutContent() {
         </Box>
       )}
       {definitionForControls && (
-        <Flex mt="md" justify="center" align="center">
+        <Flex mt="lg" justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
             allFilterDimensions={allFilterDimensions}

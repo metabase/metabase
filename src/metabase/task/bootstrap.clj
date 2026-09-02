@@ -1,6 +1,7 @@
 (ns metabase.task.bootstrap
   (:require
    [metabase.classloader.core :as classloader]
+   [metabase.task.secure-delegate :as secure-delegate]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -78,14 +79,13 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)
 
-  Sets the default per-DB `DriverDelegate` (`PostgreSQLDelegate` on Postgres for BLOB handling,
-  otherwise the `StdJDBCDelegate` from `quartz.properties`), then runs any setters registered via
-  [[register-jdbc-property-setter!]] — e.g. the `mq` module's queue node-affinity delegate, which
-  overrides the delegate with a filtering subclass. A registered setter that throws is logged and
+  Installs Metabase's per-DB `DriverDelegate` (see [[metabase.task.secure-delegate]]): a
+  `StdJDBCDelegate`/`PostgreSQLDelegate` subclass that reads BLOB columns through a class allow-list, so
+  Quartz reconstructs only the plain-data classes Metabase's job data is made of. Then runs any setters
+  registered via [[register-jdbc-property-setter!]]. A registered setter that throws is logged and
   skipped so the scheduler still gets a working delegate."
   [db-type]
-  (when (= db-type :postgres)
-    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"))
+  (secure-delegate/install! db-type)
   (doseq [setter @jdbc-property-setters]
     (try
       (setter db-type)

@@ -63,7 +63,7 @@ export const TaskListPage = () => {
 
   return (
     <TasksTabs>
-      <Group gap="md" align="center" wrap="nowrap">
+      <Group gap="lg" align="center" wrap="nowrap">
         <TaskPicker
           value={task}
           onChange={(task) => patchUrlState({ task, page: 0 })}

@@ -421,7 +421,7 @@
                "-Dmb.experimental.search.block.on.queue=true"
                "-Dmb.search.engine=appdb"
                ;; We use a local webhook service for testing
-               "-Dmb.http.channel.host.strategy=allow-all"]}
+               "-Dmb.http.channel.allowed.networks=allow-all"]}
 
   ;; run the prod server when generating docs
   ;; as some default values differ between dev and prod

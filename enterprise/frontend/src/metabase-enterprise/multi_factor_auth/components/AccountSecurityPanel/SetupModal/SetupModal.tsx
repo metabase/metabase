@@ -110,7 +110,7 @@ function ConfirmPasswordForm({ onEnroll, onCancel }: ConfirmPasswordFormProps) {
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text c="text-secondary">
             {t`Protect your account by requiring a code from an authenticator app when you sign in.`}
           </Text>
@@ -166,7 +166,7 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="md">
+        <Stack gap="lg">
           <TotpEnrollInstructions
             otpauthUri={enrollment.otpauth_uri}
             secret={enrollment.secret}

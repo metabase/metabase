@@ -67,7 +67,7 @@ function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
   const isMfaRequired = mfaEnforcement === "required";
   return (
     <Group justify="space-between" align="flex-start" wrap="nowrap">
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Box fw="bold" lh="1.25rem">{t`Two-factor authentication`}</Box>
         <Box c="text-secondary" lh="1.25rem" mb="sm">
           {status.enrolled

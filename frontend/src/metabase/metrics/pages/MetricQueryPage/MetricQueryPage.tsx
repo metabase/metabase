@@ -130,7 +130,7 @@ function MetricQueryPageBody({
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xl">
+      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xxl">
         <MetricPageShell
           card={card}
           urls={urls}
