@@ -21,6 +21,7 @@ import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { EmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   clearGuestToken,
@@ -43,7 +44,6 @@ import {
   useCreateQuestion,
 } from "metabase/query_builder";
 import { useSaveQuestion } from "metabase/query_builder";
-import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

@@ -1,4 +1,3 @@
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
@@ -16,13 +15,3 @@ export function getQueryMode(question: Question): QueryClickActionsMode {
 }
 
 export const defaultClickActionMode: ClickActionsMode = new Mode(getQueryMode);
-
-export function getEmbeddingMode({
-  queryMode,
-  plugins,
-}: {
-  queryMode: QueryClickActionsMode;
-  plugins?: MetabasePluginsConfig;
-}): ClickActionsMode {
-  return new Mode(() => queryMode, { plugins });
-}

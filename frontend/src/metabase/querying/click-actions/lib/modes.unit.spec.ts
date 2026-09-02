@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { LegacyDrill } from "metabase/visualizations/types";
+import type { ClickAction, LegacyDrill } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -59,6 +59,16 @@ describe("Mode", () => {
     const mode = new Mode(() => queryMode);
     expect(mode.actionsForClick({})).toEqual([]);
     expect(clickAction).not.toHaveBeenCalled();
+  });
+
+  it("should hand the resolved actions to mapActions and return its result", () => {
+    const mapped: ClickAction[] = [];
+    const mapActions = jest.fn(() => mapped);
+    const mode = new Mode(() => queryMode, { mapActions });
+    const question = createQuestion();
+    const clicked = { value: 1 };
+    expect(mode.actionsForClick(clicked, { question })).toBe(mapped);
+    expect(mapActions).toHaveBeenCalledWith([], clicked, question);
   });
 
   describe("hasColumnShortcutActions", () => {

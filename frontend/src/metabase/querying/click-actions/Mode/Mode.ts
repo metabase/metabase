@@ -1,5 +1,3 @@
-import { transformClickedDataPoint } from "metabase/embedding-sdk/lib/transform-clicked";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type {
   ClickAction,
@@ -13,23 +11,29 @@ import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
 
 import type { QueryClickActionsMode } from "../types";
 
+type MapClickActions = (
+  actions: ClickAction[],
+  clicked: ClickObject,
+  question: Question,
+) => ClickAction[];
+
 type ModeOptions = {
-  plugins?: MetabasePluginsConfig;
+  mapActions?: MapClickActions;
   hasColumnShortcutActions?: boolean;
 };
 
 export class Mode implements ClickActionsMode {
   private readonly _getQueryMode: (question: Question) => QueryClickActionsMode;
-  private readonly _plugins?: MetabasePluginsConfig;
+  private readonly _mapActions?: MapClickActions;
 
   hasColumnShortcutActions?: (props: ClickActionProps) => boolean;
 
   constructor(
     getQueryMode: (question: Question) => QueryClickActionsMode,
-    { plugins, hasColumnShortcutActions = false }: ModeOptions = {},
+    { mapActions, hasColumnShortcutActions = false }: ModeOptions = {},
   ) {
     this._getQueryMode = getQueryMode;
-    this._plugins = plugins;
+    this._mapActions = mapActions;
 
     if (hasColumnShortcutActions) {
       this.hasColumnShortcutActions = (props) =>
@@ -61,40 +65,9 @@ export class Mode implements ClickActionsMode {
       actions = mode.fallback(props);
     }
 
-    if (this._plugins?.mapQuestionClickActions) {
-      const actionsOrActionObject = this._plugins.mapQuestionClickActions(
-        actions,
-        transformClickedDataPoint(clicked, question),
-      );
-
-      if (Array.isArray(actionsOrActionObject)) {
-        actions = actionsOrActionObject;
-      } else if ("onClick" in actionsOrActionObject) {
-        // If the plugin returns a single object, it means we should call that action right away without showing the popover
-        // `performDefaultAction` checks if it only gets one action, and if it has `default: true`, it's called directly without showing the popover
-        actions = [
-          {
-            // makes it run without showing the popover
-            default: true,
-
-            // fallback values in case they just return `{ onClick: () => {})`}
-            section: "auto",
-            type: "custom",
-            buttonType: "horizontal",
-            name: "default",
-
-            // Unjustified type cast. FIXME
-            ...(actionsOrActionObject as Partial<ClickAction>),
-          },
-        ];
-      } else {
-        console.warn(
-          "mapQuestionClickActions should return an array of actions, or a single object with a `onClick` property",
-        );
-      }
-    }
-
-    return actions;
+    return this._mapActions
+      ? this._mapActions(actions, clicked, question)
+      : actions;
   }
 }
 
