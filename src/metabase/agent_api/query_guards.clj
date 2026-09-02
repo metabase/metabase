@@ -18,40 +18,66 @@
    only exist once the v2 core's session rework lands (the next PR in this stack). It is extracted and
    unit-tested here so that slice can wire it in without also authoring it; until then it is dormant."
   (:require
+   [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
-   [metabase.metabot.scope :as metabot.scope]))
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+(defn- token
+  "Normalized name of a keyword or string — namespace kept, lowercased, `_` folded to `-`. nil for anything
+   else, so junk keys and values fall out rather than throwing.
+
+   Everything this guard matches goes through here because the QP normalizer canonicalizes keys
+   case-insensitively and treats `_` and `-` alike: `:SOURCE_QUERY`, `:Source-Query` and `:source-query` all
+   reach the query processor as the same edge. Matching them case-exactly, as this did, let a caller walk
+   straight past the guard by changing the spelling of a key."
+  [x]
+  (when (or (keyword? x) (string? x))
+    (-> x u/qualified-name u/lower-case-en (str/replace \_ \-))))
+
+(defn- tokenized-entries
+  "`node`'s entries as `[token value]` pairs, dropping keys that are neither keyword nor string. A seq rather
+   than a map so a node carrying two spellings of one edge (`:source-query` AND `\"source_query\"`) has both
+   scanned instead of one silently shadowing the other."
+  [node]
+  (keep (fn [[k v]] (when-let [t (token k)] [t v])) node))
+
 (defn native-marker?
-  "True if `node` is a map carrying a native-SQL marker: a `:native` query body (the universal signal
-   across legacy and MBQL 5 native forms), a legacy `:type :native`, or an MBQL 5 `:mbql.stage/native`
-   `:lib/type`. A `:native` key only counts when its value is non-nil, so an explicit-null key from a
-   JSON round-trip is not a marker. Keys and values are each matched in both their keyword and their raw-JSON-string form,
-   since a caller may hand over a payload that was decoded without keywordizing. Membership tests never
-   coerce, so junk values don't throw. A legitimate serialized MBQL query carries none of these."
+  "True if `node` is a map carrying a native-SQL marker: a `native` query body (the universal signal across
+   legacy and MBQL 5 native forms), a legacy `type: native`, or an MBQL 5 `mbql.stage/native` `lib/type`.
+   A `native` key only counts when its value is non-nil, so an explicit-null key from a JSON round-trip is not
+   a marker.
+
+   Keys and values are matched through [[token]], so keyword and raw-JSON-string forms, casing, and `_`/`-`
+   spelling all collapse together — a payload decoded without keywordizing, or spelled `NATIVE`, trips the
+   guard exactly as `:native` does. A legitimate serialized MBQL query carries none of these."
   [node]
   (boolean
    (and (map? node)
-        (or (some? (:native node))
-            (some? (get node "native"))
-            (some #{:native "native"} [(:type node) (get node "type")])
-            (some #{:mbql.stage/native "mbql.stage/native"} [(:lib/type node) (get node "lib/type")])))))
+        (let [entries (tokenized-entries node)]
+          (some (fn [[t v]]
+                  (case t
+                    "native"   (some? v)
+                    "type"     (= "native" (token v))
+                    "lib/type" (= "mbql.stage/native" (token v))
+                    false))
+                entries)))))
 
 (def ^:private native-seq-edges
-  "Structural edges whose value is a *sequence* of stage/join maps. A native marker may hide in any
-   element, so each is scanned. Listed in keyword and raw-JSON-string form for payloads decoded
-   without keywordizing."
-  [:stages "stages" :joins "joins"])
+  "Structural edges whose value is a *sequence* of stage/join maps, as [[token]]s. A native marker may hide in
+   any element, so each is scanned. One token covers every spelling the QP accepts — keyword or raw JSON
+   string, any casing."
+  #{"stages" "joins"})
 
 (def ^:private native-map-edges
-  "Structural edges whose value is a nested stage/query *map*. Listed in keyword and raw-JSON-string
-   form for payloads decoded without keywordizing, and in snake_case as well as lisp-case: legacy
-   MBQL normalization canonicalizes `source_query` too, so a snake_case payload still reaches the
-   query processor as a native stage and must trip the guard."
-  [:query "query" :source-query "source-query" :source_query "source_query"])
+  "Structural edges whose value is a nested stage/query *map*, as [[token]]s. `source_query` and
+   `source-query` normalize to one token: legacy MBQL normalization canonicalizes both, so a snake_case
+   payload still reaches the query processor as a native stage and must trip the guard."
+  #{"query" "source-query"})
 
 (defn native-query?
   "True if `query-map` (a decoded, client-reachable query) contains native SQL along its
@@ -75,8 +101,12 @@
           ;; sub-maps like `:expressions`/`:template-tags`.
           (scan-map [node]
             (or (native-marker? node)
-                (boolean (some #(scan-seq-edge (get node %)) native-seq-edges))
-                (boolean (some #(scan-map-edge (get node %)) native-map-edges))))
+                (boolean (some (fn [[t v]]
+                                 (cond
+                                   (native-seq-edges t) (scan-seq-edge v)
+                                   (native-map-edges t) (scan-map-edge v)
+                                   :else                false))
+                               (tokenized-entries node)))))
           ;; `:stages`/`:joins`: normally a sequence of stage/join maps. A malformed non-sequential
           ;; value is deep-scanned so junk can't smuggle a marker past the guard.
           (scan-seq-edge [node]
