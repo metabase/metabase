@@ -13,7 +13,7 @@ describe("toPluginSeries", () => {
   it("hands the plugin a copy of only the documented series fields", () => {
     const series = [createMockSingleSeries({})];
 
-    const pluginSeries = toPluginSeries(series);
+    const pluginSeries = toPluginSeries(series, PREFIX);
 
     expect(Object.keys(pluginSeries[0]).sort()).toEqual(["data", "error"]);
     expect(pluginSeries[0].data).toEqual(series[0].data);
@@ -24,17 +24,28 @@ describe("toPluginSeries", () => {
     const series = [createMockSingleSeries({})];
     const { data } = series[0];
 
-    const pluginSeries = toPluginSeries(series);
+    const pluginSeries = toPluginSeries(series, PREFIX);
     pluginSeries[0].data.rows.push([1]);
 
     expect(data.rows).toEqual([]);
   });
 
+  it("gives each plugin its own copy of the data", () => {
+    const series = [createMockSingleSeries({})];
+
+    const other = toPluginSeries(series, "custom-viz:other:");
+    other[0].data.rows.push([1]);
+
+    expect(toPluginSeries(series, PREFIX)[0].data.rows).toEqual([]);
+  });
+
   it("reuses the copy for the same series", () => {
     const series = [createMockSingleSeries({})];
 
-    expect(toPluginSeries(series)).toBe(toPluginSeries(series));
-    expect(toPluginSeries([...series])).not.toBe(toPluginSeries(series));
+    expect(toPluginSeries(series, PREFIX)).toBe(toPluginSeries(series, PREFIX));
+    expect(toPluginSeries([...series], PREFIX)).not.toBe(
+      toPluginSeries(series, PREFIX),
+    );
   });
 
   it("reuses the data clone when the series array is rebuilt", () => {
@@ -44,8 +55,8 @@ describe("toPluginSeries", () => {
       card: { ...single.card },
     }));
 
-    expect(toPluginSeries(rebuilt)[0].data).toBe(
-      toPluginSeries(series)[0].data,
+    expect(toPluginSeries(rebuilt, PREFIX)[0].data).toBe(
+      toPluginSeries(series, PREFIX)[0].data,
     );
   });
 
@@ -55,7 +66,7 @@ describe("toPluginSeries", () => {
     series[0].data.cols[0].remapping = remapping;
     series[0].data.rows = [[new Date("2020-01-01T00:00:00.000Z")]];
 
-    const pluginSeries = toPluginSeries(series);
+    const pluginSeries = toPluginSeries(series, PREFIX);
     const pluginRemapping = Reflect.get(
       pluginSeries[0].data.cols[0],
       "remapping",

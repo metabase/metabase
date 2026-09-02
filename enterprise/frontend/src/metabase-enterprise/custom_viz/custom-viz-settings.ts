@@ -112,7 +112,11 @@ function toHostDefinition(
   const pluginArgs = (
     series: Series,
     settings: ComputedVisualizationSettings,
-  ) => [toPluginSeries(series), toPluginSettings(settings, prefix)] as const;
+  ) =>
+    [
+      toPluginSeries(series, prefix),
+      toPluginSettings(settings, prefix),
+    ] as const;
 
   return {
     title,

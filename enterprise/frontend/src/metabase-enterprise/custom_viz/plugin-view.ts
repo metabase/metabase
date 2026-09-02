@@ -9,45 +9,63 @@ export type PluginSeries = PluginProps["series"];
 
 export type PluginSettings = PluginProps["settings"];
 
-const pluginSeriesCache = new WeakMap<Series, PluginSeries>();
-const pluginDataCache = new WeakMap<
+// Keyed by a host object, then by the plugin's prefix: every plugin gets its
+// own copy, so one plugin's mutations can't reach another's.
+class PerPluginCache<K extends object, V> {
+  private readonly byKey = new WeakMap<K, Map<string, V>>();
+
+  get(key: K, prefix: string): V | undefined {
+    return this.byKey.get(key)?.get(prefix);
+  }
+
+  set(key: K, prefix: string, value: V): void {
+    const byPrefix = this.byKey.get(key) ?? new Map<string, V>();
+    byPrefix.set(prefix, value);
+    this.byKey.set(key, byPrefix);
+  }
+}
+
+const pluginSeriesCache = new PerPluginCache<Series, PluginSeries>();
+const pluginDataCache = new PerPluginCache<
   Series[number]["data"],
   PluginSeries[number]["data"]
 >();
-const pluginSettingsCache = new WeakMap<
+const pluginSettingsCache = new PerPluginCache<
   VisualizationSettings,
-  Map<string, PluginSettings>
+  PluginSettings
 >();
 
-export function toPluginSeries(series: Series): PluginSeries {
-  const cached = pluginSeriesCache.get(series);
+export function toPluginSeries(series: Series, prefix: string): PluginSeries {
+  const cached = pluginSeriesCache.get(series, prefix);
 
   if (cached) {
     return cached;
   }
 
   const pluginSeries = series.map(({ data, error }) => ({
-    data: toPluginData(data),
+    data: toPluginData(data, prefix),
     error: structuredClone(error),
   }));
-  pluginSeriesCache.set(series, pluginSeries);
+  pluginSeriesCache.set(series, prefix, pluginSeries);
 
   return pluginSeries;
 }
 
 // Sensibility probes rebuild the series array per display, so the expensive
-// dataset clone is keyed on the stable data object - one clone per query result.
+// dataset clone is keyed on the stable data object - one clone per plugin and
+// query result.
 function toPluginData(
   data: Series[number]["data"],
+  prefix: string,
 ): PluginSeries[number]["data"] {
-  const cached = pluginDataCache.get(data);
+  const cached = pluginDataCache.get(data, prefix);
 
   if (cached) {
     return cached;
   }
 
   const cloned = structuredClone(data);
-  pluginDataCache.set(data, cloned);
+  pluginDataCache.set(data, prefix, cloned);
 
   return cloned;
 }
@@ -58,8 +76,7 @@ export function toPluginSettings(
   settings: VisualizationSettings,
   prefix: string,
 ): PluginSettings {
-  const byPrefix = pluginSettingsCache.get(settings);
-  const cached = byPrefix?.get(prefix);
+  const cached = pluginSettingsCache.get(settings, prefix);
 
   if (cached) {
     return cached;
@@ -89,9 +106,7 @@ export function toPluginSettings(
     };
   }
 
-  const cache = byPrefix ?? new Map<string, PluginSettings>();
-  cache.set(prefix, pluginSettings);
-  pluginSettingsCache.set(settings, cache);
+  pluginSettingsCache.set(settings, prefix, pluginSettings);
 
   return pluginSettings;
 }

@@ -54,7 +54,7 @@ export function applyDefaultVisualizationProps(
     checkRenderable: (series: Series, vizSettings: VisualizationSettings) => {
       if (typeof vizDef.checkRenderable === "function") {
         vizDef.checkRenderable(
-          toPluginSeries(series),
+          toPluginSeries(series, prefix),
           toPluginSettings(vizSettings, prefix),
         );
       }

@@ -628,7 +628,7 @@ function createCustomVizWrapper(
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
-      series: toPluginSeries(series),
+      series: toPluginSeries(series, prefix),
       settings: toPluginSettings(settings, prefix),
       renderingContext,
       onClick: handleClick,
