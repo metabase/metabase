@@ -246,6 +246,26 @@
               (is (not (contains? (-> row :handlers first) :recipients))
                   "the recipient list is gone entirely, not merely filtered to empty"))))))))
 
+(deftest get-content-alert-read-denial-test
+  (testing "GHY-4140: `mi/can-read?` in fetch-notification is the permission boundary for alerts — a caller
+            who is neither superuser, creator, nor recipient must get the not-found collapse, not the alert's
+            card_id, schedule and handlers. Every other alert test here reads as an admin or the creator, so
+            deleting that conjunct would leave the suite green."
+    (mt/with-temp [:model/Collection {locked-id :id} {}]
+      (notification.tu/with-card-notification
+        [notification {:card         {:collection_id locked-id}
+                       :notification {:creator_id (mt/user->id :crowberto)}
+                       :handlers     [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}]}]}]
+        (mt/with-non-admin-groups-no-collection-perms locked-id
+          (mt/with-test-user :lucky
+            (let [row (content-one {:items [{:type "alert" :id (:id notification)}]})]
+              (is (some? (:error row))
+                  "a caller with no relationship to the alert is refused")
+              (is (nil? (:handlers row))
+                  "and gets none of its delivery configuration"))))))))
+
 (deftest get-content-subscription-pulse-test
   (testing "GHY-4140: a live Pulse row reads as a subscription, with its channels and cards"
     (mt/with-temp [:model/Card         {card-id :id}  {:name "Sub Card"}
