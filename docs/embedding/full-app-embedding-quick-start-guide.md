@@ -175,7 +175,7 @@ You'll map this string in the `groups` key to a Metabase group, so that when the
 
 In Metabase's admin section, go to **Authentication > JWT** and click **Edit**.
 
-In the **Group mapping** section, toggle on **Synchronize group memberships**. If the names of groups in the `groups` array match Metabase group names exactly (e.g. both are `"Customer Acme"`), then the groups will be mapped automatically.
+In the **Group schema** section, toggle on **Synchronize group memberships**. If the names of groups in the `groups` array match Metabase group names exactly (e.g. both are `"Customer Acme"`), then the groups will be mapped automatically.
 
 If the JWT group names and Metabase group names don't match, then for each group you want to sync, add a group mapping. When you click **New mapping**, enter "Customer-Acme", the string that you included in the `groups` array in your JWT payload. You can then associate that group name with the Metabase group "Customer Acme" that we created earlier.
 

@@ -190,7 +190,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 6. Click **Save**.
 7. After that, type in the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
 
-![Group mapping](images/saml-okta-groups.png)
+![Group schema](images/saml-okta-groups.png)
 
 ## Creating Metabase accounts with SSO
 

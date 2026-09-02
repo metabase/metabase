@@ -58,15 +58,15 @@ Here's a breakdown of each of the settings:
 
 - **String Used by the JWT Signing Key**: The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 
-## User attribute configuration
+## User attribute configuration (optional)
 
 These are additional settings you can fill in to pass user attributes to Metabase.
 
-- **Email attribute key:** the key to retrieve each JWT user's email address.
-- **First name attribute key:** the key to retrieve each JWT user's first name.
-- **Last name attribute key:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
-- **Group assignment attribute key:** the key to retrieve each JWT user's group assignments.
-- **Tenant assignment attribute key:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Tenants](../embedding/tenants.md).
+- **Email attribute:** the key to retrieve each JWT user's email address.
+- **First name attribute:** the key to retrieve each JWT user's first name.
+- **Last name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
+- **Group assignment attribute:** the key to retrieve each JWT user's group assignments.
+- **Tenant attribute:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Tenants](../embedding/tenants.md).
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
@@ -78,8 +78,8 @@ You can configure JWT group assignments through Metabase's Admin interface, or b
 
 ### Configure group mapping in Metabase
 
-1. Add groups to your JWT: `groups: ["group_name"]`. The attribute key (e.g. `groups`) should match the **Group assignment attribute key** in Metabase.
-1. In Metabase JWT settings, under **Group mapping**, toggle on **Synchronize Group Memberships**
+1. Add groups to your JWT: `groups: ["group_name"]`. The attribute key (e.g. `groups`) should match the **Group assignment attribute** in Metabase.
+1. In Metabase JWT settings, under **Group Sync**, toggle on **Synchronize Group Memberships**
 1. If the group names in your JWT match the Metabase group names, they will be synced automatically, and you don't need to set up mappings manually.
 
 1. Otherwise, click **New mapping** and add the name of a JWT group.
