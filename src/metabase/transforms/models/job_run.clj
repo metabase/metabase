@@ -2,6 +2,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.transforms.coordinated-run :as coordinated-run]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.util :as transforms.models.u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -34,7 +35,7 @@
   [job-ids]
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
+          (transforms.db/latest-job-runs-reducible (latest-runs-query job-ids)))))
 
 (defn start-run!
   "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
@@ -42,9 +43,8 @@
   ([job-id run-method]
    ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
    ;; LocalizedString into the snapshot
-   (let [job (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id)]
-     (t2/insert-returning-instance! :model/TransformJobRun
-                                    {:job_id        job-id
+   (let [job (transforms.db/job-snapshot job-id)]
+     (transforms.db/insert-job-run! {:job_id        job-id
                                      :job_name      (some-> (:name job) str)
                                      :job_entity_id (:entity_id job)
                                      :run_method    run-method
@@ -60,9 +60,7 @@
 (defn running-run-for-job-id
   "Return a single active job run or nil."
   [id]
-  (t2/select-one :model/TransformJobRun
-                 :job_id id
-                 :is_active true))
+  (transforms.db/active-job-run-for-job id))
 
 (defn paged-job-runs
   "Return a page of the list of job runs.
@@ -78,18 +76,16 @@
                      run-method           (conj [:= :run_method run-method])
                      start-time           (conj (transforms.models.u/timestamp-constraint :start_time start-time)))
         where      (when (seq where-cond) (into [:and] where-cond))]
-    {:data   (t2/select :model/TransformJobRun
-                        (cond-> {:order-by (transforms.models.u/run-order-by sort-column sort-direction)
-                                 :offset   offset
-                                 :limit    limit}
-                          where (assoc :where where)))
+    {:data   (transforms.db/job-runs-where
+              (cond-> {:order-by (transforms.models.u/run-order-by sort-column sort-direction)
+                       :offset   offset
+                       :limit    limit}
+                where (assoc :where where)))
      :limit  limit
      :offset offset
-     :total  (t2/count :model/TransformJobRun (if where {:where where} {}))}))
+     :total  (transforms.db/job-run-count-where (if where {:where where} {}))}))
 
 (defn transform-runs-for-job-run
   "Return transform runs that were part of the given job run, ordered by start time."
   [job-run-id]
-  (t2/select :model/TransformRun
-             {:where    [:= :job_run_id job-run-id]
-              :order-by [[:start_time :asc]]}))
+  (transforms.db/runs-for-job-run job-run-id))

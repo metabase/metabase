@@ -11,8 +11,8 @@
   (:require
    [medley.core :as m]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.models.util :as transforms.models.u]
-   [toucan2.core :as t2]))
+   [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.models.util :as transforms.models.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,14 +124,14 @@
         where      (when (> (count where) 1) where)
         base       (cond-> {:from [[inner :runs]]}
                      where (assoc :where where))]
-    {:data   (t2/query (merge base
-                              {:select   [:*]
-                               :order-by (transforms.models.u/run-order-by sort-column sort-direction)
-                               :limit    limit
-                               :offset   offset}))
+    {:data   (transforms.db/query-rows (merge base
+                                              {:select   [:*]
+                                               :order-by (transforms.models.u/run-order-by sort-column sort-direction)
+                                               :limit    limit
+                                               :offset   offset}))
      :limit  limit
      :offset offset
-     :total  (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))}))
+     :total  (:count (first (transforms.db/query-rows (merge base {:select [[[:count :*] :count]]}))))}))
 
 (defn present-run-summaries
   "Prepare raw summary rows for an API response: hydrate each row's `:name` (nil when the underlying
@@ -140,8 +140,8 @@
   (let [by-type         (group-by :run_type rows)
         job-ids         (seq (keep :entity_id (get by-type "job")))
         transform-ids   (seq (keep :entity_id (concat (get by-type "dag") (get by-type "transform"))))
-        job->name       (when job-ids (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
-        transform->name (when transform-ids (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))]
+        job->name       (when job-ids (transforms.db/job-names-by-id job-ids))
+        transform->name (when transform-ids (transforms.db/transform-names-by-id transform-ids))]
     (map (fn [{:keys [run_type entity_id entity_name] :as row}]
            (-> row
                (assoc :name (or (if (= run_type "job")

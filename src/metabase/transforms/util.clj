@@ -23,13 +23,13 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLException)))
 
@@ -81,7 +81,7 @@
    (let [resolve* (fn [model id]
                     (if models-cache
                       (get-in models-cache [model id])
-                      (t2/select-one model id)))
+                      (transforms.db/instance model id)))
          source   (:source transform)]
      (case (keyword (:type source))
        :query
@@ -123,9 +123,9 @@
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (t2/select :model/Database :id [:in db-ids])))
+                       (u/index-by :id (transforms.db/databases db-ids)))
      :model/Table    (when (seq table-ids)
-                       (u/index-by :id (t2/select :model/Table :id [:in table-ids])))}))
+                       (u/index-by :id (transforms.db/tables table-ids)))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.
