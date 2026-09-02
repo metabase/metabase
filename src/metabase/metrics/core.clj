@@ -194,8 +194,14 @@
             persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)
 
             {:keys [dimensions dimension-mappings]}
-            (lib-metric/reconcile-dimensions-and-mappings
-             computed-pairs persisted-dims persisted-mappings)]
+            ;; Branch exactly as `sync-dimensions!` does, or a read reports something the REST
+            ;; endpoint never would: a curated metric's persisted set is authoritative, so
+            ;; reconciling it the measure way re-adds dimensions its owner removed and mints a fresh
+            ;; random id for every computed pair with no persisted mapping, on every read.
+            (if (and (= metadata-type :metadata/metric)
+                     (dimensions-initialized? entity))
+              (lib-metric/reconcile-existing-dimensions computed-pairs persisted-dims persisted-mappings)
+              (lib-metric/reconcile-dimensions-and-mappings computed-pairs persisted-dims persisted-mappings))]
         {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
          :dimension_mappings dimension-mappings}))))
 
