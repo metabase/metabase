@@ -284,9 +284,8 @@
         dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card             (api/check-404 (t2/select-one :model/Card card-id))]
-    (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard
-       dashboard dashcard card
-       (api.embed.common/tile-parameters-for-dashboard
-        dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
-       zoom x y latField lonField))))
+    (api.embed.common/process-tiles-query-for-dashcard
+     dashboard dashcard card
+     (api.embed.common/tile-parameters-for-dashboard
+      dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+     zoom x y latField lonField)))
