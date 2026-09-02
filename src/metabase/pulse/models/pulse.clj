@@ -408,7 +408,7 @@
   nil and filters nothing (or, once the caller has a tenant, drops every recipient)."
   [recipient-ids]
   (if (seq recipient-ids)
-    (t2/select-pk->fn :tenant_id :model/User :id [:in recipient-ids])
+    (pulse.db/user-tenant-ids recipient-ids)
     {}))
 
 (defn- recipient-visible-to-tenant-caller?

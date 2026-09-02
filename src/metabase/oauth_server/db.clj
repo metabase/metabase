@@ -34,6 +34,11 @@
                      :offset     offset}
               where (assoc :where where))))
 
+(defn active-user-exists?
+  "Whether an active User with `user-id` exists."
+  [user-id]
+  (t2/exists? :model/User :id user-id :is_active true))
+
 (defn oauth-client-exists?
   "Whether an OAuthClient with `client-id` exists."
   [client-id]

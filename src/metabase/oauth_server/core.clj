@@ -115,6 +115,6 @@
                      ;; Fail closed if the issuing client is gone (SEC-863).
                      (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              (when (t2/exists? :model/User :id user-id :is_active true)
+              (when (oauth-server.db/active-user-exists? user-id)
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))

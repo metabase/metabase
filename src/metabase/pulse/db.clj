@@ -298,3 +298,8 @@
   "Delete the Notifications with `notification-ids`."
   [notification-ids]
   (t2/delete! :model/Notification :id [:in notification-ids]))
+
+(defn user-tenant-ids
+  "A map of User ID to `:tenant_id` for `user-ids`."
+  [user-ids]
+  (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
