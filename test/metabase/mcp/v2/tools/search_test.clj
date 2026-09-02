@@ -234,6 +234,22 @@
         (is (contains? cols :collection_id) "collection_id is selected — can-read? consults it")
         (is (not (contains? cols :content)) "the SQL body column is not selected")))))
 
+(deftest snippet-rows-are-permission-filtered-test
+  (testing "GHY-4137: `mi/can-read?` in snippet-rows is the ONLY permission check on snippet results —
+            snippets are not in the search index, so nothing upstream filters them. In OSS that check is
+            native-query permission on any database; without it every agent:content:read caller would see
+            every snippet name and description in the instance."
+    (mt/with-temp [:model/NativeQuerySnippet _ {:name "mcp-perm-probe-snippet" :content "WHERE 1=1"}]
+      (testing "a caller with native-query permission sees it"
+        (mt/with-test-user :crowberto
+          (is (some #(= "mcp-perm-probe-snippet" (:name %))
+                    (#'tools.search/snippet-rows [] false)))))
+      (testing "a caller without it sees nothing — and the name never crosses the boundary"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [rows (#'tools.search/snippet-rows [] false)]
+              (is (not (some #(= "mcp-perm-probe-snippet" (:name %)) rows))))))))))
+
 ;; not ^:parallel: the `!` in validate-modes! trips the kondo deftest lint
 (deftest query-limits-test
   (testing "GHY-4137: each query list is length-capped and each query is char-bounded, so one call

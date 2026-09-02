@@ -349,6 +349,14 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :type       :csv
   :audit      :getter)
 
+(defsetting ldap-sync-user-attributes-allowlist
+  (deferred-tru "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.")
+  :encryption :no
+  :default    ""
+  :type       :csv
+  :export?    false
+  :audit      :getter)
+
 (defsetting ldap-group-membership-filter
   (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
   :encryption :when-encryption-key-set
