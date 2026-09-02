@@ -1671,7 +1671,7 @@ databaseChangeLog:
         value, and the read would trust it. Encryption wraps the envelope, exactly as it wrapped the bare value.
         value is kept: this version writes both columns and reads only details, so a version that predates the column
         keeps working through a rolling upgrade, and a rollback is just dropping details again. The column is filled in
-        from value on startup, by metabase.app-db.settings/migrate-settings!, which also repairs rows
+        from value on startup, by metabase.app-db.setting/migrate-settings!, which also repairs rows
         such a version has written since.
       changes:
         - addColumn:

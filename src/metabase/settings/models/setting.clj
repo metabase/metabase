@@ -10,7 +10,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.settings :as mdb.settings]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
@@ -1735,7 +1735,7 @@
                  (ex-message (:parse-error invalid-setting))))))
 
 (defn- write-setting-value
-  "Store a Setting's `:value` in `:details`, wrapped in its [[mdb.settings/wrap-value]] envelope and encrypted whenever
+  "Store a Setting's `:value` in `:details`, wrapped in its [[mdb.setting/wrap-value]] envelope and encrypted whenever
   MB_ENCRYPTION_SECRET_KEY is set -- every setting's, whatever its `:encryption` says. That flag describes the legacy
   `value` column, which is written here too, exactly as it was before `details` existed: nothing in this version reads
   it, but a version that predates the column does, and keeping it current is what lets that version run alongside
@@ -1750,12 +1750,12 @@
                         (throw (ex-info (tru "Unknown setting: {0}" setting-key)
                                         {:setting-key setting-key})))]
     (assoc setting
-           :details (some->> value (mdb.settings/wrap-value-maybe-encrypt setting-key))
+           :details (some->> value (mdb.setting/wrap-value-maybe-encrypt setting-key))
            :value   (cond-> value (encrypts? resolved) encryption/maybe-encrypt))))
 
 (defn- read-setting-value
   "Take a Setting's `:value` from the `:details` it is stored in: decrypted, then unwrapped from
-  its [[mdb.settings/wrap-value]] envelope.
+  its [[mdb.setting/wrap-value]] envelope.
 
   Decrypted strictly with [[encryption/maybe-decrypt]]: with MB_ENCRYPTION_SECRET_KEY set, `details` are ciphertext
   for every setting, so a plaintext envelope -- forged via a direct DB write, or left by a row that has never been
@@ -1769,7 +1769,7 @@
   (let [setting-key (:key setting)]
     (if (maybe-resolve-setting setting-key)
       (try
-        (assoc setting :value (some->> (:details setting) encryption/maybe-decrypt (mdb.settings/unwrap-value setting-key)))
+        (assoc setting :value (some->> (:details setting) encryption/maybe-decrypt (mdb.setting/unwrap-value setting-key)))
         (catch Throwable e
           (throw (ex-info (format "Error reading setting \"%s\": %s" setting-key (ex-message e))
                           {:setting-key setting-key}

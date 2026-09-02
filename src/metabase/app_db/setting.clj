@@ -1,4 +1,4 @@
-(ns metabase.app-db.settings
+(ns metabase.app-db.setting
   "The JSON envelope a `setting` row stores its value in: `{\"setting-key\": ..., \"setting-value\": ...}`, held in the
   row's `details` column and encrypted whole when the setting is encrypted at rest.
 

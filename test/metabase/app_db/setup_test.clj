@@ -7,7 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
-   [metabase.app-db.settings :as mdb.settings]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
@@ -255,8 +255,8 @@
         (testing "details left under a key a rotation on an older version has since replaced"
           (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
             (t2/update! :setting :key "encryption-check"
-                        {:details (encryption/encrypt old-key (mdb.settings/wrap-value "encryption-check"
-                                                                                       (str (random-uuid))))})
+                        {:details (encryption/encrypt old-key (mdb.setting/wrap-value "encryption-check"
+                                                                                      (str (random-uuid))))})
             (is (= :valid (mdb/encryption-check-status)))))
         (testing "the unencrypted marker an older version's remove-encryption writes to value alone"
           (t2/update! :setting :key "encryption-check" {:value "unencrypted"})

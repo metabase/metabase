@@ -1,7 +1,7 @@
 (ns metabase.app-db.encryption
   (:require
    [metabase.app-db.query :as mdb.query]
-   [metabase.app-db.settings :as mdb.settings]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
@@ -99,7 +99,7 @@
                    :invalid))
         ;; `details` holds the sentinel in the same envelope as any other setting; `value` holds it bare
         from-details (when (some? details)
-                       (status details #(mdb.settings/unwrap-value encryption-check-key %)))]
+                       (status details #(mdb.setting/unwrap-value encryption-check-key %)))]
     ;; A version predating `details` rewrites the sentinel through `value` alone, so `details` can be stale next to a
     ;; `value` that is right: an unreadable `details` defers to `value` rather than refusing to boot.
     (if (or (nil? from-details) (= :invalid from-details))
@@ -177,7 +177,7 @@
     (t2/delete! :conn conn :setting :key encryption-check-key)
     (t2/insert! :conn conn :setting {:key     encryption-check-key
                                      :value   (encrypt sentinel)
-                                     :details (encrypt (mdb.settings/wrap-value encryption-check-key sentinel))})))
+                                     :details (encrypt (mdb.setting/wrap-value encryption-check-key sentinel))})))
 
 (defn- write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
@@ -363,7 +363,7 @@
           "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
                                     (t2/update! :conn conn :setting {:key key}
                                                 {:value   now
-                                                 :details (encrypt-str-fn (mdb.settings/wrap-value key now))}))
+                                                 :details (encrypt-str-fn (mdb.setting/wrap-value key now))}))
           "encryption-check" nil
           (when (seq value)
             (t2/update! :conn conn :setting {:key key}

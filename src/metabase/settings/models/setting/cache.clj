@@ -5,7 +5,7 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.settings :as mdb.settings]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -75,7 +75,7 @@
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
   ;; `details` compares in SQL. `details` is enveloped and encrypted like any other setting's.
   (let [now      (mdb/current-timestamp-string (mdb/db-type))
-        envelope (mdb.settings/wrap-value-maybe-encrypt settings-last-updated-key now)]
+        envelope (mdb.setting/wrap-value-maybe-encrypt settings-last-updated-key now)]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value now, :details envelope}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both

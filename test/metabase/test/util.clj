@@ -18,7 +18,7 @@
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.settings :as mdb.settings]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.transient-error :as transient-error]
    [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
@@ -578,7 +578,7 @@
   `details` the way the model stores it, so the app reads the value back. A nil `value` removes the row."
   [original setting-k value]
   (if (some? value)
-    (let [row {:value value, :details (mdb.settings/wrap-value-maybe-encrypt setting-k value)}]
+    (let [row {:value value, :details (mdb.setting/wrap-value-maybe-encrypt setting-k value)}]
       (if original
         (t2/update! :setting :key setting-k row)
         (t2/insert! :setting (assoc row :key setting-k))))

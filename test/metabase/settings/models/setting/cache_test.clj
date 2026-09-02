@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.settings :as mdb.settings]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.system.core :as system]
@@ -42,7 +42,7 @@
                :timestamp)]
     (t2/update! :setting {:key setting.cache/settings-last-updated-key}
                 {:value   ts
-                 :details (mdb.settings/wrap-value setting.cache/settings-last-updated-key ts)})))
+                 :details (mdb.setting/wrap-value setting.cache/settings-last-updated-key ts)})))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
