@@ -7,8 +7,8 @@ export const DEFAULT_POPOVER_Z_INDEX = 300;
 export const popoverOverrides = {
   Popover: Popover.extend({
     defaultProps: {
-      radius: "sm",
-      shadow: "md",
+      radius: "xs",
+      shadow: "sm_outline",
       withinPortal: true,
       hideDetached: false,
       middlewares: {

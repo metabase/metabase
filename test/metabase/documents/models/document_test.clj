@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -145,8 +146,6 @@
   (testing "Personal collection handling"
     (binding [collection/*allow-deleting-personal-collections* true]
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test@example.com"}
-                     :model/Collection {personal-collection-id :id} {:name "Personal Collection"
-                                                                     :personal_owner_id user-id}
                      :model/Collection {regular-collection-id :id} {:name "Regular Collection"}
                      :model/Document {document-id :id} {:collection_id regular-collection-id
                                                         :name "Personal Test Document"}
@@ -154,20 +153,21 @@
                                                 :document_id document-id
                                                 :collection_id regular-collection-id
                                                 :dataset_query (mt/mbql-query venues)}]
-        (testing "moving document to personal collection moves associated cards"
-          (mt/with-current-user user-id
-            ;; As the personal collection owner, update should succeed
-            (t2/update! :model/Document document-id {:collection_id personal-collection-id})
-            ;; Verify both document and card moved to personal collection
-            (is (= personal-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
-            (is (= personal-collection-id (:collection_id (t2/select-one :model/Card :id card-id))))))
-        (testing "moving document from personal collection works"
-          (mt/with-current-user user-id
-            ;; Move back to regular collection
-            (t2/update! :model/Document document-id {:collection_id regular-collection-id})
-            ;; Verify both document and card moved back
-            (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
-            (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id))))))))))
+        (let [personal-coll-id (personal-collection-id user-id)]
+          (testing "moving document to personal collection moves associated cards"
+            (mt/with-current-user user-id
+              ;; As the personal collection owner, update should succeed
+              (t2/update! :model/Document document-id {:collection_id personal-coll-id})
+              ;; Verify both document and card moved to personal collection
+              (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
+              (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
+          (testing "moving document from personal collection works"
+            (mt/with-current-user user-id
+              ;; Move back to regular collection
+              (t2/update! :model/Document document-id {:collection_id regular-collection-id})
+              ;; Verify both document and card moved back
+              (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
+              (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
 
 (deftest validate-collection-move-permissions-allows-move-with-both-permissions-test
   (testing "allows move when user has write permissions for both collections"
