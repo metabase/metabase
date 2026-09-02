@@ -94,7 +94,7 @@ export const SettingsLdapForm = () => {
           <Form>
             <SettingsSection>
               <FormSection title={"Server settings"}>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-host"
                     label={t`LDAP host`}
@@ -119,7 +119,7 @@ export const SettingsLdapForm = () => {
                     )}
                     description={null}
                   >
-                    <Group mt={"xs"}>
+                    <Group mt={"xxs"}>
                       <Radio value="none" label={t`None`} />
                       <Radio
                         value="ssl"
@@ -149,7 +149,7 @@ export const SettingsLdapForm = () => {
               </FormSection>
               <Divider />
               <FormSection title={"User schema"}>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-user-base"
                     placeholder="ou=users,dc=example,dc=org"
@@ -171,7 +171,7 @@ export const SettingsLdapForm = () => {
               </FormSection>
               <Divider />
               <FormSection title={"Attributes"}>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-attribute-email"
                     label={t`Email attribute`}
@@ -200,7 +200,7 @@ export const SettingsLdapForm = () => {
               </FormSection>
               <Divider />
               <FormSection title={"Group schema"}>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <GroupMappingsWidget
                     isFormik
                     setting={{ key: "ldap-group-sync" }}

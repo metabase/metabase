@@ -36,7 +36,7 @@ export const ChartSettingMaxCategories = ({
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Checkbox
         checked={isEnabled}
         label={t`Enforce maximum number of series`}

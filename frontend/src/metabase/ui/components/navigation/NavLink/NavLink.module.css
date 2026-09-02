@@ -3,7 +3,7 @@
 
   &[data-variant="secondary"],
   &[data-variant="primary"] {
-    border-radius: var(--mantine-radius-sm);
+    border-radius: var(--mantine-radius-xs);
 
     .NavLinkSection[data-position="left"] {
       color: var(--mb-color-icon-brand);

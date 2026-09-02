@@ -24,7 +24,7 @@ export const TabRoot = styled.button<TabProps>`
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
   margin-right: var(--mantine-spacing-sm);
-  border-radius: var(--mantine-spacing-xs);
+  border-radius: var(--mantine-spacing-xxs);
 
   &:hover {
     color: var(--mb-color-core-brand);

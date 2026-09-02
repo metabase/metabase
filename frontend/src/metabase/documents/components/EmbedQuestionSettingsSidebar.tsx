@@ -109,7 +109,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
   if (isLoading || !series) {
     return (
-      <Stack gap="lg" p="lg" className={S.loadingContainer}>
+      <Stack gap="xl" p="xl" className={S.loadingContainer}>
         <Box className={S.loadingContent}>
           <Loader size="lg" />
           <Text>{t`Loading question settings...`}</Text>
@@ -120,7 +120,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
   if (!card || !series) {
     return (
-      <Stack gap="lg" p="lg" className={S.errorContainer}>
+      <Stack gap="xl" p="xl" className={S.errorContainer}>
         <Box className={S.errorContent}>
           <Text c="feedback-negative">{t`Failed to load question`}</Text>
         </Box>
@@ -137,14 +137,14 @@ export const EmbedQuestionSettingsSidebar = ({
           justify="space-between"
           align="flex-start"
         >
-          <Group wrap="nowrap" miw={0} flex={1} align="center" p="md">
+          <Group wrap="nowrap" miw={0} flex={1} align="center" p="lg">
             <Text size="md" fw="bold" flex="none">{t`Visualize as`}</Text>
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
                   variant="default"
                   disabled={!selectedElem}
-                  rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
+                  rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
                   leftSection={
                     selectedElem?.iconName || selectedElem?.iconUrl ? (
                       <EntityIcon

@@ -28,6 +28,8 @@
            :when (and
                   (str/includes? (name ns-symb) "metabase")
                   (not (str/includes? (name ns-symb) "test")))]
+     ;; documentation generation deliberately loads every discovered Metabase namespace
+     #_{:clj-kondo/ignore [:metabase/modules]}
      (require ns-symb))
    (prep-settings @setting/registered-settings))
   ;; Or supply a set of namespaces to load
@@ -35,6 +37,8 @@
   ([ns-set]
    (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
            :when (ns-set (name ns-symb))]
+     ;; callers explicitly select the namespaces to document
+     #_{:clj-kondo/ignore [:metabase/modules]}
      (require ns-symb))
    (prep-settings @setting/registered-settings)))
 

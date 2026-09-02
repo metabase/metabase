@@ -63,7 +63,7 @@ export const EnableTenantsStepContent = ({
   }, [updateSetting, hasSharedCollections, createCollection, sendToast]);
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <img
         src="app/assets/img/embedding-onboarding/multi-tenant-user-strategy.svg"
         alt=""
