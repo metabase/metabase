@@ -92,7 +92,7 @@
 
 (defn- next-sequence!
   [seq-name]
-  (if-let [batch-num (t2/select-one-fn :next_val [:sequences 'next_val] 'name seq-name {:for 'update})]
+  (if-let [batch-num (t2/select-one-fn :next_val [:sequences :next_val] 'name seq-name {:for 'update})]
     (do
       (t2/update! :sequences {:name seq-name} {:next_val (inc batch-num)})
       batch-num)

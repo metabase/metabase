@@ -78,7 +78,7 @@
          (mapcat keys)
          ;; we can't just check for *begins* with here, because we need to include cases that *might* be clobbered by renames.
          (filter #(re-matches #"^(_+)?@.+" %)))
-        (t2/select-fn-reducible :login_attributes [:core_user 'login_attributes]
+        (t2/select-fn-reducible :login_attributes [:core_user :login_attributes]
                                 {:where ['and
                                          ['not= 'login_attributes nil]
                                          ['not= 'login_attributes "{}"]

@@ -1511,7 +1511,7 @@
   [model k items]
   (mi/instances-with-hydrated-data items k
                                    #(into {}
-                                          (t2/select-pk->fn :namespace [model 'id [:c.namespace :namespace]]
+                                          (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
                                                             {:where ['in (keyword (str (name (t2/table-name model)) ".id"))
                                                                      (map :id items)]
                                                              :join [['collection 'c]
