@@ -53,7 +53,7 @@ export class Mode implements ClickActionsMode {
       ...(mode.hasDrills
         ? queryDrill(question, clicked, (drill) => isDrillEnabled(mode, drill))
         : []),
-      ...(mode.clickActions?.flatMap((drill) => drill(props)) ?? []),
+      ...mode.clickActions.flatMap((drill) => drill(props)),
     ];
 
     if (!actions.length && mode.fallback) {

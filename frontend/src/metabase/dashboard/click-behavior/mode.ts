@@ -12,7 +12,7 @@ import { DashboardClickAction } from "./DashboardClickAction";
 
 const DashboardDefaultMode: QueryClickActionsMode = {
   ...DefaultMode,
-  clickActions: [...(DefaultMode.clickActions ?? []), DashboardClickAction],
+  clickActions: [...DefaultMode.clickActions, DashboardClickAction],
 };
 
 function getDashboardQueryMode(question: Question): QueryClickActionsMode {
