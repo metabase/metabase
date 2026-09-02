@@ -130,16 +130,25 @@
         (tree-seq :content :content content)))
 
 (defn comments-for-document
-  "All live comments on a document, oldest first, with `:creator` hydrated. Read access to the
-  document is the caller's job to check first — the same check-the-target-once pattern the
-  comments REST endpoint uses."
+  "A document's comments, oldest first, with `:creator` hydrated. Deleted comments are dropped —
+  except one that still has replies, which stays with its `:content` scrubbed to `{}` so the
+  replies' `:parent_comment_id` keeps something to anchor to, the same visible-comment semantics
+  `GET /api/comment` applies. Read access to the document is the caller's job to check first —
+  the same check-the-target-once pattern the comments REST endpoint uses."
   [document-id]
-  (-> (t2/select :model/Comment
-                 :target_type "document"
-                 :target_id document-id
-                 :deleted_at nil
-                 {:order-by [[:created_at :asc] [:id :asc]]})
-      (t2/hydrate :creator)))
+  (let [comments     (t2/select :model/Comment
+                                :target_type "document"
+                                :target_id document-id
+                                {:order-by [[:created_at :asc] [:id :asc]]})
+        has-replies? (into #{} (map :parent_comment_id) comments)]
+    (-> (into []
+              (keep (fn [comment]
+                      (cond
+                        (not (:deleted_at comment))  comment
+                        (has-replies? (:id comment)) (assoc comment :content {})
+                        :else                        nil)))
+              comments)
+        (t2/hydrate :creator))))
 
 (defn child-target-ids-for-document
   "Distinct non-nil `child_target_id` values (with a live comment count each) for a document's

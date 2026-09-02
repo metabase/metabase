@@ -418,6 +418,138 @@ describe("AdminSettingInput", () => {
     expect(toast).toBeInTheDocument();
   });
 
+  it("should disable the input until the save and its refetch settle", async () => {
+    setup({
+      title: "Enable X-rays",
+      name: "enable-xrays",
+      inputType: "boolean",
+    });
+    const input = await screen.findByRole("switch");
+
+    const pendingPuts: Array<() => void> = [];
+    fetchMock.removeRoute("update-setting");
+    fetchMock.put(
+      new RegExp("/api/setting/"),
+      () =>
+        new Promise<void>((resolve) => pendingPuts.push(resolve)).then(() => ({
+          status: 204,
+        })),
+      { name: "update-setting" },
+    );
+    const pendingRefetches: Array<() => void> = [];
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () =>
+        new Promise<void>((resolve) => pendingRefetches.push(resolve)).then(
+          () => createMockSettings({ "enable-xrays": false }),
+        ),
+      { name: "get-session-properties" },
+    );
+
+    await userEvent.click(input);
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toBeDisabled();
+    });
+
+    pendingPuts.splice(0).forEach((resolve) => resolve());
+    await waitFor(() => {
+      expect(pendingRefetches).not.toHaveLength(0);
+    });
+    expect(screen.getByRole("switch")).toBeDisabled();
+
+    pendingRefetches.splice(0).forEach((resolve) => resolve());
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toBeEnabled();
+    });
+    expect(
+      fetchMock.callHistory.calls("path:/api/setting/enable-xrays"),
+    ).toHaveLength(1);
+  });
+
+  it("should revert the input when the save fails", async () => {
+    setup({
+      title: "Enable X-rays",
+      name: "enable-xrays",
+      inputType: "boolean",
+    });
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const input = await screen.findByRole("switch");
+    expect(input).toHaveAttribute("data-checked", "true");
+    await userEvent.click(input);
+
+    await screen.findByText("Error saving enable-xrays");
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toHaveAttribute(
+        "data-checked",
+        "true",
+      );
+    });
+  });
+
+  it("should revert a select input when the save fails", async () => {
+    setup({
+      title: "Humanization",
+      name: "humanization-strategy",
+      inputType: "select",
+      options: [
+        { label: "None", value: "none" },
+        { label: "Simple", value: "simple" },
+      ],
+    });
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const input = await screen.findByRole("textbox");
+    expect(input).toHaveValue("None");
+    await userEvent.click(input);
+    await userEvent.click(await screen.findByText("Simple"));
+
+    await screen.findByText("Error saving humanization-strategy");
+    await waitFor(() => {
+      expect(screen.getByRole("textbox")).toHaveValue("None");
+    });
+  });
+
+  it("should revert a radio input when the save fails", async () => {
+    setup({
+      title: "Humanization",
+      name: "humanization-strategy",
+      inputType: "radio",
+      options: [
+        { label: "None", value: "none" },
+        { label: "Simple", value: "simple" },
+      ],
+    });
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const inputs = await screen.findAllByRole("radio");
+    expect(inputs[0]).toBeChecked();
+    await userEvent.click(screen.getByText("Simple"));
+
+    await screen.findByText("Error saving humanization-strategy");
+    await waitFor(() => {
+      expect(screen.getAllByRole("radio")[0]).toBeChecked();
+    });
+  });
+
+  it("should keep a typed value when the save fails", async () => {
+    setup({
+      title: "Site Name",
+      name: "site-name",
+      inputType: "text",
+    });
+    setupUpdateSettingEndpoint({ status: 400 });
+
+    const input = await screen.findByDisplayValue("Metabased");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Wigglybase");
+    fireEvent.blur(input);
+
+    await screen.findByText("Error saving site-name");
+    expect(screen.getByRole("textbox")).toHaveValue("Wigglybase");
+  });
+
   it("should display a notice instead of input when a setting is set by an environment variable", async () => {
     setup({
       title: "url",
