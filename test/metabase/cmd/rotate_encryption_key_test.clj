@@ -224,7 +224,7 @@
         (encryption-test/with-secret-key k1
           (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
           (let [good-id (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}"))
-                bad-id  (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))]
+                bad-id  (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"fr\"}" {:secret-key k2-hashed}))]
             (mdb/decrypt-db :h2 (mdb/data-source))
             (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
             (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
@@ -245,7 +245,7 @@
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
           (t2/delete! :setting :key "encryption-check")
-          (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))
+          (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"fr\"}" {:secret-key k2-hashed}))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
@@ -254,7 +254,7 @@
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
           (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
-          (insert-channel-with-raw-details! (encryption/encrypt k2-hashed "{\"url\":\"http://bad\"}"))
+          (insert-channel-with-raw-details! (encryption/encrypt "{\"url\":\"http://bad\"}" {:secret-key k2-hashed}))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"

@@ -1735,11 +1735,11 @@
                  (ex-message (:parse-error invalid-setting))))))
 
 (defn- write-setting-value
-  "Store a Setting's `:value` in `:details`, wrapped in its [[mdb.setting/wrap-value]] envelope and encrypted whenever
-  MB_ENCRYPTION_SECRET_KEY is set -- every setting's, whatever its `:encryption` says. That flag describes the legacy
-  `value` column, which is written here too, exactly as it was before `details` existed: nothing in this version reads
-  it, but a version that predates the column does, and keeping it current is what lets that version run alongside
-  this one and what makes rolling back to it lossless.
+  "Store a Setting's `:value` in `:value_with_aad`, encrypted under additional authenticated data naming the setting
+  (see [[mdb.setting/setting-aad]]) whenever MB_ENCRYPTION_SECRET_KEY is set -- every setting's, whatever its
+  `:encryption` says. That flag describes the legacy `value` column, which is written here too, exactly as it was
+  before `value_with_aad` existed: nothing in this version reads it, but a version that predates the column does, and
+  keeping it current is what lets that version run alongside this one and what makes rolling back to it lossless.
 
   A key with no `defsetting` is refused: [[read-setting-value]] would read the row back as no value at all, so there is
   no way to write one that means anything."
@@ -1750,18 +1750,17 @@
                         (throw (ex-info (tru "Unknown setting: {0}" setting-key)
                                         {:setting-key setting-key})))]
     (assoc setting
-           :details (some->> value (mdb.setting/wrap-value-maybe-encrypt setting-key))
-           :value   (cond-> value (encrypts? resolved) encryption/maybe-encrypt))))
+           :value          (cond-> value (encrypts? resolved) encryption/maybe-encrypt)
+           :value_with_aad (some-> value (encryption/maybe-encrypt {:aad (mdb.setting/setting-aad setting-key)})))))
 
 (defn- read-setting-value
-  "Take a Setting's `:value` from the `:details` it is stored in: decrypted, then unwrapped from
-  its [[mdb.setting/wrap-value]] envelope.
+  "Take a Setting's `:value` from the `:value_with_aad` it is stored in: decrypted under the additional authenticated
+  data naming this setting, strictly, with [[encryption/maybe-decrypt]]. With MB_ENCRYPTION_SECRET_KEY set that column
+  is ciphertext for every setting, so a plaintext value -- forged via a direct DB write, or left by a row that has never
+  been through `enable-encryption` -- is rejected rather than trusted, and so is a ciphertext moved here from another
+  setting's row, since it was authenticated under that setting's name.
 
-  Decrypted strictly with [[encryption/maybe-decrypt]]: with MB_ENCRYPTION_SECRET_KEY set, `details` are ciphertext
-  for every setting, so a plaintext envelope -- forged via a direct DB write, or left by a row that has never been
-  through `enable-encryption` -- is rejected rather than trusted.
-
-  Two rows read as no value at all. One with no `details` is a row only a version predating the column has ever
+  Two rows read as no value at all. One with no `value_with_aad` is a row only a version predating the column has ever
   written. One whose key has no `defsetting` -- a retired setting, one belonging to an edition this instance is not
   running, or a row written straight to the DB in a test -- is not read at all, not even decrypted: nothing can ask
   for such a setting by name, so there is no value to produce and no reason to touch what is stored there."
@@ -1769,7 +1768,8 @@
   (let [setting-key (:key setting)]
     (if (maybe-resolve-setting setting-key)
       (try
-        (assoc setting :value (some->> (:details setting) encryption/maybe-decrypt (mdb.setting/unwrap-value setting-key)))
+        (assoc setting :value (some-> (:value_with_aad setting)
+                                      (encryption/maybe-decrypt {:aad (mdb.setting/setting-aad setting-key)})))
         (catch Throwable e
           (throw (ex-info (format "Error reading setting \"%s\": %s" setting-key (ex-message e))
                           {:setting-key setting-key}

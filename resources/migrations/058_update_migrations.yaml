@@ -1664,26 +1664,23 @@ databaseChangeLog:
       id: v58.2026-09-01T00:00:00
       author: ranquild
       comment: >-
-        Add setting.details, which stores a setting's value as the JSON envelope
-        {"setting-key": ..., "setting-value": ...} rather than as the bare value setting.value holds, so that a stored
-        value carries the setting it belongs to. Without it a stored value says nothing about which row it came from --
-        and neither does an encrypted setting's ciphertext -- so a direct DB write could give one setting another's
-        value, and the read would trust it. Encryption wraps the envelope, exactly as it wrapped the bare value.
-        value is kept: this version writes both columns and reads only details, so a version that predates the column
-        keeps working through a rolling upgrade, and a rollback is just dropping details again. The column is filled in
-        from value on startup, by metabase.app-db.setting/migrate-settings!, which also repairs rows
-        such a version has written since.
+        Add setting.value_with_aad, which stores a setting's value encrypted under additional authenticated data naming
+        the setting (setting.<key>), so that a value moved between rows fails to decrypt: the bare value in
+        setting.value, or its ciphertext, says nothing about which setting it belongs to, and a direct DB write could
+        give one setting another's value. value is kept: this version writes both columns and reads only
+        value_with_aad, so a version that predates the column keeps working through a rolling upgrade, and a rollback
+        is just dropping value_with_aad again. The column is filled in from value after migrations, by
+        metabase.app-db.setting/migrate-settings!, which also repairs rows such a version has written since.
       changes:
         - addColumn:
             tableName: setting
             columns:
               - column:
-                  name: details
+                  name: value_with_aad
                   type: ${text.type}
-                  remarks: "The setting's value, as a JSON envelope carrying the setting key"
+                  remarks: "The setting's value, encrypted under additional authenticated data naming the setting"
                   constraints:
                     nullable: true
-
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

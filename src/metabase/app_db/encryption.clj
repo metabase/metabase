@@ -28,8 +28,7 @@
 ;; the raw value with the current key and re-encrypting the resulting string. We list raw table names (not models) so
 ;; this also works for enterprise models that aren't loaded in every edition.
 (def ^:private encrypted-string-columns
-  [[:setting :details]
-   [:metabase_database :details]
+  [[:metabase_database :details]
    [:metabase_database :settings]
    [:metabase_database :write_data_details]
    [:metabase_database :admin_details]
@@ -76,35 +75,20 @@
                row, or the plaintext \"unencrypted\" marker (inserted by the v53 migration, and written back when
                the database is decrypted) -- an explicit statement of the same thing a missing row means
 
-  Read raw, and from `details` only if it is populated: this runs before migrations, so on the first boot after the
-  upgrade that adds `details` the sentinel is still the bare value in `value` -- and on the boot before that, the
-  column does not exist at all."
+  Read raw, from the legacy `value` column: this runs before migrations, and `value` is the one column every version
+  writes the sentinel to."
   []
-  (let [;; `select *`, not the two columns by name: this runs before migrations, so on a database that predates
-        ;; `details` the column itself is not there yet
-        {:keys [value details]} (u/ignore-exceptions
-                                  (t2/query-one {:select [:*]
-                                                 :from   [:setting]
-                                                 :where  [:= :key encryption-check-key]}))
-        status (fn [raw unwrap]
-                 (cond
-                   (or (nil? raw) (= "unencrypted" (u/ignore-exceptions (unwrap raw))))
-                   :absent
+  (let [raw (u/ignore-exceptions (t2/select-one-fn :value :setting :key encryption-check-key))]
+    (cond
+      (or (nil? raw) (= raw "unencrypted"))
+      :absent
 
-                   (and (encryption/default-encryption-enabled?)
-                        (u/ignore-exceptions (string/valid-uuid? (unwrap (encryption/maybe-decrypt raw)))))
-                   :valid
+      (and (encryption/default-encryption-enabled?)
+           (u/ignore-exceptions (string/valid-uuid? (encryption/maybe-decrypt raw))))
+      :valid
 
-                   :else
-                   :invalid))
-        ;; `details` holds the sentinel in the same envelope as any other setting; `value` holds it bare
-        from-details (when (some? details)
-                       (status details #(mdb.setting/unwrap-value encryption-check-key %)))]
-    ;; A version predating `details` rewrites the sentinel through `value` alone, so `details` can be stale next to a
-    ;; `value` that is right: an unreadable `details` defers to `value` rather than refusing to boot.
-    (if (or (nil? from-details) (= :invalid from-details))
-      (status value identity)
-      from-details)))
+      :else
+      :invalid)))
 
 (defn- column-exists?
   "Whether `table`.`column` exists in the connection's own catalog and schema, per JDBC metadata (a same-named table
@@ -153,8 +137,8 @@
 
   This only runs in the one-shot \"no sentinel but content exists\" state, so it can afford to stream every column
   fully (stopping at the first value that does not decrypt) rather than sampling; a partially encrypted column can
-  therefore never read as `:decryptable`. Of the `setting` table only `details` counts: whether a setting's legacy
-  `value` is encrypted at rest is decided per setting, so that column proves nothing about the database."
+  therefore never read as `:decryptable`. The `setting` table is not counted: whether a setting's legacy `value` is
+  encrypted at rest is decided per setting, and `value_with_aad` only decrypts under each row's own AAD."
   []
   (reduce (fn [acc [table column decryptable?]]
             (case (column-content-status table column decryptable?)
@@ -166,25 +150,24 @@
                   (map #(conj % (comp encryption/decryptable-bytes? maybe-blob->bytes)) encrypted-bytes-columns))))
 
 (defn- replace-encryption-check!
-  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn`, or with the
-  plaintext \"unencrypted\" marker when `encrypt-fn` is nil (the database is being decrypted).
-
-  Written to `details` and to the legacy `value` both, so that a version predating `details` reads the same answer
-  from the same database."
-  [conn encrypt-fn]
-  (let [sentinel  (if encrypt-fn (str (random-uuid)) "unencrypted")
-        encrypt   (or encrypt-fn identity)]
+  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt` -- a function of a
+  string and encryption opts -- or with the plaintext \"unencrypted\" marker when `encrypt` is nil (the database is
+  being decrypted). Written to `value_with_aad` and to the legacy `value` both, so that a version predating
+  `value_with_aad` reads the same answer from the same database."
+  [conn encrypt]
+  (let [sentinel (if encrypt (str (random-uuid)) "unencrypted")
+        encrypt  (or encrypt (fn [s _opts] s))]
     (t2/delete! :conn conn :setting :key encryption-check-key)
-    (t2/insert! :conn conn :setting {:key     encryption-check-key
-                                     :value   (encrypt sentinel)
-                                     :details (encrypt (mdb.setting/wrap-value encryption-check-key sentinel))})))
+    (t2/insert! :conn conn :setting {:key            encryption-check-key
+                                     :value          (encrypt sentinel nil)
+                                     :value_with_aad (encrypt sentinel {:aad (mdb.setting/setting-aad encryption-check-key)})})))
 
 (defn- write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
   sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
   []
   (t2/with-transaction [conn]
-    (replace-encryption-check! conn encryption/encrypt)))
+    (replace-encryption-check! conn (fn [s opts] (encryption/encrypt s opts)))))
 
 (def ^:private EncryptionState
   [:enum :encrypted :unencrypted :fresh :pre-sentinel :missing-key :wrong-key :not-decryptable])
@@ -267,11 +250,6 @@
                                    "predates the encryption sentinel. Marked database as encrypted."))
               (u/emoji "✅"))))
 
-(defn- table-key
-  "The column that identifies a row of `table`: `setting` is keyed by its setting name, everything else by `id`."
-  [table]
-  (if (= table :setting) :key :id))
-
 (defn- reencrypt-encrypted-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`. Streams the
   rows so a large column does not have to be held in memory all at once.
@@ -282,21 +260,20 @@
   key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
   nothing that was usable."
   [conn table column encrypt-str-fn clear-undecryptable?]
-  (let [key-column (table-key table)]
-    (run! (fn [{:keys [id value]}]
-            (when (some? value)
-              (let [decrypted (try
-                                (encryption/maybe-decrypt-accepting-plaintext value)
-                                (catch Throwable e
-                                  (if clear-undecryptable?
-                                    (do
-                                      (log/warnf "Can't decrypt %s.%s for %s %s with MB_ENCRYPTION_SECRET_KEY even though the key is correct for this database; resetting the value to {}. It was likely written with a different key and has been unreadable at runtime."
-                                                 (name table) (name column) (name key-column) id)
-                                      "{}")
-                                    (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
-                                                    {:table table, key-column id, :column column} e)))))]
-                (t2/update! :conn conn table {key-column id} {column (encrypt-str-fn decrypted)}))))
-          (t2/reducible-select [table [key-column :id] [column :value]]))))
+  (run! (fn [{:keys [id value]}]
+          (when (some? value)
+            (let [decrypted (try
+                              (encryption/maybe-decrypt-accepting-plaintext value)
+                              (catch Throwable e
+                                (if clear-undecryptable?
+                                  (do
+                                    (log/warnf "Can't decrypt %s.%s for id %s with MB_ENCRYPTION_SECRET_KEY even though the key is correct for this database; resetting the value to {}. It was likely written with a different key and has been unreadable at runtime."
+                                               (name table) (name column) id)
+                                    "{}")
+                                  (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
+                                                  {:table table, :id id, :column column} e)))))]
+              (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted nil)}))))
+        (t2/reducible-select [table :id [column :value]])))
 
 (defn- reencrypt-encrypted-bytes-column!
   "Re-encrypt a `^bytes` `column` for every row in `table` using `encrypt-bytes-fn`. See `encrypted-bytes-columns`.
@@ -311,7 +288,7 @@
                               (catch Throwable e
                                 (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
                                                 {:table table, :id id, :column column} e))))]
-              (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
+              (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted nil)}))))
         (t2/reducible-select [table :id [column :value]])))
 
 (defn encrypt-plaintext-columns!
@@ -327,20 +304,29 @@
   []
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [conn]
-      (doseq [[table column] encrypted-string-columns
-              :let [key-column (table-key table)]]
+      (doseq [[table column] encrypted-string-columns]
         (run! (fn [{:keys [id value]}]
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
-                  (t2/update! :conn conn table {key-column id} {column (encryption/encrypt value)})))
-              (t2/reducible-select [table [key-column :id] [column :value]] {:where [:!= column nil]}))))))
+                  (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
+              (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]})))
+      ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
+      (run! (fn [{:keys [key value_with_aad]}]
+              (let [opts {:aad (mdb.setting/setting-aad key)}]
+                (when (and (string? value_with_aad)
+                           (not (encryption/decryptable-string? value_with_aad opts)))
+                  (t2/update! :conn conn :setting {:key key}
+                              {:value_with_aad (encryption/encrypt value_with_aad opts)}))))
+            (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]})))))
 
 (defn- do-encryption
-  "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
+  "Encrypt or decrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
 
-  The passed make-encrypt-fn is used to generate the encryption/decryption function to use by passing versions of encryption/maybe-encrypt to it."
+  `make-encrypt-fn` is given [[encryption/maybe-encrypt]] and [[encryption/maybe-encrypt-bytes]] in turn and returns
+  the function to write with: one of `[x opts]` that encrypts under the key being rotated to (merging `opts`, which
+  carry a row's AAD), or one that returns `x` as-is when the database is being decrypted."
   [db-type data-source encrypting? make-encrypt-fn]
-  (let [encrypt-str-fn (make-encrypt-fn encryption/maybe-encrypt)
+  (let [encrypt-str-fn   (make-encrypt-fn encryption/maybe-encrypt)
         encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
     (t2/with-transaction [conn {:datasource data-source}]
       (let [check-status (encryption-check-status)]
@@ -356,18 +342,21 @@
       ;; re-encrypted) is exactly what this operation exists to fix, so we decrypt it leniently here rather than reject
       ;; it. A value that looks encrypted but can't be decrypted with the current key still aborts.
       ;;
-      ;; `details` was re-encrypted with the other encrypted-at-rest columns above; `value` is what a version
-      ;; predating that column reads, so a rollback must not land on ciphertext under the old key.
-      (doseq [{:keys [key value]} (t2/select :setting)]
+      ;; Both columns are re-encrypted: `value_with_aad` under each row's own AAD, and `value` because a version
+      ;; predating that column reads it, so a rollback must not land on ciphertext under the old key.
+      (doseq [{:keys [key value value_with_aad]} (t2/select :setting)
+              :let [aad-opts {:aad (mdb.setting/setting-aad key)}]]
         (case key
           "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
                                     (t2/update! :conn conn :setting {:key key}
-                                                {:value   now
-                                                 :details (encrypt-str-fn (mdb.setting/wrap-value key now))}))
+                                                {:value          now
+                                                 :value_with_aad (encrypt-str-fn now aad-opts)}))
           "encryption-check" nil
-          (when (seq value)
-            (t2/update! :conn conn :setting {:key key}
-                        {:value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))}))))
+          (let [changes (cond-> {}
+                          (seq value)          (assoc :value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value) nil))
+                          (seq value_with_aad) (assoc :value_with_aad (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) aad-opts)))]
+            (when (seq changes)
+              (t2/update! :conn conn :setting {:key key} changes)))))
       (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
@@ -381,12 +370,12 @@
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
   (when (and (nil? to-key) (not (encryption/default-encryption-enabled?)))
     (throw (ex-info "Cannot encrypt database: MB_ENCRYPTION_SECRET_KEY is not set" {})))
-  (do-encryption db-type data-source true (fn [maybe-encrypt-fn]
-                                            (if
-                                             (nil? to-key) maybe-encrypt-fn
-                                             (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))))
+  (let [to-key (some-> to-key encryption/validate-and-hash-secret-key)]
+    (do-encryption db-type data-source true (fn [maybe-encrypt-fn]
+                                              (fn [x opts]
+                                                (maybe-encrypt-fn x (cond-> opts to-key (assoc :secret-key to-key))))))))
 
 (defn decrypt-db
   "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
-  (do-encryption db-type data-source false (constantly identity)))
+  (do-encryption db-type data-source false (constantly (fn [x _opts] x))))

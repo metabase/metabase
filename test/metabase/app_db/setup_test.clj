@@ -238,25 +238,26 @@
       (let [ciphertext (encryption-test/with-secret-key "ABCDEFGH12345678"
                          (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
                          (t2/insert! :model/Setting {:key "site-name", :value "Sad Can"})
-                         (t2/select-one-fn :details :setting :key "site-name"))]
+                         (t2/select-one-fn :value_with_aad :setting :key "site-name"))]
         (is (encryption/possibly-encrypted-string? ciphertext))
         (testing "with no key the state is :missing-key, and a repair would only wrap the ciphertext as a value"
           (reset! (:status mdb.connection/*application-db*) ::not-set-up)
           (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
-          (is (= ciphertext (t2/select-one-fn :details :setting :key "site-name"))))))))
+          (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
 
 (deftest encryption-check-status-falls-back-to-value-test
-  (testing "a sentinel whose details are stale next to a value that is right reads from value"
+  (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "ABCDEFGH12345678"
         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
         (is (= :valid (mdb/encryption-check-status)))
-        (testing "details left under a key a rotation on an older version has since replaced"
+        (testing "an authenticated value left under a key a rotation on an older version has since replaced"
           (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
             (t2/update! :setting :key "encryption-check"
-                        {:details (encryption/encrypt old-key (mdb.setting/wrap-value "encryption-check"
-                                                                                      (str (random-uuid))))})
+                        {:value_with_aad (encryption/encrypt (str (random-uuid))
+                                                             {:secret-key old-key
+                                                              :aad        (mdb.setting/setting-aad "encryption-check")})})
             (is (= :valid (mdb/encryption-check-status)))))
         (testing "the unencrypted marker an older version's remove-encryption writes to value alone"
           (t2/update! :setting :key "encryption-check" {:value "unencrypted"})

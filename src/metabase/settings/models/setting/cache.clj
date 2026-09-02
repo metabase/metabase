@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -73,18 +74,18 @@
   []
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
-  ;; `details` compares in SQL. `details` is enveloped and encrypted like any other setting's.
-  (let [now      (mdb/current-timestamp-string (mdb/db-type))
-        envelope (mdb.setting/wrap-value-maybe-encrypt settings-last-updated-key now)]
+  ;; `value_with_aad` compares in SQL. `value_with_aad` is encrypted under the marker's AAD like any other setting's.
+  (let [value          (mdb/current-timestamp-string (mdb/db-type))
+        value-with-aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad settings-last-updated-key)})]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
-    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value now, :details envelope}))
+    (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value value, :value_with_aad value-with-aad}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
         ;; and ignore that Exception if one is thrown.
         (try
           (t2/insert! (t2/table-name (t2/resolve-model :model/Setting))
-                      :key settings-last-updated-key, :value now, :details envelope)
+                      :key settings-last-updated-key, :value value, :value_with_aad value-with-aad)
           (catch java.sql.SQLException e
             ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
             ;; race condition issue
@@ -119,8 +120,7 @@
       (when-let [last-known-update (cache-last-updated-at)]
         ;; compare it to the value in the DB. This is done be seeing whether a row exists
         ;; WHERE value > <local-value>
-        ;; compared here rather than in SQL: what is stored is the envelope, and ordering two of those by the
-        ;; timestamp inside them would rest on how the application DB collates the JSON around it
+        ;; compared here rather than in SQL: what is stored is ciphertext, so only the decrypted timestamps can be ordered
         (u/prog1 (when-let [db-value (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)]
                    (when (pos? (compare db-value last-known-update))
                      db-value))

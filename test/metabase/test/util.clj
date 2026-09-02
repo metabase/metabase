@@ -46,6 +46,7 @@
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.random :as u.random]
@@ -571,14 +572,15 @@
 (defn- raw-setting
   "The `setting` row for `setting-k` as it sits in the table, or nil."
   [setting-k]
-  (t2/select-one [:setting :value :details] :key setting-k))
+  (t2/select-one [:setting :value :value_with_aad] :key setting-k))
 
 (defn- upsert-raw-setting!
   "Write `value` for `setting-k` straight into the table, bypassing the model and so any setter: `value` bare, and
-  `details` the way the model stores it, so the app reads the value back. A nil `value` removes the row."
+  `value_with_aad` the way the model stores it, so the app reads the value back. A nil `value` removes the row."
   [original setting-k value]
   (if (some? value)
-    (let [row {:value value, :details (mdb.setting/wrap-value-maybe-encrypt setting-k value)}]
+    (let [row {:value          value
+               :value_with_aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad setting-k)})}]
       (if original
         (t2/update! :setting :key setting-k row)
         (t2/insert! :setting (assoc row :key setting-k))))

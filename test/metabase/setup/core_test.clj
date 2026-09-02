@@ -5,6 +5,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -234,9 +235,8 @@
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
-                  :let [key-column (#'mdb.encryption/table-key table)]
-                  {:keys [id value]} (t2/select [table [key-column :id] [column :value]] {:where [:!= column nil]})]
-            (testing (format "%s.%s %s %s" (name table) (name column) (name key-column) id)
+                  {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
+            (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-string? value)))))
         (testing "encrypted-at-rest bytes columns"
           (doseq [[table column] @#'mdb.encryption/encrypted-bytes-columns
@@ -248,4 +248,8 @@
                   :let [definition (get @setting/registered-settings (keyword k))]
                   :when (and definition (not= :no (:encryption definition)))]
             (testing k
-              (is (encryption/decryptable-string? v)))))))))
+              (is (encryption/decryptable-string? v)))))
+        (testing "every setting's value_with_aad, under its own setting's AAD"
+          (doseq [{k :key v :value_with_aad} (t2/select :setting {:where [:!= :value_with_aad nil]})]
+            (testing k
+              (is (encryption/decryptable-string? v {:aad (mdb.setting/setting-aad k)})))))))))

@@ -8,6 +8,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -41,8 +42,8 @@
                            :timestamp]]})
                :timestamp)]
     (t2/update! :setting {:key setting.cache/settings-last-updated-key}
-                {:value   ts
-                 :details (mdb.setting/wrap-value setting.cache/settings-last-updated-key ts)})))
+                {:value          ts
+                 :value_with_aad (encryption/maybe-encrypt ts {:aad (mdb.setting/setting-aad setting.cache/settings-last-updated-key)})})))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
