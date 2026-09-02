@@ -901,7 +901,7 @@
       (mt/with-full-data-perms-for-all-users!
         (mt/with-test-user :rasta
           (let [absent-id  Integer/MAX_VALUE
-                [envelope] (call! {:action "get_fields" :table_ids [t-id absent-id]})]
+                [envelope] (call! {:action "get_fields" :database_id Integer/MAX_VALUE :table_ids [t-id absent-id]})]
             (is (= [t-id] (map :id (:tables envelope)))
                 "the readable table still comes back whole")
             (is (= ["id"] (map :name (:fields (first (:tables envelope))))))
