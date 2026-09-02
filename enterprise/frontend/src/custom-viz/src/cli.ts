@@ -3,8 +3,9 @@
 /* eslint-disable no-console */
 
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { cp, mkdir, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
 
@@ -12,6 +13,7 @@ import { version } from "../package.json";
 
 import { packPlugin } from "./pack";
 import {
+  generateAgentsMd,
   generateGitignore,
   generateIconSvg,
   generateIndexTsx,
@@ -65,6 +67,12 @@ program
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
       writeFile(join(name, ".gitignore"), generateGitignore()),
       writeFile(join(name, "README.md"), generateReadme(name, displayName)),
+      writeFile(join(name, "AGENTS.md"), generateAgentsMd()),
+      cp(
+        join(dirname(fileURLToPath(import.meta.url)), "templates", ".claude"),
+        join(name, ".claude"),
+        { recursive: true },
+      ),
     ]);
 
     console.log("Created files:");
@@ -76,6 +84,8 @@ program
     console.log(`  ${name}/public/assets/icon.svg`);
     console.log(`  ${name}/.gitignore`);
     console.log(`  ${name}/README.md`);
+    console.log(`  ${name}/AGENTS.md`);
+    console.log(`  ${name}/.claude/ (skill + agents)`);
     console.log();
     console.log("Next steps:");
     console.log(`  cd ${name}`);
