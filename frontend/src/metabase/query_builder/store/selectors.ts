@@ -10,11 +10,11 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getMetadata } from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { parseTimestamp } from "metabase/utils/time-dayjs";

@@ -6,8 +6,8 @@ import {
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Card,
   CardId,

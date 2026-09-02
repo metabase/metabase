@@ -46,7 +46,9 @@
 
       (and
        (server.settings/redirect-all-requests-to-https)
-       (not (request/https? request)))
+       ;; only a request known to have arrived over HTTPS skips the redirect: this decides whether to *skip* a
+       ;; protection, so an `:unknown` transport must not be enough, or the client could opt out of the redirect
+       (not= :https (request/https-state request)))
       (respond (ssl-redirect-response request))
 
       :else (handler request respond raise))))

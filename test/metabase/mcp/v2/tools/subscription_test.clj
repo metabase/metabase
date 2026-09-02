@@ -371,6 +371,39 @@
 
 ;;; ------------------------------------------------- update -------------------------------------------------------
 
+(deftest email-channel-keeps-its-details-and-refuses-slack-channel-test
+  (testing "an email subscription's stored details (attach PDF, attachment-only) survive an edit that does
+            not mention them, and slack_channel is refused rather than silently ignored on an email target"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                   :model/Pulse {pulse-id :id} {:name "PDF weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
+                                                    :schedule_type :daily :schedule_hour 15
+                                                    :details {:include_pdf true}}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
+                                                   :user_id (mt/user->id :rasta)}]
+      (tool-result (call-tool! :crowberto nil
+                               (wire {:method   "update"
+                                      :id       pulse-id
+                                      :schedule {:schedule_type "daily" :schedule_hour 7}})))
+      (is (true? (:include_pdf (t2/select-one-fn :details :model/PulseChannel :id pc-id)))
+          "a schedule-only edit must not erase the channel's format details")
+      (testing "slack_channel on an email target is a teaching error, not a silent no-op"
+        (is (re-find #"slack_channel"
+                     (tool-error (call-tool! :crowberto nil
+                                             (wire {:method "update" :id pulse-id :slack_channel "data-team"})))))
+        (is (= :email (t2/select-one-fn :channel_type :model/PulseChannel :id pc-id))))
+      (testing "and on create, where the channel defaults to email"
+        (is (re-find #"slack_channel"
+                     (tool-error (call-tool! :crowberto nil
+                                             (wire {:method        "create"
+                                                    :dashboard_id  dash-id
+                                                    :schedule      {:schedule_type "daily" :schedule_hour 9}
+                                                    :slack_channel "data-team"})))))))))
+
 (deftest update-schedule-patches-the-existing-channel-test
   (testing "GHY-4156: changing the schedule edits the subscription's channel in place — a
             rebuilt channel would drop its recipients and re-register its send trigger"

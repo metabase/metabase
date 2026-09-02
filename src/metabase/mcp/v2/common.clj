@@ -54,6 +54,25 @@
    (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
+(def mcp-apps-meta-key
+  "The `_meta` key MCP Apps credentials ride on, private to the host and never shown to the model.
+
+  Named here rather than inline because two places must agree on it: the tool that puts a credential there, and
+  the redaction that strips it before the result reaches an eval trace."
+  :com.metabase/mcp-apps)
+
+(defn redact-mcp-apps-meta
+  "`result` with the private MCP Apps `_meta` block removed.
+
+  A credential in a tool result is a live authenticator for the /api/dataset surface. Recording one verbatim
+  parks it in trace files and the superuser-readable ai-tracing API, where it outlives its five-minute window
+  in backups and log shipping. v1 strips the same channel before tracing
+  (`metabase.mcp.resources/redact-ui-credential`); the transport's HTML scrub covers `resources/read` bodies
+  and does not reach tool results."
+  [result]
+  (cond-> result
+    (map? (:_meta result)) (update :_meta dissoc mcp-apps-meta-key)))
+
 (defn truncation-line
   "The steering sentence appended to a truncated list response: names the narrowing `param` when
    one narrows this list, and always the next offset. Returns nil when the page isn't truncated
@@ -129,6 +148,28 @@
    messages name the missing feature or clashing state — information the agent needs to recover."
   #{400 401 402 403 404 409})
 
+(defn- caller-facing-error-code
+  "The JSON-RPC error code for `e` when it is deliberately caller-facing (an explicit
+   `::error-code` other than internal, or a client 4xx `:status-code` in `ex-data`), else nil."
+  [e]
+  (let [{::keys [error-code] :keys [status-code]} (ex-data e)]
+    (or (when (and error-code (not= error-code error-code-internal)) error-code)
+        (when (contains? client-error-status-codes status-code)
+          (status-code->error-code status-code)))))
+
+(defn caller-safe-error-message
+  "The message of `e` when it is deliberately caller-facing, judged the same way as
+   [[->mcp-error-content]]; any other exception is logged server-side and reported to the client
+   as a generic \"Internal error\". This is the sanitizer for response paths that answer with a
+   JSON-RPC error rather than tool content — resource reads, list handlers, and the transport's
+   own catch-all."
+  [e]
+  (if (caller-facing-error-code e)
+    (or (ex-message e) "Internal error")
+    (do
+      (log/error e "Unhandled error dispatching MCP v2 request")
+      "Internal error")))
+
 (defn ->mcp-error-content
   "Convert a caught exception into MCP error content, and the single point where an exception
    message is judged safe to return. Only deliberately caller-facing errors surface their
@@ -138,15 +179,11 @@
    invariants, and non-`ex-info` failures like JDBC or NPE — becomes a generic internal error;
    the real exception is logged server-side for debugging but never returned to the client."
   [e]
-  (let [{::keys [error-code] :keys [status-code]} (ex-data e)
-        code (or (when (and error-code (not= error-code error-code-internal)) error-code)
-                 (when (contains? client-error-status-codes status-code)
-                   (status-code->error-code status-code)))]
-    (if code
-      (error-content (or (ex-message e) "Internal error") code)
-      (do
-        (log/error e "Unhandled error dispatching MCP v2 tool call")
-        (error-content "Internal error" error-code-internal)))))
+  (if-let [code (caller-facing-error-code e)]
+    (error-content (or (ex-message e) "Internal error") code)
+    (do
+      (log/error e "Unhandled error dispatching MCP v2 tool call")
+      (error-content "Internal error" error-code-internal))))
 
 ;;; ------------------------------------------------ Message helpers ----------------------------------------------
 

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
+import { getMetadata } from "metabase/metadata-store";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
@@ -10,7 +11,6 @@ import { fetchTableData } from "metabase/reference/fetch-data";
 import * as actions from "metabase/reference/reference";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import type { ClearStateProps } from "../reference";
 import {

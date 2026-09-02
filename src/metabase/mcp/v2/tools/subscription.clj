@@ -124,12 +124,19 @@
   (when (and (= "email" channel-type) (contains? args :recipients) (empty? recipients))
     (common/throw-teaching-error
      "An empty recipients list would deliver this subscription to nobody — pass at least one user id or email address, or omit recipients to leave the current recipients alone."))
+  (when (and (= "email" channel-type) slack_channel)
+    (common/throw-teaching-error
+     "`slack_channel` only applies to a Slack subscription — pass channel \"slack\" to post there, or drop slack_channel to keep delivering by email."))
   (merge {:channel_type channel-type
           :enabled      enabled?}
          (select-keys existing [:id])
          (effective-schedule existing schedule)
          (case channel-type
-           "email" {:recipients (if (contains? args :recipients)
+           ;; `:details` carries the channel's format choices (attach PDF, attachment-only) that the
+           ;; app sets; the pulse-channel update rewrites the column from what it is handed, so an edit
+           ;; that omits them would silently erase them.
+           "email" {:details    (or (:details existing) {})
+                    :recipients (if (contains? args :recipients)
                                   (recipient-maps recipients)
                                   (or (:recipients existing)
                                       [{:id api/*current-user-id*}]))}

@@ -53,7 +53,9 @@
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
    Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :uiCredential (JSON-encoded or nil),
-   :mcpSessionId (JSON-encoded or nil)."
+   :mcpSessionId (JSON-encoded or nil). The production template has had no credential or session-id
+   placeholder since #81041 — the iframe fetches its credential through the `refresh_ui_credential`
+   tool — so those two keys only render into the test fallback template."
   [vars]
   (cond
     (io/resource embed-mcp-template-path)
@@ -161,12 +163,16 @@
    `_meta.ui.resourceUri`, which is why each UI tool gets its own URI in the first place.)
 
    The returned fn takes the `resources/read` options map: `:ui-credential` (the scoped credential
-   the iframe authenticates with) and `:session-id` (the MCP session id it echoes back on
-   callbacks)."
+   the iframe authenticates with, as a delay — forcing it here is what mints one, so resources that
+   do not embed a credential never cause one to exist) and `:session-id` (the MCP session id it
+   echoes back on callbacks). Since #81041 the production template discards both — the iframe
+   fetches its credential through the `refresh_ui_credential` tool — so on a production shell read
+   the minted credential (HMAC-only, no DB row) is unused; the test fallback template still embeds
+   it, which is what the shell-credential tests exercise."
   [tag]
   (fn [opts]
     (let [site-url      (system/site-url)
-          ui-credential (:ui-credential opts)
+          ui-credential (force (:ui-credential opts))
           session-id    (:session-id opts)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
