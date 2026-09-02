@@ -22,6 +22,7 @@
    [metabase.mcp.v2.tools.parameters]
    [metabase.mcp.v2.tools.question]
    [metabase.mcp.v2.tools.search]
+   [metabase.mcp.v2.tools.ui-credential]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.scope :as metabot.scope]))
 
@@ -30,12 +31,18 @@
 ;;; ------------------------------------------------ Health check --------------------------------------------------
 
 ;; Lets a client or operator confirm the surface is reachable and its token is accepted without touching any content.
+;; Gated on one scope rather than the whole surface set because the registry validates `:scope` as a single non-blank
+;; string: a set — which [[metabase.mcp.scope/matches?]] would otherwise honor — throws in `register-tool!`, and
+;; `registered-scopes` would collect the set itself rather than its members. So the token-acceptance half of the check
+;; only covers `agent:content:read` tokens; the unscoped JSON-RPC `ping` method covers reachability for the rest.
 (registry/deftool ping-v2
-  "Health-check tool for the MCP surface. Returns a fixed acknowledgement."
+  "Health-check tool for the MCP surface. Returns a fixed acknowledgement. Requires the
+  `agent:content:read` scope: a token granted only other scopes of this surface neither sees nor can
+  call it, and should use the unscoped JSON-RPC `ping` method to confirm reachability instead."
   {:name        "ping_v2"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
-   :args        [:map
+   :args        [:map {:closed true}
                  [:message {:optional true} [:maybe :string]]]}
   [{:keys [message]} _context]
   (let [payload {:ok true :message (or message "pong")}]
@@ -70,10 +77,16 @@
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
-      ;; Reading the shell is what mints the scoped credential the iframe authenticates with — it
-      ;; is the only place the browser ever receives one.
+      ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
+      ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
+      ;; templates that embed it (the test fallback), and the production template discards it.
+      ;; Deliberately a delay: the URI has not been resolved yet, so minting eagerly would hand a live
+      ;; 5-minute authenticator to data resources that ignore it, and burn one on reads that turn out
+      ;; to be unknown or scope-denied. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it,
+      ;; and only after the scope gate has passed.
       (let [user-id       api/*current-user-id*
-            ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id token-scopes))
+            ui-credential (when user-id
+                            (delay (mcp.session/issue-ui-credential session-id user-id token-scopes)))
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)
@@ -117,7 +130,7 @@
        "visualization settings — read the matching skill unless it is already in context.\n"
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 
-(def default-ask-scopes
+(def ^:private default-ask-scopes
   "What an uninstructed client is asked to request for this surface: everything the surface accepts.
 
   A client asks once, at connect time, using this challenge — and `list-tools` filters by the scopes the resulting
@@ -127,13 +140,12 @@
 
   So the consent screen names the full surface and the user decides there, rather than the server deciding for them
   by omission. This is not a widening of what the surface accepts — that set is unchanged, and `mb:full` and the
-  rest of the agent-API scopes remain refused (GHY-4226)."
-  [metabot.scope/agent-content-read
-   metabot.scope/agent-content-write
-   metabot.scope/agent-query-run
-   metabot.scope/agent-sql-run
-   metabot.scope/agent-delivery-write
-   metabot.scope/agent-resource-read])
+  rest of the agent-API scopes remain refused (GHY-4226).
+
+  Read from [[metabase.mcp.paths/v2-surface-scopes]] rather than listed here, because the OAuth server has to
+  grant exactly this set: when the two drifted, a client that followed the challenge asked for scopes
+  `validate-scope` rejected and the connect failed with \"Invalid scope\"."
+  mcp.paths/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

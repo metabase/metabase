@@ -95,14 +95,11 @@
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
 
-(defn- handle-resources-read [id params session-id token-scopes]
+(defn- handle-resources-read [id params token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
-      (let [user-id     api/*current-user-id*
-            options     {:ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
-                         :session-id    session-id}
-            result      (mcp.resources/read-resource uri token-scopes options)]
+      (let [result (mcp.resources/read-resource uri token-scopes {})]
         (case (:status result)
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
           :ok                        (jsonrpc-response id {:contents (:contents result)}))))))
@@ -134,7 +131,7 @@
       "tools/list"                (handle-tools-list id params session-id token-scopes)
       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
       "resources/list"            (handle-resources-list id params token-scopes)
-      "resources/read"            (handle-resources-read id params session-id token-scopes)
+      "resources/read"            (handle-resources-read id params token-scopes)
       "ping"                      (handle-ping id params)
       (if id
         (jsonrpc-error id -32601 (str "Method not found: " method))
@@ -167,7 +164,11 @@
                                         :mcp/scopes     token-scopes}
                    (let [response (dispatch-method id method params session-id token-scopes request-context)]
                      ;; record the materialized JSON-RPC result/error (the request's output)
-                     (ait/record! {:mcp/response response})
+                     (when (ait/capture-active?)
+                       (ait/record! {:mcp/response
+                                     (cond-> response
+                                       (contains? response :result)
+                                       (update :result mcp.resources/redact-ui-credential))}))
                      response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
@@ -404,8 +405,11 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-;; Source of truth for the route aliases — keep in sync with the route-map in
-;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
+;; The v1 route aliases — NOT the canonical list, which is [[metabase.mcp.paths/endpoint-paths]] and
+;; additionally carries `/v2`. This set deliberately excludes `/v2`: it is what v1's 401 challenge matches a
+;; request URI against, and v1 does not serve that path. Keep in sync with the route-map in
+;; [[metabase.api-routes.routes]] and the resource-metadata endpoints in
+;; [[metabase.oauth-server.api.metadata]].
 (def ^:private endpoint-paths
   "URL paths that serve the MCP endpoint, relative to site-url.
    `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for

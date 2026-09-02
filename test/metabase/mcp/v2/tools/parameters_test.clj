@@ -236,7 +236,14 @@
                                         :parameter_id "_CATEGORY_NAME_" :query "Steak"}))))
         (is (= [["Steakhouse"]]
                (:values (params-result {:target "question" :id (:id native-card)
-                                        :parameter_id "_CARD_NAME_" :query "Steak"}))))))))
+                                        :parameter_id "_CARD_NAME_" :query "Steak"}))))
+        (testing "a search that returned everything it found does not claim more exist — the strict
+                  question path counts its own rows, so reporting a floor of `true` for every query
+                  would tell the agent to keep narrowing a list it already has in full"
+          (let [args {:target "question" :id (:id native-card)
+                      :parameter_id "_CARD_NAME_" :query "Steak"}]
+            (is (false? (:has_more_values (params-result args))))
+            (is (nil? (steering-line args)))))))))
 
 (deftest blank-query-test
   (testing "GHY-4141: a whitespace-only query is a teaching error on both targets — the backends

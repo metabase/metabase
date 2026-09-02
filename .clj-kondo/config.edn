@@ -186,6 +186,7 @@
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      ;; MCP v2 tool tests: call-tool! dispatches a tool with no shared mutable state across tests
      metabase.mcp.v2.tools.metric-test/call-tool!
+     metabase.mcp.v2.tools.question/check-semantic-type!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!
@@ -455,9 +456,7 @@
     toucan2.core                              t2}}}
 
  :lint-as
- {
-  cljs.cache/defcache                                                                   clojure.core/deftype
-  metabase.mcp.v2.registry/deftool                                                     clojure.core/defn
+ {cljs.cache/defcache                                                                   clojure.core/deftype
   clojure.core.cache/defcache                                                           clojure.core/deftype
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
@@ -497,11 +496,13 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.oauth-server.test-util/with-oauth-client                                     clojure.core/fn
   metabase.osi.ai-context.api-test/with-test-entry                                      clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all

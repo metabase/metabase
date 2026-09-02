@@ -1377,7 +1377,8 @@
                     :model/Dashboard
                     :model/Document
                     :model/Field
-                    :model/NativeQuerySnippet}}
+                    :model/NativeQuerySnippet
+                    :model/User}}
 
   measures
   {:team "Graphy"
@@ -1639,6 +1640,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request

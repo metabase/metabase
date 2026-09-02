@@ -16,6 +16,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.mcp.v2.common :as v2.common]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
@@ -50,7 +51,7 @@
   [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
 
-(defn handle-initialize
+(defn- handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
 
   - `capabilities` is per-surface — a surface must only advertise the methods it dispatches.
@@ -88,6 +89,28 @@
   (when-let [id (get-in request [:headers "x-eval-session-id"])]
     (try (ait/checked-session-id id) (catch Exception _ nil))))
 
+(defn- redact-ui-credentials
+  "Strip minted MCP Apps UI credentials from a JSON-RPC response before it is recorded into an eval
+  trace. A `resources/read` of a UI shell embeds the freshly minted credential in the rendered HTML
+  (`uiCredential: \"…\"` via [[metabase.mcp.ui-resource/embed-render-fn]]); recording it verbatim
+  parks a live bearer authenticator in the trace file (and the superuser-readable ai-tracing API),
+  where it outlives its 5-minute window in backups and log shipping. v1 stripped its credential
+  channel before tracing the same way (`mcp.resources/redact-ui-credential`).
+
+  A `tools/call` result carries the credential in its private MCP Apps `_meta` block instead
+  (`refresh_ui_credential`); the registry strips that block from its own tool-output trace, and this
+  response-level trace must strip it too or the credential lands in the trace one frame up."
+  [response]
+  (letfn [(redact-text [s]
+            (cond-> s
+              (string? s) (str/replace #"uiCredential: \"[^\"]*\"" "uiCredential: \"[redacted]\"")))]
+    (cond-> response
+      (sequential? (get-in response [:result :contents]))
+      (update-in [:result :contents] (partial mapv #(update % :text redact-text)))
+
+      (map? (:result response))
+      (update :result v2.common/redact-mcp-apps-meta))))
+
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request through the surface's `dispatch-method-fn`.
   Returns a response map or nil for notifications."
@@ -114,10 +137,14 @@
                    (let [response (try
                                     (dispatch-method-fn id method params session-id token-scopes request-context)
                                     (catch Throwable e
-                                      (log/error "Error dispatching JSON-RPC method" method (ex-message e))
-                                      (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))]
+                                      ;; Logged inside `caller-safe-error-message` (once). The sanitizer, not the raw message: handlers that answer with a
+                                      ;; JSON-RPC error (resources/read render-fns, tools/list) don't pass
+                                      ;; through `->mcp-error-content`, and a thrown Error (not Exception)
+                                      ;; skips even the tool-call sanitizer — either way an unvetted message
+                                      ;; may embed SQL, schema, or connection detail.
+                                      (jsonrpc-error id -32603 (v2.common/caller-safe-error-message e))))]
                      ;; record the materialized JSON-RPC result/error (the request's output)
-                     (ait/record! {:mcp/response response})
+                     (ait/record! {:mcp/response (redact-ui-credentials response)})
                      response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
@@ -136,7 +163,7 @@
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
-(defn json-response
+(defn- json-response
   "Build a Ring response with a JSON-encoded `body`."
   ([status body]
    (json-response status body nil))
@@ -158,17 +185,44 @@
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
-(defn- normalize-domain
-  "Extract and lowercase the domain from a URL or Host-style header value.
-  Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+(defn- normalize-authority
+  "Extract `[domain port]` from a URL or Host-style header value, lowercasing the domain and leaving `port` as the
+  string the header carried (nil when it carried none). Bracketed IPv6 forms (`[::1]:3000`) are handled correctly.
+  Returns nil for unparsable input.
   Uses [[mw.security/try-parse-url]] (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
   are expected and shouldn't spam the error logs."
   [url]
-  (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
+  (when-let [{:keys [domain port]} (some-> url str mw.security/try-parse-url)]
+    [(u/lower-case-en domain) port]))
 
-(defn- same-origin-host? [origin host]
-  (let [origin-domain (normalize-domain origin)]
-    (and (some? origin-domain) (= origin-domain (normalize-domain host)))))
+(defn- same-origin-host?
+  "Is `origin` the same origin as the host the request was addressed to?
+
+  Compares domain AND port: an origin is a (scheme, domain, port) triple, so matching on the domain alone treats
+  every other app on the same hostname as same-origin. On a developer machine that is the whole threat model —
+  `localhost:9999` and `localhost:3000` are different origins, and a page on the former must not drive this server
+  with the user's cookies.
+
+  Two deliberate loosenesses:
+
+  - The ports are compared only when BOTH headers carry one. A reverse proxy can rewrite `Host` to add or drop a
+    port the browser's `Origin` does not carry, and a 403 on a legitimate deployment is worse than the residual
+    here: exploiting it requires occupying the scheme's DEFAULT port locally, which the dev servers this guard
+    is aimed at do not use.
+  - Scheme is not compared at all, because `Host` does not carry one. The request's own `:scheme` is not a
+    substitute — behind a TLS-terminating proxy it reads `:http` while the browser's `Origin` says `https` (cf.
+    #75110).
+
+  This is the FALLBACK comparison, used only when `site-url` gives us no instance origin to check against.
+  See [[validate-origin]]: two client-supplied headers cannot establish who the request was really for."
+  [origin host]
+  (let [[origin-domain origin-port] (normalize-authority origin)
+        [host-domain host-port]     (normalize-authority host)]
+    (and (some? origin-domain)
+         (= origin-domain host-domain)
+         (or (nil? origin-port)
+             (nil? host-port)
+             (= origin-port host-port)))))
 
 (defn- approved-mcp-origin? [origin]
   ;; Pre-lowercase both inputs so DNS hostname matching is case-insensitive (per RFC) and so mixed-case
@@ -183,16 +237,45 @@
                         (mw.security/approved-port? (:port origin-url) (:port approved-origin))))
                  (mw.security/parse-approved-origins (u/lower-case-en approved-origins))))))))
 
+(def ^:private default-ports
+  "Default port per scheme, so `https://h` and `https://h:443` are one origin, as the browser treats them."
+  {"http" "80" "https" "443"})
+
+(defn- canonical-origin
+  "`[protocol domain port]` for `origin-map` (the [[mw.security/try-parse-url]] shape), lowercased, with an
+  absent port replaced by its scheme's default. nil without a scheme: an `Origin` always carries one, and
+  comparing without it would let `http://` satisfy an `https://` instance."
+  [{:keys [protocol domain port]}]
+  (when (and protocol domain)
+    (let [protocol (u/lower-case-en protocol)]
+      [protocol (u/lower-case-en domain) (or port (get default-ports protocol))])))
+
+(defn- same-origin-as-instance?
+  "Is `origin` this instance's own origin, as `site-url` declares it?"
+  [origin instance-origin]
+  (= (canonical-origin (mw.security/try-parse-url (u/lower-case-en (str origin))))
+     (canonical-origin instance-origin)))
+
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
-   Returns a 403 response if Origin is present and is neither same-host nor an explicitly configured
-   MCP app origin. Non-browser clients that omit the Origin header are allowed through."
+   Returns a 403 response if Origin is present and is neither this instance's own origin nor an explicitly
+   configured MCP app origin. Non-browser clients that omit the Origin header are allowed through.
+
+   The instance's origin comes from `site-url`, NOT from the request. Comparing `Origin` against `Host` — which
+   is what this did, and what v1 still does — cannot detect the attack it names: under DNS rebinding both
+   headers carry the attacker's own name (`evil.example`), so they match each other and the request is admitted.
+   `site-url` is the one origin on a request the client cannot influence.
+
+   When `site-url` is unset or unparsable there is no instance origin to check against, and the guard falls back
+   to the `Origin`/`Host` comparison. That is weaker, but a misconfigured instance degrading to the previous
+   behaviour beats 403ing its own browser clients."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
-    (let [host (get-in request [:headers "host"])]
-      (when-not (or (same-origin-host? origin host)
-                    (approved-mcp-origin? origin))
-        (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
+    (when-not (or (approved-mcp-origin? origin)
+                  (if-let [instance-origin (mw.security/site-origin)]
+                    (same-origin-as-instance? origin instance-origin)
+                    (same-origin-host? origin (get-in request [:headers "host"]))))
+      (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed")))))
 
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
@@ -272,7 +355,9 @@
                 ;; nil, which `keep` silently drops (a malformed message vanishing rather than being answered), and
                 ;; an object missing `method` reaches dispatch as method-not-found. The `-32600` carries a null id:
                 ;; §5 requires it when the request can't be parsed, even if a malformed object happens to carry one.
-                ;; A well-formed notification still dispatches to nil and so stays out of the response array.
+                ;; A `notifications/initialized` notification and an unknown method with no id dispatch to nil and
+                ;; stay out of the response array; a known method with no id still executes and — contra JSON-RPC
+                ;; §4.1, which says a notification gets no reply — answers with `"id": null`.
                 handle-msg      (fn [msg]
                                   (if (and (map? msg) (string? (:method msg)))
                                     (dispatch-request dispatch-method-fn msg session-id (:token-scopes request)
@@ -325,6 +410,89 @@
             (.flush writer))
           (recur current-hash))))))
 
+(def ^:private max-concurrent-keepalive-streams
+  "How many GET keepalive streams one user may hold open at once.
+
+  Running the loop on virtual threads (see [[keepalive-executor]]) removed the only ceiling these streams had:
+  the fixed streaming pool refused work past its size, whereas a virtual thread costs nothing to park. A stream
+  is held for as long as the client keeps it and costs a single throttle attempt to open, so nothing else bounds
+  how many one credential can accumulate — and every one of them holds a connection.
+
+  The cap is per-user rather than global so a single caller cannot crowd everyone else off the surface. It is set
+  well above real use: a client opens one stream per MCP session, and the throttle's own sizing assumes a handful
+  of concurrent agents."
+  25)
+
+(defonce ^:private keepalive-stream-counts
+  (atom {}))
+
+(def ^:private keepalive-cap-error
+  "The JSON-RPC error every keepalive refusal carries, whether it goes out as a 429 body or as an SSE frame on a
+  stream whose headers are already sent."
+  (jsonrpc-error nil -32000
+                 (str "Too many concurrent MCP event streams open for this user "
+                      "(limit " max-concurrent-keepalive-streams
+                      "). Close an existing stream before opening another.")))
+
+(defn- at-keepalive-cap?
+  "Is `user-id` already holding [[max-concurrent-keepalive-streams]] running streams?
+
+  Read-only on purpose: `handle-get` decides whether to serve from this, but takes nothing. Only a stream that
+  is actually running holds a slot ([[acquire-keepalive-slot!]] is called from the body), so a connection that
+  dies during setup has nothing to leak. The cost is that two simultaneous connects can both read under the cap
+  and both proceed — over-admitting by a few is the right trade for a resource cap that must never wedge shut. A
+  connection that loses that race is refused by [[keepalive-stream-body!]] instead, on the stream itself."
+  [user-id]
+  (>= (get @keepalive-stream-counts user-id 0) max-concurrent-keepalive-streams))
+
+(defn- acquire-keepalive-slot!
+  "Take a keepalive slot for `user-id`, returning true when taken and false when they are already at
+  [[max-concurrent-keepalive-streams]]. Called from the stream body, not from the handler — see
+  [[at-keepalive-cap?]]."
+  [user-id]
+  (let [[old new] (swap-vals! keepalive-stream-counts
+                              (fn [counts]
+                                (cond-> counts
+                                  (< (get counts user-id 0) max-concurrent-keepalive-streams)
+                                  (update user-id (fnil inc 0)))))]
+    (not= (get old user-id 0) (get new user-id 0))))
+
+(defn- release-keepalive-slot!
+  "Return one of `user-id`'s keepalive slots. A user back at zero is dropped from the map rather than left as an
+  entry, so the map tracks live streams and not every user the process has ever served. Releasing more than was
+  acquired cannot drive the count negative — that would hand the user free slots on top of the cap."
+  [user-id]
+  (swap! keepalive-stream-counts
+         (fn [counts]
+           (let [remaining (dec (get counts user-id 0))]
+             (if (pos? remaining)
+               (assoc counts user-id remaining)
+               (dissoc counts user-id)))))
+  nil)
+
+(defn- keepalive-stream-body!
+  "Take `user-id`'s keepalive slot, run [[keepalive-loop!]], and return the slot however the loop ends —
+  normally, on client disconnect, or by throwing.
+
+  The slot is taken HERE rather than in the handler so that it exists only for a stream that is actually
+  running: streaming-response reports a setup failure by neither throwing out of `send*` nor calling `raise`
+  (its `Sendable` impl ignores `raise` entirely, and its own catch sends a 500 and closes its channels), so a
+  handler that took the slot up front could never learn to give it back, and the cap would wedge shut a
+  connection at a time.
+
+  A slot can be missing here even though `handle-get` read the user as under the cap: that read is advisory, so
+  racing connects can both pass it and one of them loses the slot. Refuse in band rather than by returning, since
+  status 200 and the SSE headers are already on the wire by the time the body runs."
+  [user-id ^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  (if (acquire-keepalive-slot! user-id)
+    (try
+      (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
+      (finally
+        (release-keepalive-slot! user-id)))
+    (do
+      (.write writer ^String (sse-body [keepalive-cap-error]))
+      (.flush writer))))
+
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
    Polls the tool manifest hash on each keepalive tick — if the visible tool set has
@@ -339,15 +507,21 @@
       (some? error)
       (respond error)
 
+      (at-keepalive-cap? user-id)
+      (respond (json-response 429 keepalive-cap-error))
+
       :else
+      ;; No slot is taken here — `keepalive-stream-body!` takes and returns it, so a connection that dies
+      ;; during streaming-response setup leaves nothing behind.
       (let [resp (streaming-response/streaming-response
                   {:content-type "text/event-stream"
                    :headers      {"Cache-Control" "no-cache"}
                    :status       200
                    :executor     keepalive-executor}
                   [os canceled-chan]
-                   (keepalive-loop! (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-                                    tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
+                   (keepalive-stream-body! user-id
+                                           (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+                                           tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
@@ -368,7 +542,9 @@
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check records every
 ;; attempt (not just failures) which is correct here — we want to cap total throughput
 ;; regardless of success to prevent resource exhaustion from a compromised token.
-;; One throttler covers every MCP surface, so the cap bounds a user's total MCP throughput.
+;; One throttler covers every surface built on THIS transport. During the v1 migration that is v2 only —
+;; v1 carries its own copy of this namespace and its own throttler, so a user's total MCP throughput is
+;; currently two caps, not one. That collapses to a single cap when v1's transport is deleted.
 ;; The cap counts JSON-RPC *messages*, not HTTP requests: a POST can carry a batch, so charging
 ;; one attempt per request would let a 1000-message batch cost a single attempt and defeat the cap
 ;; (see [[check-throttle]]/[[jsonrpc-message-count]]).
@@ -389,8 +565,9 @@
 
 (defn- check-throttle
   "Charge `n` throttle attempts for `user-id` (one per JSON-RPC message in the request). Returns a 429 JSON-RPC
-  response if the cap is hit partway through, nil otherwise. Charging N up front means a batch is refused before any
-  of its messages run, and the whole batch counts against the cap even when the throttle trips on its first element."
+  response if the cap is hit partway through, nil otherwise. Checking N up front means a batch is refused before any
+  of its messages run; `throttle/check` throws before recording the attempt, so a batch that trips on element k has
+  charged only the k-1 attempts before it."
   [user-id n]
   (try
     (dotimes [_ n]
@@ -440,7 +617,9 @@
      field, surfaced to the model by clients that support it.
    - `:tools-hash-fn` — `(fn [token-scopes])` returning a stable hash of the visible tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
-   - `:endpoint-paths` — the URL paths (relative to site-url) this surface is served at.
+   - `:endpoint-paths` — the URL paths (relative to site-url) the 401 `WWW-Authenticate`
+     challenge matches the request URI against. NOT necessarily all served by this surface:
+     during the migration the set includes v1's paths — see [[metabase.mcp.paths/endpoint-paths]].
    - `:default-path` — the canonical path advertised when the request URI matches no entry in
      `:endpoint-paths`.
    - `:default-ask-scopes` — optional scopes emitted as the `scope` parameter of the 401
@@ -495,8 +674,12 @@
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
+           ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
+           ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
            (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
-                                   {"WWW-Authenticate" "Bearer error=\"invalid_token\""}))
+                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
+                                                                                        default-ask-scopes request)
+                                                            ", error=\"invalid_token\"")}))
 
            ;; No auth at all — return 401 with discovery
            :else
