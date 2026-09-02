@@ -405,8 +405,11 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-;; Source of truth for the route aliases — keep in sync with the route-map in
-;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
+;; The v1 route aliases — NOT the canonical list, which is [[metabase.mcp.paths/endpoint-paths]] and
+;; additionally carries `/v2`. This set deliberately excludes `/v2`: it is what v1's 401 challenge matches a
+;; request URI against, and v1 does not serve that path. Keep in sync with the route-map in
+;; [[metabase.api-routes.routes]] and the resource-metadata endpoints in
+;; [[metabase.oauth-server.api.metadata]].
 (def ^:private endpoint-paths
   "URL paths that serve the MCP endpoint, relative to site-url.
    `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for
