@@ -1,7 +1,15 @@
 name: Get Docker Info
-description: Determines Docker repository and tag based on branch and edition
+description: Determines the registry, repository, and tag a container image is pushed to.
 
 inputs:
+  repo:
+    description: Registry and repo, e.g. "metabase/metabase". Overrides branch derived repo.
+    required: false
+    default: ''
+  tag:
+    description: Docker tag, e.g. v1.87.2. Overrides a branch derived tag.
+    required: false
+    default: ''
   branch:
     description: Branch name (defaults to current branch)
     required: false
@@ -33,35 +41,27 @@ runs:
       id: docker-info
       uses: actions/github-script@v9
       with:
-        script: | # js
+        script: | # js      
           const branch = '${{ inputs.branch }}';
           const edition = '${{ inputs.edition }}';
           const owner = '${{ inputs.owner }}';
 
-          console.log(`Determining Docker info for branch: ${branch}, edition: ${edition}`);
-
-          let repo, tag;
-
-          if (branch === 'master') {
-            // Master builds both editions with specific repos
-            tag = 'latest';
-
-            if (edition === 'ee') {
-              repo = `${owner}/metabase-enterprise-head`;
-            } else {
-              repo = `${owner}/metabase-head`;
-            }
-          } else {
-            // Development branches push to the same repo with different tags
-            tag = `${branch.replaceAll('/', '-')}-${edition}`; // slashes make docker sad
-            repo = `${owner}/metabase-dev`;
+          let tag = '${{ inputs.tag}}';
+          if (!tag) {
+            tag = branch === 'master' ? 'latest' : `${branch.replaceAll('/', '-')}-${edition}`;
           }
 
-          const fullImage = `${repo}:${tag}`;
+          let repo = '${{ inputs.repo }}';
+          if (!repo) {
+            if (branch === 'master') {
+              repo = edition === 'ee' ? `${owner}/metabase-enterprise-head` : `${owner}/metabase-head`; 
+            } else {
+              repo = `${owner}/metabase-dev`; 
+            }
+          }
 
-          // Set outputs
           core.setOutput('repo', repo);
           core.setOutput('tag', tag);
-          core.setOutput('full_image', fullImage);
+          core.setOutput('full_image', `${repo}:${tag}`);
 
-          console.log(`Docker image: ${fullImage}`);
+          console.log(`Resolved: repo = ${repo}, tag = ${tag}`);
