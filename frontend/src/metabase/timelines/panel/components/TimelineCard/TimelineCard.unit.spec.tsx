@@ -95,7 +95,7 @@ describe("TimelineCard", () => {
     render(<TimelineCard {...props} />);
     await userEvent.click(screen.getByRole("checkbox"));
 
-    expect(props.onShowTimelineEvents).toHaveBeenCalled();
+    expect(props.onShowTimeline).toHaveBeenCalledWith(props.timeline);
   });
 });
 
@@ -106,5 +106,7 @@ const getProps = (opts?: Partial<TimelineCardProps>): TimelineCardProps => ({
   onArchiveEvent: jest.fn(),
   onShowTimelineEvents: jest.fn(),
   onHideTimelineEvents: jest.fn(),
+  onShowTimeline: jest.fn(),
+  onHideTimeline: jest.fn(),
   ...opts,
 });

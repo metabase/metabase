@@ -16,7 +16,7 @@ Events and timelines are a way to capture that chronological knowledge and make 
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
 
-Metabase will only display events on time series charts when viewing an individual question. Metabase won't display events on charts in dashboard cards.
+Metabase displays events on time series charts when viewing an individual question, and on dashboards for questions that were saved with events turned on. Events aren't shown on public links, static embeds, or in dashboard subscriptions.
 
 ## Timelines
 
@@ -57,11 +57,26 @@ If your question is a time series, you can click on the **Calendar** in the bott
 - Add a new event (even if you haven't saved the question yet).
 - Edit, move, or archive an event.
 
+When you save the question, Metabase records which timelines and events are turned on, and shows those same events wherever the question appears, including on dashboards. Toggling events on a saved question counts as a change, so save the question to keep your selection.
+
+## Events on dashboards
+
+A time series chart on a dashboard shows the events its question was saved with. Questions saved with events turned off (or saved before Metabase started recording events) don't show any events on dashboards. Very small cards don't have room for events, so they won't show them even when a timeline is on.
+
+To change which events a chart shows while viewing a dashboard, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing the timelines of the dashboard's collection and the events that fall in the range of that chart. You can:
+
+- Toggle a timeline or an event on or off for that card (including timelines from other collections).
+- Add a new event, or edit, move, and archive events (if you have curate access to the collection).
+
+To toggle events for every time series chart on the dashboard at once, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**. If some cards show an event and others don't, its checkbox shows a dash. Clicking it applies your choice to every card.
+
+These selections only last for your session; if you reload the dashboard, each chart goes back to the events its question was saved with. To change what everyone sees, open the question, toggle its events, and save it.
+
 ## Viewing events and timelines on a chart from a different collection
 
 If you're viewing a question with a time series chart from a _different_ collection, you can temporarily apply a timeline to the chart by clicking on the **calendar** icon in the bottom right of the question and selecting the timeline and events you want to display.
 
-These selections are temporary; if you reload the question, Metabase will drop the events from the chart.
+If you save the question, Metabase keeps the timelines and events you turned on and shows them wherever the question appears.
 
 ### To hide the timeline and its events on a chart
 

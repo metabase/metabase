@@ -4,7 +4,6 @@ import { merge } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
-import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getMetadata } from "metabase/metadata-store";
@@ -13,13 +12,15 @@ import {
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { getSetting } from "metabase/settings";
-import {
-  filterTimelinesByXAxis,
-  filterVisibleTimelineEvents,
-  transformTimelines,
-} from "metabase/timelines/panel/utils";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { filterTimelinesByXAxis } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import {
+  getCollectionTimelinesVisibility,
+  getRecordedTimelineEventsVisibility,
+  resolveVisibleTimelineEvents,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import {
   createRawSeries,
   extractRemappings,
@@ -46,7 +47,6 @@ import type {
   DatasetQuery,
   Field,
   Series,
-  Timeline,
 } from "metabase-types/api";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
@@ -126,8 +126,6 @@ export const getLastRunCard = (state: QueryBuilderStoreState) =>
 export const getMetadataDiff = (state: QueryBuilderStoreState) =>
   state.qb.metadataDiff;
 
-export const getVisibleTimelineEventIds = (state: QueryBuilderStoreState) =>
-  state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: QueryBuilderStoreState) =>
   state.qb.selectedTimelineEventIds;
 
@@ -818,28 +816,32 @@ export const getTimeseriesXDomain = createSelector(
   (xAxis) => xAxis?.domain ?? null,
 );
 
-const selectListTimelines = timelineApi.endpoints.listTimelines.select({
-  include: "events",
-});
-
-export const getFetchedTimelines = createSelector(
-  [selectListTimelines],
-  (result): Timeline[] => result.data ?? [],
-);
-
-export const getTransformedTimelines = createSelector(
-  [getFetchedTimelines],
-  transformTimelines,
-);
-
 export const getFilteredTimelines = createSelector(
   [getTransformedTimelines, getTimeseriesXAxisInfo],
   filterTimelinesByXAxis,
 );
 
+export const getTimelineEventsVisibility = createSelector(
+  [
+    (state: QueryBuilderStoreState) =>
+      getRecordedTimelineEventsVisibility(getQuestion(state)?.settings()),
+    (state: QueryBuilderStoreState) => getQuestion(state)?.collectionId(),
+    getTransformedTimelines,
+  ],
+  (savedVisibility, collectionId, timelines) =>
+    savedVisibility ??
+    getCollectionTimelinesVisibility(timelines, collectionId),
+);
+
 export const getVisibleTimelineEvents = createSelector(
-  [getFilteredTimelines, getVisibleTimelineEventIds],
-  filterVisibleTimelineEvents,
+  [getFilteredTimelines, getTimelineEventsVisibility],
+  (timelines, visibility) =>
+    resolveVisibleTimelineEvents({ timelines, visibility }),
+);
+
+export const getVisibleTimelineEventIds = createSelector(
+  [getVisibleTimelineEvents],
+  (events) => events.map((event) => event.id),
 );
 
 export function getOffsetForQueryAndPosition(

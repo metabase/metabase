@@ -6,11 +6,11 @@ import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { type Dayjs, dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
-import type {
-  CartesianChartDateTimeAbsoluteUnit,
-  DateRange,
-  TimeSeriesInterval,
-  TimeseriesXAxis,
+import {
+  type CartesianChartDateTimeAbsoluteUnit,
+  type DateRange,
+  type TimeseriesXAxis,
+  isTimelineEventInRange,
 } from "metabase/viz-core";
 import type {
   DateTimeAbsoluteUnit,
@@ -43,43 +43,20 @@ const filterTimelineEvents = (
     }))
     .filter((timeline) => timeline.events.length > 0);
 
-const extendDomainToLastInterval = (
-  [start, end]: DateRange,
-  interval: TimeSeriesInterval | null,
-): DateRange => {
-  if (!isAbsoluteDateTimeUnit(interval?.unit)) {
-    return [start, end];
-  }
-  const extendedEnd = end.clone().add(interval.count, interval.unit);
-  const isSubDayUnit = interval.unit === "hour" || interval.unit === "minute";
-  return [start, isSubDayUnit ? extendedEnd : extendedEnd.subtract(1, "day")];
-};
+export const getNonEmptyTimelines = (timelines: Timeline[]): Timeline[] =>
+  timelines.filter((timeline) => (timeline.events ?? []).length > 0);
 
 export const filterTimelinesByXAxis = (
   timelines: Timeline[],
   xAxis: TimeseriesXAxis | null,
 ): Timeline[] => {
-  const domain = xAxis?.domain
-    ? extendDomainToLastInterval(xAxis.domain, xAxis.interval)
-    : null;
-  return filterTimelineEvents(
-    timelines,
-    (event) =>
-      !domain ||
-      dayjs(event.timestamp).isBetween(domain[0], domain[1], undefined, "[]"),
-  );
-};
-
-export const filterVisibleTimelineEvents = (
-  timelines: Timeline[],
-  visibleEventIds: TimelineEventId[],
-): TimelineEvent[] => {
-  const visibleIds = new Set(visibleEventIds);
-  return _.sortBy(
-    timelines
-      .flatMap((timeline) => timeline.events ?? [])
-      .filter((event) => visibleIds.has(event.id)),
-    (event) => event.timestamp,
+  const domain = xAxis?.domain;
+  if (!domain) {
+    return getNonEmptyTimelines(timelines);
+  }
+  const interval = xAxis?.interval ?? null;
+  return filterTimelineEvents(timelines, (event) =>
+    isTimelineEventInRange(event, domain, interval),
   );
 };
 
@@ -109,6 +86,19 @@ export const getEventsXDomain = (
   const max = timestamps.reduce((a, b) => (b.isAfter(a) ? b : a));
   return [min, max];
 };
+
+export const getTimelineSidebarTitle = ({
+  focusedTimelines,
+  isFocused,
+  xAxis,
+}: {
+  focusedTimelines: Timeline[];
+  isFocused: boolean;
+  xAxis: TimeseriesXAxis | null | undefined;
+}) =>
+  isFocused
+    ? formatTitle(getEventsXDomain(focusedTimelines), xAxis?.interval?.unit)
+    : formatTitle(xAxis?.domain ?? undefined);
 
 const isPeriodUnit = (unit: DateTimeAbsoluteUnit) =>
   unit === "week" || unit === "month" || unit === "quarter" || unit === "year";

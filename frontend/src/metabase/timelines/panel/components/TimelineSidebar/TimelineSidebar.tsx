@@ -1,26 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
 
-import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import EditEventModal from "metabase/timelines/panel/containers/EditEventModal";
-import MoveEventModal from "metabase/timelines/panel/containers/MoveEventModal";
-import NewEventModal from "metabase/timelines/panel/containers/NewEventModal";
-import TimelinePanel from "metabase/timelines/panel/containers/TimelinePanel";
-import { Box, Button, Icon, Modal } from "metabase/ui";
 import type { DateRange, TimeSeriesInterval } from "metabase/viz-core";
 import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
+import { getFocusedTimelines, getTimelineSidebarTitle } from "../../utils";
 import {
-  formatTitle,
-  getEventsXDomain,
-  getFocusedTimelines,
-} from "../../utils";
-
-type InternalModal =
-  | { type: "new-event" }
-  | { type: "edit-event"; eventId: number }
-  | { type: "move-event"; eventId: number };
+  type TimelineEventModalState,
+  TimelineEventModals,
+} from "../TimelineEventModals";
+import { TimelineSidebarContent } from "../TimelineSidebarContent";
 
 export interface TimelineSidebarProps {
   collectionId: CollectionId | null | undefined;
@@ -34,6 +23,8 @@ export interface TimelineSidebarProps {
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onShowTimeline?: (timeline: Timeline) => void;
+  onHideTimeline?: (timeline: Timeline) => void;
   onShowAllEvents?: () => void;
   onOpenModal?: (modal: QueryModalType, modalContext?: unknown) => void;
   onClose?: () => void;
@@ -52,38 +43,31 @@ export const TimelineSidebar = ({
   onHideTimelineEvents,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onShowTimeline,
+  onHideTimeline,
   onShowAllEvents,
   onClose,
 }: TimelineSidebarProps) => {
-  const [internalModal, setInternalModal] = useState<InternalModal | null>(
-    null,
-  );
+  // Callers that own a modal stack pass `onOpenModal`; the rest let the sidebar
+  // render the event modals itself.
+  const [modal, setModal] = useState<TimelineEventModalState | null>(null);
   const manageModalsInternally = onOpenModal == null;
+  const isFocused = focusedTimelineEventIds != null;
 
   const displayedTimelines = useMemo(
     () => getFocusedTimelines(timelines, focusedTimelineEventIds),
     [timelines, focusedTimelineEventIds],
   );
 
-  const focusedXDomain = useMemo(
-    () =>
-      focusedTimelineEventIds != null
-        ? getEventsXDomain(displayedTimelines)
-        : undefined,
-    [focusedTimelineEventIds, displayedTimelines],
-  );
-
-  const title = focusedXDomain
-    ? formatTitle(focusedXDomain, dataInterval?.unit)
-    : formatTitle(xDomain);
-
-  const handleShowAllEvents = useCallback(() => {
-    onShowAllEvents?.();
-  }, [onShowAllEvents]);
+  const title = getTimelineSidebarTitle({
+    focusedTimelines: displayedTimelines,
+    isFocused,
+    xAxis: { domain: xDomain ?? null, interval: dataInterval ?? null },
+  });
 
   const handleNewEvent = useCallback(() => {
     if (manageModalsInternally) {
-      setInternalModal({ type: "new-event" });
+      setModal({ type: "new" });
     } else {
       onOpenModal?.(MODAL_TYPES.NEW_EVENT);
     }
@@ -92,7 +76,7 @@ export const TimelineSidebar = ({
   const handleEditEvent = useCallback(
     (event: TimelineEvent) => {
       if (manageModalsInternally) {
-        setInternalModal({ type: "edit-event", eventId: event.id });
+        setModal({ type: "edit", eventId: event.id });
       } else {
         onOpenModal?.(MODAL_TYPES.EDIT_EVENT, event.id);
       }
@@ -103,7 +87,7 @@ export const TimelineSidebar = ({
   const handleMoveEvent = useCallback(
     (event: TimelineEvent) => {
       if (manageModalsInternally) {
-        setInternalModal({ type: "move-event", eventId: event.id });
+        setModal({ type: "move", eventId: event.id });
       } else {
         onOpenModal?.(MODAL_TYPES.MOVE_EVENT, event.id);
       }
@@ -111,37 +95,32 @@ export const TimelineSidebar = ({
     [manageModalsInternally, onOpenModal],
   );
 
-  const handleCloseInternalModal = useCallback(() => {
-    setInternalModal(null);
+  const handleCloseModal = useCallback(() => {
+    setModal(null);
   }, []);
 
-  const handleToggleEventSelected = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      if (isSelected) {
-        onSelectTimelineEvents?.([event]);
-      } else {
-        onDeselectTimelineEvents?.();
-      }
-    },
-    [onSelectTimelineEvents, onDeselectTimelineEvents],
+  const handleShowTimeline = useCallback(
+    (timeline: Timeline) =>
+      onShowTimeline
+        ? onShowTimeline(timeline)
+        : onShowTimelineEvents(timeline.events ?? []),
+    [onShowTimeline, onShowTimelineEvents],
+  );
+
+  const handleHideTimeline = useCallback(
+    (timeline: Timeline) =>
+      onHideTimeline
+        ? onHideTimeline(timeline)
+        : onHideTimelineEvents(timeline.events ?? []),
+    [onHideTimeline, onHideTimelineEvents],
   );
 
   return (
-    <SidebarContent title={title} onClose={onClose}>
-      {focusedTimelineEventIds != null && (
-        <Box mx="lg" mb="sm">
-          <Button
-            p={0}
-            variant="subtle"
-            leftSection={<Icon name="chevronleft" />}
-            onClick={handleShowAllEvents}
-            data-testid="timeline-sidebar-show-all"
-          >
-            {t`All events`}
-          </Button>
-        </Box>
-      )}
-      <TimelinePanel
+    <>
+      <TimelineSidebarContent
+        title={title}
+        onShowAllEvents={isFocused ? onShowAllEvents : undefined}
+        onClose={onClose}
         timelines={displayedTimelines}
         collectionId={collectionId}
         visibleEventIds={visibleTimelineEventIds}
@@ -149,53 +128,18 @@ export const TimelineSidebar = ({
         onNewEvent={handleNewEvent}
         onEditEvent={handleEditEvent}
         onMoveEvent={handleMoveEvent}
-        onToggleEventSelected={handleToggleEventSelected}
         onShowTimelineEvents={onShowTimelineEvents}
         onHideTimelineEvents={onHideTimelineEvents}
+        onShowTimeline={handleShowTimeline}
+        onHideTimeline={handleHideTimeline}
+        onSelectEvents={onSelectTimelineEvents}
+        onDeselectEvents={onDeselectTimelineEvents}
       />
-      {manageModalsInternally && internalModal?.type === "new-event" && (
-        <Modal
-          opened
-          onClose={handleCloseInternalModal}
-          size="lg"
-          withCloseButton={false}
-          padding="0"
-        >
-          <NewEventModal
-            collectionId={collectionId}
-            onClose={handleCloseInternalModal}
-          />
-        </Modal>
-      )}
-      {manageModalsInternally && internalModal?.type === "edit-event" && (
-        <Modal
-          opened
-          onClose={handleCloseInternalModal}
-          size="lg"
-          withCloseButton={false}
-          padding="0"
-        >
-          <EditEventModal
-            eventId={internalModal.eventId}
-            onClose={handleCloseInternalModal}
-          />
-        </Modal>
-      )}
-      {manageModalsInternally && internalModal?.type === "move-event" && (
-        <Modal
-          opened
-          onClose={handleCloseInternalModal}
-          size="lg"
-          withCloseButton={false}
-          padding="0"
-        >
-          <MoveEventModal
-            eventId={internalModal.eventId}
-            collectionId={collectionId}
-            onClose={handleCloseInternalModal}
-          />
-        </Modal>
-      )}
-    </SidebarContent>
+      <TimelineEventModals
+        modal={modal}
+        collectionId={collectionId}
+        onClose={handleCloseModal}
+      />
+    </>
   );
 };

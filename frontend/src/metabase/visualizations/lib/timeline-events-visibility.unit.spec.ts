@@ -1,4 +1,7 @@
-import type { TimelineEventsVisibility } from "metabase-types/api";
+import type {
+  TimelineEventsVisibility,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockTimeline,
   createMockTimelineEvent,
@@ -6,13 +9,18 @@ import {
 
 import {
   aggregateVisibleEventIds,
+  getRecordedTimelineEventsVisibility,
   hideTimelineEvents,
   hideTimelines,
-  isDefaultVisibility,
+  isSameTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
+  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "./timeline-events-visibility";
+
+const SELECTED = "timeline.selected_timeline_ids";
+const EXCLUDED = "timeline.excluded_timeline_event_ids";
 
 const COLLECTION_ID = 7;
 
@@ -47,12 +55,6 @@ const outage = createMockTimelineEvent({
   name: "Outage",
   timestamp: "2027-06-20T00:00:00Z",
 });
-const rootEvent = createMockTimelineEvent({
-  id: 41,
-  timeline_id: 4,
-  name: "Root",
-  timestamp: "2027-06-25T00:00:00Z",
-});
 
 const releases = createMockTimeline({
   id: 1,
@@ -72,143 +74,163 @@ const incidents = createMockTimeline({
   collection_id: 99,
   events: [outage],
 });
-const rootTimeline = createMockTimeline({
-  id: 4,
-  name: "Root",
-  collection_id: null,
-  events: [rootEvent],
+
+// An event created on a brand-new timeline arrives before the timeline
+// list is refetched.
+const unfetchedEvent = createMockTimelineEvent({
+  id: 41,
+  timeline_id: 4,
+  name: "First event",
+  timestamp: "2027-06-25T00:00:00Z",
 });
 
-const timelines = [releases, marketing, incidents, rootTimeline];
-const context = { timelines, collectionId: COLLECTION_ID };
+const timelines = [releases, marketing, incidents];
+const context = timelines;
 
 const visibleNames = (
   visibility?: TimelineEventsVisibility,
   enabled?: boolean,
 ) =>
-  resolveVisibleTimelineEvents({ ...context, visibility, enabled }).map(
+  resolveVisibleTimelineEvents({ timelines, visibility, enabled }).map(
     (event) => event.name,
   );
 
 describe("resolveVisibleTimelineEvents", () => {
-  it("shows every non-archived event of the collection's timelines by default, sorted by date", () => {
-    expect(visibleNames()).toEqual(["RC1", "Launch", "RC2"]);
+  it("shows nothing until a timeline is explicitly shown", () => {
+    expect(visibleNames()).toEqual([]);
+  });
+
+  it("shows the non-archived events of shown timelines, sorted by date", () => {
+    expect(visibleNames({ [SELECTED]: [releases.id, marketing.id] })).toEqual([
+      "RC1",
+      "Launch",
+      "RC2",
+    ]);
   });
 
   it("shows nothing when events are turned off", () => {
-    expect(visibleNames(undefined, false)).toEqual([]);
+    expect(visibleNames({ [SELECTED]: [releases.id] }, false)).toEqual([]);
   });
 
-  it("applies saved overrides", () => {
+  it("hides single events of shown timelines", () => {
     expect(
       visibleNames({
-        hidden_timeline_ids: [marketing.id],
-        shown_timeline_ids: [incidents.id],
-        hidden_event_ids: [rc2.id],
+        [SELECTED]: [releases.id, incidents.id],
+        [EXCLUDED]: [rc2.id],
       }),
     ).toEqual(["RC1", "Outage"]);
   });
 
   it("ignores ids that no longer exist", () => {
     expect(
-      visibleNames({ hidden_timeline_ids: [999], hidden_event_ids: [999] }),
-    ).toEqual(["RC1", "Launch", "RC2"]);
+      visibleNames({
+        [SELECTED]: [releases.id, 999],
+        [EXCLUDED]: [999],
+      }),
+    ).toEqual(["RC1", "RC2"]);
   });
 });
 
-describe("isDefaultVisibility", () => {
-  it("is true only when nothing differs from the default", () => {
-    expect(isDefaultVisibility(undefined)).toBe(true);
-    expect(isDefaultVisibility({ hidden_event_ids: [] })).toBe(true);
-    expect(isDefaultVisibility({ hidden_timeline_ids: [1] })).toBe(false);
+describe("getRecordedTimelineEventsVisibility", () => {
+  it("reads a recorded selection out of the card settings", () => {
+    const settings = {
+      "graph.dimensions": ["CREATED_AT"],
+      [SELECTED]: [releases.id],
+      [EXCLUDED]: [rc2.id],
+    };
+    expect(getRecordedTimelineEventsVisibility(settings)).toBe(settings);
+  });
+
+  it("treats an empty selection as recorded", () => {
+    const settings = { [SELECTED]: [] };
+    expect(getRecordedTimelineEventsVisibility(settings)).toBe(settings);
+  });
+
+  it("is undefined when nothing was ever recorded", () => {
+    expect(getRecordedTimelineEventsVisibility(undefined)).toBeUndefined();
+    expect(getRecordedTimelineEventsVisibility({})).toBeUndefined();
+    expect(
+      getRecordedTimelineEventsVisibility({ [EXCLUDED]: [] }),
+    ).toBeUndefined();
   });
 });
 
-describe("hiding and showing timelines", () => {
-  it("hides a collection timeline and brings it back without leaving overrides behind", () => {
-    const hidden = hideTimelines({}, [releases], context);
-    expect(visibleNames(hidden)).toEqual(["Launch"]);
+describe("showing and hiding timelines", () => {
+  it("shows a timeline and hides it again without leaving anything behind", () => {
+    const shown = showTimelines({}, [releases.id], context);
+    expect(visibleNames(shown)).toEqual(["RC1", "RC2"]);
 
-    const shown = showTimelines(hidden, [releases], context);
-    expect(visibleNames(shown)).toEqual(["RC1", "Launch", "RC2"]);
-    expect(shown).toEqual({});
+    expect(hideTimelines(shown, [releases.id], context)).toEqual({
+      [SELECTED]: [],
+      [EXCLUDED]: [],
+    });
   });
 
-  it("shows a timeline from another collection and returns to the default when hidden again", () => {
-    const shown = showTimelines({}, [incidents], context);
-    expect(visibleNames(shown)).toEqual(["RC1", "Launch", "RC2", "Outage"]);
+  it("showing a timeline brings back its individually hidden events", () => {
+    const visibility = hideTimelineEvents(
+      { [SELECTED]: [releases.id] },
+      [rc1],
+      context,
+    );
+    expect(visibleNames(visibility)).toEqual(["RC2"]);
 
-    expect(hideTimelines(shown, [incidents], context)).toEqual({});
+    expect(
+      visibleNames(showTimelines(visibility, [releases.id], context)),
+    ).toEqual(["RC1", "RC2"]);
   });
 });
 
-describe("hiding and showing single events", () => {
+describe("showing and hiding single events", () => {
   it("hides one event and keeps the rest of its timeline", () => {
-    const visibility = hideTimelineEvents({}, [rc1], context);
+    const visibility = hideTimelineEvents(
+      { [SELECTED]: [releases.id, marketing.id] },
+      [rc1],
+      context,
+    );
     expect(visibleNames(visibility)).toEqual(["Launch", "RC2"]);
   });
 
   it("keeps events added later hidden once every event of a timeline was hidden", () => {
-    const visibility = hideTimelineEvents({}, [rc1, rc2], context);
+    const visibility = hideTimelineEvents(
+      { [SELECTED]: [releases.id, marketing.id] },
+      [rc1, rc2],
+      context,
+    );
 
     const rc3 = createMockTimelineEvent({
       id: 14,
       timeline_id: 1,
       name: "RC3",
     });
-    const withNewRelease = {
-      ...context,
-      timelines: [
-        createMockTimeline({ ...releases, events: [rc1, rc2, rc3] }),
-        marketing,
-      ],
-    };
+    const withNewRelease = [
+      createMockTimeline({ ...releases, events: [rc1, rc2, rc3] }),
+      marketing,
+    ];
     expect(
-      resolveVisibleTimelineEvents({ ...withNewRelease, visibility }).map(
-        (event) => event.name,
-      ),
+      resolveVisibleTimelineEvents({
+        timelines: withNewRelease,
+        visibility,
+      }).map((event) => event.name),
     ).toEqual(["Launch"]);
   });
 
-  it("shows only the requested event of a hidden timeline", () => {
-    const visibility = showTimelineEvents(
-      hideTimelines({}, [releases], context),
-      [rc1],
-      context,
-    );
-    expect(visibleNames(visibility)).toEqual(["RC1", "Launch"]);
+  it("shows only the requested event of a timeline that isn't shown", () => {
+    const visibility = showTimelineEvents({}, [rc1], context);
+    expect(visibleNames(visibility)).toEqual(["RC1"]);
   });
 
-  it("shows only the requested event of a timeline from another collection", () => {
-    const secondOutage = createMockTimelineEvent({
-      id: 32,
-      timeline_id: 3,
-      name: "Second outage",
-    });
-    const withTwoIncidents = {
-      ...context,
-      timelines: [
-        releases,
-        marketing,
-        createMockTimeline({ ...incidents, events: [outage, secondOutage] }),
-      ],
+  it("hiding and showing the same events leaves no leftovers behind", () => {
+    const shown = {
+      [SELECTED]: [releases.id, marketing.id],
+      [EXCLUDED]: [],
     };
-    const visibility = showTimelineEvents({}, [outage], withTwoIncidents);
-    expect(
-      resolveVisibleTimelineEvents({ ...withTwoIncidents, visibility }).map(
-        (event) => event.name,
-      ),
-    ).toEqual(["RC1", "Launch", "RC2", "Outage"]);
-  });
-
-  it("hiding and showing the same events leaves no overrides behind", () => {
-    const hidden = hideTimelineEvents({}, [rc1, launch], context);
-    expect(showTimelineEvents(hidden, [rc1, launch], context)).toEqual({});
+    const hidden = hideTimelineEvents(shown, [rc1, launch], context);
+    expect(showTimelineEvents(hidden, [rc1, launch], context)).toEqual(shown);
   });
 
   it("does not affect other timelines", () => {
     const visibility = hideTimelineEvents(
-      hideTimelines({}, [marketing], context),
+      { [SELECTED]: [releases.id] },
       [rc1],
       context,
     );
@@ -231,5 +253,138 @@ describe("aggregateVisibleEventIds", () => {
       visibleEventIds: [rc2.id],
       partiallyVisibleEventIds: [rc1.id, launch.id],
     });
+  });
+
+  it("treats every event as partially visible when one chart shows none", () => {
+    expect(aggregateVisibleEventIds([[rc1.id, rc2.id], []])).toEqual({
+      visibleEventIds: [],
+      partiallyVisibleEventIds: [rc1.id, rc2.id],
+    });
+  });
+});
+
+describe("toggling a timeline the caller only partly knows about", () => {
+  // Sidebars hold timelines whose events were narrowed to a chart's x-axis, so
+  // toggling takes an id and resolves every event from the full list.
+  it("does not exclude the events outside the range when showing", () => {
+    expect(showTimelines({}, [releases.id], context)).toEqual({
+      [SELECTED]: [releases.id],
+      [EXCLUDED]: [],
+    });
+  });
+
+  it("brings back the events outside the range when re-showing", () => {
+    const hidden = hideTimelineEvents(
+      { [SELECTED]: [releases.id] },
+      [rc1],
+      context,
+    );
+    expect(hidden[EXCLUDED]).toEqual([rc1.id]);
+
+    expect(showTimelines(hidden, [releases.id], context)).toEqual({
+      [SELECTED]: [releases.id],
+      [EXCLUDED]: [],
+    });
+  });
+
+  it("ignores an id that is not in the list", () => {
+    expect(showTimelines({}, [999], context)).toEqual({
+      [SELECTED]: [],
+      [EXCLUDED]: [],
+    });
+  });
+});
+
+describe("showing an event of a timeline that is not loaded yet", () => {
+  it("shows the timeline the event belongs to", () => {
+    expect(showTimelineEvents({}, [unfetchedEvent], context)).toEqual({
+      [SELECTED]: [4],
+      [EXCLUDED]: [],
+    });
+  });
+
+  it("keeps the events already shown", () => {
+    const visibility = showTimelineEvents({}, [rc1], context);
+    expect(showTimelineEvents(visibility, [unfetchedEvent], context)).toEqual({
+      [SELECTED]: [1, 4],
+      [EXCLUDED]: [rc2.id],
+    });
+  });
+
+  it("hiding it records the event without collapsing the timeline", () => {
+    const visibility = showTimelineEvents({}, [unfetchedEvent], context);
+    expect(hideTimelineEvents(visibility, [unfetchedEvent], context)).toEqual({
+      [SELECTED]: [4],
+      [EXCLUDED]: [unfetchedEvent.id],
+    });
+  });
+});
+
+describe("showing a created event", () => {
+  const rc3 = createMockTimelineEvent({
+    id: 14,
+    timeline_id: 1,
+    name: "RC3",
+    timestamp: "2027-06-20T00:00:00Z",
+  });
+
+  it("shows the whole timeline when it was hidden", () => {
+    expect(showCreatedTimelineEvent({}, rc3, context)).toEqual({
+      [SELECTED]: [1],
+      [EXCLUDED]: [],
+    });
+  });
+
+  it("keeps the hidden events of a shown timeline hidden", () => {
+    const visibility = hideTimelineEvents(
+      showTimelines({}, [1], context),
+      [rc1],
+      context,
+    );
+    expect(showCreatedTimelineEvent(visibility, rc3, context)).toEqual({
+      [SELECTED]: [1],
+      [EXCLUDED]: [rc1.id],
+    });
+  });
+
+  it("shows the timeline when it is not loaded yet", () => {
+    expect(showCreatedTimelineEvent({}, unfetchedEvent, context)).toEqual({
+      [SELECTED]: [4],
+      [EXCLUDED]: [],
+    });
+  });
+});
+
+describe("isSameTimelineEventsVisibility", () => {
+  it("ignores id order and unrelated settings", () => {
+    const settings: VisualizationSettings = {
+      "graph.dimensions": ["CREATED_AT"],
+      [SELECTED]: [2, 1],
+      [EXCLUDED]: [rc2.id, rc1.id],
+    };
+    expect(
+      isSameTimelineEventsVisibility(settings, {
+        [SELECTED]: [1, 2],
+        [EXCLUDED]: [rc1.id, rc2.id],
+      }),
+    ).toBe(true);
+  });
+
+  it("treats nothing recorded like an empty selection", () => {
+    expect(
+      isSameTimelineEventsVisibility(undefined, {
+        [SELECTED]: [],
+        [EXCLUDED]: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("tells different selections apart", () => {
+    expect(
+      isSameTimelineEventsVisibility(
+        { [SELECTED]: [1], [EXCLUDED]: [] },
+        { [SELECTED]: [1], [EXCLUDED]: [rc1.id] },
+      ),
+    ).toBe(false);
   });
 });

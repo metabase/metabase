@@ -78,7 +78,10 @@ export {
 export { TREND_LINE_DASH } from "./echarts/cartesian/option/trend-line";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
-export { getTimelineEventsModel } from "./echarts/cartesian/timeline-events/model";
+export {
+  getTimelineEventsModel,
+  isTimelineEventInRange,
+} from "./echarts/cartesian/timeline-events/model";
 export { EMPTY_TIMELINE_SELECTION_SERIES } from "./echarts/cartesian/timeline-events/option";
 export type {
   TimelineEventCluster,
@@ -260,6 +263,7 @@ export { computeMinimalBoundsCoordinates } from "./lib/mapping";
 export { computeChange, computeNumericDataInterval } from "./lib/numeric";
 export { getCanonicalRowKey } from "./lib/region-codes";
 export {
+  canDisplayTimelineEvents,
   canSavePng,
   getIconForVisualizationType,
   getMaxDimensionsSupported,
