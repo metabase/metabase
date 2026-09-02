@@ -759,9 +759,9 @@
                                               :dataset_query (t2/select-one-fn :dataset_query :model/Card :id card-id)
                                               :parameters    [{:id "pid" :name "p" :slug "p" :type "string/="
                                                                :values_query_type "list" :target target}]})]
-                  (is (re-find #"You must have data permissions"
-                               (:cause (mt/user-http-request :rasta :post 403 "revision/revert"
-                                                             {:entity "card", :id card-id, :revision_id revision-id}))))
+                  (is (= "You must have data permissions to add a parameter referencing this Field."
+                         (mt/user-http-request :rasta :post 403 "revision/revert"
+                                               {:entity "card", :id card-id, :revision_id revision-id})))
                   (is (empty? (t2/select-one-fn :parameters :model/Card :id card-id)))))
               (testing "and on a Dashboard, through a dashcard's parameter mappings"
                 (let [revision-id (revision! "Dashboard" dashboard-id
@@ -771,9 +771,9 @@
                                                        :parameter_mappings [{:parameter_id "pid"
                                                                              :card_id      card-id
                                                                              :target       target}]}]})]
-                  (is (re-find #"You must have data permissions"
-                               (:cause (mt/user-http-request :rasta :post 403 "revision/revert"
-                                                             {:entity "dashboard", :id dashboard-id, :revision_id revision-id}))))
+                  (is (= "You must have data permissions to add a parameter referencing this Field."
+                         (mt/user-http-request :rasta :post 403 "revision/revert"
+                                               {:entity "dashboard", :id dashboard-id, :revision_id revision-id})))
                   (is (empty? (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dashcard-id))))))))))))
 
 (deftest revert-cannot-relocate-into-an-unwritable-collection-test
