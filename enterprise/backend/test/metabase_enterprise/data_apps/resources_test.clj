@@ -93,7 +93,7 @@
 
 (deftest data-app-groups-in-the-groups-api-test
   (testing "GET /api/permissions/group hides data-app groups by default (permission-config screens);
-            include_app_groups shows them for the People/Groups admin and flags the stale ones"
+            include-app-groups shows them for the People/Groups admin and flags the stale ones"
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (mt/with-temp [:model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"}]
         (let [app     (create-data-app! "some-app")
@@ -105,7 +105,7 @@
           (testing "a normal group is listed in both views"
             (is (some? (default normal-group-id)))
             (is (some? (admin normal-group-id))))
-          (testing "an active data-app group is hidden by default, shown (not stale) with include_app_groups"
+          (testing "an active data-app group is hidden by default, shown (not stale) with include-app-groups"
             (is (nil? (default app-group-id)))
             (is (=? {:id app-group-id, :is_data_app_group true, :is_stale_data_app_group false}
                     (admin app-group-id))))

@@ -32,7 +32,7 @@ export type GroupInfo = {
     | null;
   is_tenant_group?: boolean;
   is_data_app_group?: boolean;
-  // Only present when GET /group includes app groups: this one's app was removed.
+  // Only present when GET /api/permissions/group?include-app-groups=true: this one's app was removed.
   is_stale_data_app_group?: boolean;
 };
 
