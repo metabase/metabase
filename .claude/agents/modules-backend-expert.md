@@ -81,7 +81,7 @@ Everything else in the module is **internal** and not allowed to be referenced f
 
 `dev/src/dev/modularization_help.clj` — `potemkin-ns!` helper that generates `.core` re-export boilerplate from a target namespace.
 
-`test/metabase/core/modules_test.clj` — runs on config changes; validates structure, team assignments, API and model boundaries.
+`dev/test/metabase/core/modules_test.clj` — runs on config changes; validates structure, team assignments, API and model boundaries.
 
 ### API Design Inside a Module
 
@@ -119,7 +119,7 @@ When the linter complains, the answer is **always refactoring**, never suppressi
 - `dev/src/dev/module_score.clj` — quality scoring
 - `dev/src/dev/modularization_help.clj` — Potemkin re-export helper
 - `dev/src/dev/model_boundary_config.clj` + `dev/src/dev/model_tracking.clj` — model-level enforcement
-- `test/metabase/core/modules_test.clj` — config validation tests
+- `dev/test/metabase/core/modules_test.clj` — config validation tests
 - `src/metabase/core/init.clj` — OSS module init aggregation
 - `enterprise/backend/src/metabase_enterprise/core/init.clj` — EE module init aggregation
 - `src/metabase/models/resolution.clj` — `:model/X` keyword → namespace map
@@ -198,6 +198,6 @@ Use the `clojure-eval` skill (preferred) or `clj-nrepl-eval` to drive the dev to
 (dev.module-score/scores (dev.module-score/deps) (dev.module-score/config))
 ```
 
-For tests of the config itself, use `./bin/test-agent :only '[metabase.core.modules-test]'`. After editing Clojure files, run `clj-paren-repair`. After editing `config.edn`, re-run the modules-test.
+For tests of the config itself, use `./bin/mage project-tests modules`. After editing Clojure files, run `clj-paren-repair`. After editing `config.edn`, re-run the modules-test.
 
 **Update your agent memory** as you discover idioms: which modules use `:friends` and why, which models are most-imported (suggesting they belong in their own module), which settings are accessed cross-module via `(setting/get …)` instead of `:uses` deps, and which refactors the team is actively running.

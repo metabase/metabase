@@ -8,12 +8,6 @@ import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import {
-  useCartesianChartSeriesColorsClasses,
-  useCloseTooltipOnScroll,
-} from "metabase/visualizations/echarts/tooltip";
 import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -22,6 +16,12 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
+import {
+  type TimelineEventGroup,
+  getLegendItems,
+  useCartesianChartSeriesColorsClasses,
+  useCloseTooltipOnScroll,
+} from "metabase/viz-core";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";

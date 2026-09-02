@@ -8,6 +8,8 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -633,6 +635,57 @@
     (is (= "192.168.1.1"         (#'distinct-batch/decode-value :type/IPAddress "192.168.1.1"))))
   (testing "Unknown base-type → string passthrough"
     (is (= "anything" (#'distinct-batch/decode-value :type/SomeMadeUpType "anything")))))
+
+;;; Column names are harvested verbatim from the warehouse by `describe-table` / `describe-fields`, so they are
+;;; attacker-controlled for anyone who can create a column in a synced schema. They must never reach the generated
+;;; SQL as a string literal -- only as a quoted identifier.
+(def ^:private sql-injection-field-name
+  "a\\' AS `field_name`, (SELECT @@version) AS `value_out` FROM mysql.db LIMIT 1) AS `_arm` -- ")
+
+(deftest ^:parallel build-union-tags-arms-by-ordinal-test
+  (testing "arms are tagged with their ordinal, not with the field name"
+    (let [fields [{:name "state" :base_type :type/Text}
+                  {:name "source" :base_type :type/Text}]]
+      (doseq [[driver q] {:h2 "\"", :postgres "\"", :mysql "`"}]
+        (testing driver
+          (let [sql (first (sql.qp/format-honeysql driver (#'distinct-batch/build-union driver {:name "t"} fields)))]
+            (is (str/includes? sql (str "0 AS " q "field_idx" q)))
+            (is (str/includes? sql (str "1 AS " q "field_idx" q)))
+            (is (not (str/includes? sql "'"))
+                (str "no SQL string literal is generated at all. Got: " sql))))))))
+
+(deftest ^:parallel build-union-field-name-cannot-break-out-of-sql-test
+  (testing "a warehouse column name crafted to break out of a string literal stays inert"
+    ;; On MySQL `\'` is a second way to write a quote inside a literal, so the old `[:inline (:name field)]` tag
+    ;; -- escaped only by doubling `'` -- closed early and the rest of the column name ran as SQL. Post-fix
+    ;; there is no tag literal at all, and the name reaches the query only as a quoted identifier (which is
+    ;; where the column genuinely is), with the identifier quote character doubled.
+    (let [fields      [{:name sql-injection-field-name :base_type :type/Text}]
+          sql         (first (sql.qp/format-honeysql :mysql (#'distinct-batch/build-union :mysql {:name "t"} fields)))
+          quoted-name (str "`" (str/replace sql-injection-field-name "`" "``") "`")]
+      (is (= (str "SELECT * FROM ("
+                  "SELECT 0 AS `field_idx`, CAST(" quoted-name " AS char) AS `value_out` "
+                  "FROM `t` "
+                  "GROUP BY CAST(" quoted-name " AS char) "
+                  "LIMIT 1000) AS `_arm`")
+             sql)))))
+
+(deftest run-distinct-batch-demuxes-by-arm-ordinal-test
+  (testing "rows are mapped back to fields by arm ordinal, not by name"
+    ;; `idx_unique_field` only makes `name` unique per (table, parent) pair, so a table can legitimately hold two
+    ;; fields called `dupe` as long as one of them is nested. Keying the demux by name collapsed both arms onto
+    ;; whichever field won the `by-name` lookup; the ordinal keeps them apart.
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table    {table-id :id :as table} {:db_id db-id :name "t"}
+                   :model/Field    {parent-id :id} {:table_id table-id :name "json_col" :base_type :type/JSON}
+                   :model/Field    {f1-id :id} {:table_id table-id :name "dupe" :base_type :type/Text}
+                   :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
+                                                :parent_id parent-id}]
+      (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
+        (with-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
+          (is (= {f1-id {:values ["a" "b"] :raw-count 2}
+                  f2-id {:values [42] :raw-count 1}}
+                 (distinct-batch/run-distinct-batch table fields))))))))
 
 (deftest ^:mb/driver-tests run-distinct-batch-integration-test
   (testing "run-distinct-batch returns correct distinct values for each field"

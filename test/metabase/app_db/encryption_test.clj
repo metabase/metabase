@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
+   [metabase.notification.core :as notification]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -135,25 +137,12 @@
                    (encryption/maybe-decrypt (stored-values id)))
                 "every row is converted even though the list was reordered mid-sweep")))))))
 
-;;; ------------------------------------- boot-path deferral / sweep cursor -------------------------------------
+;;; ------------------------------------------- sweep cursor -------------------------------------------
 
 (defn- data-source [] (:data-source mdb.connection/*application-db*))
 
-(deftest encrypt-db-defers-dwh-derived-columns-test
-  (testing "the boot path leaves the big columns for the backfill task rather than encrypting them inline"
-    (mt/with-empty-h2-app-db!
-      (encryption-test/with-secret-key secret-key
-        (let [ids (plaintext-field-values! 3)]
-          (mdb.encryption/save-backfill-progress! {"metabase_fieldvalues/values" "done"})
-          (mdb.encryption/encrypt-db :h2 (data-source) nil :defer-dwh-derived? true)
-          (doseq [[i id] (map-indexed vector ids)]
-            (is (= (values-json i) (stored-values id))
-                "field values are still plaintext"))
-          (is (nil? (mdb.encryption/read-backfill-progress))
-              "and the cursor is cleared, so a stale one can't make the backfill skip them"))))))
-
 (deftest encrypt-db-inline-encrypts-dwh-derived-columns-test
-  (testing "without the flag they are encrypted here, and the cursor is left alone because they are not in the clear"
+  (testing "encrypt-db rewrites them inline, and leaves the cursor alone because they are not in the clear"
     (mt/with-empty-h2-app-db!
       (encryption-test/with-secret-key secret-key
         (let [ids    (plaintext-field-values! 3)
@@ -189,3 +178,52 @@
           (is (= (values-json i) (stored-values id))
               "back to plaintext"))
         (is (nil? (mdb.encryption/read-backfill-progress)))))))
+
+(defn- recipient-details []
+  (t2/select-fn-vec :details :notification_recipient :details [:!= nil]))
+
+(deftest encrypt-plaintext-columns!-leaves-dwh-derived-columns-test
+  (testing "the boot heal skips the columns the backfill task owns: scanning metabase_fieldvalues would stall startup"
+    (mt/with-empty-h2-app-db!
+      (encryption-test/with-secret-key secret-key
+        (let [ids (plaintext-field-values! 3)]
+          (mdb/encrypt-plaintext-columns!)
+          (doseq [[i id] (map-indexed vector ids)]
+            (is (= (values-json i) (stored-values id))
+                "still plaintext, left for the backfill")))))))
+
+(deftest encrypt-plaintext-columns!-test
+  ;; Re-enacts how a boot of a pre-encryption build undoes the one-shot encryption backfills: its seeding reads the
+  ;; encrypted `notification_recipient.details` through plain `transform-json`, gets a ciphertext string instead of a
+  ;; map, decides the row changed, and re-creates it through its plaintext-era transforms. Isolated app DB: runs with
+  ;; an encryption key active, so nothing here may touch the shared test DB.
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (notification/seed-notification!)
+      (let [seeded (recipient-details)]
+        (is (seq seeded) "seeding created recipients with details")
+        (is (every? encryption/decryptable-string? seeded) "seeded through the current build: encrypted at rest")
+        (testing "an old build's seed re-writes the rows plaintext; the heal re-encrypts them"
+          (t2/query {:update :notification_recipient
+                     :set    {:details "{\"pattern\":\"plain\"}"}
+                     :where  [:!= :details nil]})
+          (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
+          (mdb/encrypt-plaintext-columns!)
+          (let [healed (recipient-details)]
+            (is (every? encryption/decryptable-string? healed))
+            (is (= "{\"pattern\":\"plain\"}" (encryption/decrypt (first healed))))))
+        (testing "the strict reader that crashed startup now works: seeding runs cleanly again"
+          (notification/seed-notification!))
+        (testing "idempotent: a second run leaves every value byte-identical"
+          (let [snapshot (recipient-details)]
+            (mdb/encrypt-plaintext-columns!)
+            (is (= snapshot (recipient-details))))))))
+  (testing "without an encryption key nothing happens"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key nil
+        (notification/seed-notification!)
+        (let [before (recipient-details)]
+          (mdb/encrypt-plaintext-columns!)
+          (is (= before (recipient-details))))))))

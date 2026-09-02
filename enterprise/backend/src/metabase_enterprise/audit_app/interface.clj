@@ -39,5 +39,7 @@
   (let [query-type (keyword query-type)
         ns-str     (namespace query-type)]
     (when (contains? loadable-namespaces ns-str)
+      ;; The namespace comes from the fixed allowlist above.
+      #_{:clj-kondo/ignore [:metabase/modules]}
       (classloader/require (symbol ns-str)))
     (apply internal-query query-type args)))
