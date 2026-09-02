@@ -92,6 +92,38 @@
       {:stages [{:lib/type :mbql.stage/mbql :source-table 1 :expressions {"native" [:+ 1 2]}}]}    ; MBQL 5 expression named native
       {"query" {"source-table" 1 "expressions" {"native" [:+ 1 2]}}})))                            ; decoded without keywordizing
 
+(deftest ^:parallel native-query?-is-case-and-separator-insensitive-test
+  (testing "the QP normalizer canonicalizes keys case-insensitively and treats `_` and `-` alike, so a payload
+            spelled `:SOURCE_QUERY` still reaches the query processor as a native stage. Matching edge names and
+            markers case-exactly let a caller walk straight past the guard by changing the spelling — and since
+            `+refuse-unscoped-native-sql` went live on /api/dataset, this scan is the only gate standing between
+            an unrestricted-stamped MCP UI credential and raw SQL."
+    (testing "nested-query edges, however spelled"
+      (are [q] (true? (query-guards/native-query? q))
+        {:query {:source-query {:native "select 1"}}}
+        {:query {:source_query {:native "select 1"}}}
+        {:query {:SOURCE_QUERY {:native "select 1"}}}
+        {:query {:Source-Query {:native "select 1"}}}
+        {"QUERY" {"Source_Query" {"native" "select 1"}}}))
+    (testing "the markers themselves, however spelled"
+      (are [q] (true? (query-guards/native-query? q))
+        {:query {:source_query {:NATIVE "select 1"}}}
+        {:type "NATIVE"}
+        {:TYPE :Native}
+        {:lib/type "MBQL.STAGE/NATIVE"}
+        {:stages [{:LIB/TYPE "mbql.stage/native"}]}))
+    (testing "sequence edges, however spelled"
+      (are [q] (true? (query-guards/native-query? q))
+        {:STAGES [{:native "select 1"}]}
+        {:query {:JOINS [{:source-query {:native "select 1"}}]}}))
+    (testing "and a legitimate MBQL query is still not native, whatever its columns are called"
+      (are [q] (false? (query-guards/native-query? q))
+        {:query {:source-table 1}}
+        {:stages [{:lib/type "mbql.stage/mbql" :source-table 1}]}
+        ;; caller-named sub-maps are never scanned: an expression or tag called `native` is not a marker
+        {:stages [{:lib/type "mbql.stage/mbql" :expressions {:NATIVE [:+ 1 1]}}]}
+        {:query {:source-table 1 :template-tags {:Source_Query {:name "x"}}}}))))
+
 (deftest reject-native-query!-test
   (testing "native queries throw a 400 with a steering message"
     (let [query {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}]
