@@ -99,15 +99,15 @@
 (deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative sum with a temporally bucketed breakout"
-      (let [metadata-provider (mt/metadata-provider)
-            orders            (lib.metadata/table metadata-provider (mt/id :orders))
-            orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
-            orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
-            query             (-> (lib/query metadata-provider orders)
-                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
-                                  (lib/aggregate (lib/cum-sum orders-total))
-                                  (lib/limit 3)
-                                  (assoc-in [:middleware :format-rows?] false))]
+      (let [mp (mt/metadata-provider)
+            orders (lib.metadata/table mp (mt/id :orders))
+            orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            orders-total (lib.metadata/field mp (mt/id :orders :total))
+            query (-> (lib/query mp orders)
+                      (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                      (lib/aggregate (lib/cum-sum orders-total))
+                      (lib/limit 3)
+                      (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           (is (= [[#t "2016-04-01" 52.76]
                   [#t "2016-05-01" 1318.49]
@@ -122,8 +122,8 @@
       (let [metadata-provider   (mt/metadata-provider)
             products            (lib.metadata/table metadata-provider (mt/id :products))
             created-at-month    (lib/with-temporal-bucket
-                                 (lib.metadata/field metadata-provider (mt/id :products :created_at))
-                                 :month)
+                                  (lib.metadata/field metadata-provider (mt/id :products :created_at))
+                                  :month)
             query               (-> (lib/query metadata-provider products)
                                     (lib/aggregate (lib/cum-sum 1))
                                     (lib/breakout created-at-month)
