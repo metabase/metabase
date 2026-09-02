@@ -263,6 +263,10 @@
      (keyword? expr)
      (find-fields-kw acc expr)
 
+     ;; app-DB HoneySQL spells identifiers as symbols
+     (symbol? expr)
+     (find-fields-kw acc (keyword (namespace expr) (name expr)))
+
      (and (vector? expr) (> (count expr) 1))
      (reduce find-fields-expr acc (subvec expr 1))
 
@@ -283,6 +287,9 @@
     (cond
       (keyword? x)
       (find-fields-kw acc x)
+
+      (symbol? x)
+      (find-fields-kw acc (keyword (namespace x) (name x)))
 
       (vector? x)
       (find-fields-expr acc (first x))
