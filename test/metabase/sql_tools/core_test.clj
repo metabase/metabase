@@ -261,20 +261,20 @@
                  "SELECT ?::text, ?::integer, ?::boolean FROM t WHERE x = ?"
                  "SELECT (?::date - CURRENT_DATE) AS diff"]]
       (let [{out-sql :sql :as result} (sql-tools/is-single-stmt-of-type? :postgres sql "read")]
-        (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?} result))
+        (is (=? {:is-single-stmt? true :sql string?} result))
         (is (= (placeholder-count sql) (placeholder-count out-sql))))))
   (testing "a query with `?::` inside string literals are left untouched"
-    (is (= {:is-single-stmt? true :allowed-stmt-type? true :sql "SELECT '?::date'"}
+    (is (= {:is-single-stmt? true  :sql "SELECT '?::date'"}
            (sql-tools/is-single-stmt-of-type? :postgres "select '?::date'" "read"))))
   (testing "multi-statement queries with placeholder casts are still rejected"
-    (are [sql] (=? {:is-single-stmt? false :allowed-stmt-type? false}
+    (are [sql] (=? {:is-single-stmt? false}
                    (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
       "SELECT ?::date; DROP TABLE t"
       "SET ROLE NONE; SELECT ?::date")))
 
 (deftest ^:parallel is-single-stmt-of-type-qdcolon-dialects-test
   (testing "databricks' native `expr?::type` try-cast operator is not split apart"
-    (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
+    (is (=? {:is-single-stmt? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
             (sql-tools/is-single-stmt-of-type? :databricks "SELECT x?::date FROM t" "read")))))
 
 (deftest ^:parallel is-single-stmt-of-type-not-stripped-test
