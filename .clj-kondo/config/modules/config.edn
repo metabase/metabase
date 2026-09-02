@@ -288,7 +288,8 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{api-scope
+   :uses #{analytics-interface
+           api-scope
            config
            events
            models
