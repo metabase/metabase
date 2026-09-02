@@ -112,6 +112,4 @@ export interface QueryBuilderState {
     cardId?: number;
     serializedCard: string;
   } | null;
-
-  visibleTimelineEventIds: TimelineEventId[];
 }
