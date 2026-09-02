@@ -286,7 +286,7 @@
   (try
     (driver/database-supports? driver feature database)
     (catch Throwable e
-      (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
+      (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
       false)))
 
 (defn- supports?* [driver feature database]
