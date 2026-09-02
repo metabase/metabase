@@ -8,11 +8,35 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- discarding
+  "A builder for `command` with both output streams thrown away."
+  ^ProcessBuilder [command]
+  (doto (ProcessBuilder. ^java.util.List command)
+    (.redirectOutput java.lang.ProcessBuilder$Redirect/DISCARD)
+    (.redirectError java.lang.ProcessBuilder$Redirect/DISCARD)))
+
+;; A command started the ordinary way joins our own process group, so there is no group we could signal
+;; without signalling ourselves. Prefixing this puts it in a group of its own instead. `setpgrp(0,0)` makes
+;; the child a group leader, and `exec` then replaces perl with the real command, so the pid, the exit
+;; status and the stream wiring are all unchanged. The block form of `exec` matters: `exec @ARGV` sends a
+;; one-element list through /bin/sh, which would hand a command shell semantics it does not have here.
+(def ^:private pgroup-wrapper
+  ["perl" "-e" "setpgrp(0,0); exec {$ARGV[0]} @ARGV or die $!" "--"])
+
+(def ^:private perl-available?
+  ;; Perl ships with macOS and is essential on Debian and Ubuntu, but a stripped container may not have it.
+  ;; Probed once, on first use, and everything still works without it -- strays are simply left running.
+  (delay
+    (try
+      (zero? (.waitFor (.start (discarding ["perl" "-e" "exit 0"]))))
+      (catch java.io.IOException _ false))))
+
 (defn- start-process!
   "Starts `args` as a subprocess, using `dir` as its working directory when provided.
   When non-nil, `env` must be a map and completely replaces the parent environment."
   ^Process [args env dir]
-  (let [builder (ProcessBuilder. ^java.util.List (mapv str args))]
+  (let [command (into (if @perl-available? pgroup-wrapper []) (map str) args)
+        builder (ProcessBuilder. ^java.util.List command)]
     (when dir
       (.directory builder (File. ^String dir)))
     (when env
@@ -81,21 +105,36 @@
         (Thread/sleep exit-poll-interval-ms)
         (recur)))))
 
+(defn- signal-process-group!
+  "Sends `signal` to the whole process group led by `pid`.
+  Does nothing useful unless the command was started through [[pgroup-wrapper]], since without it the
+  command leads no group of its own."
+  [pid signal]
+  (try
+    (.waitFor (.start (discarding ["kill" (str "-" signal) (str "-" pid)])))
+    (catch java.io.IOException _ nil)))
+
 (defn- kill-process!
-  "Attempts to stop `proc` and every descendant reachable from it when this function begins.
-  Returns after every captured process exits or after two grace periods.
-  A process that has already outlived its parent is unreachable and cannot be stopped."
+  "Attempts to stop `proc` and everything it started.
+  Returns after every process it can see has exited, or after two grace periods."
   [^Process proc]
   (let [root    (.toHandle proc)
         ;; Capture descendants before signalling the root, which can make them unreachable when it exits.
-        handles (cons root (iterator-seq (.iterator (.descendants root))))]
+        handles (cons root (iterator-seq (.iterator (.descendants root))))
+        group?  @perl-available?]
     (run! #(.destroy ^ProcessHandle %) handles)
+    ;; A process that outlived its parent is reparented away and drops out of `descendants`, but it keeps
+    ;; the process group it was born into, so the group signal still reaches it.
+    (when group?
+      (signal-process-group! (.pid proc) "TERM"))
     (wait-for-exit handles kill-grace-period-ms)
     ;; Signal every survivor directly because its parent may already have exited.
     (run! (fn [^ProcessHandle handle]
             (when (.isAlive handle)
               (.destroyForcibly handle)))
           handles)
+    (when group?
+      (signal-process-group! (.pid proc) "KILL"))
     (wait-for-exit handles kill-grace-period-ms)))
 
 (def ^:private command-timeout-ms (* 15 60 1000))

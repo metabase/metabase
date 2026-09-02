@@ -88,3 +88,29 @@
         (when-let [pid (parse-long (str/trim (slurp pid-file)))]
           (shell/sh* {:quiet? true} "kill" "-9" (str pid)))
         (.delete pid-file)))))
+
+;; This stray's own parent exits immediately, so the stray is reparented away and is not among the
+;; descendants any handle can reach. Only the process group still contains it.
+(def ^:private stray-sleep-seconds 40)
+
+(def ^:private stray-timeout-ms 1000)
+
+(deftest timeout-kills-a-stray-the-command-orphaned-test
+  (let [pid-file (File/createTempFile "mage-shell-stray" ".pid")
+        stray    (fn [] (parse-long (str/trim (slurp pid-file))))]
+    (try
+      ;; The inner shell records the stray and exits; the outer one sleeps so the timeout has something to
+      ;; fire on. The stray ignores SIGTERM, so only the forced group signal ends it.
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Timed out"
+                            (shell/sh* {:quiet? true, :timeout-ms stray-timeout-ms}
+                                       "sh" "-c"
+                                       (str "sh -c 'trap \"\" TERM; sleep " stray-sleep-seconds
+                                            " >/dev/null 2>&1 & echo $! > \"$0\"' \"$0\"; sleep "
+                                            stray-sleep-seconds)
+                                       (str pid-file))))
+      (is (some? (stray)) "the command did not record the process it orphaned")
+      (is (gone? (stray)) "the orphaned stray was left running")
+      (finally
+        (when-let [pid (stray)]
+          (shell/sh* {:quiet? true} "kill" "-9" (str pid)))
+        (.delete pid-file)))))
