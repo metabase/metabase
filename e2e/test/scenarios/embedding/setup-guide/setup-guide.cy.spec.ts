@@ -91,8 +91,8 @@ describe("scenarios - setup guide", () => {
       cy.log("'Connect a database' should not be marked as done");
       cy.findByTestId("embedding-hub-main")
         .findByText("Connect a database")
-        .closest("button")
-        .findByText("Done")
+        .closest('[data-testid="embedding-hub-checklist-card"]')
+        .findByLabelText(/^Step \d+ complete$/)
         .should("not.exist");
 
       cy.findByTestId("embedding-hub-main")
@@ -124,9 +124,9 @@ describe("scenarios - setup guide", () => {
       cy.log("'Connect a database' should be marked as done");
       cy.findByTestId("embedding-hub-main")
         .findByText("Connect a database")
-        .closest("button")
+        .closest('[data-testid="embedding-hub-checklist-card"]')
         .scrollIntoView()
-        .findByText("Done")
+        .findByLabelText(/^Step \d+ complete$/)
         .should("be.visible");
     });
 
@@ -153,8 +153,8 @@ describe("scenarios - setup guide", () => {
       cy.log("step should not be marked as done at first");
       cy.findByTestId("embedding-hub-main")
         .findByText("Get embed snippet")
-        .closest("button")
-        .findByText("Done")
+        .closest('[data-testid="embedding-hub-checklist-card"]')
+        .findByLabelText(/^Step \d+ complete$/)
         .should("not.exist");
 
       cy.log("open embed wizard");
@@ -191,8 +191,8 @@ describe("scenarios - setup guide", () => {
       cy.log("step should be marked as done");
       cy.findByTestId("embedding-hub-main")
         .findByText("Get embed snippet")
-        .closest("button")
-        .findByText("Done", { timeout: 10_000 })
+        .closest('[data-testid="embedding-hub-checklist-card"]')
+        .findByLabelText(/^Step \d+ complete$/, { timeout: 10_000 })
         .should("be.visible");
     });
 
@@ -670,9 +670,9 @@ describe("scenarios - setup guide", () => {
         cy.log("Configure data permissions step should be done");
         cy.findByTestId("embedding-hub-main")
           .findByText("Configure data permissions and tenants")
-          .closest("button")
+          .closest('[data-testid="embedding-hub-checklist-card"]')
           .scrollIntoView()
-          .findByText("Done")
+          .findByLabelText(/^Step \d+ complete$/)
           .should("be.visible");
 
         cy.log("verify tenant_attributes are saved correctly via API");
@@ -1372,15 +1372,8 @@ describe("scenarios - setup guide", () => {
         .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
-        .closest("button")
-        .icon("lock")
-        .should("be.visible");
-
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Embed in production with SSO")
-        .closest("button")
-        .findByText("Complete the other steps to unlock")
-        .should("be.visible");
+        .closest('[data-testid="embedding-hub-checklist-card"]')
+        .should("have.attr", "aria-disabled", "true");
     });
   });
 
@@ -1850,10 +1843,10 @@ describe("scenarios - setup guide", () => {
 
       cy.log("'Configure SSO' card should be marked as done");
       cy.findByTestId("embedding-hub-main")
-        .findByText("Configure SSO")
-        .closest("button")
+        .findByText("Set up SSO")
+        .closest('[data-testid="embedding-hub-checklist-card"]')
         .scrollIntoView()
-        .findByText("Done", { timeout: 10_000 })
+        .findByLabelText(/^Step \d+ complete$/, { timeout: 10_000 })
         .should("be.visible");
 
       cy.log("'Embed in production with SSO' should now be unlocked");
@@ -1861,9 +1854,8 @@ describe("scenarios - setup guide", () => {
         .findByText("Embed in production with SSO")
         .scrollIntoView()
         .should("be.visible")
-        .closest("button")
-        .icon("lock")
-        .should("not.exist");
+        .closest('[data-testid="embedding-hub-checklist-card"]')
+        .should("not.have.attr", "aria-disabled");
     });
   });
 
