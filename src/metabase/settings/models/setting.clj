@@ -1734,90 +1734,46 @@
                  (name (:name invalid-setting))
                  (ex-message (:parse-error invalid-setting))))))
 
-(defn migrate-encrypted-settings!
-  "Reconcile the at-rest encryption of every registered setting's stored `details` with its declared `:encryption`, in
-  both directions: a `:encryption :no` setting whose row is encrypted is decrypted, and a setting that encrypts whose
-  row is plaintext is encrypted. Rows of unregistered settings are left alone, and whether a value is encrypted is
-  decided by [[encryption/decryptable-string?]] (actually decrypting), never by shape.
-
-  Runs on every startup, before anything restores the settings cache. The encrypting half is what makes the strict
-  decrypting read survive a downgrade: a boot of an older version decrypts (in this very function, as it existed
-  there) or re-writes as plaintext every row its registry knew as `:encryption :no`, after the one-shot encryption
-  migrations have already run -- and such a row would otherwise fail the strict read and take the whole settings
-  cache down with it. Works around the standard getters/setters deliberately: values are rewritten byte-identical
-  modulo encryption. No-op when MB_ENCRYPTION_SECRET_KEY is not set.
-
-  Runs with the settings cache disabled: any setting consulted while this runs (e.g. `read-only-mode`, which the
-  cloud-migration DML guard reads on every write this issues) is read directly from the DB. Restoring the cache
-  strictly decrypts every row -- including the very rows this function exists to repair -- so going through it here
-  would fail the repair on exactly the state it is repairing."
-  []
-  (when (encryption/default-encryption-enabled?)
-    (binding [config/*disable-setting-cache* true]
-      (let [{encrypting true, plaintext false} (group-by (comp boolean encrypts?) (vals @registered-settings))]
-        (t2/with-transaction [_conn]
-          (doseq [{v :details k :key}
-                  (t2/select :setting {:for :update :where [:and
-                                                            [:in :key (map setting-name plaintext)]
-                                                            [:!= :details nil]]})
-                  :when (encryption/decryptable-string? v)]
-            (t2/update! :setting :key k {:details (encryption/decrypt v)}))
-          (doseq [{v :details k :key}
-                  (t2/select :setting {:for :update :where [:and
-                                                            [:in :key (map setting-name encrypting)]
-                                                            [:!= :details nil]]})
-                  :when (not (encryption/decryptable-string? v))]
-            (t2/update! :setting :key k {:details (encryption/encrypt v)})))))))
-
 (defn- write-setting-value
-  "Store a Setting's `:value` in `:details`, wrapped in its [[settings.util/wrap-value]] envelope, and encrypted if the
-  setting is stored encrypted at rest. A key with no `defsetting` in the code -- as tests routinely write -- is taken
-  to encrypt, matching how [[read-setting-value]] reads it back.
+  "Store a Setting's `:value` in `:details`, wrapped in its [[settings.util/wrap-value]] envelope and encrypted whenever
+  MB_ENCRYPTION_SECRET_KEY is set -- every setting's, whatever its `:encryption` says. That flag describes the legacy
+  `value` column, which is written here too, exactly as it was before `details` existed: nothing in this version reads
+  it, but a version that predates the column does, and keeping it current is what lets that version run alongside
+  this one and what makes rolling back to it lossless.
 
-  The bare value is written to the legacy `value` column as well, exactly as it was before `details` existed. Nothing
-  here reads it, but a version that predates the column does: keeping it current is what lets that version run
-  alongside this one, and what makes rolling back to it lossless.
-
-  A key with no `defsetting` is refused: how it is stored depends on the setting's declared `:encryption`, and
-  [[read-setting-value]] would read the row back as no value at all, so there is no way to write one correctly."
+  A key with no `defsetting` is refused: [[read-setting-value]] would read the row back as no value at all, so there is
+  no way to write one that means anything."
   [setting]
   (let [setting-key (:key setting)
         value       (:value setting)
         resolved    (or (maybe-resolve-setting setting-key)
                         (throw (ex-info (tru "Unknown setting: {0}" setting-key)
-                                        {:setting-key setting-key})))
-        encrypt     (if (encrypts? resolved)
-                      encryption/maybe-encrypt
-                      identity)]
+                                        {:setting-key setting-key})))]
     (assoc setting
-           :details (some->> value (settings.util/wrap-value setting-key) encrypt)
-           :value   (encrypt value))))
+           :details (some->> value (settings.util/wrap-value setting-key) encryption/maybe-encrypt)
+           :value   (cond-> value (encrypts? resolved) encryption/maybe-encrypt))))
 
 (defn- read-setting-value
   "Take a Setting's `:value` from the `:details` it is stored in: decrypted, then unwrapped from
   its [[settings.util/wrap-value]] envelope.
 
+  Decrypted strictly with [[encryption/maybe-decrypt]]: with MB_ENCRYPTION_SECRET_KEY set, `details` are ciphertext
+  for every setting, so a plaintext envelope -- forged via a direct DB write, or left by a row that has never been
+  through `enable-encryption` -- is rejected rather than trusted.
+
   Two rows read as no value at all. One with no `details` is a row only a version predating the column has ever
   written. One whose key has no `defsetting` -- a retired setting, one belonging to an edition this instance is not
   running, or a row written straight to the DB in a test -- is not read at all, not even decrypted: nothing can ask
-  for such a setting by name, so there is no value to produce and no reason to touch what is stored there.
-
-  A setting whose `:encryption` is not `:no` is stored encrypted at rest, so it is decrypted strictly
-  with [[encryption/maybe-decrypt]]: a plaintext value -- forged via a direct DB write, or a legacy row from before the
-  setting became encrypted -- is rejected rather than trusted. A `:no` setting is intentionally plaintext, so it is
-  read leniently with [[encryption/maybe-decrypt-accepting-plaintext]], which returns a plaintext value unchanged."
+  for such a setting by name, so there is no value to produce and no reason to touch what is stored there."
   [setting]
   (let [setting-key (:key setting)]
-    (if-let [resolved (maybe-resolve-setting setting-key)]
-      (let [decrypt (if (encrypts? resolved)
-                      encryption/maybe-decrypt
-                      encryption/maybe-decrypt-accepting-plaintext)]
-        (try
-          (assoc setting :value (some->> (:details setting) decrypt (settings.util/unwrap-value setting-key)))
-          (catch Throwable e
-            (throw (ex-info (format "Error reading setting \"%s\": %s" setting-key (ex-message e))
-                            {:setting-key setting-key}
-                            e)))))
+    (if (maybe-resolve-setting setting-key)
+      (try
+        (assoc setting :value (some->> (:details setting) encryption/maybe-decrypt (settings.util/unwrap-value setting-key)))
+        (catch Throwable e
+          (throw (ex-info (format "Error reading setting \"%s\": %s" setting-key (ex-message e))
+                          {:setting-key setting-key}
+                          e))))
       (assoc setting :value nil))))
 
 (t2/define-before-update :model/Setting
@@ -1836,17 +1792,19 @@
 
 (defn- stored-details-value
   "The value a row's `details` hold, or nil if they hold nothing readable: they are absent, they do not decrypt, or
-  what comes out is not this setting's envelope. Decrypted leniently, so a plaintext envelope counts -- reconciling
-  that against the setting's declared `:encryption` is [[migrate-encrypted-settings!]]'s job, not this one's."
+  what comes out is not this setting's envelope. Decrypted leniently, so a plaintext envelope written before any key
+  was set still compares equal to its `value` and is left for `enable-encryption` rather than rewritten here."
   [setting-key details]
   (when (some? details)
     (u/ignore-exceptions
       (settings.util/unwrap-value setting-key (encryption/maybe-decrypt-accepting-plaintext details)))))
 
-(defn backfill-setting-details!
+(defn migrate-settings!
   "Bring every setting row's `details` back in line with the legacy `value` column beside them, storing the value the
-  way [[write-setting-value]] would have stored it. Runs on every startup, before anything restores the settings
-  cache.
+  way [[write-setting-value]] would have stored it. Runs before anything reads a setting: from
+  `metabase.core.core/init!` for the server, and from each command that migrates the app DB itself and then goes on
+  to read settings -- otherwise a `serdes export` run straight after `migrate up` would quietly write a file of
+  nothing but defaults.
 
   Every write from this version sets both columns, so the two agreeing is the normal state and nothing here has
   anything to do. They come apart only where a version predating `details` has written: it sets `value` alone, so a
@@ -1858,8 +1816,13 @@
   `value` therefore wins here, and only here: it is the column every version maintains, and the one an older version
   is already trusting. The read stays strict, so while this version is running a value still has to arrive inside the
   envelope naming the setting it belongs to. Rows of unregistered settings are skipped, since they read as no value
-  whatever their `details` hold. Runs with the settings cache disabled for the same reason
-  [[migrate-encrypted-settings!]] does."
+  whatever their `details` hold.
+
+  `value` itself is never reconciled here: nothing in this version reads it, [[write-setting-value]] keeps it right
+  for every row this version writes, and a version that does read it reconciles it at its own startup. Runs with the
+  settings cache disabled: any setting consulted meanwhile (e.g. `read-only-mode`, which the cloud-migration DML guard
+  reads on every write this issues) is read directly from the DB, since restoring the cache would strictly decrypt
+  the very rows this repairs."
   []
   (binding [config/*disable-setting-cache* true]
     (let [repaired (atom 0)
@@ -1878,15 +1841,3 @@
                       (select-keys (write-setting-value {:key key, :value plain}) [:details]))))
       (when (pos? @repaired)
         (log/infof "Rebuilt the details of %d setting(s) from their value." @repaired)))))
-
-(defn migrate-settings!
-  "Put the `setting` table in a state every setting can be read from: [[backfill-setting-details!]] fills in `details`
-  from the legacy `value` column beside it, then [[migrate-encrypted-settings!]] reconciles how those `details` are
-  encrypted with what each setting declares.
-
-  Call it after the application DB is set up and before reading a setting. That is `metabase.core.core/init!` for the
-  server, and each command that migrates the app DB itself and then goes on to read settings -- otherwise a
-  `serdes export` run straight after `migrate up` would quietly write a file of nothing but defaults."
-  []
-  (backfill-setting-details!)
-  (migrate-encrypted-settings!))

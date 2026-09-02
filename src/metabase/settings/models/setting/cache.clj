@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.settings.util :as settings.util]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -82,8 +83,10 @@
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
+  ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
+  ;; `details` compares in SQL. `details` is enveloped and encrypted like any other setting's.
   (let [now      (db-timestamp)
-        envelope (settings.util/wrap-value settings-last-updated-key now)]
+        envelope (encryption/maybe-encrypt (settings.util/wrap-value settings-last-updated-key now))]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value now, :details envelope}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both

@@ -357,7 +357,7 @@
           "settings-last-updated" (let [now (db-timestamp db-type)]
                                     (t2/update! :conn conn :setting {:key key}
                                                 {:value   now
-                                                 :details (settings.util/wrap-value key now)}))
+                                                 :details (encrypt-str-fn (settings.util/wrap-value key now))}))
           "encryption-check" nil
           (let [reencrypt #(encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext %))
                 changes   (cond-> {}
