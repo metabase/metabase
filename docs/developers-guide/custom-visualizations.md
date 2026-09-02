@@ -313,7 +313,7 @@ Metabase injects these props into your widget component (import the type with `B
 
 | Prop               | Type                  | Description                     |
 | ------------------ | --------------------- | ------------------------------- |
-| `id`               | `string`              | The setting's `id`.             |
+| `id`               | `string`              | Form-only id for your control (e.g. a label's `htmlFor`). The value is arbitrary — don't interpret it. |
 | `value`            | `TValue \| undefined` | The setting's current value.    |
 | `onChange`         | `(value?) => void`    | Update this setting's value.    |
 | `onChangeSettings` | `(settings) => void`  | Update other settings of yours. |

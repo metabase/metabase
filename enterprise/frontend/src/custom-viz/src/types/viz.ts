@@ -272,6 +272,10 @@ export type BaseWidgetProps<
   TValue,
   TSettings extends BaseVisualizationSettings,
 > = {
+  /**
+   * Form-only id for the widget's control (e.g. a label's `htmlFor`).
+   * The value is arbitrary - don't interpret it.
+   */
   id: string;
   value: TValue | undefined;
   onChange: (value?: TValue | null) => void;

@@ -23,8 +23,7 @@ type WidgetMountWithPlugin = WidgetMount<CustomVizSettingWidgetProps> & {
 
 /**
  * Wrap a plugin-supplied function-shaped widget in a host-allocated
- * `WidgetMount` tagged with its plugin. Props are translated on the way in,
- * so the plugin sees its own setting ids (i.e. non-prefixed ones).
+ * `WidgetMount` tagged with its plugin. Props are translated on the way in.
  */
 export function wrapPluginWidget(
   pluginWidget: WidgetMount<PluginWidgetProps>,
