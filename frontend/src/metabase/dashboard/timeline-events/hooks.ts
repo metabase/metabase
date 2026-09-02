@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { useListTimelinesQuery } from "metabase/api";
+import { trackDashboardEventsShown } from "metabase/dashboard/analytics";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -20,6 +21,7 @@ import {
 import {
   getDashCardSelectedTimelineEventIds,
   getDashCardVisibleTimelineEvents,
+  getHasVisibleTimelineEvents,
   getIsTimelineEventsDashCard,
   getTimelineEventsDashCardIds,
 } from "./selectors";
@@ -36,6 +38,28 @@ export const useDashboardTimelines = () => {
     { include: "events" },
     { skip: !withTimelineEvents || !hasEventsDashCards },
   );
+
+  useTrackDashboardEventsShown();
+};
+
+const useTrackDashboardEventsShown = () => {
+  const { dashboard, withTimelineEvents } = useDashboardContext();
+  const dashboardId = dashboard?.id;
+  const hasVisibleEvents = useSelector(
+    (state) => !!withTimelineEvents && getHasVisibleTimelineEvents(state),
+  );
+  const hasTrackedRef = useRef(false);
+
+  useEffect(() => {
+    hasTrackedRef.current = false;
+  }, [dashboardId]);
+
+  useEffect(() => {
+    if (hasVisibleEvents && dashboardId != null && !hasTrackedRef.current) {
+      hasTrackedRef.current = true;
+      trackDashboardEventsShown(dashboardId);
+    }
+  }, [dashboardId, hasVisibleEvents]);
 };
 
 type DashCardTimelineEventsProps = Pick<
