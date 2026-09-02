@@ -176,6 +176,22 @@
             (finally
               (t2/delete! :model/Transform :name [:in ["Native gadget" "Plain gadget"]]))))))))
 
+(deftest transform-write-create-runs-the-permission-check-test
+  (testing "GHY-4240: `api/create-check` is the only thing between a caller and a transform on a database
+            they have no transforms/native-write permission for — `transforms/create-transform!` performs no
+            check of its own. Every other test here runs as :crowberto, for whom the check is vacuous, so
+            deleting the line would leave the suite green."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-no-data-perms-for-all-users!
+          (let [args {:method     "create"
+                      :name       "Perm probe transform"
+                      :definition (query-definition)
+                      :target     {:name "mcp_perm_probe" :schema (venues-schema)}}]
+            (is (some? (tool-error (write! :rasta write-scopes args))))
+            (is (zero? (t2/count :model/Transform :name "Perm probe transform"))
+                "nothing is written when the check refuses")))))))
+
 (deftest transform-write-create-required-args-test
   (testing "GHY-4240: the create-only requirements are teaching errors naming the missing field"
     (with-transforms
