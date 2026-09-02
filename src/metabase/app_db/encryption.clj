@@ -355,7 +355,7 @@
           "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
                                     (t2/update! :conn conn :setting {:key key}
                                                 {:value          now
-                                                 :value_with_aad (encrypt-setting now key)}))
+                                                 :value_with_aad (encrypt-setting-fn now key)}))
           "encryption-check" nil
           (let [aad-opts {:aad (mdb.setting/setting-aad key)}
                 changes  (cond-> {}
