@@ -1418,6 +1418,21 @@
                "/collection/C/"}
              (group->perms [a b c] group))))))
 
+(deftest move-from-personal-to-impersonal-grandchild-test
+  (testing (str "Perms should apply recursively to *every* level, not just the moved Collection's immediate "
+                "children (metabase#79136)")
+    ;; Personal Collection > A > B > C         Personal Collection
+    ;;                                   ===>
+    ;; Root Collection > D                     Root Collection > D > A > B > C
+    (with-personal-and-impersonal-collections [group {[a b c] :personal, [d] :root}]
+      (perms/grant-collection-readwrite-permissions! group d)
+      (t2/update! :model/Collection (u/the-id a) {:location (collection/children-location d)})
+      (is (= #{"/collection/A/"
+               "/collection/B/"
+               "/collection/C/"
+               "/collection/D/"}
+             (group->perms [a b c d] group))))))
+
 ;;; --------------------------------------------- Impersonal -> Personal ---------------------------------------------
 
 (deftest move-from-impersonal-to-personal-test
@@ -1472,6 +1487,20 @@
       (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location a)})
       (is (= #{}
              (group->perms [a b c] group))))))
+
+(deftest move-from-impersonal-to-personal-grandchild-test
+  (testing (str "Deleting perms should apply recursively to *every* level, not just the moved Collection's "
+                "immediate children (metabase#79136)")
+    ;; Personal Collection > A        Personal Collection > A > B > C > D
+    ;;                          ===>
+    ;; Root Collection > B > C > D    Root Collection
+    (with-personal-and-impersonal-collections [group {[a] :personal, [b c d] :root}]
+      (perms/grant-collection-readwrite-permissions! group b)
+      (perms/grant-collection-readwrite-permissions! group c)
+      (perms/grant-collection-readwrite-permissions! group d)
+      (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location a)})
+      (is (= #{}
+             (group->perms [a b c d] group))))))
 
 (deftest ^:parallel valid-location-path?-test
   (are [path expected] (= expected

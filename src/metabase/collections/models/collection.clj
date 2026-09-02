@@ -1928,7 +1928,11 @@
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- LocationPath]
-  (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
+  ;; `descendants` only returns the immediate children (each with its own nested `:children`, which
+  ;; `copy-collection-permissions!` never looks at), so grandchildren and deeper descendants would
+  ;; silently end up with no Permissions rows at all (metabase#79136). `descendants-flat` returns
+  ;; every descendant regardless of depth, which is what we actually want here.
+  (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants-flat collection))))
 
 (mu/defn- revoke-perms-when-moving-into-personal-collection!
   "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
@@ -1937,8 +1941,11 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (ms/InstanceOf :model/Collection)]
+  ;; see the comment in `grant-perms-when-moving-out-of-personal-collection!` above -- `descendants` only
+  ;; goes one level deep here too, so this needs `descendants-flat` to actually revoke perms recursively
+  ;; for all descendants, not just the immediate children.
   (t2/query-one {:delete-from :permissions
-                 :where       [:in :object (for [collection (cons collection (descendants collection))
+                 :where       [:in :object (for [collection (cons collection (descendants-flat collection))
                                                  path-fn    [perms/collection-read-path
                                                              perms/collection-readwrite-path]]
                                              (path-fn collection))]}))
