@@ -10,6 +10,10 @@ export type PluginSeries = PluginProps["series"];
 export type PluginSettings = PluginProps["settings"];
 
 const pluginSeriesCache = new WeakMap<Series, PluginSeries>();
+const pluginDataCache = new WeakMap<
+  Series[number]["data"],
+  PluginSeries[number]["data"]
+>();
 const pluginSettingsCache = new WeakMap<
   VisualizationSettings,
   Map<string, PluginSettings>
@@ -22,12 +26,30 @@ export function toPluginSeries(series: Series): PluginSeries {
     return cached;
   }
 
-  const pluginSeries = series.map(({ data, error }) =>
-    structuredClone({ data, error }),
-  );
+  const pluginSeries = series.map(({ data, error }) => ({
+    data: toPluginData(data),
+    error: structuredClone(error),
+  }));
   pluginSeriesCache.set(series, pluginSeries);
 
   return pluginSeries;
+}
+
+// Sensibility probes rebuild the series array per display, so the expensive
+// dataset clone is keyed on the stable data object - one clone per query result.
+function toPluginData(
+  data: Series[number]["data"],
+): PluginSeries[number]["data"] {
+  const cached = pluginDataCache.get(data);
+
+  if (cached) {
+    return cached;
+  }
+
+  const cloned = structuredClone(data);
+  pluginDataCache.set(data, cloned);
+
+  return cloned;
 }
 
 // The plugin sees internal Metabase settings plus its own without the prefix.

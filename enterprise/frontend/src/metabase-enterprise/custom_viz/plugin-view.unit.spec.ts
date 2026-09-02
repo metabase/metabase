@@ -37,6 +37,19 @@ describe("toPluginSeries", () => {
     expect(toPluginSeries([...series])).not.toBe(toPluginSeries(series));
   });
 
+  it("reuses the data clone when the series array is rebuilt", () => {
+    const series = [createMockSingleSeries({})];
+    // the shape getSeriesWithDisplay produces for every sensibility probe
+    const rebuilt = series.map((single) => ({
+      ...single,
+      card: { ...single.card },
+    }));
+
+    expect(toPluginSeries(rebuilt)[0].data).toBe(
+      toPluginSeries(series)[0].data,
+    );
+  });
+
   it("preserves Map and Date column values a JSON round-trip would corrupt", () => {
     const remapping = new Map([[1, "One"]]);
     const series = [createMockSingleSeries({})];
