@@ -23,8 +23,8 @@ import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
-  Card,
   CardDisplayType,
   Dataset,
   MetricDimension,
@@ -203,14 +203,14 @@ function buildSingleSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
         display: displayType,
         visualization_settings: {
           ...(dimensionName ? { "graph.dimensions": [dimensionName] } : {}),
           ...(metricName ? { "graph.metrics": [metricName] } : {}),
         },
-      } as Card,
+        dataset_query: dataset.json_query ?? STRUCTURED_QUERY_TEMPLATE,
+      },
       data: dataset.data,
     },
   ];

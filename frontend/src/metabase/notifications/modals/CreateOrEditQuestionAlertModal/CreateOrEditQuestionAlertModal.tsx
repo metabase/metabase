@@ -10,7 +10,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import type { ScheduleValueType } from "metabase/common/components/Schedule/types";
+import type { ScheduleValueType } from "metabase/common/components/Schedule/domain";
 import CS from "metabase/css/core/index.css";
 import {
   canAccessSettings,

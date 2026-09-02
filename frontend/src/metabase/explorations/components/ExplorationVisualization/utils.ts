@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { createSeriesCard } from "metabase/common/utils/series";
 import { dayjs } from "metabase/dayjs";
 import {
   CARTESIAN_SERIES_COL_NAME,
@@ -31,6 +30,7 @@ import {
   getSeriesVizSettingsKey,
   isCartesianChart,
 } from "metabase/viz-core";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
@@ -51,6 +51,7 @@ import type {
   ExplorationQueryType,
   RowValue,
   RowValues,
+  SeriesCard,
   SeriesSettings,
   SingleSeries,
   VisualizationDisplay,
@@ -143,13 +144,13 @@ export function buildSeriesGroup({
         cardVizSettings["map.colors"] = getColorplethColorScale(color);
       }
     }
-    const card = createSeriesCard(
-      query.id,
-      query.name ?? null,
+    const card: SeriesCard = {
+      id: query.id,
+      name: query.name ?? undefined,
       display,
-      cardVizSettings,
-      query.dataset_query ?? undefined,
-    );
+      visualization_settings: cardVizSettings,
+      dataset_query: query.dataset_query ?? STRUCTURED_QUERY_TEMPLATE,
+    };
     return { card, data: dataset.data };
   });
 

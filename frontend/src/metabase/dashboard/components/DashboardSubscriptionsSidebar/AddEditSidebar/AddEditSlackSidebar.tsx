@@ -3,18 +3,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
-import type {
-  ScheduleChangeProp,
-  ScheduleValue,
-} from "metabase/common/components/Schedule/types";
-import {
-  getScheduleDefaultsWithoutHour,
-  toScheduleSettings,
-} from "metabase/common/components/Schedule/utils";
+import type { ScheduleValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
+import {
+  getScheduleDefaultsWithoutHour,
+  toScheduleSettings,
+} from "metabase/notifications/utils";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
