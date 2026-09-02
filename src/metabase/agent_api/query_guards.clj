@@ -100,13 +100,17 @@
   (letfn [;; A stage/query map is walked only along the structural edges, never into caller-named
           ;; sub-maps like `:expressions`/`:template-tags`.
           (scan-map [node]
-            (or (native-marker? node)
-                (boolean (some (fn [[t v]]
-                                 (cond
-                                   (native-seq-edges t) (scan-seq-edge v)
-                                   (native-map-edges t) (scan-map-edge v)
-                                   :else                false))
-                               (tokenized-entries node)))))
+            (if-not (map? node)
+              ;; A non-map where a stage/query map belongs (e.g. `{:stages [1]}`) is junk: deep-scan it
+              ;; rather than throw, so the caller's shape validation reports the 400.
+              (deep-scan node)
+              (or (native-marker? node)
+                  (boolean (some (fn [[t v]]
+                                   (cond
+                                     (native-seq-edges t) (scan-seq-edge v)
+                                     (native-map-edges t) (scan-map-edge v)
+                                     :else                false))
+                                 (tokenized-entries node))))))
           ;; `:stages`/`:joins`: normally a sequence of stage/join maps. A malformed non-sequential
           ;; value is deep-scanned so junk can't smuggle a marker past the guard.
           (scan-seq-edge [node]

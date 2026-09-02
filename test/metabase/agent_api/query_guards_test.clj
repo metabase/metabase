@@ -74,6 +74,11 @@
     (are [query-map] (true? (query-guards/native-query? query-map))
       {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"} 42]}
       {:stages {:garbage [{:native "SELECT 1"}]}}))
+  (testing "a non-map element where a stage belongs never throws: it is deep-scanned, and a marker after it still trips"
+    ;; `/v2/query` must answer a 400 from shape validation for `{:stages [1]}`, not a 500 from the guard.
+    (is (false? (query-guards/native-query? {:stages [1]})))
+    (is (false? (query-guards/native-query? {:stages [42 {:lib/type :mbql.stage/mbql :source-table 1}]})))
+    (is (true? (query-guards/native-query? {:stages [42 {:lib/type :mbql.stage/native :native "SELECT 1"}]}))))
   (testing "clean MBQL queries are not native"
     (are [query-map] (false? (query-guards/native-query? query-map))
       {:stages [{:lib/type :mbql.stage/mbql :source-table 1}]}
