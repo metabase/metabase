@@ -657,3 +657,21 @@
                 (is (seq narrowed) "the constrained fetch still returns values")
                 (is (< (count narrowed) (count unnarrowed))
                     "and fewer than the unconstrained fetch — the accepted constraint was applied")))))))))
+
+(deftest constraints-with-query-test
+  (testing "GHY-4141: constraints and `query` narrow together — the search runs inside the chain-filtered set rather
+            than over the whole column. This is the tool's only route through `chain-filter-search` with constraints
+            (and the `*allow-implicit-uuid-field-remapping*` binding the search path pins), and neither
+            constraints-test nor query-search-test reaches it."
+    (with-fixtures [{:keys [dashboard]}]
+      (mt/with-test-user :rasta
+        (let [base {:target "dashboard" :id (:id dashboard) :parameter_id "_CATEGORY_NAME_"}]
+          (testing "both narrowings apply"
+            (is (= [["Steakhouse"]]
+                   (:values (params-result (assoc base :query "Steak" :constraints {:_PRICE_ 4}))))))
+          (testing "a value matching the query but excluded by the constraint is absent — the constraint is not
+                    dropped just because a query is also present"
+            (is (= [["African"]] (:values (params-result (assoc base :query "African"))))
+                "African is a real category, so the query alone finds it")
+            (is (= [] (:values (params-result (assoc base :query "African" :constraints {:_PRICE_ 4}))))
+                "but no price-4 venue is African, so the chain-filtered search excludes it")))))))
