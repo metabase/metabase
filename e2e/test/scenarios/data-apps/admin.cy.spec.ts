@@ -112,27 +112,24 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
-  it("offers an active data-app group in the create-user group picker", () => {
-    // Assigning a user to a data app's group is how you grant them app access, so the picker must list it.
+  it("offers an active data-app group in the People-admin group pickers", () => {
+    // Assigning a user to a data app's group grants them app access, so the pickers must list it. One
+    // draft + one beforeEach; each picker check re-visits /admin/people rather than closing overlays.
     cy.request("POST", "/api/apps/orders-app/draft");
 
+    cy.log("create-user picker");
     cy.visit("/admin/people");
     cy.button("Invite someone").click();
-
     H.modal().within(() => {
       cy.findByLabelText(/Email/).type("app-member@example.com");
       cy.findByRole("combobox", { name: "Groups" }).click();
     });
-
     // The dropdown renders in a portal outside the modal; each group is an option.
     cy.findByRole("option", { name: "Data App: orders-app" }).should(
       "be.visible",
     );
-  });
 
-  it("offers an active data-app group in the edit-user group picker", () => {
-    cy.request("POST", "/api/apps/orders-app/draft");
-
+    cy.log("edit-user picker");
     cy.visit("/admin/people");
     cy.findAllByLabelText("group-summary")
       .first()
@@ -141,18 +138,12 @@ describe("scenarios > data apps > admin management", () => {
         cy.icon("ellipsis").click();
       });
     H.popover().findByText("Edit user").click();
-
-    H.modal().within(() => {
-      cy.findByRole("combobox", { name: "Groups" }).click();
-    });
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     cy.findByRole("option", { name: "Data App: orders-app" }).should(
       "be.visible",
     );
-  });
 
-  it("offers an active data-app group in the People list group dropdown", () => {
-    cy.request("POST", "/api/apps/orders-app/draft");
-
+    cy.log("People list group dropdown");
     cy.visit("/admin/people");
     cy.findAllByLabelText("group-summary").first().click();
     H.popover().findByLabelText("Data App: orders-app").should("be.visible");

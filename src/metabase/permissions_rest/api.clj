@@ -146,11 +146,13 @@
 (defn- mark-stale-app-groups
   "Flag each data-app group whose app is gone (stale) so the groups UI can badge it."
   [groups]
-  (let [active (perms/active-data-app-group-ids)]
-    (map (fn [group]
-           (cond-> group
-             (:is_data_app_group group) (assoc :is_stale_data_app_group (not (contains? active (:id group))))))
-         groups)))
+  (if-not (some :is_data_app_group groups)
+    groups
+    (let [active (perms/active-data-app-group-ids)]
+      (map (fn [group]
+             (cond-> group
+               (:is_data_app_group group) (assoc :is_stale_data_app_group (not (contains? active (:id group))))))
+           groups))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
