@@ -30,25 +30,6 @@ export function toPluginSeries(series: Series): PluginSeries {
   return pluginSeries;
 }
 
-// Entries structuredClone rejects (functions, host-internal caches like the
-// `_numberFormatter` Intl instance) are dropped - they are not part of the
-// plugin contract.
-function cloneCloneableEntries(
-  value: Record<string, unknown>,
-): Record<string, unknown> {
-  const cloned: Record<string, unknown> = {};
-
-  for (const [key, entry] of Object.entries(value)) {
-    try {
-      cloned[key] = structuredClone(entry);
-    } catch {
-      // dropped
-    }
-  }
-
-  return cloned;
-}
-
 // The plugin sees internal Metabase settings plus its own without the prefix.
 // On setting name collision, the plugin setting shadows the internal one.
 export function toPluginSettings(
@@ -69,19 +50,20 @@ export function toPluginSettings(
     .map(([key, value]) => [key.slice(prefix.length), value]);
 
   const merged = Object.fromEntries([...hostEntries, ...pluginEntries]);
-  const { column } = merged;
 
   // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
   // through the sandbox membrane.
   const pluginSettings: PluginSettings = cloneCloneableEntries(merged);
 
-  if (typeof column === "function") {
-    pluginSettings.column = (col) => {
-      // fresh copy per call so mutating the result can't reach the host's
-      // memoized settings; `column` embeds the caller's own argument - hand it
-      // back uncloned so formatValue sees the exact object it was given
-      const { column: _embeddedColumn, ...columnSettings } = column(col);
-      return { ...cloneCloneableEntries(columnSettings), column: col };
+  if (typeof merged.column === "function") {
+    pluginSettings.column = (column) => {
+      // Fresh copy per call so mutating the result can't reach the host's memoized settings.
+      const { column: _embeddedColumn, ...columnSettings } =
+        merged.column(column);
+      return {
+        ...cloneCloneableEntries(columnSettings),
+        column,
+      };
     };
   }
 
@@ -90,6 +72,23 @@ export function toPluginSettings(
   pluginSettingsCache.set(settings, cache);
 
   return pluginSettings;
+}
+
+// Drops entries values of which structuredClone rejects.
+function cloneCloneableEntries(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  const cloned: Record<string, unknown> = {};
+
+  for (const [key, entry] of Object.entries(value)) {
+    try {
+      cloned[key] = structuredClone(entry);
+    } catch {
+      // dropped
+    }
+  }
+
+  return cloned;
 }
 
 export function toHostSettings(

@@ -120,7 +120,7 @@ describe("toPluginSettings", () => {
       { [`${PREFIX}lookup`]: new Map([["a", 1]]) },
       PREFIX,
     );
-    const lookup: unknown = Reflect.get(pluginSettings, "lookup");
+    const lookup = Reflect.get(pluginSettings, "lookup");
     const getEntry =
       isObject(lookup) && isFunction(lookup.get) ? lookup.get : null;
 
@@ -136,17 +136,19 @@ describe("toPluginSettings", () => {
     const settings = { column: () => columnSettings };
 
     const pluginSettings = toPluginSettings(settings, PREFIX);
-    const column: unknown = Reflect.get(pluginSettings, "column");
+    const column = Reflect.get(pluginSettings, "column");
 
     if (!isFunction(column)) {
       throw new Error("Expected the plugin to see the column function");
     }
 
     const col = { name: "X" };
-    const first: unknown = column(col);
+    const first = column(col);
+
     if (!isObject(first)) {
       throw new Error("Expected column settings");
     }
+
     first.prefix = "mutated";
 
     expect(columnSettings.prefix).toBe("$");
@@ -163,14 +165,15 @@ describe("toPluginSettings", () => {
     };
 
     const pluginSettings = toPluginSettings(settings, PREFIX);
-    const column: unknown = Reflect.get(pluginSettings, "column");
+    const column = Reflect.get(pluginSettings, "column");
 
     if (!isFunction(column)) {
       throw new Error("Expected the plugin to see the column function");
     }
 
     const col = { name: "mine" };
-    const result: unknown = column(col);
+    const result = column(col);
+
     if (!isObject(result)) {
       throw new Error("Expected column settings");
     }
