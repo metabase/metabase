@@ -70,28 +70,13 @@ jobs:
         release: ${{ inputs.release }}
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    # Release callers pass repo/tag explicitly; everyone else gets the branch-derived pair.
-    - name: Get Docker Info
-      id: docker-info
-      if: ${{ !inputs.repo || !inputs.tag }}
+    - name: Resolve image repo and tag 
+      id: image
       uses: ./.github/actions/get-docker-info
       with:
+        repo: ${{ inputs.repo }}
+        tag: ${{ inputs.tag }}
         edition: ${{ inputs.edition }}
-    - name: Resolve image name
-      id: image
-      env:
-        REPO: ${{ inputs.repo || steps.docker-info.outputs.repo }}
-        TAG: ${{ inputs.tag || steps.docker-info.outputs.tag }}
-      run: | # bash
-        if [ -z "$REPO" ] || [ -z "$TAG" ]; then
-          echo "Could not resolve a docker repo/tag (repo='$REPO' tag='$TAG')"
-          exit 1
-        fi
-        {
-          echo "repo=$REPO"
-          echo "tag=$TAG"
-          echo "full_image=$REPO:$TAG"
-        } >> "$GITHUB_OUTPUT"
     - name: Get platforms
       id: platforms
       uses: actions/github-script@v9
