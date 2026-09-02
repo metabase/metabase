@@ -207,17 +207,18 @@
                                          (contains? readable-ids (:id result))))))))
 
 (defn- validate-and-enrich-documents
-  "Remove stale or unreadable document hits and attach live write permission.
+  "Remove stale or unreadable document hits and attach live write permission. `archived?` is the
+  archived state the search asked for: a hit is stale unless the live Document is in that set.
 
   Search indexes are updated asynchronously, so a deleted document can briefly remain
   searchable. Destination discovery must validate hits against the live model before the
   agent attempts to save into them."
-  [results]
+  [archived? results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
                        (->> (t2/select :model/Document
                                        :id [:in document-ids]
-                                       :archived false)
+                                       :archived (boolean archived?))
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]
@@ -416,7 +417,7 @@
              enrich-with-database-engines
              enrich-with-portable-entity-ids
              enrich-with-metric-base-tables
-             validate-and-enrich-documents)
+             (validate-and-enrich-documents (boolean archived)))
         (vary-meta assoc :total total))))
 
 (defn- table-refs->results

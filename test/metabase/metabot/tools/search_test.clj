@@ -554,7 +554,35 @@
                        {:id 1 :type "dashboard" :name "Unrelated dashboard"}]]
           (is (= [{:id document-id :type "document" :name "Existing document" :can_write true}
                   {:id 1 :type "dashboard" :name "Unrelated dashboard"}]
-                 (#'search/validate-and-enrich-documents results))))))))
+                 (#'search/validate-and-enrich-documents false results))))))))
+
+(deftest archived-document-hits-survive-an-archived-search-test
+  (testing "GHY-4137: the staleness check must validate document hits against the archived set the
+            search actually asked for. With a hardcoded `:archived false`, every archived document
+            was dropped from the page while `:total` still counted it — an empty page no offset
+            could ever reach."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {archived-id :id} {:name "Archived doc" :archived true}
+                     :model/Document {active-id :id} {:name "Active doc" :archived false}]
+        (testing "an archived hit survives an archived search"
+          (is (= [archived-id]
+                 (map :id (#'search/validate-and-enrich-documents
+                           true
+                           [{:id archived-id :type "document" :name "Archived doc"}])))))
+        (testing "an active hit is stale for an archived search"
+          (is (= []
+                 (#'search/validate-and-enrich-documents
+                  true
+                  [{:id active-id :type "document" :name "Active doc"}]))))
+        (testing "the active search is unchanged: active survives, archived is stale"
+          (is (= [active-id]
+                 (map :id (#'search/validate-and-enrich-documents
+                           false
+                           [{:id active-id :type "document" :name "Active doc"}]))))
+          (is (= []
+                 (#'search/validate-and-enrich-documents
+                  false
+                  [{:id archived-id :type "document" :name "Archived doc"}]))))))))
 
 (deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
