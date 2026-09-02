@@ -403,6 +403,101 @@
           hydrate-notification
           notification->pulse))))
 
+(defn- tenant-scoped-caller?
+  "True when the current user's recipient visibility is narrowed to their own tenant. Superusers and
+  users with no tenant see recipients unfiltered, as before tenants existed."
+  []
+  (and (not api/*is-superuser?*)
+       (some? (:tenant_id @api/*current-user*))))
+
+(defn- recipient-ids->tenant-ids
+  "Map of user id -> `:tenant_id` for the Metabase-user recipients in `recipient-ids`. Recipient maps
+  come from the `:recipients` batched-hydrate, which does not select `:tenant_id`, so tenant
+  membership is looked up here rather than read off the map — reading it off the map compares nil to
+  nil and filters nothing (or, once the caller has a tenant, drops every recipient)."
+  [recipient-ids]
+  (if (seq recipient-ids)
+    (t2/select-pk->fn :tenant_id :model/User :id [:in recipient-ids])
+    {}))
+
+(defn- recipient-visible-to-tenant-caller?
+  "Whether a tenant-scoped caller may see `recipient`. Plain-email recipients (no `:id`) are always
+  visible; Metabase-user recipients are visible only when they belong to the caller's tenant.
+
+  This predicate is the single definition of the tenant recipient filter: the read path uses it to
+  hide recipients ([[filter-cross-tenant-recipients]]) and the write path uses it to merge the same
+  hidden recipients back in, so a filtered read that is submitted back as a write cannot silently
+  delete them."
+  [id->tenant-id tenant-id recipient]
+  (or (not (:id recipient))
+      (= (id->tenant-id (:id recipient)) tenant-id)))
+
+(defn hidden-cross-tenant-recipients
+  "The Metabase-user recipients in `recipients` that [[filter-cross-tenant-recipients]] would hide from
+  the current user. Returns `nil` when the caller is not tenant-scoped, i.e. when nothing is hidden.
+
+  The write path uses this to restore recipients the caller was never shown; see
+  [[metabase.pulse.api.pulse/maybe-add-recipients]]."
+  [recipients]
+  (when (tenant-scoped-caller?)
+    (let [tenant-id     (:tenant_id @api/*current-user*)
+          id->tenant-id (recipient-ids->tenant-ids (into #{} (keep :id) recipients))]
+      (remove #(recipient-visible-to-tenant-caller? id->tenant-id tenant-id %) recipients))))
+
+(defn- filter-cross-tenant-recipients
+  "Drop Metabase-user recipients that belong to a different tenant than the current (tenant-scoped)
+  user."
+  [pulses]
+  (let [tenant-id     (:tenant_id @api/*current-user*)
+        recipient-ids (into #{}
+                            (comp (mapcat :channels) (mapcat :recipients) (keep :id))
+                            pulses)
+        id->tenant-id (recipient-ids->tenant-ids recipient-ids)]
+    (for [pulse pulses]
+      (assoc pulse :channels
+             (for [channel (:channels pulse)]
+               (assoc channel :recipients
+                      (filter #(recipient-visible-to-tenant-caller? id->tenant-id tenant-id %)
+                              (:recipients channel))))))))
+
+(defn maybe-filter-pulses-recipients
+  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
+  themselves. Recipients that are plain email addresses are preserved.
+
+  If the current user belongs to a tenant (and is not a superuser), also filters the recipient
+  lists down to users in the same tenant. A user with no tenant sees recipients unfiltered, as
+  before tenants existed."
+  [pulses]
+  (cond->> pulses
+    (perms/sandboxed-or-impersonated-user?)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:id recipient) api/*current-user-id*)))
+                                   (:recipients channel)))))))
+
+    (tenant-scoped-caller?)
+    filter-cross-tenant-recipients))
+
+(defn maybe-filter-pulse-recipients
+  "[[maybe-filter-pulses-recipients]] for a single pulse."
+  [pulse]
+  (first (maybe-filter-pulses-recipients [pulse])))
+
+(defn maybe-strip-sensitive-metadata
+  "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
+  being the creator or a recipient, we return it with some metadata removed."
+  [pulse]
+  (if (mi/current-user-has-full-permissions? :read pulse)
+    pulse
+    (-> (dissoc pulse :cards)
+        (update :channels
+                (fn [channels]
+                  (map #(dissoc % :recipients) channels))))))
+
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]

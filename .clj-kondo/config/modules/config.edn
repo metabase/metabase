@@ -1619,7 +1619,8 @@
            system
            task
            tracing
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   osi
   {:team "Metabot"
