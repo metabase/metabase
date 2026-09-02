@@ -77,6 +77,10 @@ jobs:
         repo: ${{ inputs.repo }}
         tag: ${{ inputs.tag }}
         edition: ${{ inputs.edition }}
+    - name: Check if image should be pushed to ECR
+      id: ecr
+      run: |
+        # TODO: check if the repo contains dkr.ecr. and amazonaws.com and set GITHUB_OUTPUT push=true/false
     - name: Get platforms
       id: platforms
       uses: actions/github-script@v9
@@ -94,7 +98,20 @@ jobs:
           return buildInfo.platforms;
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
+    - name: Configure AWS credentials
+      if: ${{ steps.ecr.ouputs.push == 'true' }}
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+      with:
+        role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: us-east-1
+    - name: Login to Amazon ECR
+      if: ${{ steps.ecr.ouputs.push == 'true' }}
+      uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+      with:
+        registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}" 
     - name: Login to Docker Hub
+      if: ${{ steps.ecr.ouputs.push == 'false' }}
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
