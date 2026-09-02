@@ -325,10 +325,10 @@
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
                               {:request-options {:headers {"x-metabase-client" "client-B"
                                                            "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_version "2"}
+        (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
-                             :card_id (u/the-id card-1))))))))
+                (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                               :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
