@@ -247,31 +247,6 @@
               (is (= 1 @minted))
               (is (str/includes? text "uiCredential")))))))))
 
-(deftest v2-credentials-are-never-legacy-test
-  (testing "GHY-4318: `issue-legacy-ui-credential` (and the 2-arity that forwards to it) mints a credential
-            EXEMPT from the native-SQL scope gate. That exemption exists only so wiring the gate would not change
-            v1's behavior — v1's iframe visualizes execute_sql handles. A v2 caller reaching for it, now or when
-            the visualize tools land, would silently opt this surface back out of the gate and reopen the hole
-            the gate closes.
-
-            The arity is the trap: `(issue-ui-credential session-id user-id)` reads like a perfectly reasonable
-            call. So this asserts the property on the wire instead of trusting the name — every credential the
-            v2 surface hands out carries a scope claim and is not marked legacy."
-    (mcp.ui-resource/with-fallback-template
-      (let [[session-id _] (initialize!)
-            html   (-> (mcp-request (jsonrpc-request "resources/read" {:uri v2.resources/visualize-query-uri})
-                                    {"mcp-session-id" session-id})
-                       (get-in [:body :result :contents])
-                       first
-                       :text)
-            claims (some-> (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
-                           mcp.session/resolve-ui-credential)]
-        (is (some? claims) "the shell must render a resolvable credential — otherwise this passes vacuously")
-        (is (nil? (:legacy claims))
-            "a v2-minted credential must never carry the v1 exemption marker")
-        (is (contains? claims :scp)
-            "and must carry a scope claim, which is what subjects it to the native-SQL gate")))))
-
 (deftest ^:parallel v2-surface-scopes-match-metabot-scope-test
   (testing "`v2-surface-scopes` spells its scopes as literals because `metabase.mcp.paths` must stay
             dependency-free — `metabase.server.middleware.security` requires `metabase.mcp.core`, so requiring

@@ -199,8 +199,7 @@
   scope (`agent:sql:run`, or v1's concrete `agent:sql:execute`) and the `mcp-execute-sql-enabled` kill switch.
 
   A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
-  the claim existed. v1's frozen surface, which mints claimless credentials by design and whose iframe visualizes
-  raw-SQL handles today, marks them `:legacy` and is skipped — see [[metabase.mcp.session/issue-ui-credential]].
+  the claim existed.
 
   Native is refused rather than banned because `execute_sql` handles legitimately hold raw SQL and are visualizable
   by design. Non-native queries, and requests authenticated any other way, pass straight through."
@@ -208,11 +207,7 @@
   ;; Keyed on the credential, not on its scopes claim, so a credential carrying no claim is refused rather than
   ;; waved through — a rolling deploy can hand this node one minted before the claim existed.
   (when-let [claims (:mcp-ui-credential request)]
-    ;; v1-compat: v1 mints claimless credentials through `issue-ui-credential`'s 2-arity, which stamps `:legacy`.
-    ;; Wiring this guard must not change v1's behavior, and v1's iframe visualizes execute_sql handles. Delete
-    ;; this branch with v1's retirement, together with that arity.
-    (when (and (native-query? query)
-               (not (:legacy claims)))
+    (when (native-query? query)
       ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s

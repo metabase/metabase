@@ -71,7 +71,8 @@
   (let [user-id          (mt/user->id :crowberto)
         credential-id    (mcp.session/create! user-id)
         other-session-id (mcp.session/create! user-id)
-        credential       (mcp.session/issue-ui-credential credential-id user-id)]
+        ;; v1's claimless 2-arity retired with v1; the callback surface takes a scoped credential now.
+        credential       (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})]
     (testing "a credential can use the callback surface for its own MCP session"
       (is (= 200 (:status (post-drill-with-ui-credential 200 credential credential-id)))))
     (testing "a credential cannot be reused with another MCP session"
@@ -81,7 +82,7 @@
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
         (is (= 401 (:status (post-drill-with-ui-credential
                              401
-                             (mcp.session/issue-ui-credential credential-id user-id)
+                             (mcp.session/issue-ui-credential credential-id user-id #{"agent:query:run"})
                              credential-id))))))))
 
 (deftest drills-post-rejects-blank-body-test
