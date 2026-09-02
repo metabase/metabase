@@ -179,7 +179,7 @@
           (registry/register-tool! (assoc existing :handler handler)))))))
 
 ;; not ^:parallel: exercises register-tool!'s load-time guards
-(deftest registration-validation-test
+(deftest registration-validates-extensions-test
   (testing "an unknown option key fails loudly — a misspelled :required-extensions would silently disable the gate"
     (is (thrown-with-msg? Exception #"unknown option"
                           (registry/register-tool! {:name               "typo_key"
@@ -203,14 +203,20 @@
                                                     :description         "x"
                                                     :args                [:map]
                                                     :handler             (fn [_ _] nil)
-                                                    :required-extensions #{:mcp-app-holodeck}}))))
-  (testing "a second definition claiming a registered name with a different handler fails loudly; the same
-            handler re-registering (REPL/test reload, which mints a fresh var for the same name) is allowed"
+                                                    :required-extensions #{:mcp-app-holodeck}})))))
+
+;; not ^:parallel: re-registers a tool in the shared registry
+(deftest registration-rejects-a-name-claimed-by-another-handler-test
+  (testing "a second definition claiming a registered name fails loudly, so load order cannot decide which
+            handler `tools/call` reaches; the registered handler itself re-registers cleanly"
     (let [existing (get @@#'registry/tools* "ping_v2")]
       (is (some? existing) "ping_v2 must be registered for this to prove anything")
       (is (thrown-with-msg? Exception #"already registered"
                             (registry/register-tool! (assoc existing :handler (fn [_ _] nil)))))
-      (is (= "ping_v2" (registry/register-tool! existing)))))
+      (is (= "ping_v2" (registry/register-tool! existing))))))
+
+;; not ^:parallel: exercises register-tool!'s load-time guards
+(deftest registration-validates-required-fields-test
   (testing "a blank :name fails loudly"
     (is (thrown-with-msg? Exception #":name"
                           (registry/register-tool! {:name        ""
