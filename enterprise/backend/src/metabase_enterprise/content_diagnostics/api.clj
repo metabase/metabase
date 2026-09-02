@@ -1,6 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.api
   "Content Diagnostics API - paginated, batch-hydrated latest-per-entity finding lists, mounted behind
-  `premium-handler … :content-diagnostics` (`+auth` + feature gate). Endpoints only: each composes the
+  `premium-handler … :content-diagnostics` (`+auth` + feature gate). The namespace is audience-gated to
+  superuser/data-analyst/`:monitoring` ([[+check-diagnostics-access]]). Endpoints only: each composes the
   shared read/hydration layer in `api.common` and pins its own param + response schema. The scan runs on a
   Quartz job.
 
@@ -11,8 +12,10 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.routes.common :as routes.common :refer [+auth]]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -299,6 +302,23 @@
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
+(defn- check-diagnostics-access
+  "403 unless the caller is a superuser, a data analyst, or holds `:monitoring` - the same union as the
+  FE `canAccessContentDiagnostics` guard. This only gates who can call the endpoints;
+  `api.common/visible-findings-clause` still decides which findings they get back."
+  []
+  (api/check-403 (or (api/is-data-analyst?)
+                     (perms/current-user-has-application-permissions? :monitoring))))
+
+(def ^:private ^{:arglists '([handler])} +check-diagnostics-access
+  "Applies [[check-diagnostics-access]] to every endpoint in the namespace, so a new one is gated
+  automatically."
+  (routes.common/wrap-middleware-for-open-api-spec-generation
+   (fn [handler]
+     (fn [request respond raise]
+       (check-diagnostics-access)
+       (handler request respond raise)))))
+
 (api.macros/defendpoint :get "/stale"
   :- [:map
       [:data         [:sequential StaleFinding]]
@@ -472,4 +492,6 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."
-  (api.macros/ns-handler *ns* +auth))
+  ;; Middleware is applied left-to-right, so the last one ends up outermost: `+auth` runs first and an
+  ;; unauthenticated request still gets a 401 rather than the audience gate's 403.
+  (api.macros/ns-handler *ns* +check-diagnostics-access +auth))

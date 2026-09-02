@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-diagnostics.scan-test
+(ns ^:synchronized metabase-enterprise.content-diagnostics.scan-test
   "The scan pipeline runs the instance-wide `stale` checker, persists a snapshot, and supersedes
   prior findings; the `GET /stale` API lists the latest valid finding per entity, live
   permission-filtered and batch-hydrated."
@@ -10,12 +10,15 @@
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase-enterprise.content-diagnostics.task.scan :as task.scan]
+   [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :each cd.tu/with-authorized-reader!)
 
 (defn- stale-instant
   "Comfortably past the staleness threshold, whatever its default — derived from the setting so a
@@ -718,38 +721,45 @@
 
 (deftest api-archived-folder-transform-test
   (testing "GET /stale serves transforms in archived folders - archiving a folder neither archives nor stops its transforms - while archived-folder cards stay hidden"
-    (mt/with-premium-features #{:content-diagnostics}
+    ;; The unprivileged actor is a `:monitoring` grantee rather than the suite's usual `:rasta`: the
+    ;; namespace fixture makes rasta an analyst, and an analyst reads every `transforms`-namespace
+    ;; collection outright (`collection/visible-collection-query`) - which is the very thing the last
+    ;; assertion denies. `:monitoring` clears the endpoint gate without touching collection visibility.
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-          (mt/with-temp [:model/Collection {xf-folder :id} {:name      "Shelved pipelines"
-                                                            :namespace "transforms"
-                                                            :archived  true}
-                         :model/Transform {xf-id :id} {:collection_id xf-folder}
-                         :model/Collection {card-folder :id} {:archived true}
-                         :model/Card {card-id :id} {:collection_id card-folder}]
-            (let [prefix   (scope-prefix)
-                  insert!  (fn [etype eid]
-                             (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                                              {:scan_id "af" :entity_type etype :entity_id eid
-                                                               :entity_name (str prefix "-" eid)
-                                                               :finding_type :stale :details {}})))
-                  xf-fid   (insert! :transform xf-id)
-                  card-fid (insert! :card card-id)
-                  rows-for (fn [user] (:data (mt/user-http-request user :get 200
-                                                                   "ee/content-diagnostics/stale" :query prefix)))
-                  rows     (rows-for :crowberto)
-                  ids      (set (map :id rows))]
-              (testing "the archived-folder transform finding is served"
-                (is (contains? ids xf-fid)))
-              (testing "its breadcrumb names the archived folder"
-                (is (=? {:id        xf-folder
-                         :name      "Shelved pipelines"
-                         :namespace "transforms"}
-                        (get-in (finding-for rows "transform" xf-id) [:details :collection]))))
-              (testing "a card in an archived folder stays hidden"
-                (is (not (contains? ids card-fid))))
-              (testing "archived-folder inclusion does not bypass collection permissions"
-                (is (not (contains? (set (map :id (rows-for :rasta))) xf-fid)))))))))))
+          (mt/with-user-in-groups [group        {:name "Content Diagnostics Monitoring"}
+                                   unprivileged [group]]
+            (perms/grant-application-permissions! group :monitoring)
+            (mt/with-temp [:model/Collection {xf-folder :id} {:name      "Shelved pipelines"
+                                                              :namespace "transforms"
+                                                              :archived  true}
+                           :model/Transform {xf-id :id} {:collection_id xf-folder}
+                           :model/Collection {card-folder :id} {:archived true}
+                           :model/Card {card-id :id} {:collection_id card-folder}]
+              (let [prefix   (scope-prefix)
+                    insert!  (fn [etype eid]
+                               (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                {:scan_id "af" :entity_type etype :entity_id eid
+                                                                 :entity_name (str prefix "-" eid)
+                                                                 :finding_type :stale :details {}})))
+                    xf-fid   (insert! :transform xf-id)
+                    card-fid (insert! :card card-id)
+                    rows-for (fn [user] (:data (mt/user-http-request user :get 200
+                                                                     "ee/content-diagnostics/stale" :query prefix)))
+                    rows     (rows-for :crowberto)
+                    ids      (set (map :id rows))]
+                (testing "the archived-folder transform finding is served"
+                  (is (contains? ids xf-fid)))
+                (testing "its breadcrumb names the archived folder"
+                  (is (=? {:id        xf-folder
+                           :name      "Shelved pipelines"
+                           :namespace "transforms"}
+                          (get-in (finding-for rows "transform" xf-id) [:details :collection]))))
+                (testing "a card in an archived folder stays hidden"
+                  (is (not (contains? ids card-fid))))
+                (testing "archived-folder inclusion does not bypass collection permissions"
+                  (is (not (contains? (set (map :id (rows-for unprivileged))) xf-fid))))))))))))
 
 (deftest api-threshold-days-filter-test
   (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"

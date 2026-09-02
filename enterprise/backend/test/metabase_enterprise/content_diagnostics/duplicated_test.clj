@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-diagnostics.duplicated-test
+(ns ^:synchronized metabase-enterprise.content-diagnostics.duplicated-test
   "The `duplicated` checker (match mode `name`) flags clusters of ≥2 same-type non-archived entities
   whose normalized names collide, stamping the peer count in the top-level `duplicate_count` column and
   freezing the `normalized_name`/`duplicate_entity_ids` envelope in `details` at scan time. The
@@ -7,11 +7,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.scan :as scan]
+   [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :each cd.tu/with-authorized-reader!)
 
 (defn- scope-prefix
   "Unique per-test entity-name prefix - both the checker's name grouping and the API reads are scoped by
@@ -482,25 +485,32 @@
     ;; Enable transforms via premium features, not the `transforms-enabled` setting: with no `:hosting`
     ;; in scope, `with-temporary-setting-values` would restore an explicit global `false` that disables
     ;; transforms for every other test in a parallel run.
-    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
+    ;; The non-analyst actor is a `:monitoring` grantee rather than the suite's usual `:rasta` - the
+    ;; namespace fixture makes rasta an analyst, and the analyst flag is exactly what this test varies.
+    ;; `:monitoring` clears the endpoint's audience gate without it, so peer readability stays the only
+    ;; difference from the superuser row.
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (let [prefix (scope-prefix)
-              nm     (str prefix " Nightly Sync")]
-          (mt/with-temp [:model/Transform {xf-a :id} {:name nm}
-                         :model/Transform {xf-b :id} {:name nm}]
-            (scan/scan!)
-            (let [finding (fn [user]
-                            (some #(when (= [xf-a "transform"] [(:entity_id %) (:entity_type %)]) %)
-                                  (:data (mt/user-http-request user :get 200
-                                                               "ee/content-diagnostics/duplicated"
-                                                               :query prefix))))]
-              (testing "superuser: the peer hydrates from the transform model - no card_type, no view_count"
-                (is (= [{:id xf-b :name nm :entity_type "transform"}]
-                       (get-in (finding :crowberto) [:details :duplicate_entities]))))
-              (testing "a non-data-analyst sees the finding (collection-visible) but not the peer"
-                (let [f (finding :rasta)]
-                  (is (some? f))
-                  (is (= [] (get-in f [:details :duplicate_entities]))))))))))))
+        (mt/with-user-in-groups [group           {:name "Content Diagnostics Monitoring"}
+                                 monitoring-user [group]]
+          (perms/grant-application-permissions! group :monitoring)
+          (let [prefix (scope-prefix)
+                nm     (str prefix " Nightly Sync")]
+            (mt/with-temp [:model/Transform {xf-a :id} {:name nm}
+                           :model/Transform {xf-b :id} {:name nm}]
+              (scan/scan!)
+              (let [finding (fn [user]
+                              (some #(when (= [xf-a "transform"] [(:entity_id %) (:entity_type %)]) %)
+                                    (:data (mt/user-http-request user :get 200
+                                                                 "ee/content-diagnostics/duplicated"
+                                                                 :query prefix))))]
+                (testing "superuser: the peer hydrates from the transform model - no card_type, no view_count"
+                  (is (= [{:id xf-b :name nm :entity_type "transform"}]
+                         (get-in (finding :crowberto) [:details :duplicate_entities]))))
+                (testing "a non-data-analyst sees the finding (collection-visible) but not the peer"
+                  (let [f (finding monitoring-user)]
+                    (is (some? f))
+                    (is (= [] (get-in f [:details :duplicate_entities])))))))))))))
 
 (deftest duplicated-api-archived-folder-transform-peer-test
   (testing "GET /duplicated keeps transform findings and peers in archived folders - folder state is not a transform lifecycle state"
