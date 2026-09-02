@@ -45,9 +45,9 @@ function isRenderable(
 }
 
 /**
- * Built-in visualizations decide via their own `isSensible`; custom
- * visualizations always answer true there. Definitions without one count as
- * sensible when they can render the data without throwing.
+ * Built-in visualizations decide via their own `isSensible`. Custom
+ * visualizations have no `isSensible`, so they count as sensible when they can
+ * render the data without throwing.
  */
 export function getSensibleDisplays(rawSeries: RawSeries) {
   const [{ data }] = rawSeries;
@@ -92,9 +92,7 @@ export function groupVisualizationsBySensibility({
 
   for (const vizType of orderedVizTypes) {
     const viz = visualizations.get(vizType);
-    // Custom vizzes stay in the collapsed group the sidebar builds from the
-    // nonsensible list; the card-display filter below would drop them.
-    if (!isCustomVizDisplay(vizType) && viz?.isSensible?.(data)) {
+    if (viz?.isSensible?.(data)) {
       groups.sensible.push(vizType);
     } else {
       groups.nonsensible.push(vizType);
@@ -257,7 +255,7 @@ export const getSensibleVisualizations = ({
     orderedVizTypes,
     (vizType) => {
       const viz = visualizations.get(vizType);
-      return !isCustomVizDisplay(vizType) && Boolean(viz?.isSensible);
+      return Boolean(viz?.isSensible);
     },
   );
 

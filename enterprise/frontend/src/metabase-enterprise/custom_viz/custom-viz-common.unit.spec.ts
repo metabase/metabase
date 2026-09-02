@@ -5,10 +5,7 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
-import {
-  createMockCustomVizPluginRuntime,
-  createMockDatasetData,
-} from "metabase-types/api/mocks";
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 
@@ -48,21 +45,6 @@ describe("applyDefaultVisualizationProps", () => {
     );
 
     expect(() => checkRenderable?.([], {})).not.toThrow();
-  });
-
-  it("is always sensible without consulting the plugin", () => {
-    const checkRenderable = jest.fn();
-    const vizDef = createVizDef({ checkRenderable });
-
-    const { isSensible } = applyDefaultVisualizationProps(COMPONENT, vizDef, {
-      identifier: "custom:demo-viz",
-      plugin: PLUGIN,
-      prefix: "custom-viz:demo-viz:",
-      getUiName: () => "Demo",
-    });
-
-    expect(isSensible?.(createMockDatasetData({}))).toBe(true);
-    expect(checkRenderable).not.toHaveBeenCalled();
   });
 });
 
