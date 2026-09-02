@@ -240,13 +240,6 @@ const elements = [
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "route-guards" }),
-  createElement({
-    type: "shared",
-    name: "schema",
-    pattern: "frontend/src/metabase/schema.ts",
-    mode: "full",
-    enforceSharedTiers: false,
-  }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),

@@ -15,7 +15,10 @@ import {
   snippetApi,
   tableApi,
 } from "metabase/api";
-import { updateMetadata } from "metabase/redux/metadata";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
+
+import { updateMetadata } from "./actions";
 import {
   DatabaseSchema,
   FieldSchema,
@@ -29,9 +32,7 @@ import {
   SegmentSchema,
   SnippetSchema,
   TableSchema,
-} from "metabase/schema";
-import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type { DatabaseId, SchemaName } from "metabase-types/api";
+} from "./schema";
 
 /**
  * The part of an RTK Query endpoint a rule needs. Structural, so a real
@@ -107,6 +108,7 @@ const HYDRATION_RULES: HydrationRule[] = [
   hydrates(databaseApi.endpoints.listDatabaseSchemaTables, [TableSchema]),
   hydrates(databaseApi.endpoints.listVirtualDatabaseTables, [TableSchema]),
   hydrates(databaseApi.endpoints.listDatabaseIdFields, [FieldSchema]),
+  hydrates(databaseApi.endpoints.createDatabase, DatabaseSchema),
 
   hydrates(tableApi.endpoints.listTables, [TableSchema]),
   hydrates(tableApi.endpoints.getTable, TableSchema),

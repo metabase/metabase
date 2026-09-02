@@ -1,4 +1,4 @@
-import { reducer } from "./index";
+import { entitiesReducer as reducer } from "./index";
 
 const UPDATE = "metabase/entities/UPDATE";
 

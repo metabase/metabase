@@ -17,6 +17,7 @@ import {
  */
 const HYDRATING_ENDPOINTS = [
   "createCard",
+  "createDatabase",
   "createSnippet",
   "getAdhocQueryMetadata",
   "getCard",
