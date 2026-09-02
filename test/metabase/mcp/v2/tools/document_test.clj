@@ -272,6 +272,33 @@
                 (is (= id-before (-> stored :content first :attrs :_id))
                     "a text-only edit kept the block's id, so anchored comments stay put")))))))))
 
+(deftest edit-inside-code-is-not-escaped-test
+  (testing "backslashes are literal inside a code span or fenced block, so the escaping that keeps a
+            replacement literal in prose would store characters the caller never wrote there —
+            `my_var` must not become `my\\_var` just because the edit landed in code"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-tool-documents
+        (fn [created!]
+          (testing "code span"
+            (let [payload (created! (call {:method "create" :name "Code span"
+                                           :content_markdown "run `ls -la` now"}))
+                  updated (call {:method "update" :id (:id payload)
+                                 :edits [{:old_str "ls" :new_str "my_var"}]})]
+              (is (= "run `my_var -la` now" (:content_markdown updated)))))
+          (testing "fenced block"
+            (let [payload (created! (call {:method "create" :name "Fence"
+                                           :content_markdown "```\nls -la\n```"}))
+                  updated (call {:method "update" :id (:id payload)
+                                 :edits [{:old_str "ls" :new_str "my_var"}]})]
+              (is (str/includes? (:content_markdown updated) "my_var -la"))
+              (is (not (str/includes? (:content_markdown updated) "my\\_var")))))
+          (testing "prose in the same document still escapes, so a replacement cannot reopen the block"
+            (let [payload (created! (call {:method "create" :name "Mixed"
+                                           :content_markdown "plain ls here"}))
+                  updated (call {:method "update" :id (:id payload)
+                                 :edits [{:old_str "ls" :new_str "*em*"}]})]
+              (is (= "plain \\*em\\* here" (:content_markdown updated))))))))))
+
 (defn- write-error
   "The error text `document_write` returns for `args`, called through the registry rather than the
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
@@ -318,12 +345,28 @@
                        :href (str "/question/" readable-id)}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
-            (testing "user mentions still resolve — :model/User has no can-read? and a name is not
-                     gated outside sandboxing, so the mention picker's behaviour is preserved"
+            (testing "user mentions resolve under the mention picker's visibility rule: a visible user"
               (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"user\" %%}"
-                                                       (mt/user->id :crowberto)))))))
+                                                       (mt/user->id :crowberto))))))
+            (testing "but not a deactivated user, nor anyone but the caller under user-visibility :none —
+                     :model/User has no can-read?, and resolving any id would let a document author
+                     enumerate names and emails the picker would never show them"
+              (mt/with-temp [:model/User {inactive-id :id} {:first_name "Gone" :last_name "Person" :is_active false}]
+                (is (= [{:entityId inactive-id :model "user" :label nil :href "/"}]
+                       (written-smart-link-attrs created!
+                                                 (format "{%% entity id=\"%d\" model=\"user\" %%}" inactive-id))))
+                ;; `user-visibility` is gated on :email-restrict-recipients — in OSS the setting reads
+                ;; :all no matter what is stored, so without this the narrowing never happens and the
+                ;; assertion below pins the default instead of the rule.
+                (mt/with-premium-features #{:email-restrict-recipients}
+                  (mt/with-temporary-setting-values [user-visibility :none]
+                    (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
+                            {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
+                           (written-smart-link-attrs created!
+                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"

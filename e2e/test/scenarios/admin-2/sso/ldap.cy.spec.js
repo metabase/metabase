@@ -203,6 +203,10 @@ describe(
 
     it("should allow user login on EE when LDAP is enabled", () => {
       H.setupLdap();
+      // Only allowlisted directory attributes are synced, so name the ones this test checks.
+      cy.request("PUT", "/api/setting/ldap-sync-user-attributes-allowlist", {
+        value: "uid,homedirectory",
+      });
       cy.signOut();
       cy.visit("/auth/login");
       cy.findByLabelText("Username or email address").type(

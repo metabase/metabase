@@ -21,6 +21,8 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -60,19 +62,34 @@
 
 (defn- smart-link-readable?
   "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to.
-
-  `:model/User` has none, so a user's name follows the mention picker's visibility rule instead
-  (see `filter-clauses` in [[metabase.users.models.user]]): a sandboxed or impersonated caller
-  resolves nobody but themselves, and everyone else resolves any user — non-admins are already
-  handed other people's names to populate subscription recipients. The internal user is not
-  filtered out the way the picker does it; a system account's name is noise, not a permission
-  boundary, and `:type` isn't among `:model/User`'s default fields to test cheaply."
+  a [[mi/can-read?]] implementation to defer to; user rows are pre-filtered by
+  [[visible-user-rows]], and a sandboxed or impersonated caller resolves nobody but themselves."
   [model row]
   (if (= "user" model)
     (or (= (:id row) api/*current-user-id*)
         (not (perms/sandboxed-or-impersonated-user?)))
     (mi/can-read? row)))
+
+(defn- visible-user-rows
+  "The `:model/User` rows among `ids` whose names the current user may see: the mention picker's
+  rule (`GET /api/comment/mentions`, `GET /api/user/recipients`). A superuser sees everyone; anyone
+  else sees active personal accounts in their own tenant, narrowed further by the `user-visibility`
+  setting (`:group` — users sharing a group; `:none` — only themselves). `:model/User` has no
+  `can-read?`, and resolving any id the caller names would let a document author enumerate names and
+  emails (`:common_name` is the email when a user has no name) across tenants."
+  [ids]
+  (let [clauses (cond-> [:and [:in :id ids] [:= :type "personal"] [:= :is_active true]]
+                  (not api/*is-superuser?*)
+                  (conj [:= :tenant_id (:tenant_id @api/*current-user*)]))
+        clauses (if api/*is-superuser?*
+                  clauses
+                  (case (users.settings/user-visibility)
+                    :all   clauses
+                    :group (conj clauses [:in :id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                      set
+                                                      (conj api/*current-user-id*))])
+                    :none  (conj clauses [:= :id api/*current-user-id*])))]
+    (t2/select :model/User {:where clauses})))
 
 (defn- smart-link-rows
   "`{[model id] row}` for every distinct smart-link target among `links` the current user may
@@ -88,7 +105,9 @@
                         rows     (when db-model
                                    (try
                                      (filterv #(smart-link-readable? model %)
-                                              (t2/select db-model :id [:in ids]))
+                                              (if (= "user" model)
+                                                (visible-user-rows ids)
+                                                (t2/select db-model :id [:in ids])))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
@@ -243,6 +262,20 @@
   [^String markdown matches]
   (long (* (count matches) (/ (count markdown) 1024.0))))
 
+(defn- in-code-context?
+  "Is offset `idx` of `markdown` inside a code span or a fenced code block? Backslashes are literal
+   there, so the escaping [[metabase.documents.core/escape-text]] applies for prose would store
+   characters the caller never wrote. Counts unescaped backticks before `idx`: an odd count of
+   fence lines means the offset is inside a fence, and an odd count of inline backticks on its own
+   line means it is inside a span."
+  [^String markdown ^long idx]
+  (let [before     (subs markdown 0 (min idx (count markdown)))
+        fence-count (count (re-seq #"(?m)^\s*```" before))
+        line-start (inc (.lastIndexOf before "\n"))
+        line       (subs before (max 0 line-start))
+        ticks      (count (re-seq #"(?<!\\\\)`" line))]
+    (or (odd? fence-count) (odd? ticks))))
+
 (defn- replace-all
   "Splice every occurrence of `old_str`, right-to-left so a replacement containing `old_str`
   is never re-matched, re-serializing between splices so each offset is taken against the
@@ -254,7 +287,7 @@
   Refuses up front when the call prices past [[max-replace-all-work]]. Pricing it costs one
   serialization rather than one per match, so an over-budget call is rejected without doing any of
   the work being rejected."
-  [ast old_str new_str]
+  [ast old_str new_str escape-at]
   (let [self-matching? (str/includes? new_str old_str)
         first-ser      (documents/serialize ast)
         first-matches  (match-indexes (:markdown first-ser) old_str)
@@ -283,7 +316,8 @@
             idx     (last (filter #(< % bound) matches))]
         (cond
           (some? idx)
-          (let [spliced (documents/splice ast ser idx (+ idx (count old_str)) new_str)]
+          (let [spliced (documents/splice ast ser idx (+ idx (count old_str))
+                                          (escape-at (:markdown ser) idx))]
             (recur spliced (documents/serialize spliced) (long idx) (inc iterations)))
 
           (and (not self-matching?) (seq matches))
@@ -301,9 +335,15 @@
   ;; literal-text form first — otherwise a replacement like `*` or a leading `#` reopens the block
   ;; as a list or heading (and shifts the offsets the rest of the sweep depends on). `old_str` is
   ;; matched against the already-escaped serialization as-is.
-  (let [new_str                    (documents/escape-text new_str)
-        {:keys [markdown] :as ser} (documents/serialize ast)
-        matches                    (match-indexes markdown old_str)]
+  ;;
+  ;; Escaping is skipped where the match lands inside code, though: backslashes are literal in a code
+  ;; span or fenced block, so escaping there stores characters the caller never wrote (`my_var`
+  ;; becomes `my\_var`). Escaping is what is inert in prose — not in code.
+  (let [{:keys [markdown] :as ser} (documents/serialize ast)
+        matches                    (match-indexes markdown old_str)
+        escape-at                  (fn [md idx] (if (in-code-context? md idx)
+                                                  new_str
+                                                  (documents/escape-text new_str)))]
     (cond
       (empty? matches)
       (common/throw-teaching-error
@@ -319,10 +359,13 @@
                (snippet old_str) (count matches)))
 
       replace_all
-      (replace-all ast old_str new_str)
+      ;; Every match is escaped by its own context, so one occurrence in prose and another in a code
+      ;; span each round-trip correctly.
+      (replace-all ast old_str new_str escape-at)
 
       :else
-      (documents/splice ast ser (first matches) (+ (first matches) (count old_str)) new_str))))
+      (documents/splice ast ser (first matches) (+ (first matches) (count old_str))
+                        (escape-at markdown (first matches))))))
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 

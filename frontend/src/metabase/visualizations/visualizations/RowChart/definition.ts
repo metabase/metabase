@@ -19,8 +19,8 @@ import {
 } from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Card,
   DatasetData,
+  SeriesCard,
   TransformedCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -121,6 +121,6 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
   },
 };
 
-function isTransformedCard(card: Card): card is TransformedCard {
+function isTransformedCard(card: SeriesCard): card is TransformedCard {
   return "_transformed" in card && card._transformed === true;
 }
