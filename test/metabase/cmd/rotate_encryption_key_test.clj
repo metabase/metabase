@@ -19,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.encryption.dek :as dek]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2])
   (:import
@@ -26,7 +27,14 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(defn- clear-dek-cache-fixture!
+  "Drop any process-cached unwrapped DEK material after this namespace's temp app DBs are gone. The cache is keyed by
+  application-DB identity so it never collides across DBs, but clearing keeps the process tidy for later tests."
+  [thunk]
+  (try (thunk) (finally (dek/clear-cache!))))
+
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :once (fixtures/initialize :db) clear-dek-cache-fixture!)
 
 (defn- raw-value [keyy]
   (:value (first (jdbc/query {:datasource (mdb/data-source)}
@@ -139,25 +147,21 @@
                     (is (not= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
                     (is (not (mt/secret-value-equals? secret-val
                                                       (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
-              (testing "full rollback when a database details looks encrypted with a different key than the current one"
-                (encryption-test/with-secret-key k3
-                  (let [db (first (t2/insert-returning-instances! :model/Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
-                    (is (=? {:name "k3"}
-                            db))))
+              (testing "rotating with the WRONG current key aborts without modifying anything (envelope: the sentinel and DEK table are wrapped under the real key; an env key that isn't it fails the wrong-key check before any writes)"
+                ;; the database is currently correctly encrypted under k2 (the last key we rotated to)
                 (encryption-test/with-secret-key k2
                   (let [db (first (t2/insert-returning-instances! :model/Database {:name "k2", :engine :mysql, :details {:db "/tmp/k2.db"}}))]
-                    (is (=? {:name "k2"}
-                            db)))
+                    (is (=? {:name "k2"} db))))
+                (encryption-test/with-secret-key k3 ; k3 is NOT this database's key
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
-                       (rotate-encryption-key! k3))))
-                (encryption-test/with-secret-key k3
-                  (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details :model/Database :name "k2")))
-                  (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database :name "k3")))))
+                       #"Database was encrypted with a different key"
+                       (rotate-encryption-key! k1))))
+                (testing "the value written under k2 is untouched and still readable under k2"
+                  (encryption-test/with-secret-key k2
+                    (is (= {:db "/tmp/k2.db"} (t2/select-one-fn :details :model/Database :name "k2"))))))
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
-                (t2/update! :model/Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))

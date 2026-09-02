@@ -85,6 +85,7 @@
    "DashboardBookmark"
    "DataApp"
    "DataComplexityScore"
+   "DataEncryptionKey"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"

@@ -56,6 +56,7 @@
     :model/DashboardBookmark
     :model/DataApp
     :model/DataComplexityScore
+    :model/DataEncryptionKey
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
