@@ -10,6 +10,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   ;; `mcp.core/all-scopes` reads the agent-api's defendpoint metadata, so the namespace has to be
+   ;; loaded for `resource-scopes-are-advertised-test` to see it (nothing else here pulls it in).
+   [metabase.agent-api.api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

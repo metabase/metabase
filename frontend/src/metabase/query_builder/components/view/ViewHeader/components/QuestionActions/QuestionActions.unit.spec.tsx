@@ -13,12 +13,12 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { getMetadata } from "metabase/metadata-store";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {

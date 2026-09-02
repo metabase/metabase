@@ -7,7 +7,14 @@
      a client that can't render an iframe, rather than failing at call time);
    - `tools/call` ([[call-tool]]) re-checks all three, validates arguments against the tool's
      Malli schema with teaching errors, dispatches to the handler under the already-bound
-     current user, and logs every outcome through the shared usage path."
+     current user, and logs every outcome through the shared usage path.
+
+  The three filters are not three boundaries. Scopes come from the verified token and the
+  disabled-tools CSV from instance settings, but the extension set is reconstructed from the
+  unsigned capability payload the client echoes back in its session id — a client can claim any
+  extension it likes, and never has to `initialize` to do so. Treat `:required-extensions` as a
+  client-declared hint that keeps a tool out of a list where it could not render, and put nothing
+  behind it that the tool's `:scope` does not already protect."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -51,8 +58,26 @@
   (when-not (ifn? handler)
     (throw (ex-info (format "v2 MCP tool %s registered without a :handler fn" tool-name)
                     {:tool-name tool-name})))
+  ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
+  ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
+  (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
+                                    :output-schema :required-extensions :title :_meta}
+                                  (keys tool)))]
+    (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
+                    {:tool-name tool-name :unknown-keys (vec unknown)})))
+  (when (and (contains? tool :required-extensions)
+             (not (and (set? (:required-extensions tool)) (every? keyword? (:required-extensions tool)))))
+    (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
+                    {:tool-name tool-name :required-extensions (:required-extensions tool)})))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
+  ;; The registry is keyed by public name. Re-evaluating the same `deftool` (REPL, test reload) registers
+  ;; the same handler var again and may replace its entry; a second definition claiming an existing name
+  ;; would otherwise silently shadow the first, with load order deciding which one `tools/call` reaches.
+  (when-let [existing (get @tools* tool-name)]
+    (when (not= (:handler existing) handler)
+      (throw (ex-info (format "v2 MCP tool %s is already registered with a different handler" tool-name)
+                      {:tool-name tool-name}))))
   (swap! tools* assoc tool-name tool)
   ;; flush cache to allow for repl/test redefinition.
   (reset! manifest-cache nil)
@@ -86,7 +111,16 @@
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
-   - `:extra-scopes` - _optional_ - scopes not required for normal usage but that unlock extra behavior
+   - `:required-extensions` - _optional_ - set of client extensions (e.g. `:mcp-app-ui`) the tool
+     needs to render. Clients that don't advertise one don't see the tool listed and get a
+     teaching error if they call it anyway — but the advertisement is unauthenticated, so this is
+     a hint that spares incapable clients an unrenderable tool, not an authorization boundary.
+     `:scope` is the boundary; a tool gated only by an extension is a tool with no gate.
+   - `:title` - _optional_ - human-readable display name, published alongside `:name` for clients
+     that show one; without it clients fall back to the raw tool name
+   - `:_meta` - _optional_ - map published verbatim on the tool entry, carrying client-specific
+     hints outside the MCP tool schema (e.g. `{:ui {:visibility [\"app\"]}}` to mark a tool as one
+     the app calls for itself rather than one the model should choose)
 
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
   [handler-sym description opts argv & body]
@@ -275,7 +309,9 @@
              (record! "success" nil nil))
            ;; `::common/error-code` is an internal classification marker — never expose it to the client.
            (let [result (dissoc result ::common/error-code)]
-             (ait/record! {:ai/tool-output result})
+             ;; Trace the result WITHOUT the private MCP Apps block: it can carry a live UI credential, and a
+             ;; trace outlives the credential's five-minute window. The client still gets the full result.
+             (ait/record! {:ai/tool-output (common/redact-mcp-apps-meta result)})
              result))
          (catch Throwable e
            ;; A handler that throws something the dispatch try doesn't convert would otherwise skip instrumentation
