@@ -524,6 +524,39 @@
       (is (some #(= tool (:name %)) (registry/list-tools #{scope})))
       (is (not (some #(= tool (:name %)) (registry/list-tools #{"agent:content:read"})))))))
 
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest readback-requires-read-scope-test
+  (testing "GHY-4153/GHY-4154: the write echo carries the row's name and definition, so a write-only
+            token would learn the content of anything it may touch — it degrades to an ack unless the
+            token could read the row back through get_content"
+    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+      (doseq [[tool model definition] [["segment_write" :model/Segment mbql4-fragment]
+                                       ["measure_write" :model/Measure (count-definition (mt/id :venues))]]
+              :let [row-name (str "definitions-test readback " tool)]]
+        (testing tool
+          (let [created (tool-result (call-tool! :crowberto #{"agent:content:write"} tool
+                                                 {:method     "create" :table_id (mt/id :venues)
+                                                  :name       row-name
+                                                  :definition definition}))]
+            (testing "create echoes an ack, not the row"
+              (is (= #{:id :note} (set (keys created))))
+              (is (re-find #"agent:content:read" (:note created))))
+            (testing "and the write still happened — the degradation is in the echo only"
+              (is (= row-name (t2/select-one-fn :name model :id (:id created)))))
+            (testing "update degrades the same way"
+              (let [updated (tool-result (call-tool! :crowberto #{"agent:content:write"} tool
+                                                     {:method           "update" :id (:id created)
+                                                      :description      "readback check"
+                                                      :revision_message "describe it"}))]
+                (is (= #{:id :note} (set (keys updated))))
+                (is (= "readback check" (t2/select-one-fn :description model :id (:id created))))))
+            (testing "the same calls with both scopes return the full row"
+              (is (=? {:id (:id created) :name row-name :table_id (mt/id :venues) :entity_id string?}
+                      (tool-result (call-tool! :crowberto #{"agent:content:write" "agent:content:read"} tool
+                                               {:method           "update" :id (:id created)
+                                                :description      "full echo"
+                                                :revision_message "describe it again"})))))))))))
+
 ;;; ----------------------------------------------- Permissions ----------------------------------------------------
 
 ;; not ^:parallel: with-no-data-perms-for-all-users! rewrites global data perms, and rows are
