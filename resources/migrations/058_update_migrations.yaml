@@ -1670,7 +1670,9 @@ databaseChangeLog:
         and neither does an encrypted setting's ciphertext -- so a direct DB write could give one setting another's
         value, and the read would trust it. Encryption wraps the envelope, exactly as it wrapped the bare value.
         value is kept: this version writes both columns and reads only details, so a version that predates the column
-        keeps working through a rolling upgrade, and a rollback is just dropping details again.
+        keeps working through a rolling upgrade, and a rollback is just dropping details again. The column is filled in
+        from value on startup, by metabase.settings.models.setting/backfill-setting-details!, which also repairs rows
+        such a version has written since.
       changes:
         - addColumn:
             tableName: setting
@@ -1682,18 +1684,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-  - changeSet:
-      id: v58.2026-09-01T00:00:01
-      author: ranquild
-      comment: >-
-        Backfill setting.details from setting.value: a row encrypted at rest is decrypted, wrapped in the envelope and
-        encrypted again, and a plaintext row is wrapped as it is. Every row moves, encryption-check and
-        settings-last-updated included -- the two the Setting model never writes. The encryption tooling reads the
-        sentinel before these migrations have run, so it falls back to value while details is still empty, and the
-        settings cache compares settings-last-updated by comparing envelopes, which order by the timestamp inside them.
-      changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.BackfillSettingDetails
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

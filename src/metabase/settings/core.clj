@@ -97,6 +97,7 @@
   disabled-for-db-reasons
   env-var-name
   env-var-value
+  backfill-setting-details!
   export?
   get
   get-raw-value

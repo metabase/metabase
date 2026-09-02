@@ -3159,32 +3159,3 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
-
-(deftest backfill-setting-details-test
-  (testing "BackfillSettingDetails moves every setting's value into the JSON envelope `details` holds"
-    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-      (impl/test-migrations ["v58.2026-09-01T00:00:00" "v58.2026-09-01T00:00:01"] [migrate!]
-        (let [rows    {"site-name"          "My Metabase"
-                       ;; the two rows the Setting model never writes move like any other
-                       "encryption-check"   (str (random-uuid))
-                       "settings-last-updated" "2026-09-01 12:00:00.000"}
-              details #(t2/select-one-fn :details :setting :key %)]
-          ;; plaintext at rest, as a version predating the column wrote them, except one that is encrypted.
-          ;; `encryption-check` already has a row, put there by the v53 migration.
-          (t2/insert! :setting (for [k ["site-name" "settings-last-updated"]]
-                                 {:key k, :value (rows k)}))
-          (t2/update! :setting :key "encryption-check"
-                      {:value (encryption/encrypt (rows "encryption-check"))})
-          (migrate!)
-          (testing "a plaintext row keeps its value in plaintext, inside the envelope"
-            (is (= "{\"setting-key\":\"site-name\",\"setting-value\":\"My Metabase\"}"
-                   (details "site-name")))
-            (is (= (json/encode {:setting-key "settings-last-updated"
-                                 :setting-value (rows "settings-last-updated")})
-                   (details "settings-last-updated"))))
-          (testing "an encrypted row is decrypted, wrapped, and encrypted again -- envelope and all"
-            (is (encryption/decryptable-string? (details "encryption-check")))
-            (is (= (json/encode {:setting-key "encryption-check", :setting-value (rows "encryption-check")})
-                   (encryption/decrypt (details "encryption-check")))))
-          (testing "`value` is left exactly as it was, for a version that reads it"
-            (is (= "My Metabase" (t2/select-one-fn :value :setting :key "site-name")))))))))

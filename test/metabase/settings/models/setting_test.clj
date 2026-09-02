@@ -1825,6 +1825,39 @@
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
 
+(deftest backfill-setting-details!-test
+  (testing "rows a version predating `details` wrote get them filled in from `value` on startup"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (t2/delete! :setting :key "toucan-name")
+        (t2/delete! :setting :key "test-never-encrypted-setting")
+        ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
+        (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
+                              {:key "test-never-encrypted-setting", :value "foobar"}])
+        (setting/backfill-setting-details!)
+        (testing "an encrypted row's details are the envelope, encrypted the same way"
+          (is (= (wrap-setting-value :toucan-name "Lenny")
+                 (encryption/decrypt (raw-setting-details :toucan-name)))))
+        (testing "a plaintext row's details are the plaintext envelope"
+          (is (= (wrap-setting-value :test-never-encrypted-setting "foobar")
+                 (raw-setting-details :test-never-encrypted-setting))))
+        (testing "and the values are readable again"
+          (is (= "Lenny" (toucan-name))))
+        (testing "details that are already there are left alone, so a value this version wrote is not overwritten"
+          (toucan-name! "Sad Can")
+          (let [before (raw-setting-details :toucan-name)]
+            (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Lenny")})
+            (setting/backfill-setting-details!)
+            (is (= before (raw-setting-details :toucan-name)))))
+        (testing "details that are there but cannot be read are left alone -- they may be newer than `value`"
+          (let [stale (encryption-test/with-secret-key "12345678ABCDEFGH"
+                        (encryption/encrypt (wrap-setting-value :toucan-name "Old Can")))]
+            (t2/update! :setting :key "toucan-name" {:value   (encryption/encrypt "Lenny")
+                                                     :details stale})
+            (setting/backfill-setting-details!)
+            (is (= stale (raw-setting-details :toucan-name)))))))))
+
 (deftest migrate-encrypted-settings!-works
   ;; Isolated app DB: with a secret key active this mutates the at-rest encryption of every registered setting row,
   ;; which would poison the shared test DB for later tests running with a different (or no) key.

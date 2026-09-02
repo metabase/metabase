@@ -1832,3 +1832,29 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+(defn backfill-setting-details!
+  "Give every setting row that has no `details` the value from the legacy `value` column instead, stored the way
+  [[write-setting-value]] would have stored it.
+
+  Runs on every startup, before anything restores the settings cache, and repairs what a version predating the column
+  leaves behind: it writes only `value`, so a setting it changed while running alongside this one has no `details` at
+  all.
+
+  Only an empty `details` is filled in. One that is there but cannot be read -- encrypted under a key some rotation
+  has since replaced, say -- is left exactly as it is: it may well be newer than the `value` beside it, and quietly
+  replacing it with the older value would lose a setting rather than report a problem. A row this version wrote is
+  never touched for the same reason, so a setting an older version *changed* rather than created stays lost. Rows of
+  unregistered settings are skipped, since they read as no value whatever their `details` hold. Runs with the settings
+  cache disabled for the same reason [[migrate-encrypted-settings!]] does."
+  []
+  (binding [config/*disable-setting-cache* true]
+    (t2/with-transaction [_conn]
+      (doseq [{:keys [key value details]} (t2/select :setting {:for :update})
+              :when (and (seq value) (nil? details) (maybe-resolve-setting key))
+              ;; a `value` that looks encrypted but does not decrypt is no better than the empty details it would fill
+              :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
+              :when (some? plain)]
+        (log/warnf "Setting %s has no details; filling them in from its value." key)
+        (t2/update! :setting :key key
+                    (select-keys (write-setting-value {:key key, :value plain}) [:details]))))))

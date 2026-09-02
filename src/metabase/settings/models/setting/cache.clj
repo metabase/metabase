@@ -127,12 +127,11 @@
       (when-let [last-known-update (cache-last-updated-at)]
         ;; compare it to the value in the DB. This is done be seeing whether a row exists
         ;; WHERE value > <local-value>
-        ;; envelopes of the same setting differ only in the value inside them, so comparing them compares timestamps
-        (u/prog1 (t2/select-one-fn :value :model/Setting
-                                   {:where [:and
-                                            [:= :key settings-last-updated-key]
-                                            [:> :details (settings.util/wrap-value settings-last-updated-key
-                                                                                   last-known-update)]]})
+        ;; compared here rather than in SQL: what is stored is the envelope, and ordering two of those by the
+        ;; timestamp inside them would rest on how the application DB collates the JSON around it
+        (u/prog1 (when-let [db-value (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)]
+                   (when (pos? (compare db-value last-known-update))
+                     db-value))
           (log/trace "last known Settings update: " (pr-str last-known-update))
           (log/trace "actual last Settings update:" (pr-str <>))
           (when <>

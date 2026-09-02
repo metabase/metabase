@@ -2467,15 +2467,3 @@
           (t2/reducible-query {:select [:id :value]
                                :from   [:secret]
                                :where  [:!= :value nil]}))))
-
-(define-migration BackfillSettingDetails
-  (doseq [{k :key v :value} (t2/query {:select [:key :value] :from [:setting]})
-          :when (seq v)]
-    ;; encryption wraps the envelope exactly as it wrapped the bare value, so a row encrypted at rest stays encrypted
-    ;; and a plaintext one stays plaintext
-    (let [encrypted? (encryption/decryptable-string? v)
-          ;; frozen copy of `metabase.settings.util/wrap-value`
-          envelope   (json/encode {:setting-key k, :setting-value (cond-> v encrypted? encryption/decrypt)})]
-      (t2/query {:update :setting
-                 :set    {:details (cond-> envelope encrypted? encryption/encrypt)}
-                 :where  [:= :key k]}))))

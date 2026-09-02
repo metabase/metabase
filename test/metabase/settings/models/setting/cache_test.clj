@@ -4,6 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.settings.util :as settings.util]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -23,15 +24,25 @@
 
 (defn- update-settings-last-updated-value-in-db!
   "Simulate a different instance updating the value of `settings-last-updated` in the DB by updating its value without
-  updating our locally cached value.."
+  updating our locally cached value.
+
+  Written raw, and to both columns, exactly as
+  [[metabase.settings.models.setting.cache/update-settings-last-updated!]] writes them -- through `:model/Setting` the
+  raw SQL below would end up inside the JSON envelope rather than being evaluated."
   []
-  (t2/update! :model/Setting {:key setting.cache/settings-last-updated-key}
-              {:value ^:allow-raw-sql [:raw (case (mdb/db-type)
-                                              ;; make it one second in the future so we don't end up getting an exact match when we try to test
-                                              ;; to see if things update below
-                                              :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
-                                              :mysql    "cast((current_timestamp + interval 1 second) AS char)"
-                                              :postgres "cast((current_timestamp + interval '1 second') AS text)")]}))
+  (let [ts (-> (t2/query-one
+                {:select [[^:allow-raw-sql
+                           [:raw (case (mdb/db-type)
+                                   ;; make it one second in the future so we don't end up getting an exact match when we try to test
+                                   ;; to see if things update below
+                                   :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
+                                   :mysql    "cast((current_timestamp + interval 1 second) AS char)"
+                                   :postgres "cast((current_timestamp + interval '1 second') AS text)")]
+                           :timestamp]]})
+               :timestamp)]
+    (t2/update! :setting {:key setting.cache/settings-last-updated-key}
+                {:value   ts
+                 :details (settings.util/wrap-value setting.cache/settings-last-updated-key ts)})))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
