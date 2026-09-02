@@ -52,22 +52,35 @@
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
 
+(defn- lookup-recipient-tenant-ids
+  "Map of user id to tenant id for the `recipients` whose `:user` hydration came back nil, in one
+   query. The `:recipients-detail` hydration deliberately attaches `:user` nil for a deactivated
+   user, whose tenant must then be looked up — otherwise a deactivated recipient reads as
+   tenantless and slips past (or is wrongly dropped by) the tenant filter."
+  [recipients]
+  (let [ids (into #{} (comp (remove :user) (keep :user_id)) recipients)]
+    (if (seq ids)
+      (t2/select-pk->fn :tenant_id :model/User :id [:in ids])
+      {})))
+
 (defn- recipient-tenant-id
-  "The tenant of a user recipient. Read off the hydrated `:user` when present; the
-   `:recipients-detail` hydration deliberately attaches `:user` nil for a deactivated user, whose
-   tenant must then be looked up — otherwise a deactivated recipient reads as tenantless and slips
-   past (or is wrongly dropped by) the tenant filter."
-  [recipient]
+  "The tenant of a user recipient: read off the hydrated `:user` when present, else off
+   `id->tenant-id`, the batched lookup for recipients that have no `:user`."
+  [id->tenant-id recipient]
   (if-some [user (:user recipient)]
     (:tenant_id user)
-    (t2/select-one-fn :tenant_id :model/User :id (:user_id recipient))))
+    (id->tenant-id (:user_id recipient))))
 
 (defn- visible-recipients
   "`recipients` less the ones the current user may not see: sandboxed or impersonated callers see
    only themselves among user recipients, and a caller who belongs to a tenant sees only user
    recipients of that tenant. Same rule as `pulse/maybe-filter-pulses-recipients`: a tenantless
-   caller sees recipients unfiltered, as before tenants existed."
-  [recipients]
+   caller sees recipients unfiltered, as before tenants existed.
+
+   `id->tenant-id` is a delay over [[lookup-recipient-tenant-ids]] shared across the notification's
+   handlers, so the lookup costs one query for the whole notification and none at all for a caller
+   the tenant filter does not apply to."
+  [id->tenant-id recipients]
   (let [caller-tenant-id (:tenant_id @api/*current-user*)]
     (vec (cond->> recipients
            (perms/sandboxed-or-impersonated-user?)
@@ -75,7 +88,7 @@
 
            (and (not api/*is-superuser?*) (some? caller-tenant-id))
            (filter #(or (nil? (:user_id %))
-                        (= (recipient-tenant-id %) caller-tenant-id)))))))
+                        (= (recipient-tenant-id @id->tenant-id %) caller-tenant-id)))))))
 
 (defn- payload-readable?
   "Whether the current user may read the notification's payload.
@@ -100,11 +113,12 @@
                     (not (payload-readable? notification)))]
     (update notification :handlers
             (fn [handlers]
-              (mapv (fn [handler]
-                      (if strip?
-                        (dissoc handler :recipients)
-                        (update handler :recipients visible-recipients)))
-                    handlers)))))
+              (let [id->tenant-id (delay (lookup-recipient-tenant-ids (mapcat :recipients handlers)))]
+                (mapv (fn [handler]
+                        (if strip?
+                          (dissoc handler :recipients)
+                          (update handler :recipients (partial visible-recipients id->tenant-id))))
+                      handlers))))))
 
 (defn hydrate-and-redact-notification
   "`notification`, hydrated and recipient-redacted for the current user — the shape

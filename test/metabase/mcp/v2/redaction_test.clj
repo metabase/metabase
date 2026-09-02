@@ -25,6 +25,19 @@
   "A raw email address: no `user_id`, so no tenant to compare against."
   {:type :notification-recipient/raw-value :details {:value "someone@example.com"}})
 
+(defn- deactivated-recipient
+  "A user recipient the `:recipients-detail` hydration could not attach a `:user` to — the shape it
+   produces for a deactivated user, whose tenant must be looked up from the app DB."
+  [user-id]
+  {:type :notification-recipient/user :user_id user-id})
+
+(defn- testing-notification
+  "A hydrated-shaped notification carrying `handlers`. `:notification/testing` is outside the set
+   `redact-notification` strips, so the payload-unreadable branch stays out of the way with no
+   collection fixture at all and the per-recipient filters are the only thing that runs."
+  [handlers]
+  {:id 2 :payload_type :notification/testing :handlers handlers})
+
 (defn- card-notification
   "A hydrated-shaped alert on `card-id` with one email handler carrying `recipients`. `:payload` is
    the shape the `:payload` batched hydration really produces for `:notification/card`, the only
@@ -69,6 +82,74 @@
         (testing "a superuser sees every recipient"
           (mt/with-test-user :crowberto
             (is (= [100 200 nil] (visible-user-ids notification)))))))))
+
+(deftest deactivated-recipient-tenant-is-looked-up-test
+  ;; Tenants are enterprise-only: :model/Tenant is not on the OSS classpath, so guard the body out
+  ;; of OSS builds entirely (with-premium-features only flips the flag, it does not load EE code).
+  (mt/when-ee-evailable
+   (testing "GHY-4219: the `:recipients-detail` hydration attaches `:user` nil for a deactivated
+             user, so its tenant is looked up from the app DB rather than read off the recipient
+             map — otherwise a deactivated recipient reads as tenantless and slips past (or is
+             wrongly dropped by) the tenant filter."
+     (mt/with-premium-features #{:tenants}
+       (mt/with-temp [:model/Tenant {tenant-id :id}       {:name "MCP redaction T1" :slug "mcp-redaction-t1"}
+                      :model/Tenant {other-tenant-id :id} {:name "MCP redaction T2" :slug "mcp-redaction-t2"}
+                      :model/User   {caller-id :id}       {:tenant_id tenant-id}
+                      :model/User   {same-id :id}         {:tenant_id tenant-id       :is_active false}
+                      :model/User   {other-id :id}        {:tenant_id other-tenant-id :is_active false}]
+         (let [notification (testing-notification
+                             [{:id 10 :channel_type :channel/email
+                               :recipients [(deactivated-recipient same-id)
+                                            (deactivated-recipient other-id)
+                                            email-recipient]}])]
+           (mt/with-current-user caller-id
+             (testing "a tenant caller keeps the same-tenant deactivated recipient and drops the other"
+               (is (= [same-id nil] (visible-user-ids notification)))))
+           (testing "a tenantless caller sees every recipient, as before tenants existed"
+             (mt/with-test-user :rasta
+               (is (= [same-id other-id nil] (visible-user-ids notification)))))))))))
+
+(defn- email-handler
+  [handler-id recipients]
+  {:id handler-id :channel_type :channel/email :recipients recipients})
+
+(defn- deactivated-recipients
+  [user-ids]
+  (mapv deactivated-recipient user-ids))
+
+(defn- redaction-query-count
+  "Queries `redact-notification` runs over a notification made of `handlers`."
+  [handlers]
+  (t2/with-call-count [call-count]
+    (redaction/redact-notification (testing-notification handlers))
+    (call-count)))
+
+(deftest tenant-filter-batches-recipient-lookups-test
+  (testing "GHY-4219: resolving the tenants of recipients with no hydrated `:user` costs one query
+            for the whole notification, however many handlers and recipients hang off it — looking
+            each recipient up inside the filter is an N+1. Counted against a same-shaped
+            notification of raw email recipients, which needs no lookup, so the per-handler cost of
+            the sandbox check drops out. `:notification/testing` keeps the payload-readable check
+            out of the window entirely. The recipient ids need not resolve to real users: only the
+            shape of the lookup is under test."
+    (mt/with-test-user :rasta
+      (as-tenant-caller
+       42
+       (fn []
+         ;; The first redaction pays one-off caching the sandbox check does; leave it out of the
+         ;; measured counts.
+         (redaction-query-count [(email-handler 10 [email-recipient])])
+         (testing "one handler: one query however many recipients need looking up"
+           (is (= (inc (redaction-query-count [(email-handler 10 [email-recipient])]))
+                  (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3 4 5 6]))]))))
+         (testing "handlers share the one lookup rather than each running their own"
+           (is (= (inc (redaction-query-count [(email-handler 10 [email-recipient])
+                                               (email-handler 11 [email-recipient])]))
+                  (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3]))
+                                          (email-handler 11 (deactivated-recipients [4 5 6]))]))))))
+      (testing "a tenantless caller does not run the tenant filter, so it needs no lookup at all"
+        (is (= (redaction-query-count [(email-handler 10 [email-recipient])])
+               (redaction-query-count [(email-handler 10 (deactivated-recipients [1 2 3 4 5 6]))])))))))
 
 (defn- handlers-with-recipients
   "The hydrated-and-redacted handlers of the persisted notification `notification-id`, as the
