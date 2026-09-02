@@ -1,4 +1,4 @@
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { QueryClickActionsMode } from "../types";
 
 export const ListMode: QueryClickActionsMode = {
   name: "list",

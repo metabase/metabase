@@ -225,20 +225,6 @@ export interface ClickActionsMode {
   hasColumnShortcutActions?(props: ClickActionProps): boolean;
 }
 
-export type QueryClickActionsMode = {
-  name: string;
-  clickActions: LegacyDrill[];
-  fallback?: LegacyDrill;
-} & (
-  | {
-      hasDrills: false;
-    }
-  | {
-      hasDrills: true;
-      availableOnlyDrills?: Lib.DrillThruType[];
-    }
-);
-
 export const isCustomClickAction = (
   clickAction: ClickAction,
 ): clickAction is CustomClickAction =>

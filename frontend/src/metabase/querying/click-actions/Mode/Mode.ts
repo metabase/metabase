@@ -6,11 +6,12 @@ import type {
   ClickActionModeContext,
   ClickActionsMode,
   ClickObject,
-  QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ClickActionProps } from "metabase-lib/v1/queries/drills/types";
+
+import type { QueryClickActionsMode } from "../types";
 
 type ModeOptions = {
   plugins?: MetabasePluginsConfig;

@@ -10,12 +10,9 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { CombineColumnsAction } from "metabase/querying/click-actions/actions/CombineColumnsAction";
 import { ExtractColumnAction } from "metabase/querying/click-actions/actions/ExtractColumnAction";
 import { NativeQueryClickFallback } from "metabase/querying/click-actions/actions/NativeQueryClickFallback";
+import type { QueryClickActionsMode } from "metabase/querying/click-actions/types";
 import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
-import type {
-  ClickObject,
-  LegacyDrill,
-  QueryClickActionsMode,
-} from "metabase/visualizations/types";
+import type { ClickObject, LegacyDrill } from "metabase/visualizations/types";
 import type { CardId, DashboardId, DashboardTabId } from "metabase-types/api";
 
 export type ClickBehaviorTarget = {

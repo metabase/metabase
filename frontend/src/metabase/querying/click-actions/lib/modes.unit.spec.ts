@@ -1,8 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import type {
-  LegacyDrill,
-  QueryClickActionsMode,
-} from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -11,6 +8,7 @@ import { Mode } from "../Mode";
 import { ArchivedMode } from "../modes/ArchivedMode";
 import { DefaultMode } from "../modes/DefaultMode";
 import { ListMode } from "../modes/ListMode";
+import type { QueryClickActionsMode } from "../types";
 
 import { getQueryMode } from "./modes";
 
