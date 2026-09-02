@@ -134,6 +134,48 @@
             (finally
               (t2/delete! :model/Transform :id (:id result)))))))))
 
+(defn- native-definition
+  "An inline definition carrying raw SQL — the shape an agent that can write content but may not
+   author SQL must not be able to store."
+  []
+  {:type "query" :query {:database (mt/id) :type "native" :native {:query "SELECT 1 AS x"}}})
+
+;; not ^:parallel: mt/with-temporary-setting-values on the shared kill-switch setting
+(deftest transform-write-native-definition-gates-test
+  (testing "an inline native `definition` passes execute_sql's two gates — the agent:sql:run scope and the
+            mcp-execute-sql-enabled kill switch — because a stored native transform is raw SQL the runner
+            later executes against the warehouse; accepting it under the content write scope alone would
+            rebuild execute_sql, with a warehouse write on top, without either gate"
+    (with-transforms
+      (with-target-db-support
+        (let [args     {:method     "create"
+                        :name       "Native gadget"
+                        :definition (native-definition)
+                        :target     {:name "mcp_native_gadget" :schema (venues-schema)}}
+              stored?  #(pos? (t2/count :model/Transform :name "Native gadget"))]
+          (try
+            (testing "the content write scope alone is refused, naming the missing SQL scope"
+              (let [response (write! :crowberto write-scopes args)]
+                (is (re-find #"agent:sql:run" (tool-error response)))
+                (is (not (stored?)))))
+            (testing "with the SQL scope, the kill switch still refuses"
+              (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+                (let [response (write! :crowberto (conj write-scopes "agent:sql:run") args)]
+                  (is (re-find #"mcp-execute-sql-enabled" (tool-error response)))
+                  (is (not (stored?))))))
+            (testing "with the SQL scope and the switch on, the native transform is stored"
+              (let [result (tool-result (write! :crowberto (conj write-scopes "agent:sql:run") args))]
+                (is (= "native" (:source_type result)))
+                (is (= :native (t2/select-one-fn :source_type :model/Transform :id (:id result))))))
+            (testing "a plain MBQL definition is unaffected: the content write scope alone still creates it"
+              (let [result (tool-result (write! :crowberto write-scopes
+                                                (assoc args :name "Plain gadget"
+                                                       :definition (query-definition)
+                                                       :target {:name "mcp_plain_gadget" :schema (venues-schema)})))]
+                (is (= "mbql" (:source_type result)))))
+            (finally
+              (t2/delete! :model/Transform :name [:in ["Native gadget" "Plain gadget"]]))))))))
+
 (deftest transform-write-create-required-args-test
   (testing "GHY-4240: the create-only requirements are teaching errors naming the missing field"
     (with-transforms

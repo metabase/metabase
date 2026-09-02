@@ -7,8 +7,11 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as mcp.transport]
+   [metabase.mcp.v2.common :as v2.common]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -79,24 +82,171 @@
         (is (= 3 (count (re-seq #": keepalive" output))))
         (is (= 1 (count (re-seq #"notifications/tools/list_changed" output))))))))
 
+(defn- keepalive-counts []
+  @@#'mcp.transport/keepalive-stream-counts)
+
+(defn- with-clean-keepalive-counts
+  "Run `thunk` against an empty slot table. The table is a `defonce` atom that outlives ns reloads, so it is
+  cleared going in as well as coming out — otherwise these tests depend on which of them ran first."
+  [thunk]
+  (reset! @#'mcp.transport/keepalive-stream-counts {})
+  (try (thunk) (finally (reset! @#'mcp.transport/keepalive-stream-counts {}))))
+
+(deftest keepalive-slot-accounting-test
+  (testing (str "GHY-4331: moving the keepalive off the fixed streaming pool removed the ceiling that pool "
+                "imposed — virtual threads have none. A stream is held for as long as the client keeps it and "
+                "costs a single throttle attempt to open, so without a cap one credential can accumulate "
+                "connections indefinitely. The cap is per-user so one caller cannot crowd out the rest.")
+    (with-clean-keepalive-counts
+      (fn []
+        (let [cap     @#'mcp.transport/max-concurrent-keepalive-streams
+              acquire #(#'mcp.transport/acquire-keepalive-slot! %)
+              release #(#'mcp.transport/release-keepalive-slot! %)]
+          (testing "a user may hold up to the cap"
+            (is (every? true? (repeatedly cap #(acquire 1)))))
+          (testing "and is refused past it, without the refusal costing them a held slot"
+            (is (false? (acquire 1)))
+            (is (= cap (get (keepalive-counts) 1))))
+          (testing "another user is unaffected — the cap bounds a caller, not the instance"
+            (is (true? (acquire 2))))
+          (testing "releasing frees exactly one slot"
+            (release 1)
+            (is (= (dec cap) (get (keepalive-counts) 1)))
+            (is (true? (acquire 1))))
+          (testing "a user at zero drops out of the map rather than accumulating an entry per user ever seen"
+            (release 2)
+            (is (not (contains? (keepalive-counts) 2))))
+          (testing "an unbalanced release cannot drive the count negative and hand out free slots"
+            (release 2)
+            (release 2)
+            (is (not (contains? (keepalive-counts) 2)))))))))
+
+(deftest keepalive-slot-is-held-for-the-life-of-the-stream-test
+  (testing "the stream body owns the slot: taken while it runs, returned however it ends. A slot leaked on
+            disconnect would retire the cap one connection at a time; one never taken would make the cap
+            meaningless."
+    (with-clean-keepalive-counts
+      (fn []
+        (let [canceled (a/promise-chan)
+              sink     (StringWriter.)
+              held     (atom nil)]
+          (#'mcp.transport/keepalive-stream-body! 7
+                                                  (signaling-writer! sink canceled)
+                                                  ;; read the count from inside the running loop
+                                                  (fn [_] (reset! held (get (keepalive-counts) 7)) "hash")
+                                                  nil canceled 30000)
+          (is (= 1 @held) "the slot is held while the stream is running")
+          (is (not (contains? (keepalive-counts) 7)) "and returned once it ends")))))
+  (testing "returned even when the loop throws rather than returning"
+    (with-clean-keepalive-counts
+      (fn []
+        (is (thrown? Exception
+                     (#'mcp.transport/keepalive-stream-body! 8 nil
+                                                             (fn [_] (throw (ex-info "boom" {})))
+                                                             nil (a/promise-chan) 30000)))
+        (is (not (contains? (keepalive-counts) 8))))))
+  (testing "a user already at the cap never starts the loop — the body is where the cap is enforced now, so it
+            has to refuse there too and not merely be refused by the handler"
+    (with-clean-keepalive-counts
+      (fn []
+        (reset! @#'mcp.transport/keepalive-stream-counts
+                {9 @#'mcp.transport/max-concurrent-keepalive-streams})
+        (let [ran (atom false)]
+          (#'mcp.transport/keepalive-stream-body! 9 (StringWriter.)
+                                                  (fn [_] (reset! ran true) "hash")
+                                                  nil (a/promise-chan) 30000)
+          (is (false? @ran)))))))
+
+(deftest keepalive-slot-is-not-taken-when-the-stream-never-starts-test
+  (testing "GHY-4331: a slot must not be held by a stream that never ran. `StreamingResponse`'s `send*` binds
+            `_raise` and never calls it, and streaming-response's own `catch Throwable` sends a 500 and closes
+            its channels without rethrowing — so neither a wrapped `raise` nor a `catch` around `send*` can
+            observe a setup failure. Acquiring up front therefore leaked the slot for the process lifetime, and
+            the cap made that permanent: enough failed connects and the user can open no streams at all.
+
+            So the body owns the slot. `handle-get` only reads the count to refuse at the cap; nothing is taken
+            until the stream is actually running, and a setup failure has nothing to leak."
+    (with-clean-keepalive-counts
+      (fn []
+        (let [responded (promise)]
+          ;; Fail after `handle-get` has decided to serve, before any stream body can run.
+          (with-redefs-fn {#'mcp.transport/require-valid-session    (fn [_user-id _session-id] {:session-id "session"})
+                           #'streaming-response/-streaming-response (fn [_f _options]
+                                                                      (throw (ex-info "setup failed" {})))}
+            (fn []
+              (try
+                (#'mcp.transport/handle-get (constantly "hash") 9 {:headers {"mcp-session-id" "session"}}
+                                            #(deliver responded %) (fn [_] nil))
+                (catch Throwable _ nil))))
+          (is (not (contains? (keepalive-counts) 9))
+              "a stream that never started must leave no slot behind"))))))
+
+(deftest keepalive-stream-at-the-cap-is-refused-test
+  (testing "a user already holding the cap gets a 429 instead of another stream"
+    (with-clean-keepalive-counts
+      (fn []
+        (let [cap       @#'mcp.transport/max-concurrent-keepalive-streams
+              responded (promise)]
+          (reset! @#'mcp.transport/keepalive-stream-counts {1 cap})
+          (with-redefs-fn {#'mcp.transport/require-valid-session (fn [_user-id _session-id] {:session-id "session"})}
+            (fn []
+              (#'mcp.transport/handle-get (constantly "hash") 1 {:headers {"mcp-session-id" "session"}}
+                                          #(deliver responded %) (fn [e] (throw e)))))
+          (let [response (deref responded 5000 nil)]
+            (is (= 429 (:status response)))
+            (is (str/includes? (str (:body response)) "concurrent"))))))))
+
+(deftest keepalive-stream-refused-mid-stream-names-the-limit-test
+  (testing (str "GHY-4331: `at-keepalive-cap?` is advisory by design, so two connects can both read under the cap "
+                "and the loser only learns it lost inside the stream body — by then 200 and the SSE headers are on "
+                "the wire and the handler's 429 is unreachable. The refusal has to go out in band carrying the same "
+                "JSON-RPC error the 429 carries, or the client cannot tell a refused stream from a healthy one that "
+                "ended immediately.")
+    (with-clean-keepalive-counts
+      (fn []
+        (let [cap       @#'mcp.transport/max-concurrent-keepalive-streams
+              sink      (StringWriter.)
+              ran       (atom false)
+              responded (promise)]
+          (reset! @#'mcp.transport/keepalive-stream-counts {9 cap})
+          (#'mcp.transport/keepalive-stream-body! 9 sink
+                                                  (fn [_] (reset! ran true) "hash")
+                                                  nil (a/promise-chan) 30000)
+          (is (false? @ran) "the loop must not run without a slot")
+          (let [frames (->> (str/split-lines (str sink))
+                            (keep #(when (str/starts-with? % "data: ") (json/decode+kw (subs % 6)))))]
+            (is (= 1 (count frames)) "exactly one SSE frame explaining why the stream ended")
+            (with-redefs-fn {#'mcp.transport/require-valid-session (fn [_user-id _session-id] {:session-id "session"})}
+              (fn []
+                (#'mcp.transport/handle-get (constantly "hash") 9 {:headers {"mcp-session-id" "session"}}
+                                            #(deliver responded %) (fn [e] (throw e)))))
+            (is (= 429 (:status (deref responded 5000 nil))))
+            (is (= (json/decode+kw (:body (deref responded 5000 nil)))
+                   (first frames))
+                "the racing loser and the non-racing 429 say the same thing")))))))
+
 (deftest keepalive-stream-does-not-run-on-the-shared-streaming-pool-test
   (testing (str "GHY-4331: the GET keepalive blocks for the life of the client's connection, so it must not be "
                 "submitted to the fixed streaming-response pool that also serves query downloads")
-    (let [captured  (atom nil)
-          real-fn   @#'streaming-response/-streaming-response
-          responded (promise)]
-      (with-redefs-fn {#'mcp.transport/require-valid-session    (fn [_user-id _session-id] {:session-id "session"})
-                       #'streaming-response/-streaming-response (fn [f options]
-                                                                  (reset! captured options)
-                                                                  (real-fn f options))}
-        (fn []
-          (#'mcp.transport/handle-get (constantly "hash") 1 {:headers {"mcp-session-id" "session"}}
-                                      #(deliver responded %) (fn [e] (throw e)))))
-      (is (= 200 (:status (deref responded 5000 nil))))
-      (let [executor (:executor @captured)]
-        (is (some? executor)
-            "the keepalive stream must name an executor rather than defaulting to the shared pool")
-        (is (not= executor (thread-pool/thread-pool)))))))
+    ;; The body owns the keepalive slot; this harness captures the body without running it, so no slot is ever
+    ;; taken. The counts are still cleared so a leak from elsewhere can't bleed into whichever slot test runs next.
+    (with-clean-keepalive-counts
+      (fn []
+        (let [captured  (atom nil)
+              real-fn   @#'streaming-response/-streaming-response
+              responded (promise)]
+          (with-redefs-fn {#'mcp.transport/require-valid-session    (fn [_user-id _session-id] {:session-id "session"})
+                           #'streaming-response/-streaming-response (fn [f options]
+                                                                      (reset! captured options)
+                                                                      (real-fn f options))}
+            (fn []
+              (#'mcp.transport/handle-get (constantly "hash") 1 {:headers {"mcp-session-id" "session"}}
+                                          #(deliver responded %) (fn [e] (throw e)))))
+          (is (= 200 (:status (deref responded 5000 nil))))
+          (let [executor (:executor @captured)]
+            (is (some? executor)
+                "the keepalive stream must name an executor rather than defaulting to the shared pool")
+            (is (not= executor (thread-pool/thread-pool)))))))))
 
 ;;; ------------------------------------------ Transport-level guards ----------------------------------------------
 ;;;
@@ -191,7 +341,7 @@
       (try
         ;; there is no owner to violate until a `core_session` row exists, so materialize one the way a resource
         ;; read would
-        (mcp.session/get-or-create-session-key! session-id rasta-id)
+        (mcp.session/get-or-create-embedding-session! session-id rasta-id)
         (testing "its owner still dispatches"
           (let [response (mcp-request :rasta (ping-call) {"mcp-session-id" session-id})]
             (is (= 200 (:status response)))
@@ -218,31 +368,65 @@
 ;;; ----------------------------------------------- Origin validation ----------------------------------------------
 
 (deftest origin-validation-test
-  (testing (str "GHY-4337: DNS-rebinding protection (an MCP spec requirement) — a page on some other origin can "
-                "reach a locally-bound server, so an `Origin` that is neither the request's own host nor an "
-                "approved MCP app origin is refused")
-    (let [response (mcp-request (jsonrpc-request "initialize")
-                                {"host" "mbtest.poom.dev" "origin" "http://127.0.0.1:6274"})]
-      (is (= 403 (:status response)))
-      (is (= "Origin not allowed" (get-in response [:body :error :message])))
-      (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
-          "a refused origin must not be handed a session")))
-  (testing "the check runs ahead of authentication, so a cross-origin request is refused rather than challenged"
-    (let [response (client/client-full-response :post 403 endpoint
-                                                {:request-options {:headers {"host"   "mbtest.poom.dev"
-                                                                             "origin" "http://evil.example.com"}}}
-                                                (jsonrpc-request "initialize"))]
-      (is (= 403 (:status response)))
-      (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
-  (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
-  (testing "same-origin is allowed, including bracketed IPv6 and mixed case"
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "[::1]:3000" "origin" "http://[::1]:3000"}))))
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "Example.com" "origin" "https://example.COM"})))))
-  (testing "an explicitly configured MCP app origin is allowed cross-host, case-insensitively"
-    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
+  ;; The test instance's own origin. Bound explicitly rather than assumed so these cases state what they
+  ;; are comparing against, and do not silently change meaning if the harness's site-url does.
+  (mt/with-temporary-setting-values [site-url "http://127.0.0.1:6274"]
+    (testing (str "GHY-4337: DNS rebinding is the attack this guard names, and comparing two client-supplied "
+                  "headers cannot catch it. A rebound `evil.example` resolves to 127.0.0.1 and the browser sends "
+                  "BOTH `Origin: http://evil.example` and `Host: evil.example` — they match each other, so an "
+                  "Origin/Host check admits the request. `site-url` is the one origin on a request the client "
+                  "cannot influence, so that is what an Origin is checked against.")
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host" "evil.example" "origin" "http://evil.example"})]
+        (is (= 403 (:status response)))
+        (is (= "Origin not allowed" (get-in response [:body :error :message])))
+        (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
+            "a refused origin must not be handed a session")))
+    (testing "the instance's own origin is served, whatever Host the request carries"
+      (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                       {"host" "anything.example" "origin" "http://127.0.0.1:6274"})))))
+    (testing "a page on another port of the same host is a different origin — the local-MCP threat model, where
+              some other tool on 127.0.0.1 drives this server with the user's cookies"
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host" "127.0.0.1:6274" "origin" "http://127.0.0.1:9999"})]
+        (is (= 403 (:status response)))
+        (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
+    (testing "and so is the same host on another scheme, which an Origin/Host check could never see: `Host`
+              carries no scheme at all"
+      (is (= 403 (:status (mcp-request (jsonrpc-request "initialize")
+                                       {"host" "127.0.0.1:6274" "origin" "https://127.0.0.1:6274"})))))
+    (testing "the check runs ahead of authentication, so a cross-origin request is refused rather than challenged"
+      (let [response (client/client-full-response :post 403 endpoint
+                                                  {:request-options {:headers {"host"   "127.0.0.1:6274"
+                                                                               "origin" "http://evil.example.com"}}}
+                                                  (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
+    (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
+      (is (= 200 (:status (mcp-request (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
+    (testing "matching is case-insensitive, and a default port compares equal to the same port written out"
+      (mt/with-temporary-setting-values [site-url "https://Example.com"]
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "example.com" "origin" "https://example.COM"}))))
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "example.com" "origin" "https://example.com:443"})))))))
+  (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
+                "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
+                "behaviour beats 403ing its own browser clients.")
+    (with-redefs [system/site-url (constantly nil)]
+      (testing "same host and port is served"
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
+      (testing "a different port on that host is still refused"
+        (is (= 403 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "localhost:3000" "origin" "http://localhost:9999"})))))
+      (testing "bracketed IPv6 still parses on both sides"
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "[::1]:3000" "origin" "http://[::1]:3000"})))))))
+  (testing "an explicitly configured MCP app origin is allowed cross-host, case-insensitively — the allowlist is
+            the other way in, and is unaffected by which origin the instance itself has"
+    (mt/with-temporary-setting-values [site-url                                 "http://127.0.0.1:6274"
+                                       mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
       (let [response (mcp-request (jsonrpc-request "initialize")
                                   {"host" "mbtest.poom.dev" "origin" "HTTPS://example.com"})]
         (is (= 200 (:status response)))
@@ -261,7 +445,9 @@
                                                   (jsonrpc-request "initialize"))]
         (is (= 401 (:status response)))
         (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
-        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))))))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
+            "the invalid_token challenge still carries RFC 9728 discovery")))))
 
 (deftest expired-bearer-token-returns-401-test
   (testing "GHY-4337: an access token past its expiry is refused. The row is still there and still names a real
@@ -282,17 +468,21 @@
                                                       (jsonrpc-request "initialize"))]
             (is (= 401 (:status response)))
             (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
-            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))))))))
+            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))
+            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
+                "the invalid_token challenge still carries RFC 9728 discovery")))))))
 
 (defn- issue-bearer!
   "Insert an OAuth access token row for `user-id` and return the raw (unhashed) token to present. `:token` is stored
-  hashed, so the row is written the way a real issued token would be. Call inside `with-model-cleanup`."
-  [user-id]
+  hashed, so the row is written the way a real issued token would be — including `client-id` naming a live
+  `oauth_client` row ([[oauth-server.tu/with-oauth-client]]): the resolver fails closed on a token whose issuing
+  client is gone. Call inside `with-model-cleanup`."
+  [user-id client-id]
   (let [token (str (random-uuid))]
     (t2/insert! :model/OAuthAccessToken
                 {:token     (oidc.util/hash-token token)
                  :user_id   user-id
-                 :client_id (str (random-uuid))
+                 :client_id client-id
                  :scope     ["agent:content:read"]
                  :expiry    (+ (System/currentTimeMillis) 3600000)})
     token))
@@ -309,23 +499,26 @@
     ;; needs no is_active toggling (a `with-temp` user, created in-test, is not reliably visible cross-thread to the
     ;; mock handler's request thread, which would 401 for the wrong reason). `:rasta` is the active control.
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [initialize (fn [expected-status token]
-                           ;; `expected-status` is passed so the client asserts it rather than throwing on an
-                           ;; "unexpected" 401 (which triggers its session re-auth path).
-                           (client/client-full-response :post expected-status endpoint
-                                                        {:request-options {:headers {"authorization" (str "Bearer " token)}}}
-                                                        (jsonrpc-request "initialize" {:capabilities {}})))]
-          (testing "control: an ACTIVE user's bearer token authenticates and gets a session"
-            (let [response (initialize 200 (issue-bearer! (mt/user->id :rasta)))]
-              (is (= 200 (:status response)))
-              (is (some? (get-in response [:headers "Mcp-Session-Id"])))))
-          (testing "a DEACTIVATED user's bearer token is refused — no session, invalid_token challenge"
-            (let [response (initialize 401 (issue-bearer! (mt/user->id :trashbird)))]
-              (is (= 401 (:status response)))
-              (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
-                  "a deactivated user must not be handed a working MCP session")
-              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token")))))))))
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [initialize (fn [expected-status token]
+                             ;; `expected-status` is passed so the client asserts it rather than throwing on an
+                             ;; "unexpected" 401 (which triggers its session re-auth path).
+                             (client/client-full-response :post expected-status endpoint
+                                                          {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                                          (jsonrpc-request "initialize" {:capabilities {}})))]
+            (testing "control: an ACTIVE user's bearer token authenticates and gets a session"
+              (let [response (initialize 200 (issue-bearer! (mt/user->id :rasta) client-id))]
+                (is (= 200 (:status response)))
+                (is (some? (get-in response [:headers "Mcp-Session-Id"])))))
+            (testing "a DEACTIVATED user's bearer token is refused — no session, invalid_token challenge"
+              (let [response (initialize 401 (issue-bearer! (mt/user->id :trashbird) client-id))]
+                (is (= 401 (:status response)))
+                (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
+                    "a deactivated user must not be handed a working MCP session")
+                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))
+                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
+                    "the invalid_token challenge still carries RFC 9728 discovery")))))))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
@@ -509,3 +702,37 @@
             (is (= id (override {:headers {"x-eval-session-id" id}}))))))
       (testing "absent header yields nil"
         (is (nil? (override {:headers {}})))))))
+
+(deftest ^:parallel redact-ui-credentials-test
+  (testing "a resources/read response has its embedded UI credential scrubbed before it is recorded
+           into an eval trace — a recorded credential is a live bearer authenticator"
+    (let [redact   @#'mcp.transport/redact-ui-credentials
+          response {:jsonrpc "2.0"
+                    :id      1
+                    :result  {:contents [{:uri      "ui://metabase/visualize-query.html"
+                                          :mimeType "text/html;profile=mcp-app"
+                                          :text     "<script>\nuiCredential: \"top.secret.credential\",\n</script>"}
+                                         {:uri "ui://metabase/logo.png" :blob "aGk=" :text nil}]}}
+          redacted (redact response)]
+      (is (not (str/includes? (get-in redacted [:result :contents 0 :text]) "top.secret.credential")))
+      (is (str/includes? (get-in redacted [:result :contents 0 :text]) "uiCredential: \"[redacted]\""))
+      (testing "a blob content with no :text passes through untouched"
+        (is (nil? (get-in redacted [:result :contents 1 :text]))))))
+  (testing "a tools/call result's private MCP Apps _meta block (refresh_ui_credential's channel) is stripped"
+    (let [redact   @#'mcp.transport/redact-ui-credentials
+          response {:jsonrpc "2.0"
+                    :id      4
+                    :result  {:content [{:type "text" :text "MCP UI credential refreshed."}]
+                              :_meta   {v2.common/mcp-apps-meta-key {:credential "top.secret.credential"
+                                                                     :sessionId  "s"}
+                                        :other "kept"}}}
+          redacted (redact response)]
+      (is (not (str/includes? (pr-str redacted) "top.secret.credential")))
+      (is (= {:other "kept"} (get-in redacted [:result :_meta])))
+      (is (= (:content (:result response)) (get-in redacted [:result :content])))))
+  (testing "responses without resource contents pass through untouched"
+    (let [redact @#'mcp.transport/redact-ui-credentials]
+      (doseq [response [{:jsonrpc "2.0" :id 2 :result {:content [{:type "text" :text "hi"}]}}
+                        {:jsonrpc "2.0" :id 3 :error {:code -32603 :message "Internal error"}}
+                        nil]]
+        (is (= response (redact response)))))))

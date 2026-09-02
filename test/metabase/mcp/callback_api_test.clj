@@ -62,7 +62,7 @@
   (testing "session owned by a different user returns 404"
     (let [owner   (mt/user->id :crowberto)
           session (mcp.session/create! owner)
-          _       (mcp.session/get-or-create-session-key! session owner)]
+          _       (mcp.session/get-or-create-embedding-session! session owner)]
       (is (=? {:status 404}
               (post-drill :rasta 404 {:encodedQuery "ZW5jb2RlZA=="}
                           {"mcp-session-id" session}))))))
@@ -174,6 +174,6 @@
       (is (=? {:status 404}
               (post-mcp-feedback :rasta 404 body "not-a-uuid")))
       (let [owner-session (mcp.session/create! (mt/user->id :crowberto))]
-        (mcp.session/get-or-create-session-key! owner-session (mt/user->id :crowberto))
+        (mcp.session/get-or-create-embedding-session! owner-session (mt/user->id :crowberto))
         (is (=? {:status 404}
                 (post-mcp-feedback :rasta 404 body owner-session)))))))

@@ -39,9 +39,11 @@ export const visitNewEmbedPage = (
 
   cy.get("body").then(() => {
     if (waitForResource) {
-      embedModalEnableEmbedding();
+      // Accept the terms only once the sidebar has settled: a click landing
+      // mid-re-render is dropped silently and blocks the wizard (EMB-2307).
+      cy.wait("@dashboard", { timeout: 20_000 });
 
-      cy.wait("@dashboard");
+      embedModalEnableEmbedding();
 
       // Same 40s margin as waitForSimpleEmbedIframesToLoad (metabase#66954).
       cy.get("[data-iframe-loaded]", { timeout: 40_000 }).should(

@@ -12,7 +12,7 @@ type SliceReducer = Reducer<SliceState>;
 /**
  * Slices held under `state.entities.<name>`. These used to be wired up by the
  * (now-removed) entity framework via `createEntity`; the slices themselves
- * still exist because `getMetadata` in `metabase/selectors/metadata.ts` reads
+ * still exist because `getMetadata` in `metabase/metadata-store.ts` reads
  * directly from them. `metadataHydrationMiddleware` in `./hydration` is the
  * only writer, and populates them by dispatching `metabase/entities/UPDATE`.
  */
