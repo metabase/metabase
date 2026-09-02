@@ -129,21 +129,21 @@
     [{} :join :a]
 
     true
-    [{'join ['a ['= 'a.b 'c.d]]} :join :a]
+    [{:join ['a ['= 'a.b 'c.d]]} :join :a]
 
     false
-    [{'join ['a ['= 'a.b 'c.d]]} :join :d]
+    [{:join ['a ['= 'a.b 'c.d]]} :join :d]
 
     ;; work with multiple join types
     false
-    [{'join ['a ['= 'a.b 'c.d]]} :left-join :d]
+    [{:join ['a ['= 'a.b 'c.d]]} :left-join :d]
 
     ;; do the same with other join types too
     true
-    [{'left-join ['a ['= 'a.b 'c.d]]} :left-join :a]
+    [{:left-join ['a ['= 'a.b 'c.d]]} :left-join :a]
 
     false
-    [{'left-join ['a ['= 'a.b 'c.d]]} :left-join :d]))
+    [{:left-join ['a ['= 'a.b 'c.d]]} :left-join :d]))
 
 (def ^:private base-search-query
   {'select ['*]
@@ -226,7 +226,7 @@
   (testing "created-at filter"
     (is (= {'select ['*]
             'from   ['table]
-            'where  ['and
+            :where  [:and
                      ['= 'card.archived false]
                      ['>= ['cast 'card.created_at 'date] #t "2016-04-18"]
                      ['< ['cast 'card.created_at 'date]  #t "2016-04-24"]]}
@@ -238,8 +238,8 @@
   (testing "last edited at filter"
     (is (= {'select ['*]
             'from   ['table]
-            'join   ['revision ['= 'revision.model_id 'card.id]]
-            'where  ['and
+            :join   ['revision ['= 'revision.model_id 'card.id]]
+            :where  [:and
                      ['= 'card.archived false]
                      ['= 'revision.most_recent true]
                      ['= 'revision.model "Card"]
@@ -251,8 +251,8 @@
     (testing "do not join twice if has both last-edited-at and last-edited-by"
       (is (= {'select ['*]
               'from   ['table]
-              'join   ['revision ['= 'revision.model_id 'card.id]]
-              'where  ['and
+              :join   ['revision ['= 'revision.model_id 'card.id]]
+              :where  [:and
                        ['= 'card.archived false]
                        ['= 'revision.most_recent true]
                        ['= 'revision.model "Card"]
@@ -266,7 +266,7 @@
     (testing "for actiion"
       (is (= {'select ['*]
               'from   ['table]
-              'where  ['and ['= 'action.archived false]
+              :where  [:and ['= 'action.archived false]
                        ['>= ['cast 'action.updated_at 'date] #t "2016-04-18"]
                        ['< ['cast 'action.updated_at 'date] #t "2016-04-24"]]}
              (search.filter/build-filters
@@ -290,12 +290,12 @@
   (testing "last edited by filter"
     (is (= {'select ['*]
             'from   ['table]
-            'where  ['and
+            :where  [:and
                      ['= 'card.archived false]
                      ['= 'revision.most_recent true]
                      ['= 'revision.model "Card"]
                      ['= 'revision.user_id 1]]
-            'join   ['revision ['= 'revision.model_id 'card.id]]}
+            :join   ['revision ['= 'revision.model_id 'card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
@@ -305,12 +305,12 @@
   (testing "last edited by filter"
     (is (= {'select ['*]
             'from   ['table]
-            'where  ['and
+            :where  [:and
                      ['= 'card.archived false]
                      ['= 'revision.most_recent true]
                      ['= 'revision.model "Card"]
                      ['in 'revision.user_id #{1 2}]]
-            'join   ['revision ['= 'revision.model_id 'card.id]]}
+            :join   ['revision ['= 'revision.model_id 'card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
@@ -322,12 +322,12 @@
       (testing "for cards"
         (is (= (merge
                 base-search-query
-                {'where  ['and
+                {:where  [:and
                           ['= 'card.archived false]
                           ['= 'moderation_review.status "verified"]
                           ['= 'moderation_review.moderated_item_type "card"]
                           ['= 'moderation_review.most_recent true]]
-                 'join   ['moderation_review ['= 'moderation_review.moderated_item_id 'card.id]]})
+                 :join   ['moderation_review ['= 'moderation_review.moderated_item_id 'card.id]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -338,12 +338,12 @@
       (testing "for models"
         (is (= (merge
                 base-search-query
-                {'where  ['and
+                {:where  [:and
                           ['= 'card.archived false]
                           ['= 'moderation_review.status "verified"]
                           ['= 'moderation_review.moderated_item_type "card"]
                           ['= 'moderation_review.most_recent true]]
-                 'join   ['moderation_review ['= 'moderation_review.moderated_item_id 'card.id]]})
+                 :join   ['moderation_review ['= 'moderation_review.moderated_item_id 'card.id]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
@@ -354,7 +354,7 @@
       (testing "for cards without ee features"
         (is (= (merge
                 base-search-query
-                {'where  ['and
+                {:where  [:and
                           ['= 'card.archived false]
                           ['= ['inline 0] ['inline 1]]]})
                (search.filter/build-filters
@@ -367,7 +367,7 @@
       (testing "for models without ee features"
         (is (= (merge
                 base-search-query
-                {'where  ['and
+                {:where  [:and
                           ['= 'card.archived false]
                           ['= ['inline 0] ['inline 1]]]})
                (search.filter/build-filters
