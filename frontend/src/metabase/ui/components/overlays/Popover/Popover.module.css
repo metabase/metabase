@@ -1,5 +1,5 @@
 .dropdown {
-  padding: 0; /* Content pads itself */
+  padding: 0;
   overflow: auto;
   background: var(--mb-color-background_surface-primary);
   border-width: 0.5px;
