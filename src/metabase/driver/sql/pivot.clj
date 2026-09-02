@@ -16,7 +16,6 @@
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.performance :refer [empty? mapv some]]))
 
 (set! *warn-on-reflection* true)
@@ -201,27 +200,21 @@
 
 (defmulti null-pad-breakout-hsql
   "Return a HoneySQL form used to null-pad a dropped-breakout column in a UNION ALL branch of the
-  UA pivot compiler. `breakout-expr` is the compiled breakout HoneySQL, kept as an argument so
-  driver overrides can read its `:database-type` metadata (via [[h2x/database-type]]).
+  UA pivot compiler. `breakout` is the MBQL breakout clause (drivers can read `:base-type` /
+  `:effective-type` from its options); `breakout-expr` is its compiled HoneySQL form (drivers can
+  read database-type metadata attached during compilation).
 
   Default is a bare `NULL`, which most dialects infer from sibling `UNION ALL` branches. Dialects
-  that leave untyped `NULL` untyped and reject the union override this and typically call
-  [[typed-cast-null-hsql]] to emit `CAST(NULL AS <breakout-db-type>)`."
-  {:added "0.64.0", :arglists '([driver breakout-expr])}
+  that leave untyped `NULL` untyped and reject the union (BigQuery, Presto/Trino) override this
+  to emit `CAST(NULL AS <type>)`, typically by mapping `:base-type` to a driver-specific SQL type
+  name."
+  {:added "0.64.0", :arglists '([driver breakout breakout-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod null-pad-breakout-hsql :sql
-  [_driver _breakout-expr]
+  [_driver _breakout _breakout-expr]
   nil)
-
-(defn typed-cast-null-hsql
-  "Returns `CAST(NULL AS <db-type>)` when `breakout-expr` carries a `:database-type`
-  compatible with the dialect's raw type grammar, otherwise falls back to bare `NULL`."
-  [breakout-expr]
-  (if-let [db-type (h2x/database-type breakout-expr)]
-    (h2x/cast db-type nil)
-    nil))
 
 (defn- compile-union-all-pivot
   "Compile the `:pivot` clause into a `UNION ALL` over one branch per grouping-set combination, wrapped in an outer
@@ -254,12 +247,11 @@
                                        (filter (fn [[_ _ ref]]
                                                  (and (vector? ref) (= (first ref) :aggregation))))
                                        (:order-by stage))
-        ;; HoneySQL form used to null-pad a dropped breakout in a UA branch — the default is bare
-        ;; `NULL`, which every dialect except BigQuery infers from sibling `UNION ALL` branches.
-        ;; Driver-specific `null-pad-breakout-hsql` methods (e.g. BigQuery's `CAST(NULL AS type)`)
-        ;; are called with the compiled breakout expression so they can read its `:database-type`.
+        ;; HoneySQL form used to null-pad a dropped breakout in a UA branch — dispatched to
+        ;; [[null-pad-breakout-hsql]]. Default is bare `NULL`; drivers with strict `UNION ALL`
+        ;; type coercion (BigQuery, Presto) override to emit `CAST(NULL AS <type>)`.
         typed-null               (fn [i]
-                                   (null-pad-breakout-hsql driver (nth breakout-hsql i)))
+                                   (null-pad-breakout-hsql driver (nth breakout i) (nth breakout-hsql i)))
         ;; Shared prefix (source, joins, filter, CTEs) — everything except the per-branch shape.
         shared-base              (dissoc honeysql-form :select :select-distinct :group-by :order-by :limit)
         alias-of                 select-entry-alias
