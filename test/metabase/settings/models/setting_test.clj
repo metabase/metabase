@@ -1834,6 +1834,7 @@
           (is (= (wrap-setting-value :test-never-encrypted-setting "foobar")
                  (encryption/decrypt (raw-setting-details :test-never-encrypted-setting)))))
         (testing "and the values are readable again"
+          (setting.cache/restore-cache!)
           (is (= "Lenny" (toucan-name))))
         (testing "details that already agree with `value` are left byte-identical"
           (toucan-name! "Sad Can")

@@ -1750,7 +1750,7 @@
                         (throw (ex-info (tru "Unknown setting: {0}" setting-key)
                                         {:setting-key setting-key})))]
     (assoc setting
-           :details (some->> value (settings.util/wrap-value setting-key) encryption/maybe-encrypt)
+           :details (some->> value (settings.util/details setting-key))
            :value   (cond-> value (encrypts? resolved) encryption/maybe-encrypt))))
 
 (defn- read-setting-value
@@ -1801,10 +1801,9 @@
 
 (defn migrate-settings!
   "Bring every setting row's `details` back in line with the legacy `value` column beside them, storing the value the
-  way [[write-setting-value]] would have stored it. Runs before anything reads a setting: from
-  `metabase.core.core/init!` for the server, and from each command that migrates the app DB itself and then goes on
-  to read settings -- otherwise a `serdes export` run straight after `migrate up` would quietly write a file of
-  nothing but defaults.
+  way [[write-setting-value]] would have stored it. Runs from `metabase.app-db.setup/setup-db!`, after migrations and
+  before anything reads a setting, whenever the database's encryption state says every row can be read; the caller
+  is responsible for that, since a row this cannot decrypt would be wrapped as if it were a value.
 
   Every write from this version sets both columns, so the two agreeing is the normal state and nothing here has
   anything to do. They come apart only where a version predating `details` has written: it sets `value` alone, so a
@@ -1825,19 +1824,22 @@
   the very rows this repairs."
   []
   (binding [config/*disable-setting-cache* true]
-    (let [repaired (atom 0)
-          rows     (t2/select :setting)
-          ;; `contains?`, not the value: migrations can be run to a target that predates the column, and a row read
-          ;; from a table without it simply has no such key
-          column?  (contains? (first rows) :details)]
+    (let [repaired (atom 0)]
       (t2/with-transaction [_conn]
-        (doseq [{:keys [key value details]} (when column? rows)
-                :when (and (seq value) (maybe-resolve-setting key))
-                ;; a `value` that looks encrypted but does not decrypt is no better than the details it would replace
-                :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
-                :when (and (some? plain) (not= plain (stored-details-value key details)))]
-          (swap! repaired inc)
-          (t2/update! :setting :key key
-                      (select-keys (write-setting-value {:key key, :value plain}) [:details]))))
+        (let [rows    (t2/select :setting {:for :update})
+              ;; `contains?`, not the value: migrations can be run to a target that predates the column, and a row
+              ;; read from a table without it simply has no such key
+              column? (contains? (first rows) :details)]
+          (doseq [{:keys [key value details]} (when column? rows)
+                  :when (and (seq value) (maybe-resolve-setting key))
+                  ;; a `value` that looks encrypted but does not decrypt is no better than the details it would replace
+                  :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
+                  :when (and (some? plain) (not= plain (stored-details-value key details)))]
+            (swap! repaired inc)
+            ;; `t2/query`, not `t2/update!`: the cloud-migration guard on DML reads `read-only-mode` through the model
+            ;; before every update, strictly -- and that row may be one of those being repaired here
+            (t2/query {:update :setting
+                       :set    {:details (settings.util/details key plain)}
+                       :where  [:= :key key]}))))
       (when (pos? @repaired)
         (log/infof "Rebuilt the details of %d setting(s) from their value." @repaired)))))

@@ -16,9 +16,11 @@
 (defn- clear-setting-cache!
   "Empty the Setting cache so values have to be fetched from the DB again. Emptied rather than restored: restoring
   reads and decrypts every setting row there and then, which fails on rows written under a key other than the one in
-  effect at the boundary -- exactly what changing keys leaves behind."
+  effect at the boundary -- exactly what changing keys leaves behind. The once-a-minute throttle on the check that
+  repopulates an empty cache is zeroed too, so the next read restores it whole instead of going to the DB row by row."
   []
-  (reset! (#'setting.cache/cache*) nil))
+  (reset! (#'setting.cache/cache*) nil)
+  (.set ^java.util.concurrent.atomic.AtomicLong @#'setting.cache/last-update-check 0))
 
 (defn do-with-secret-key! [^String secret-key thunk]
   (initialize/initialize-if-needed! :db)

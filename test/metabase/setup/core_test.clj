@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.settings.models.setting :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -35,6 +36,7 @@
   (testing "The has-user-setup getter should cache truthy results since it can never become falsey"
     ;; make sure some test users are created.
     (mt/initialize-if-needed! :test-users)
+    (setting.cache/restore-cache!)
     (t2/with-call-count [call-count]
       ;; call has-user-setup several times.
       (dotimes [_ 5]
@@ -56,6 +58,7 @@
           (is (<= (call-count)
                   10)))))) ;; in dev/test we check settings for an override
   (testing "Switch back to the 'normal' app DB; value should still be cached for it"
+    (setting.cache/restore-cache!)
     (t2/with-call-count [call-count]
       (is (true?
            (setup/has-user-setup)))
@@ -231,8 +234,9 @@
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
-                  {:keys [id value]} (t2/select [table :id [column :value]] {:where [:!= column nil]})]
-            (testing (format "%s.%s id %s" (name table) (name column) id)
+                  :let [key-column (#'mdb.encryption/table-key table)]
+                  {:keys [id value]} (t2/select [table [key-column :id] [column :value]] {:where [:!= column nil]})]
+            (testing (format "%s.%s %s %s" (name table) (name column) (name key-column) id)
               (is (encryption/decryptable-string? value)))))
         (testing "encrypted-at-rest bytes columns"
           (doseq [[table column] @#'mdb.encryption/encrypted-bytes-columns

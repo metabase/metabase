@@ -12,6 +12,7 @@
   `settings-last-updated` marker and the `encryption-check` sentinel -- are written by namespaces the model is built
   on top of."
   (:require
+   [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -40,3 +41,12 @@
         (throw (ex-info (format "Setting \"%s\" is stored under the key \"%s\"" setting-key stored-key)
                         {:setting-key setting-key, :stored-key stored-key}))))
     (get envelope "setting-value")))
+
+(defn details
+  "What a setting row stores in its `details` column for `value`: the [[wrap-value]] envelope, encrypted with
+  `encrypt` -- by default [[encryption/maybe-encrypt]], so ciphertext whenever MB_ENCRYPTION_SECRET_KEY is set and
+  plaintext otherwise. Key rotation passes the function that encrypts under the key it is rotating to."
+  (^String [setting-key value]
+   (details setting-key value encryption/maybe-encrypt))
+  (^String [setting-key value encrypt]
+   (encrypt (wrap-value setting-key value))))

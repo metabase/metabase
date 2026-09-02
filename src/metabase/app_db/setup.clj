@@ -242,6 +242,22 @@
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
+(defn- migrate-settings!
+  "Fill in `setting.details` from the legacy `value` column beside it, in the states where every row can be read --
+  see [[metabase.settings.core/migrate-settings!]]. A caller that skips [[mdb.encryption/check-encryption]]
+  (`enable-encryption`, `copy!`) can get here with a database whose rows the key in hand cannot decrypt, and a repair
+  run then would wrap ciphertext as if it were a value, so those states are left for the caller to sort out.
+
+  Here, rather than at application startup, because every entry point that migrates the app DB comes through this
+  function and several never reach `metabase.core.core/init!` -- `migrate up`, the serialization commands,
+  `reset-password`, the encryption commands -- and a JVM that skipped the repair would read every setting as nil.
+  Resolved at call time as [[metabase.settings.models.setting]] does for this namespace's own `db-is-set-up?`: the
+  Setting model is built on top of this one (setting -> setting.cache -> app-db.core -> app-db.setup), so requiring
+  it here is a cycle."
+  [db-state]
+  (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
+    ((requiring-resolve 'metabase.settings.core/migrate-settings!))))
+
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe.
@@ -276,6 +292,7 @@
            (when manage-encryption-state?
              (mdb.encryption/check-encryption db-state))
            (run-schema-migrations! data-source auto-migrate?)
+           (migrate-settings! db-state)
            (when manage-encryption-state?
              (mdb.encryption/record-encryption-state! db-state))))))
    :done))

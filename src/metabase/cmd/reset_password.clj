@@ -2,7 +2,6 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [toucan2.core :as t2]))
@@ -25,7 +24,6 @@
   "Reset the password for EMAIL-ADDRESS, and return the reset token in a format that can be understood by the Mac App."
   [email-address]
   (mdb/setup-db! :create-sample-content? false)
-  (setting/migrate-settings!)
   (println (str (deferred-trs "Resetting password for {0}..." email-address)
                 "\n"))
   (try
