@@ -745,7 +745,8 @@
         [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
         ;; root collection is nil
         [collection]))
-    (let [personal-collection-ids (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
+    ;; `select-pks-set` returns `nil`, not `#{}`, when there are no Personal Collections at all.
+    (let [personal-collection-ids (or (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]) #{})
           ;; Personal Collections only ever live in the Root Collection, so a Collection is inside one exactly when
           ;; the first ID of its location path is a Personal Collection. Testing that ID against the set beats
           ;; scanning every personal collection per row: instances with thousands of each made this quadratic.

@@ -1331,6 +1331,21 @@
               (is (= nil (t2/hydrate nil :is_personal)))
               (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))))
 
+(deftest hydrate-is-personal-without-any-personal-collection-test
+  (testing "batched hydration should work on an instance that has no Personal Collection at all"
+    (mt/with-empty-h2-app-db!
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (t2/delete! :model/Collection :personal_owner_id [:not= nil]))
+      (mt/with-temp
+        [:model/Collection {top-level-coll :id}        {:location "/"}
+         :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
+        (is (nil? (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]))
+            "no Personal Collection should exist, otherwise this test doesn't cover the regression")
+        (is (= [false false]
+               (as-> (t2/select :model/Collection :id [:in [top-level-coll nested-top-level-coll]] {:order-by [:id]}) collections
+                 (t2/hydrate collections :is_personal)
+                 (map :is_personal collections))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
