@@ -259,33 +259,6 @@ describe("sanitizePluginSettings", () => {
       },
     );
 
-    it("drops the base widget props from what getProps returns", () => {
-      const { context } = setupMount();
-
-      const sanitized = sanitizePluginSettings(
-        {
-          threshold: definePluginSetting({
-            widget: "number",
-            getProps: () => ({
-              placeholder: "Set threshold",
-              id: "card.title",
-              value: 5,
-              onChange: jest.fn(),
-              onChangeSettings: jest.fn(),
-            }),
-          }),
-        },
-        context,
-      );
-
-      expect(
-        getCallback(
-          getHostDefinition(sanitized, `${PREFIX}threshold`),
-          "getProps",
-        )(SERIES, SETTINGS),
-      ).toEqual({ placeholder: "Set threshold" });
-    });
-
     it("calls getSection without arguments", () => {
       const { context } = setupMount();
       const getSection = jest.fn(() => "Display");

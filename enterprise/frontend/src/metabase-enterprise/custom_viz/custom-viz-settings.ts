@@ -1,5 +1,4 @@
 import type {
-  BaseWidgetProps,
   CreateDefineSetting,
   CustomVisualization,
   CustomVisualizationMount,
@@ -25,19 +24,6 @@ const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
     column: true,
     column_settings: true,
   } satisfies Record<ReservedVisualizationSettingId, true>),
-);
-
-// The host passes these to every widget; a plugin's `getProps` can't replace them.
-const BASE_WIDGET_PROP_NAMES: ReadonlySet<string> = new Set(
-  Object.keys({
-    id: true,
-    value: true,
-    onChange: true,
-    onChangeSettings: true,
-  } satisfies Record<
-    keyof BaseWidgetProps<unknown, Record<string, unknown>>,
-    true
-  >),
 );
 
 type PluginSettingDefinitions = CustomVisualization<
@@ -153,8 +139,7 @@ function toHostDefinition(
       ((series, settings) => getValue(...pluginArgs(series, settings))),
     getProps:
       getProps &&
-      ((series, settings) =>
-        omitBaseWidgetProps(getProps(...pluginArgs(series, settings)))),
+      ((series, settings) => getProps(...pluginArgs(series, settings))),
     widget: isComponentWidget(widget)
       ? wrapPluginWidget(
           (container, initialProps) => mount(widget, container, initialProps),
@@ -163,16 +148,6 @@ function toHostDefinition(
         )
       : widget,
   };
-}
-
-function omitBaseWidgetProps(props: unknown): Record<string, unknown> {
-  if (!isObject(props)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(props).filter(([key]) => !BASE_WIDGET_PROP_NAMES.has(key)),
-  );
 }
 
 function prefixSettingIds(
