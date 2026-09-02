@@ -316,6 +316,29 @@
       (testing "and the key is usable again afterwards"
         (is (= ::ok (field-values/detached-fetch! unprintable (constantly ::ok))))))))
 
+(deftest detached-fetch!-sweeps-stalled-fetches-test
+  (testing "a fetch that outlives the max age is canceled and its waiters are failed, so no registry
+            entry can outlive its work (GHY-2937)"
+    (let [registry @#'field-values/in-flight-fetches
+          started  (promise)
+          release  (promise)
+          caller   (future (try
+                             (field-values/detached-fetch! ::stalled (fn []
+                                                                       (deliver started true)
+                                                                       @release))
+                             (catch Throwable _ ::threw)))]
+      @started
+      (let [stalled-future @(:future-ref (get @registry ::stalled))]
+        ;; backdate the entry's timer so the next call through detached-fetch! sees it as stalled.
+        ;; Backdating this one entry rather than shortening the max age keeps the sweep from
+        ;; touching fetches other tests may have in flight.
+        (swap! registry update ::stalled update :timer - (* 24 60 60 1000 1000000))
+        (testing "the sweep runs on the next fetch, which is unaffected by it"
+          (is (= ::ok (field-values/detached-fetch! ::sweep-trigger (constantly ::ok)))))
+        (is (= ::threw (deref caller 10000 ::timed-out)))
+        (is (future-cancelled? stalled-future))
+        (is (not (contains? @registry ::stalled)))))))
+
 (deftest detached-fetch!-rethrows-test
   (testing "an exception thrown by the fetch reaches the caller"
     (is (thrown-with-msg? Exception #"oops"

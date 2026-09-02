@@ -526,18 +526,48 @@
       ::fv-deleted)))
 
 (def ^:private in-flight-fetches
-  "`cache-key` -> promise of the result of the fetch currently running for that key. See
-  [[detached-fetch!]]."
+  "`cache-key` -> `{:promise :future-ref :timer}` for the fetch currently running for that key.
+  See [[detached-fetch!]]."
   (atom {}))
 
+(def ^:private fetch-max-age-ms
+  "How long a detached fetch may run before it is canceled and its waiters failed.
+
+  Only a fetch wedged outside the query processor can reach this: the warehouse query itself is
+  already capped by `*query-timeout-ms*` (`MB_DB_QUERY_TIMEOUT_MINUTES`, 20 minutes in prod), so
+  this is a backstop for work blocked somewhere the QP cannot cancel — acquiring a connection, or a
+  driver that ignores cancellation."
+  (* 60 60 1000))
+
 (defn- complete-fetch!
-  "Drop `cache-key` from the registry and hand `result` to everyone waiting on `p`.
+  "Drop `entry` from the registry and hand `result` to everyone waiting on it.
 
   Dropping the entry before delivering means a caller that wakes up and immediately asks again
-  starts a fresh fetch rather than re-attaching to this finished one."
-  [cache-key p result]
-  (swap! in-flight-fetches dissoc cache-key)
-  (deliver p result))
+  starts a fresh fetch rather than re-attaching to this finished one. The entry is removed only if
+  it is still the registered one, so a fetch that was already swept can't evict its replacement."
+  [cache-key entry result]
+  (swap! in-flight-fetches (fn [m]
+                             (cond-> m
+                               (identical? entry (get m cache-key)) (dissoc cache-key))))
+  (deliver (:promise entry) result))
+
+(defn- sweep-stalled-fetches!
+  "Cancel every fetch that has outlived [[fetch-max-age-ms]] and fail whoever is waiting on it.
+
+  A fetch clears its own registry entry, so this fires only when that failed or when the work is
+  genuinely wedged. It completes the entries rather than merely forgetting them: callers park on the
+  promise, so an entry dropped without delivery leaves them blocked forever, each holding a request
+  thread. Deliberately logs no cache keys — printing one is a way this could throw, and a backstop
+  that throws is not a backstop."
+  []
+  (let [stalled (filter (fn [[_ {:keys [timer]}]] (> (u/since-ms timer) fetch-max-age-ms))
+                        @in-flight-fetches)]
+    (doseq [[cache-key {:keys [future-ref] :as entry}] stalled]
+      (some-> @future-ref future-cancel)
+      (complete-fetch! cache-key entry
+                       {:error (ex-info (tru "Timed out fetching field values.") {:cache-key cache-key})}))
+    (when (seq stalled)
+      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" (count stalled) fetch-max-age-ms))))
 
 (defn detached-fetch!
   "Run `thunk` on a background thread and return its result, rethrowing anything it throws.
@@ -547,30 +577,34 @@
   — and persists whatever it fetched — even when the caller stops waiting, e.g. when the HTTP
   request that asked for the values is canceled."
   [cache-key thunk]
-  (let [p    (promise)
-        this (get (swap! in-flight-fetches u/assoc-default cache-key p) cache-key)]
-    (when (identical? this p)
+  ;; sweep here rather than on a timer: the registry only grows when something is inserted, so this
+  ;; runs exactly when it needs to. Guarded because a failure to sweep must not fail this caller.
+  (try
+    (sweep-stalled-fetches!)
+    (catch Throwable e
+      (log/warn e "Error sweeping stalled FieldValues fetches")))
+  (let [entry {:promise (promise), :future-ref (atom nil), :timer (u/start-timer)}
+        this  (get (swap! in-flight-fetches u/assoc-default cache-key entry) cache-key)]
+    (when (identical? this entry)
       ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with its
       ;; promise undelivered is worse than a leak: every later caller for that key parks on it
       ;; forever, holding a request thread each.
       (try
-        (future
-          (try
-            (let [result (try
-                           {:value (thunk)}
-                           (catch Throwable e
-                             ;; log as well as rethrowing: when every caller has walked away there is
-                             ;; nobody left to deref the promise, so this is the only record of the failure
-                             (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))
-                             {:error e}))]
-              (complete-fetch! cache-key p result))
-            (catch Throwable e
-              (complete-fetch! cache-key p {:error e}))))
+        (reset! (:future-ref entry)
+                (future
+                  (try
+                    (complete-fetch! cache-key entry {:value (thunk)})
+                    (catch Throwable e
+                      (complete-fetch! cache-key entry {:error e})
+                      ;; log only once everyone waiting has been served: an appender that throws here
+                      ;; would otherwise strand them. Log at all because when every caller has walked
+                      ;; away there is nobody left to deref the promise, so this is the only record.
+                      (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))))))
         ;; submitting can fail on its own — `future`'s pool rejects new work once the JVM starts
         ;; shutting down, and the registry entry is already in place by then
         (catch Throwable e
-          (complete-fetch! cache-key p {:error e}))))
-    (let [{:keys [value error]} @this]
+          (complete-fetch! cache-key entry {:error e}))))
+    (let [{:keys [value error]} @(:promise this)]
       (when error
         (throw error))
       value)))
