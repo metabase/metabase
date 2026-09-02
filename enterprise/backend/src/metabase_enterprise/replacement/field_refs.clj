@@ -33,7 +33,7 @@
   [parameters]
   (let [card-ids      (replacement.walk/parameter-source-card-ids parameters)
         card-id->card (when (seq card-ids)
-                        (t2/select-pk->fn identity :model/Card 'id ['in card-ids]))]
+                        (t2/select-pk->fn identity :model/Card 'id [:in card-ids]))]
     (if (seq card-ids)
       (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
       parameters)))
@@ -82,7 +82,7 @@
       (let [query (:query source)
             query' (source-swap/upgrade-field-refs-in-query query)]
         (when (not= query query')
-          (t2/update! :model/Transform (:id transform) {'source (assoc source :query query')}))))))
+          (t2/update! :model/Transform (:id transform) {:source (assoc source :query query')}))))))
 
 (defn- segment-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a segment."
@@ -91,7 +91,7 @@
     (let [query  (:definition segment)
           query' (source-swap/upgrade-field-refs-in-query query)]
       (when (not= query query')
-        (t2/update! :model/Segment (:id segment) {'definition query'})))))
+        (t2/update! :model/Segment (:id segment) {:definition query'})))))
 
 (defn- measure-upgrade-field-refs!
   "Upgrade field refs in `:definition` for a measure."
@@ -100,7 +100,7 @@
     (let [query  (:definition measure)
           query' (source-swap/upgrade-field-refs-in-query query)]
       (when (not= query query')
-        (t2/update! :model/Measure (:id measure) {'definition query'})))))
+        (t2/update! :model/Measure (:id measure) {:definition query'})))))
 
 (defn- upgrade-parameter-target
   "Upgrade field refs in a parameter target."
@@ -142,7 +142,7 @@
                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                             dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn identity :model/Card 'id ['in all-card-ids])
+                        (t2/select-pk->fn identity :model/Card 'id [:in all-card-ids])
                         {})
         parameters'   (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
         changes       (cond-> {}

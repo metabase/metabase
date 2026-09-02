@@ -41,7 +41,7 @@
       (t2/with-transaction [_conn]
         (doseq [batch (partition-all 1000 parameters)]
           (t2/delete! :model/UserParameterValue
-                      {'where (into [:or] (for [p batch]
+                      {:where (into [:or] (for [p batch]
                                             [:and
                                              [:= :user_id (:user_id p)]
                                              [:= :dashboard_id (:dashboard_id p)]
@@ -96,7 +96,7 @@
      :last_used_param_values
      (fn [] ;; return a map of {dashboard-id {parameter-id value}}
        (let [upvs (t2/select :model/UserParameterValue
-                             'dashboard_id ['in (map :id dashboards)]
+                             'dashboard_id [:in (map :id dashboards)]
                              'user_id user-id)]
          (as-> upvs result
            (group-by :dashboard_id result)

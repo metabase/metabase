@@ -31,13 +31,13 @@
         ;; Use t2/query (raw SQL) instead of t2/update! so we don't trigger Toucan2 model hooks — the
         ;; :model/Document after-update publishes :event/document-update and syncs card collections, which
         ;; are side effects outside the tx and must not re-fire when :retry-transient? re-runs the body.
-        (t2/query {'update (t2/table-name :model/Document)
-                   'set    {'last_viewed_at (into [:case]
+        (t2/query {:update (t2/table-name :model/Document)
+                   :set    {:last_viewed_at (into [:case]
                                                   (mapcat (fn [[id timestamp]]
                                                             [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
                                                           document-id->timestamp))
-                            'updated_at 'updated_at} ;; setting last_viewed_at should not update the updated_at column
-                   'where  ['in 'id (keys document-id->timestamp)]}))
+                            :updated_at 'updated_at} ;; setting last_viewed_at should not update the updated_at column
+                   :where  ['in 'id (keys document-id->timestamp)]}))
       (catch Exception e
         (log/errorf "Failed to update document last_viewed_at: %s" (ex-message e))))))
 

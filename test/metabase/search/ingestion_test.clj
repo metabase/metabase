@@ -145,7 +145,7 @@
             :type :metric
             :dataset_query (metric-query a-id)}]
           ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card a-id {'dataset_query (metric-query b-id)})
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/spec "card")
                         {:dataset_query (json/encode (metric-query a-id))

@@ -161,16 +161,16 @@
   ;; render as NULL instead). The actual values are bound later via `.setObject`/`.setNull`.
   (first
    (sql/format
-    {'insert-into (keyword table)
-     'columns     (mapv (comp keyword :name) cols)
-     'values      [(vec (repeat (count cols) [:raw "?"]))]}
+    {:insert-into (keyword table)
+     :columns     (mapv (comp keyword :name) cols)
+     :values      [(vec (repeat (count cols) [:raw "?"]))]}
     {:dialect :ansi :quoted true})))
 
 (defn- select-sql [schema table cols]
   (first
    (sql/format
-    {'select (mapv (comp keyword :name) cols)
-     'from   [(keyword (str schema "." table))]}
+    {:select (mapv (comp keyword :name) cols)
+     :from   [(keyword (str schema "." table))]}
     {:dialect :ansi :quoted true})))
 
 (defn- coerce-value

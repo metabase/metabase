@@ -39,7 +39,7 @@
   [field-ids]
   (let [field-ids (into #{} (filter pos-int?) field-ids)
         rows      (when (seq field-ids)
-                    (t2/select [:model/Field 'id 'name 'display_name] 'id ['in field-ids]))]
+                    (t2/select [:model/Field :id :name :display_name] 'id [:in field-ids]))]
     (into {}
           (map (fn [{:keys [id name display_name]}]
                  [id {:id           id
@@ -55,10 +55,10 @@
         table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
         card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
         tables    (when (seq table-ids)
-                    (t2/select [:model/Table 'id 'name 'display_name 'db_id 'schema]
-                               'id ['in table-ids]))
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema]
+                               'id [:in table-ids]))
         cards     (when (seq card-ids)
-                    (t2/select [:model/Card 'id 'name] 'id ['in card-ids]))]
+                    (t2/select [:model/Card :id :name] 'id [:in card-ids]))]
     (into {}
           cat
           [(map (fn [{:keys [id name display_name db_id schema]}]
@@ -97,14 +97,14 @@
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
     (t2/select [:model/SourceSegmentDaily
-                'source_type
-                'source_id
-                'field_id
-                'predicate
+                :source_type
+                :source_id
+                :field_id
+                :predicate
                 [[:sum :count] :total_count]]
-               {'where    where
-                'group-by ['source_type 'source_id 'field_id 'predicate]
-                'order-by [['total_count 'desc]]})))
+               {:where    where
+                :group-by ['source_type 'source_id 'field_id 'predicate]
+                :order-by [['total_count 'desc]]})))
 
 (defn- grouped-metric-rows
   "Group + sum `source_metric_daily` counts for a source filter."
@@ -116,16 +116,16 @@
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
     (t2/select [:model/SourceMetricDaily
-                'source_type
-                'source_id
-                'agg_type
-                'agg_field_id
-                'temporal_field_id
-                'temporal_unit
+                :source_type
+                :source_id
+                :agg_type
+                :agg_field_id
+                :temporal_field_id
+                :temporal_unit
                 [[:sum :count] :total_count]]
-               {'where    where
-                'group-by ['source_type 'source_id 'agg_type 'agg_field_id 'temporal_field_id 'temporal_unit]
-                'order-by [['total_count 'desc]]})))
+               {:where    where
+                :group-by ['source_type 'source_id 'agg_type 'agg_field_id 'temporal_field_id 'temporal_unit]
+                :order-by [['total_count 'desc]]})))
 
 (defn- grouped-dimension-rows
   "Group + sum `source_dimension_daily` counts for a source filter."
@@ -137,15 +137,15 @@
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
     (t2/select [:model/SourceDimensionDaily
-                'source_type
-                'source_id
-                'field_id
-                'temporal_unit
-                'binning
+                :source_type
+                :source_id
+                :field_id
+                :temporal_unit
+                :binning
                 [[:sum :count] :total_count]]
-               {'where    where
-                'group-by ['source_type 'source_id 'field_id 'temporal_unit 'binning]
-                'order-by [['total_count 'desc]]})))
+               {:where    where
+                :group-by ['source_type 'source_id 'field_id 'temporal_unit 'binning]
+                :order-by [['total_count 'desc]]})))
 
 (defn- decode-atom-fingerprints [x]
   (cond
@@ -166,15 +166,15 @@
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
     (->> (t2/select [:model/SourceSegmentCompositeDaily
-                     'source_type
-                     'source_id
-                     'clause
-                     'atom_fingerprints
-                     'atom_count
+                     :source_type
+                     :source_id
+                     :clause
+                     :atom_fingerprints
+                     :atom_count
                      [[:sum :count] :total_count]]
-                    {'where    where
-                     'group-by ['source_type 'source_id 'clause 'atom_fingerprints 'atom_count]
-                     'order-by [['total_count 'desc]]})
+                    {:where    where
+                     :group-by ['source_type 'source_id 'clause 'atom_fingerprints 'atom_count]
+                     :order-by [['total_count 'desc]]})
          (mapv (fn [row]
                  (update row :atom_fingerprints decode-atom-fingerprints))))))
 
@@ -187,16 +187,16 @@
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
     (t2/select [:model/SourceDimensionProfileDaily
-                'source_type
-                'source_id
-                'field_id
-                'source_basis
-                'observation_type
-                'observation_value
+                :source_type
+                :source_id
+                :field_id
+                :source_basis
+                :observation_type
+                :observation_value
                 [[:sum :count] :total_count]]
-               {'where    where
-                'group-by ['source_type 'source_id 'field_id 'source_basis 'observation_type 'observation_value]
-                'order-by [['total_count 'desc]]})))
+               {:where    where
+                :group-by ['source_type 'source_id 'field_id 'source_basis 'observation_type 'observation_value]
+                :order-by [['total_count 'desc]]})))
 
 (defn- wrap-query
   "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."
@@ -224,12 +224,12 @@
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment 'id 'table_id 'definition] {'where where})
+        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (t2/select [:model/Table 'id 'db_id] 'id ['in table-ids])))]
+                          (t2/select [:model/Table :id :db_id] 'id [:in table-ids])))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]
@@ -252,7 +252,7 @@
 
 (defn- existing-metric-signatures*
   []
-  (let [cards (t2/select [:model/Card 'id 'database_id 'dataset_query 'card_schema]
+  (let [cards (t2/select [:model/Card :id :database_id :dataset_query :card_schema]
                          'type "metric"
                          'archived false)]
     (lib-be/with-metadata-provider-cache
@@ -487,12 +487,12 @@
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (t2/select [:model/Segment 'id 'table_id 'definition] {'where where})
+        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (t2/select [:model/Table 'id 'db_id] 'id ['in table-ids])))]
+                          (t2/select [:model/Table :id :db_id] 'id [:in table-ids])))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]

@@ -133,7 +133,7 @@
     [:or
      [:= :collection.personal_owner_id current-user-id]
      [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
-                                                                    'personal_owner_id ['= current-user-id]
+                                                                    'personal_owner_id [:= current-user-id]
                                                                     'location          "/"))]]
 
     "exclude-others"
@@ -148,9 +148,9 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists ^:allow-subquery {'select [[['inline 1]]]
-                                     'from   [['collection 'pc]]
-                                     'where  ['and
+          [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                     :from   [['collection 'pc]]
+                                     :where  ['and
                                               ['not= 'pc.personal_owner_id nil]
                                               ['= 'pc.location "/"]
                                               ['like 'collection.location

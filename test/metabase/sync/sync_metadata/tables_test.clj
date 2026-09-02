@@ -39,7 +39,7 @@
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-a-crufty-table
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS"       :visibility_type nil :initial_sync_status "complete"}}
-             (set (for [table (t2/select [:model/Table 'name 'visibility_type 'initial_sync_status] 'db_id (mt/id))]
+             (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] 'db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest transform-temp-tables-are-skipped-without-premium-features
@@ -71,7 +71,7 @@
     (let [dbdef (mt/dataset-definition "sync-retired-table"
                                        [["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]]])]
       (mt/dataset dbdef
-        (t2/update! :model/Table (mt/id :user) {'active false})
+        (t2/update! :model/Table (mt/id :user) {:active false})
         ;; table description is changed
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        [(sql.tx/standalone-table-comment-sql
@@ -125,7 +125,7 @@
         (testing "Observe: the tables are marked as crufty"
           (is (= #{["employees" :cruft] ["transactions" :cruft]} (->tables-info))))
         ;; make employees visible:
-        (t2/update! :model/Table 'db_id (u/the-id db) 'name "employees" {'visibility_type nil})
+        (t2/update! :model/Table 'db_id (u/the-id db) 'name "employees" {:visibility_type nil})
         (testing "Observe: employees is visible, but transactions is still crufty"
           (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))
         (sync-metadata/sync-db-metadata! db)
@@ -137,7 +137,7 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables []}}]
       (sync-metadata/sync-db-metadata! db)
-      (t2/update! :model/Table 'db_id (u/the-id db) {'visibility_type original-vis-type})
+      (t2/update! :model/Table 'db_id (u/the-id db) {:visibility_type original-vis-type})
       (sync-metadata/sync-db-metadata! db)
       (is (= #{["employees" original-vis-type]
                ["transactions" original-vis-type]}
@@ -253,13 +253,13 @@
       (testing "Initially active table has no deactivated_at"
         (is (nil? (:deactivated_at (t2/select-one :model/Table (:id table))))))
       (testing "Setting active to false sets deactivated_at"
-        (t2/update! :model/Table (:id table) {'active false})
+        (t2/update! :model/Table (:id table) {:active false})
         (let [updated-table (t2/select-one :model/Table (:id table))]
           (is (some? (:deactivated_at updated-table)))
           (is (false? (:active updated-table)))))
       (testing "Reactivating table clears deactivated_at and archived_at"
-        (t2/update! :model/Table (:id table) {'archived_at (t/offset-date-time)})
-        (t2/update! :model/Table (:id table) {'active true})
+        (t2/update! :model/Table (:id table) {:archived_at (t/offset-date-time)})
+        (t2/update! :model/Table (:id table) {:active true})
         (let [reactivated-table (t2/select-one :model/Table (:id table))]
           (is (nil? (:deactivated_at reactivated-table)))
           (is (nil? (:archived_at reactivated-table)))
@@ -360,9 +360,9 @@
       (mt/with-temp [:model/Database db {}]
         (#'sync-tables/create-tables! db metadatas)
         (is (= ["beta" "apple" "mango" "zebra"]
-               (map :name (t2/select [:model/Table 'name]
+               (map :name (t2/select [:model/Table :name]
                                      'db_id (u/the-id db)
-                                     {'order-by [['id 'asc]]}))))))))
+                                     {:order-by [['id 'asc]]}))))))))
 
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"

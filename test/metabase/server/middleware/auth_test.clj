@@ -38,9 +38,9 @@
           session-key (session/generate-session-key)
           session-key-hashed (session/hash-session-key session-key)]
       (try
-        (t2/insert! :model/Session {'id         session-id
-                                    'key_hashed session-key-hashed
-                                    'user_id    (test.users/user->id :rasta)})
+        (t2/insert! :model/Session {:id         session-id
+                                    :key_hashed session-key-hashed
+                                    :user_id    (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-key session-key))
                    :metabase-user-id)))
@@ -57,11 +57,11 @@
             session-key (session/generate-session-key)
             session-key-hashed (session/hash-session-key session-key)]
         (try
-          (t2/insert! :model/Session {'id      session-id
-                                      'key_hashed session-key-hashed
-                                      'user_id (test.users/user->id :rasta)})
-          (t2/update! (t2/table-name :model/Session) {'id session-id}
-                      {'created_at (t/instant 1000)})
+          (t2/insert! :model/Session {:id      session-id
+                                      :key_hashed session-key-hashed
+                                      :user_id (test.users/user->id :rasta)})
+          (t2/update! (t2/table-name :model/Session) {:id session-id}
+                      {:created_at (t/instant 1000)})
           (is (= api.response/response-unauthentic
                  (auth-enforced-handler (request-with-session-key session-key))))
           (finally (t2/delete! :model/Session 'id session-id)))))
@@ -73,9 +73,9 @@
             session-key (session/generate-session-key)
             session-key-hashed (session/hash-session-key session-key)]
         (try
-          (t2/insert! :model/Session {'id         session-id
-                                      'key_hashed session-key-hashed
-                                      'user_id    (test.users/user->id :trashbird)})
+          (t2/insert! :model/Session {:id         session-id
+                                      :key_hashed session-key-hashed
+                                      :user_id    (test.users/user->id :trashbird)})
           (is (= api.response/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-key session-key))))

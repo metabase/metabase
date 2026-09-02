@@ -18,12 +18,12 @@
   (if-not user-id
     scope/all-yes-permissions
     (let [stored  (t2/select :model/MetabotPermissions
-                             {'where ['and
+                             {:where ['and
                                       ['in 'group_id
                                        ^:allow-subquery
-                                       {'select ['group_id]
-                                        'from   [(t2/table-name :model/PermissionsGroupMembership)]
-                                        'where  ['= 'user_id user-id]}]
+                                       {:select ['group_id]
+                                        :from   [(t2/table-name :model/PermissionsGroupMembership)]
+                                        :where  ['= 'user_id user-id]}]
                                       ;; Ignore permission rows for groups hidden by the active mode. An unseen
                                       ;; :yes would otherwise override every visible :no (#80394). Mode switches
                                       ;; delete these rows, but serialization imports and API writes for hidden

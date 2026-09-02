@@ -70,7 +70,7 @@
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
-     (let [tables (t2/select :model/Table 'id ['in ids])
+     (let [tables (t2/select :model/Table 'id [:in ids])
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
@@ -124,7 +124,7 @@
   [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
-                                         (-> (t2/select :model/Field 'id ['in ids])
+                                         (-> (t2/select :model/Field 'id [:in ids])
                                              (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
@@ -163,7 +163,7 @@
                                        (keep :id))
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
-                             (-> (t2/select :model/Field 'id ['in metadata-field-ids])
+                             (-> (t2/select :model/Field 'id [:in metadata-field-ids])
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]
@@ -237,22 +237,22 @@
   [ids {:keys [include-database?]}]
   (when (seq ids)
     (let [cards (t2/select :model/Card
-                           {'select    ['c.id 'c.dataset_query 'c.result_metadata 'c.name
+                           {:select    ['c.id 'c.dataset_query 'c.result_metadata 'c.name
                                         'c.description 'c.collection_id 'c.database_id 'c.type
                                         'c.source_card_id 'c.created_at 'c.entity_id 'c.card_schema
                                         ['r.status 'moderated_status]]
-                            'from      [['report_card 'c]]
-                            'left-join [[^:allow-subquery {'select   ['moderated_item_id 'status]
-                                                           'from     ['moderation_review]
-                                                           'where    ['and
+                            :from      [['report_card 'c]]
+                            :left-join [[^:allow-subquery {:select   ['moderated_item_id 'status]
+                                                           :from     ['moderation_review]
+                                                           :where    ['and
                                                                       ['= 'moderated_item_type "card"]
                                                                       ['= 'most_recent true]]
-                                                           'order-by [['id 'desc]]
-                                                           'limit    1} 'r]
+                                                           :order-by [['id 'desc]]
+                                                           :limit    1} 'r]
                                         ['= 'r.moderated_item_id 'c.id]]
-                            'where      ['in 'c.id ids]})
+                            :where      ['in 'c.id ids]})
           dbs (if (seq cards)
-                (t2/select-pk->fn identity :model/Database 'id ['in (into #{} (map :database_id) cards)])
+                (t2/select-pk->fn identity :model/Database 'id [:in (into #{} (map :database_id) cards)])
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]

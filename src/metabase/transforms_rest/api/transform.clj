@@ -339,7 +339,7 @@
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (t2/update! :model/Transform id {'last_checkpoint_value nil})
+  (t2/update! :model/Transform id {:last_checkpoint_value nil})
   nil)
 
 (defn- check-feature-and-lock!

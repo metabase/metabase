@@ -221,7 +221,7 @@
         field->row (when (seq field-ids)
                      (t2/select-pk->fn #(update-keys (select-keys % field-cols) u/->kebab-case-en)
                                        (into [:model/Field :id] field-cols)
-                                       'id ['in field-ids]))
+                                       'id [:in field-ids]))
         nil-cols   (zipmap (map u/->kebab-case-en field-cols) (repeat nil))]
     (mapv (fn [metric pairs]
             (cond-> metric

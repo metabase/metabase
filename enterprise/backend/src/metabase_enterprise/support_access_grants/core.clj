@@ -21,7 +21,7 @@
   (let [now (t/instant)]
     (t2/exists? :model/SupportAccessGrantLog
                 'revoked_at nil
-                'grant_end_timestamp ['> now])))
+                'grant_end_timestamp [:> now])))
 
 (defn create-grant!
   "Create a new support access grant.
@@ -89,8 +89,8 @@
                       {:status-code 400})))
     (let [now (t/instant)]
       (t2/update! :model/SupportAccessGrantLog grant-id
-                  {'revoked_at now
-                   'revoked_by_user_id user-id})
+                  {:revoked_at now
+                   :revoked_by_user_id user-id})
       (-> (t2/select-one :model/SupportAccessGrantLog 'id grant-id)
           (t2/hydrate :user_info)))))
 
@@ -100,7 +100,7 @@
   A no-op when there is no support user, when a grant is still running, or when access is already torn down."
   []
   (when-let [{support-user-id :id, superuser? :is_superuser}
-             (t2/select-one [:model/User 'id 'is_superuser] 'email (sag.settings/support-access-grant-email))]
+             (t2/select-one [:model/User :id :is_superuser] 'email (sag.settings/support-access-grant-email))]
     (when (or superuser? (t2/exists? :model/Session 'user_id support-user-id))
       (cluster-lock/with-cluster-lock grant-lifecycle-lock
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
@@ -145,17 +145,17 @@
                          (into [:and] where-conditions)))
         grants (if where-clause
                  (t2/select :model/SupportAccessGrantLog
-                            {'where where-clause
-                             'limit limit
-                             'offset offset
-                             'order-by [['created_at 'desc]]})
+                            {:where where-clause
+                             :limit limit
+                             :offset offset
+                             :order-by [['created_at 'desc]]})
                  (t2/select :model/SupportAccessGrantLog
-                            {'limit limit
-                             'offset offset
-                             'order-by [['created_at 'desc]]}))
+                            {:limit limit
+                             :offset offset
+                             :order-by [['created_at 'desc]]}))
         grants-with-user-name (t2/hydrate grants :user_info)
         total (if where-clause
-                (t2/count :model/SupportAccessGrantLog {'where where-clause})
+                (t2/count :model/SupportAccessGrantLog {:where where-clause})
                 (t2/count :model/SupportAccessGrantLog))]
     {:data grants-with-user-name
      :total total
@@ -168,8 +168,8 @@
   Returns the active grant record or nil if no active grant exists."
   []
   (some-> (t2/select-one :model/SupportAccessGrantLog
-                         {'where ['and ['= 'revoked_at nil]
+                         {:where ['and ['= 'revoked_at nil]
                                   ['> 'grant_end_timestamp '%now]]
-                          'order-by [['created_at 'desc]
+                          :order-by [['created_at 'desc]
                                      ['id 'desc]]})
           (t2/hydrate :user_info)))

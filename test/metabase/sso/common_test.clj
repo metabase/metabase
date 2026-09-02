@@ -18,7 +18,7 @@
   "Return set of names of PermissionsGroups `user` currently belongs to."
   [user]
   (when-let [group-ids (seq (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id (u/the-id user)))]
-    (t2/select-fn-set :name :model/PermissionsGroup 'id ['in group-ids])))
+    (t2/select-fn-set :name :model/PermissionsGroup 'id [:in group-ids])))
 
 (deftest sync-groups-test
   (testing "does syncing group memberships leave existing memberships in place if nothing has changed?"

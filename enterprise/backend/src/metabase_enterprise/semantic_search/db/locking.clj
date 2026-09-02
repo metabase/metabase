@@ -32,7 +32,7 @@
   (assert (supported-lock-types lock-type))
   (assert (integer? lock-id))
   (semantic.db.util/tx-or-throw! conn)
-  (let [sql (sql/format (sql.helpers/select [[lock-type ['raw lock-id]] 'acquired]))
+  (let [sql (sql/format (sql.helpers/select [[lock-type [:raw lock-id]] 'acquired]))
         acquired? (:acquired (try (jdbc/execute-one! conn sql)
                                   (catch SQLException e
                                     (if (lock-not-avail-ex? e)

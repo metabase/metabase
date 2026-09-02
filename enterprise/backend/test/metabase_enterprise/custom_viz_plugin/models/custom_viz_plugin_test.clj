@@ -64,7 +64,7 @@
                                                     :display_name "status-test"
                                                     :status       :active}]
       (is (= :active (:status (t2/select-one :model/CustomVizPlugin 'id id))))
-      (t2/update! :model/CustomVizPlugin id {'status :error})
+      (t2/update! :model/CustomVizPlugin id {:status :error})
       (is (= :error (:status (t2/select-one :model/CustomVizPlugin 'id id)))))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

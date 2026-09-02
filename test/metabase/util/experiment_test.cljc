@@ -47,7 +47,7 @@
        #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
        #"control-boom"
        (experiment/experiment {:name :test/control-throws :min-interval-ms 0}
-                              (throw (ex-info "control-boom" {'from 'control}))
+                              (throw (ex-info "control-boom" {:from 'control}))
                               :candidate))))
 
 (deftest candidate-side-effects-test

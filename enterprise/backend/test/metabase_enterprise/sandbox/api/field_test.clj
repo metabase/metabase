@@ -109,7 +109,7 @@
       (let [field-id   (mt/id :venues :price)
             full-fv-id (t2/select-one-pk :model/FieldValues 'field_id field-id 'type :full)]
         (t2/update! :model/FieldValues full-fv-id
-                    {'human_readable_values ["$" "$$" "$$$" "$$$$"]})
+                    {:human_readable_values ["$" "$$" "$$$" "$$$$"]})
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
                (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
@@ -176,7 +176,7 @@
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
             (t2/update! :model/FieldValues fv-id
-                        {'values new-values})
+                        {:values new-values})
             (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                                   :has_more_values false})]
               (is (= (map vector new-values)

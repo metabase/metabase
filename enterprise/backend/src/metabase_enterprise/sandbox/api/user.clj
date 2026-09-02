@@ -31,7 +31,7 @@
    {:keys [login_attributes]} :- [:map
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
   (api/check-404 (t2/select-one :model/User 'id id 'type :personal))
-  (pos? (t2/update! :model/User id {'login_attributes login_attributes})))
+  (pos? (t2/update! :model/User id {:login_attributes login_attributes})))
 
 (def ^:private max-login-attributes 5000)
 
@@ -50,8 +50,8 @@
          (take max-login-attributes))
         (t2/select-fn-reducible (comp (partial apply merge)
                                       (juxt :jwt_attributes :login_attributes))
-                                [:model/User 'login_attributes 'jwt_attributes]
-                                {'where ['or
+                                [:model/User :login_attributes :jwt_attributes]
+                                {:where ['or
                                          ['and
                                           ['not= 'jwt_attributes nil]
                                           ['not= 'jwt_attributes "{}"]]

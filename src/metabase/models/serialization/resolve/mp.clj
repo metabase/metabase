@@ -337,13 +337,13 @@
         ;; transforming the entire dataset_query just to export one stable identifier.
         ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
         ;; treat this as a full card row and demand it.
-        (t2/select-one [:model/Card 'id 'entity_id 'collection_id 'database_id 'card_schema] 'id card-id)))
+        (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] 'id card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
-        (t2/select-one [:model/Measure 'id 'entity_id 'table_id] 'id measure-id)))
+        (t2/select-one [:model/Measure :id :entity_id :table_id] 'id measure-id)))
     (segment-by-id [_ segment-id]
       (when segment-id
-        (t2/select-one [:model/Segment 'id 'entity_id 'table_id] 'id segment-id)))))
+        (t2/select-one [:model/Segment :id :entity_id :table_id] 'id segment-id)))))
 
 ;;; ============================================================
 ;;; Resolver implementations

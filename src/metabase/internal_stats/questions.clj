@@ -73,4 +73,4 @@
                                       [(u/count-case [:and (contains-embedding-param "disabled")
                                                       embedding-on])
                                        :with_disabled_params]))
-                   {'where (mi/exclude-internal-content-hsql :model/Card)})))
+                   {:where (mi/exclude-internal-content-hsql :model/Card)})))

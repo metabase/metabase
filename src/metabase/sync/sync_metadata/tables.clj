@@ -96,7 +96,7 @@
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
   (t2/update! :model/Database (u/the-id database)
-              {'details
+              {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map
@@ -237,7 +237,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (t2/update! :model/Table {'id ['in table-ids] 'active true} {'active false})))
+    (t2/update! :model/Table {:id ['in table-ids] :active true} {:active false})))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -329,7 +329,7 @@
       (t2/select-fn->fn table-name+schema identity
                         (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
                         'db_id (u/the-id database)
-                        'name ['in names])
+                        'name [:in names])
       {})))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
@@ -346,7 +346,7 @@
         (cond-> accum
           (not= schema new-schema) (assoc schema new-schema)))))
    nil
-   (t2/reducible-select [:model/Table 'schema] 'db_id (u/the-id database))))
+   (t2/reducible-select [:model/Table :schema] 'db_id (u/the-id database))))
 
 (mu/defn- adjust-table-schemas!
   "Apply the `{old-schema new-schema}` renames from [[adjusted-schemas]] to the app-DB Table rows."
@@ -358,7 +358,7 @@
     (t2/update! :model/Table
                 'db_id (:id database)
                 'schema schema
-                {'schema new-schema})))
+                {:schema new-schema})))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -382,7 +382,7 @@
                                      'active false
                                      'archived_at nil
                                      'transform_target false
-                                     'deactivated_at ['< threshold-expr])
+                                     'deactivated_at [:< threshold-expr])
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
@@ -399,10 +399,10 @@
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
                   [(t2/update! :model/Table
-                               {'id (:id table)
-                                'active false}
-                               {'archived_at (mi/now)
-                                'name new-name})]
+                               {:id (:id table)
+                                :active false}
+                               {:archived_at (mi/now)
+                                :name new-name})]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)
@@ -487,7 +487,7 @@
                  (retire-tables! (set batch))
                  (+ retired (count batch))))
    0
-   (t2/reducible-select [:model/Table 'id] 'db_id (u/the-id database) 'active true)))
+   (t2/reducible-select [:model/Table :id] 'db_id (u/the-id database) 'active true)))
 
 (mu/defn sync-tables-and-database!
   "Sync the `:model/Table` rows for `database` against its driver's `describe-database`, and the DB

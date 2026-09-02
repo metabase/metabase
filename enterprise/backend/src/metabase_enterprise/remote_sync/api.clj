@@ -269,8 +269,8 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (t2/select [:model/Collection 'id 'is_remote_synced]
-                                                            'id ['in (keys collections)]))]
+                                                 (t2/select [:model/Collection :id :is_remote_synced]
+                                                            'id [:in (keys collections)]))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]

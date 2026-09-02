@@ -1193,7 +1193,7 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field 'name 'table_id] 'id field-id)
+  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field :name :table_id] 'id field-id)
         table-name                             (t2/select-one-fn :name :model/Table 'id table-id)]
     (format "%s.%s" table-name field-name)))
 

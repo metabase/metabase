@@ -89,7 +89,7 @@
     (when (seq field-ids)
       (into {}
             (map (juxt :id :table_id))
-            (t2/select [:model/Field 'id 'table_id] 'id ['in field-ids])))))
+            (t2/select [:model/Field :id :table_id] 'id [:in field-ids])))))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
@@ -144,7 +144,7 @@
   "Syncs and returns persisted metric dimensions with mapping metadata."
   [{:keys [id]}]
   (metrics/sync-dimensions! :metadata/metric id)
-  (let [{:keys [dimensions dimension_mappings]} (t2/select-one [:model/Card 'dimensions 'dimension_mappings] 'id id)]
+  (let [{:keys [dimensions dimension_mappings]} (t2/select-one [:model/Card :dimensions :dimension_mappings] 'id id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
 (defn- readable-table-source-rows
@@ -152,7 +152,7 @@
   [table-ids]
   (when (seq table-ids)
     (perms/prime-table-perms-cache {:table-ids (set table-ids)})
-    (->> (t2/select [:model/Table 'id 'name 'display_name] 'id ['in table-ids])
+    (->> (t2/select [:model/Table :id :name :display_name] 'id [:in table-ids])
          (filter mi/can-read?))))
 
 (defn- table-key-disambiguators

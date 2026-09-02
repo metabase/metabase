@@ -208,12 +208,12 @@
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
     :archived-key   nil  ; fields don't have archived
-    :tracking       {:hydrate-query  {'select ['f.name 'f.table_id
+    :tracking       {:hydrate-query  {:select ['f.name 'f.table_id
                                                ['t.collection_id 'collection_id]
                                                ['t.name 'table_name]]
-                                      'from   [['metabase_field 'f]]
-                                      'join   [['metabase_table 't] ['= 'f.table_id 't.id]]
-                                      'where  ['= 'f.id '?id]}
+                                      :from   [['metabase_field 'f]]
+                                      :join   [['metabase_table 't] ['= 'f.table_id 't.id]]
+                                      :where  ['= 'f.id '?id]}
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id
                                       :model_table_id      :table_id
@@ -231,12 +231,12 @@
                      :types  [:create :update :delete]}
     :eligibility    {:type :parent-table}
     :archived-key   :archived
-    :tracking       {:hydrate-query  {'select ['s.name 's.table_id
+    :tracking       {:hydrate-query  {:select ['s.name 's.table_id
                                                ['t.collection_id 'collection_id]
                                                ['t.name 'table_name]]
-                                      'from   [['segment 's]]
-                                      'join   [['metabase_table 't] ['= 's.table_id 't.id]]
-                                      'where  ['= 's.id '?id]}
+                                      :from   [['segment 's]]
+                                      :join   [['metabase_table 't] ['= 's.table_id 't.id]]
+                                      :where  ['= 's.id '?id]}
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id
                                       :model_table_id      :table_id
@@ -256,12 +256,12 @@
     :archived-key   :archived
     ;; Note: hydrate-query uses :s alias because query-entities-for-sync :hybrid
     ;; hardcodes :s.id and :s.entity_id references
-    :tracking       {:hydrate-query  {'select ['s.name 's.table_id
+    :tracking       {:hydrate-query  {:select ['s.name 's.table_id
                                                ['t.collection_id 'collection_id]
                                                ['t.name 'table_name]]
-                                      'from   [['measure 's]]
-                                      'join   [['metabase_table 't] ['= 's.table_id 't.id]]
-                                      'where  ['= 's.id '?id]}
+                                      :from   [['measure 's]]
+                                      :join   [['metabase_table 't] ['= 's.table_id 't.id]]
+                                      :where  ['= 's.id '?id]}
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id
                                       :model_table_id      :table_id
@@ -501,16 +501,16 @@
               :let [spec (spec-for-model-type model-type)
                     model-key (:model-key spec)]
               :when (and spec model-key (#{:entity-id :hybrid} (:identity spec)))
-              :let [local-entity-ids (t2/select-fn-set :entity_id model-key 'entity_id ['in entity-ids])
+              :let [local-entity-ids (t2/select-fn-set :entity_id model-key 'entity_id [:in entity-ids])
                     tracked-entity-ids (when (seq local-entity-ids)
                                          (let [pks (t2/select-pks-vec model-key
-                                                                      'entity_id ['in local-entity-ids])]
+                                                                      'entity_id [:in local-entity-ids])]
                                            (t2/select-fn-set
                                             (fn [rso]
                                               (:entity_id (t2/select-one model-key 'id (:model_id rso))))
                                             :model/RemoteSyncObject
                                             'model_type model-type
-                                            'model_id ['in pks])))
+                                            'model_id [:in pks])))
                     conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
                     conflicting-entity-ids (if (= model-type "Collection")
                                              (disj conflicting-entity-ids collection/library-entity-id)
@@ -578,7 +578,7 @@
                                          (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
                                          :else false)]
                 :when (not setting-enabled?)
-                :let [local-ns-colls (t2/select [:model/Collection 'id 'entity_id] 'namespace ns-name)
+                :let [local-ns-colls (t2/select [:model/Collection :id :entity_id] 'namespace ns-name)
                       import-eids (get import-ns-collection-entity-ids ns-name #{})
                       ;; Only consider local collections that are NOT in the import (truly local-only)
                       ;; and NOT tracked in RemoteSyncObject
@@ -632,9 +632,9 @@
    i.e. unsynced local work (an already-synced entity's removal is a normal reconcile, not data loss).
    `id-col` is the qualified id column of the model's own table (see [[model-id-column]])."
   [model-type id-col]
-  [:not [:exists ^:allow-subquery {'select [1]
-                                   'from   ['remote_sync_object]
-                                   'where  ['and
+  [:not [:exists ^:allow-subquery {:select [1]
+                                   :from   ['remote_sync_object]
+                                   :where  ['and
                                             ['= 'remote_sync_object.model_type model-type]
                                             ['= 'remote_sync_object.model_id id-col]
                                             ['= 'remote_sync_object.status "synced"]]}]])
@@ -660,7 +660,7 @@
                     where        (-> [:and]
                                      (into (removal-where-clauses spec nil imported-ids))
                                      (conj (unsynced-anti-join model-type (model-id-column model-key))))
-                    n-unsynced   (t2/count model-key {'where where})]
+                    n-unsynced   (t2/count model-key {:where where})]
               :when (pos? n-unsynced)
               :let [category (setting->category setting-kw)]]
           {:type    (keyword (str (u/lower-case-en category) "-conflict"))
@@ -744,14 +744,14 @@
                         where        (-> [:and]
                                          (into (removal-where-clauses spec synced-collection-ids imported-ids))
                                          (conj (unsynced-anti-join model-type (model-id-column model-key))))
-                        n            (t2/count model-key {'where where})]
+                        n            (t2/count model-key {:where where})]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
                :category model-type
                :model    model-type
                :count    n
                ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (t2/select-fn-vec :name model-key {'where where 'limit max-conflict-names})
+               :names    (t2/select-fn-vec :name model-key {:where where :limit max-conflict-names})
                :message  (format "Import would delete %d unsynced local %s %s"
                                  n model-type (if (= 1 n) "entity" "entities"))})))))
 
@@ -885,7 +885,7 @@
   [{:keys [model-key tracking]} model-id]
   (if-let [query (:hydrate-query tracking)]
     ;; Use custom query for joins (Field, Segment)
-    (first (t2/query (update query 'where
+    (first (t2/query (update query :where
                              (fn [where-clause]
                                (walk/postwalk
                                 #(if (= % '?id) model-id %)
@@ -1058,7 +1058,7 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (t2/select (into [model-key] select-fields) 'entity_id ['in entity-ids])]
+          entities (t2/select (into [model-key] select-fields) 'entity_id [:in entity-ids])]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1120,10 +1120,10 @@
   (when (seq paths)
     (case model-key
       :model/Table
-      (->> (t2/query {'select ['t.id 't.name 't.collection_id]
-                      'from   [['metabase_table 't]]
-                      'join   [['metabase_database 'db] ['= 'db.id 't.db_id]]
-                      'where  (build-path-where-clause paths false)})
+      (->> (t2/query {:select ['t.id 't.name 't.collection_id]
+                      :from   [['metabase_table 't]]
+                      :join   [['metabase_database 'db] ['= 'db.id 't.db_id]]
+                      :where  (build-path-where-clause paths false)})
            (map (fn [{:keys [id name collection_id]}]
                   {:model_type        model-type
                    :model_id          id
@@ -1136,11 +1136,11 @@
                    :status_changed_at timestamp})))
 
       :model/Field
-      (->> (t2/query {'select ['f.id 'f.name 'f.table_id ['t.collection_id 'collection_id] ['t.name 'table_name]]
-                      'from   [['metabase_field 'f]]
-                      'join   [['metabase_table 't] ['= 't.id 'f.table_id]
+      (->> (t2/query {:select ['f.id 'f.name 'f.table_id ['t.collection_id 'collection_id] ['t.name 'table_name]]
+                      :from   [['metabase_field 'f]]
+                      :join   [['metabase_table 't] ['= 't.id 'f.table_id]
                                ['metabase_database 'db] ['= 'db.id 't.db_id]]
-                      'where  (build-path-where-clause paths true)})
+                      :where  (build-path-where-clause paths true)})
            (map (fn [{:keys [id name table_id table_name collection_id]}]
                   {:model_type          model-type
                    :model_id            id
@@ -1193,21 +1193,21 @@
     (concat
      (t2/select-fn-set (juxt (constantly "Collection") :id)
                        :model/Collection
-                       {'where ['and
+                       {:where ['and
                                 ['= 'is_remote_synced true]
                                 ['= 'location "/"]
                                 ['not 'archived]]})
      (when (rs-settings/remote-sync-transforms)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
-                         {'where ['and
+                         {:where ['and
                                   ['= 'namespace (name collections/transforms-ns)]
                                   ['= 'location "/"]
                                   ['not 'archived]]}))
      (when (rs-settings/library-is-remote-synced?)
        (t2/select-fn-set (juxt (constantly "Collection") :id)
                          :model/Collection
-                         {'where ['and
+                         {:where ['and
                                   ['= 'namespace "snippets"]
                                   ['= 'location "/"]
                                   ['not 'archived]]})))

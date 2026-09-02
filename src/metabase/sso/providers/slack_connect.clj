@@ -151,9 +151,9 @@
                           'user_id user-id
                           'provider provider-name)
       (t2/insert! :model/AuthIdentity
-                  {'user_id     user-id
-                   'provider    provider-name
-                   'provider_id provider-id}))))
+                  {:user_id     user-id
+                   :provider    provider-name
+                   :provider_id provider-id}))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
   [provider {:keys [user authenticated-user user-data] :as request}]
@@ -176,8 +176,8 @@
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
       (t2/update! :model/AuthIdentity
-                  {'user_id user-id 'provider provider-name}
-                  {'metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}})))
+                  {:user_id user-id :provider provider-name}
+                  {:metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}})))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))

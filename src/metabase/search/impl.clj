@@ -132,7 +132,7 @@
   (let [user-ids             (set (flatten (for [result results]
                                              (remove nil? ((juxt :last_editor_id :creator_id) result)))))
         user-id->common-name (if (pos? (count user-ids))
-                               (t2/select-pk->fn :common_name [:model/User 'id 'first_name 'last_name 'email] 'id ['in user-ids])
+                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] 'id [:in user-ids])
                                {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
             (assoc result
@@ -462,7 +462,7 @@
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
-                        (t2/select-pk->fn :result_metadata [:model/Card 'id 'card_schema 'result_metadata] 'id ['in card-ids]))]
+                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] 'id [:in card-ids]))]
     (map (fn [{:keys [model id] :as item}]
            (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))

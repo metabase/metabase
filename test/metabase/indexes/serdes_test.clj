@@ -22,7 +22,7 @@
                                                                    :columns [{:name "category" :direction :asc}]}
                                                    :status        :succeeded
                                                    :error_message "boom"}]
-      (let [hydrated (u/rfirst (serdes/extract-query "Transform" {'where ['= 'id transform-id]}))]
+      (let [hydrated (u/rfirst (serdes/extract-query "Transform" {:where ['= 'id transform-id]}))]
         (testing "extract-query hydrates the index under :indexes"
           (is (= [idx-id] (map :id (:indexes hydrated)))))
         (testing "the serialized index keeps its definition and drops runtime/local state"

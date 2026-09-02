@@ -366,10 +366,10 @@
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
     ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
     (let [row (t2/select-one :model/McpQueryHandle
-                             {'select ['mqh.*]
-                              'from   [['mcp_query_handle 'mqh]]
-                              'join   [['core_session 'cs] ['= 'cs.id 'mqh.core_session_id]]
-                              'where  ['and
+                             {:select ['mqh.*]
+                              :from   [['mcp_query_handle 'mqh]]
+                              :join   [['core_session 'cs] ['= 'cs.id 'mqh.core_session_id]]
+                              :where  ['and
                                        ['= 'mqh.id handle-id]
                                        ['= 'cs.user_id user-id]]})]
       (when (and row (not= mcp-session-id (:mcp_session_id row)))
@@ -402,8 +402,8 @@
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (t2/query {'delete-from 'core_session
-               'where       ['and
+    (t2/query {:delete-from 'core_session
+               :where       ['and
                              ['= 'key_hashed key-hashed]
                              ['= 'user_id user-id]]})
     (t2/delete! :model/McpQueryHandle 'mcp_session_id session-id)))

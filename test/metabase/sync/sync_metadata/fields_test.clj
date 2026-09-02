@@ -93,8 +93,8 @@
                      (fn [database]
                        (set
                         (map (partial into {})
-                             (t2/select [:model/Field 'id 'name 'active]
-                                        'table_id ['in (t2/select-pks-set :model/Table 'db_id (u/the-id database))])))))]
+                             (t2/select [:model/Field :id :name :active]
+                                        'table_id [:in (t2/select-pks-set :model/Table 'db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
@@ -117,7 +117,7 @@
               "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
               (fn [database]
                 (t2/select-fn->fn :name (partial into {}) :model/Field
-                                  'table_id ['in (t2/select-pks-set :model/Table 'db_id (u/the-id database))])))))))
+                                  'table_id [:in (t2/select-pks-set :model/Table 'db_id (u/the-id database))])))))))
 
 (deftest mark-inactive-remove-fks-test
   (testing "when a column is dropped from the DB, sync should wipe foreign key targets and their semantic type"
@@ -134,11 +134,11 @@
                                   (t2/select-one
                                    :model/Field
                                    'name "example_bird_name"
-                                   'table_id ['in tables]))
-            field-to-drop   (t2/select-one :model/Field 'name "example_name" 'table_id ['in tables])
+                                   'table_id [:in tables]))
+            field-to-drop   (t2/select-one :model/Field 'name "example_name" 'table_id [:in tables])
             field-to-update (get-field-to-update)]
-        (t2/update! :model/Field (u/the-id field-to-update) {'semantic_type      :type/FK
-                                                             'fk_target_field_id (u/the-id field-to-drop)})
+        (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
+                                                             :fk_target_field_id (u/the-id field-to-drop)})
         ;; get the field before sync
         (let [field-before-sync (get-field-to-update)]
           ;; ok cool! now delete one of those columns...
@@ -163,7 +163,7 @@
                            "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
           (jdbc/execute! db-spec [statement]))
         (sync/sync-database! db)
-        (let [field (t2/select-one [:model/Field 'id] 'name "string_tbc_int_col")]
+        (let [field (t2/select-one [:model/Field :id] 'name "string_tbc_int_col")]
           (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
           (sync/sync-database! db)
           (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
@@ -215,13 +215,13 @@
 (deftest pk-sync-test
   (testing "Test PK Syncing"
     (mt/with-temp-copy-of-db
-      (letfn [(get-pk-details [] (t2/select-one [:model/Field 'semantic_type 'database_is_pk], 'id (mt/id :venues :id)))]
+      (letfn [(get-pk-details [] (t2/select-one [:model/Field :semantic_type :database_is_pk], 'id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "Clear out the semantic type"
-          (t2/update! :model/Field (mt/id :venues :id) {'semantic_type nil})
+          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
           (is (= {:database_is_pk true
                   :semantic_type  nil}
                  (get-pk-details))))
@@ -231,12 +231,12 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (t2/update! :model/Field (mt/id :venues :id) {'semantic_type :type/Latitude})
+          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type :type/Latitude})
           (is (= {:database_is_pk true
                   :semantic_type  :type/Latitude}
                  (get-pk-details))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
-          (t2/update! :model/Field (mt/id :venues :id) {'semantic_type nil})
+          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
           (sync/sync-table! (t2/select-one :model/Table 'id (mt/id :venues)))
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
@@ -300,7 +300,7 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field 'semantic_type 'fk_target_field_id]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
                                                                                 'id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
@@ -312,7 +312,7 @@
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
-        (t2/update! :model/Field (mt/id :checkins :user_id) {'semantic_type nil, 'fk_target_field_id nil})
+        (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
           (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
@@ -326,7 +326,7 @@
       (letfn [(state []
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
-                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field 'semantic_type 'fk_target_field_id]
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
                                                                                 'id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
@@ -415,9 +415,9 @@
               ;; do this in a transaction so deleting all the Fields isn't permanent
               (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
                 ;; 1. delete the fields that were just synced
-                (t2/delete! :model/Field 'table_id ['in (map :id tables)])
+                (t2/delete! :model/Field 'table_id [:in (map :id tables)])
                 ;; 2. reset the sync status for each table
-                (t2/update! :model/Table 'id ['in (map :id tables)] {'initial_sync_status "incomplete"})
+                (t2/update! :model/Table 'id [:in (map :id tables)] {:initial_sync_status "incomplete"})
                 ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
@@ -437,9 +437,9 @@
                           {:name "name",         :semantic_type nil,      :fk_target_field_id nil}]
                          (->> (t2/select [:model/Field
                                           [:%lower.name :name]
-                                          'semantic_type
-                                          'fk_target_field_id]
-                                         'table_id ['in (map :id tables)])
+                                          :semantic_type
+                                          :fk_target_field_id]
+                                         'table_id [:in (map :id tables)])
                               distinct
                               (sort-by :name)))))))))))))
 
@@ -469,7 +469,7 @@
                   (mapv :visibility_type)
                   frequencies)))
       ;; remove cruft column directive:
-      (t2/update! :model/Database (u/the-id db) {'settings {:auto-cruft-columns []}})
+      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns []}})
       (sync-metadata/sync-db-metadata! db)
       (is (= {:details-only 12}
              (->> (db->fields db)
@@ -481,12 +481,12 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       (sync-metadata/sync-db-metadata! db)
       (let [details-field (t2/select-one :model/Field 'name "details"
-                                         'table_id ['in (map :id (t2/select :model/Table 'db_id (u/the-id db)))])]
+                                         'table_id [:in (map :id (t2/select :model/Table 'db_id (u/the-id db)))])]
         (is (=? {:visibility_type :normal
                  :preview_display true}
                 details-field)
             "before auto-cruft: field has default visibility and preview_display")
-        (t2/update! :model/Database (u/the-id db) {'settings {:auto-cruft-columns ["details"]}})
+        (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
         (sync-metadata/sync-db-metadata! (t2/select-one :model/Database (u/the-id db)))
         (is (=? {:visibility_type :details-only
                  :preview_display false}
@@ -548,14 +548,14 @@
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
       (let [tables (t2/select-pks-set :model/Table 'db_id (mt/id))
-            birds-example-name-field (t2/select-one :model/Field 'name "example_name" 'table_id ['in tables])
-            flocks-example-bird-name-field (t2/select-one :model/Field 'name "example_bird_name" 'table_id ['in tables])]
+            birds-example-name-field (t2/select-one :model/Field 'name "example_name" 'table_id [:in tables])
+            flocks-example-bird-name-field (t2/select-one :model/Field 'name "example_bird_name" 'table_id [:in tables])]
         (testing "should not have FK relationship"
           (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
           (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
         (t2/update! :model/Field (u/the-id flocks-example-bird-name-field)
-                    {'semantic_type :type/FK
-                     'fk_target_field_id (u/the-id birds-example-name-field)})
+                    {:semantic_type :type/FK
+                     :fk_target_field_id (u/the-id birds-example-name-field)})
         (testing "after sync, user-set FK is preserved"
           (sync/sync-database! (mt/db))
           (let [field-after-sync (t2/select-one :model/Field 'id (u/the-id flocks-example-bird-name-field))]

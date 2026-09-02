@@ -48,17 +48,17 @@
     (let [user-group-ids           (user/group-ids user-id)
           sandboxes-with-group-ids (t2/hydrate
                                     (t2/select :model/Sandbox
-                                               {'select [['pgm.group_id 'group_id]
+                                               {:select [['pgm.group_id 'group_id]
                                                          ['s.*]]
-                                                'from [['permissions_group_membership 'pgm]]
-                                                'left-join [['sandboxes 's] ['= 's.group_id 'pgm.group_id]]
-                                                'where ['and
+                                                :from [['permissions_group_membership 'pgm]]
+                                                :left-join [['sandboxes 's] ['= 's.group_id 'pgm.group_id]]
+                                                :where ['and
                                                         ['= 'pgm.user_id user-id]]})
                                     :table)
 
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (t2/select :model/ConnectionImpersonation
-                                                     'group_id ['in user-group-ids]))
+                                                     'group_id [:in user-group-ids]))
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids

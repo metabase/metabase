@@ -31,7 +31,7 @@
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
   (let [site-uuid-str    (system/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)
-        query            (cond-> {'select    ['p.id 'p.database_id 'p.definition
+        query            (cond-> {:select    ['p.id 'p.database_id 'p.definition
                                               'p.active 'p.state 'p.error
                                               'p.refresh_begin 'p.refresh_end
                                               'p.table_name 'p.creator_id
@@ -41,14 +41,14 @@
                                               ['db.name 'database_name]
                                               ['col.id 'collection_id] ['col.name 'collection_name]
                                               ['col.authority_level 'collection_authority_level]]
-                                  'from      [['persisted_info 'p]]
-                                  'left-join [['metabase_database 'db] ['= 'db.id 'p.database_id]
+                                  :from      [['persisted_info 'p]]
+                                  :left-join [['metabase_database 'db] ['= 'db.id 'p.database_id]
                                               ['report_card 'c]        ['= 'c.id 'p.card_id]
                                               ['collection 'col]       ['= 'c.collection_id 'col.id]]
-                                  'where     ['and
+                                  :where     ['and
                                               ['= 'c.type "model"]
                                               ['= 'c.archived false]]
-                                  'order-by  [['p.refresh_begin 'desc]]}
+                                  :order-by  [['p.refresh_begin 'desc]]}
                            persisted-info-id (sql.helpers/where ['= 'p.id persisted-info-id])
                            (seq db-ids)      (sql.helpers/where ['in 'p.database_id db-ids])
                            card-id           (sql.helpers/where ['= 'p.card_id card-id])
@@ -73,16 +73,16 @@
   (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
                           (perms/prime-database-perms-cache {:db-ids db-ids})
-                          (->> (t2/select :model/Database 'id ['in db-ids])
+                          (->> (t2/select :model/Database 'id [:in db-ids])
                                (filter mi/can-write?)
                                (map :id)
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (t2/count :model/PersistedInfo {'from [['persisted_info 'p]]
-                                               'join [['report_card 'c] ['= 'c.id 'p.card_id]]
-                                               'where ['and
+               (t2/count :model/PersistedInfo {:from [['persisted_info 'p]]
+                                               :join [['report_card 'c] ['= 'c.id 'p.card_id]]
+                                               :where ['and
                                                        ['in 'p.database_id writable-db-ids]
                                                        ['= 'c.type "model"]
                                                        ['not 'c.archived]]})
@@ -170,7 +170,7 @@
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
       (t2/update! :model/Database (u/the-id db)
-                  {'settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
+                  {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -284,7 +284,7 @@
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
-            (do (t2/update! :model/Database id {'settings (assoc (:settings database) :persist-models-enabled true)})
+            (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
                 (task.persist-refresh/schedule-persistence-for-database!
                  database
                  (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -304,7 +304,7 @@
   (api/let-404 [database (t2/select-one :model/Database 'id id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (t2/update! :model/Database id {'settings (dissoc (:settings database) :persist-models-enabled)})
+      (do (t2/update! :model/Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)

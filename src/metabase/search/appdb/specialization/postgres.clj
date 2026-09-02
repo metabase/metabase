@@ -32,21 +32,21 @@
      ;; get the keys from *all* the entries.
      (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
            excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
-       {'insert-into   table
-        'values        entries
-        'on-conflict   ['model 'model_id]
-        'do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+       {:insert-into   table
+        :values        entries
+        :on-conflict   ['model 'model_id]
+        :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
                                   {:allow-subquery true})}))))
 
 (defmethod specialization/base-query :postgres
   [active-table search-term search-ctx select-items]
-  {'select select-items
-   'from   [[active-table 'search_index]]
+  {:select select-items
+   :from   [[active-table 'search_index]]
    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-   'join   [[['to_tsquery ^:allow-raw-sql ['inline (search.util/tsv-language)]
-              ['lift (search.util/to-tsquery-expr search-term)]]
+   :join   [[['to_tsquery ^:allow-raw-sql [:inline (search.util/tsv-language)]
+              [:lift (search.util/to-tsquery-expr search-term)]]
              'query] ['= 1 1]]
-   'where  (if (str/blank? search-term)
+   :where  (if (str/blank? search-term)
              [:= [:inline 1] [:inline 1]]
              ^:allow-raw-sql
              [:raw
@@ -96,10 +96,10 @@
 (defmethod specialization/view-count-percentile-query :postgres
   [index-table p-value]
   (let [expr [::h2x/percentile-cont :view_count p-value]]
-    {'select   ['search_index.model [expr 'vcp]]
-     'from     [[index-table 'search_index]]
-     'group-by ['search_index.model]
-     'having   ['is-not expr nil]}))
+    {:select   ['search_index.model [expr 'vcp]]
+     :from     [[index-table 'search_index]]
+     :group-by ['search_index.model]
+     :having   ['is-not expr nil]}))
 
 (defmethod specialization/analyze-table! :postgres
   [table-name]
@@ -110,8 +110,8 @@
   ;; Use the planner's row estimate (pg_class.reltuples) instead of a full count(*). reltuples/relpages are
   ;; only populated by ANALYZE/VACUUM, so right after a rebuild the estimate may be stale — return nil in
   ;; that window and let the caller skip the metric rather than doing a full table scan.
-  (let [{:keys [reltuples relpages]} (t2/query-one {'select ['reltuples 'relpages]
-                                                    'from   ['pg_class]
-                                                    'where  ['= 'oid ['to_regclass (name table-name)]]})]
+  (let [{:keys [reltuples relpages]} (t2/query-one {:select ['reltuples 'relpages]
+                                                    :from   ['pg_class]
+                                                    :where  ['= 'oid ['to_regclass (name table-name)]]})]
     (when (and relpages (pos? relpages) reltuples (nat-int? (long reltuples)))
       (long reltuples))))

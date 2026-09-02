@@ -473,9 +473,9 @@
     ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
     ;;                                        ^^^^^
     ;; ERROR: argument of AND must be type boolean, not type integer
-    (t2/query {'update (t2/table-name :model/Field)
-               'set    {'display_name case-statement}
-               'where  ['and
+    (t2/query {:update (t2/table-name :model/Field)
+               :set    {:display_name case-statement}
+               :where  ['and
                         ['= 'table_id table-id]
                         ['in ['lower 'name] (keys field->display-name)]]})))
 
@@ -570,17 +570,17 @@
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
                                                           :display_name display-name})
-          _set_is_upload          (t2/update! :model/Table (:id table) {'is_upload      true
-                                                                        'data_authority :authoritative
-                                                                        'data_source    :upload
-                                                                        'is_writable    true})
+          _set_is_upload          (t2/update! :model/Table (:id table) {:is_upload      true
+                                                                        :data_authority :authoritative
+                                                                        :data_source    :upload
+                                                                        :is_writable    true})
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                                      (t2/update! :model/Field (:id auto-pk-field) {'display_name (:name auto-pk-field)})))]
+                                      (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
       {:table table
        :stats stats})))
 
@@ -783,7 +783,7 @@
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
-  (when-let [model-ids (->> (t2/select [:model/Card 'id 'dataset_query 'card_schema]
+  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query :card_schema]
                                        'table_id (:id table)
                                        'type     :model
                                        'archived false)
@@ -794,12 +794,12 @@
     (model-persistence/invalidate! {:card_id [:in model-ids]})
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
-      (let [card     (t2/select-one [:model/Card 'dataset_query 'result_metadata 'card_schema] id)
+      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
             fix-name #(update % :display_name humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (t2/update! :model/Card id {'result_metadata metadata})))))
+        (t2/update! :model/Card id {:result_metadata metadata})))))
 
 (defn- translate-type-keywords [m]
   (walk/postwalk
@@ -871,7 +871,7 @@
             (set-display-names! (:id table) (zipmap column-names display-names))
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                (t2/update! :model/Field (:id auto-pk-field) {'display_name (:name auto-pk-field)})))
+                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
             (invalidate-cached-models! table)
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
@@ -956,7 +956,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (t2/update! :model/Table 'id (:id table) {'active false})
+    (t2/update! :model/Table 'id (:id table) {:active false})
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
@@ -971,8 +971,8 @@
     ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
       (t2/update-returning-pks! :model/Card
-                                {'table_id (:id table) 'archived false}
-                                {'archived true}))
+                                {:table_id (:id table) :archived false}
+                                {:archived true}))
     :done))
 
 (def update-action-schema
@@ -1004,7 +1004,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (t2/select :model/Table 'id ['in table-ids]) :db)
+         (->> (t2/hydrate (t2/select :model/Table 'id [:in table-ids]) :db)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

@@ -42,7 +42,7 @@
                        (let [full-filter (conj base-filter
                                                [:= src-type (name entity-type)]
                                                [:in src-id entity-keys])
-                             deps (t2/select :model/Dependency {'where full-filter})]
+                             deps (t2/select :model/Dependency {:where full-filter})]
                          (u/group-by (juxt src-type src-id)
                                      (juxt dst-type dst-id)
                                      conj #{}
@@ -220,7 +220,7 @@
                       (t2/select-fn-vec (fn [entity]
                                           [[node-type (:id entity)]
                                            (is-native-entity? node-type entity)])
-                                        model 'id ['in ids]))))
+                                        model 'id [:in ids]))))
           grouped)))
 
 (defn transitive-mbql-dependents
@@ -255,7 +255,7 @@
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]
-  (let [current-dependencies (t2/select [:model/Dependency 'id 'to_entity_type 'to_entity_id]
+  (let [current-dependencies (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
                                         'from_entity_type entity-type
                                         'from_entity_id entity-id)
         to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
@@ -272,7 +272,7 @@
                   :to_entity_id (ensure-entity-id to-entity-id)})]
     (t2/with-transaction [_conn]
       (when (seq to-remove)
-        (t2/delete! :model/Dependency 'id ['in to-remove]))
+        (t2/delete! :model/Dependency 'id [:in to-remove]))
       (when (seq to-add)
         (t2/insert! :model/Dependency to-add)))))
 
@@ -297,6 +297,6 @@
                   'from_entity_type entity-type 'from_entity_id entity-id
                   'to_entity_type old-source-type 'to_entity_id old-source-id)
       (t2/update! :model/Dependency
-                  {'from_entity_type entity-type 'from_entity_id entity-id
-                   'to_entity_type old-source-type 'to_entity_id old-source-id}
-                  {'to_entity_type new-source-type 'to_entity_id new-source-id}))))
+                  {:from_entity_type entity-type :from_entity_id entity-id
+                   :to_entity_type old-source-type :to_entity_id old-source-id}
+                  {:to_entity_type new-source-type :to_entity_id new-source-id}))))

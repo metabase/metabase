@@ -412,7 +412,7 @@
                    :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced false}
                    :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced false}]
       ;; Set child2 to already be remote-synced directly in DB (bypasses hooks)
-      (t2/query-one {'update 'collection 'set {'is_remote_synced true} 'where ['= 'id child2-id]})
+      (t2/query-one {:update 'collection :set {:is_remote_synced true} :where ['= 'id child2-id]})
       ;; Parent and Child 1 are false, Child 2 is already true
       ;; When enabling parent, only parent and child1 should be updated, child2 should be skipped
       (core/bulk-set-remote-sync {parent-id true})
@@ -429,7 +429,7 @@
                    :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced true}
                    :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced true}]
       ;; Set child2 to already be not remote-synced directly in DB (bypasses hooks)
-      (t2/query-one {'update 'collection 'set {'is_remote_synced false} 'where ['= 'id child2-id]})
+      (t2/query-one {:update 'collection :set {:is_remote_synced false} :where ['= 'id child2-id]})
       ;; Parent and Child 1 are true, Child 2 is already false
       ;; When disabling parent, only parent and child1 should be updated, child2 should be skipped
       (core/bulk-set-remote-sync {parent-id false})
@@ -449,12 +449,12 @@
             card-eid 90001]
         ;; Both entities are already on the remote (status 'synced', with a stored file_path).
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Collection" 'model_id coll-id 'model_name "Test Collection"
-                     'status "synced" 'status_changed_at now 'file_path "collections/tc/tc.yaml"})
+                    {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                     :status "synced" :status_changed_at now :file_path "collections/tc/tc.yaml"})
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Card" 'model_id card-eid 'model_name "Test Card"
-                     'model_collection_id coll-id 'status "synced" 'status_changed_at now
-                     'file_path "collections/tc/cards/card.yaml"})
+                    {:model_type "Card" :model_id card-eid :model_name "Test Card"
+                     :model_collection_id coll-id :status "synced" :status_changed_at now
+                     :file_path "collections/tc/cards/card.yaml"})
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {coll-id false}))
         (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject
@@ -473,11 +473,11 @@
       (let [now      (t/offset-date-time)
             card-eid 90002]
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Collection" 'model_id coll-id 'model_name "Test Collection"
-                     'status "create" 'status_changed_at now})
+                    {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                     :status "create" :status_changed_at now})
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Card" 'model_id card-eid 'model_name "Test Card"
-                     'model_collection_id coll-id 'status "create" 'status_changed_at now})
+                    {:model_type "Card" :model_id card-eid :model_name "Test Card"
+                     :model_collection_id coll-id :status "create" :status_changed_at now})
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {coll-id false}))
         (is (false? (t2/exists? :model/RemoteSyncObject 'model_type "Collection" 'model_id coll-id))
@@ -494,14 +494,14 @@
       (let [now      (t/offset-date-time)
             card-eid 90003]
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Collection" 'model_id parent-id 'model_name "Parent"
-                     'status "synced" 'status_changed_at now 'file_path "collections/parent/parent.yaml"})
+                    {:model_type "Collection" :model_id parent-id :model_name "Parent"
+                     :status "synced" :status_changed_at now :file_path "collections/parent/parent.yaml"})
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Collection" 'model_id child-id 'model_name "Child"
-                     'status "update" 'status_changed_at now 'file_path "collections/parent/child/child.yaml"})
+                    {:model_type "Collection" :model_id child-id :model_name "Child"
+                     :status "update" :status_changed_at now :file_path "collections/parent/child/child.yaml"})
         (t2/insert! :model/RemoteSyncObject
-                    {'model_type "Card" 'model_id card-eid 'model_name "Child Card"
-                     'model_collection_id child-id 'status "create" 'status_changed_at now})
+                    {:model_type "Card" :model_id card-eid :model_name "Child Card"
+                     :model_collection_id child-id :status "create" :status_changed_at now})
         (mt/with-dynamic-fn-redefs [events/publish-event! (constantly nil)]
           (core/bulk-set-remote-sync {parent-id false}))
         (is (= "removed" (t2/select-one-fn :status :model/RemoteSyncObject

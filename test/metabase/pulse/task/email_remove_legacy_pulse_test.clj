@@ -18,7 +18,7 @@
       (mt/with-temporary-setting-values [site-url "https://metabase.com"]
         (#'email-remove-legacy-pulse/email-remove-legacy-pulse)
         (testing "all receivers are superuser"
-          (is (every? true? (t2/select-fn-vec :is_superuser  :model/User 'email ['in (keys @mt/inbox)]))))
+          (is (every? true? (t2/select-fn-vec :is_superuser  :model/User 'email [:in (keys @mt/inbox)]))))
         (let [found-regexes  [#"Hi Ngoc Khuat,"
                               #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Legacy pulse<\/a></li>"]
               not-found-re   #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Archived pulse<\/a></li>"

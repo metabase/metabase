@@ -417,7 +417,7 @@
 
 (defn- test-manifest []
   (tools-manifest/generate-tools-manifest
-   {'metabase.api.macros.defendpoint.tools-manifest-test "/api/test"}))
+   {:metabase.api.macros.defendpoint.tools-manifest-test "/api/test"}))
 
 (defn- test-tool [tool-name]
   (let [manifest (test-manifest)]

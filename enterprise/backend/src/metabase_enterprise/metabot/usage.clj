@@ -69,19 +69,19 @@
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
         (t2/insert! :model/AiUsageLog
-                    {'source                 source
-                     'model                  model
-                     'prompt_tokens          prompt-tokens
-                     'completion_tokens      completion-tokens
-                     'total_tokens           total-tokens
-                     'cache_creation_tokens  cache-creation
-                     'cache_read_tokens      cache-read
-                     'user_id                (or user-id api/*current-user-id*)
-                     'tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
-                     'conversation_id        conversation-id
-                     'profile_id             (some-> profile-id name)
-                     'request_id             request-id
-                     'ai_proxied             ai-proxied}))
+                    {:source                 source
+                     :model                  model
+                     :prompt_tokens          prompt-tokens
+                     :completion_tokens      completion-tokens
+                     :total_tokens           total-tokens
+                     :cache_creation_tokens  cache-creation
+                     :cache_read_tokens      cache-read
+                     :user_id                (or user-id api/*current-user-id*)
+                     :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
+                     :conversation_id        conversation-id
+                     :profile_id             (some-> profile-id name)
+                     :request_id             request-id
+                     :ai_proxied             ai-proxied}))
       (catch Exception e
         (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 
@@ -111,16 +111,16 @@
                      base-where)]
     (case limit-type
       :tokens
-      (quot (or (:sum (t2/query-one {'select [[['sum 'total_tokens] 'sum]]
-                                     'from   ['ai_usage_log]
-                                     'where  full-where}))
+      (quot (or (:sum (t2/query-one {:select [[['sum 'total_tokens] 'sum]]
+                                     :from   ['ai_usage_log]
+                                     :where  full-where}))
                 0)
             1000000)
 
       :messages
-      (:cnt (t2/query-one {'select [[['count '*] 'cnt]]
-                           'from   ['ai_usage_log]
-                           'where  full-where})))))
+      (:cnt (t2/query-one {:select [[['count '*] 'cnt]]
+                           :from   ['ai_usage_log]
+                           :where  full-where})))))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."

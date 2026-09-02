@@ -53,7 +53,7 @@
                             (map (comp :source-table :query :dataset_query))
                             (filter number?)
                             not-empty)]
-    (let [table-id->table (t2/select-pk->fn t2.realize/realize :model/Table 'id ['in (set table-ids)])]
+    (let [table-id->table (t2/select-pk->fn t2.realize/realize :model/Table 'id [:in (set table-ids)])]
       (mapv (fn [table-id]
               (let [table (get table-id->table table-id)]
                 (card-for-source-table table)))

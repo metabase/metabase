@@ -503,9 +503,9 @@
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (t2/reducible-select model (cond-> {'where (or where true)}
+      (t2/reducible-select model (cond-> {:where (or where true)}
                                    order-by (assoc :order-by order-by)))
-      (t2/reducible-select model (cond-> {'where ['and
+      (t2/reducible-select model (cond-> {:where ['and
                                                   ['or
                                                    ['in 'collection_id collection-set]
                                                    (when (some nil? collection-set)
@@ -823,7 +823,7 @@
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
-  (let [colls     (t2/select ['Collection :id :entity_id :location :name])
+  (let [colls     (t2/select [:Collection :id :entity_id :location :name])
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
@@ -835,10 +835,10 @@
                                                       all-ids)]]
                            [entity_id path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (t2/select ['Dashboard :entity_id :name])]
+                         (for [{:keys [entity_id name]} (t2/select [:Dashboard :entity_id :name])]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
-                         (for [{:keys [entity_id name]} (t2/select ['Document :entity_id :name])]
+                         (for [{:keys [entity_id name]} (t2/select [:Document :entity_id :name])]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
      :dashboards  dashboards
@@ -1012,15 +1012,15 @@
   [id]
   (reverse
    (t2/select :model/Field
-              {'with-recursive [[['parents ^:allow-subquery {'columns ['id 'name 'parent_id 'table_id]}]
-                                 ^:allow-subquery {'union-all [^:allow-subquery {'from   [['metabase_field 'mf]]
-                                                                                 'select ['mf.id 'mf.name 'mf.parent_id 'mf.table_id]
-                                                                                 'where  ['= 'id id]}
-                                                               ^:allow-subquery {'from   [['metabase_field 'pf]]
-                                                                                 'select ['pf.id 'pf.name 'pf.parent_id 'pf.table_id]
-                                                                                 'join   [['parents 'p] ['= 'p.parent_id 'pf.id]]}]}]]
-               'from           ['parents]
-               'select         ['name 'table_id]})))
+              {:with-recursive [[['parents ^:allow-subquery {:columns ['id 'name 'parent_id 'table_id]}]
+                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [['metabase_field 'mf]]
+                                                                                 :select ['mf.id 'mf.name 'mf.parent_id 'mf.table_id]
+                                                                                 :where  ['= 'id id]}
+                                                               ^:allow-subquery {:from   [['metabase_field 'pf]]
+                                                                                 :select ['pf.id 'pf.name 'pf.parent_id 'pf.table_id]
+                                                                                 :join   [['parents 'p] ['= 'p.parent_id 'pf.id]]}]}]]
+               :from           ['parents]
+               :select         ['name 'table_id]})))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -1028,9 +1028,9 @@
   `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
   [table-id [field & rest]]
   (when field
-    ^:allow-subquery {'from   ['metabase_field]
-                      'select ['id]
-                      'where  ['and
+    ^:allow-subquery {:from   ['metabase_field]
+                      :select ['id]
+                      :where  ['and
                                ['= 'table_id table-id]
                                ['= 'name field]
                                ['= 'parent_id (recursively-find-field-q table-id rest)]]}))
@@ -1931,7 +1931,7 @@
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (do (t2/delete! model backward-fk parent-id 'entity_id ['not-in (map :entity_id lst)])
+                                (do (t2/delete! model backward-fk parent-id 'entity_id [:not-in (map :entity_id lst)])
                                     (doseq [ingested lst
                                             :let [ingested (enrich ingested)
                                                   local    (lookup-by-id model (entity-id model-name ingested))]]

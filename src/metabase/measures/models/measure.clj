@@ -109,7 +109,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection 'id ['in collection-ids]))
+                                      (t2/select :model/Collection 'id [:in collection-ids]))
                                 {})
         ;; Associate collection info with each measure's table
         measures-with-collection (for [measure measures-with-tables
@@ -151,7 +151,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (t2/select-one ['Table 'db_id 'schema 'id] 'id (u/the-id (:table_id measure))))]
+                  (t2/select-one [:Table :db_id :schema :id] 'id (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
@@ -240,5 +240,5 @@
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (t2/update! :model/Measure measure-id
-                {'dimensions         dimensions
-                 'dimension_mappings dimension-mappings})))
+                {:dimensions         dimensions
+                 :dimension_mappings dimension-mappings})))

@@ -25,7 +25,7 @@
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))
         (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (t2/delete! :model/AiUsageLog {'where ['< 'created_at cutoff]})]
+              deleted (t2/delete! :model/AiUsageLog {:where ['< 'created_at cutoff]})]
           (log/infof "AI usage log cleanup complete. Deleted %d rows." (or deleted 0)))))))
 
 (task/defjob ^{DisallowConcurrentExecution true

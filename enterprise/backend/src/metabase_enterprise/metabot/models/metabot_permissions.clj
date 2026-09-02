@@ -53,8 +53,8 @@
 (defn all-permissions
   "Returns all metabot permissions for all groups, filling in defaults for missing entries."
   []
-  (let [groups     (t2/select :model/PermissionsGroup {'order-by [['id 'asc]]})
-        stored     (t2/select :model/MetabotPermissions {'order-by [['group_id 'asc] ['perm_type 'asc]]})
+  (let [groups     (t2/select :model/PermissionsGroup {:order-by [['id 'asc]]})
+        stored     (t2/select :model/MetabotPermissions {:order-by [['group_id 'asc] ['perm_type 'asc]]})
         by-group   (group-by :group_id stored)]
     {:permissions (vec (mapcat (fn [{:keys [id]}]
                                  (permissions-for-group id (get by-group id [])))

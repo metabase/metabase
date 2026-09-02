@@ -27,23 +27,23 @@
     - Created at least 1 dashboard
     - Only admins if whitelabeling is enabled"
   [has-whitelabelling?]
-  (t2/query {'select [['u.email 'email]
+  (t2/query {:select [['u.email 'email]
                       ['u.date_joined 'created_at]
                       ['u.first_name 'first_name]
                       [['count ['distinct ['case ['= 'd.archived false] 'd.id]]] 'num_dashboards]
                       [['count ['distinct ['case ['and ['= 'rc.type "question"] ['= 'rc.archived false]] 'rc.id]]] 'num_questions]
                       [['count ['distinct ['case ['and ['= 'rc.type "model"] ['= 'rc.archived false]] 'rc.id]]] 'num_models]]
-             'from [['core_user 'u]]
-             'join [['report_card 'rc] ['= 'rc.creator_id 'u.id]
+             :from [['core_user 'u]]
+             :join [['report_card 'rc] ['= 'rc.creator_id 'u.id]
                     ['report_dashboard 'd] ['= 'd.creator_id 'u.id]]
-             'where ['and
+             :where ['and
                      ['>= 'rc.created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
                      ['>= 'd.created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
                      ['= 'u.is_active true]
                      ['= 'u.type "personal"]
                      (when has-whitelabelling? [:= :u.is_superuser true])]
-             'group-by ['u.id]
-             'having ['and
+             :group-by ['u.id]
+             :having ['and
                       ['>= ['count ['distinct 'rc.id]] 10]
                       ['>= ['count ['distinct ['case ['= 'rc.query_type "native"] 'rc.id]]] 2]
                       ['>= ['count ['distinct 'd.id]] 1]]}))

@@ -56,7 +56,7 @@
                                                'to_entity_type   :transform
                                                'to_entity_id     id)
         downstream-tables    (when (seq downstream-table-ids)
-                               (t2/select :model/Table 'id ['in downstream-table-ids]))
+                               (t2/select :model/Table 'id [:in downstream-table-ids]))
         outdated-tables      (remove (fn [table]
                                        (and (= (:schema table) (:schema target))
                                             (= (:name   table) (:name   target))
@@ -69,7 +69,7 @@
                                                         (map :id) outdated-tables))]
       (t2/delete! :model/Dependency
                   'from_entity_type :table
-                  'from_entity_id   ['in outdated-downstream-table-ids]
+                  'from_entity_id   [:in outdated-downstream-table-ids]
                   'to_entity_type   :transform
                   'to_entity_id     id))))
 

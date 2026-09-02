@@ -15,7 +15,7 @@
 
 (defn- db->fields [db]
   (let [table-ids (t2/select-pks-set :model/Table 'db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select ['Field 'name 'description] 'table_id ['in table-ids])))))
+    (set (map (partial into {}) (t2/select [:Field :name :description] 'table_id [:in table-ids])))))
 
 (tx/defdataset basic-field-comments
   [["basic_field_comments"
@@ -53,7 +53,7 @@
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
-          (t2/update! :model/Field {'id (mt/id "update_desc" "updated_desc")}, {'description "updated description"})
+          (t2/update! :model/Field {:id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync/sync-table! (t2/select-one :model/Table 'id (mt/id "update_desc")))
           (is (= #{{:name (mt/format-name "id"), :description nil}
@@ -97,7 +97,7 @@
                                                     :table-comment     comment}]}))
 
 (defn- db->tables [db]
-  (set (map (partial into {}) (t2/select [:model/Table 'name 'description] 'db_id (u/the-id db)))))
+  (set (map (partial into {}) (t2/select [:model/Table :name :description] 'db_id (u/the-id db)))))
 
 (defmethod driver/database-supports? [::driver/driver ::table-comments-sync]
   [_driver _feature _database]
@@ -128,7 +128,7 @@
       (mt/dataset (basic-table "table_with_updated_desc" "table comment")
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
-          (t2/update! :model/Table {'id (mt/id "table_with_updated_desc")} {'description "updated table description"})
+          (t2/update! :model/Table {:id (mt/id "table_with_updated_desc")} {:description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync-tables/sync-tables-and-database! (mt/db))
           (is (= #{{:name (get-table-name driver/*driver* "table_with_updated_desc")

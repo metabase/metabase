@@ -103,7 +103,7 @@
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
-  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field 'name 'table_id] 'id field-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [:model/Field :name :table_id] 'id field-id)]
     [(t2/select-one-fn :name :model/Table 'id table-id) field-name]))
 
 (defn- add-table-id-name [table-id]

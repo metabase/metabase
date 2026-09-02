@@ -46,13 +46,13 @@
                                                                                 {:perms/view-data      :unrestricted
                                                                                  :perms/create-queries :query-builder-and-native})
          ;; Fetch most viewed tables, excluding priority tables and excluded tables
-         fill-tables (t2/select [:model/Table 'id 'db_id 'name 'schema 'description]
+         fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
                                 'db_id           database-id
                                 'active          true
                                 'visibility_type nil
-                                (cond-> {'where    table-where-clause
-                                         'order-by [['view_count 'desc]]
-                                         'limit    all-tables-limit}
+                                (cond-> {:where    table-where-clause
+                                         :order-by [['view_count 'desc]]
+                                         :limit    all-tables-limit}
                                   table-cte (assoc :with table-cte)))
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
@@ -75,7 +75,7 @@
   This is the handler for the /get-tables tool endpoint."
   [{:keys [database-id]}]
   {:structured-output
-   {:database (t2/select-one [:model/Database 'id 'name 'description 'engine] database-id)
+   {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
     :tables   (database-tables database-id)}})
 
 (defn similar?
@@ -118,7 +118,7 @@
                                                                                 :is-superuser? api/*is-superuser?*}
                                                                                {:perms/view-data      :unrestricted
                                                                                 :perms/create-queries :query-builder-and-native})]
-    (cond-> {'where table-where-clause}
+    (cond-> {:where table-where-clause}
       table-cte (assoc :with table-cte))))
 
 (defn find-matching-tables
@@ -141,7 +141,7 @@
         (keep (fn [table]
                 (when (some #(matching-tables? table % {:match-schema? false}) unrecognized-tables)
                   (t2.realize/realize table))))
-        (t2/reducible-select [:model/Table 'id 'name 'schema 'description]
+        (t2/reducible-select [:model/Table :id :name :schema :description]
                              'db_id database-id
                              'active true
                              'visibility_type nil
@@ -158,9 +158,9 @@
   [database-id table-ids]
   (if-not (seq table-ids)
     []
-    (t2/select [:model/Table 'id 'name 'schema 'description]
+    (t2/select [:model/Table :id :name :schema :description]
                'db_id database-id
-               'id ['in table-ids]
+               'id [:in table-ids]
                'active true
                'visibility_type nil
                (visible-filter-clause))))
@@ -252,11 +252,11 @@
   ([query]
    (schema-sample query nil))
   ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
-   (let [tables (t2/select [:model/Table 'id 'name 'schema]
+   (let [tables (t2/select [:model/Table :id :name :schema]
                            'db_id database
                            'active true
                            'visibility_type nil
-                           {'limit (inc all-tables-limit)})
+                           {:limit (inc all-tables-limit)})
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)

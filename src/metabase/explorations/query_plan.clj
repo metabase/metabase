@@ -100,11 +100,11 @@
                         'dimension_id         dim-id
                         'query_type           query-type)
       (t2/insert-returning-pk! :model/ExplorationPage
-                               {'exploration_block_id block-id
-                                'card_id              card-id
-                                'dimension_id         dim-id
-                                'query_type           query-type
-                                'position             position})))
+                               {:exploration_block_id block-id
+                                :card_id              card-id
+                                :dimension_id         dim-id
+                                :query_type           query-type
+                                :position             position})))
 
 (defn- reconcile-pages!
   "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
@@ -126,7 +126,7 @@
     (let [by-str (into {} (map (juxt str identity)) page-ids)]
       (->> (t2/select-fn-set :child_target_id :model/Comment
                              'target_type     "exploration"
-                             'child_target_id ['in (keys by-str)]
+                             'child_target_id [:in (keys by-str)]
                              'deleted_at      nil)
            (into #{} (keep by-str))))
     #{}))
@@ -137,7 +137,7 @@
   [page-ids]
   (if (seq page-ids)
     ;; `(set ...)` since t2 set selectors return nil, not #{}, when nothing matches
-    (set (t2/select-pks-set :model/ExplorationPage 'id ['in page-ids] 'starred true))
+    (set (t2/select-pks-set :model/ExplorationPage 'id [:in page-ids] 'starred true))
     #{}))
 
 (defn- pages-with-queries
@@ -147,7 +147,7 @@
   wiped first."
   [page-ids]
   (if (seq page-ids)
-    (set (t2/select-fn-set :page_id :model/ExplorationQuery 'page_id ['in page-ids]))
+    (set (t2/select-fn-set :page_id :model/ExplorationQuery 'page_id [:in page-ids]))
     #{}))
 
 (defn- gc-orphan-pages!
@@ -159,14 +159,14 @@
   [thread-id used-page-ids]
   (let [block-ids (t2/select-pks-vec :model/ExplorationBlock 'exploration_thread_id thread-id)
         orphans   (when (seq block-ids)
-                    (->> (t2/select-pks-vec :model/ExplorationPage 'exploration_block_id ['in block-ids])
+                    (->> (t2/select-pks-vec :model/ExplorationPage 'exploration_block_id [:in block-ids])
                          (remove (set used-page-ids))))
         retained  (set/union (pages-with-comments orphans)
                              (starred-pages orphans)
                              (pages-with-queries orphans))
         deletable (remove retained orphans)]
     (when (seq deletable)
-      (t2/delete! :model/ExplorationPage 'id ['in deletable]))))
+      (t2/delete! :model/ExplorationPage 'id [:in deletable]))))
 
 (defn- lock-thread-for-planning!
   "Take a row lock on `thread-id`'s `exploration_thread` row (call inside a transaction) so at most
@@ -180,10 +180,10 @@
   has no unique index to fall back on, so two planners would each create the thread's pages — and a
   page's id is its identity, so the duplicate strands every comment and star anchored to the loser."
   [thread-id]
-  (t2/query {'select ['id]
-             'from   ['exploration_thread]
-             'where  ['= 'id thread-id]
-             'for    ['update]}))
+  (t2/query {:select ['id]
+             :from   ['exploration_thread]
+             :where  ['= 'id thread-id]
+             :for    ['update]}))
 
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes, reconcile each to its persisted
@@ -253,8 +253,8 @@
   [thread-id]
   (let [now (OffsetDateTime/now)]
     (t2/update! :model/ExplorationThread thread-id
-                {'analysis_started_at now
-                 'completed_at        now})))
+                {:analysis_started_at now
+                 :completed_at        now})))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -264,7 +264,7 @@
   [thread-id transcript]
   (try
     (t2/update! :model/ExplorationThread thread-id
-                {'query_plan_transcript transcript})
+                {:query_plan_transcript transcript})
     (catch Throwable e
       (log/warnf e "Failed to save query-plan transcript for thread %d" thread-id))))
 
@@ -291,9 +291,9 @@
 (defn- creator-id-for-thread
   [thread-id]
   (t2/select-one-fn :creator_id :model/Exploration
-                    {'join  ['exploration_thread
+                    {:join  ['exploration_thread
                              ['= 'exploration_thread.exploration_id 'exploration.id]]
-                     'where ['= 'exploration_thread.id thread-id]}))
+                     :where ['= 'exploration_thread.id thread-id]}))
 
 (defn- build-planner-ctx
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
@@ -301,7 +301,7 @@
   [thread-id]
   (let [thread-blocks  (t2/select :model/ExplorationBlock
                                   'exploration_thread_id thread-id
-                                  {'order-by [['position 'asc] ['id 'asc]]})
+                                  {:order-by [['position 'asc] ['id 'asc]]})
         metric-dim-ctx (qp.context/metric-and-dim-context thread-blocks)
         ;; [block-id metric-id] -> metric-context, so materialization resolves a plan
         ;; item against the same block the planner emitted it under (a metric can live

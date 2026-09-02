@@ -95,7 +95,7 @@
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (t2/select [:model/Table 'schema 'name], 'db_id (:id db))))))))]
+                                                      (u/pprint-to-str (t2/select [:model/Table :schema :name], 'db_id (:id db))))))))]
       (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
@@ -260,7 +260,7 @@
                                            '%lower.name (u/lower-case-en field-name))]
       (when (and source-field target-pk-field)
         (t2/update! :model/Field (:id source-field)
-                    {'fk_target_field_id (:id target-pk-field)})))))
+                    {:fk_target_field_id (:id target-pk-field)})))))
 
 ;; ---------------------- Main Entry Point ----------------------
 
@@ -360,7 +360,7 @@
   ;; dbdef-infos require only dbdef to be generated, while fk-field-infos get additional information querying app db.
   (when-some [dbdef-infos (not-empty (extract-dbdef-info driver dbdef))]
     (let [tables (t2/select :model/Table 'db_id (:id db))
-          fields (t2/select :model/Field {'where ['in 'table_id (map :id tables)]})
+          fields (t2/select :model/Field {:where ['in 'table_id (map :id tables)]})
           table-id->table (m/index-by :id tables)
           table-name->field-name->field (-> (group-by (comp :name table-id->table :table_id) fields)
                                             (update-vals (partial m/index-by :name)))
@@ -393,8 +393,8 @@
   [driver dbdef db]
   (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
     (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
-      (t2/update! :model/Field 'id id {'semantic_type :type/FK
-                                       'fk_target_field_id fk-target-field-id}))))
+      (t2/update! :model/Field 'id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
 
 (defn- load-dataset-data-if-needed!
   "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this
@@ -503,7 +503,7 @@
             (load-dataset-data-if-needed! driver dbdef)
             ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
             ;; need to go thru this again.
-            (t2/update! :model/Database (u/the-id existing-database) {'created_at (t/offset-date-time)})))
+            (t2/update! :model/Database (u/the-id existing-database) {:created_at (t/offset-date-time)})))
         (finally
           (.. lock writeLock unlock))))))
 

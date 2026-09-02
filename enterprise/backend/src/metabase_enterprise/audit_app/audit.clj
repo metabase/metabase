@@ -66,17 +66,17 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (t2/insert! :model/Database {'is_audit         true
-                                 'id               id
-                                 'name             default-db-name
-                                 'description      "Internal Audit DB used to power metabase analytics."
-                                 'engine           engine
-                                 'is_full_sync     true
-                                 'is_on_demand     false
-                                 'creator_id       nil
-                                 'auto_run_queries true})
+    (t2/insert! :model/Database {:is_audit         true
+                                 :id               id
+                                 :name             default-db-name
+                                 :description      "Internal Audit DB used to power metabase analytics."
+                                 :engine           engine
+                                 :is_full_sync     true
+                                 :is_on_demand     false
+                                 :creator_id       nil
+                                 :auto_run_queries true})
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-    (t2/delete! :model/Permissions {'where ['like 'object (str "%/db/" id "/%")]})))
+    (t2/delete! :model/Permissions {:where ['like 'object (str "%/db/" id "/%")]})))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -85,22 +85,22 @@
   ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
   ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
   ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
-  (t2/update! :model/Database audit-db-id {'engine "postgres"})
+  (t2/update! :model/Database audit-db-id {:engine "postgres"})
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
   ;; just grab the ids separately since there aren't many and this kind of check in an update
   ;; has different syntax on different appdbs
-  (let [table-ids-to-update (t2/query {'select ['table.id]
-                                       'from [[(t2/table-name :model/Table) 'table]]
-                                       'where ['and ['= 'table.db_id audit-db-id]
+  (let [table-ids-to-update (t2/query {:select ['table.id]
+                                       :from [[(t2/table-name :model/Table) 'table]]
+                                       :where ['and ['= 'table.db_id audit-db-id]
                                                ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                                                ['not= 'table.name "DATABASECHANGELOG"]
                                                ['not= 'table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
                                                ['not ['like 'table.name "QRTZ_%"]]
-                                               ['not ['exists ^:allow-subquery {'select [1]
-                                                                                'from [[(t2/table-name :model/Table) 'self_table]]
-                                                                                'where ['and
+                                               ['not ['exists ^:allow-subquery {:select [1]
+                                                                                :from [[(t2/table-name :model/Table) 'self_table]]
+                                                                                :where ['and
                                                                                         ['= 'self_table.db_id 'table.db_id]
                                                                                         ['or
                                                                                          ['= 'self_table.schema ['lower 'table.schema]]
@@ -109,20 +109,20 @@
                                                                                           ['= 'table.schema nil]]]
                                                                                         ['= 'self_table.name ['lower 'table.name]]]}]]]})]
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table 'id ['in (map :id table-ids-to-update)]
-                  {'schema "public" 'name [:lower :name]})))
-  (let [field-ids-to-update (t2/query {'select ['field.id]
-                                       'from [[(t2/table-name :model/Field) 'field]]
-                                       'inner-join [[(t2/table-name :model/Table) 'table]
+      (t2/update! :model/Table 'id [:in (map :id table-ids-to-update)]
+                  {:schema "public" :name [:lower :name]})))
+  (let [field-ids-to-update (t2/query {:select ['field.id]
+                                       :from [[(t2/table-name :model/Field) 'field]]
+                                       :inner-join [[(t2/table-name :model/Table) 'table]
                                                     ['= 'table.id 'field.table_id]]
-                                       'where ['and ['= 'table.db_id audit-db-id]
+                                       :where ['and ['= 'table.db_id audit-db-id]
                                                ['not= 'table.name "DATABASECHANGELOG"]
                                                ['not ['like 'table.name "QRTZ_%"]]
-                                               ['not ['exists ^:allow-subquery {'select [1]
-                                                                                'from [[(t2/table-name :model/Field) 'self_field]]
-                                                                                'inner-join [[(t2/table-name :model/Table) 'self_table]
+                                               ['not ['exists ^:allow-subquery {:select [1]
+                                                                                :from [[(t2/table-name :model/Field) 'self_field]]
+                                                                                :inner-join [[(t2/table-name :model/Table) 'self_table]
                                                                                              ['= 'self_table.id 'self_field.table_id]]
-                                                                                'where ['and
+                                                                                :where ['and
                                                                                         ['= 'self_table.db_id 'table.db_id]
                                                                                         ['or
                                                                                          ['= 'self_table.schema ['lower 'table.schema]]
@@ -131,8 +131,8 @@
                                                                                           ['= 'table.schema nil]]]
                                                                                         ['= 'self_field.name ['lower 'field.name]]]}]]]})]
     (when (seq field-ids-to-update)
-      (t2/update! :model/Field 'id ['in (map :id field-ids-to-update)]
-                  {'name [:lower :name]})))
+      (t2/update! :model/Field 'id [:in (map :id field-ids-to-update)]
+                  {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
@@ -148,28 +148,28 @@
              (.setInt stmt 2 (:id card))
              (.addBatch stmt))))
        nil
-       (t2/reducible-select [(t2/table-name :model/Card) 'id 'result_metadata] 'database_id audit-db-id))
+       (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] 'database_id audit-db-id))
       (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (t2/update! :model/Database audit-db-id {'engine (name (mdb/db-type))})
+    (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
     (case (mdb/db-type)
       :mysql
-      (t2/update! :model/Table {'db_id audit-db-id} {'schema nil})
+      (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})
 
       :h2
       (do
-        (t2/update! :model/Table {'db_id audit-db-id} {'schema [:upper :schema] 'name [:upper :name]})
+        (t2/update! :model/Table {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
         (t2/update! :model/Field
-                    {'table_id
+                    {:table_id
                      ['in
-                      ^:allow-subquery {'select ['id]
-                                        'from   [(t2/table-name :model/Table)]
-                                        'where  ['= 'db_id audit-db-id]}]}
-                    {'name [:upper :name]})
+                      ^:allow-subquery {:select ['id]
+                                        :from   [(t2/table-name :model/Table)]
+                                        :where  ['= 'db_id audit-db-id]}]}
+                    {:name [:upper :name]})
         (fix-h2-card-metadata! audit-db-id))
 
       :postgres
@@ -383,12 +383,12 @@
   [orphan-table-id survivor-table-id]
   (let [survivor-by-name (into {}
                                (map (juxt (comp u/lower-case-en :name) :id))
-                               (t2/select [:model/Field 'id 'name] 'table_id survivor-table-id))]
+                               (t2/select [:model/Field :id :name] 'table_id survivor-table-id))]
     (into {}
           (keep (fn [{:keys [id name]}]
                   (when-let [survivor-field-id (survivor-by-name (u/lower-case-en name))]
                     [id survivor-field-id])))
-          (t2/select [:model/Field 'id 'name] 'table_id orphan-table-id))))
+          (t2/select [:model/Field :id :name] 'table_id orphan-table-id))))
 
 (defn- remap-result-metadata-ref
   "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
@@ -443,8 +443,8 @@
   [audit-db-id]
   ;; order by id in the query so every selection below (including the `referenced?` tiebreak) is deterministic;
   ;; group-by preserves this order within each group
-  (let [groups (->> (t2/select [:model/Table 'id 'name 'schema 'active] 'db_id audit-db-id
-                               {'order-by [['id 'asc]]})
+  (let [groups (->> (t2/select [:model/Table :id :name :schema :active] 'db_id audit-db-id
+                               {:order-by [['id 'asc]]})
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
@@ -453,9 +453,9 @@
       (t2/with-transaction [_conn]
         (let [referenced-ids    (into #{}
                                       (map :table_id)
-                                      (t2/query {'select-distinct ['table_id]
-                                                 'from            [(t2/table-name :model/Card)]
-                                                 'where           ['in 'table_id (map :id rows)]}))
+                                      (t2/query {:select-distinct ['table_id]
+                                                 :from            [(t2/table-name :model/Card)]
+                                                 :where           ['in 'table_id (map :id rows)]}))
               survivor          (or (first (filter (comp referenced-ids :id) rows))
                                     (first (filter :active rows))
                                     (first rows))
@@ -469,7 +469,7 @@
           ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
           ;; NULL — and thus excluded from the index — while the flag is set)
           (t2/update! :model/Table (:id survivor)
-                      {'active true 'name c-name 'schema c-schema 'is_defective_duplicate false})
+                      {:active true :name c-name :schema c-schema :is_defective_duplicate false})
           (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                      (count orphans) (:id survivor)))))))
 

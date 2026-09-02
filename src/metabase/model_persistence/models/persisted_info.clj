@@ -107,8 +107,8 @@
   [cards]
   (when (seq cards)
     (let [existing-ids (t2/select-fn-set :card_id :model/PersistedInfo
-                                         'card_id ['in (map :id cards)]
-                                         'state ['in (refreshable-states)])]
+                                         'card_id [:in (map :id cards)]
+                                         'state [:in (refreshable-states)])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
@@ -122,7 +122,7 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (t2/update! :model/PersistedInfo conditions-map {'active false, 'state state, 'state_change_at :%now})))
+   (t2/update! :model/PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
@@ -131,7 +131,7 @@
   (t2/update! :model/PersistedInfo
               (merge {:active true} conditions-map)
               ;; TODO perhaps we should immediately kick off a recalculation of these caches
-              {'active false, 'state "creating", 'state_change_at :%now}))
+              {:active false, :state "creating", :state_change_at :%now}))
 
 (defenterprise default-persistent-info-state
   "The default state for a new PersistedInfo record. Defaults to 'creating' for OSS"
@@ -161,12 +161,12 @@
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
   (let [cards (t2/select :model/Card
-                         {'where ['and
+                         {:where ['and
                                   ['= 'database_id database-id]
                                   ['= 'type "model"]
-                                  ['not ['exists ^:allow-subquery {'select [1]
-                                                                   'from ['persisted_info]
-                                                                   'where ['= 'persisted_info.card_id 'report_card.id]}]]]})]
+                                  ['not ['exists ^:allow-subquery {:select [1]
+                                                                   :from ['persisted_info]
+                                                                   :where ['= 'persisted_info.card_id 'report_card.id]}]]]})]
     (t2/insert! :model/PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!
@@ -181,7 +181,7 @@
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
                            (t2/update! :model/PersistedInfo (u/the-id existing-persisted-info)
-                                       {'active false, 'state "creating", 'state_change_at :%now})
+                                       {:active false, :state "creating", :state_change_at :%now})
                            (t2/select-one :model/PersistedInfo 'card_id card-id)))]
     persisted-info))
 
@@ -190,11 +190,11 @@
    Will ignore explicitly set `off` models."
   [database-id]
   (t2/query-one
-   {'update ['persisted_info]
-    'where ['and
+   {:update ['persisted_info]
+    :where ['and
             ['= 'database_id database-id]
             ['= 'state "deletable"]]
-    'set {'active false,
-          'state (default-persistent-info-state),
-          'state_change_at '%now}})
+    :set {:active false,
+          :state (default-persistent-info-state),
+          :state_change_at '%now}})
   (ready-unpersisted-models! database-id))

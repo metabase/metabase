@@ -28,9 +28,9 @@
 
 (t2/define-before-insert :model/Tenant
   [tenant]
-  (let [tenant-collection-id (t2/insert-returning-pk! :model/Collection {'type collection/tenant-specific-root-collection-type
-                                                                         'name (format "Tenant Collection: %s" (:name tenant))
-                                                                         'namespace "tenant-specific"})]
+  (let [tenant-collection-id (t2/insert-returning-pk! :model/Collection {:type collection/tenant-specific-root-collection-type
+                                                                         :name (format "Tenant Collection: %s" (:name tenant))
+                                                                         :namespace "tenant-specific"})]
     (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
       ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
       ;; of defense.
@@ -39,7 +39,7 @@
 (defn tenant-exists?
   "Given a tenant name, returns truthy if the name (or its slugified version) is already reserved."
   [{n :name slug :slug}]
-  (t2/exists? :model/Tenant {'where ['or
+  (t2/exists? :model/Tenant {:where ['or
                                      ['= 'slug slug]
                                      ['= 'name n]]}))
 
@@ -52,13 +52,13 @@
   (mi/instances-with-hydrated-data
    tenants k
    (fn []
-     (->> (t2/query {'select [['tenant_id] [['count '*] 'count]]
-                     'from [(t2/table-name :model/User)]
-                     'where ['and
+     (->> (t2/query {:select [['tenant_id] [['count '*] 'count]]
+                     :from [(t2/table-name :model/User)]
+                     :where ['and
                              ['in 'tenant_id (map u/the-id tenants)]
                              ['= 'type "personal"]
                              'is_active]
-                     'group-by ['tenant_id]})
+                     :group-by ['tenant_id]})
           (map (juxt :tenant_id :count))
           (into {})))
    :id
@@ -98,7 +98,7 @@
           (when-let [tenant-collection-id (t2/select-one-fn :tenant_collection_id :model/Tenant 'id tenant-id)]
             (let [descendant-ids (t2/select-pks-set :model/Collection
                                                     'location
-                                                    ['like (str "/" tenant-collection-id "/%")])]
+                                                    [:like (str "/" tenant-collection-id "/%")])]
               (conj descendant-ids tenant-collection-id))))))
 
 (defenterprise maybe-localize-tenant-collection-names
@@ -113,7 +113,7 @@
         (when (seq tenant-collection-ids)
           (t2/select-fn->fn :tenant_collection_id (juxt :name :id)
                             :model/Tenant
-                            'tenant_collection_id ['in tenant-collection-ids]))]
+                            'tenant_collection_id [:in tenant-collection-ids]))]
     (mapv (fn [{ttype :type id :id :as coll}]
             (cond-> coll
               (= ttype collection/tenant-specific-root-collection-type)

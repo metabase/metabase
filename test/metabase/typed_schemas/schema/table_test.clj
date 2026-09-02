@@ -131,11 +131,11 @@
       ;; metabase.metabot.tools.metadata-test).
       (let [destination-table-id (t2/insert-returning-pk!
                                   (t2/table-name :model/Table)
-                                  {'db_id      destination-id
-                                   'name       "destination-table"
-                                   'active     true
-                                   'created_at :%now
-                                   'updated_at :%now})]
+                                  {:db_id      destination-id
+                                   :name       "destination-table"
+                                   :active     true
+                                   :created_at :%now
+                                   :updated_at :%now})]
         (mt/with-test-user :crowberto
           (let [tables (schema.table/select-tables nil [open-table-id destination-table-id])]
             (is (= [open-table-id] (map :id tables)))))))))

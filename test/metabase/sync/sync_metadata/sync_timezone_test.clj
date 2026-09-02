@@ -49,7 +49,7 @@
         (try
           (let [db                               (mt/db)
                 tz-on-load                       (db-timezone db)
-                _                                (t2/update! :model/Database (:id db) {'timezone nil})
+                _                                (t2/update! :model/Database (:id db) {:timezone nil})
                 tz-after-update                  (db-timezone db)
                 ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
                 ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
@@ -71,7 +71,7 @@
               (is (java.time.ZoneId/of (db-timezone db)))))
           (finally
             ;; Make sure to reset the timezone to UTC in case the test failed
-            (t2/update! :model/Database (:id (mt/db)) {'timezone "UTC"})))))))
+            (t2/update! :model/Database (:id (mt/db)) {:timezone "UTC"})))))))
 
 (deftest sync-timezone-mysql-test
   (mt/test-driver :mysql

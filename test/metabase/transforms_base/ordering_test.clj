@@ -55,7 +55,7 @@
                                                "orders_3")]
     (is (= {parent #{}
             child  #{parent}}
-           (:dependencies (ordering/transform-ordering #{parent child} (t2/select :model/Transform 'id ['in [parent child]])))))))
+           (:dependencies (ordering/transform-ordering #{parent child} (t2/select :model/Transform 'id [:in [parent child]])))))))
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
@@ -96,7 +96,7 @@
                 t2 #{}
                 t3 #{t1}
                 t4 #{t1 t2}}
-               (:dependencies (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform 'id ['in [t1 t2 t3 t4]])))))))
+               (:dependencies (ordering/transform-ordering #{t1 t2 t3 t4} (t2/select :model/Transform 'id [:in [t1 t2 t3 t4]])))))))
     (testing "dependencies are correctly identified when some transform have been run and some haven't"
       (mt/with-temp [:model/Transform {t1 :id :as transform1} (make-transform
                                                                {:database (mt/id),
@@ -124,7 +124,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id ['in [t1 t2 t3]])))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id [:in [t1 t2 t3]])))))
           (finally
             (t2/delete! :model/Table 'name "checkins_transform")))))))
 
@@ -157,7 +157,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id ['in [t1 t2 t3]]))))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform 'id [:in [t1 t2 t3]]))))))))))
 
 (deftest ^:parallel basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
@@ -406,7 +406,7 @@
                                                  :type     "query"
                                                  :query    {:source-table (mt/id :orders)}})]
         ;; simulate a row created before the column existed
-        (t2/update! (t2/table-name :model/Transform) id {'table_dependencies nil})
+        (t2/update! (t2/table-name :model/Transform) id {:table_dependencies nil})
         (mt/with-metadata-provider (mt/id)
           (let [all (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
                 {:keys [uncached]} (ordering/transform-ordering #{id} all)]

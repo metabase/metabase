@@ -41,7 +41,7 @@
   []
   (t2/select :model/SecurityAdvisory
              'acknowledged_at nil
-             'match_status ['in ["active" "error"]]))
+             'match_status [:in ["active" "error"]]))
 
 (defn send-repeat-notifications!
   "Check all unacknowledged active/error advisories and send repeat notifications

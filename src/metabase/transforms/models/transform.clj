@@ -176,7 +176,7 @@
     (if (and (transforms-base.u/merge-target? {:target target})
              table-id
              (some #(nil? (:field-id %)) unique-key))
-      (let [name->id (t2/select-fn->fn :name :id [:model/Field 'name 'id] 'table_id table-id 'active true)]
+      (let [name->id (t2/select-fn->fn :name :id [:model/Field :name :id] 'table_id table-id 'active true)]
         (assoc transform :target
                (assoc-in target [:target-incremental-strategy :unique-key]
                          (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
@@ -264,7 +264,7 @@
     runs
     (let [transform-ids (into #{} (keep :transform_id) runs)
           id->transform (when (seq transform-ids)
-                          (t2/select-pk->fn identity [:model/Transform 'id 'name 'collection_id] 'id ['in transform-ids]))]
+                          (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] 'id [:in transform-ids]))]
       (for [run runs]
         (assoc run :transform
                (if-let [transform-id (:transform_id run)]
@@ -289,7 +289,7 @@
               (assoc transform :last_checkpoint_value checkpoint_hi_value)
               ;; latest transform value wins, could be reset
               (assoc transform :last_checkpoint_value
-                     (t2/select-one-fn :last_checkpoint_value [:model/Transform 'last_checkpoint_value] transform-id)))
+                     (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id)))
             transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
@@ -299,10 +299,10 @@
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
           tag-associations (t2/select
-                            [:model/TransformTransformTag 'transform_id 'tag_id 'position]
+                            [:model/TransformTransformTag :transform_id :tag_id :position]
                             'transform_id
-                            ['in transform-ids]
-                            {'order-by [['position 'asc]]})
+                            [:in transform-ids]
+                            {:order-by [['position 'asc]]})
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]
                                    (update acc transform_id (fnil conj []) tag_id))
@@ -316,8 +316,8 @@
   (if-not (seq transforms)
     transforms
     (let [creator-ids (into #{} (map :creator_id) transforms)
-          id->creator (t2/select-pk->fn identity [:model/User 'id 'email 'first_name 'last_name]
-                                        'id ['in creator-ids])]
+          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        'id [:in creator-ids])]
       (for [transform transforms]
         (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
@@ -329,8 +329,8 @@
     transforms
     (let [owner-user-ids (into #{} (keep :owner_user_id) transforms)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User 'id 'email 'first_name 'last_name]
-                                        'id ['in owner-user-ids]))]
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        'id [:in owner-user-ids]))]
       (for [transform transforms]
         (assoc transform :owner
                (cond
@@ -365,14 +365,14 @@
       (let [;; Deduplicate while preserving order of first occurrence
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (t2/select [:model/TransformTransformTag 'tag_id 'position]
+            current-associations (t2/select [:model/TransformTransformTag :tag_id :position]
                                             'transform_id transform-id
-                                            {'order-by [['position 'asc]]})
+                                            {:order-by [['position 'asc]]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
                                    (into #{} (t2/select-fn-set :id :model/TransformTag
-                                                               'id ['in deduped-tag-ids])))
+                                                               'id [:in deduped-tag-ids])))
             ;; Filter to only valid tags, preserving order
             new-tag-ids          (if valid-tag-ids
                                    (filterv valid-tag-ids deduped-tag-ids)
@@ -388,13 +388,13 @@
         (when (seq to-delete)
           (t2/delete! :model/TransformTransformTag
                       'transform_id transform-id
-                      'tag_id ['in to-delete]))
+                      'tag_id [:in to-delete]))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
             (t2/update! :model/TransformTransformTag
-                        {'transform_id transform-id 'tag_id tag-id}
-                        {'position new-pos})))
+                        {:transform_id transform-id :tag_id tag-id}
+                        {:position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (t2/insert! :model/TransformTransformTag
@@ -413,8 +413,8 @@
     (let [transform-ids (into #{} (map u/the-id) transforms)
           tag-mappings  (group-by :transform_id
                                   (t2/select :model/TransformTransformTag
-                                             'transform_id ['in transform-ids]
-                                             {'order-by [['position 'asc]]}))]
+                                             'transform_id [:in transform-ids]
+                                             {:order-by [['position 'asc]]}))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
@@ -427,8 +427,8 @@
           idx-mappings  (group-by :transform_id
                                   (filter table-index/applicable?
                                           (t2/select :model/TableIndex
-                                                     'transform_id ['in transform-ids]
-                                                     {'order-by [['index_name 'asc]]})))]
+                                                     'transform_id [:in transform-ids]
+                                                     {:order-by [['index_name 'asc]]})))]
       (for [transform transforms]
         (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
 
@@ -438,7 +438,7 @@
   [transforms]
   (let [table-ids (into #{} (keep :target_table_id) transforms)
         id->table (when (seq table-ids)
-                    (m/index-by :id (-> (t2/select :model/Table 'id ['in table-ids])
+                    (m/index-by :id (-> (t2/select :model/Table 'id [:in table-ids])
                                         (t2/hydrate :db :fields))))]
     (for [transform transforms]
       (assoc transform :table
@@ -567,9 +567,9 @@
   Return empty list if no tag IDs are provided or no transforms are associated with the tags."
   [tag-ids]
   (or (when (seq tag-ids)
-        (when-let [transform-ids (t2/select-fn-set :transform_id [:model/TransformTransformTag 'transform_id]
-                                                   'tag_id ['in tag-ids])]
-          (t2/select :model/Transform 'id ['in transform-ids])))
+        (when-let [transform-ids (t2/select-fn-set :transform_id [:model/TransformTransformTag :transform_id]
+                                                   'tag_id [:in tag-ids])]
+          (t2/select :model/Transform 'id [:in transform-ids])))
       []))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------

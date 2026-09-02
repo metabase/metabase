@@ -32,7 +32,7 @@
   (t2/select-one :model/ViewLog
                  'user_id user-id
                  'model_id model-id
-                 {'order-by [['id 'desc]]}))
+                 {:order-by [['id 'desc]]}))
 
 (deftest card-read-ee-test
   (mt/with-premium-features #{:audit-app}
@@ -394,7 +394,7 @@
   [card-id]
   (t2/select-one :model/QueryExecution
                  'card_id card-id
-                 {'order-by [['id 'desc]]}))
+                 {:order-by [['id 'desc]]}))
 
 (deftest query-execution-tenant-id-test
   (when config/ee-available?

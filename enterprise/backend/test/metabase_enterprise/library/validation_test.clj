@@ -82,9 +82,9 @@
                                                                :is_published  true})))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/update! :model/Table (:id table) {'collection_id (:id regular)}))))
+                              (t2/update! :model/Table (:id table) {:collection_id (:id regular)}))))
       (testing "Can move a table out to no collection"
-        (is (some? (t2/update! :model/Table (:id table) {'collection_id nil})))))))
+        (is (some? (t2/update! :model/Table (:id table) {:collection_id nil})))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
@@ -96,7 +96,7 @@
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id col) {'name "New Name"})))))))))
+                                  (t2/update! :model/Collection (:id col) {:name "New Name"})))))))))
 
 (deftest unpublish-tables-in-archived-collection-test
   (mt/with-premium-features #{:library}
@@ -169,11 +169,11 @@
       (testing "Cannot move a library-data collection into a library-metrics parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
                               (t2/update! :model/Collection (:id data-child)
-                                          {'location (str "/" (:id metrics-parent) "/")}))))
+                                          {:location (str "/" (:id metrics-parent) "/")}))))
       (testing "Cannot move a library-metrics collection into a library-data parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables"
                               (t2/update! :model/Collection (:id metrics-child)
-                                          {'location (str "/" (:id data-parent) "/")}))))
+                                          {:location (str "/" (:id data-parent) "/")}))))
       (testing "Cannot move a library-data collection via API to a library-metrics parent"
         (is (= "Can only add metrics to the 'Metrics' collection"
                (mt/user-http-request :crowberto :put 400 (str "collection/" (:id data-child))
@@ -201,16 +201,16 @@
                                                                        (:id coll)))]
           (testing "Cannot move the Library collection itself into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id library-root) {'location vanilla-location}))))
+                                  (t2/update! :model/Collection (:id library-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Data collection into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id data-root) {'location vanilla-location}))))
+                                  (t2/update! :model/Collection (:id data-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Metrics collection into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a Library collection"
-                                  (t2/update! :model/Collection (:id metrics-root) {'location vanilla-location})))))
+                                  (t2/update! :model/Collection (:id metrics-root) {:location vanilla-location})))))
         (testing "Cannot move a Data subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
-                                (t2/update! :model/Collection (:id data-sub) {'location vanilla-location}))))
+                                (t2/update! :model/Collection (:id data-sub) {:location vanilla-location}))))
         (testing "Cannot move a Metrics subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a Library collection outside the Library"
-                                (t2/update! :model/Collection (:id metrics-sub) {'location vanilla-location}))))))))
+                                (t2/update! :model/Collection (:id metrics-sub) {:location vanilla-location}))))))))

@@ -171,9 +171,9 @@
          (when (and (not api/*is-superuser?*)
                     (premium-features/enable-advanced-permissions?)
                     api/*is-group-manager?*)
-           [:in :id ^:allow-subquery {'select ['group_id]
-                                      'from   ['permissions_group_membership]
-                                      'where  ['and
+           [:in :id ^:allow-subquery {:select ['group_id]
+                                      :from   ['permissions_group_membership]
+                                      :where  ['and
                                                ['= 'user_id api/*current-user-id*]
                                                ['= 'is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
@@ -266,7 +266,7 @@
   (let [group (t2/select-one :model/PermissionsGroup 'id group-id)]
     (api/check-404 group)
     (t2/update! :model/PermissionsGroup group-id
-                {'name name})
+                {:name name})
     ;; return the updated group
     (u/prog1 (t2/select-one :model/PermissionsGroup 'id group-id)
       (events/publish-event! :event/group-update
@@ -305,22 +305,22 @@
                  :is_group_manager boolean}]}"
   []
   (perms/check-group-manager)
-  (group-by :user_id (t2/select [:model/PermissionsGroupMembership [:id :membership_id] 'group_id 'user_id 'is_group_manager]
+  (group-by :user_id (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
                                 (cond-> {}
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
                                   (sql.helpers/where
-                                   ['in 'group_id ^:allow-subquery {'select ['group_id]
-                                                                    'from   ['permissions_group_membership]
-                                                                    'where  ['and
+                                   ['in 'group_id ^:allow-subquery {:select ['group_id]
+                                                                    :from   ['permissions_group_membership]
+                                                                    :where  ['and
                                                                              ['= 'user_id api/*current-user-id*]
                                                                              ['= 'is_group_manager true]]}])
                                   (not (premium-features/enable-advanced-permissions?))
                                   (sql.helpers/where ['not= 'group_id (u/the-id (perms/data-analyst-group))])
                                   (not (setting/get :use-tenants))
-                                  (sql.helpers/where ['not-in 'group_id                                                       ^:allow-subquery {'select ['id]
-                                                                                                                                                'from   ['permissions_group]
-                                                                                                                                                'where  ['= 'is_tenant_group true]}])))))
+                                  (sql.helpers/where ['not-in 'group_id                                                       ^:allow-subquery {:select ['id]
+                                                                                                                                                :from   ['permissions_group]
+                                                                                                                                                :where  ['= 'is_tenant_group true]}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -372,7 +372,7 @@
      (t2/exists? :model/User 'id (:user_id old) 'is_superuser false)
      [400 (tru "Admin cannot be a group manager.")])
     (t2/update! :model/PermissionsGroupMembership (:id old)
-                {'is_group_manager is_group_manager})
+                {:is_group_manager is_group_manager})
     (t2/select-one :model/PermissionsGroupMembership 'id (:id old))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

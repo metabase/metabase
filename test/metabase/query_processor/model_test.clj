@@ -112,7 +112,7 @@
 (defn- read-metadata [filename]
   (->> filename
        slurp
-       (edn/read-string {:readers {'id (fn [id]
+       (edn/read-string {:readers {:id (fn [id]
                                          (apply mt/id (map keyword (str/split (name id) #"\."))))}})))
 
 (deftest ^:parallel preserve-model-display-names-test

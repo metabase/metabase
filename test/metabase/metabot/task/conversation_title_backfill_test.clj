@@ -39,14 +39,14 @@
   [n & {:keys [title prompt profile-id error finished]
         :or   {prompt "question" profile-id "internal" finished true}}]
   (let [id (conversation-id n)]
-    (t2/insert! :model/MetabotConversation {'id id 'user_id (mt/user->id :rasta) 'title title})
+    (t2/insert! :model/MetabotConversation {:id id :user_id (mt/user->id :rasta) :title title})
     (t2/insert! :model/MetabotMessage
-                {'conversation_id id
-                 'role            :user
-                 'profile_id      profile-id
-                 'data_version    2
-                 'data            [{:type "text" :text prompt}]
-                 'total_tokens    0})
+                {:conversation_id id
+                 :role            :user
+                 :profile_id      profile-id
+                 :data_version    2
+                 :data            [{:type "text" :text prompt}]
+                 :total_tokens    0})
     (t2/insert! :model/MetabotMessage
                 (cond-> {:conversation_id id
                          :role            :assistant

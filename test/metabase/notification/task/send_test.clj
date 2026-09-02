@@ -22,7 +22,7 @@
   (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
                     :model/TaskHistory
                     'task (name task-name)
-                    {'order-by [['started_at 'desc]]}))
+                    {:order-by [['started_at 'desc]]}))
 
 (deftest e2e-test
   (notification.tu/with-notification-testing-setup!
@@ -99,12 +99,12 @@
           (is (not-empty notification-triggers)))
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
-          (t2/update! :model/Notification (:id notification) {'active false})
+          (t2/update! :model/Notification (:id notification) {:active false})
           (task.notification/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
-          (t2/update! :model/Notification (:id notification) {'active true})
+          (t2/update! :model/Notification (:id notification) {:active true})
           (task.notification/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
 

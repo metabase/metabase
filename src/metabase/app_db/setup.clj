@@ -346,7 +346,7 @@
   key. Work around https://github.com/camsaul/toucan2/issues/202 until it is fixed upstream."
   [_query-type _model _parsed-args query]
   (cond-> query
-    ('delete query) (dissoc query 'delete-from)))
+    (:delete query) (dissoc query :delete-from)))
 
 (methodical/defmethod t2.pipeline/build :before [#_query-type :toucan.query-type/select.instances
                                                  #_model      :toucan2.tools.before-delete/before-delete
@@ -358,6 +358,6 @@
     true
     (dissoc 'delete)
 
-    (contains? query 'delete-from)
-    (-> (dissoc 'delete-from)
-        (assoc 'from [('delete-from query)]))))
+    (contains? query :delete-from)
+    (-> (dissoc :delete-from)
+        (assoc :from [(:delete-from query)]))))

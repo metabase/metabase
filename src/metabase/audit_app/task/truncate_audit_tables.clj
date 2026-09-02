@@ -22,23 +22,23 @@
   (t2/query-one
    (case (mdb/db-type)
      (:postgres :h2)
-     {'delete-from (keyword table-name)
-      'where ['in
+     {:delete-from (keyword table-name)
+      :where ['in
               'id
-              ^:allow-subquery {'select ['id]
-                                'from (keyword table-name)
-                                'where ['<=
+              ^:allow-subquery {:select ['id]
+                                :from (keyword table-name)
+                                :where ['<=
                                         (keyword time-column)
                                         (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-                                'order-by [['id 'asc]]
-                                'limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+                                :order-by [['id 'asc]]
+                                :limit (audit-app.settings/audit-table-truncation-batch-size)}]}
 
      (:mysql :mariadb)
-     {'delete-from (keyword table-name)
-      'where ['<=
+     {:delete-from (keyword table-name)
+      :where ['<=
               (keyword time-column)
               (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-      'limit (audit-app.settings/audit-table-truncation-batch-size)})))
+      :limit (audit-app.settings/audit-table-truncation-batch-size)})))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"

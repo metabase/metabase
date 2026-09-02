@@ -66,7 +66,7 @@
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
   regardless of archive state."
   [timeline-ids {:events/keys [all? start end]}]
-  (let [clause {'where ['and
+  (let [clause {:where ['and
                         ;; in our collections
                         ['in 'timeline_id timeline-ids]
                         (when-not all?

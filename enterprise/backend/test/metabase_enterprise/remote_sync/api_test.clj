@@ -280,7 +280,7 @@
               ;; the audit event publishes after the task's ended_at is set, so poll for the row
               (let [entry (dh/with-retry {:max-retries 10
                                           :delay-ms 200}
-                            (u/prog1 (t2/select-one :model/AuditLog 'topic "remote-sync-import" {'order-by [['id 'desc]]})
+                            (u/prog1 (t2/select-one :model/AuditLog 'topic "remote-sync-import" {:order-by [['id 'desc]]})
                               (when (<= (t2/count :model/AuditLog 'topic "remote-sync-import") before)
                                 (throw (ex-info "Audit log entry not written yet" {})))))]
                 (testing "attributed to the user who triggered it"
@@ -335,12 +335,12 @@
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (t2/insert! :model/RemoteSyncObject {'model_type "Card"
-                                             'model_id 1
-                                             'model_name "Test Card"
-                                             'model_collection_id 1
-                                             'status "updated"
-                                             'status_changed_at (java.time.OffsetDateTime/now)})
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                             :model_id 1
+                                             :model_name "Test Card"
+                                             :model_collection_id 1
+                                             :status "updated"
+                                             :status_changed_at (java.time.OffsetDateTime/now)})
         (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                  (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"}))))
@@ -360,12 +360,12 @@
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (t2/insert! :model/RemoteSyncObject {'model_type "Card"
-                                               'model_id 1
-                                               'model_name "Test Card"
-                                               'model_collection_id 1
-                                               'status "update"
-                                               'status_changed_at (java.time.OffsetDateTime/now)})
+          (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                               :model_id 1
+                                               :model_name "Test Card"
+                                               :model_collection_id 1
+                                               :status "update"
+                                               :status_changed_at (java.time.OffsetDateTime/now)})
           ;; Stub the app-DB reconcile load — its correctness is covered synchronously by impl-test; here we
           ;; only verify the endpoint/flag wiring and that the async task completes (loading into a real
           ;; warehouse DB inside the task thread is slow/racy on the MySQL/MariaDB app-db matrix).
@@ -385,12 +385,12 @@
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (t2/insert! :model/RemoteSyncObject {'model_type "Card"
-                                               'model_id 1
-                                               'model_name "Test Card"
-                                               'model_collection_id 1
-                                               'status "update"
-                                               'status_changed_at (java.time.OffsetDateTime/now)})
+          (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                               :model_id 1
+                                               :model_name "Test Card"
+                                               :model_collection_id 1
+                                               :status "update"
+                                               :status_changed_at (java.time.OffsetDateTime/now)})
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
             (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                   completed-task (wait-for-task-completion task_id)]
@@ -418,9 +418,9 @@
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
                                     remote-sync.task/last-version (constantly "v1")
                                     impl/load-snapshot!           (fn [snap & _] (swap! loaded conj (source.p/version snap)) nil)]
-          (t2/insert! :model/RemoteSyncObject {'model_type "Card" 'model_id 9001 'model_name "Local Card"
-                                               'model_collection_id 1 'status "update"
-                                               'status_changed_at (java.time.OffsetDateTime/now)})
+          (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 9001 :model_name "Local Card"
+                                               :model_collection_id 1 :status "update"
+                                               :status_changed_at (java.time.OffsetDateTime/now)})
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))
@@ -578,8 +578,8 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true :name "Test Collection" :location "/"}]
         ;; A pending create makes the export take the incremental write path, where the error fires.
-        (t2/insert! :model/RemoteSyncObject {'model_type "Collection" 'model_id coll-id 'model_name "Test Collection"
-                                             'status "create" 'status_changed_at (t/offset-date-time)})
+        (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                                             :status "create" :status_changed_at (t/offset-date-time)})
         (let [mock-main (test-helpers/create-mock-source :fail-mode :apply-changes-error)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -1658,14 +1658,14 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms false]
-          (let [built-in-count (t2/count :model/TransformTag 'built_in_type ['not= nil])]
+          (let [built-in-count (t2/count :model/TransformTag 'built_in_type [:not= nil])]
             (testing "can enable transforms sync"
               (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                                      {:remote-sync-transforms true})]
                 (wait-for-task-completion task_id)
                 (is (=? {:success true} resp))
                 (is (true? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag 'built_in_type ['not= nil]))
+                (is (= built-in-count (t2/count :model/TransformTag 'built_in_type [:not= nil]))
                     "Built-in transform tags should not be deleted by sync")))
             (testing "can disable transforms sync"
               (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
@@ -1673,7 +1673,7 @@
                 (wait-for-task-completion task_id)
                 (is (=? {:success true} resp))
                 (is (false? (settings/remote-sync-transforms)))
-                (is (= built-in-count (t2/count :model/TransformTag 'built_in_type ['not= nil]))
+                (is (= built-in-count (t2/count :model/TransformTag 'built_in_type [:not= nil]))
                     "Built-in transform tags should not be deleted by sync")))))))))
 
 (deftest settings-preserves-transforms-when-not-specified-test

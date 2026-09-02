@@ -50,7 +50,7 @@
             auth-identity-id (:id auth-identity)
             new-password "new-password-456"]
         (t2/update! :model/AuthIdentity auth-identity-id
-                    {'credentials {:plaintext_password new-password}})
+                    {:credentials {:plaintext_password new-password}})
         (let [updated (t2/select-one :model/AuthIdentity 'id auth-identity-id)
               {:keys [password_hash password_salt]} (:credentials updated)]
           (is (some? password_hash)
@@ -71,7 +71,7 @@
             original-hash (get-in auth-identity [:credentials :password_hash])
             original-salt (get-in auth-identity [:credentials :password_salt])]
         (t2/update! :model/AuthIdentity auth-identity-id
-                    {'metadata {:last_login "2024-01-01"}})
+                    {:metadata {:last_login "2024-01-01"}})
         (let [updated (t2/select-one :model/AuthIdentity 'id auth-identity-id)]
           (is (= original-hash (get-in updated [:credentials :password_hash]))
               "Password hash should remain unchanged")
@@ -83,9 +83,9 @@
     (mt/with-temp [:model/User {user-id :id}]
       (let [auth-identity (t2/insert-returning-instance!
                            :model/AuthIdentity
-                           {'user_id user-id
-                            'provider "google"
-                            'metadata {:email "test@example.com"}})]
+                           {:user_id user-id
+                            :provider "google"
+                            :metadata {:email "test@example.com"}})]
         (is (= "test@example.com" (get-in auth-identity [:metadata :email]))
             "Metadata should be preserved without modification")))))
 
@@ -94,12 +94,12 @@
     (mt/with-temp [:model/User {user-id :id}]
       (let [auth-identity (t2/insert-returning-instance!
                            :model/AuthIdentity
-                           {'user_id user-id
-                            'provider "google"
-                            'metadata {:email "old@example.com"}})
+                           {:user_id user-id
+                            :provider "google"
+                            :metadata {:email "old@example.com"}})
             auth-identity-id (:id auth-identity)]
         (t2/update! :model/AuthIdentity auth-identity-id
-                    {'metadata {:email "new@example.com"}})
+                    {:metadata {:email "new@example.com"}})
         (let [updated (t2/select-one :model/AuthIdentity 'id auth-identity-id)]
           (is (= "new@example.com" (get-in updated [:metadata :email]))
               "Metadata should be updated correctly"))))))
@@ -126,9 +126,9 @@
     (testing "with a secret key set, the raw credentials column is ciphertext, not JSON"
       (encryption-test/with-secret-key "key-for-auth-identity-test-1"
         (mt/with-temp [:model/User {user-id :id}]
-          (t2/insert! :model/AuthIdentity {'user_id     user-id
-                                           'provider    "google"
-                                           'credentials {:secret "super-secret"}})
+          (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                           :provider    "google"
+                                           :credentials {:secret "super-secret"}})
           (let [raw (t2/select-one-fn :credentials :auth_identity
                                       'user_id user-id 'provider "google")]
             (is (encryption/possibly-encrypted-string? raw)
@@ -147,12 +147,12 @@
     (testing "with a key set, encrypted credentials read back but a plaintext value written directly via SQL is rejected"
       (encryption-test/with-secret-key "key-for-auth-identity-test-2"
         (mt/with-temp [:model/User {user-id :id}]
-          (t2/insert! :model/AuthIdentity {'user_id user-id 'provider "google" 'credentials {:secret "legit"}})
+          (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {:secret "legit"}})
           (is (= "legit"
                  (get-in (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "google")
                          [:credentials :secret])))
-          (t2/update! :auth_identity {'user_id user-id 'provider "google"}
-                      {'credentials "{\"secret\":\"injected\"}"})
+          (t2/update! :auth_identity {:user_id user-id :provider "google"}
+                      {:credentials "{\"secret\":\"injected\"}"})
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
                                 (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "google"))))))))
 
@@ -163,9 +163,9 @@
     (testing "with no key set there is nothing to sign with, so plaintext credentials read back as-is"
       (encryption-test/with-secret-key nil
         (mt/with-temp [:model/User {user-id :id}]
-          (t2/insert! :model/AuthIdentity {'user_id user-id 'provider "google" 'credentials {}})
-          (t2/update! :auth_identity {'user_id user-id 'provider "google"}
-                      {'credentials "{\"secret\":\"plain\"}"})
+          (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {}})
+          (t2/update! :auth_identity {:user_id user-id :provider "google"}
+                      {:credentials "{\"secret\":\"plain\"}"})
           (is (= "plain"
                  (get-in (t2/select-one :model/AuthIdentity 'user_id user-id 'provider "google")
                          [:credentials :secret]))))))))

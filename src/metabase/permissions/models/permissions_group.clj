@@ -38,7 +38,7 @@
 (defn- magic-group [magic-group-type]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one [:model/PermissionsGroup 'id 'name 'magic_group_type] 'magic_group_type magic-group-type)
+     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] 'magic_group_type magic-group-type)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
@@ -154,7 +154,7 @@
   [_model k groups]
   (mi/instances-with-hydrated-data
    groups k
-   #(group-by :group_id (t2/select :model/User {'select    ['u.id
+   #(group-by :group_id (t2/select :model/User {:select    ['u.id
                                                             ;; user_id is for legacy reasons, we should remove it
                                                             ['u.id 'user_id]
                                                             'u.first_name
@@ -166,12 +166,12 @@
                                                             ['pgm.id 'membership_id]
                                                             (when (premium-features/enable-advanced-permissions?)
                                                               [:pgm.is_group_manager :is_group_manager])]
-                                                'from      [['core_user 'u]]
-                                                'left-join [['permissions_group_membership 'pgm] ['= 'u.id 'pgm.user_id]]
-                                                'where     ['and
+                                                :from      [['core_user 'u]]
+                                                :left-join [['permissions_group_membership 'pgm] ['= 'u.id 'pgm.user_id]]
+                                                :where     ['and
                                                             ['= 'u.is_active true]
                                                             ['in 'pgm.group_id (map :id groups)]]
-                                                'order-by  [[['lower 'u.first_name] 'asc]
+                                                :order-by  [[['lower 'u.first_name] 'asc]
                                                             [['lower 'u.last_name] 'asc]]}))
    :id
    {:default []}))
@@ -179,12 +179,12 @@
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
-  (t2/select :model/PermissionsGroup 'magic_group_type ['not= admin-magic-group-type]))
+  (t2/select :model/PermissionsGroup 'magic_group_type [:not= admin-magic-group-type]))
 
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select :model/PermissionsGroup {'where ['= 'magic_group_type nil]}))
+  (t2/select :model/PermissionsGroup {:where ['= 'magic_group_type nil]}))
 
 (defn is-tenant-group?
   "Returns a boolean representing whether this group is a tenant group."
@@ -215,11 +215,11 @@
   groups.)"
   []
   (let [results (mdb/query
-                 {'select    [['pgm.group_id 'group_id] [['count 'pgm.id] 'members]]
-                  'from      [['permissions_group_membership 'pgm]]
-                  'left-join [['core_user 'user] ['= 'pgm.user_id 'user.id]]
-                  'where     ['= 'user.is_active true]
-                  'group-by  ['pgm.group_id]})]
+                 {:select    [['pgm.group_id 'group_id] [['count 'pgm.id] 'members]]
+                  :from      [['permissions_group_membership 'pgm]]
+                  :left-join [['core_user 'user] ['= 'pgm.user_id 'user.id]]
+                  :where     ['= 'user.is_active true]
+                  :group-by  ['pgm.group_id]})]
     (zipmap
      (map :group_id results)
      (map :members results))))
@@ -240,7 +240,7 @@
   (let [base-name (format "%s (converted)" group-name)
         like-pattern (str base-name "%")
         existing-names (t2/select-fn-set :name :model/PermissionsGroup
-                                         'name ['like like-pattern])]
+                                         'name [:like like-pattern])]
     (if-not (contains? existing-names base-name)
       base-name
       (loop [n 2]
@@ -253,7 +253,7 @@
   "Grant write permissions on all library collections to a group."
   [group-id]
   (when-let [collection-ids (seq (t2/select-pks-set :model/Collection
-                                                    'type ['in ["library" "library-data" "library-metrics"]]))]
+                                                    'type [:in ["library" "library-data" "library-metrics"]]))]
     (t2/insert! :model/Permissions
                 (for [coll-id collection-ids]
                   {:group_id group-id
@@ -270,14 +270,14 @@
         (t2/with-transaction [_conn]
           ;; Rename and demote the existing group to a normal visible group
           (t2/update! :model/PermissionsGroup (:id existing-group)
-                      {'name             (unique-converted-group-name (:name existing-group))
-                       'magic_group_type nil})
+                      {:name             (unique-converted-group-name (:name existing-group))
+                       :magic_group_type nil})
           ;; Create new empty magic group with default library permissions, reusing the old name
           (let [{new-group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup
-                                                                  {'name             (:name existing-group)
-                                                                   'magic_group_type data-analyst-magic-group-type})]
+                                                                  {:name             (:name existing-group)
+                                                                   :magic_group_type data-analyst-magic-group-type})]
             (grant-library-permissions! new-group-id))
-          (t2/update! :model/User {'is_data_analyst true} {'is_data_analyst false}))))))
+          (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false}))))))
 
 (def ^:private seconds-to-sleep-per-attempt 1)
 

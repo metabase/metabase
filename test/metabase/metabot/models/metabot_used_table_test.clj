@@ -13,7 +13,7 @@
                    :model/MetabotMessage      {msg-id :id}          {:conversation_id conversation-id}]
       (let [table-id (mt/id :orders)]
         (t2/insert! :model/MetabotUsedTable
-                    {'message_id msg-id 'table_id table-id})
+                    {:message_id msg-id :table_id table-id})
         (is (=? {:message_id msg-id :table_id table-id}
                 (t2/select-one :model/MetabotUsedTable 'message_id msg-id)))))))
 
@@ -23,13 +23,13 @@
                    :model/MetabotConversation {conversation-id :id} {:user_id user-id}
                    :model/MetabotMessage      {msg-id :id}          {:conversation_id conversation-id}]
       (let [table-id (mt/id :orders)]
-        (t2/insert! :model/MetabotUsedTable {'message_id msg-id 'table_id table-id})
+        (t2/insert! :model/MetabotUsedTable {:message_id msg-id :table_id table-id})
         ;; Wrap the failing INSERT in its own transaction so the outer
         ;; `mt/with-temp` transaction stays viable for cleanup.
         (is (thrown? Exception
                      (t2/with-transaction [_conn]
                        (t2/insert! :model/MetabotUsedTable
-                                   {'message_id msg-id 'table_id table-id}))))))))
+                                   {:message_id msg-id :table_id table-id}))))))))
 
 (deftest unknown-table-rejected-test
   (testing "inserting with a table_id that does not exist violates the FK"
@@ -40,7 +40,7 @@
         (is (thrown? Exception
                      (t2/with-transaction [_conn]
                        (t2/insert! :model/MetabotUsedTable
-                                   {'message_id msg-id 'table_id absent-table-id}))))
+                                   {:message_id msg-id :table_id absent-table-id}))))
         (is (zero? (t2/count :model/MetabotUsedTable 'message_id msg-id)))))))
 
 (deftest cascade-from-message-test
@@ -49,8 +49,8 @@
                    :model/MetabotConversation {conversation-id :id} {:user_id user-id}
                    :model/MetabotMessage      {msg-id :id}          {:conversation_id conversation-id}]
       (t2/insert! :model/MetabotUsedTable
-                  [{'message_id msg-id 'table_id (mt/id :orders)}
-                   {'message_id msg-id 'table_id (mt/id :people)}])
+                  [{:message_id msg-id :table_id (mt/id :orders)}
+                   {:message_id msg-id :table_id (mt/id :people)}])
       (is (= 2 (t2/count :model/MetabotUsedTable 'message_id msg-id)))
       (t2/delete! :model/MetabotMessage 'id msg-id)
       (is (zero? (t2/count :model/MetabotUsedTable 'message_id msg-id))))))
@@ -62,7 +62,7 @@
                    :model/Table               {table-id :id}        {:db_id db-id}
                    :model/MetabotConversation {conversation-id :id} {:user_id user-id}
                    :model/MetabotMessage      {msg-id :id}          {:conversation_id conversation-id}]
-      (t2/insert! :model/MetabotUsedTable {'message_id msg-id 'table_id table-id})
+      (t2/insert! :model/MetabotUsedTable {:message_id msg-id :table_id table-id})
       (is (= 1 (t2/count :model/MetabotUsedTable 'message_id msg-id)))
       (t2/delete! :model/Table 'id table-id)
       (is (zero? (t2/count :model/MetabotUsedTable 'message_id msg-id))))))

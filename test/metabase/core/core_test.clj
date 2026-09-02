@@ -15,8 +15,8 @@
            every boot of an instance with no users and so would strand a stale engine forever."
     (mt/with-model-cleanup [:model/Database]
       (let [h2-db (t2/insert-returning-instance! :model/Database
-                                                 {'name "Sample Database" 'engine :h2 'is_sample true
-                                                  'details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
         (sync/sync-database! h2-db)
         (let [before-tables (t2/select-fn-set :id :model/Table 'db_id (:id h2-db))]
           (#'core/reconcile-sample-database!)
@@ -35,8 +35,8 @@
            ID: nil` on every boot."
     (mt/with-model-cleanup [:model/Database]
       (let [db       (t2/insert-returning-instance! :model/Database
-                                                    {'name "Sample Database" 'engine :sqlite 'is_sample true
-                                                     'details (#'sample-data.impl/try-to-extract-sample-database! :sqlite)})
+                                                    {:name "Sample Database" :engine :sqlite :is_sample true
+                                                     :details (#'sample-data.impl/try-to-extract-sample-database! :sqlite)})
             _        (sync/sync-database! db)
             messages (mt/with-log-messages-for-level [messages [metabase.sample-data.impl :error]]
                        (#'core/reconcile-sample-database!)

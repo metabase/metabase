@@ -50,10 +50,10 @@
    (list-timelines false))
   ([archived :- ms/BooleanValue]
    (t2/select :model/Timeline
-              {'where    ['and
+              {:where    ['and
                           ['= 'archived archived]
                           (collection/visible-collection-filter-clause)]
-               'order-by [['%lower.name 'asc]]})))
+               :order-by [['%lower.name 'asc]]})))
 
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
@@ -120,7 +120,7 @@
                                     :present #{:description :icon :collection_id :default :archived}
                                     :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
-      (t2/update! :model/TimelineEvent {'timeline_id id} {'archived archived}))
+      (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
     (u/prog1 (t2/hydrate (t2/select-one :model/Timeline 'id id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 

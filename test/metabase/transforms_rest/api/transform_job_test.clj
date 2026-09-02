@@ -198,7 +198,7 @@
                      :model/TransformJob job-2 {:name "Job 2" :schedule "0 0 0 * * ?" :active false}
                      :model/TransformJob job-3 {:name "Job 3" :schedule "0 0 0 * * ?"}]
         (let [job-ids       [(:id job-1) (:id job-2) (:id job-3)]
-              active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob 'id ['in job-ids]))]
+              active-by-id  (fn [] (t2/select-fn->fn :id :active :model/TransformJob 'id [:in job-ids]))]
           (testing "Deactivates all jobs"
             (let [pending (t2/count :model/TransformJob 'active true)]
               (is (=? {:updated pending :failed zero?}

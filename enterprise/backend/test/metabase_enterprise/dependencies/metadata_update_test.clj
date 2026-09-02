@@ -130,9 +130,9 @@
                                               :to_entity_id child-id}]
             (is (= #{8}
                    (t2/select-fn-set (comp count :result_metadata)
-                                     [:model/Card 'id 'result_metadata 'card_schema]
-                                     'id ['in [parent-id child-id grandchild-id]])))
-            (t2/update! :model/Card parent-id {'dataset_query (lib/query mp orders)})
+                                     [:model/Card :id :result_metadata :card_schema]
+                                     'id [:in [parent-id child-id grandchild-id]])))
+            (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
             (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query (lib/query mp orders))
@@ -140,8 +140,8 @@
                                       :user-id api/*current-user-id*}))
             (is (= #{9}
                    (t2/select-fn-set (comp count :result_metadata)
-                                     [:model/Card 'id 'result_metadata 'card_schema]
-                                     'id ['in [parent-id child-id grandchild-id]])))))))))
+                                     [:model/Card :id :result_metadata :card_schema]
+                                     'id [:in [parent-id child-id grandchild-id]])))))))))
 
 (deftest ^:synchronized native-card-update-does-not-update-children-test
   (testing "native card updates do not update children"
@@ -157,7 +157,7 @@
                                               :from_entity_id child-id
                                               :to_entity_type :card
                                               :to_entity_id parent-id}]
-            (t2/update! :model/Card child-id {'result_metadata nil})
+            (t2/update! :model/Card child-id {:result_metadata nil})
             (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query native-query)
@@ -165,7 +165,7 @@
                                       :user-id api/*current-user-id*}))
             (is (= nil
                    (t2/select-one-fn :result_metadata
-                                     [:model/Card 'id 'result_metadata 'card_schema]
+                                     [:model/Card :id :result_metadata :card_schema]
                                      'id child-id)))))))))
 
 (deftest ^:synchronized model-update-passes-down-new-values-test
@@ -193,7 +193,7 @@
             (let [new-result-metadata (assoc-in (:result_metadata parent-card)
                                                 [0 :display_name]
                                                 "new-name")]
-              (t2/update! :model/Card parent-id {'result_metadata new-result-metadata})
+              (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
               (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-result-metadata)
@@ -201,8 +201,8 @@
                                         :user-id api/*current-user-id*}))
               (is (= #{[child-id "new-name"] [grandchild-id "new-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card 'id 'result_metadata 'card_schema]
-                                       'id ['in [child-id grandchild-id]]))))))))))
+                                       [:model/Card :id :result_metadata :card_schema]
+                                       'id [:in [child-id grandchild-id]]))))))))))
 
 (deftest ^:synchronized model-update-respects-child-overrides-test
   (testing "model updates respect child metadata edits"
@@ -234,9 +234,9 @@
                   new-grandchild-metadata (assoc-in (:result_metadata child-card)
                                                     [0 :display_name]
                                                     "grandchild-name")]
-              (t2/update! :model/Card parent-id {'result_metadata new-parent-metadata})
-              (t2/update! :model/Card child-id {'result_metadata new-child-metadata})
-              (t2/update! :model/Card grandchild-id {'result_metadata new-grandchild-metadata})
+              (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
+              (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
+              (t2/update! :model/Card grandchild-id {:result_metadata new-grandchild-metadata})
               (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
@@ -244,8 +244,8 @@
                                         :user-id api/*current-user-id*}))
               (is (= #{[child-id "child-name"] [grandchild-id "grandchild-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card 'id 'result_metadata 'card_schema]
-                                       'id ['in [child-id grandchild-id]]))))))))))
+                                       [:model/Card :id :result_metadata :card_schema]
+                                       'id [:in [child-id grandchild-id]]))))))))))
 
 (deftest ^:synchronized model-update-stops-recursing-when-child-metadata-is-unchanged-test
   (testing "model updates stop recursing when they hit a child whose metadata didn't change"
@@ -276,9 +276,9 @@
                                                    "child-name")
                                          (assoc-in [0 :lib/original-display-name]
                                                    "new-name"))]
-              (t2/update! :model/Card parent-id {'result_metadata new-parent-metadata})
-              (t2/update! :model/Card child-id {'result_metadata new-child-metadata})
-              (t2/update! :model/Card grandchild-id {'result_metadata nil})
+              (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
+              (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
+              (t2/update! :model/Card grandchild-id {:result_metadata nil})
               (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
@@ -286,7 +286,7 @@
                                         :user-id api/*current-user-id*}))
               (is (= nil
                      (t2/select-one-fn #(get-in % [:result_metadata 0 :display_name])
-                                       [:model/Card 'id 'result_metadata 'card_schema]
+                                       [:model/Card :id :result_metadata :card_schema]
                                        'id grandchild-id))))))))))
 
 (defn- with-syncable-db! [thunk]
@@ -309,10 +309,10 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
                                                   :database_id (mt/id)}]
           ;; Create the dependency manually
-          (t2/insert! :model/Dependency {'from_entity_type :card
-                                         'from_entity_id card-id
-                                         'to_entity_type :table
-                                         'to_entity_id table-id})
+          (t2/insert! :model/Dependency {:from_entity_type :card
+                                         :from_entity_id card-id
+                                         :to_entity_type :table
+                                         :to_entity_id table-id})
           ;; Step 3: Run analysis - should succeed with no errors
           (let [card (t2/select-one :model/Card card-id)]
             ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
@@ -332,12 +332,12 @@
           ;; the field update from sync would have identical timestamps.
           (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
             (t2/update! :model/AnalysisFinding
-                        {'analyzed_entity_type :card 'analyzed_entity_id card-id}
-                        {'analyzed_at old-time})
+                        {:analyzed_entity_type :card :analyzed_entity_id card-id}
+                        {:analyzed_at old-time})
             (t2/update! :model/Field 'table_id table-id
-                        {'updated_at old-time})
+                        {:updated_at old-time})
             (t2/update! :model/Table 'id table-id
-                        {'updated_at old-time}))
+                        {:updated_at old-time}))
           ;; Setup complete: Now call the thunk for the actual test run.
           (thunk {:db-id           (:id (mt/db))
                   :card-id         card-id

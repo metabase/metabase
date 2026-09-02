@@ -95,7 +95,7 @@
       (mt/with-test-user :rasta
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}]
-            (t2/update! :model/Card card-id {'dataset_query {}})
+            (t2/update! :model/Card card-id {:dataset_query {}})
             (replacement.source-swap/swap-source! [:card card-id]
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)])
@@ -179,9 +179,9 @@
                                                               :source {:type  "query"
                                                                        :query (lib/native-query mp "SELECT 1")}
                                                               :target {:database (mt/id) :table "out"}}]
-            (t2/query-one {'update 'transform
-                           'set    {'source "{\"type\":\"query\",\"query\":{}}"}
-                           'where  ['= 'id transform-id]})
+            (t2/query-one {:update 'transform
+                           :set    {:source "{\"type\":\"query\",\"query\":{}}"}
+                           :where  ['= 'id transform-id]})
             (is (nil? (replacement.source-swap/swap-source! [:transform transform-id]
                                                             [:table (mt/id :orders)]
                                                             [:table (mt/id :reviews)])))))))))
@@ -215,9 +215,9 @@
                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
           (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
                                                           :definition query}]
-            (t2/query-one {'update 'segment
-                           'set    {'definition "{}"}
-                           'where  ['= 'id segment-id]})
+            (t2/query-one {:update 'segment
+                           :set    {:definition "{}"}
+                           :where  ['= 'id segment-id]})
             (is (nil? (replacement.source-swap/swap-source! [:segment segment-id]
                                                             [:table (mt/id :orders)]
                                                             [:table (mt/id :reviews)])))))))))
@@ -253,9 +253,9 @@
           (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
                                                           :name       "test measure"
                                                           :definition query}]
-            (t2/query-one {'update 'measure
-                           'set    {'definition "{}"}
-                           'where  ['= 'id measure-id]})
+            (t2/query-one {:update 'measure
+                           :set    {:definition "{}"}
+                           :where  ['= 'id measure-id]})
             (is (nil? (replacement.source-swap/swap-source! [:measure measure-id]
                                                             [:table (mt/id :orders)]
                                                             [:table (mt/id :reviews)])))))))))

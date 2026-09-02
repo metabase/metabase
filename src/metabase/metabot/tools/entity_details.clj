@@ -74,11 +74,11 @@
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
-  (let [review (t2/select-one [:model/ModerationReview 'status]
+  (let [review (t2/select-one [:model/ModerationReview :status]
                               'moderated_item_id id
                               'moderated_item_type item-type
                               'most_recent true
-                              {'order-by [['id 'desc]]})]
+                              {:order-by [['id 'desc]]})]
     (= (:status review) "verified")))
 
 (def ^:private max-glossary-items
@@ -99,15 +99,15 @@
       (log/warnf "Glossary size is larger than limit for context injection (%d > %d)."
                  glossary-size max-glossary-items)))
   (not-empty (t2/select-fn->fn :term :definition :model/Glossary
-                               {'order-by [[glossary-order-column 'desc]]
-                                'limit max-glossary-items})))
+                               {:order-by [[glossary-order-column 'desc]]
+                                :limit max-glossary-items})))
 
 (defn get-current-user
   "Get information about the current user."
   [_args]
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
-               (t2/select-one [:model/User 'id 'email 'first_name 'last_name] api/*current-user-id*))]
+               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
     {:structured-output (merge {:id id
                                 :type :user
                                 :name (str first_name " " last_name)
@@ -122,7 +122,7 @@
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
-  (if-let [dashboard (t2/select-one [:model/Dashboard 'id 'description 'name 'collection_id] dashboard-id)]
+  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
          (-> dashboard
@@ -838,7 +838,7 @@
   [kind :- [:enum :measure :segment]
    id   :- :int]
   (let [{:keys [model lookup-fn definition-key]} (measure-or-segment-dispatch kind)
-        row (t2/select-one [model 'id 'table_id] 'id id)]
+        row (t2/select-one [model :id :table_id] 'id id)]
     (when-not row
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))

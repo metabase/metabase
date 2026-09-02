@@ -160,17 +160,17 @@
   `(t2/with-transaction []
      (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
        (try
-         (t2/update! :model/Table where-clause# {'is_upload true})
+         (t2/update! :model/Table where-clause# {:is_upload true})
          ~@body
          (finally
-           (t2/update! :model/Table where-clause# {'is_upload false}))))))
+           (t2/update! :model/Table where-clause# {:is_upload false}))))))
 
 (deftest ^:parallel get-table-test
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults :h2) :segments :field_values :metrics :measures)
-            (t2/hydrate (t2/select-one [:model/Table 'id 'created_at 'updated_at 'initial_sync_status
-                                        'view_count]
+            (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
+                                        :view_count]
                                        'id (mt/id :venues))
                         :pk_field :collection)
             {:schema       "PUBLIC"
@@ -190,8 +190,8 @@
                                                         :schema       nil}]
         (is (= (merge
                 (dissoc (table-defaults) :segments :field_values :metrics :measures :db)
-                (t2/hydrate (t2/select-one [:model/Table 'id 'created_at 'updated_at 'initial_sync_status
-                                            'view_count]
+                (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
+                                            :view_count]
                                            'id table-id)
                             :pk_field :collection)
                 {:schema       ""
@@ -251,7 +251,7 @@
       (testing "Sensitive fields are included"
         (is (= (merge
                 (table-defaults)
-                (t2/hydrate (t2/select-one [:model/Table 'created_at 'updated_at 'initial_sync_status 'view_count]
+                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            'id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
@@ -334,7 +334,7 @@
       (testing "Sensitive fields should not be included"
         (is (= (merge
                 (table-defaults)
-                (t2/hydrate (t2/select-one [:model/Table 'created_at 'updated_at 'initial_sync_status 'view_count]
+                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            'id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
@@ -446,7 +446,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
-              (t2/hydrate (t2/select-one [:model/Table 'id 'schema 'name 'created_at 'initial_sync_status] 'id (u/the-id table))
+              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] 'id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
                :entity_type     nil
@@ -526,7 +526,7 @@
                      :set    {:data_authority "federated"}
                      :where  [:= :id (:id table)]})
       (testing "Unexpected values are converted to :unknown"
-        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table 'data_authority] 'id (:id table)))))
+        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table :data_authority] 'id (:id table)))))
       (testing "API GET endpoint returns :unknown for tables with unknown data_authority"
         (let [api-response (mt/user-http-request :crowberto :get 200 (format "table/%d" (:id table)))]
           (is (= "unknown" (:data_authority api-response))))))))
@@ -626,8 +626,8 @@
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics :measures)
                                                             (t2/select-one [:model/Table
-                                                                            'id 'created_at 'updated_at
-                                                                            'initial_sync_status 'view_count]
+                                                                            :id :created_at :updated_at
+                                                                            :initial_sync_status :view_count]
                                                                            'id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -647,8 +647,8 @@
                                             :table            (merge
                                                                (dissoc (table-defaults :h2) :db :segments :field_values :metrics :measures)
                                                                (t2/select-one [:model/Table
-                                                                               'id 'created_at 'updated_at
-                                                                               'initial_sync_status 'view_count]
+                                                                               :id :created_at :updated_at
+                                                                               :initial_sync_status :view_count]
                                                                               'id (mt/id :users))
                                                                {:schema       "PUBLIC"
                                                                 :name         "USERS"
@@ -664,7 +664,7 @@
     (testing "GET /api/table/:id/query_metadata"
       (is (= (merge
               (table-defaults)
-              (t2/hydrate (t2/select-one [:model/Table 'created_at 'updated_at 'initial_sync_status] 'id (mt/id :categories))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] 'id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
                :name         "CATEGORIES"
@@ -1325,12 +1325,12 @@
         ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
         ;; directly to fabricate the mirror-db table this 404 test needs.
         (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {'db_id      mirror-db-id
-                                                 'schema     "PUBLIC"
-                                                 'name       "mirror_table"
-                                                 'active     true
-                                                 'created_at :%now
-                                                 'updated_at :%now})]
+                                                {:db_id      mirror-db-id
+                                                 :schema     "PUBLIC"
+                                                 :name       "mirror_table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" table-id)))))))))
 

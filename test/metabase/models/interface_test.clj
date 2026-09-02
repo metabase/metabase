@@ -43,11 +43,11 @@
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
-               (t2/update! table (u/the-id table) {'name new-name})))
+               (t2/update! table (u/the-id table) {:name new-name})))
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [:model/Table 'id 'name 'updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
 
 (deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"

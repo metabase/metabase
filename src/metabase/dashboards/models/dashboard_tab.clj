@@ -34,7 +34,7 @@
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
   (let [dashboard-id      (:dashboard_id (first tabs))
         tab-ids           (map :id tabs)
-        dashcards         (t2/select :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id ['in tab-ids])
+        dashcards         (t2/select :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id [:in tab-ids])
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
         tabs              (sort-by :position tabs)]
@@ -90,7 +90,7 @@
   "Delete tabs of a Dashboard"
   [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (when (seq tab-ids)
-    (t2/delete! :model/DashboardTab 'id ['in tab-ids]))
+    (t2/delete! :model/DashboardTab 'id [:in tab-ids]))
   nil)
 
 (defn do-update-tabs!

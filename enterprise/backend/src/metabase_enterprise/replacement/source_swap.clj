@@ -160,7 +160,7 @@
                                          (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn identity :model/Card 'id ['in all-card-ids])
+                        (t2/select-pk->fn identity :model/Card 'id [:in all-card-ids])
                         {})
         any-dashcard-changed? (reduce (fn [changed? dashcard]
                                         (or
@@ -172,7 +172,7 @@
         parameters'   (swap-parameter-source-card-id parameters old-source new-source)
         params-changed? (not= parameters parameters')]
     (when params-changed?
-      (t2/update! :model/Dashboard (:id dashboard) {'parameters parameters'}))
+      (t2/update! :model/Dashboard (:id dashboard) {:parameters parameters'}))
     (when (or any-dashcard-changed? params-changed?)
       (events/publish-event!
        :event/dashboard-update {:object  (t2/select-one :model/Dashboard 'id (:id dashboard))

@@ -75,7 +75,7 @@
               ;; update the filter on the model to simulate different values indexed
               (t2/update! :model/Card
                           (u/the-id model)
-                          {'dataset_query (mt/mbql-query products
+                          {:dataset_query (mt/mbql-query products
                                             {:filter [:and
                                                       [:> $id 10]
                                                       [:< $id 20]]})})

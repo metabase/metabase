@@ -123,9 +123,9 @@
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (t2/select :model/Database 'id ['in db-ids])))
+                       (u/index-by :id (t2/select :model/Database 'id [:in db-ids])))
      :model/Table    (when (seq table-ids)
-                       (u/index-by :id (t2/select :model/Table 'id ['in table-ids])))}))
+                       (u/index-by :id (t2/select :model/Table 'id [:in table-ids])))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.

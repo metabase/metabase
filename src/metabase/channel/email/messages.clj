@@ -169,9 +169,9 @@
           (t2/select-fn-set :email 'User
                             'is_superuser true
                             'is_active    true
-                            'last_login   ['not= nil]
+                            'last_login   [:not= nil]
                             'type         "personal"
-                            {'order-by [['id 'asc]]})))
+                            {:order-by [['id 'asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -224,7 +224,7 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
-  (let [user-info    (or (t2/select-one [:model/User 'last_name 'first_name 'email 'locale] 'id user-id)
+  (let [user-info    (or (t2/select-one [:model/User :last_name :first_name :email :locale] 'id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
@@ -254,16 +254,16 @@
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
         user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
-                                   (->> {'select   ['pgm.user_id]
-                                         'from     [['permissions_group_membership 'pgm]]
-                                         'join     [['permissions_group 'pg] ['= 'pgm.group_id 'pg.id]]
-                                         'where    ['and
-                                                    ['exists ^:allow-subquery {'select [1]
-                                                                               'from [['permissions 'p]]
-                                                                               'where ['and
+                                   (->> {:select   ['pgm.user_id]
+                                         :from     [['permissions_group_membership 'pgm]]
+                                         :join     [['permissions_group 'pg] ['= 'pgm.group_id 'pg.id]]
+                                         :where    ['and
+                                                    ['exists ^:allow-subquery {:select [1]
+                                                                               :from [['permissions 'p]]
+                                                                               :where ['and
                                                                                        ['= 'p.group_id 'pg.id]
                                                                                        ['= 'p.object monitoring]]}]]
-                                         'group-by ['pgm.user_id]}
+                                         :group-by ['pgm.user_id]}
                                         app-db/query
                                         (mapv :user_id)))
         user-ids (filter
@@ -275,7 +275,7 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email :model/User {'where ['and
+        (t2/select-fn-set :email :model/User {:where ['and
                                                       ['= 'is_active true]
                                                       ['in 'id user-ids]]}))))))
 

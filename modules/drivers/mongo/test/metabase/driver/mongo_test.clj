@@ -380,7 +380,7 @@
             (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "top level indexed, nested not"
-            (let [name-fields (t2/select [:model/Field 'name 'parent_id 'database_indexed]
+            (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
                                          'table_id (mt/id :top-level-indexed) 'name "name")]
               (testing "sanity check that we have 2 `name` fields"
                 (is (= 2 (count name-fields))))
@@ -393,7 +393,7 @@
                           :database_indexed false}]
                         (sort-by :parent_id name-fields))))))
           (testing "nested field indexed, top level not"
-            (let [name-fields (t2/select [:model/Field 'name 'parent_id 'database_indexed]
+            (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
                                          'table_id (mt/id :nested-indexed) 'name "name")]
               (testing "sanity check that we have 2 `name` fields"
                 (is (= 2 (count name-fields))))
@@ -523,9 +523,9 @@
               {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (t2/select [:model/Field 'name 'database_type 'base_type 'semantic_type]
+              (t2/select [:model/Field :name :database_type :base_type :semantic_type]
                          'table_id (mt/id :bird_species)
-                         {'order-by ['name]})))))))
+                         {:order-by ['name]})))))))
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
@@ -550,9 +550,9 @@
                    {:name "max_wingspan",   :database_type "long",   :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
-                       (t2/select [:model/Field 'name 'database_type 'base_type 'semantic_type]
+                       (t2/select [:model/Field :name :database_type :base_type :semantic_type]
                                   'table_id (mt/id :bird_species)
-                                  {'order-by ['name]})))))))))
+                                  {:order-by ['name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
@@ -579,9 +579,9 @@
             {:active true, :name "reviews"}
             {:active true, :name "users"}
             {:active true, :name "venues"}]
-           (for [field (t2/select [:model/Table 'name 'active]
+           (for [field (t2/select [:model/Table :name :active]
                                   'db_id (mt/id)
-                                  {'order-by ['name]})]
+                                  {:order-by ['name]})]
              (into {} field)))
         "Test that Tables got synced correctly")))
 
@@ -608,10 +608,10 @@
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (t2/select [:model/Field 'name 'base_type 'semantic_type]
+                    (vec (for [field (t2/select [:model/Field :name :base_type :semantic_type]
                                                 'active   true
                                                 'table_id (mt/id table-name)
-                                                {'order-by ['name]})]
+                                                {:order-by ['name]})]
                            (into {} field))))))))))
 
 (tx/defdataset with-bson-ids
@@ -788,7 +788,7 @@
               (log/infof "Inserted %d rows into %s collection %s."
                          (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
-          (let [db (first (t2/insert-returning-instances! :model/Database {'name database-name, 'engine "mongo", 'details details}))]
+          (let [db (first (t2/insert-returning-instances! :model/Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
             db)))))
 
@@ -808,10 +808,10 @@
       (sync/sync-database! (missing-fields-db))
       (testing "Test that fields with missing or null values get synced correctly"
         (let [results (map #(into {} %)
-                           (t2/select [:model/Field 'id 'name 'database_type 'base_type 'semantic_type 'parent_id]
+                           (t2/select [:model/Field :id :name :database_type :base_type :semantic_type :parent_id]
                                       'active   true
                                       'table_id (mt/id :coll)
-                                      {'order-by ['database_position]}))]
+                                      {:order-by ['database_position]}))]
           (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
                    {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}

@@ -98,7 +98,7 @@
                                                   :dashboard_card_id dc-id}]
       (testing "sanity check that we have a trigger"
         (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
-      (t2/update! :model/Dashboard dash-id {'archived true})
+      (t2/update! :model/Dashboard dash-id {:archived true})
       (testing "archiving a Dashboard should delete its Pulse and SendPulse triggers"
         (is (nil? (t2/select-one :model/Pulse pulse-id)))
         (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id))))))))
@@ -120,7 +120,7 @@
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard 'card_id card-id)))
-      (t2/update! :model/Dashboard dashboard-id {'parameters [(merge default-parameter
+      (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
                                                                      {:values_source_type    "card"
                                                                       :values_source_config {:card_id card-id}})]})
       (is (=? {:card_id                   card-id
@@ -149,7 +149,7 @@
                                                                       :values_source_type    "card"
                                                                       :values_source_config {:card_id source-card-id}}]}]
       (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
-        (t2/update! :model/Dashboard dashboard-id {'name "new name"})))))
+        (t2/update! :model/Dashboard dashboard-id {:name "new name"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -220,7 +220,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Dashboard card-id {'collection_id collection-id})))))))
+             (t2/update! :model/Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -237,7 +237,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
-             (t2/update! :model/Dashboard id {'parameters [{:id 100}]})))))))
+             (t2/update! :model/Dashboard id {:parameters [{:id 100}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"

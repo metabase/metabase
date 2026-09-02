@@ -151,18 +151,18 @@
                  {:model       "FakedCard"
                   :model_id    card-id
                   :most_recent false}]
-                (t2/select :model/Revision 'model "FakedCard" 'model_id card-id {'order-by [['timestamp 'desc] ['id 'desc]]})))))))
+                (t2/select :model/Revision 'model "FakedCard" 'model_id card-id {:order-by [['timestamp 'desc] ['id 'desc]]})))))))
 
 (deftest update-revision-does-not-update-timestamp-test
   ;; Realistically this only happens on mysql and mariadb for some reasons
   ;; and we can't update revision anyway, except for when we need to change most_recent
   (mt/with-temp [:model/Card {card-id :id} {}]
-    (let [revision (first (t2/insert-returning-instances! :model/Revision {'model       "Card"
-                                                                           'user_id     (mt/user->id :crowberto)
-                                                                           'model_id    card-id
-                                                                           'object      {}
-                                                                           'most_recent false}))]
-      (t2/update! (t2/table-name :model/Revision) (:id revision) {'most_recent true})
+    (let [revision (first (t2/insert-returning-instances! :model/Revision {:model       "Card"
+                                                                           :user_id     (mt/user->id :crowberto)
+                                                                           :model_id    card-id
+                                                                           :object      {}
+                                                                           :most_recent false}))]
+      (t2/update! (t2/table-name :model/Revision) (:id revision) {:most_recent true})
       (is (= (:timestamp revision)
              (t2/select-one-fn :timestamp :model/Revision (:id revision)))))))
 
@@ -242,7 +242,7 @@
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
           (testing "now do some updates and new revision should be reocrded"
-            (t2/update! :model/Dashboard 'id dash-id {'name "New name"})
+            (t2/update! :model/Dashboard 'id dash-id {:name "New name"})
             (push-revision)
             (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
 

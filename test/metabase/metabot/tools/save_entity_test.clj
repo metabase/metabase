@@ -97,7 +97,7 @@
           (testing "the card records which conversation + chart it was saved from"
             (is (= {:metabot_conversation_id convo-id
                     :metabot_chart_id        "c-1"}
-                   (t2/select-one [:model/Card 'metabot_conversation_id 'metabot_chart_id]
+                   (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                                   'id card-id)))))))))
 
 (deftest save-without-conversation-test
@@ -107,7 +107,7 @@
         (let [result  (save! {:target_type "collection" :collection_id nil})
               card-id (get-in result [:structured-output :card-id])]
           (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
-                 (t2/select-one [:model/Card 'metabot_conversation_id 'metabot_chart_id]
+                 (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                                 'id card-id))))))))
 
 (deftest save-to-root-collection-test

@@ -162,13 +162,13 @@
     :caveats :points_of_interest :nfc_path :json_unfolding :settings})
 
 (defn- ensure-field-user-settings-exist-for-fk-target-field [field]
-  (let [q {'select ['id]
-           'from ['metabase_field]
-           'where ['and
+  (let [q {:select ['id]
+           :from ['metabase_field]
+           :where ['and
                    ['= 'fk_target_field_id (:id field)]
-                   ['not ['exists ^:allow-subquery {'select [1]
-                                                    'from   ['metabase_field_user_settings]
-                                                    'where  ['= 'metabase_field_user_settings.field_id 'metabase_field.id]}]]]}
+                   ['not ['exists ^:allow-subquery {:select [1]
+                                                    :from   ['metabase_field_user_settings]
+                                                    :where  ['= 'metabase_field_user_settings.field_id 'metabase_field.id]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
@@ -253,7 +253,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection 'id ['in collection-ids]))
+                                      (t2/select :model/Collection 'id [:in collection-ids]))
                                 {})
         ;; Associate collection info with each field's table
         fields-with-collection (for [field fields-with-tables
@@ -275,7 +275,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (t2/select [:model/FieldValues 'field_id 'values], 'field_id id 'type :full))
+  (t2/select [:model/FieldValues :field_id :values], 'field_id id 'type :full))
 
 (mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
   "Recursively find the field id for a nested field name, return nil if not found.
@@ -401,7 +401,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (t2/select :model/Field 'id ['in target-field-ids]))))]
+                                           (readable-fields-only (t2/select :model/Field 'id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -421,7 +421,7 @@
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (vec (if-let [parent (t2/select-one :model/Field 'id parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (t2/select-one ['Table 'name 'schema], 'id table-id)]
+               (let [{table-name :name, schema :schema} (t2/select-one [:Table :name :schema], 'id table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))

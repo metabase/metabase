@@ -26,11 +26,11 @@
   "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
   [engine version]
   (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
-    (->> (t2/select [:model/SearchIndexMetadata 'index_name 'status 'created_at]
+    (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
                     'engine engine
                     'version version
                     'lang_code (i18n/site-locale-string)
-                    'status ['in [:active :pending]])
+                    'status [:in [:active :pending]])
          (filter (fn [{:keys [status created_at]}]
                    (or (not= status :pending)
                        (t/before? pending-cut-off created_at))))
@@ -41,7 +41,7 @@
   [engine version index-name]
   ;; Clear out any expired records
   (t2/delete! :model/SearchIndexMetadata
-              {'where ['and
+              {:where ['and
                        ['= 'lang_code (i18n/site-locale-string)]
                        ['= 'status "pending"]
                        ['< 'created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
@@ -52,11 +52,11 @@
                          'lang_code (i18n/site-locale-string)
                          'status :pending)
      (try
-       (t2/insert! :model/SearchIndexMetadata {'engine     engine
-                                               'version    version
-                                               'lang_code (i18n/site-locale-string)
-                                               'status     :pending
-                                               'index_name (name index-name)})
+       (t2/insert! :model/SearchIndexMetadata {:engine     engine
+                                               :version    version
+                                               :lang_code (i18n/site-locale-string)
+                                               :status     :pending
+                                               :index_name (name index-name)})
        (log/infof "Inserted new pending table %s" index-name)
        true
        (catch Exception _
@@ -74,8 +74,8 @@
   (t2/with-transaction [_conn]
     (when (t2/exists? :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :pending)
       (t2/delete! :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :retired)
-      (t2/update! :model/SearchIndexMetadata {'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :active} {'status :retired})
-      (t2/update! :model/SearchIndexMetadata {'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :pending} {'status :active}))
+      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :active} {:status :retired})
+      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))
     (t2/select-one-fn :index_name :model/SearchIndexMetadata 'engine engine 'version version 'lang_code (i18n/site-locale-string) 'status :active)))
 
 (defn delete-obsolete!
@@ -83,15 +83,15 @@
   It is up to the relevant engine to delete the actual indexes themselves."
   [our-version]
   ;; If there are no recent versions, then there is nothing to delete.
-  (when-let [most-recent (seq (map :version (t2/query {'select   ['version]
-                                                       'from     [(t2/table-name :model/SearchIndexMetadata)]
-                                                       'group-by ['version]
+  (when-let [most-recent (seq (map :version (t2/query {:select   ['version]
+                                                       :from     [(t2/table-name :model/SearchIndexMetadata)]
+                                                       :group-by ['version]
                                                        ;; use pk as a tie-breaker
-                                                       'order-by [[['max 'updated_at] 'desc]
+                                                       :order-by [[['max 'updated_at] 'desc]
                                                                   [['max 'id] 'desc]]
-                                                       'limit    3})))]
-    (t2/query-one {'delete-from [(t2/table-name :model/SearchIndexMetadata)]
-                   'where       ['or
+                                                       :limit    3})))]
+    (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
+                   :where       ['or
                                  ['not-in 'version most-recent]
                                  ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  ['and

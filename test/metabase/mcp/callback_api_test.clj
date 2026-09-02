@@ -117,7 +117,7 @@
                  :query             "encoded-query"
                  :created_at        some?}
                 (t2/select-one :model/McpFeedback 'user_id (mt/user->id :rasta)
-                               {'order-by [['id 'desc]]})))))))
+                               {:order-by [['id 'desc]]})))))))
 
 (deftest feedback-post-persists-minimal-payload-test
   (testing "MCP feedback with only a rating persists a row with the optional fields nil"
@@ -133,7 +133,7 @@
                  :prompt            nil
                  :query             nil}
                 (t2/select-one :model/McpFeedback 'user_id (mt/user->id :rasta)
-                               {'order-by [['id 'desc]]})))))))
+                               {:order-by [['id 'desc]]})))))))
 
 (deftest feedback-post-requires-metabot-enabled-test
   (testing "MCP feedback returns 403 and persists nothing when no metabot instance is enabled"

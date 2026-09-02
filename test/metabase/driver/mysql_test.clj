@@ -216,7 +216,7 @@
   "Given a DB return its fields as a set."
   [db]
   (let [table-ids (t2/select-pks-set :model/Table 'db_id (u/the-id db))]
-    (set (map (partial into {}) (t2/select [:model/Field 'name 'base_type 'semantic_type] 'table_id ['in table-ids])))))
+    (set (map (partial into {}) (t2/select [:model/Field :name :base_type :semantic_type] 'table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
@@ -454,7 +454,7 @@
                                :base_type :type/Integer}
                               {:name      "t"
                                :base_type :type/Text}]}]
-                   (->> (t2/hydrate (t2/select :model/Table 'db_id (:id database) {'order-by ['name]}) :fields)
+                   (->> (t2/hydrate (t2/select :model/Table 'db_id (:id database) {:order-by ['name]}) :fields)
                         (map table-fingerprint))))))))))
 
 (defn- create-enums-table! [db]

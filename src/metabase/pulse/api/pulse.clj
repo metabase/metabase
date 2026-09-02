@@ -123,7 +123,7 @@
        (update pulse :cards
                (fn [cards]
                  (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card 'dataset_query] (:id card)))
+                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
                                                                      api/*current-user-id*)
                                                                 :no :none
                                                                 :ten-thousand-rows :limited

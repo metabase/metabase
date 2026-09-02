@@ -62,11 +62,11 @@
   [model :- [:enum :model/CollectionPermissionGraphRevision]
    remark :- :string]
   (when api/*current-user-id*
-    (t2/insert! model {'id (inc (collection-permission-graph-revision/latest-id))
-                       'before {}
-                       'after {}
-                       'user_id api/*current-user-id*
-                       'remark remark})))
+    (t2/insert! model {:id (inc (collection-permission-graph-revision/latest-id))
+                       :before {}
+                       :after {}
+                       :user_id api/*current-user-id*
+                       :remark remark})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |

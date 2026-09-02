@@ -72,7 +72,7 @@
         (if (seq tables)
           (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table
-                                          {'where ['and
+                                          {:where ['and
                                                    ['= 'db_id database-id]
                                                    ['= 'active true]
                                                    (into [:or] match-clauses)]})]
@@ -111,11 +111,11 @@
                                  {:perms/view-data      :unrestricted
                                   :perms/create-queries :query-builder-and-native})
           tables (t2/select :model/Table
-                            'id ['in table-ids]
+                            'id [:in table-ids]
                             'db_id database-id
                             'active true
                             'visibility_type nil
-                            (cond-> {'where clause}
+                            (cond-> {:where clause}
                               with (assoc :with with)))]
       (into {} (map (juxt :id identity)) tables))))
 
@@ -124,7 +124,7 @@
   [card-ids]
   (when (seq card-ids)
     (->> (t2/select :model/Card
-                    'id ['in card-ids]
+                    'id [:in card-ids]
                     'archived false)
          (filter mi/can-read?)
          (map :id)
@@ -194,7 +194,7 @@
       (let [;; Grouped by the persisted Field's own table_id, not the caller-supplied column's
             ;; :table-id, consistent with the permission checks elsewhere in this namespace.
             fields (filter field-values/field-should-have-field-values?
-                           (t2/select :model/Field 'id ['in field-ids]))
+                           (t2/select :model/Field 'id [:in field-ids]))
             {restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table_id %)) fields)
             capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
         (into {}
@@ -214,8 +214,8 @@
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (let [fields              (t2/select [:model/Field 'id 'name 'table_id]
-                                           'id ['in target-ids])
+      (let [fields              (t2/select [:model/Field :id :name :table_id]
+                                           'id [:in target-ids])
             table-ids           (into #{} (map :table_id) fields)
             accessible-tables   (fetch-accessible-tables database-id table-ids)
             sandbox-restricted  (metabot.perms/sandbox-restricted-fields table-ids)]
@@ -247,11 +247,11 @@
                             (filter pos-int?)
                             set)]
     (when (seq missing-fp-ids)
-      (let [fields (t2/select :model/Field 'id ['in missing-fp-ids])]
+      (let [fields (t2/select :model/Field 'id [:in missing-fp-ids])]
         (doseq [field fields]
           ;; Run with admin perms to match behavior during normal sync.
           (request/as-admin (sync/refingerprint-field! field)))
-        (t2/select-pk->fn :fingerprint :model/Field 'id ['in missing-fp-ids])))))
+        (t2/select-pk->fn :fingerprint :model/Field 'id [:in missing-fp-ids])))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
 

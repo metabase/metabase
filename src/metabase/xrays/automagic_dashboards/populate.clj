@@ -41,8 +41,8 @@
                      'location location)
       (t2/insert-returning-instance!
        :model/Collection
-       {'name "Automatically Generated Dashboards"
-        'location location})))
+       {:name "Automatically Generated Dashboards"
+        :location location})))
 
 (defn colors
   "A vector of colors used for coloring charts. Uses [[appearance/application-colors]] for user choices."

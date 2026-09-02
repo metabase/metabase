@@ -104,7 +104,7 @@
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
                   (t2/update! :model/Card (u/the-id card)
-                              {'dataset_query (native-query-with-template-tag new-field)})))))))))
+                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 (deftest existing-card-test-3
   (testing "Existing Card"
@@ -119,7 +119,7 @@
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
                 (t2/update! :model/Card (u/the-id card)
-                            {'dataset_query (native-query-with-template-tag field)}))))))))
+                            {:dataset_query (native-query-with-template-tag field)}))))))))
 
 (deftest existing-card-test-4
   (testing "Existing Card"
@@ -144,7 +144,7 @@
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
                 (t2/update! :model/Card (u/the-id card)
-                            {'dataset_query (native-query-with-template-tag field)}))))))))
+                            {:dataset_query (native-query-with-template-tag field)}))))))))
 
 (deftest existing-card-test-6
   (testing "Existing Card"
@@ -160,7 +160,7 @@
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
                   (t2/update! :model/Card (u/the-id card)
-                              {'dataset_query (native-query-with-template-tag new-field)})))))))))
+                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   DASHBOARDS                                                   |

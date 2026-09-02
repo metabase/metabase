@@ -94,14 +94,14 @@
   [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
   (let [now (mi/now)]
     (t2/insert-returning-pk! :model/TaskRun
-                             {'run_type        run_type
-                              'entity_type     entity_type
-                              'entity_id       entity_id
-                              'notification_id notification_id
-                              'status          :started
-                              'started_at      now
-                              'updated_at      now
-                              'process_uuid    config/local-process-uuid})))
+                             {:run_type        run_type
+                              :entity_type     entity_type
+                              :entity_id       entity_id
+                              :notification_id notification_id
+                              :status          :started
+                              :started_at      now
+                              :updated_at      now
+                              :process_uuid    config/local-process-uuid})))
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.
@@ -112,9 +112,9 @@
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (t2/update! :model/TaskRun {'id run-id 'status :started}
-                {'status   status
-                 'ended_at (t/instant)})))
+    (t2/update! :model/TaskRun {:id run-id :status :started}
+                {:status   status
+                 :ended_at (t/instant)})))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.

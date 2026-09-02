@@ -41,7 +41,7 @@
                     (->> field-ids
                          (partition-all *invalidate-select-batch-size*)
                          (mapcat (fn [batch]
-                                   (t2/select :model/Field 'id ['in batch])))))]
+                                   (t2/select :model/Field 'id [:in batch])))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
@@ -118,7 +118,7 @@
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
         fields      (when (seq field-names)
-                      (t2/select :model/Field 'table_id table-id 'name ['in field-names]))
+                      (t2/select :model/Field 'table_id table-id 'name [:in field-names]))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
                            [(keyword field-name)
@@ -141,9 +141,9 @@
         ln->ids     (when (seq lower-names)
                       (u/group-by
                        :lower_name :id
-                       (t2/query {'select ['id [['lower 'name] 'lower_name]]
-                                  'from   [(t2/table-name :model/Field)]
-                                  'where  ['and
+                       (t2/query {:select ['id [['lower 'name] 'lower_name]]
+                                  :from   [(t2/table-name :model/Field)]
+                                  :where  ['and
                                            ['= 'table_id table-id]
                                            ['in ['lower 'name] lower-names]
                                            ['in 'has_field_values ["list" "auto-list"]]
@@ -151,7 +151,7 @@
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
                                       old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
-                                                                                 'field_id ['in field-ids]))]]
+                                                                                 'field_id [:in field-ids]))]]
                             (when (seq (set/difference new-values old-values))
                               field-ids))
                           (apply concat))]

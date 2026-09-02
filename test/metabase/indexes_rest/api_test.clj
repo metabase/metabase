@@ -185,7 +185,7 @@
             (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
             (is (full-run?)))
           (testing "once the request settles, runs go back to appending"
-            (t2/update! (t2/table-name :model/TableIndex) (:id created) {'status "succeeded"})
+            (t2/update! (t2/table-name :model/TableIndex) (:id created) {:status "succeeded"})
             (is (not (full-run?)))))))))
 
 (deftest inline-kind-index-name-test

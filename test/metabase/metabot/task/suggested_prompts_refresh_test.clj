@@ -42,8 +42,8 @@
       (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly false)
                                   metabot.suggested-prompts/generate-sample-prompts
                                   (fn [mid]
-                                    (t2/insert! :model/MetabotPrompt {'metabot_id mid 'prompt "new"
-                                                                      'model :model 'card_id card-id})
+                                    (t2/insert! :model/MetabotPrompt {:metabot_id mid :prompt "new"
+                                                                      :model :model :card_id card-id})
                                     {:status :generated :prompt_count 1})]
         (regenerate! metabot-id)
         (let [prompts (t2/select :model/MetabotPrompt 'metabot_id metabot-id)]

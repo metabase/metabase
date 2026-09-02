@@ -120,10 +120,10 @@
                (bookmarked-items :rasta)))
         (testing "moving each item into an unreadable collection (admin action; nothing archived) hides its bookmark"
           ;; stand in for the admin PUT /api/card|document ... {:collection_id hidden} in the attack
-          (t2/update! :model/Card card-id {'collection_id hidden-id})
-          (t2/update! :model/Dashboard dash-id {'collection_id hidden-id})
-          (t2/update! :model/Document doc-id {'collection_id hidden-id})
-          (t2/update! :model/Exploration expl-id {'collection_id hidden-id})
+          (t2/update! :model/Card card-id {:collection_id hidden-id})
+          (t2/update! :model/Dashboard dash-id {:collection_id hidden-id})
+          (t2/update! :model/Document doc-id {:collection_id hidden-id})
+          (t2/update! :model/Exploration expl-id {:collection_id hidden-id})
           (is (= #{} (bookmarked-items :rasta))))))))
 
 (deftest bookmark-card-type-tracks-current-card-type-test
@@ -131,7 +131,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
       (mt/user-http-request :rasta :post 200 (str "bookmark/card/" card-id))
       (is (= "question" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark")))))
-      (t2/update! :model/Card card-id {'type :model})
+      (t2/update! :model/Card card-id {:type :model})
       (is (= "model" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark"))))))))
 
 (defn bookmark-models [user-id & models]
@@ -139,28 +139,28 @@
     (cond
       (mi/instance-of? :model/Collection model)
       (t2/insert! :model/CollectionBookmark
-                  {'user_id user-id
-                   'collection_id (u/the-id model)})
+                  {:user_id user-id
+                   :collection_id (u/the-id model)})
 
       (mi/instance-of? :model/Card model)
       (t2/insert! :model/CardBookmark
-                  {'user_id user-id
-                   'card_id (u/the-id model)})
+                  {:user_id user-id
+                   :card_id (u/the-id model)})
 
       (mi/instance-of? :model/Dashboard model)
       (t2/insert! :model/DashboardBookmark
-                  {'user_id user-id
-                   'dashboard_id (u/the-id model)})
+                  {:user_id user-id
+                   :dashboard_id (u/the-id model)})
 
       (mi/instance-of? :model/Document model)
       (t2/insert! :model/DocumentBookmark
-                  {'user_id user-id
-                   'document_id (u/the-id model)})
+                  {:user_id user-id
+                   :document_id (u/the-id model)})
 
       (mi/instance-of? :model/Exploration model)
       (t2/insert! :model/ExplorationBookmark
-                  {'user_id user-id
-                   'exploration_id (u/the-id model)})
+                  {:user_id user-id
+                   :exploration_id (u/the-id model)})
 
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))

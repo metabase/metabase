@@ -18,5 +18,5 @@
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
     (when (not= version (:dbms_version database))
-      (t2/update! :model/Database (:id database) {'dbms_version version}))
+      (t2/update! :model/Database (:id database) {:dbms_version version}))
     version))

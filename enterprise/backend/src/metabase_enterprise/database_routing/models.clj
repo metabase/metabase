@@ -20,7 +20,7 @@
   (mi/instances-with-hydrated-data
    databases k
    (fn [] (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter
-                            'database_id  ['in (map :id databases)]))
+                            'database_id  [:in (map :id databases)]))
    :id
    {:default nil}))
 

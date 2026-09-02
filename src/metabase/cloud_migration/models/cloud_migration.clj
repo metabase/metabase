@@ -125,8 +125,8 @@
   This is the main cluster coordination mechanism for migrations, since any instance
   can cancel the migration, not just the one that initiated it."
   [id state progress]
-  (when (= 0 (t2/update! :model/CloudMigration 'id id 'state ['not-in terminal-states]
-                         {'state state 'progress progress}))
+  (when (= 0 (t2/update! :model/CloudMigration 'id id 'state [:not-in terminal-states]
+                         {:state state :progress progress}))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
 (defn abs-progress
@@ -221,7 +221,7 @@
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
-        (t2/update! :model/CloudMigration 'id id {'state :init}))
+        (t2/update! :model/CloudMigration 'id id {:state :init}))
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -254,7 +254,7 @@
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do
-            (t2/update! :model/CloudMigration id {'state :error})
+            (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {} e)))))
       (finally
@@ -293,7 +293,7 @@
   (t2/insert-returning-instance! :model/CloudMigration (get-store-migration))
 
   ;; get migration
-  @(def mig (t2/select-one :model/CloudMigration {'order-by [['created_at 'desc]]}))
+  @(def mig (t2/select-one :model/CloudMigration {:order-by [['created_at 'desc]]}))
 
   ;; migrate
   (migrate! mig)
@@ -302,4 +302,4 @@
   (migrate! mig :retry? true)
 
   ;; cancel all
-  (t2/update! :model/CloudMigration {'state ['not-in terminal-states]} {'state :cancelled}))
+  (t2/update! :model/CloudMigration {:state ['not-in terminal-states]} {:state :cancelled}))

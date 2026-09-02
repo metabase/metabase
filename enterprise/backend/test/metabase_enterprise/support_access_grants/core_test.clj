@@ -239,10 +239,10 @@
       (let [now (t/instant)
             grant-end (t/plus now (t/minutes 240))]
         (t2/insert! :model/SupportAccessGrantLog
-                    {'user_id user-id
-                     'ticket_number "SUPPORT-77349"
-                     'grant_start_timestamp (t/minus now (t/minutes 5))
-                     'grant_end_timestamp grant-end}))
+                    {:user_id user-id
+                     :ticket_number "SUPPORT-77349"
+                     :grant_start_timestamp (t/minus now (t/minutes 5))
+                     :grant_end_timestamp grant-end}))
       (let [current (grants/get-current-grant)]
         (is (some? current))
         (is (= "SUPPORT-77349" (:ticket_number current))
@@ -320,7 +320,7 @@
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity]
           (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
             (grants/create-grant! creator-id 240 "SUPPORT-REACTIVATE-1" "test notes")
-            (let [updated-user (t2/select-one [:model/User 'id 'is_active 'is_superuser] 'id support-user-id)]
+            (let [updated-user (t2/select-one [:model/User :id :is_active :is_superuser] 'id support-user-id)]
               (is (:is_active updated-user) "Support user should be reactivated")
               (is (:is_superuser updated-user) "Reactivated support user should have admin access"))))))))
 
@@ -404,9 +404,9 @@
           (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
             (let [grant           (grants/create-grant! creator-id 60 "SUPPORT-NATURAL-EXPIRY" "Time-boxed access")
                   support-user-id (t2/select-one-pk :model/User 'email support-email)]
-              (t2/insert! :model/Session {'id      "expiregrant1"
-                                          'user_id support-user-id
-                                          'session_key (str (random-uuid))})
+              (t2/insert! :model/Session {:id      "expiregrant1"
+                                          :user_id support-user-id
+                                          :session_key (str (random-uuid))})
               (testing "while the grant is still running the sweep leaves everything alone"
                 (grants/expire-ended-grants!)
                 (is (:is_superuser (t2/select-one :model/User 'id support-user-id)))
@@ -414,7 +414,7 @@
               (testing "once the grant window has passed the sweep revokes access"
                 ;; Move the grant's end into the past; `revoked_at` stays nil, so nothing else cleans up.
                 (t2/update! :model/SupportAccessGrantLog (:id grant)
-                            {'grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
+                            {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
                 (grants/expire-ended-grants!)
                 (is (not (:is_superuser (t2/select-one :model/User 'id support-user-id)))
                     "Support user should lose admin access once the grant ends")
@@ -435,11 +435,11 @@
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
           (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
             (let [grant (grants/create-grant! creator-id 60 "SUPPORT-EXPIRY-SCOPE" "Time-boxed access")]
-              (t2/insert! :model/Session {'id          "otheruser001"
-                                          'user_id     other-user-id
-                                          'session_key (str (random-uuid))})
+              (t2/insert! :model/Session {:id          "otheruser001"
+                                          :user_id     other-user-id
+                                          :session_key (str (random-uuid))})
               (t2/update! :model/SupportAccessGrantLog (:id grant)
-                          {'grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
+                          {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
               (grants/expire-ended-grants!)
               (is (:is_superuser (t2/select-one :model/User 'id other-user-id)))
               (is (t2/exists? :model/Session 'user_id other-user-id)))))))))
@@ -465,7 +465,7 @@
                 original-revoke-user-access! (dynamic-redefs/original-fn
                                               #'sag.model/revoke-support-user-access!)]
             (t2/update! :model/SupportAccessGrantLog (:id ended-grant)
-                        {'grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
+                        {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
             (mt/with-dynamic-fn-redefs
               [sag.model/revoke-support-user-access!
                (fn [user-id ended-at]

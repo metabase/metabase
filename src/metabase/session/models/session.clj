@@ -85,7 +85,7 @@
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]
-    (when-let [auth-identity (t2/select-one [:model/AuthIdentity 'provider] 'id auth-identity-id)]
+    (when-let [auth-identity (t2/select-one [:model/AuthIdentity :provider] 'id auth-identity-id)]
       (when (and (= "password" (:provider auth-identity))
                  (not (session.settings/enable-password-login)))
         (throw (ex-info (str (tru "Password login is disabled for this instance."))

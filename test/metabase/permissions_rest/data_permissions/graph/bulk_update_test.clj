@@ -328,7 +328,7 @@
                      :model/Table {t3e :id}  {:db_id db3 :schema "s2"}
                      :model/Table {_t3f :id} {:db_id db3 :schema "s2"}]
         ;; Clear default perms so we start clean
-        (t2/delete! :model/DataPermissions 'group_id ['in [g1 g2 g3]])
+        (t2/delete! :model/DataPermissions 'group_id [:in [g1 g2 g3]])
         (let [graph {g1 {db1 {:view-data      :unrestricted
                               :create-queries :query-builder-and-native
                               :download       {:schemas :full}

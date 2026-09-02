@@ -37,7 +37,7 @@
 (defn- table-rows
   [table-ids]
   (memoized :table-row table-ids
-            (fn [ids] (t2/select-fn->fn :id identity :model/Table 'id ['in ids]))
+            (fn [ids] (t2/select-fn->fn :id identity :model/Table 'id [:in ids]))
             nil))
 
 (defn- permitted-table-ids
@@ -127,6 +127,6 @@
   "Returns a `{field-id table-id}` map for the given `field-ids`."
   [field-ids]
   (->> (memoized :field-table field-ids
-                 (fn [ids] (t2/select-fn->fn :id :table_id [:model/Field 'id 'table_id] 'id ['in ids]))
+                 (fn [ids] (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] 'id [:in ids]))
                  nil)
        (into {} (remove #(nil? (val %))))))

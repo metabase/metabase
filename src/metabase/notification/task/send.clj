@@ -137,10 +137,10 @@
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
                     'type :notification-subscription/cron
-                    {'select ['ns.*]
-                     'from   [['notification_subscription 'ns]]
-                     'join   [['notification 'n] ['= 'ns.notification_id 'n.id]]
-                     'where   ['and
+                    {:select ['ns.*]
+                     :from   [['notification_subscription 'ns]]
+                     :join   [['notification 'n] ['= 'ns.notification_id 'n.id]]
+                     :where   ['and
                                ['= 'ns.type "notification-subscription/cron"]
                                ['= 'n.active true]]}))
 

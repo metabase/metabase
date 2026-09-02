@@ -18,11 +18,11 @@
         ;; `with-temp :model/Table` trips a different guard. Insert it directly, like
         ;; `read-destination-backed-entities-return-errors-test` does for the read_resource tool.
         (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {'db_id      destination-id
-                                                 'name       "destination-table"
-                                                 'active     true
-                                                 'created_at :%now
-                                                 'updated_at :%now})]
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
           (with-redefs [mi/can-read? (constantly true)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
                                   (metadata-tools/get-field-values-tool
@@ -77,11 +77,11 @@
       (mt/with-temp [:model/Database {router-id :id}      {}
                      :model/Database {destination-id :id} {:router_database_id router-id}]
         (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {'db_id      destination-id
-                                                 'name       "destination-table"
-                                                 'active     true
-                                                 'created_at :%now
-                                                 'updated_at :%now})]
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
           (with-redefs [mi/can-read? (constantly true)]
             (let [{:keys [structured-output]} (metadata-tools/get-metadata {:table-ids [table-id]})]
               (is (= [] (:tables structured-output)))

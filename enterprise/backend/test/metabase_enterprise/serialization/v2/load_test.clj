@@ -1118,7 +1118,7 @@
             (testing "both existing User and the new one are set up properly"
               (is (= (:id @user1d) (:creator_id @dash1d)))
               (let [user2d-id (:creator_id @dash2d)
-                    user2d    (t2/select-one [:model/User 'email 'is_active] 'id user2d-id)]
+                    user2d    (t2/select-one [:model/User :email :is_active] 'id user2d-id)]
                 (is (= (:email @user2s) (:email user2d)))
                 (is (false? (:is_active user2d)))))))))))
 
@@ -1208,7 +1208,7 @@
             (is (not= (:id @field2s) (:id @field2d))))
           (testing "there are 2 FieldValues defined under fields of table1d"
             (let [fields (t2/select-pks-set :model/Field 'table_id (:id @table1d))]
-              (is (= 2 (t2/count :model/FieldValues 'field_id ['in fields])))))
+              (is (= 2 (t2/count :model/FieldValues 'field_id [:in fields])))))
           (testing "existing FieldValues are properly found and updated"
             (is (= (set (:values @fv1s)) (set (:values @fv1d)))))
           (testing "new FieldValues are properly added"
@@ -1651,8 +1651,8 @@
             (ts/with-db source-db
               ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
               (t2/delete! :model/DashboardCardSeries (:id series1s))
-              (t2/update! :model/DashboardCardSeries (:id series3s) {'position 0})
-              (t2/update! :model/DashboardCardSeries (:id series2s) {'position 1})
+              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
+              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
               (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card 'entity_id (:entity_id series-card2s))
@@ -1743,13 +1743,13 @@
                                                        :targets       [["Collection" (:id coll)]]})
                               vec))
       (testing "Load completes successfully"
-        (t2/update! :model/Card {'id (:id card)} {'name (str "qwe_" (:name card))})
+        (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
         (is (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
         (is (= (:name card)
                (t2/select-one-fn :name :model/Card 'id (:id card)))))
       (testing "Partial load commits successful entities; failed entity does not persist"
-        (t2/update! :model/Collection {'id (:id coll)} {'name (str "qwe_" (:name coll))})
-        (t2/update! :model/Card {'id (:id card)} {'name (str "qwe_" (:name card))})
+        (t2/update! :model/Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
+        (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
         (let [load-update! serdes/load-update!]
           (with-redefs [serdes/load-update! (fn [model adjusted local]
                                               ;; Collection is loaded first, Card fails
@@ -1776,7 +1776,7 @@
                                                          :targets       [["Collection" (:id coll)]]})
                                 vec))
         (testing "A transient deadlock on one entity is retried and the import succeeds"
-          (t2/update! :model/Card {'id (:id card)} {'name "pre-retry"})
+          (t2/update! :model/Card {:id (:id card)} {:name "pre-retry"})
           (let [call-count   (atom 0)
                 load-update! serdes/load-update!]
             (with-redefs [serdes/load-update! (fn [model adjusted local]
@@ -1813,8 +1813,8 @@
               (is (= 1 @call-count)
                   "Should not retry non-transient errors"))))
         (testing "Successful entities are committed even when a later entity fails"
-          (t2/update! :model/Collection {'id (:id coll)} {'name "pre-import"})
-          (t2/update! :model/Card {'id (:id card)} {'name "pre-import"})
+          (t2/update! :model/Collection {:id (:id coll)} {:name "pre-import"})
+          (t2/update! :model/Card {:id (:id card)} {:name "pre-import"})
           (let [load-update! serdes/load-update!]
             (with-redefs [serdes/load-update! (fn [model adjusted local]
                                                 ;; Collection loads first and succeeds; Card fails
@@ -1914,7 +1914,7 @@
         (let [coll (ts/create! :model/Collection :name "coll")
               card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
               _    (t2/update! :model/Card (:id card)
-                               {'parameters [(card-sourced-param (:id card))]})
+                               {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
           (testing "loading on top of the existing card"
@@ -1936,8 +1936,8 @@
         (let [coll   (ts/create! :model/Collection :name "coll")
               card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
               card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
-              _      (t2/update! :model/Card (:id card-a) {'parameters [(card-sourced-param (:id card-b))]})
-              _      (t2/update! :model/Card (:id card-b) {'parameters [(card-sourced-param (:id card-a))]})
+              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
               ser    (into [] (serdes.extract/extract {:no-settings   true
                                                        :no-data-model false}))]
           (testing "loading on top of the existing cards"
@@ -1967,7 +1967,7 @@
               card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
               _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
               _    (t2/update! :model/Dashboard (:id dash)
-                               {'parameters [(card-sourced-param (:id card))]})
+                               {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
           (testing "loading on top of the existing dashboard"
@@ -2055,7 +2055,7 @@
                 (is (= {}
                        (t2/select-one-fn :details :model/Database)))
                 (testing "If we did not export details - it won't override existing data"
-                  (t2/update! :model/Database {'details {:other "secret"}})
+                  (t2/update! :model/Database {:details {:other "secret"}})
                   (serdes.load/load-metabase! (ingestion-in-memory extracted))
                   (is (= {:other "secret"}
                          (t2/select-one-fn :details :model/Database)))))))))
@@ -2108,7 +2108,7 @@
                              {:model "Field" :id "field"}
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f3))))
-      (t2/update! :model/Field (:id f3) {'description "some new one"})
+      (t2/update! :model/Field (:id f3) {:description "some new one"})
       (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
       (is (= "desc"
              (t2/select-one-fn :description :model/Field (:id f3)))))))
@@ -2789,9 +2789,9 @@
                                :display       :table)]
           ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
           ;; model hooks. This simulates a card whose query became malformed after migrations.
-          (t2/query {'update 'report_card
-                     'set    {'dataset_query (json/encode {:broken true})}
-                     'where  ['= 'id (:id card)]})
+          (t2/query {:update 'report_card
+                     :set    {:dataset_query (json/encode {:broken true})}
+                     :where  ['= 'id (:id card)]})
           (let [serialized (into [] (serdes.extract/extract {}))
                 card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
             (is (not (contains? card-ser :table_id))    "table_id always skipped for cards — re-derived on import")
@@ -2889,14 +2889,14 @@
               (perms/grant-collection-read-permissions! group sub-dest)
               (let [perms-before (set (map #(select-keys % [:group_id :object])
                                            (t2/select :model/Permissions
-                                                      'object ['like (format "/collection/%d/%%" (:id data-dest))])))]
+                                                      'object [:like (format "/collection/%d/%%" (:id data-dest))])))]
                 (testing "custom permissions exist before import"
                   (is (seq perms-before)))
                 (serdes.load/load-metabase! (ingestion-in-memory @serialized))
                 (let [data-after (t2/select-one :model/Collection 'entity_id eid-data)
                       perms-after (set (map #(select-keys % [:group_id :object])
                                             (t2/select :model/Permissions
-                                                       'object ['like (format "/collection/%d/%%" (:id data-after))])))]
+                                                       'object [:like (format "/collection/%d/%%" (:id data-after))])))]
                   (testing "collection still exists with same ID"
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"

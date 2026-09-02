@@ -846,20 +846,20 @@
             (chain-filter categories.name {venues.price 4})
             (is (= 1 (t2/count :model/FieldValues 'field_id field-id 'type :advanced))))
           (testing "should search for the values of linked-filter FieldValues"
-            (t2/update! :model/FieldValues {'field_id field-id
-                                            'type     :advanced}
-                        {'values (json/encode ["Good" "Bad"])
+            (t2/update! :model/FieldValues {:field_id field-id
+                                            :type     :advanced}
+                        {:values (json/encode ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
                          ;; we want this to false to test this case
-                         'has_more_values false})
+                         :has_more_values false})
             (is (= {:values          [["Good"]]
                     :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
-              (t2/update! :model/FieldValues {'field_id field-id
-                                              'type     :advanced}
-                          {'has_more_values true})
+              (t2/update! :model/FieldValues {:field_id field-id
+                                              :type     :advanced}
+                          {:has_more_values true})
               (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))
@@ -867,7 +867,7 @@
 (deftest use-cached-field-values-for-remapped-field-test
   (testing "fetching a remapped field should returns remapped values (#21528)"
     (mt/with-discard-model-updates! [:model/Field]
-      (t2/update! :model/Field (mt/id :venues :category_id) {'has_field_values "list"})
+      (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
       (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
                 :has_more_values false}
@@ -936,12 +936,12 @@
           fvs              (t2/select :model/FieldValues 'field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
-      (t2/update! :model/Field field-id {'has_field_values "list"})
+      (t2/update! :model/Field field-id {:has_field_values "list"})
       (t2/delete! :model/FieldValues 'field_id field-id)
       (try
         (thunk)
         (finally
-          (t2/update! :model/Field field-id {'has_field_values has_field_values})
+          (t2/update! :model/Field field-id {:has_field_values has_field_values})
           (t2/insert! :model/FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field!
@@ -1029,23 +1029,23 @@
                    (->> (#'chain-filter/find-joins (mt/id) $$messages $$users)
                         (sort-by (comp :field :lhs))))))
           (try
-            (t2/update! :model/Field {'id %messages.receiver_id} {'active false})
+            (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
             (testing "check that it switches to sender only once receiver is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
                        :rhs {:table $$users, :field %users.id}}]
                      (#'chain-filter/find-joins (mt/id) $$messages $$users))))
             (finally
-              (t2/update! :model/Field {'id %messages.receiver_id} {'active true})))
+              (t2/update! :model/Field {:id %messages.receiver_id} {:active true})))
           (try
-            (t2/update! :model/Field {'id %messages.sender_id} {'active false})
+            (t2/update! :model/Field {:id %messages.sender_id} {:active false})
             (testing "check that it switches to receiver only once sender is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                        :rhs {:table $$users, :field %users.id}}]
                      (#'chain-filter/find-joins (mt/id) $$messages $$users))))
             (finally
-              (t2/update! :model/Field {'id %messages.sender_id} {'active true})))
+              (t2/update! :model/Field {:id %messages.sender_id} {:active true})))
           ;; mark field
-          (t2/update! :model/Field {'id %users.id} {'active false})
+          (t2/update! :model/Field {:id %users.id} {:active false})
           (testing "there are no connections when PK is inactive"
             (is (nil? (#'chain-filter/find-joins (mt/id) $$messages $$users)))))))))
 

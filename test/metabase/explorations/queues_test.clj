@@ -57,11 +57,11 @@
                                           :database_id   (mt/id)
                                           :dataset_query (venues-query))))
         expl   (first (t2/insert-returning-instances!
-                       :model/Exploration {'name "queues-test" 'creator_id (:id user)}))
+                       :model/Exploration {:name "queues-test" :creator_id (:id user)}))
         thread (first (t2/insert-returning-instances!
-                       :model/ExplorationThread {'exploration_id (:id expl)
-                                                 'position       0
-                                                 'started_at     (OffsetDateTime/now)}))]
+                       :model/ExplorationThread {:exploration_id (:id expl)
+                                                 :position       0
+                                                 :started_at     (OffsetDateTime/now)}))]
     (try
       (f {:user user :card card :exploration expl :thread thread})
       (finally
@@ -72,21 +72,21 @@
 (defn- insert-query!
   "Stand in for the planner: insert one pending query row, the way `insert-plan-rows!` would."
   [thread-id card-id mbql]
-  (let [block-id (t2/insert-returning-pk! :model/ExplorationBlock {'exploration_thread_id thread-id})
+  (let [block-id (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread-id})
         page-id  (t2/insert-returning-pk! :model/ExplorationPage
-                                          {'exploration_block_id block-id
-                                           'card_id              card-id
-                                           'dimension_id         "d1"
-                                           'query_type           "default"})]
+                                          {:exploration_block_id block-id
+                                           :card_id              card-id
+                                           :dimension_id         "d1"
+                                           :query_type           "default"})]
     (t2/insert-returning-pk! :model/ExplorationQuery
-                             {'exploration_thread_id thread-id
-                              'card_id               card-id
-                              'database_id           (mt/id)
-                              'page_id               page-id
-                              'dimension_id          "d1"
-                              'dataset_query         mbql
-                              'status                "pending"
-                              'position              0})))
+                             {:exploration_thread_id thread-id
+                              :card_id               card-id
+                              :database_id           (mt/id)
+                              :page_id               page-id
+                              :dimension_id          "d1"
+                              :dataset_query         mbql
+                              :status                "pending"
+                              :position              0})))
 
 (defn- status [query-id]
   (:status (t2/select-one :model/ExplorationQuery 'id query-id)))

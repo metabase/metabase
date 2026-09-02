@@ -14,7 +14,7 @@
   [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
   (let [other-recipients-count (t2/count :model/PulseChannelRecipient
                                          'pulse_channel_id channel-id
-                                         'id               ['not= pulse-channel-recipient-id])
+                                         'id               [:not= pulse-channel-recipient-id])
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.

@@ -80,7 +80,7 @@
         ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
-        (t2/update! :model/Card {'name "Projected Revenue"} {'name "Protected Avenue"})
+        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
         ;; Delete hooks are remove for now, over performance concerns.
@@ -93,14 +93,14 @@
     (testing "The index is updated when model dependencies change"
       (let [index-table    (search.index/active-table)
             table-id       (t2/select-one-pk :model/Table 'name "Indexed Table")
-            legacy-input   #(-> (t2/select-one [index-table 'legacy_input] 'model "table" 'model_id (str table-id))
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] 'model "table" 'model_id (str table-id))
                                 :legacy_input
                                 json/decode+kw)
             db-id          (t2/select-one-fn :db_id :model/Table table-id)
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (t2/update! :model/Database db-id {'name alternate-name})
+        (t2/update! :model/Database db-id {:name alternate-name})
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test
@@ -602,8 +602,8 @@
           (search.index/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
           (t2/update! :model/SearchIndexMetadata
-                      {'index_name (name pending-old)}
-                      {'created_at (t/minus (t/offset-date-time) (t/days 2))})
+                      {:index_name (name pending-old)}
+                      {:created_at (t/minus (t/offset-date-time) (t/days 2))})
           (#'search.index/sync-tracking-atoms!)
           (testing "Active table is returned"
             (is (= active-table (search.index/active-table))))
@@ -690,15 +690,15 @@
             insert-rev! (fn []
                           ;; Raw SQL to bypass the before/after-insert hooks that would normally
                           ;; demote older revisions to most_recent=false.
-                          (t2/query {'insert-into [(t2/table-name :model/Revision)]
-                                     'values [{'model "Card"
-                                               'model_id card-id
-                                               'user_id (mt/user->id :rasta)
-                                               'object "{}"
-                                               'is_creation false
-                                               'is_reversion false
-                                               'most_recent true
-                                               'timestamp '%now}]}))]
+                          (t2/query {:insert-into [(t2/table-name :model/Revision)]
+                                     :values [{:model "Card"
+                                               :model_id card-id
+                                               :user_id (mt/user->id :rasta)
+                                               :object "{}"
+                                               :is_creation false
+                                               :is_reversion false
+                                               :most_recent true
+                                               :timestamp '%now}]}))]
         (insert-rev!)
         (insert-rev!)
         (testing "two revision rows with most_recent=true exist for the card"
@@ -783,7 +783,7 @@
               (search-index-metadata/active-pending! :appdb version)
               (t2/update! :model/SearchIndexMetadata
                           'index_name  (name table-name)
-                          {'created_at  update-time})
+                          {:created_at  update-time})
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata 'version "index-age-test")

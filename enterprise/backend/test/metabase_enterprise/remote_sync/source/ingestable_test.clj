@@ -65,12 +65,12 @@
     ;; This test cannot use with-temp because the callback uses a separate connection to make
     ;; sure it is updating progress outside of the transaction serdes is using
     (mt/with-model-cleanup [:model/User :model/RemoteSyncTask]
-      (let [user (first (t2/insert-returning-instances! :model/User {'first_name "Test"
-                                                                     'last_name "User"
-                                                                     'email "test2@example.com"
-                                                                     'password "password123"}))
-            task (first (t2/insert-returning-instances! :model/RemoteSyncTask {'sync_task_type "import"
-                                                                               'initiated_by (:id user)}))
+      (let [user (first (t2/insert-returning-instances! :model/User {:first_name "Test"
+                                                                     :last_name "User"
+                                                                     :email "test2@example.com"
+                                                                     :password "password123"}))
+            task (first (t2/insert-returning-instances! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                               :initiated_by (:id user)}))
             task-id (:id task)
             mock-source (test-helpers/create-mock-source)
             base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))

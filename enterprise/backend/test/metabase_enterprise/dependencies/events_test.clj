@@ -72,7 +72,7 @@
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency 'from_entity_id dashboard-id 'from_entity_type :dashboard)))))
          (t2/delete! :model/DashboardCard 'id basic-dashcard-id)
-         (t2/update! :model/Dashboard dashboard-id {'parameters []})
+         (t2/update! :model/Dashboard dashboard-id {:parameters []})
          (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                              (lib/aggregate (lib/count)))
                                                           :display :scalar}
@@ -266,7 +266,7 @@
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
            (t2/update! :model/Card card-id
-                       {'dimension_mappings [{:type         :table
+                       {:dimension_mappings [{:type         :table
                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
                                               :table-id     (mt/id :categories)
                                               :target       [:field {} (mt/id :categories :name)]}]})
@@ -463,7 +463,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency 'to_entity_id transform-id 'to_entity_type :transform))))
            (testing "changing target update"
-             (t2/update! :model/Transform transform-id {'target (assoc target :name "test_table2")})
+             (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
              (let [updated (t2/select-one :model/Transform 'id transform-id)]
                (events/publish-event! :event/update-transform
                                       {:object updated
@@ -505,7 +505,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency 'to_entity_id transform-id 'to_entity_type :transform))))
            (testing "changing target update"
-             (t2/update! :model/Transform transform-id {'target (assoc target :name "test_table2")})
+             (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
              (let [updated (t2/select-one :model/Transform 'id transform-id)]
                (events/publish-event! :event/update-transform
                                       {:object updated
@@ -533,7 +533,7 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency 'from_entity_id segment-id 'from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (t2/update! :model/Segment segment-id {'definition {:filter [:= [:field category-field-id nil] "Widget"]}})
+           (t2/update! :model/Segment segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
            (let [updated-segment (t2/select-one :model/Segment 'id segment-id)]
              (events/publish-event! :event/segment-update {:object updated-segment :user-id api/*current-user-id*})
              (deps.test/synchronously-run-backfill!)
@@ -597,7 +597,7 @@
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency 'from_entity_id measure-id 'from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
-             (t2/update! :model/Measure measure-id {'definition (-> (lib/query mp orders)
+             (t2/update! :model/Measure measure-id {:definition (-> (lib/query mp orders)
                                                                     (lib/aggregate (lib/sum subtotal)))})
              (let [updated-measure (t2/select-one :model/Measure 'id measure-id)]
                (events/publish-event! :event/measure-update {:object updated-measure :user-id api/*current-user-id*})
@@ -684,7 +684,7 @@
   Use nil for analysis-version if you want to check that no analysis exists."
   [spec]
   (doseq [[entity-type ids-and-versions] spec]
-    (let [analyses-map (->> (t2/select [:model/AnalysisFinding 'analyzed_entity_id 'analysis_version]
+    (let [analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                        'analyzed_entity_type entity-type)
                             (into {} (map (juxt :analyzed_entity_id :analysis_version))))]
       (doseq [[id expected-version] ids-and-versions]

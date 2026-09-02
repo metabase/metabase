@@ -571,7 +571,7 @@
   [original-value setting-k value]
   (if (some? value)
     (if original-value
-      (t2/update! :model/Setting setting-k {'value value})
+      (t2/update! :model/Setting setting-k {:value value})
       (t2/insert! :model/Setting :key setting-k :value value))
     (when original-value
       (t2/delete! :model/Setting 'key setting-k)))
@@ -580,7 +580,7 @@
 (defn- restore-raw-setting!
   [original-value setting-k]
   (if original-value
-    (t2/update! :model/Setting setting-k {'value original-value})
+    (t2/update! :model/Setting setting-k {:value original-value})
     (t2/delete! :model/Setting 'key setting-k))
   (setting.cache/restore-cache!))
 
@@ -746,9 +746,9 @@
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model (t2.model/resolve-model model)
-        original-column->value (t2/query-one {'select (keys column->temp-value)
-                                              'from [(t2/table-name model)]
-                                              'where ['= 'id (u/the-id object-or-id)]})
+        original-column->value (t2/query-one {:select (keys column->temp-value)
+                                              :from [(t2/table-name model)]
+                                              :where ['= 'id (u/the-id object-or-id)]})
         _ (assert original-column->value
                   (format "%s %d not found." (name model) (u/the-id object-or-id)))
         column->temp-value (maybe-merge-original-values model original-column->value column->temp-value)]
@@ -757,9 +757,9 @@
       (f)
       (finally
         (t2/query-one
-         {'update (t2/table-name model)
-          'set original-column->value
-          'where ['= 'id (u/the-id object-or-id)]})))))
+         {:update (t2/table-name model)
+          :set original-column->value
+          :where ['= 'id (u/the-id object-or-id)]})))))
 
 ;;; TODO -- we can make this parallel test safe pretty easily by doing stuff inside a transaction
 ;;; unless [[metabase.test/test-helpers-set-global-values!]] is in effect
@@ -965,7 +965,7 @@
         model->old-max-id (into {} (for [[model pk] models
                                          :let [conditions (with-max-model-id-additional-conditions model)]]
                                      [model (:max-id (t2/select-one [model [[:max pk] :max-id]]
-                                                                    {'where (or conditions true)}))]))]
+                                                                    {:where (or conditions true)}))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
@@ -977,8 +977,8 @@
                       additional-conditions (with-model-cleanup-additional-conditions model)
                       where-clause [:and max-id-condition additional-conditions]]]
           (t2/query-one
-           {'delete-from (t2/table-name model)
-            'where where-clause}))
+           {:delete-from (t2/table-name model)
+            :where where-clause}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (reindex-search-index!)))))
 
@@ -1155,7 +1155,7 @@
     (try
       (f)
       (finally
-        (t2/delete! :model/Permissions 'object ['in #{read-path readwrite-path}])
+        (t2/delete! :model/Permissions 'object [:in #{read-path readwrite-path}])
         (doseq [group-id groups-with-read-perms]
           (perms/grant-collection-read-permissions! group-id collection-or-id))
         (doseq [group-id groups-with-readwrite-perms]
@@ -1206,7 +1206,7 @@
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
       (testing "with single model"
         (with-discard-model-updates! [:model/Card]
-          (t2/update! :model/Card card-id {'name "New Card name"})
+          (t2/update! :model/Card card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
         (testing "outside macro, the changes should be reverted"
@@ -1214,9 +1214,9 @@
       (testing "with multiple models"
         (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
-            (t2/update! :model/Card card-id {'name "New Card name"})
+            (t2/update! :model/Card card-id {:name "New Card name"})
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-            (t2/update! :model/Dashboard dash-id {'name "New Dashboard name"})
+            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
             (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
         (testing "outside macro, the changes should be reverted"
           (is (= (dissoc card :updated_at)
@@ -1235,8 +1235,8 @@
      collection
      (fn []
        (t2/delete! :model/Permissions
-                   'object ['in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-                   'group_id ['not= (u/the-id (perms/admin-group))])
+                   'object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+                   'group_id [:not= (u/the-id (perms/admin-group))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -1245,7 +1245,7 @@
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
         (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
-                                            'id ['not= (u/the-id (perms/admin-group))]
+                                            'id [:not= (u/the-id (perms/admin-group))]
                                             'is_tenant_group false)]
           (when-not (t2/exists? :model/Permissions 'group_id group-id, 'object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
@@ -1701,9 +1701,9 @@
   ([] (latest-audit-log-entry nil nil))
   ([topic] (latest-audit-log-entry topic nil))
   ([topic model-id]
-   (t2/select-one [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
-                  {'order-by [['id 'desc]]
-                   'where ['and (when topic [:= :topic (name topic)])
+   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                  {:order-by [['id 'desc]]
+                   :where ['and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
 
 (defn all-entries-for
@@ -1712,9 +1712,9 @@
   [topic model model-id]
   (assert (int? model-id) "Must provide an integer id for the model")
   (assert (isa? model :metabase/model))
-  (t2/select [:model/AuditLog 'topic 'user_id 'model 'model_id 'details]
-             {'order-by [['id 'desc]]
-              'where ['and
+  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+             {:order-by [['id 'desc]]
+              :where ['and
                       ['= 'model (name model)]
                       ['= 'model_id model-id]
                       (when topic [:= :topic (name topic)])]}))

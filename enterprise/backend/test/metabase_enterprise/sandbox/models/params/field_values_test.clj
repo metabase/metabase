@@ -18,10 +18,10 @@
                                                                                       [:> $id 3]
                                                                                       [:< $id 6]]})}}}
       ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
-      (t2/insert! :model/FieldValues {'type                  :full
-                                      'field_id              (mt/id :categories :id)
-                                      'values                (range 10)
-                                      'human_readable_values (map #(str "id_" %) (range 10))})
+      (t2/insert! :model/FieldValues {:type                  :full
+                                      :field_id              (mt/id :categories :id)
+                                      :values                (range 10)
+                                      :human_readable_values (map #(str "id_" %) (range 10))})
       (let [categories-id (mt/id :categories :id)
             f             (t2/select-one :model/Field 'id (mt/id :categories :id))
             card-id       (-> f :table_id (#'ee-params.field-values/table-id->sandbox) :card :id)
@@ -29,7 +29,7 @@
         (is (= [(range 4 6)]
                (t2/select-fn-vec :values :model/FieldValues
                                  'field_id categories-id 'type :advanced
-                                 {'order-by ['id]})))
+                                 {:order-by ['id]})))
         (is (= [4 5] (:values fv)))
         (is (= ["id_4" "id_5"] (:human_readable_values fv)))
         (is (some? (:hash_key fv)))
@@ -42,15 +42,15 @@
                             {:filter [:and [:> $id 1] [:< $id 4]]})]
             (Thread/sleep 1)
             (mt/with-test-user :crowberto
-              (t2/update! :model/Card card-id {'dataset_query new-query
-                                               'updated_at    (t/local-date-time)})))
+              (t2/update! :model/Card card-id {:dataset_query new-query
+                                               :updated_at    (t/local-date-time)})))
           (params.field-values/get-or-create-field-values!
            (t2/select-one :model/Field 'id (mt/id :categories :id)))
           (is (= [(range 4 6)
                   (range 2 4)]
                  (t2/select-fn-vec :values :model/FieldValues
                                    'field_id categories-id 'type :advanced
-                                   {'order-by ['id]}))))))))
+                                   {:order-by ['id]}))))))))
 
 (deftest advanced-field-values-hash-test
   (mt/with-premium-features #{:sandboxes}

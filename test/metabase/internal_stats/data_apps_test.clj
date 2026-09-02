@@ -35,4 +35,4 @@
           (create! :sync_error "boom")
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before)))))
       (finally
-        (t2/delete! :data_app 'name ['in @app-names])))))
+        (t2/delete! :data_app 'name [:in @app-names])))))

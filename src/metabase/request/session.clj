@@ -68,7 +68,7 @@
                     [:is_superuser :is-superuser?]
                     [:is_data_analyst :is-data-analyst?]
                     [:locale :user-locale]
-                    'settings]
+                    :settings]
                    'id current-user-id)))
 
 (defn do-as-admin

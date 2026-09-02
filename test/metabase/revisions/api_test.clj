@@ -85,7 +85,7 @@
   (mt/with-temp [:model/Card {:keys [id] :as card} {:name "A card"}]
     (create-card-revision! (:id card) true :rasta)
     (doseq [i (range (inc revision/max-revisions))]
-      (t2/update! :model/Card (:id card) {'name (format "New name %d" i)})
+      (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
       (create-card-revision! (:id card) false :rasta))
     (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
             "renamed this Card from \"New name 13\" to \"New name 14\"."
@@ -109,7 +109,7 @@
   (testing "Creating multiple revisions, with a reversion, works"
     (mt/with-temp [:model/Card {:keys [id name], :as card}]
       (create-card-revision! (:id card) true :rasta)
-      (t2/update! :model/Card {'name "something else"})
+      (t2/update! :model/Card {:name "something else"})
       (create-card-revision! (:id card) false :rasta)
       (t2/insert! :model/Revision
                   :model        "Card"
@@ -161,7 +161,7 @@
                                        :native   {:query "SELECT 2 --comment"}}}}]
         (create-transform-revision! transform-id true :crowberto)
         (t2/update! :model/Transform transform-id
-                    {'source {:type  "query"
+                    {:source {:type  "query"
                               :query {:database y-db-id
                                       :type     "native"
                                       :native   {:query "SELECT 1"}}}})
@@ -291,7 +291,7 @@
                      :model/Dashboard  dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]
         (create-dashboard-revision! (:id dashboard) true :crowberto)
         ;; update so that the revision is accepted
-        (t2/update! :model/Dashboard 'id (:id dashboard) {'name "Personal dashboard edited"})
+        (t2/update! :model/Dashboard 'id (:id dashboard) {:name "Personal dashboard edited"})
         (create-dashboard-revision! (:id dashboard) false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions :model/Dashboard dashboard-id)
@@ -312,37 +312,37 @@
       ;; 0. create the dashboard
       (create-dashboard-revision! dashboard-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Dashboard 'id dashboard-id {'name "New name"})
+      (t2/update! :model/Dashboard 'id dashboard-id {:name "New name"})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 2. add description
-      (t2/update! :model/Dashboard 'id dashboard-id {'description "A beautiful dashboard"})
+      (t2/update! :model/Dashboard 'id dashboard-id {:description "A beautiful dashboard"})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 3. add 2 cards
-      (let [dashcard-ids (t2/insert-returning-pks! :model/DashboardCard [{'dashboard_id dashboard-id
-                                                                          'card_id      card-id-1
-                                                                          'size_x       4
-                                                                          'size_y       4
-                                                                          'col          1
-                                                                          'row          1}
-                                                                         {'dashboard_id dashboard-id
-                                                                          'card_id      card-id-2
-                                                                          'size_x       4
-                                                                          'size_y       4
-                                                                          'col          1
-                                                                          'row          1}])]
+      (let [dashcard-ids (t2/insert-returning-pks! :model/DashboardCard [{:dashboard_id dashboard-id
+                                                                          :card_id      card-id-1
+                                                                          :size_x       4
+                                                                          :size_y       4
+                                                                          :col          1
+                                                                          :row          1}
+                                                                         {:dashboard_id dashboard-id
+                                                                          :card_id      card-id-2
+                                                                          :size_x       4
+                                                                          :size_y       4
+                                                                          :col          1
+                                                                          :row          1}])]
         (create-dashboard-revision! dashboard-id false :crowberto)
         ;; 4. remove 1 card
         (t2/delete! :model/DashboardCard 'id (first dashcard-ids))
         (create-dashboard-revision! dashboard-id false :crowberto)
         ;; 5. arrange cards
-        (t2/update! :model/DashboardCard 'id (second dashcard-ids) {'col 2
-                                                                    'row 2})
+        (t2/update! :model/DashboardCard 'id (second dashcard-ids) {:col 2
+                                                                    :row 2})
         (create-dashboard-revision! dashboard-id false :crowberto))
       ;; 6. Move to a new collection
-      (t2/update! :model/Dashboard 'id dashboard-id {'collection_id coll-id})
+      (t2/update! :model/Dashboard 'id dashboard-id {:collection_id coll-id})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 7. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {'order-by [['id 'asc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {:order-by [['id 'asc]]})]
         (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -396,23 +396,23 @@
       ;; 0. create the card
       (create-card-revision! card-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Card 'id card-id {'name "New name"})
+      (t2/update! :model/Card 'id card-id {:name "New name"})
       (create-card-revision! card-id false :crowberto)
       ;; 2. turn to a model
-      (t2/update! :model/Card 'id card-id {'type :model})
+      (t2/update! :model/Card 'id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
       ;; 3. edit query and metadata
-      (t2/update! :model/Card 'id card-id {'dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-                                           'display       "scalar"})
+      (t2/update! :model/Card 'id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                           :display       "scalar"})
       (create-card-revision! card-id false :crowberto)
       ;; 4. add description
-      (t2/update! :model/Card 'id card-id {'description "meaningful number"})
+      (t2/update! :model/Card 'id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
       ;; 5. change collection
-      (t2/update! :model/Card 'id card-id {'collection_id coll-id})
+      (t2/update! :model/Card 'id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 6. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
         (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -443,20 +443,20 @@
       ;; 0. create the card
       (create-card-revision! card-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Card 'id card-id {'name "New name"})
+      (t2/update! :model/Card 'id card-id {:name "New name"})
       (create-card-revision! card-id false :crowberto)
       ;; 2. edit query and metadata
-      (t2/update! :model/Card 'id card-id {'dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-                                           'display       "scalar"})
+      (t2/update! :model/Card 'id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                           :display       "scalar"})
       (create-card-revision! card-id false :crowberto)
       ;; 3. add description
-      (t2/update! :model/Card 'id card-id {'description "meaningful number"})
+      (t2/update! :model/Card 'id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
       ;; 4. change collection
-      (t2/update! :model/Card 'id card-id {'collection_id coll-id})
+      (t2/update! :model/Card 'id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 5. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
         (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -492,11 +492,11 @@
           ;; 0. create the card
           (create-card-revision! card-id true :crowberto)
           ;; 1. rename
-          (t2/update! :model/Card 'id card-id {'description "meaningful number"
-                                               'name        "New name"})
+          (t2/update! :model/Card 'id card-id {:description "meaningful number"
+                                               :name        "New name"})
           (create-card-revision! card-id false :crowberto)
           ;; 2. revert to an earlier revision
-          (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+          (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
             (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
           (is (= [{:description          "est revenu à une version antérieure."
                    :has_multiple_changes false}
@@ -515,18 +515,18 @@
       ;; 0. create the dashboard
       (create-dashboard-revision! dashboard-id true :crowberto)
       ;; 1. add 2 cards
-      (t2/insert-returning-pks! :model/DashboardCard [{'dashboard_id dashboard-id
-                                                       'size_x       4
-                                                       'size_y       4
-                                                       'col          1
-                                                       'row          1}
-                                                      {'dashboard_id dashboard-id
-                                                       'size_x       4
-                                                       'size_y       4
-                                                       'col          1
-                                                       'row          1}])
+      (t2/insert-returning-pks! :model/DashboardCard [{:dashboard_id dashboard-id
+                                                       :size_x       4
+                                                       :size_y       4
+                                                       :col          1
+                                                       :row          1}
+                                                      {:dashboard_id dashboard-id
+                                                       :size_x       4
+                                                       :size_y       4
+                                                       :col          1
+                                                       :row          1}])
       (create-dashboard-revision! dashboard-id false :crowberto)
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {'order-by [['id 'asc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {:order-by [['id 'asc]]})]
         (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -550,9 +550,9 @@
           :user-id      (mt/user->id :crowberto)
           :is-creation? false})
         ;; Update the card to a new version
-        (t2/update! :model/Card {'name "A card with a new name"})
+        (t2/update! :model/Card {:name "A card with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
-        (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+        (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
           (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A card" (t2/select-one-fn :name :model/Card 'id card-id))))
       (testing "Reverting a dashboard..."
@@ -564,9 +564,9 @@
           :user-id      (mt/user->id :crowberto)
           :is-creation? false})
         ;; Update the dashboard to a new version
-        (t2/update! :model/Dashboard {'name "A dashboard with a new name"})
+        (t2/update! :model/Dashboard {:name "A dashboard with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
-        (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {'order-by [['id 'asc]]})]
+        (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {:order-by [['id 'asc]]})]
           (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A dashboard" (t2/select-one-fn :name :model/Dashboard 'id dashboard-id)))))))
 
@@ -700,7 +700,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
-        (t2/update! :model/Card dq-id {'dashboard_id other-dash-id})
+        (t2/update! :model/Card dq-id {:dashboard_id other-dash-id})
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard 'dashboard_id dash-id)))
         (is (= 1 (t2/count :model/DashboardCard 'dashboard_id dash-id)))))))
@@ -713,7 +713,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         ;; make it a non-DQ before removing it, otherwise it will be auto-archived
-        (t2/update! :model/Card dq-id {'dashboard_id nil})
+        (t2/update! :model/Card dq-id {:dashboard_id nil})
         (update-dashcards! dash-id [])
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= #{dq-id card-id} (t2/select-fn-set :card_id :model/DashboardCard 'dashboard_id dash-id)))
@@ -728,7 +728,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
-        (t2/update! :model/Card card-id {'dashboard_id other-dash-id})
+        (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= 1 (t2/count :model/DashboardCard 'dashboard_id dash-id)))
         (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard 'dashboard_id dash-id)))))))
@@ -752,7 +752,7 @@
                                                             :breakout     [!month.orders.created_at]}})}]
         (update-dashcards! dash-id [dq-id])
         ;; turn it into a model outside the DQ
-        (t2/update! :model/Card dq-id {'dashboard_id nil 'type :model})
+        (t2/update! :model/Card dq-id {:dashboard_id nil :type :model})
         ;; remove it from the dashboard
         (update-dashcards! dash-id [])
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
@@ -999,7 +999,7 @@
   (testing "Reverting a Card through the API works"
     (mt/with-temp [:model/Card {card-id :id} {:name "revert test"}]
       (create-card-revision! card-id true :crowberto)
-      (t2/update! :model/Card card-id {'description "hi"})
+      (t2/update! :model/Card card-id {:description "hi"})
       (create-card-revision! card-id false :crowberto)
       (let [[_ {prev-id :id}] (revision/revisions :model/Card card-id)]
         (is (=? {:description "reverted to an earlier version."}
@@ -1030,12 +1030,12 @@
             original-names    (map :display_name original-metadata)]
         (create-card-revision! card-id true :crowberto)
         (t2/update! :model/Card card-id
-                    {'result_metadata        (mapv #(assoc % :display_name "EDITED") original-metadata)
-                     'visualization_settings {:some_setting true}})
+                    {:result_metadata        (mapv #(assoc % :display_name "EDITED") original-metadata)
+                     :visualization_settings {:some_setting true}})
         (create-card-revision! card-id false :crowberto)
         ;; order by :id (monotonic), not :timestamp -- on Postgres `now()` is frozen for the whole test
         ;; transaction, so consecutive revisions here can tie on :timestamp and pick the wrong revision.
-        (let [earlier-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+        (let [earlier-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity :card :id card-id :revision_id earlier-id})
           (is (=? {:result_metadata        (mapv (fn [name] {:display_name name}) original-names)
@@ -1046,11 +1046,11 @@
   (testing "Reverting a Card revision restores a previous :type (e.g. model <-> question)"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
       (create-card-revision! card-id true :crowberto)
-      (t2/update! :model/Card 'id card-id {'type :model})
+      (t2/update! :model/Card 'id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
       ;; order by :id (monotonic), not :timestamp -- see comment above in
       ;; revert-model-restores-metadata-and-viz-settings-test.
-      (let [earlier-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+      (let [earlier-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
         (mt/user-http-request :crowberto :post 200 "revision/revert"
                               {:entity :card :id card-id :revision_id earlier-id})
         (is (= :question (t2/select-one-fn :type :model/Card 'id card-id)))))))
@@ -1076,7 +1076,7 @@
                                             :type         :dimension
                                             :widget-type  :number/=
                                             :dimension    (lib/ref reviews-rating)}})})
-        (let [first-rev-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {'order-by [['id 'asc]]})]
+        (let [first-rev-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity :card :id card-id :revision_id first-rev-id})
           (is (=? [{:target [:dimension [:template-tag "RATING"]]}]

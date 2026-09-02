@@ -85,7 +85,7 @@
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (= (t2/select-one-fn :type [:model/Card 'type 'card_schema] 'id model-id) :model)
+  (when-not (= (t2/select-one-fn :type [:model/Card :type :card_schema] 'id model-id) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -195,14 +195,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (t2/select :model/QueryAction 'action_id ['in (map :id actions)])
+    (let [query-actions (t2/select :model/QueryAction 'action_id [:in (map :id actions)])
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (t2/select :model/HTTPAction 'action_id ['in (map :id actions)])
+    (let [http-actions (t2/select :model/HTTPAction 'action_id [:in (map :id actions)])
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -215,7 +215,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (t2/select :model/ImplicitAction 'action_id ['in (map :id actions)])
+    (let [implicit-actions (t2/select :model/ImplicitAction 'action_id [:in (map :id actions)])
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -248,7 +248,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (t2/hydrate (t2/select :model/Table 'id ['in table-ids]) :fields))]
+                 (t2/hydrate (t2/select :model/Table 'id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -336,8 +336,8 @@
                                            :type/Temporal :date
                                            :type/Boolean  :boolean
                                            :string)}))
-                        [:model/Field 'id 'base_type 'display_name 'description]
-                        'id ['in field-ids]))))
+                        [:model/Field :id :base_type :display_name :description]
+                        'id [:in field-ids]))))
 
 (defn- enrich-viz-settings-fields [viz-fields implicit-params field-id->viz-field]
   (let [param-ids          (map :id implicit-params)
@@ -386,7 +386,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (t2/select :model/Card 'id ['in implicit-action-model-ids])))
+                                          (t2/select :model/Card 'id [:in implicit-action-model-ids])))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -414,11 +414,11 @@
                                                        :database-enable-actions)))
         id->database-enable-actions (into {}
                                           (map (juxt :id get-database-enable-actions))
-                                          (t2/query {'select ['action.id 'db.settings]
-                                                     'from   'action
-                                                     'join   [['report_card 'card] ['= 'card.id 'action.model_id]
+                                          (t2/query {:select ['action.id 'db.settings]
+                                                     :from   'action
+                                                     :join   [['report_card 'card] ['= 'card.id 'action.model_id]
                                                               ['metabase_database 'db] ['= 'db.id 'card.database_id]]
-                                                     'where  ['in 'action.id action-ids]}))]
+                                                     :where  ['in 'action.id action-ids]}))]
     (map (fn [action]
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))

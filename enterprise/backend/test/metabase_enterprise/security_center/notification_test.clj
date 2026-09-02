@@ -24,7 +24,7 @@
           :description       "A test advisory"
           :remediation       "Upgrade to latest"
           :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-          :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
+          :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
           :match_status      "not_affected"
           :published_at      #t "2026-03-24T00:00:00Z"
           :updated_at        #t "2026-03-24T00:00:00Z"}
@@ -44,15 +44,15 @@
   (let [existing-ids (t2/select-pks-set :model/SecurityAdvisory)]
     (try
       (when (seq existing-ids)
-        (t2/update! :model/SecurityAdvisory {'id ['in existing-ids]}
-                    {'acknowledged_at (mi/now)
-                     'acknowledged_by (mt/user->id :crowberto)}))
+        (t2/update! :model/SecurityAdvisory {:id ['in existing-ids]}
+                    {:acknowledged_at (mi/now)
+                     :acknowledged_by (mt/user->id :crowberto)}))
       (f)
       (finally
         (when (seq existing-ids)
-          (t2/update! :model/SecurityAdvisory {'id ['in existing-ids]}
-                      {'acknowledged_at nil
-                       'acknowledged_by nil}))))))
+          (t2/update! :model/SecurityAdvisory {:id ['in existing-ids]}
+                      {:acknowledged_at nil
+                       :acknowledged_by nil}))))))
 
 ;;; --------------------------------------------- Repeat notification task --------------------------------------------
 

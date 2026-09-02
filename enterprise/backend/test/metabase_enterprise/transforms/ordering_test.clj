@@ -43,7 +43,7 @@
       (testing "transform-ordering correctly resolves the dependency"
         (is (= {t-a #{}
                 t-b #{t-a}}
-               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform 'id ['in [t-a t-b]])))))))))
+               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform 'id [:in [t-a t-b]])))))))))
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
@@ -66,4 +66,4 @@
       (testing "transform-ordering resolves both dependencies"
         (is (= {t-a #{}
                 t-b #{t-a}}
-               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform 'id ['in [t-a t-b]])))))))))
+               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform 'id [:in [t-a t-b]])))))))))

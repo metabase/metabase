@@ -25,9 +25,9 @@
 
 (defn- get-metadata-row! [pgvector index-metadata index]
   (jdbc/execute-one! pgvector
-                     (sql/format {'select ['*]
-                                  'from   [(keyword (:metadata-table-name index-metadata))]
-                                  'where  ['= 'table_name (:table-name index)]}
+                     (sql/format {:select ['*]
+                                  :from   [(keyword (:metadata-table-name index-metadata))]
+                                  :where  ['= 'table_name (:table-name index)]}
                                  :quoted true)
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -494,7 +494,7 @@
             (is (< 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-loop-ms)))))))))
 
 (defn- get-dlq-rows! [pgvector index-metadata index-id]
-  (let [q {'select ['*] 'from [(semantic.dlq/dlq-table-name-kw index-metadata index-id)]}]
+  (let [q {:select ['*] :from [(semantic.dlq/dlq-table-name-kw index-metadata index-id)]}]
     (jdbc/execute! pgvector (sql/format q :quoted true) {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (deftest indexer-stall-and-recovery-test
@@ -611,7 +611,7 @@
         poisoned-doc-id  (volatile! nil)
         get-indexed-docs (fn []
                            (jdbc/execute! pgvector
-                                          (sql/format {'select ['model_id] 'from [(keyword (:table-name index))]} :quoted true)
+                                          (sql/format {:select ['model_id] :from [(keyword (:table-name index))]} :quoted true)
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
         upsert-index!    semantic.index/upsert-index!]
     (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)

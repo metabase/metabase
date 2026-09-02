@@ -11,10 +11,10 @@
 (defn- query-view
   "Query v_metabot_messages, returning only rows for the given conversation IDs."
   [conversation-ids]
-  (t2/query {'select   ['*]
-             'from     ['v_metabot_messages]
-             'where    ['in 'conversation_id conversation-ids]
-             'order-by [['created_at 'asc] ['message_id 'asc]]}))
+  (t2/query {:select   ['*]
+             :from     ['v_metabot_messages]
+             :where    ['in 'conversation_id conversation-ids]
+             :order-by [['created_at 'asc] ['message_id 'asc]]}))
 
 (defn- find-row [rows message-id]
   (some #(when (= (:message_id %) message-id) %) rows))

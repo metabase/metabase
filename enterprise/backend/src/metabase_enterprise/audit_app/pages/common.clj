@@ -62,7 +62,7 @@
 
 (defn- CTEs->subselects
   ([query] (CTEs->subselects query {}))
-  ([{:syms [with] :as query} ctes]
+  ([{:keys [with] :as query} ctes]
    (let [ctes (reduce (fn [ctes [alias definition]]
                         (assoc ctes alias (CTEs->subselects definition ctes)))
                       ctes
@@ -71,12 +71,12 @@
       (fn [form]
         (if (map? form)
           (-> form
-              (m/update-existing 'from inject-cte-body-into-from ctes)
+              (m/update-existing :from inject-cte-body-into-from ctes)
               ;; TODO -- make this work with all types of joins
-              (m/update-existing 'left-join inject-cte-body-into-join ctes)
-              (m/update-existing 'join inject-cte-body-into-join ctes))
+              (m/update-existing :left-join inject-cte-body-into-join ctes)
+              (m/update-existing :join inject-cte-body-into-join ctes))
           form))
-      (dissoc query 'with)))))
+      (dissoc query :with)))))
 
 (def ^:private ^{:arglists '([])} application-db-default-timezone
   ;; cache the application DB's default timezone for an hour. I don't expect this information to change *ever*,
@@ -186,9 +186,9 @@
   (sql.helpers/where query (when (seq query-string)
                              (let [query-string (h2x/like-substring query-string)]
                                (cons
-                                :or
+                                'or
                                 (for [field fields-to-search]
-                                  [:like (lowercase-field field) query-string]))))))
+                                  ['like (lowercase-field field) query-string]))))))
 
 (def ^:private sort-directions
   "The only two directions an audit page may sort in."

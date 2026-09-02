@@ -28,7 +28,7 @@
     (when (seq entries)
       (doseq [[model model-entries] (group-by :model entries)]
         (let [ids (map (comp str :model_id) model-entries)]
-          (t2/delete! table 'model model 'model_id ['in ids])))
+          (t2/delete! table 'model model 'model_id [:in ids])))
       (t2/insert! table entries))))
 
 (defn- wildcard-tokens [search-term]
@@ -42,8 +42,8 @@
   (let [search-column (if (:search-native-query search-ctx)
                         :search_index.native_search_terms
                         :search_index.search_terms)]
-    (cond-> {'select select-items
-             'from   [[active-table 'search_index]]}
+    (cond-> {:select select-items
+             :from   [[active-table 'search_index]]}
       (not (str/blank? search-term))
       (sql.helpers/where (into [:and] (for [pattern (wildcard-tokens search-term)]
                                         [:like [:lower search-column] pattern]))))))
@@ -59,9 +59,9 @@
   [index-table p-value]
   ;; Since H2 doesn't support calculating percentiles, we just scale the max >_<
   ;; We take the power of the p-value to simulate a one-sided, long-tailed distribution
-  {'select   ['search_index.model [['* ['inline (math/pow p-value 10)] ['max 'view_count]] 'vcp]]
-   'from     [[index-table 'search_index]]
-   'group-by ['search_index.model]})
+  {:select   ['search_index.model [['* [:inline (math/pow p-value 10)] ['max 'view_count]] 'vcp]]
+   :from     [[index-table 'search_index]]
+   :group-by ['search_index.model]})
 
 (defmethod specialization/index-size-estimate :h2
   [table-name]

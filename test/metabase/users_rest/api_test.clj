@@ -745,7 +745,7 @@
         (testing "nothing was updated"
           (is (=? {:login_attributes nil
                    :first_name       (comp not #{"Updated"})}
-                  (t2/select-one [:model/User 'login_attributes 'first_name] 'id api-key-user-id))))))))
+                  (t2/select-one [:model/User :login_attributes :first_name] 'id api-key-user-id))))))))
 
 (deftest combine-function-test
   (testing "combine function merges attributes correctly"
@@ -1015,7 +1015,7 @@
                                                   :email "cam.era@metabase.com"
                                                   :is_superuser true}
                        :model/Collection _ {}]
-          (letfn [(user [] (into {} (-> (t2/select-one [:model/User 'id 'first_name 'last_name 'is_superuser 'email], 'id user-id)
+          (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], 'id user-id)
                                         (t2/hydrate :personal_collection_id ::personal-collection-name)
                                         (dissoc :id :personal_collection_id :common_name))))]
             (testing "before API call"
@@ -1277,7 +1277,7 @@
   (testing "PUT /api/user/:id"
     (testing "Test that a normal user cannot change the :is_superuser flag for themselves"
       (letfn [(fetch-rasta []
-                (t2/select-one [:model/User 'first_name 'last_name 'is_superuser 'email], 'id (mt/user->id :rasta)))]
+                (t2/select-one [:model/User :first_name :last_name :is_superuser :email], 'id (mt/user->id :rasta)))]
         (let [before (fetch-rasta)]
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                                 (assoc (fetch-rasta) :is_superuser true))
@@ -1521,7 +1521,7 @@
            (t2/select-one-fn :first_name :model/User 'id (mt/user->id :rasta))))
     (is (= {:name "Rasta Toucan's Personal Collection"
             :slug "rasta_toucan_s_personal_collection"}
-           (t2/select-one [:model/Collection 'name 'slug] 'personal_owner_id (mt/user->id :rasta))))))
+           (t2/select-one [:model/Collection :name :slug] 'personal_owner_id (mt/user->id :rasta))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
@@ -1603,11 +1603,11 @@
                                          google-auth-enabled true]
         (mt/with-temp [:model/User user {:sso_source :google}]
           (t2/update! :model/User (u/the-id user)
-                      {'is_active false})
+                      {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
-                   (mt/derecordize (t2/select-one [:model/User 'is_active 'sso_source] 'id (u/the-id user)))))))))))
+                   (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] 'id (u/the-id user)))))))))))
 
 (deftest reactivate-second-to-last-admin-test
   (mt/with-single-admin-user! [{id :id}]
@@ -1684,7 +1684,7 @@
     (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
       (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
-        (t2/update! (t2/table-name :model/User) (:id user) {'password "not-a-bcrypt-hash", 'password_salt "stale"})
+        (t2/update! (t2/table-name :model/User) (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
         (is (=? {:success true}
                 (mt/client {:username (:email user), :password "def"}
                            :put 200 (format "user/%d/password" (:id user))
@@ -1692,7 +1692,7 @@
         (testing "the new password authenticates and the stale core_user columns are left untouched"
           (is (some? (mt/client :post 200 "session" {:username (:email user), :password "abc123!!DEF"})))
           (is (= {:password "not-a-bcrypt-hash", :password_salt "stale"}
-                 (into {} (t2/select-one [:model/User 'password 'password_salt] 'id (:id user))))))))))
+                 (into {} (t2/select-one [:model/User :password :password_salt] 'id (:id user))))))))))
 
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
@@ -1737,7 +1737,7 @@
              (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {})))
       (testing "User should still exist, but be inactive"
         (is (= {:is_active false}
-               (mt/derecordize (t2/select-one [:model/User 'is_active] 'id (:id user)))))))
+               (mt/derecordize (t2/select-one [:model/User :is_active] 'id (:id user)))))))
     (testing "Check that the last superuser cannot deactivate themselves"
       (mt/with-single-admin-user! [{id :id}]
         (is (= "You cannot remove the last member of the 'Admin' group!"
@@ -1754,8 +1754,8 @@
 
 (deftest deactivate-missing-user-fails
   (testing "DELETE /api/user/:id"
-    (let [max-id (:max_id (t2/query-one {'select [['%max.id 'max_id]]
-                                         'from 'core_user}))]
+    (let [max-id (:max_id (t2/query-one {:select [['%max.id 'max_id]]
+                                         :from 'core_user}))]
       (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
 
 (deftest deactivate-deactivated-user-again-succeeds

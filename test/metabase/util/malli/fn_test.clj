@@ -80,9 +80,9 @@
     [[:function
       [:=> [:cat '&input-schema-0-a :any]           '&return-schema]
       [:=> [:cat '&input-schema-1-a :any [:* :any]] '&return-schema]]
-     {'&input-schema-0-a string?
-      '&return-schema    keyword?
-      '&input-schema-1-a string?}]))
+     {:&input-schema-0-a string?
+      :&return-schema    keyword?
+      :&input-schema-1-a string?}]))
 
 (deftest ^:parallel instrumented-fn-form-test
   (are [form expected] (= expected

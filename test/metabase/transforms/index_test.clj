@@ -135,7 +135,7 @@
                     (is (= :failed
                            (t2/select-one-fn :status :model/TransformRun
                                              'transform_id (:id transform)
-                                             {'order-by [['id 'desc]]})))))))))))))
+                                             {:order-by [['id 'desc]]})))))))))))))
 
 (deftest ^:synchronized declared-index-creation-is-idempotent-test
   (testing "re-applying a target's indexes is a no-op (CREATE INDEX IF NOT EXISTS), not an error"
@@ -274,8 +274,8 @@
       (testing "a vanished delete-pending row is removed, freeing its (transform, name) for re-create"
         (is (not (t2/exists? :model/TableIndex 'id dropped-id)))
         (is (some? (t2/insert-returning-pk! :model/TableIndex
-                                            {'transform_id tid 'index_name "dropped_idx"
-                                             'structured {:kind :btree :name "dropped_idx"
+                                            {:transform_id tid :index_name "dropped_idx"
+                                             :structured {:kind :btree :name "dropped_idx"
                                                           :columns [{:name "e"}]}})))))))
 
 (deftest ^:synchronized ddl-failure-marks-row-failed-test

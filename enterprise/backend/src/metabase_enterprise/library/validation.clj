@@ -26,7 +26,7 @@
   :feature :library
   [content-type collection-id]
   (when collection-id
-    (let [collection-type (t2/select-one-fn :type [:model/Collection 'type] 'id collection-id)]
+    (let [collection-type (t2/select-one-fn :type [:model/Collection :type] 'id collection-id)]
       (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
                                                                        library-collection-content-specs)]
         (when-not (allowed-content-types content-type)

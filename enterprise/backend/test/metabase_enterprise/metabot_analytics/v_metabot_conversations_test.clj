@@ -18,9 +18,9 @@
              (update :total_tokens long)
              (update :prompt_tokens long)
              (update :completion_tokens long)))
-       (t2/query {'select ['*]
-                  'from   ['v_metabot_conversations]
-                  'where  ['in 'conversation_id conversation-ids]})))
+       (t2/query {:select ['*]
+                  :from   ['v_metabot_conversations]
+                  :where  ['in 'conversation_id conversation-ids]})))
 
 (defn- find-row [rows conversation-id]
   (some #(when (= (:conversation_id %) conversation-id) %) rows))
@@ -236,9 +236,9 @@
                      :assistant_message_count 1}
                     (find-row rows fork-id))))
           (testing "new_message_count is the column that reconciles with v_metabot_messages"
-            (let [message-rows (:cnt (t2/query-one {'select [[['count '*] 'cnt]]
-                                                    'from   ['v_metabot_messages]
-                                                    'where  ['in 'conversation_id [origin-id fork-id]]}))]
+            (let [message-rows (:cnt (t2/query-one {:select [[['count '*] 'cnt]]
+                                                    :from   ['v_metabot_messages]
+                                                    :where  ['in 'conversation_id [origin-id fork-id]]}))]
               (is (= (reduce + (map :new_message_count rows)) message-rows))
               (is (< message-rows (reduce + (map :message_count rows)))))))))))
 

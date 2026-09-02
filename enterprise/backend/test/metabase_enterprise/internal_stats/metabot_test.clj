@@ -53,10 +53,10 @@
 (defn- backdate-messages!
   "Update created_at on all messages and usage log rows for a conversation to the given timestamp."
   [conversation-id created-at]
-  (t2/update! :model/MetabotMessage {'conversation_id conversation-id}
-              {'created_at created-at})
-  (t2/update! :model/AiUsageLog {'conversation_id conversation-id}
-              {'created_at created-at}))
+  (t2/update! :model/MetabotMessage {:conversation_id conversation-id}
+              {:created_at created-at})
+  (t2/update! :model/AiUsageLog {:conversation_id conversation-id}
+              {:created_at created-at}))
 
 (defn- cleanup! [& conv-ids]
   (doseq [cid conv-ids]
@@ -351,10 +351,10 @@
 (defn- max-usage-log-id
   "Return the current max id in ai_usage_log, or 0 if empty."
   []
-  (or (:max (t2/query-one {'select [['%max.id 'max]] 'from ['ai_usage_log]})) 0))
+  (or (:max (t2/query-one {:select [['%max.id 'max]] :from ['ai_usage_log]})) 0))
 
 (defn- cleanup-usage-logs-after! [min-id]
-  (t2/delete! :model/AiUsageLog 'id ['> min-id]))
+  (t2/delete! :model/AiUsageLog 'id [:> min-id]))
 
 ;; NOTE: generate-example-questions! uses `future` internally (process-batch-parallel),
 ;; so ai_usage_log inserts happen on separate threads outside any with-transaction scope.
@@ -377,15 +377,15 @@
             (testing "ai_usage_log row is created with ai_proxied = true"
               (is (=? [{:ai_proxied true
                         :total_tokens 500}]
-                      (t2/select :model/AiUsageLog 'id ['> baseline]))))
+                      (t2/select :model/AiUsageLog 'id [:> baseline]))))
             ;; backdate so it lands in yesterday's window
-            (t2/update! :model/AiUsageLog {'id ['> baseline]}
-                        {'created_at yesterday})
+            (t2/update! :model/AiUsageLog {:id ['> baseline]}
+                        {:created_at yesterday})
             ;; Today's generation — exercises rolling usage
             (let [before-today (max-usage-log-id)]
               (generate-example-questions! tables model 200 60)
-              (t2/update! :model/AiUsageLog {'id ['> before-today]}
-                          {'created_at today})))
+              (t2/update! :model/AiUsageLog {:id ['> before-today]}
+                          {:created_at today})))
           (testing "metabot-stats includes yesterday totals and today's rolling usage"
             (is (=? {:metabot-tokens             500
                      :metabot-usage              {"anthropic:claude-sonnet-4-6:tokens" 500}
@@ -409,9 +409,9 @@
             (generate-example-questions! tables model 400 100)
             (testing "ai_usage_log row is created with ai_proxied = false for BYOK"
               (is (=? [{:ai_proxied false}]
-                      (t2/select :model/AiUsageLog 'id ['> baseline]))))
-            (t2/update! :model/AiUsageLog {'id ['> baseline]}
-                        {'created_at yesterday}))
+                      (t2/select :model/AiUsageLog 'id [:> baseline]))))
+            (t2/update! :model/AiUsageLog {:id ['> baseline]}
+                        {:created_at yesterday}))
           (testing "BYOK example question usage does not appear in metabot-stats"
             (is (nil? (sut/metabot-stats))))
           (finally
@@ -434,9 +434,9 @@
             (backdate-messages! conv-id yesterday)
             ;; Example question generation (no conversation)
             (generate-example-questions! tables model 300 100)
-            (t2/update! :model/AiUsageLog {'id ['> baseline]
-                                           'source "example_question_generation_batch"}
-                        {'created_at yesterday}))
+            (t2/update! :model/AiUsageLog {:id ['> baseline]
+                                           :source "example_question_generation_batch"}
+                        {:created_at yesterday}))
           (testing "metabot-stats includes both chat and example question generation"
             ;; chat: 250, eqg: 400 → total 650
             (is (=? {:metabot-tokens  650

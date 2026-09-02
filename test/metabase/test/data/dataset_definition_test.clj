@@ -16,8 +16,8 @@
                                         ["group"
                                          [{:field-name "user_custom_id" :base-type :type/Integer :fk "user"}]
                                          [[1]]]])
-      (let [user-fields  (t2/select [:model/Field 'name 'semantic_type 'fk_target_field_id] 'table_id (mt/id :user))
-            group-fields (t2/select [:model/Field 'name 'semantic_type 'fk_target_field_id] 'table_id (mt/id :group))
+      (let [user-fields  (t2/select [:model/Field :name :semantic_type :fk_target_field_id] 'table_id (mt/id :user))
+            group-fields (t2/select [:model/Field :name :semantic_type :fk_target_field_id] 'table_id (mt/id :group))
             format-name  #(ddl.i/format-name driver/*driver* %)]
         (testing "user.custom_id is a PK"
           (is (= [{:name               (format-name "custom_id")

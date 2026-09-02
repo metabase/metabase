@@ -19,13 +19,13 @@
 (defn- import! [files]
   (let [source  (test-helpers/create-mock-source :initial-files files)
         task-id (t2/insert-returning-pk! :model/RemoteSyncTask
-                                         {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+                                         {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
         ;; force: the mock source reports a constant version, so without this the
         ;; second import in a test would hit the "version unchanged" skip branch
         result  (impl/import! (source.p/snapshot source) task-id :force? true)]
     ;; calling import! directly leaves the task "running"; mark it ended so a
     ;; subsequent import in the same test isn't blocked by the running-task guard
-    (t2/update! :model/RemoteSyncTask task-id {'ended_at :%now})
+    (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now})
     result))
 
 (deftest import-materializes-data-apps-test

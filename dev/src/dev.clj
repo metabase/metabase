@@ -175,7 +175,7 @@
   will otherwise spam logs)."
   []
   (when-let [outdated-ids (seq (map :id (deleted-inmem-databases)))]
-    (t2/delete! :model/Database 'id ['in outdated-ids])))
+    (t2/delete! :model/Database 'id [:in outdated-ids])))
 
 (defn start!
   "Start Metabase"
@@ -370,9 +370,9 @@
                        (mdb/db-type)
                        @#'mdb.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
-                                                             {'name    "Application Database"
-                                                              'engine  (mdb/db-type)
-                                                              'details details}))]
+                                                             {:name    "Application Database"
+                                                              :engine  (mdb/db-type)
+                                                              :details details}))]
           (sync/sync-database! app-db)
           app-db))))
 

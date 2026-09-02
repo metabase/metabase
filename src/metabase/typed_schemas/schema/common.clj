@@ -36,7 +36,7 @@
   `metabase.metabot.tools.resources/check-resource-database`)."
   [db-ids]
   (when (seq db-ids)
-    (t2/select-fn-set :id :model/Database 'id ['in db-ids] 'router_database_id ['not= nil])))
+    (t2/select-fn-set :id :model/Database 'id [:in db-ids] 'router_database_id [:not= nil])))
 
 (defn select-schema-cards
   "Returns readable, non-archived cards for schema generation.
@@ -46,13 +46,13 @@
   destination (routed) database -- see [[destination-db-ids]]."
   [card-type database-ids collection-ids]
   (let [cards (->> (t2/select :model/Card
-                              {'where    (cond-> [:and
+                              {:where    (cond-> [:and
                                                   [:= :type (name card-type)]
                                                   [:= :archived false]
                                                   (collection/visible-collection-filter-clause :collection_id)]
                                            database-ids (conj (scope-filter-clause database-ids :database_id))
                                            collection-ids (conj (scope-filter-clause collection-ids :collection_id)))
-                               'order-by [['name 'asc] ['id 'asc]]})
+                               :order-by [['name 'asc] ['id 'asc]]})
                    (filter mi/can-read?))
         destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
     (if (seq destination-ids)

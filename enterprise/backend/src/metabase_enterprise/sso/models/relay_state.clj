@@ -62,11 +62,11 @@
   - `:embedding?`   - whether this is a modular-embedding popup login"
   [{:keys [id continue-url origin embedding?]}]
   (t2/insert! :model/SsoRelayState
-              {'id           (hash-key id)
-               'continue_url continue-url
-               'origin       origin
-               'embedding    (boolean embedding?)
-               'expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
+              {:id           (hash-key id)
+               :continue_url continue-url
+               :origin       origin
+               :embedding    (boolean embedding?)
+               :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
   id)
 
 (defn find-unexpired
@@ -75,7 +75,7 @@
   retried callback doesn't burn the key."
   [key]
   (when (relay-state-key? key)
-    (t2/select-one :model/SsoRelayState 'id (hash-key key) 'expires_at ['> (t/offset-date-time)])))
+    (t2/select-one :model/SsoRelayState 'id (hash-key key) 'expires_at [:> (t/offset-date-time)])))
 
 (defn delete!
   "Consume (delete) the RelayState entry for the (plaintext) `key`. Called after a successful login; the single
@@ -88,4 +88,4 @@
 (defn delete-expired!
   "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
   []
-  (t2/delete! :model/SsoRelayState 'expires_at ['<= (t/offset-date-time)]))
+  (t2/delete! :model/SsoRelayState 'expires_at [:<= (t/offset-date-time)]))

@@ -21,13 +21,13 @@
          (when create?
            (let [collection-id (t2/insert-returning-pk!
                                 :collection
-                                {'name coll-name, 'slug slug, 'description desc})]
+                                {:name coll-name, :slug slug, :description desc})]
              (let [all-users-group-id (t2/select-one-fn :id :permissions_group 'name "All Users")]
-               (t2/insert! :permissions {'object        (format "/collection/%s/read/" collection-id)
-                                         'group_id      all-users-group-id
-                                         'perm_type     "perms/collection-access"
-                                         'perm_value    "read"
-                                         'collection_id collection-id}))
+               (t2/insert! :permissions {:object        (format "/collection/%s/read/" collection-id)
+                                         :group_id      all-users-group-id
+                                         :perm_type     "perms/collection-access"
+                                         :perm_value    "read"
+                                         :collection_id collection-id}))
              collection-id))))))
 
 (defn- add-metric-id
@@ -125,17 +125,17 @@
           metric-id->metric-card-id (into {}
                                           (map (juxt :id #(create-metric-v2! % metric-v2-coll-id)))
                                           (t2/reducible-query
-                                           {'select ['m.* ['t.db_id 'database_id]]
-                                            'from [['metric 'm]]
-                                            'inner-join [['metabase_table 't] ['= 't.id 'm.table_id]]}))]
+                                           {:select ['m.* ['t.db_id 'database_id]]
+                                            :from [['metric 'm]]
+                                            :inner-join [['metabase_table 't] ['= 't.id 'm.table_id]]}))]
       (run! (fn [card]
               (let [dataset-query (:dataset_query card)]
                 (when-let [rewritten (rewrite-metric-consuming-card dataset-query metric-id->metric-card-id)]
-                  (t2/update! :report_card (:id card) {'dataset_query rewritten
-                                                       'dataset_query_metrics_v2_migration_backup dataset-query}))))
-            (t2/reducible-query {'select ['id 'dataset_query]
-                                 'from ['report_card]
-                                 'where ['like ['lower 'dataset_query] "%[\"metric\",%"]})))))
+                  (t2/update! :report_card (:id card) {:dataset_query rewritten
+                                                       :dataset_query_metrics_v2_migration_backup dataset-query}))))
+            (t2/reducible-query {:select ['id 'dataset_query]
+                                 :from ['report_card]
+                                 :where ['like ['lower 'dataset_query] "%[\"metric\",%"]})))))
 
 (defn migrate-down!
   "Revert the migration to v2 metrics. This involves

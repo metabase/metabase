@@ -86,15 +86,15 @@
 (defn- group-by-db [deps]
   (let [by-db (volatile! {})]
     (when (seq (:card deps))
-      (doseq [[db-id card-ids] (->> (t2/select [:model/Card 'id 'database_id 'card_schema] 'id ['in (:card deps)])
+      (doseq [[db-id card-ids] (->> (t2/select [:model/Card :id :database_id :card_schema] 'id [:in (:card deps)])
                                     (u/group-by :database_id :id conj #{}))]
         (vswap! by-db assoc-in [db-id :card] card-ids)))
     (when (seq (:table deps))
-      (doseq [[db-id table-ids] (->> (t2/select [:model/Table 'id 'db_id] 'id ['in (:table deps)])
+      (doseq [[db-id table-ids] (->> (t2/select [:model/Table :id :db_id] 'id [:in (:table deps)])
                                      (u/group-by :db_id :id conj #{}))]
         (vswap! by-db assoc-in [db-id :table] table-ids)))
     (when (seq (:transform deps))
-      (doseq [[db-id transform-ids] (->> (t2/select [:model/Transform 'id 'source] 'id ['in (:transform deps)])
+      (doseq [[db-id transform-ids] (->> (t2/select [:model/Transform :id :source] 'id [:in (:transform deps)])
                                          (u/group-by #(get-in % [:source :query :database]) :id conj #{}))]
         (if db-id
           (vswap! by-db assoc-in [db-id :transform] transform-ids)
@@ -163,7 +163,7 @@
               :table     (t2/select-fn-set :id :model/Table)}]
     (group-by-db deps))
 
-  (t2/select-fn-vec (juxt :id :name :active :table_id) :model/Field 'id ['in [1065 1066 1067 1068 1069]])
+  (t2/select-fn-vec (juxt :id :name :active :table_id) :model/Field 'id [:in [1065 1066 1067 1068 1069]])
 
   (t2/select-one :model/Card 'id 124)
   (deps.graph/transitive-dependents {:transform [{:id 1}]})

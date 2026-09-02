@@ -51,15 +51,15 @@
 
      (t2/select Field :semantic_type (mdb/isa :type/URL))
       ->
-     (t2/select Field :semantic_type ['in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+     (t2/select Field :semantic_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
 
    Also accepts optional `expr` for use directly in a HoneySQL `where`:
 
-     (t2/select Field {'where (mdb/isa 'semantic_type :type/URL)})
+     (t2/select Field {:where (mdb/isa 'semantic_type :type/URL)})
      ->
-     (t2/select Field {'where ['in 'semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+     (t2/select Field {:where [:in 'semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
   ([type-keyword]
-   ['in (type-keyword->descendants type-keyword)])
+   [:in (type-keyword->descendants type-keyword)])
   ;; when using this with an `expr` (e.g. `(isa :semantic_type :type/URL)`) just go ahead and take the results of the
   ;; one-arity impl above and splice expr in as the second element
   ;;
@@ -69,7 +69,7 @@
   ;;
   ;;    [:in :semantic_type #{"type/URL" "type/ImageURL"}]
   ([expr type-keyword]
-   ['in expr (type-keyword->descendants type-keyword)]))
+   [:in expr (type-keyword->descendants type-keyword)]))
 
 (defn qualify
   "Returns a qualified field for [modelable] with [field-name]."
@@ -86,7 +86,7 @@
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {'left-join [(t2/table-name (t2.model/resolve-model dest-entity))
+  {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
                ['= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
 (defmulti compile

@@ -433,7 +433,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (t2/select [:model/Table 'name] 'db_id (u/the-id database)))))))))))
+                        (t2/select [:model/Table :name] 'db_id (u/the-id database)))))))))))
 
 (defn- do-with-dynamic-table!
   [thunk]
@@ -469,7 +469,7 @@
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
                      {:name "id" :base_type :type/BigInteger}}
-                   (set (t2/select-fn-set identity [:model/Field 'name 'base_type]
+                   (set (t2/select-fn-set identity [:model/Field :name :base_type]
                                           'table_id (t2/select-one-pk :model/Table 'name "metabase_fan" 'db_id (mt/id))))))))))))
 
 (deftest dynamic-table-helpers-test
@@ -657,8 +657,8 @@
                   pre-coerce-field (t2/select-one :model/Field 'table_id (:id pre-coerce-table) 'name "text_column")]
               ;; user enables coercion: this TEXT column is really an integer
               (t2/update! :model/Field (:id pre-coerce-field)
-                          {'coercion_strategy :Coercion/String->Integer
-                           'effective_type    :type/Integer})
+                          {:coercion_strategy :Coercion/String->Integer
+                           :effective_type    :type/Integer})
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
@@ -691,8 +691,8 @@
                                                         {:coercion_strategy :Coercion/String->Integer
                                                          :effective_type    :type/Integer})
               (t2/update! :model/Field (:id v4-field)
-                          {'coercion_strategy :Coercion/String->Integer
-                           'effective_type    :type/Integer})
+                          {:coercion_strategy :Coercion/String->Integer
+                           :effective_type    :type/Integer})
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
@@ -774,7 +774,7 @@
 (deftest ^:synchronized describe-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-fks uses the NAME FROM DETAILS too"
-      (let [table (t2/select-one [:model/Table 'schema 'name] 'id (mt/id :venues))]
+      (let [table (t2/select-one [:model/Table :schema :name] 'id (mt/id :venues))]
         (is (= [{:fk-table-schema "PUBLIC"
                  :fk-table-name   "venues"
                  :fk-column-name  "category_id"
@@ -919,12 +919,12 @@
                 ;;  If a password detail succeeds it will delete the secret, this resets it.
                 (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
                   (when (not= (:id updated-secret) secret-id)
-                    (t2/update! :model/Secret 'id (:id updated-secret) {'id secret-id})))
+                    (t2/update! :model/Secret 'id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
                     (is (= 3 (count all-possible-details)))
-                    (t2/update! (t2/table-name :model/Database) (mt/id) {'details (json/encode details)})
+                    (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
                     (testing "Connection succeeds and migration occurs"
                       (log/with-no-logs
                         (log.capture/with-log-messages-for-level [messages [metabase.warehouses.models.database :info]]
@@ -1017,8 +1017,8 @@
         ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-        (u/ignore-exceptions (t2/delete! :model/Field 'id ['in (map :id fields)]))
-        (u/ignore-exceptions (t2/delete! :model/FieldValues 'field_id ['in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Field 'id [:in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues 'field_id [:in (map :id fields)]))))))
 
 (deftest ^:synchronized pk-auth-default-role-e2e-test
   (mt/test-driver
@@ -1065,8 +1065,8 @@
         ;; Cleanup
         (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
         (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-        (u/ignore-exceptions (t2/delete! :model/Field 'id ['in (map :id fields)]))
-        (u/ignore-exceptions (t2/delete! :model/FieldValues 'field_id ['in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Field 'id [:in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues 'field_id [:in (map :id fields)]))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake

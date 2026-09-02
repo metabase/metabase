@@ -194,16 +194,16 @@
     0
     (let [dlq-table (dlq-table-name-kw index-metadata index-id)
           dlq-col   (semantic.util/conflict-target-column (name dlq-table) "error_gated_at")
-          dml {'insert-into   dlq-table
-               'values        (sort-by :gate_id dlq-entries)
-               'on-conflict   ['gate_id]
-               'do-update-set {'fields {'attempt_at        'excluded.attempt_at
-                                        'retry_count       'excluded.retry_count
-                                        'error_gated_at    'excluded.error_gated_at
-                                        'last_attempted_at 'excluded.last_attempted_at}
+          dml {:insert-into   dlq-table
+               :values        (sort-by :gate_id dlq-entries)
+               :on-conflict   ['gate_id]
+               :do-update-set {:fields {:attempt_at        'excluded.attempt_at
+                                        :retry_count       'excluded.retry_count
+                                        :error_gated_at    'excluded.error_gated_at
+                                        :last_attempted_at 'excluded.last_attempted_at}
                                ;; condition: if exiting dlq entry reflects a more recent gate failure
                                ;; prefer the new attempt_at / retry_count from the gate to the prior DLQ entry.
-                               'where  ['<= dlq-col 'excluded.error_gated_at]}}
+                               :where  ['<= dlq-col 'excluded.error_gated_at]}}
           sql (sql/format dml :quoted true)
           {upsert-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
       (log/debugf "Added/updated %d DLQ entries for index %s" upsert-count index-id)
@@ -225,8 +225,8 @@
   [pgvector index-metadata index-id gate-docs]
   (if (empty? gate-docs)
     0
-    (let [dml {'delete-from (dlq-table-name-kw index-metadata index-id)
-               'where       ['in ['composite 'gate_id 'error_gated_at]
+    (let [dml {:delete-from (dlq-table-name-kw index-metadata index-id)
+               :where       ['in ['composite 'gate_id 'error_gated_at]
                              (for [{:keys [id gated_at]} gate-docs]
                                [id gated_at])]}
           sql (sql/format dml :quoted true)
@@ -275,19 +275,19 @@
 
   Returns up to poll-limit records, sort is undefined."
   [pgvector index-metadata index-id poll-limit]
-  (let [q   {'select    [['d.gate_id 'id]
+  (let [q   {:select    [['d.gate_id 'id]
                          ['d.error_gated_at 'gated_at]
                          'd.retry_count
                          'g.model
                          'g.model_id
                          'g.document
                          ['g.gated_at 'new_gated_at]]
-             'from      [[(dlq-table-name-kw index-metadata index-id) 'd]]
+             :from      [[(dlq-table-name-kw index-metadata index-id) 'd]]
              ;; idea: we will allow gate entries to be deleted independently of the dead letter queue
              ;; avoid cascading fks or any kind of explicit relationship
-             'left-join [[(keyword (:gate-table-name index-metadata)) 'g] ['= 'd.gate_id 'g.id]]
-             'where     ['<= 'd.attempt_at (.instant clock)]
-             'limit     poll-limit}
+             :left-join [[(keyword (:gate-table-name index-metadata)) 'g] ['= 'd.gate_id 'g.id]]
+             :where     ['<= 'd.attempt_at (.instant clock)]
+             :limit     poll-limit}
         sql (sql/format q :quoted true)
         results (jdbc/execute! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (when (seq results)

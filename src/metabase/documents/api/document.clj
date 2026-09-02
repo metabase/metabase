@@ -160,7 +160,7 @@
                                                                 (pos-int? (-> % :attrs :id)))
                                                        (-> % :attrs :id)))
         to-clone (when (seq card-ids)
-                   (t2/select :model/Card {'where ['and ['in 'id card-ids]
+                   (t2/select :model/Card {:where ['and ['in 'id card-ids]
                                                    ['or ['<> 'document_id id]
                                                     ['= 'document_id nil]]]}))]
     (m.document/with-content-gate-cache
@@ -240,7 +240,7 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  {:items (as-> (t2/select :model/Document {'where ['and
+  {:items (as-> (t2/select :model/Document {:where ['and
                                                     (collection/visible-collection-filter-clause)
                                                     ['= 'archived false]
                                                     ;; Documents attached to an exploration are
@@ -265,12 +265,12 @@
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
-                           (let [document-id (t2/insert-returning-pk! :model/Document {'name name
-                                                                                       'collection_id collection_id
-                                                                                       'collection_position collection_position
-                                                                                       'document document
-                                                                                       'content_type prose-mirror/prose-mirror-content-type
-                                                                                       'creator_id api/*current-user-id*})
+                           (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                                       :collection_id collection_id
+                                                                                       :collection_position collection_position
+                                                                                       :document document
+                                                                                       :content_type prose-mirror/prose-mirror-content-type
+                                                                                       :creator_id api/*current-user-id*})
                                  cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
                                                                                           :collection_id collection_id
                                                                                           :document document
@@ -413,8 +413,8 @@
                                           @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
                   (t2/update! :model/Card (:id new-card)
-                              {'archived          (boolean (:archived card))
-                               'archived_directly (boolean (:archived_directly card))}))
+                              {:archived          (boolean (:archived card))
+                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
             cards-to-copy)))
@@ -481,8 +481,8 @@
       {:uuid existing-uuid}
       (do
         (t2/update! :model/Document document-id
-                    {'public_uuid       (str (random-uuid))
-                     'made_public_by_id api/*current-user-id*})
+                    {:public_uuid       (str (random-uuid))
+                     :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (t2/select-one-fn :public_uuid :model/Document 'id document-id)}))))
 
@@ -506,8 +506,8 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Document document-id
-              {'public_uuid       nil
-               'made_public_by_id nil})
+              {:public_uuid       nil
+               :made_public_by_id nil})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map
@@ -526,7 +526,7 @@
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Document 'name 'id 'public_uuid], 'public_uuid ['not= nil], 'archived false))
+  (t2/select [:model/Document :name :id :public_uuid], 'public_uuid [:not= nil], 'archived false))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 

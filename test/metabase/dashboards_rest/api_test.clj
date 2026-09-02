@@ -132,7 +132,7 @@
     (mt/with-temp [:model/Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
-        (t2/update! :model/Dashboard (u/the-id dashboard-or-id) {'collection_id (u/the-id collection)}))
+        (t2/update! :model/Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
       (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection! [dashboards-or-ids & body]
@@ -143,8 +143,8 @@
 
 (defn- move-cards-to-dashboard-collection!
   [dashboard-or-id card-ids]
-  (t2/update! :model/Card {'id ['in card-ids]}
-              {'collection_id (t2/select-one-fn :collection_id :model/Dashboard 'id (u/the-id dashboard-or-id))}))
+  (t2/update! :model/Card {:id ['in card-ids]}
+              {:collection_id (t2/select-one-fn :collection_id :model/Dashboard 'id (u/the-id dashboard-or-id))}))
 
 (defn- implicit-fk-column-ref
   "The legacy `[:field id {:source-field fk-id}]` ref for the column with `target-field-id`, as reached implicitly via
@@ -256,7 +256,7 @@
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
               (is (=? {:collection_id true, :collection_position 1000}
-                      (some-> (t2/select-one [:model/Dashboard 'collection_id 'collection_position] 'name dashboard-name)
+                      (some-> (t2/select-one [:model/Dashboard :collection_id :collection_position] 'name dashboard-name)
                               (update :collection_id (partial = (u/the-id collection))))))))
           (testing "..but not if we don't have permissions for the Collection"
             (mt/with-temp [:model/Collection collection]
@@ -264,7 +264,7 @@
                 (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
                                                                     :collection_id       (u/the-id collection)
                                                                     :collection_position 1000})
-                (is (not (t2/select-one [:model/Dashboard 'collection_id 'collection_position] 'name dashboard-name)))))))))))
+                (is (not (t2/select-one [:model/Dashboard :collection_id :collection_position] 'name dashboard-name)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               GET /api/dashboard/                                              |
@@ -671,7 +671,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (t2/update! :model/Collection collection-id {'authority_level "official"}))
+              (t2/update! :model/Collection collection-id {:authority_level "official"}))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -1527,7 +1527,7 @@
                          (into #{} (map :name) copied-cards))
                       "Should preserve the titles of the original cards"))
                 (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (t2/select :model/DashboardCardSeries 'card_id ['in (map :id copied-cards)]))))
+                  (is (empty? (t2/select :model/DashboardCardSeries 'card_id [:in (map :id copied-cards)]))))
                 (testing "Response includes uncopied cards"
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
@@ -1620,12 +1620,12 @@
                                                               (format "dashboard/%d/copy" dashboard-id)
                                                               {:name        "New dashboard"
                                                                :description "A new description"}))
-                original-tabs      (t2/select [:model/DashboardTab 'id 'position 'name]
+                original-tabs      (t2/select [:model/DashboardTab :id :position :name]
                                               'dashboard_id dashboard-id
-                                              {'order-by [['position 'asc]]})
-                new-tabs           (t2/select [:model/DashboardTab 'id 'position 'name]
+                                              {:order-by [['position 'asc]]})
+                new-tabs           (t2/select [:model/DashboardTab :id :position :name]
                                               'dashboard_id new-dash-id
-                                              {'order-by [['position 'asc]]})
+                                              {:order-by [['position 'asc]]})
                 new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
             (testing "Cards are located correctly between tabs"
               (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
@@ -2296,7 +2296,7 @@
                    :parameter_mappings     [{:parameter_id "abc", :card_id 123, :target [:dimension [:template-tag "foo"]]}]
                    :visualization_settings {}}]
                  (map (partial into {})
-                      (t2/select [:model/DashboardCard 'size_x 'size_y 'col 'row 'parameter_mappings 'visualization_settings]
+                      (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
                                  'dashboard_id dashboard-id)))))))))
 
 (deftest can-update-card-parameter-with-legacy-field-and-expression-test
@@ -2363,7 +2363,7 @@
                    :col    4
                    :row    4}]
                  (map (partial into {})
-                      (t2/select [:model/DashboardCard 'size_x 'size_y 'col 'row], 'dashboard_id dashboard-id))))
+                      (t2/select [:model/DashboardCard :size_x :size_y :col :row], 'dashboard_id dashboard-id))))
           (is (= #{0}
                  (t2/select-fn-set :position :model/DashboardCardSeries, 'dashboardcard_id (:id (first dashboard-cards))))))))))
 
@@ -2574,7 +2574,7 @@
           (testing "Both updated card ids should be reflected after making the dashcard changes."
             (is (partial= [{:card_id model-id-2}
                            {:card_id model-id-2}]
-                          (t2/select :model/DashboardCard 'dashboard_id dashboard-id {'order-by ['id]})))))))))
+                          (t2/select :model/DashboardCard 'dashboard_id dashboard-id {:order-by ['id]})))))))))
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
@@ -3283,8 +3283,8 @@
         (let [metadata (-> (:dataset_query native-card)
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (t2/update! :model/Card {'id model-id}
-                      {'result_metadata (assoc-in metadata [0 :id]
+          (t2/update! :model/Card {:id model-id}
+                      {:result_metadata (assoc-in metadata [0 :id]
                                                   (mt/id :products :category))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
@@ -3363,7 +3363,7 @@
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
         (t2/update! :model/DashboardCard (:id dashcard)
-                    {'parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                    {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                            :card_id      (:id card)
                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                           {:parameter_id "_PRICE_"
@@ -5185,12 +5185,12 @@
                  :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                          :dashboard_id dashboard-id
                                                          :parameter_mappings []}]
-    (t2/update! :model/Dashboard 'id dashboard-id {'parameters [{:name "TIME Gr"
+    (t2/update! :model/Dashboard 'id dashboard-id {:parameters [{:name "TIME Gr"
                                                                  :slug "tgr"
                                                                  :id "30d7efb0"
                                                                  :type :temporal-unit
                                                                  :sectionId "temporal-unit"}]})
-    (t2/update! :model/DashboardCard 'id dashcard-id {'parameter_mappings [{:parameter_id "30d7efb0"
+    (t2/update! :model/DashboardCard 'id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
                                                                             :type :temporal-unit
                                                                             :card_id card-id
                                                                             :target [:dimension

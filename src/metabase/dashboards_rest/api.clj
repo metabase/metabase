@@ -61,11 +61,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- dashboards-list [filter-option]
-  (as-> (t2/select :model/Dashboard {'where    ['and (case (or (keyword filter-option) :all)
+  (as-> (t2/select :model/Dashboard {:where    ['and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
                                                        :mine [:= :creator_id api/*current-user-id*])
                                                 ['= 'archived (= (keyword filter-option) :archived)]]
-                                     'order-by ['%lower.name]}) <>
+                                     :order-by ['%lower.name]}) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
@@ -152,10 +152,10 @@
                                          'parameterized_object_id   dashboard-id))
                   (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id dashboard-id)
                           (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                                            {'where ['in 'dashboardcard_id
-                                                     ^:allow-subquery {'select ['id]
-                                                                       'from   [(t2/table-name :model/DashboardCard)]
-                                                                       'where  ['= 'dashboard_id dashboard-id]}]})))
+                                            {:where ['in 'dashboardcard_id
+                                                     ^:allow-subquery {:select ['id]
+                                                                       :from   [(t2/table-name :model/DashboardCard)]
+                                                                       :where  ['= 'dashboard_id dashboard-id]}]})))
    :actions (set (t2/select-fn-vec :action_id :model/DashboardCard 'dashboard_id dashboard-id))})
 
 (def ^:private no-references {:cards #{} :actions #{}})
@@ -289,7 +289,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query 'query_hash ['in hashes])]
+    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query 'query_hash [:in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
@@ -647,7 +647,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard 'name 'id 'public_uuid], 'public_uuid ['not= nil], 'archived false))
+  (t2/select [:model/Dashboard :name :id :public_uuid], 'public_uuid [:not= nil], 'archived false))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -659,7 +659,7 @@
   []
   (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Dashboard 'name 'id], 'enable_embedding true, 'archived false))
+  (t2/select [:model/Dashboard :name :id], 'enable_embedding true, 'archived false))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
@@ -725,28 +725,28 @@
   ;; the case, but if you change one, you'll want to change both.
   (let [dashboard  (api/read-check :model/Dashboard id)
         query      (merge
-                    {'select ['c.id 'c.name 'c.description 'c.entity_id 'c.collection_position 'c.display 'c.collection_preview
+                    {:select ['c.id 'c.name 'c.description 'c.entity_id 'c.collection_position 'c.display 'c.collection_preview
                               'last_used_at 'c.collection_id 'c.archived_directly 'c.archived 'c.database_id
                               'c.dashboard_id
                               [nil 'location]
                               [(h2x/literal "card")  'model]
-                              [^:allow-subquery {'select   ['status]
-                                                 'from     ['moderation_review]
-                                                 'where    ['and
+                              [^:allow-subquery {:select   ['status]
+                                                 :from     ['moderation_review]
+                                                 :where    ['and
                                                             ['= 'moderated_item_type "card"]
                                                             ['= 'moderated_item_id 'c.id]
                                                             ['= 'most_recent true]]
                                                  ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
                                                  ;; protecting against potential bugs
-                                                 'order-by [['id 'desc]]
-                                                 'limit    1}
+                                                 :order-by [['id 'desc]]
+                                                 :limit    1}
                                'moderated_status]]
-                     'from      [['report_card 'c]]
-                     'where     ['and
+                     :from      [['report_card 'c]]
+                     :where     ['and
                                  ['= 'c.dashboard_id id]
-                                 ['exists ^:allow-subquery {'select 1
-                                                            'from [['report_dashboardcard 'dc]]
-                                                            'where ['and ['= 'c.id 'dc.card_id] ['= 'c.dashboard_id 'dc.dashboard_id]]}]
+                                 ['exists ^:allow-subquery {:select 1
+                                                            :from [['report_dashboardcard 'dc]]
+                                                            :where ['and ['= 'c.id 'dc.card_id] ['= 'c.dashboard_id 'dc.dashboard_id]]}]
                                  ['= 'c.archived false]]}
                     (when (request/paged?)
                       {:limit (request/limit)
@@ -797,7 +797,7 @@
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
-                           (t2/select-pk->fn :dataset_query :model/Card 'id ['in card-ids]))
+                           (t2/select-pk->fn :dataset_query :model/Card 'id [:in card-ids]))
           field-ids      (into []
                                (keep (fn [{:keys [target card-id]}]
                                        (when target
@@ -839,7 +839,7 @@
         dashcard-id->card-id           (when (seq new-mappings)
                                          (t2/select-pk->fn :card_id :model/DashboardCard
                                                            'dashboard_id dashboard-id
-                                                           'id           ['in (set (map :dashcard-id new-mappings))]))
+                                                           'id           [:in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
@@ -861,7 +861,7 @@
   dashcards)
 
 (defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (t2/select :model/DashboardCard 'id ['in dashcard-ids])]
+  (let [dashboard-cards (t2/select :model/DashboardCard 'id [:in dashcard-ids])]
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
@@ -874,7 +874,7 @@
   (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
       (api/check-400 (not (t2/exists? :model/Card
-                                      {'where ['and
+                                      {:where ['and
                                                ['not= 'dashboard_id (u/the-id existing-dashboard)]
                                                ['not= 'dashboard_id nil]
                                                ['in 'id (set card-ids)]]}))))))
@@ -958,7 +958,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User 'first_name 'last_name 'email] creator_id)]
+  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -966,8 +966,8 @@
      :affected-users (flatten
                       (for [{pulse-channel-id  :id
                              channel-type      :channel_type
-                             {:keys [channel]} :details} (t2/select [:model/PulseChannel 'id 'channel_type 'details]
-                                                                    'pulse_id ['= bad-pulse-id])]
+                             {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
+                                                                    'pulse_id [:= bad-pulse-id])]
                         (case channel-type
                           :email (let [pulse-channel-recipients (when (= :email channel-type)
                                                                   (t2/select :model/PulseChannelRecipient
@@ -978,8 +978,8 @@
                                         (assoc recipient
                                                :notification-type channel-type
                                                :recipient common_name))
-                                      (t2/select [:model/User 'first_name 'last_name 'email]
-                                                 'id ['in (map :user_id pulse-channel-recipients)]))))
+                                      (t2/select [:model/User :first_name :last_name :email]
+                                                 'id [:in (map :user_id pulse-channel-recipients)]))))
                           :slack {:notification-type channel-type
                                   :recipient         channel}
                           nil)))}))
@@ -989,11 +989,11 @@
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
     (let [{:keys [resolved-params]} (t2/hydrate
-                                     (t2/select-one [:model/Dashboard 'id 'parameters] dashboard-id)
+                                     (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (t2/select :model/Pulse 'dashboard_id dashboard-id 'archived false {'order-by [['id 'asc]]})
+      (->> (t2/select :model/Pulse 'dashboard_id dashboard-id 'archived false {:order-by [['id 'asc]]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1014,7 +1014,7 @@
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
-                                            (t2/select-one [:model/Dashboard 'name 'description 'creator_id] dashboard-id)
+                                            (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
                                             :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
@@ -1241,8 +1241,8 @@
                                           {:object-id dashboard-id
                                            :user-id api/*current-user-id*})
                    (t2/update! :model/Dashboard dashboard-id
-                               {'public_uuid       <>
-                                'made_public_by_id api/*current-user-id*})))]
+                               {:public_uuid       <>
+                                :made_public_by_id api/*current-user-id*})))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1260,8 +1260,8 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
-              {'public_uuid       nil
-               'made_public_by_id nil})
+              {:public_uuid       nil
+               :made_public_by_id nil})
   (events/publish-event! :event/dashboard-public-link-deleted
                          {:object-id dashboard-id
                           :user-id api/*current-user-id*})

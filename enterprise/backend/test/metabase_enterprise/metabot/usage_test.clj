@@ -51,7 +51,7 @@
               (is (= (inc before-count)
                      (t2/count :model/AiUsageLog 'user_id user-id 'source "metabot_agent")))
               (let [row (t2/select-one :model/AiUsageLog 'user_id user-id 'source "metabot_agent"
-                                       {'order-by [['id 'desc]]})]
+                                       {:order-by [['id 'desc]]})]
                 (is (= "anthropic/claude-test" (:model row)))
                 (is (= 100 (:prompt_tokens row)))
                 (is (= 50 (:completion_tokens row)))
@@ -89,7 +89,7 @@
             :completion-tokens 1})
           (try
             (let [row (t2/select-one :model/AiUsageLog 'source "document_generate_content"
-                                     {'order-by [['id 'desc]]})]
+                                     {:order-by [['id 'desc]]})]
               (is (= user-id (:user_id row))))
             (finally
               (t2/delete! :model/AiUsageLog 'source "document_generate_content"))))))))
@@ -106,7 +106,7 @@
           :profile-id        :internal})
         (try
           (let [row (t2/select-one :model/AiUsageLog 'source "example_question_generation_batch"
-                                   {'order-by [['id 'desc]]})]
+                                   {:order-by [['id 'desc]]})]
             (is (= "internal" (:profile_id row))))
           (finally
             (t2/delete! :model/AiUsageLog 'source "example_question_generation_batch")))))))
@@ -124,7 +124,7 @@
             :user-id           crowberto-id})
           (try
             (let [row (t2/select-one :model/AiUsageLog 'source "slack"
-                                     {'order-by [['id 'desc]]})]
+                                     {:order-by [['id 'desc]]})]
               (is (= crowberto-id (:user_id row))))
             (finally
               (t2/delete! :model/AiUsageLog 'source "slack"))))))))
@@ -140,7 +140,7 @@
           :completion-tokens 1})
         (try
           (let [row (t2/select-one :model/AiUsageLog 'source "oss-sql-gen"
-                                   {'order-by [['id 'desc]]})]
+                                   {:order-by [['id 'desc]]})]
             (is (nil? (:ai_proxied row))))
           (finally
             (t2/delete! :model/AiUsageLog 'source "oss-sql-gen")))))))
@@ -189,7 +189,7 @@
             :cache-read-tokens     1600})
           (try
             (let [row (t2/select-one :model/AiUsageLog 'source "metabot_agent" 'model model
-                                     {'order-by [['id 'desc]]})]
+                                     {:order-by [['id 'desc]]})]
               (is (= 2100 (:prompt_tokens row)))
               (is (= 400  (:cache_creation_tokens row)))
               (is (= 1600 (:cache_read_tokens row)))
@@ -210,7 +210,7 @@
             :completion-tokens 1})
           (try
             (let [row (t2/select-one :model/AiUsageLog 'source "metabot_agent" 'model model
-                                     {'order-by [['id 'desc]]})]
+                                     {:order-by [['id 'desc]]})]
               (is (= 0 (:cache_creation_tokens row)))
               (is (= 0 (:cache_read_tokens row))))
             (finally

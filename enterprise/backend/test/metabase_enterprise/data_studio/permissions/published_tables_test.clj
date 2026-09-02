@@ -81,7 +81,7 @@
                         {:user-id user-id
                          :is-superuser? false})]
             (is (= #{allowed-table-id}
-                   (t2/select-pks-set :model/Table {'where ['and clause ['in 'id [allowed-table-id blocked-table-id]]]})))))))))
+                   (t2/select-pks-set :model/Table {:where ['and clause ['in 'id [allowed-table-id blocked-table-id]]]})))))))))
 
 (deftest published-table-perm-grant-rows-returns-nil-without-create-queries-test
   (testing "Returns nil when permission-mapping doesn't include :perms/create-queries"
@@ -176,7 +176,7 @@
                                                        :perms/create-queries :query-builder}
                                                       opts)]
                         (t2/select-pks-set :model/Table
-                                           (cond-> {'where ['and ['= 'db_id db-id] clause]}
+                                           (cond-> {:where ['and ['= 'db_id db-id] clause]}
                                              with (assoc :with with)))))]
             (testing "without :include-published-via-collection? only the data-perms grant lets a table through"
               (is (= #{plain-allowed} (run nil))))

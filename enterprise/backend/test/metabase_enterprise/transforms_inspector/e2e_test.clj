@@ -85,7 +85,7 @@
   "Quote a table name for the current driver, with schema qualification.
    Uses actual physical table name from metadata."
   [s]
-  (let [{:keys [name schema]} (t2/select-one [:model/Table 'name 'schema] 'id (mt/id (keyword s)))]
+  (let [{:keys [name schema]} (t2/select-one [:model/Table :name :schema] 'id (mt/id (keyword s)))]
     (sql.u/quote-name driver/*driver* :table schema name)))
 
 (defn- qf

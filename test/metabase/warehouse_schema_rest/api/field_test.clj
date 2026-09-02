@@ -31,13 +31,13 @@
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (=? (merge
-             (t2/select-one [:model/Field 'created_at 'updated_at 'last_analyzed 'fingerprint 'fingerprint_version
-                             'database_position 'database_required 'database_is_auto_increment]
+             (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
+                             :database_position :database_required :database_is_auto_increment]
                             'id (mt/id :users :name))
              {:table_id         (mt/id :users)
               :table            (merge
-                                 (t2/select-one [:model/Table 'created_at 'updated_at
-                                                 'initial_sync_status 'view_count]
+                                 (t2/select-one [:model/Table :created_at :updated_at
+                                                 :initial_sync_status :view_count]
                                                 'id (mt/id :users))
                                  {:description             nil
                                   :entity_type             "entity/UserTable"
@@ -286,8 +286,8 @@
       (mt/with-temp-copy-of-db
         ;; clear out existing human_readable_values in case they're set
         (when-let [id (field-values-id :venues :price)]
-          (t2/update! :model/FieldValues id {'human_readable_values nil}))
-        (t2/update! :model/Field (mt/id :venues :price) {'has_field_values "list"})
+          (t2/update! :model/FieldValues id {:human_readable_values nil}))
+        (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
@@ -359,7 +359,7 @@
                (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                                      {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
-               (into {} (t2/select-one [:model/FieldValues 'values 'human_readable_values, 'has_more_values] 'field_id field-id))))
+               (into {} (t2/select-one [:model/FieldValues :values :human_readable_values, :has_more_values] 'field_id field-id))))
         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
@@ -856,7 +856,7 @@
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                          updated-db)))
                     nested-fields          (fn []
-                                             (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
+                                             (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path [:not= nil])
                                                   (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                 (testing "json_unfolding is enabled by default at the field level"
                   (is (true? (:json_unfolding field))))
@@ -898,7 +898,7 @@
                                                      (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                            updated-db)))
                       nested-fields (fn []
-                                      (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
+                                      (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path [:not= nil])
                                            (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                   (testing "nested fields are not created"
                     (is (empty? (nested-fields))))
@@ -941,7 +941,7 @@
 (deftest field-values-requires-query-permission-test
   (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"
     (mt/with-temp-copy-of-db
-      (t2/update! :model/Field (mt/id :venues :price) {'has_field_values "list"})
+      (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
       (testing "User with only view-data permission (no create-queries) cannot access field values"
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."

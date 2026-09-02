@@ -33,7 +33,7 @@
        (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id *current-user-id*)]
          (seq
           (when (seq group-ids)
-            (t2/select :model/ConnectionImpersonation 'group_id ['in group-ids]))))
+            (t2/select :model/ConnectionImpersonation 'group_id [:in group-ids]))))
        ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be using impersonation.
        (throw (ex-info (str (tru "No current user found"))

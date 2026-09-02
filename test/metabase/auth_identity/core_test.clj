@@ -18,9 +18,9 @@
         (mt/with-model-cleanup [:model/AuthIdentity]
           ;; Use google provider to avoid conflict with auto-created password AuthIdentity
           (let [auth-identity (t2/insert-returning-instance! :model/AuthIdentity
-                                                             {'user_id (:id user)
-                                                              'provider "google"
-                                                              'metadata {:email "test@example.com"}})]
+                                                             {:user_id (:id user)
+                                                              :provider "google"
+                                                              :metadata {:email "test@example.com"}})]
             (is (some? auth-identity))
             (is (= (:id user) (:user_id auth-identity)))
             (is (= "google" (:provider auth-identity)))
@@ -29,7 +29,7 @@
       (testing "can update an AuthIdentity"
         (let [auth-identity (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")]
           (t2/update! :model/AuthIdentity (:id auth-identity)
-                      {'credentials {:password_hash "new_hash"
+                      {:credentials {:password_hash "new_hash"
                                      :password_salt "new_salt"}})
           (let [updated (t2/select-one :model/AuthIdentity 'id (:id auth-identity))]
             (is (= {:password_hash "new_hash" :password_salt "new_salt"}
@@ -62,9 +62,9 @@
              clojure.lang.ExceptionInfo
              #"duplicate|Duplicate|Unique"
              (t2/insert! :model/AuthIdentity
-                         {'user_id user-id
-                          'provider "password"
-                          'credentials {:password_hash "different_hash" :password_salt "asdfasdf"}})))))))
+                         {:user_id user-id
+                          :provider "password"
+                          :credentials {:password_hash "different_hash" :password_salt "asdfasdf"}})))))))
 
 ;;; -------------------------------------------------- Multiple Providers Test --------------------------------------------------
 
@@ -74,13 +74,13 @@
       (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")
             google-auth (t2/insert-returning-instance! :model/AuthIdentity
-                                                       {'user_id (:id user)
-                                                        'provider "google"
-                                                        'metadata {:sso_source "google"}})
+                                                       {:user_id (:id user)
+                                                        :provider "google"
+                                                        :metadata {:sso_source "google"}})
             ldap-auth (t2/insert-returning-instance! :model/AuthIdentity
-                                                     {'user_id (:id user)
-                                                      'provider "ldap"
-                                                      'metadata {:login_attributes {:uid "testuser"}}})]
+                                                     {:user_id (:id user)
+                                                      :provider "ldap"
+                                                      :metadata {:login_attributes {:uid "testuser"}}})]
         (is (some? password-auth))
         (is (some? google-auth))
         (is (some? ldap-auth))

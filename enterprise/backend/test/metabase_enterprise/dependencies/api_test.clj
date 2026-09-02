@@ -316,12 +316,12 @@
                        :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
           (let [{card-id-1 :id :as dependency-card} (card/create-card! (basic-card "Base card - multi") user)
                 _dependent-card (card/create-card! (wrap-card dependency-card) user)]
-            (t2/insert! :model/DashboardCard {'dashboard_id dashboard-id
-                                              'card_id card-id-1
-                                              'row 0
-                                              'col 0
-                                              'size_x 4
-                                              'size_y 4})
+            (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
+                                              :card_id card-id-1
+                                              :row 0
+                                              :col 0
+                                              :size_x 4
+                                              :size_y 4})
             (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard 'id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-backfill!)
             (testing "single dependent-types value (backward compatibility)"
@@ -464,7 +464,7 @@
                                                             :target {:schema "PUBLIC"
                                                                      :name "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
-          (t2/update! :model/Transform transform-id {'target_table_id table-id})
+          (t2/update! :model/Transform transform-id {:target_table_id table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
@@ -1153,7 +1153,7 @@
                                                                                 :name "referenced_transform_table"}}]
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
-          (t2/update! :model/Transform referenced-transform-id {'target_table_id referenced-table-id})
+          (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
@@ -1383,7 +1383,7 @@
                   (let [internal-model (create-model-card! user "Internal Model - intbreaking")
                         dependent-card (create-dependent-card-on-model! user internal-model "Dependent - intbreaking")]
                     [internal-model dependent-card]))]
-            (t2/update! :model/Card (:id internal-model) {'creator_id config/internal-mb-user-id})
+            (t2/update! :model/Card (:id internal-model) {:creator_id config/internal-mb-user-id})
             (lib-be/with-metadata-provider-cache
               (break-model-card! (t2/select-one :model/Card 'id (:id internal-model))))
             (lib-be/with-metadata-provider-cache
@@ -1779,7 +1779,7 @@
                                              :creator_id    (:id user)}
                            :model/Dependency _dep {:from_entity_type "card",  :from_entity_id (:id card)
                                                    :to_entity_type   "table", :to_entity_id   (:id table)}]
-              (t2/update! :model/Table (:id table) {'active false})
+              (t2/update! :model/Table (:id table) {:active false})
               (lib-be/with-metadata-provider-cache
                 (run-analysis-for-card! (:id card)))
               (testing "the dependent card's analysis is now broken, attributing the inactive table as the source"
@@ -2132,9 +2132,9 @@
             {mid-id :id} (create-dependent! base-card user "Mid")
             {high-id :id} (create-dependent! base-card user "High")]
         (deps.test/synchronously-run-backfill!)
-        (t2/update! :model/Card low-id {'view_count 10})
-        (t2/update! :model/Card mid-id {'view_count 50})
-        (t2/update! :model/Card high-id {'view_count 100})
+        (t2/update! :model/Card low-id {:view_count 10})
+        (t2/update! :model/Card mid-id {:view_count 50})
+        (t2/update! :model/Card high-id {:view_count 100})
         (is (=? [{:data {:view_count 10}} {:data {:view_count 50}} {:data {:view_count 100}}]
                 (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
         (is (=? [{:data {:view_count 100}} {:data {:view_count 50}} {:data {:view_count 10}}]
@@ -2147,12 +2147,12 @@
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard" :view_count 200}]
           (let [{low-id :id} (create-dependent! base-card user "Low")
                 {high-id :id} (create-dependent! base-card user "High")]
-            (t2/insert! :model/DashboardCard {'dashboard_id dashboard-id 'card_id base-card-id
-                                              'row 0 'col 0 'size_x 4 'size_y 4})
+            (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id base-card-id
+                                              :row 0 :col 0 :size_x 4 :size_y 4})
             (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard 'id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-backfill!)
-            (t2/update! :model/Card low-id {'view_count 10})
-            (t2/update! :model/Card high-id {'view_count 100})
+            (t2/update! :model/Card low-id {:view_count 10})
+            (t2/update! :model/Card high-id {:view_count 100})
             (is (=? [{:data {:view_count 10}} {:data {:view_count 100}} {:data {:view_count 200}}]
                     (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
             (is (=? [{:data {:view_count 200}} {:data {:view_count 100}} {:data {:view_count 10}}]
@@ -2178,23 +2178,23 @@
                      :model/Card       {archived-src :id} {:collection_id coll-id :archived true}]
         ;; Create errors: one with visible source, one with archived source, one with nil source
         (t2/insert! :model/AnalysisFindingError
-                    [{'analyzed_entity_type "card"
-                      'analyzed_entity_id   card-id
-                      'source_entity_type   "card"
-                      'source_entity_id     visible-src
-                      'error_type           "missing-column"
-                      'error_detail         "col1"}
-                     {'analyzed_entity_type "card"
-                      'analyzed_entity_id   card-id
-                      'source_entity_type   "card"
-                      'source_entity_id     archived-src
-                      'error_type           "missing-column"
-                      'error_detail         "col2"}
-                     {'analyzed_entity_type "card"
-                      'analyzed_entity_id   card-id
-                      'source_entity_type   nil
-                      'source_entity_id     nil
-                      'error_type           "invalid-query"}])
+                    [{:analyzed_entity_type "card"
+                      :analyzed_entity_id   card-id
+                      :source_entity_type   "card"
+                      :source_entity_id     visible-src
+                      :error_type           "missing-column"
+                      :error_detail         "col1"}
+                     {:analyzed_entity_type "card"
+                      :analyzed_entity_id   card-id
+                      :source_entity_type   "card"
+                      :source_entity_id     archived-src
+                      :error_type           "missing-column"
+                      :error_detail         "col2"}
+                     {:analyzed_entity_type "card"
+                      :analyzed_entity_id   card-id
+                      :source_entity_type   nil
+                      :source_entity_id     nil
+                      :error_type           "invalid-query"}])
         (let [result      (#'deps.api/node-errors {:card [card-id]})
               card-errors (get result [:card card-id])]
           (testing "includes errors with visible source"
@@ -2213,16 +2213,16 @@
                      :model/Card       {archived-card :id} {:collection_id coll-id :archived true}]
         ;; Create errors: one with visible analyzed entity, one with archived analyzed entity
         (t2/insert! :model/AnalysisFindingError
-                    [{'analyzed_entity_type "card"
-                      'analyzed_entity_id   visible-card
-                      'source_entity_type   "card"
-                      'source_entity_id     source-card
-                      'error_type           "missing-column"}
-                     {'analyzed_entity_type "card"
-                      'analyzed_entity_id   archived-card
-                      'source_entity_type   "card"
-                      'source_entity_id     source-card
-                      'error_type           "missing-column"}])
+                    [{:analyzed_entity_type "card"
+                      :analyzed_entity_id   visible-card
+                      :source_entity_type   "card"
+                      :source_entity_id     source-card
+                      :error_type           "missing-column"}
+                     {:analyzed_entity_type "card"
+                      :analyzed_entity_id   archived-card
+                      :source_entity_type   "card"
+                      :source_entity_id     source-card
+                      :error_type           "missing-column"}])
         (let [result      (#'deps.api/node-downstream-errors {:card [source-card]})
               card-errors (get result [:card source-card])]
           (testing "includes errors with visible analyzed entity"
@@ -2248,8 +2248,8 @@
                         archived-dep-b (create-dependent-card-on-model! user model-card-b "Archived Dep B - errvistest")]
                     [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a archived-dep-b]))]
             ;; Archive the archived dependents
-            (t2/update! :model/Card (:id archived-dep-a) {'archived true})
-            (t2/update! :model/Card (:id archived-dep-b) {'archived true})
+            (t2/update! :model/Card (:id archived-dep-a) {:archived true})
+            (t2/update! :model/Card (:id archived-dep-b) {:archived true})
             ;; Break both models
             (lib-be/with-metadata-provider-cache
               (break-model-card! model-card-a)
@@ -2303,12 +2303,12 @@
             (testing "sorting by dependents-errors works with filtering"
               ;; Add extra errors to model-b so it has more visible errors
               (t2/insert! :model/AnalysisFindingError
-                          {'analyzed_entity_type "card"
-                           'analyzed_entity_id   (:id visible-dep-b)
-                           'source_entity_type   "card"
-                           'source_entity_id     (:id model-card-b)
-                           'error_type           "missing-column"
-                           'error_detail         "extra_col"})
+                          {:analyzed_entity_type "card"
+                           :analyzed_entity_id   (:id visible-dep-b)
+                           :source_entity_type   "card"
+                           :source_entity_id     (:id model-card-b)
+                           :error_type           "missing-column"
+                           :error_detail         "extra_col"})
               (let [asc-response (mt/user-http-request :crowberto :get 200
                                                        "ee/dependencies/graph/breaking"
                                                        :types "card"
@@ -2345,42 +2345,42 @@
                         archived-dep-a-2 (create-dependent-card-on-model! user model-card-a "Archived Dep A2 - sortviserr")]
                     [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]))]
             ;; Archive model-a's extra dependents
-            (t2/update! :model/Card (:id archived-dep-a-1) {'archived true})
-            (t2/update! :model/Card (:id archived-dep-a-2) {'archived true})
+            (t2/update! :model/Card (:id archived-dep-a-1) {:archived true})
+            (t2/update! :model/Card (:id archived-dep-a-2) {:archived true})
             ;; Insert errors directly to ensure we control exactly what's in the DB
             ;; Model A: 1 visible error, 2 archived errors = 3 total
             ;; Model B: 2 visible errors = 2 total
             (t2/insert! :model/AnalysisFindingError
-                        [{'analyzed_entity_type "card"
-                          'analyzed_entity_id   (:id visible-dep-a)
-                          'source_entity_type   "card"
-                          'source_entity_id     (:id model-card-a)
-                          'error_type           "missing-column"
-                          'error_detail         "col1"}
-                         {'analyzed_entity_type "card"
-                          'analyzed_entity_id   (:id archived-dep-a-1)
-                          'source_entity_type   "card"
-                          'source_entity_id     (:id model-card-a)
-                          'error_type           "missing-column"
-                          'error_detail         "col2"}
-                         {'analyzed_entity_type "card"
-                          'analyzed_entity_id   (:id archived-dep-a-2)
-                          'source_entity_type   "card"
-                          'source_entity_id     (:id model-card-a)
-                          'error_type           "missing-column"
-                          'error_detail         "col3"}
-                         {'analyzed_entity_type "card"
-                          'analyzed_entity_id   (:id visible-dep-b)
-                          'source_entity_type   "card"
-                          'source_entity_id     (:id model-card-b)
-                          'error_type           "missing-column"
-                          'error_detail         "col4"}
-                         {'analyzed_entity_type "card"
-                          'analyzed_entity_id   (:id visible-dep-b)
-                          'source_entity_type   "card"
-                          'source_entity_id     (:id model-card-b)
-                          'error_type           "missing-column"
-                          'error_detail         "col5"}])
+                        [{:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-a)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col1"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id archived-dep-a-1)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col2"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id archived-dep-a-2)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-a)
+                          :error_type           "missing-column"
+                          :error_detail         "col3"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-b)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-b)
+                          :error_type           "missing-column"
+                          :error_detail         "col4"}
+                         {:analyzed_entity_type "card"
+                          :analyzed_entity_id   (:id visible-dep-b)
+                          :source_entity_type   "card"
+                          :source_entity_id     (:id model-card-b)
+                          :error_type           "missing-column"
+                          :error_detail         "col5"}])
             (let [asc-response (mt/user-http-request :crowberto :get 200
                                                      "ee/dependencies/graph/breaking"
                                                      :types "card"

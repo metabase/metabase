@@ -141,7 +141,7 @@
          ['entity_local_id 'bigint 'not-null]
          ['doc_type 'text 'not-null]
          ['doc_text 'text 'not-null]
-         ['doc_embedding ['raw (format "vector(%d)" dims)] 'not-null]])
+         ['doc_embedding [:raw (format "vector(%d)" dims)] 'not-null]])
       sql-format-quoted))
 
 (defn- model-identity
@@ -179,13 +179,13 @@
         (model-identity embedding-model)]
     (jdbc/execute! tx
                    (-> (sql.helpers/insert-into (keyword (meta-table)))
-                       (sql.helpers/values [{'id                1
-                                             'provider          provider
-                                             'model_name        model_name
-                                             'vector_dimensions vector_dimensions
-                                             'embedding_space_id embedding_space_id
-                                             'schema_version    schema_version
-                                             'updated_at        (Instant/now)}])
+                       (sql.helpers/values [{:id                1
+                                             :provider          provider
+                                             :model_name        model_name
+                                             :vector_dimensions vector_dimensions
+                                             :embedding_space_id embedding_space_id
+                                             :schema_version    schema_version
+                                             :updated_at        (Instant/now)}])
                        (sql.helpers/on-conflict 'id)
                        (sql.helpers/do-update-set 'provider 'model_name 'vector_dimensions
                                                   'embedding_space_id 'schema_version 'updated_at)

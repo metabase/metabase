@@ -289,7 +289,7 @@
                 (is (= current-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search)))))))))
           (testing "throws exception when no active index exists"
             ;; corrupt the control table
-            (jdbc/execute! pgvector (sql/format {'delete-from (keyword (:control-table-name index-metadata))}
+            (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:control-table-name index-metadata))}
                                                 :quoted true))
             (is (thrown-with-msg? Exception #"No active semantic search index" (sut pgvector index-metadata search)))))))))
 
@@ -330,7 +330,7 @@
               {:keys [caught-ex ^Thread thread]} @job-thread]
           (is (= (frequencies (map :model docs)) (semantic.pgvector-api/gate-updates! pgvector index-metadata docs)))
           (let [max-wait         (+ (System/currentTimeMillis) 1000)
-                get-indexed-q    {'select ['model ['model_id 'id]] 'from [(keyword (:table-name index))]}
+                get-indexed-q    {:select ['model ['model_id 'id]] :from [(keyword (:table-name index))]}
                 get-indexed      (fn [] (frequencies
                                          (jdbc/execute! pgvector
                                                         (sql/format get-indexed-q :quoted true)

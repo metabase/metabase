@@ -165,7 +165,7 @@
                                          'user_id user-id
                                          'provider "support-access-grant")]
         (t2/update! :model/AuthIdentity (:id auth-identity)
-                    {'credentials (assoc (:credentials auth-identity)
+                    {:credentials (assoc (:credentials auth-identity)
                                          :expires_at (t/minus (t/offset-date-time) (t/hours 1)))})
         (let [result (provider/authenticate :provider/support-access-grant {:token token})]
           (is (false? (:success? result)))

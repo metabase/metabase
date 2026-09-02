@@ -36,7 +36,7 @@
         (is (= #{models.analysis-finding/*current-analysis-finding-version*}
                (t2/select-fn-set :analysis_version
                                  :model/AnalysisFinding
-                                 'analyzed_entity_id ['in [card-id other-card-id]]
+                                 'analyzed_entity_id [:in [card-id other-card-id]]
                                  'analyzed_entity_type :card)))))))
 
 (deftest ^:synchronized does-not-repeatedly-analyze-entities-test
@@ -128,7 +128,7 @@
   [card-ids]
   (t2/select-fn->fn :analyzed_entity_id :stale :model/AnalysisFinding
                     'analyzed_entity_type :card
-                    'analyzed_entity_id ['in card-ids]))
+                    'analyzed_entity_id [:in card-ids]))
 
 (defn- finding-stale?
   "Returns the stale value for a specific entity's analysis finding, or nil if no finding exists."
@@ -171,7 +171,7 @@
                                                 :to_entity_type :card
                                                 :to_entity_id parent-card-id}]
               (run! deps.findings/upsert-analysis!
-                    (t2/select :model/Card 'id ['in [parent-card-id child-card-id]]))
+                    (t2/select :model/Card 'id [:in [parent-card-id child-card-id]]))
               (is (= {parent-card-id false, child-card-id false}
                      (stale-map [parent-card-id child-card-id]))
                   "neither should be stale before marking")
@@ -200,7 +200,7 @@
                                                 :to_entity_type :card
                                                 :to_entity_id parent-id}]
               (run! deps.findings/upsert-analysis!
-                    (t2/select :model/Card 'id ['in [grandparent-id parent-id child-id]]))
+                    (t2/select :model/Card 'id [:in [grandparent-id parent-id child-id]]))
               (t2/with-transaction [_conn]
                 (deps.findings/mark-transitive-dependents-stale! {:card [grandparent-id]})
                 (is (= {grandparent-id false, parent-id true, child-id true}

@@ -114,7 +114,7 @@
                                                (log/warnf "Error fetching existing triggers from Quartz, will recreate all triggers: %s" (ex-message e))
                                                #{}))
           missing-trigger-model-indexes (if (seq existing-trigger-model-index-ids)
-                                          (t2/select :model/ModelIndex 'id ['not-in existing-trigger-model-index-ids])
+                                          (t2/select :model/ModelIndex 'id [:not-in existing-trigger-model-index-ids])
                                           (t2/select :model/ModelIndex))]
       (when (seq missing-trigger-model-indexes)
         (log/infof "Found %d model index(es) without triggers, recreating..."

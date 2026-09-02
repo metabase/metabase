@@ -41,8 +41,8 @@
   "Get the collection_id for the target entity of a CacheConfig."
   [{:keys [model model_id]}]
   (case model
-    "dashboard" (:collection_id (t2/select-one [:model/Dashboard 'collection_id] 'id model_id))
-    "question"  (:collection_id (t2/select-one [:model/Card 'collection_id] 'id model_id))
+    "dashboard" (:collection_id (t2/select-one [:model/Dashboard :collection_id] 'id model_id))
+    "question"  (:collection_id (t2/select-one [:model/Card :collection_id] 'id model_id))
     nil))
 
 (defmethod mi/can-write? :model/CacheConfig
@@ -154,17 +154,17 @@
   "Build the base query for cache configs with JOINs for name/collection access."
   [models collection id]
   (if id
-    {'select ['cache_config.*]
-     'from   ['cache_config]
-     'where  ['and ['in 'model models] ['= 'model_id id]]}
-    {'select    ['cache_config.*
+    {:select ['cache_config.*]
+     :from   ['cache_config]
+     :where  ['and ['in 'model models] ['= 'model_id id]]}
+    {:select    ['cache_config.*
                  [['coalesce 'report_card.name 'report_dashboard.name] 'item_name]
                  [['coalesce 'report_card.collection_id 'report_dashboard.collection_id] 'collection_id]
                  ['collection.name 'collection_name]
                  ['collection.authority_level 'collection_authority_level]
                  ['collection.type 'collection_type]]
-     'from      ['cache_config]
-     'left-join ['report_card      ['and
+     :from      ['cache_config]
+     :left-join ['report_card      ['and
                                     ['= 'model "question"]
                                     ['= 'model_id 'report_card.id]
                                     (when collection
@@ -177,7 +177,7 @@
                  'collection       ['= 'collection.id
                                     ['coalesce 'report_card.collection_id
                                      'report_dashboard.collection_id]]]
-     'where     ['and
+     :where     ['and
                  ['in 'model models]
                  ['case
                   ['= 'model "question"]  ['!= 'report_card.id nil]
@@ -215,7 +215,7 @@
   [user-id {:keys [model model_id] :as config}]
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
-          current (t2/select-one :model/CacheConfig 'model model 'model_id model_id {'for 'update})]
+          current (t2/select-one :model/CacheConfig 'model model 'model_id model_id {:for 'update})]
       (u/prog1 (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
                                          (constantly data))
         (audit-caching-change! user-id <> current data)))))
@@ -223,8 +223,8 @@
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
   [user-id model model-ids]
-  (when-let [current (seq (t2/select :model/CacheConfig 'model model 'model_id ['in model-ids]))]
-    (t2/delete! :model/CacheConfig 'model model 'model_id ['in model-ids])
+  (when-let [current (seq (t2/select :model/CacheConfig 'model model 'model_id [:in model-ids]))]
+    (t2/delete! :model/CacheConfig 'model model 'model_id [:in model-ids])
     (doseq [item current]
       (audit-caching-change! user-id
                              (:id item)
@@ -237,13 +237,13 @@
   (let [card-ids (concat
                   questions
                   (when (seq databases)
-                    (t2/select-fn-vec :id [:model/Card 'id] 'database_id ['in databases]))
+                    (t2/select-fn-vec :id [:model/Card :id] 'database_id [:in databases]))
                   (when (seq dashboards)
-                    (t2/select-fn-vec :card_id [:model/DashboardCard 'card_id] 'dashboard_id ['in dashboards])))]
+                    (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] 'dashboard_id [:in dashboards])))]
     (if (empty? card-ids)
       -1
-      (t2/update! :model/Card 'id ['in card-ids]
-                  {'cache_invalidated_at (t/offset-date-time)}))))
+      (t2/update! :model/Card 'id [:in card-ids]
+                  {:cache_invalidated_at (t/offset-date-time)}))))
 
 (defn- invalidate-cache-configs [databases dashboards questions]
   (let [conditions (for [[k vs] [[:database databases]
@@ -254,9 +254,9 @@
     (if (empty? conditions)
       -1
       ;; using JVM date rather than DB time since it's what are used in cache tasks
-      (t2/query-one {'update (t2/table-name :model/CacheConfig)
-                     'set    {'invalidated_at (t/offset-date-time)}
-                     'where  (into [:or] conditions)}))))
+      (t2/query-one {:update (t2/table-name :model/CacheConfig)
+                     :set    {:invalidated_at (t/offset-date-time)}
+                     :where  (into [:or] conditions)}))))
 
 (defn invalidate!
   "Invalidate cache configuration. Accepts lists of ids for different types of models. If `with-overrides?` is passed,

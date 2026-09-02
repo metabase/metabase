@@ -105,7 +105,7 @@
                  (deferred-tru "Invalid cron expression: {0}" schedule))
   ;; Validate tag IDs exist if provided
   (when (seq tag_ids)
-    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag 'id ['in tag_ids]))]
+    (let [existing-tags (set (t2/select-pks-vec :model/TransformTag 'id [:in tag_ids]))]
       (api/check-400 (= (set tag_ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
   (let [job-data {:name            name
@@ -181,7 +181,7 @@
                      (deferred-tru "Invalid cron expression: {0}" schedule)))
     ;; Validate tag IDs if provided
     (when (seq tag-ids)
-      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag 'id ['in tag-ids]))]
+      (let [existing-tags (set (t2/select-pks-vec :model/TransformTag 'id [:in tag-ids]))]
         (api/check-400 (= (set tag-ids) existing-tags)
                        (deferred-tru "Some tag IDs do not exist"))))
     (let [was-active     (:active existing-job)
@@ -278,7 +278,7 @@
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-data-analyst)
-  (let [jobs (t2/select :model/TransformJob {'order-by [['created_at 'desc]]})]
+  (let [jobs (t2/select :model/TransformJob {:order-by [['created_at 'desc]]})]
     (into []
           (comp (map add-next-run)
                 (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)

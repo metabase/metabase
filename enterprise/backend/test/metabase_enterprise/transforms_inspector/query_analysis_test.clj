@@ -47,7 +47,7 @@
 (defn- qt
   "Quote a table name for the current driver, with schema qualification."
   [table-key]
-  (let [{:keys [name schema]} (t2/select-one [:model/Table 'name 'schema] 'id (mt/id table-key))]
+  (let [{:keys [name schema]} (t2/select-one [:model/Table :name :schema] 'id (mt/id table-key))]
     (sql.u/quote-name driver/*driver* :table schema name)))
 
 (defn- qf

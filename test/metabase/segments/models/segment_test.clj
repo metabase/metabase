@@ -50,16 +50,16 @@
       ;; Direct DB insert to bypass validation
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id (mt/id :venues)
                                                       :definition {:filter 1000}}]
-        (t2/query-one {'update 'segment
-                       'set {'definition (json/encode {:filter "X"})}
-                       'where ['= 'id segment-id]})
+        (t2/query-one {:update 'segment
+                       :set {:definition (json/encode {:filter "X"})}
+                       :where ['= 'id segment-id]})
         (is (= {}
                (:definition (t2/select-one :model/Segment 'id segment-id)))))))
   (testing "...but should still throw them on insert"
     (is (thrown? Exception
-                 (t2/insert! :model/Segment {'table_id (mt/id :venues)
-                                             'name "Bad Segment"
-                                             'definition {:filter "X"}})))))
+                 (t2/insert! :model/Segment {:table_id (mt/id :venues)
+                                             :name "Bad Segment"
+                                             :definition {:filter "X"}})))))
 
 (deftest update-test
   (testing "Updating"
@@ -70,15 +70,15 @@
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
-             (t2/update! :model/Segment id {'creator_id (mt/user->id :crowberto)}))))
+             (t2/update! :model/Segment id {:creator_id (mt/user->id :crowberto)}))))
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
-             (t2/update! :model/Segment id {'creator_id nil}))))
+             (t2/update! :model/Segment id {:creator_id nil}))))
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
-               (t2/update! :model/Segment id {'creator_id (mt/user->id :rasta)})))))))
+               (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
@@ -121,10 +121,10 @@
     (mt/with-temp [:model/Segment {id :id} {:name "Expensive BBQ Spots"
                                             :definition (:query (mt/mbql-query venues
                                                                   {:filter 1000}))}]
-      (t2/query-one {'update 'segment
-                     'set {'definition (json/encode {:filter
+      (t2/query-one {:update 'segment
+                     :set {:definition (json/encode {:filter
                                                      [:= [:wheat-field Integer/MAX_VALUE nil] 4]})}
-                     'where ['= 'id id]})
+                     :where ['= 'id id]})
       (is (nil? (-> (t2/select-one :model/Segment id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
@@ -134,9 +134,9 @@
     (is (thrown-with-msg?
          Exception
          #"does not exist"
-         (t2/insert! :model/Segment {'name "Bad Segment"
-                                     'table_id (mt/id :venues)
-                                     'definition {:filter [:segment 99999]}}))))
+         (t2/insert! :model/Segment {:name "Bad Segment"
+                                     :table_id (mt/id :venues)
+                                     :definition {:filter [:segment 99999]}}))))
   (testing "Inserting a segment that references an existing segment should succeed"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :table_id (mt/id :venues)
@@ -154,7 +154,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Segment segment-id {'definition {:filter [:segment 99999]}})))))
+           (t2/update! :model/Segment segment-id {:definition {:filter [:segment 99999]}})))))
   (testing "Updating a segment to reference itself should fail"
     (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
                                                     :table_id (mt/id :venues)
@@ -162,7 +162,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment segment-id {'definition {:filter [:segment segment-id]}})))))
+           (t2/update! :model/Segment segment-id {:definition {:filter [:segment segment-id]}})))))
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :table_id (mt/id :venues)
@@ -173,7 +173,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment segment-1-id {'definition {:filter [:segment segment-2-id]}}))))))
+           (t2/update! :model/Segment segment-1-id {:definition {:filter [:segment segment-2-id]}}))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 

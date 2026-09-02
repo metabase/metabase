@@ -33,31 +33,31 @@
   [stats]
   (let [creator (mt/user->id :lucky)
         card    (t2/insert-returning-pk! :model/Card
-                                         {'name "m" 'type :metric 'creator_id creator
-                                          'database_id (mt/id) 'dataset_query (venues-count-query)
-                                          'display "table" 'visualization_settings {}})
-        expl    (t2/insert-returning-pk! :model/Exploration {'name "eqr" 'creator_id creator})
-        thread  (t2/insert-returning-pk! :model/ExplorationThread {'exploration_id expl 'position 0})
-        block   (t2/insert-returning-pk! :model/ExplorationBlock {'exploration_thread_id thread})
+                                         {:name "m" :type :metric :creator_id creator
+                                          :database_id (mt/id) :dataset_query (venues-count-query)
+                                          :display "table" :visualization_settings {}})
+        expl    (t2/insert-returning-pk! :model/Exploration {:name "eqr" :creator_id creator})
+        thread  (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id expl :position 0})
+        block   (t2/insert-returning-pk! :model/ExplorationBlock {:exploration_thread_id thread})
         page    (t2/insert-returning-pk! :model/ExplorationPage
-                                         {'exploration_block_id block 'card_id card
-                                          'dimension_id "d1" 'query_type "default"})
+                                         {:exploration_block_id block :card_id card
+                                          :dimension_id "d1" :query_type "default"})
         eq      (t2/insert-returning-pk! :model/ExplorationQuery
-                                         {'exploration_thread_id thread 'card_id card 'page_id page
-                                          'database_id (mt/id)
-                                          'dimension_id "d1" 'status "done" 'position 0})
+                                         {:exploration_thread_id thread :card_id card :page_id page
+                                          :database_id (mt/id)
+                                          :dimension_id "d1" :status "done" :position 0})
         sr      (t2/insert-returning-pk! :model/StoredResult
-                                         {'result_data       (byte-array [0])
-                                          'creator_id        creator
-                                          'database_id       (mt/id)
-                                          'dataset_query     {}
-                                          'row_count         1
-                                          'data_access_token {}})]
+                                         {:result_data       (byte-array [0])
+                                          :creator_id        creator
+                                          :database_id       (mt/id)
+                                          :dataset_query     {}
+                                          :row_count         1
+                                          :data_access_token {}})]
     (t2/insert-returning-pk! :model/ExplorationQueryResult
-                             {'exploration_query_id eq
-                              'stored_result_id     sr
-                              'chart_stats          stats
-                              'metric_description   "a description"})))
+                             {:exploration_query_id eq
+                              :stored_result_id     sr
+                              :chart_stats          stats
+                              :metric_description   "a description"})))
 
 (deftest chart-stats-round-trip-test
   (testing "chart_stats survives the EDN transform with its keyword and string-keyed shape intact"
@@ -74,9 +74,9 @@
             It must not sit in the clear next to them."
       (encryption-test/with-secret-key "chart-stats-encryption-test-key"
         (let [id  (query-result-row! stats-with-warehouse-values)
-              raw (:chart_stats (t2/query-one {'select ['chart_stats]
-                                               'from   ['exploration_query_result]
-                                               'where  ['= 'id id]}))]
+              raw (:chart_stats (t2/query-one {:select ['chart_stats]
+                                               :from   ['exploration_query_result]
+                                               :where  ['= 'id id]}))]
           (testing "the stored bytes do not contain the warehouse value"
             (is (string? raw))
             (is (not (str/includes? raw "ACME Corp"))
@@ -94,9 +94,9 @@
         (let [id (query-result-row! stats-with-warehouse-values)]
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id)))
-          (t2/query-one {'update 'exploration_query_result
-                         'set    {'chart_stats (pr-str stats-with-warehouse-values)}
-                         'where  ['= 'id id]})
+          (t2/query-one {:update 'exploration_query_result
+                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         :where  ['= 'id id]})
           (is (thrown? clojure.lang.ExceptionInfo
                        (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))))
 
@@ -107,8 +107,8 @@
     (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
-          (t2/query-one {'update 'exploration_query_result
-                         'set    {'chart_stats (pr-str stats-with-warehouse-values)}
-                         'where  ['= 'id id]})
+          (t2/query-one {:update 'exploration_query_result
+                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         :where  ['= 'id id]})
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))))

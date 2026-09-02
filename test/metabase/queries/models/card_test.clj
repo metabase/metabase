@@ -36,12 +36,12 @@
                    :model/Dashboard dash-2        {}]
       (letfn [(add-card-to-dash! [dash]
                 (t2/insert! :model/DashboardCard
-                            {'card_id      card-id
-                             'dashboard_id (u/the-id dash)
-                             'row          0
-                             'col          0
-                             'size_x       4
-                             'size_y       4}))
+                            {:card_id      card-id
+                             :dashboard_id (u/the-id dash)
+                             :row          0
+                             :col          0
+                             :size_x       4
+                             :size_y       4}))
               (get-dashboard-count []
                 (-> (t2/select-one :model/Card 'id card-id)
                     (t2/hydrate :dashboard_count)
@@ -109,12 +109,12 @@
                                            :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
-             (into {} (t2/select-one [:model/Card 'name 'database_id] 'id id)))))
-    (t2/update! :model/Card id {'name          "another name"
-                                'dataset_query (dummy-dataset-query (mt/id))})
+             (into {} (t2/select-one [:model/Card :name :database_id] 'id id)))))
+    (t2/update! :model/Card id {:name          "another name"
+                                :dataset_query (dummy-dataset-query (mt/id))})
     (testing "after update"
       (is (= {:name "another name" :database_id (mt/id)}
-             (into {} (t2/select-one [:model/Card 'name 'database_id] 'id id)))))))
+             (into {} (t2/select-one [:model/Card :name :database_id] 'id id)))))))
 
 (deftest disable-implicit-actions-if-needed-test
   (mt/with-actions-enabled
@@ -143,14 +143,14 @@
                                 {action-id-2 :action-id} {:type :implicit
                                                           :kind "row/update"}]
                 ;; make sure we have thing exists to start with
-                (is (= 2 (t2/count :model/Action 'id ['in [action-id-1 action-id-2]])))
-                (is (= 1 (t2/update! :model/Card 'id model-id {'dataset_query (apply f query args)})))
+                (is (= 2 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
+                (is (= 1 (t2/update! :model/Card 'id model-id {:dataset_query (apply f query args)})))
                 ;; should be gone by now
-                (is (= 0 (t2/count :model/Action 'id ['in [action-id-1 action-id-2]])))
-                (is (= 0 (t2/count :model/ImplicitAction 'action_id ['in [action-id-1 action-id-2]])))
+                (is (= 0 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
+                (is (= 0 (t2/count :model/ImplicitAction 'action_id [:in [action-id-1 action-id-2]])))
                 ;; call it twice to make we don't get delete error if no actions are found Returns either zero or one
                 ;; depending on the change because the query will possibly have different UUIDs
-                (is (#{0 1} (t2/update! :model/Card 'id model-id {'dataset_query (apply f query args)})))))))))))
+                (is (#{0 1} (t2/update! :model/Card 'id model-id {:dataset_query (apply f query args)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -160,7 +160,7 @@
                                              :dataset_query (mt/mbql-query users)}]
           (mt/with-dynamic-fn-redefs [card/disable-implicit-action-for-model! (fn [& _args]
                                                                                 (throw (ex-info "Should not be called" {})))]
-            (is (= 1 (t2/update! :model/Card 'id id {'dataset_query (mt/mbql-query users {:limit 1})})))))))))
+            (is (= 1 (t2/update! :model/Card 'id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
 
 (deftest disable-implicit-actions-if-needed-test-3
   (mt/with-actions-enabled
@@ -171,8 +171,8 @@
                           {http-id :action-id}     {:type :http}
                           {query-id :action-id}    {:type :query}]
           ;; make sure we have thing exists to start with
-          (is (= 3 (t2/count :model/Action 'id ['in [implicit-id http-id query-id]])))
-          (t2/update! :model/Card 'id model-id {'dataset_query (mt/mbql-query users {:limit 1})})
+          (is (= 3 (t2/count :model/Action 'id [:in [implicit-id http-id query-id]])))
+          (t2/update! :model/Card 'id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (not (t2/exists? :model/Action 'id implicit-id)))
           (is (t2/exists? :model/Action 'id http-id))
           (is (t2/exists? :model/Action 'id query-id)))))))
@@ -187,12 +187,12 @@
                           {action-id-2 :action-id} {:type :implicit
                                                     :kind "row/update"}]
           ;; make sure we have thing exists to start with
-          (is (= 2 (t2/count :model/Action 'id ['in [action-id-1 action-id-2]])))
+          (is (= 2 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
           ;; change source from users to categories
-          (t2/update! :model/Card 'id model-id {'dataset_query (mt/mbql-query categories)})
+          (t2/update! :model/Card 'id model-id {:dataset_query (mt/mbql-query categories)})
           ;; actions still exists
-          (is (= 2 (t2/count :model/Action 'id ['in [action-id-1 action-id-2]])))
-          (is (= 2 (t2/count :model/ImplicitAction 'action_id ['in [action-id-1 action-id-2]]))))))))
+          (is (= 2 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
+          (is (= 2 (t2/count :model/ImplicitAction 'action_id [:in [action-id-1 action-id-2]]))))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
@@ -213,7 +213,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Card card-id {'collection_id collection-id})))))))
+             (t2/update! :model/Card card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
@@ -490,8 +490,8 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid output:.*:parameters"
-             (t2/update! :model/Card id {'parameters [{:id 100}]})))
-        (is (pos? (t2/update! :model/Card id {'parameters [{:id   "new-valid-id"
+             (t2/update! :model/Card id {:parameters [{:id 100}]})))
+        (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
 
 (deftest normalize-parameters-test
@@ -523,8 +523,8 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid output:.*:parameter_mappings"
-             (t2/update! :model/Card id {'parameter_mappings [{:parameter_id 100}]})))
-        (is (pos? (t2/update! :model/Card id {'parameter_mappings [{:parameter_id "new-valid-id"
+             (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
+        (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
@@ -554,7 +554,7 @@
                   :parameter_id              "_CATEGORY_NAME_"}]
                 (t2/select :model/ParameterCard 'parameterized_object_type "card" 'parameterized_object_id card-id)))
         (testing "update values_source_config.card_id will update ParameterCard"
-          (t2/update! :model/Card card-id {'parameters [(merge default-params
+          (t2/update! :model/Card card-id {:parameters [(merge default-params
                                                                {:values_source_type    "card"
                                                                 :values_source_config {:card_id source-card-id-2}})]})
           (is (=? [{:card_id                   source-card-id-2
@@ -589,7 +589,7 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (t2/select :model/ParameterCard 'card_id source-card-id {'order-by [['parameterized_object_id 'asc]]})))
+                (t2/select :model/ParameterCard 'card_id source-card-id {:order-by [['parameterized_object_id 'asc]]})))
         (t2/delete! :model/Card 'id source-card-id)
         (is (= []
                (t2/select :model/ParameterCard 'card_id source-card-id)))))))
@@ -604,7 +604,7 @@
                                                                     :values_source_type    "card"
                                                                     :values_source_config {:card_id source-card-id}}]}]
       (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
-        (t2/update! :model/Card card-id-1 {'name "new name"})))))
+        (t2/update! :model/Card card-id-1 {:name "new name"})))))
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset test-data
@@ -636,7 +636,7 @@
                 :parameter_id              "param_2"
                 :parameterized_object_type :dashboard
                 :parameterized_object_id   (:id dashboard)}]
-              (t2/select :model/ParameterCard 'card_id source-card-id {'order-by [['parameter_id 'asc]]})))
+              (t2/select :model/ParameterCard 'card_id source-card-id {:order-by [['parameter_id 'asc]]})))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
         (t2/update! :model/Card source-card-id
@@ -663,7 +663,7 @@
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card 'id (:id card)))))))
       (testing "on archive card"
-        (t2/update! :model/Card source-card-id {'archived true})
+        (t2/update! :model/Card source-card-id {:archived true})
         (testing "ParameterCard for card is removed"
           (is (=? [] (t2/select :model/ParameterCard 'card_id source-card-id))))
         (testing "update the dashboard parameter and remove values_config of card"
@@ -830,11 +830,11 @@
 (deftest upgrade-to-v2-db-test-2
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
-      (t2/update! :model/Card card-id {'name "Favorite Toucan Foods"})
+      (t2/update! :model/Card card-id {:name "Favorite Toucan Foods"})
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
-             (-> (t2/select-one (t2/table-name :model/Card) {'where ['= 'id card-id]})
+             (-> (t2/select-one (t2/table-name :model/Card) {:where ['= 'id card-id]})
                  :visualization_settings
                  json/decode+kw))))))
 
@@ -851,7 +851,7 @@
     (mt/with-temp [:model/Card card {}]
       (is (= config/mb-version-string (:metabase_version card)))
       (with-redefs [config/mb-version-string "blablabla"]
-        (t2/update! :model/Card 'id (:id card) {'description "test"}))
+        (t2/update! :model/Card 'id (:id card) {:description "test"}))
       ;; we store version of metabase which created the card
       (is (= config/mb-version-string
              (t2/select-one-fn :metabase_version :model/Card 'id (:id card)))))))
@@ -957,7 +957,7 @@
           (let [orders (lib.metadata/table metadata-provider (mt/id :orders))]
             (is (= 1
                    (t2/update! :model/Card 'id (u/the-id card)
-                               {'dataset_query (lib/query metadata-provider orders)})))
+                               {:dataset_query (lib/query metadata-provider orders)})))
             (is (=? {:dataset_query {:lib/type     :mbql/query
                                      :database     (mt/id)
                                      :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :orders)}]
@@ -1119,8 +1119,8 @@
                  :model/Card {card-2-id :id} {:name "Dog Man"}
                  :model/Card {card-3-id :id} {:name "Petey"}]
     (testing "only the two cards specified get updated"
-      (t2/update! :model/Card 'id ['in [card-1-id card-2-id]]
-                  {'name "Flippy"})
+      (t2/update! :model/Card 'id [:in [card-1-id card-2-id]]
+                  {:name "Flippy"})
       (is (= "Petey" (t2/select-one-fn :name :model/Card 'id card-3-id))))))
 
 (deftest ^:parallel query-description-in-metric-cards-test
@@ -1177,7 +1177,7 @@
            :model/Card {b-id :id} {:name "Metric B", :type :metric, :dataset_query (metric-query a-id)}]
           ;; close the cycle with a raw update -- the card API rejects cyclic saves, so this is the non-API path
           ;; (serdes, remote sync, pre-check data) by which a cycle actually reaches the DB
-          (t2/update! :model/Card a-id {'dataset_query (metric-query b-id)})
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
           (f a-id b-id))))))
 
 (deftest query-description-metric-reference-cycle-test
@@ -1192,7 +1192,7 @@
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"
     (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
-      (t2/update! :model/Card card-id {'name "Updated Name"})
+      (t2/update! :model/Card card-id {:name "Updated Name"})
       (is (= @#'card/current-schema-version
              (t2/select-one-fn :card_schema :model/Card 'id card-id))))))
 
@@ -1201,7 +1201,7 @@
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
                    :model/Card {card-id :id} {}]
-      (t2/update! :model/Card card-id {'dashboard_id dash-id})
+      (t2/update! :model/Card card-id {:dashboard_id dash-id})
       (is (= coll-id
              (t2/select-one-fn :collection_id :model/Card 'id card-id))))))
 
@@ -1213,7 +1213,7 @@
                                 :type     :query
                                 :query    {:source-table (mt/id :venues)
                                            :filter       [:= [:field-id (mt/id :venues :name)] "Test"]}}]
-        (t2/update! :model/Card card-id {'dataset_query unnormalized-query})
+        (t2/update! :model/Card card-id {:dataset_query unnormalized-query})
         ;; Verify the query was normalized (field-id -> field)
         (let [updated-query (t2/select-one-fn :dataset_query :model/Card 'id card-id)]
           (is (=? [:= {} [:field {} (mt/id :venues :name)] "Test"]
@@ -1223,7 +1223,7 @@
   (testing "populate-query-fields is called"
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [new-query (mt/mbql-query venues)]
-        (t2/update! :model/Card card-id {'dataset_query new-query})
+        (t2/update! :model/Card card-id {:dataset_query new-query})
         (let [updated-card (t2/select-one :model/Card 'id card-id)]
           (is (= (mt/id) (:database_id updated-card)))
           (is (= (mt/id :venues) (:table_id updated-card)))
@@ -1240,7 +1240,7 @@
                                                                   :query    {:source-table (str "card__" model-id)}}}]
       (testing "source_card_id is cleared when converting to native SQL"
         (t2/update! :model/Card question-id
-                    {'dataset_query {:database (mt/id)
+                    {:dataset_query {:database (mt/id)
                                      :type     :native
                                      :native   {:query "SELECT * FROM venues"}}})
         (is (nil? (:source_card_id (t2/select-one :model/Card question-id)))))))
@@ -1253,7 +1253,7 @@
                                                                   :type     :query
                                                                   :query    {:source-table (str "card__" model-id)}}}]
       (t2/update! :model/Card question-id
-                  {'dataset_query {:database (mt/id)
+                  {:dataset_query {:database (mt/id)
                                    :type     :native
                                    :native   {:query "SELECT * FROM venues"}}})
       (t2/delete! :model/Card model-id)
@@ -1267,14 +1267,14 @@
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card 'id card-id)))
       (t2/update! :model/Card card-id
-                  {'dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
+                  {:dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
       (is (nil? (t2/select-one-fn :table_id :model/Card 'id card-id)))))
   (testing "table_id should be set to nil when the source becomes a native model with no table"
     (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                :dataset_query (mt/native-query {:query "SELECT 1"})}
                    :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (t2/update! :model/Card card-id
-                  {'dataset_query {:database (mt/id)
+                  {:dataset_query {:database (mt/id)
                                    :type     :query
                                    :query    {:source-table (str "card__" model-id)}}})
       (let [card (t2/select-one :model/Card 'id card-id)]
@@ -1289,7 +1289,7 @@
       (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card 'id card-id)))
       ;; hard-delete the source card so the table can no longer be derived from the query
       (t2/delete! :model/Card 'id model-id)
-      (t2/update! :model/Card card-id {'name "Renamed, query untouched"})
+      (t2/update! :model/Card card-id {:name "Renamed, query untouched"})
       (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card 'id card-id))))))
 
 (deftest assert-no-source-card-id-for-native-query-test
@@ -1297,15 +1297,15 @@
     (with-redefs [card/populate-query-fields identity]
       (is (thrown-with-msg? Exception #"Assert failed"
                             (t2/insert! :model/Card
-                                        {'name "Bad Card"
-                                         'dataset_query (mt/native-query {:query "SELECT 1"})
-                                         'source_card_id 999
-                                         'database_id (mt/id)}))))))
+                                        {:name "Bad Card"
+                                         :dataset_query (mt/native-query {:query "SELECT 1"})
+                                         :source_card_id 999
+                                         :database_id (mt/id)}))))))
 
 (deftest before-update-embedding-timestamp-test
   (testing "maybe-populate-initially-published-at is called"
     (mt/with-temp [:model/Card {card-id :id} {:enable_embedding false}]
-      (t2/update! :model/Card card-id {'enable_embedding true})
+      (t2/update! :model/Card card-id {:enable_embedding true})
       (let [updated-card (t2/select-one :model/Card 'id card-id)]
         (is (some? (:initially_published_at updated-card)))))))
 
@@ -1313,8 +1313,8 @@
   (testing "verified-result-metadata? flag is removed from final changes"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       ;; This should not cause an error even though verified-result-metadata? is not a valid column
-      (t2/update! :model/Card card-id {'name "Updated"
-                                       'verified-result-metadata? true})
+      (t2/update! :model/Card card-id {:name "Updated"
+                                       :verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card 'id card-id))))))
 
 (deftest create-card-remote-synced-collection-non-remote-synced-deps-test
@@ -1733,7 +1733,7 @@
                                                   :metabot_chart_id "chart-1"}]
           (t2/update! :model/Card card-id changes)
           (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
-                 (t2/select-one [:model/Card 'metabot_conversation_id 'metabot_chart_id]
+                 (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                                 'id card-id)))))))
   (testing "renaming or moving a card keeps the link"
     (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
@@ -1741,9 +1741,9 @@
                    :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
                                               :metabot_conversation_id convo-id
                                               :metabot_chart_id "chart-1"}]
-      (t2/update! :model/Card card-id {'name "Renamed" 'collection_id coll-id})
+      (t2/update! :model/Card card-id {:name "Renamed" :collection_id coll-id})
       (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
-             (t2/select-one [:model/Card 'metabot_conversation_id 'metabot_chart_id]
+             (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
                             'id card-id))))))
 
 (deftest serdes-extract-query-excludes-exploration-summary-cards-test
@@ -1764,7 +1764,7 @@
       (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Card" {'where ['in 'id [plain-card doc-card summary-card]]}))]
+                            (serdes/extract-all "Card" {:where ['in 'id [plain-card doc-card summary-card]]}))]
         (is (contains? extracted (eid plain-card))
             "an ordinary card is still exported")
         (is (contains? extracted (eid doc-card))

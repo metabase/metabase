@@ -149,10 +149,10 @@
      :comments []}
     (let [_entity  (api/read-check (type->model target_type) target_id)
           comments (-> (t2/select :model/Comment
-                                  {'where    ['and
+                                  {:where    ['and
                                               ['= 'target_type target_type]
                                               ['= 'target_id target_id]]
-                                   'order-by [['created_at 'asc]]})
+                                   :order-by [['created_at 'asc]]})
                        (t2/hydrate :creator :reactions))]
       ;; The read check above only proves the viewer may see the *target*, and for an exploration
       ;; that is collection permissions alone; the gate is what adjudicates the warehouse values a
@@ -163,7 +163,7 @@
   "Restrict mentioned user ids to active users who can themselves read `entity`."
   [entity mention-ids]
   (when (seq mention-ids)
-    (->> (t2/select-pks-set :model/User 'id ['in mention-ids] 'is_active true)
+    (->> (t2/select-pks-set :model/User 'id [:in mention-ids] 'is_active true)
          (filterv (fn [user-id]
                     (request/with-current-user user-id
                       (mi/can-read? entity)))))))
@@ -177,16 +177,16 @@
               parent (when parent_comment_id
                        (t2/select-one :model/Comment 'id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
-                     {'where ['in 'id ^:allow-subquery {'from   ['comment]
-                                                        'select ['creator_id]
-                                                        'where  ['or
+                     {:where ['in 'id ^:allow-subquery {:from   ['comment]
+                                                        :select ['creator_id]
+                                                        :where  ['or
                                                                  ['= 'id parent_comment_id]
                                                                  ['= 'parent_comment_id parent_comment_id]]}]}
                      ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
-                     {'where ['= 'id (:creator_id entity)]})
+                     {:where ['= 'id (:creator_id entity)]})
         mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
-        recipients (-> (t2/select-fn-set :email [:model/User 'email]
+        recipients (-> (t2/select-fn-set :email [:model/User :email]
                                          (cond-> clause
                                            (seq mentions) (sql.helpers/where 'or ['in 'id mentions])))
                        (disj (:email @api/*current-user*)))
@@ -232,13 +232,13 @@
                                                  "Parent comment doesn't belong to the same entity"))
                          (t2/hydrate :creator)))
         comment    (-> (t2/insert-returning-instance! :model/Comment
-                                                      {'target_type       target_type
-                                                       'target_id         target_id
-                                                       'child_target_id   child_target_id
-                                                       'context           context
-                                                       'parent_comment_id parent_comment_id
-                                                       'content           content
-                                                       'creator_id        api/*current-user-id*})
+                                                      {:target_type       target_type
+                                                       :target_id         target_id
+                                                       :child_target_id   child_target_id
+                                                       :context           context
+                                                       :parent_comment_id parent_comment_id
+                                                       :content           content
+                                                       :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
@@ -299,7 +299,7 @@
                        (:is_superuser @api/*current-user*)))
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
     ;; Soft delete the comment
-    (t2/update! :model/Comment comment-id {'deleted_at [:now]})
+    (t2/update! :model/Comment comment-id {:deleted_at [:now]})
     (events/publish-event! :event/comment-delete
                            {:object comment
                             :user-id api/*current-user-id*})
@@ -351,15 +351,15 @@
                  (user/filter-clauses {:limit  (request/limit)
                                        :offset (request/offset)})
                  restrict-to-visible-users)]
-    {:data   (->> (t2/select [:model/User 'id 'first_name 'last_name 'email]
+    {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
                              (-> clauses
                                  (sql.helpers/order-by ['%lower.first_name 'asc]
                                                        ['%lower.last_name 'asc]
                                                        ['id 'asc])))
                   (mapv #(assoc % :model "user")))
      :total  (:count (t2/query-one
-                      (merge {'select [[['count ['distinct 'core_user.id]] 'count]]
-                              'from   'core_user}
+                      (merge {:select [[['count ['distinct 'core_user.id]] 'count]]
+                              :from   'core_user}
                              (users/filter-clauses-without-paging clauses))))
      :limit  (request/limit)
      :offset (request/offset)}))

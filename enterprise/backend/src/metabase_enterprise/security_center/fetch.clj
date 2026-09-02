@@ -60,8 +60,8 @@
 (defn- latest-updated-at
   "Return the maximum `updated_at` across all advisories as an ISO-8601 string, or nil if none exist."
   []
-  (some-> (mdb/query {'select [[['max 'updated_at]]]
-                      'from   ['security_advisory]})
+  (some-> (mdb/query {:select [[['max 'updated_at]]]
+                      :from   ['security_advisory]})
           first
           vals
           first

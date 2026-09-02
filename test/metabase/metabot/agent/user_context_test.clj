@@ -441,11 +441,11 @@
         ;; `with-temp :model/Table` trips a different guard. Insert it directly, like
         ;; `read-destination-backed-entities-return-errors-test` does for the read_resource tool.
         (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {'db_id      destination-id
-                                                 'name       "destination-table"
-                                                 'active     true
-                                                 'created_at :%now
-                                                 'updated_at :%now})]
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
           (with-redefs [mi/can-read? (constantly true)]
             (let [result (user-context/format-viewing-context
                           {:user_is_viewing [{:type "table" :id table-id}]})]

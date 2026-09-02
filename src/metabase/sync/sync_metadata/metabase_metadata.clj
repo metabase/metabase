@@ -53,7 +53,7 @@
                                              'name   table-name
                                              'active true)]
          (if field-name
-           (t2/update! :model/Field {'name field-name, 'table_id table-id} {k value})
+           (t2/update! :model/Field {:name field-name, :table_id table-id} {k value})
            (t2/update! :model/Table table-id {k value})))
        (t2/update! :model/Database (u/the-id database) {k value})))))
 

@@ -33,7 +33,7 @@
         perm-values                (when (seq non-impersonated-group-ids)
                                      (t2/select-fn-set :perm_value
                                                        :model/DataPermissions
-                                                       {'where
+                                                       {:where
                                                         ['and
                                                          ['= 'db_id (u/the-id db-or-id)]
                                                          ['= 'table_id nil]
@@ -62,7 +62,7 @@
   (let [group-ids           (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id api/*current-user-id*)
         conn-impersonations (when (seq group-ids)
                               (t2/select :model/ConnectionImpersonation
-                                         'group_id ['in group-ids]
+                                         'group_id [:in group-ids]
                                          'db_id (u/the-id db-or-id)))]
     (when (and (seq conn-impersonations) (sandboxed? db-or-id))
       (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")

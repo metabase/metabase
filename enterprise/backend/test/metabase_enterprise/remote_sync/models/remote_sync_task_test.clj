@@ -164,9 +164,9 @@
 (deftest handles-tasks-with-no-initiating-user-test
   (testing "handles tasks with no initiating user"
     (let [task (t2/insert-returning-instance! :model/RemoteSyncTask
-                                              {'sync_task_type "import"
-                                               'initiated_by nil
-                                               'started_at (mi/now)})]
+                                              {:sync_task_type "import"
+                                               :initiated_by nil
+                                               :started_at (mi/now)})]
       (is (some? task))
       (is (nil? (:initiated_by task)))
       (rst/complete-sync-task! (:id task)))))
@@ -174,9 +174,9 @@
 (deftest hydration-handles-nil-user-gracefully-test
   (testing "hydration handles nil user gracefully"
     (let [task (t2/insert-returning-instance! :model/RemoteSyncTask
-                                              {'sync_task_type "import"
-                                               'initiated_by nil
-                                               'started_at (mi/now)})
+                                              {:sync_task_type "import"
+                                               :initiated_by nil
+                                               :started_at (mi/now)})
           hydrated-task (t2/hydrate task :initiated_by_user)]
       (is (nil? (:initiated_by_user hydrated-task)))
       (rst/complete-sync-task! (:id task)))))
@@ -317,7 +317,7 @@
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
         (t2/update! :model/RemoteSyncTask (:id task)
-                    {'last_progress_report_at old-time})
+                    {:last_progress_report_at old-time})
         (let [stale-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
           (is (true? (rst/timed-out? stale-task))))
         (finally
@@ -338,7 +338,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (t2/update! :model/RemoteSyncTask (:id task)
-                  {'last_progress_report_at old-time})
+                  {:last_progress_report_at old-time})
       (rst/complete-sync-task! (:id task))
       (let [completed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/timed-out? completed-task)))))))
@@ -348,7 +348,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (t2/update! :model/RemoteSyncTask (:id task)
-                  {'last_progress_report_at old-time})
+                  {:last_progress_report_at old-time})
       (rst/fail-sync-task! (:id task) "Task failed")
       (let [failed-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
         (is (false? (rst/timed-out? failed-task)))))))
@@ -359,7 +359,7 @@
           boundary-time (t/minus (t/offset-date-time) (t/minutes 4))]
       (try
         (t2/update! :model/RemoteSyncTask (:id task)
-                    {'last_progress_report_at boundary-time})
+                    {:last_progress_report_at boundary-time})
         (let [boundary-task (t2/select-one :model/RemoteSyncTask 'id (:id task))]
           (is (false? (rst/timed-out? boundary-task))))
         (finally

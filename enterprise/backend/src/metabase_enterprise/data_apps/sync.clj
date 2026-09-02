@@ -120,7 +120,7 @@
   [existing slug message]
   (boolean
    (when (and existing (not= (:sync_error existing) message))
-     (t2/update! :model/DataApp 'name slug {'sync_error message})
+     (t2/update! :model/DataApp 'name slug {:sync_error message})
      true)))
 
 (defn- sync-app!
@@ -211,7 +211,7 @@
                 ;; `enabled` is deliberately not consulted — see the README's
                 ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
                 removed (if (seq present-slugs)
-                          (t2/delete! :model/DataApp 'name ['not-in present-slugs])
+                          (t2/delete! :model/DataApp 'name [:not-in present-slugs])
                           (t2/delete! :model/DataApp))]
             {:changed changed, :removed removed}))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"

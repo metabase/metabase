@@ -99,7 +99,7 @@
               (is (= #{:blocked}
                      (t2/select-fn-set :perm_value
                                        :model/DataPermissions
-                                       {'where ['and
+                                       {:where ['and
                                                 ['= 'db_id (mt/id)]
                                                 ['= 'group_id group-id]
                                                 ['= 'perm_type (u/qualified-name :perms/view-data)]]}))))))))))
@@ -778,7 +778,7 @@
                                               {:result_metadata results-metadata-mismatched}))))
               (testing "Result_metadata of a card can be updated freely using toucan"
                 (is (= 1 (t2/update! :model/Card 'id (:id card)
-                                     {'result_metadata results-metadata-mismatched}))))
+                                     {:result_metadata results-metadata-mismatched}))))
               (testing "POST /dataset: query referencing card with mismatched result_metadata fails"
                 (is (=? {:status "failed"
                          :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}

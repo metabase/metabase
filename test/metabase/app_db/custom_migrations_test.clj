@@ -179,33 +179,33 @@
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                  {'name                   "My Saved Question"
-                                                   'created_at             :%now
-                                                   'updated_at             :%now
-                                                   'creator_id             user-id
-                                                   'display                "table"
-                                                   'dataset_query          "{}"
-                                                   'visualization_settings (json/encode visualization-settings)
-                                                   'database_id            database-id
-                                                   'collection_id          nil})]
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings (json/encode visualization-settings)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_card]
-                                    'where  ['= 'id card-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_card]
+                                    :where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
@@ -213,18 +213,18 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_card]
-                                    'where  ['= 'id card-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_card]
+                                    :where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_card]
-                                    'where  ['= 'id card-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_card]
+                                    :where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode
                      mi/normalize-visualization-settings
@@ -248,32 +248,32 @@
                              {"field_ref" ["aggregation" 0]}
                              {"field_ref" ["expression" "expr"]}]
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                  {'name                   "My Saved Question"
-                                                   'created_at             :%now
-                                                   'updated_at             :%now
-                                                   'creator_id             user-id
-                                                   'display                "table"
-                                                   'dataset_query          "{}"
-                                                   'visualization_settings "{}"
-                                                   'result_metadata        (json/encode result_metadata)
-                                                   'database_id            database-id
-                                                   'collection_id          nil})]
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :result_metadata        (json/encode result_metadata)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
-        (let [migrated-result-metadata (:result_metadata (t2/query-one {'select ['result_metadata]
-                                                                        'from   ['report_card]
-                                                                        'where  ['= 'id card-id]}))]
+        (let [migrated-result-metadata (:result_metadata (t2/query-one {:select ['result_metadata]
+                                                                        :from   ['report_card]
+                                                                        :where  ['= 'id card-id]}))]
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
                    (json/decode migrated-result-metadata))))
@@ -323,43 +323,43 @@
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                  {'name                   "My Saved Question"
-                                                   'created_at             :%now
-                                                   'updated_at             :%now
-                                                   'creator_id             user-id
-                                                   'display                "table"
-                                                   'dataset_query          "{}"
-                                                   'result_metadata        (json/encode result_metadata)
-                                                   'visualization_settings (json/encode visualization-settings)
-                                                   'database_id            database-id
-                                                   'collection_id          nil})]
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/encode result_metadata)
+                                                   :visualization_settings (json/encode visualization-settings)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_card]
-                                    'where  ['= 'id card-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_card]
+                                    :where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode))))
         (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (migrate! :down 46)
           (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
             (is (= visualization-settings
-                   (-> (t2/query-one {'select ['visualization_settings]
-                                      'from   ['report_card]
-                                      'where  ['= 'id card-id]})
+                   (-> (t2/query-one {:select ['visualization_settings]
+                                      :from   ['report_card]
+                                      :where  ['= 'id card-id]})
                        :visualization_settings
                        json/decode)))))))))
 
@@ -369,26 +369,26 @@
     ;; SOMETIMES the rollback of custom migration doesn't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
-      (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {'first_name  "Howard"
-                                                                                       'last_name   "Hughes"
-                                                                                       'email       "howard@aircraft.com"
-                                                                                       'password    "superstrong"
-                                                                                       'date_joined :%now}))
-            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {'name       "A dashboard"
-                                                                            'creator_id user-id}))
-            tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {'name         "Tab 1"
-                                                                               'position     0
-                                                                               'dashboard_id dashboard-id}))
-            tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {'name         "Tab 2"
-                                                                               'position     1
-                                                                               'dashboard_id dashboard-id}))
+      (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                                       :last_name   "Hughes"
+                                                                                       :email       "howard@aircraft.com"
+                                                                                       :password    "superstrong"
+                                                                                       :date_joined :%now}))
+            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                            :creator_id user-id}))
+            tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
+                                                                               :position     0
+                                                                               :dashboard_id dashboard-id}))
+            tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
+                                                                               :position     1
+                                                                               :dashboard_id dashboard-id}))
             ;; adds a dummy tab without cards to make sure our migration doesn't fail on such case
-            _            (first (t2/insert-returning-pks! :model/DashboardTab {'name         "Tab 3"
-                                                                               'position     2
-                                                                               'dashboard_id dashboard-id}))
-            tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {'name         "Tab 4"
-                                                                               'position     3
-                                                                               'dashboard_id dashboard-id}))
+            _            (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+                                                                               :position     2
+                                                                               :dashboard_id dashboard-id}))
+            tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
+                                                                               :position     3
+                                                                               :dashboard_id dashboard-id}))
             default-card {:dashboard_id           dashboard-id
                           :visualization_settings {:virtual_card {:display "text"}
                                                    :text         "A text card"}}
@@ -458,11 +458,11 @@
 (deftest ^:mb/old-migrations-test migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
     (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                        {'first_name  "Howard"
-                                                         'last_name   "Hughes"
-                                                         'email       "howard@aircraft.com"
-                                                         'password    "superstrong"
-                                                         'date_joined :%now}))
+                                                        {:first_name  "Howard"
+                                                         :last_name   "Hughes"
+                                                         :email       "howard@aircraft.com"
+                                                         :password    "superstrong"
+                                                         :date_joined :%now}))
 
           cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
                         {:row 7  :col 12 :size_x 6  :size_y 8}
@@ -480,11 +480,11 @@
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
           revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                       {'object    (json/encode {:cards cards})
-                                                        'model     "Dashboard"
-                                                        'model_id  1
-                                                        'user_id   user-id
-                                                        'timestamp :%now}))]
+                                                       {:object    (json/encode {:cards cards})
+                                                        :model     "Dashboard"
+                                                        :model_id  1
+                                                        :user_id   user-id
+                                                        :timestamp :%now}))]
       (migrate!)
       (testing "forward migration migrate correclty"
         (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
@@ -510,11 +510,11 @@
 (deftest ^:mb/old-migrations-test migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
     (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                        {'first_name  "Howard"
-                                                         'last_name   "Hughes"
-                                                         'email       "howard@aircraft.com"
-                                                         'password    "superstrong"
-                                                         'date_joined :%now}))
+                                                        {:first_name  "Howard"
+                                                         :last_name   "Hughes"
+                                                         :email       "howard@aircraft.com"
+                                                         :password    "superstrong"
+                                                         :date_joined :%now}))
 
           cards        [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}          ; correct case
                         {:id 2 :row 0 :col 0 :sizeX 4 :sizeY 4}            ; sizeX and sizeY are legacy names
@@ -522,11 +522,11 @@
                         {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}  ; string values need to be skipped
                         {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]  ; include keys other than size
           revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                       {'object    (json/encode {:cards cards})
-                                                        'model     "Dashboard"
-                                                        'model_id  1
-                                                        'user_id   user-id
-                                                        'timestamp :%now}))]
+                                                       {:object    (json/encode {:cards cards})
+                                                        :model     "Dashboard"
+                                                        :model_id  1
+                                                        :user_id   user-id
+                                                        :timestamp :%now}))]
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
@@ -640,24 +640,24 @@
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             card        {:visualization_settings visualization-settings}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                  {'model     "Card"
-                                                   'model_id  1 ;; TODO: this could be a foreign key in the future
-                                                   'user_id   user-id
-                                                   'object    (json/encode card)
-                                                   'timestamp :%now})]
+                                                  {:model     "Card"
+                                                   :model_id  1 ;; TODO: this could be a foreign key in the future
+                                                   :user_id   user-id
+                                                   :object    (json/encode card)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))
@@ -666,9 +666,9 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))
@@ -676,9 +676,9 @@
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")
@@ -717,23 +717,23 @@
                                                              :source-table 2}
                                                   :type     :query}}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                  {'model     "Card"
-                                                   'model_id  1 ;; TODO: this could be a foreign key in the future
-                                                   'user_id   user-id
-                                                   'object    (json/encode card)
-                                                   'timestamp :%now})]
+                                                  {:model     "Card"
+                                                   :model_id  1 ;; TODO: this could be a foreign key in the future
+                                                   :user_id   user-id
+                                                   :object    (json/encode card)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))
@@ -741,9 +741,9 @@
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
                               ["column_settings" (json/encode ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))))))
@@ -768,43 +768,43 @@
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                  {'name                   "My Saved Question"
-                                                   'created_at             :%now
-                                                   'updated_at             :%now
-                                                   'creator_id             user-id
-                                                   'display                "table"
-                                                   'dataset_query          "{}"
-                                                   'visualization_settings "{}"
-                                                   'database_id            database-id
-                                                   'collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {'name                "My Dashboard"
-                                                                     'creator_id          user-id
-                                                                     'parameters          []})
-            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {'dashboard_id dashboard-id
-                                                                         'visualization_settings (json/encode visualization-settings)
-                                                                         'card_id      card-id
-                                                                         'size_x       4
-                                                                         'size_y       4
-                                                                         'col          1
-                                                                         'row          1})]
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings (json/encode visualization-settings)
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
@@ -812,18 +812,18 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode
                      mi/normalize-visualization-settings
@@ -859,52 +859,52 @@
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                  {'name                   "My Saved Question"
-                                                   'created_at             :%now
-                                                   'updated_at             :%now
-                                                   'creator_id             user-id
-                                                   'display                "table"
-                                                   'dataset_query          "{}"
-                                                   'result_metadata        (json/encode result_metadata)
-                                                   'visualization_settings "{}"
-                                                   'database_id            database-id
-                                                   'collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {'name                "My Dashboard"
-                                                                     'creator_id          user-id
-                                                                     'parameters          []})
-            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {'dashboard_id dashboard-id
-                                                                         'visualization_settings (json/encode visualization-settings)
-                                                                         'card_id      card-id
-                                                                         'size_x       4
-                                                                         'size_y       4
-                                                                         'col          1
-                                                                         'row          1})]
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/encode result_metadata)
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings (json/encode visualization-settings)
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})]
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))
         (migrate! :down 46)
         (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
           (is (= visualization-settings
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))))))
 
@@ -928,24 +928,24 @@
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/encode))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             dashboard   {:cards [{:visualization_settings visualization-settings}]}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                  {'model     "Dashboard"
-                                                   'model_id  1
-                                                   'user_id   user-id
-                                                   'object    (json/encode dashboard)
-                                                   'timestamp :%now})]
+                                                  {:model     "Dashboard"
+                                                   :model_id  1
+                                                   :user_id   user-id
+                                                   :object    (json/encode dashboard)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
@@ -954,9 +954,9 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
@@ -964,9 +964,9 @@
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])
@@ -995,24 +995,24 @@
                                     ["name" "column_name"]                                        {"column_title" "4"}}
                                    (update-keys json/encode))}
             user-id            (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                         {'first_name  "Howard"
-                                                          'last_name   "Hughes"
-                                                          'email       "howard@aircraft.com"
-                                                          'password    "superstrong"
-                                                          'date_joined :%now})
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
             database-id        (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                         {'name       "DB"
-                                                          'engine     "h2"
-                                                          'created_at :%now
-                                                          'updated_at :%now
-                                                          'details    "{}"})
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
             [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                         {'name                   "My Saved Question"
-                                                          'created_at             :%now
-                                                          'updated_at             :%now
-                                                          'creator_id             user-id
-                                                          'display                "table"
-                                                          'dataset_query          (json/encode {:database 1
+                                                         {:name                   "My Saved Question"
+                                                          :created_at             :%now
+                                                          :updated_at             :%now
+                                                          :creator_id             user-id
+                                                          :display                "table"
+                                                          :dataset_query          (json/encode {:database 1
                                                                                                 :query    {:joins [{:alias        "Joined table"
                                                                                                                     :condition    [:=
                                                                                                                                    [:field 43 nil]
@@ -1021,24 +1021,24 @@
                                                                                                                     :source-table 5}]
                                                                                                            :source-table 2}
                                                                                                 :type     :query})
-                                                          'result_metadata        "{}"
-                                                          'visualization_settings "{}"
-                                                          'database_id            database-id
-                                                          'collection_id          nil})
+                                                          :result_metadata        "{}"
+                                                          :visualization_settings "{}"
+                                                          :database_id            database-id
+                                                          :collection_id          nil})
             dashboard   {:cards [{:card_id                card-id
                                   :visualization_settings visualization-settings}]}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
-                                                  {'model     "Dashboard"
-                                                   'model_id  1
-                                                   'user_id   user-id
-                                                   'object    (json/encode dashboard)
-                                                   'timestamp :%now})]
+                                                  {:model     "Dashboard"
+                                                   :model_id  1
+                                                   :user_id   user-id
+                                                   :object    (json/encode dashboard)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
@@ -1046,9 +1046,9 @@
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
                               ["column_settings" (json/encode ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {'select ['object]
-                                    'from   ['revision]
-                                    'where  ['= 'id revision-id]})
+                 (-> (t2/query-one {:select ['object]
+                                    :from   ['revision]
+                                    :where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))))))
@@ -1099,16 +1099,16 @@
                   (when encrypted?
                     (testing "make sure the settings is encrypted before the migration"
                       (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {'select ['settings]
-                                                            'from ['metabase_database]
-                                                            'where [['= 'id success-id]]})))))))
+                                  (:settings (t2/query-one {:select ['settings]
+                                                            :from ['metabase_database]
+                                                            :where [['= 'id success-id]]})))))))
                   (migrate!)
                   (when encrypted?
                     (testing "make sure the settings is encrypted after the migration"
                       (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {'select ['settings]
-                                                            'from ['metabase_database]
-                                                            'where [['= 'id success-id]]})))))))
+                                  (:settings (t2/query-one {:select ['settings]
+                                                            :from ['metabase_database]
+                                                            :where [['= 'id success-id]]})))))))
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
@@ -1129,11 +1129,11 @@
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database 'settings 'options] success-id))))
+                           (t2/select-one [:model/Database :settings :options] success-id))))
                   (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database 'settings 'options] empty-options-id)))))))))]
+                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1441,37 +1441,37 @@
                                  "graph.dimensions" ["CREATED_AT" "CATEGORY"],
                                  "graph.metrics"    ["count"]})
                 [user-id]      (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                         {'first_name  "Howard"
-                                                          'last_name   "Hughes"
-                                                          'email       "howard@aircraft.com"
-                                                          'password    "superstrong"
-                                                          'date_joined :%now})
+                                                         {:first_name  "Howard"
+                                                          :last_name   "Hughes"
+                                                          :email       "howard@aircraft.com"
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
                 [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                         {'name       "DB"
-                                                          'engine     "h2"
-                                                          'created_at :%now
-                                                          'updated_at :%now
-                                                          'details    "{}"})
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
                 [card-id]      (t2/insert-returning-pks!
                                 :report_card
-                                {'visualization_settings card-vis
-                                 'display                "table"
-                                 'dataset_query          "{}"
-                                 'creator_id             user-id
-                                 'database_id            database-id
-                                 'name                   "My Card"
-                                 'created_at             :%now
-                                 'updated_at             :%now})
-                [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {'name       "My Dashboard"
-                                                                           'creator_id user-id
-                                                                           'parameters []})
-                [dashcard-id]  (t2/insert-returning-pks! :model/DashboardCard {'dashboard_id           dashboard-id
-                                                                               'visualization_settings dashcard-vis
-                                                                               'card_id                card-id
-                                                                               'size_x                 4
-                                                                               'size_y                 4
-                                                                               'col                    1
-                                                                               'row                    1})
+                                {:visualization_settings card-vis
+                                 :display                "table"
+                                 :dataset_query          "{}"
+                                 :creator_id             user-id
+                                 :database_id            database-id
+                                 :name                   "My Card"
+                                 :created_at             :%now
+                                 :updated_at             :%now})
+                [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
+                                                                           :creator_id user-id
+                                                                           :parameters []})
+                [dashcard-id]  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id           dashboard-id
+                                                                               :visualization_settings dashcard-vis
+                                                                               :card_id                card-id
+                                                                               :size_x                 4
+                                                                               :size_y                 4
+                                                                               :col                    1
+                                                                               :row                    1})
                 expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                    :graph.metrics    ["count"],
                                    :click            "link",
@@ -1624,15 +1624,15 @@
                     (table-and-column-of-type datetime-type)))))
       ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
       (testing "not nullable timestamp column should not have extra on update"
-        (let [user-id (t2/insert-returning-pk! :core_user {'first_name  "Howard"
-                                                           'last_name   "Hughes"
-                                                           'email       "howard@aircraft.com"
-                                                           'password    "superstrong"
-                                                           'date_joined :%now})
-              session (t2/insert-returning-instance! :core_session {'user_id    user-id
-                                                                    'id         (str (random-uuid))
-                                                                    'created_at :%now})]
-          (t2/update! :core_session (:id session) {'anti_csrf_token "normal"})
+        (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                           :last_name   "Hughes"
+                                                           :email       "howard@aircraft.com"
+                                                           :password    "superstrong"
+                                                           :date_joined :%now})
+              session (t2/insert-returning-instance! :core_session {:user_id    user-id
+                                                                    :id         (str (random-uuid))
+                                                                    :created_at :%now})]
+          (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
           (testing "created_at shouldn't change if there is an update"
             (is (= (:created_at session)
                    (t2/select-one-fn :created_at :core_session 'id (:id session))))))))))
@@ -1755,7 +1755,7 @@
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
                     (testing "never scan and on demand should not have scan field values"
-                      (doseq [db (t2/select :model/Database 'id ['in (map :id db-without-scan-fv)])]
+                      (doseq [db (t2/select :model/Database 'id [:in (map :id db-without-scan-fv)])]
                         (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))
                         (is (nil? (:cache_field_values_schedule db))))))))]
@@ -1773,9 +1773,9 @@
       ;; create a db because db.details should be encrypted
       (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}")}))
             db-detail (fn []
-                        (:details (t2/query-one {'select ['details]
-                                                 'from   ['metabase_database]
-                                                 'where  ['= 'id db-id]})))]
+                        (:details (t2/query-one {:select ['details]
+                                                 :from   ['metabase_database]
+                                                 :where  ['= 'id db-id]})))]
         (testing "sanity check that db details is encrypted"
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
         (testing "after migrate up, db details should still be encrypted"
@@ -1906,17 +1906,17 @@
   (testing "Migrations v50.2024-05-15T13:13:13: Fix visualization settings for stacked area/bar/combo displays"
     (impl/test-migrations ["v50.2024-05-15T13:13:13"] [migrate!]
       (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
-                                                  {'first_name  "Howard"
-                                                   'last_name   "Hughes"
-                                                   'email       "howard@aircraft.com"
-                                                   'password    "superstrong"
-                                                   'date_joined :%now})
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-ids    (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   (mapv (fn [[name {:keys [card]}]]
                                                           (merge card {:name name
@@ -1929,9 +1929,9 @@
                                                         area-bar-combo-cards-test-data))]
         (migrate!)
         (testing "Area Bar Combo Stacked Viz settings migration"
-          (let [cards (->> (t2/query {'select ['name 'display 'visualization_settings]
-                                      'from   ['report_card]
-                                      'where  ['in 'id card-ids]})
+          (let [cards (->> (t2/query {:select ['name 'display 'visualization_settings]
+                                      :from   ['report_card]
+                                      :where  ['in 'id card-ids]})
                            (map (fn [card] (update card :visualization_settings json/decode+kw))))]
             (doseq [{:keys [name] :as card} cards]
               (testing (format "Migrating a card where: %s" name)
@@ -1958,7 +1958,7 @@
                         {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
                         {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads")}]
               _ (t2/insert! :setting settings)
-              get-settings #(t2/query {'select ['key 'value], 'from 'setting, 'where ['in 'key (map :key settings)]})
+              get-settings #(t2/query {:select ['key 'value], :from 'setting, :where ['in 'key (map :key settings)]})
               settings-before (get-settings)]
           (testing "make sure the settings are encrypted before the migrations"
             (is (not-empty settings-before))
@@ -1989,7 +1989,7 @@
                              {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
                              {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}]
               _             (t2/insert! :setting settings)
-              get-settings  #(t2/query {'select ['key 'value], 'from 'setting, 'where ['in 'key (map :key settings)]})]
+              get-settings  #(t2/query {:select ['key 'value], :from 'setting, :where ['in 'key (map :key settings)]})]
           (migrate!)
           (testing "make sure the settings are removed after the migrations"
             (is (empty? (get-settings))))
@@ -2006,7 +2006,7 @@
               settings      [;; no uploads-enabled
                              {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
               _             (t2/insert! :setting settings)
-              get-settings  #(t2/query {'select ['key 'value], 'from 'setting, 'where ['in 'key (map :key settings)]})]
+              get-settings  #(t2/query {:select ['key 'value], :from 'setting, :where ['in 'key (map :key settings)]})]
           (migrate!)
           (testing "make sure the settings are removed after the migrations"
             (is (empty? (get-settings))))
@@ -2021,9 +2021,9 @@
 (deftest ^:mb/old-migrations-test decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
     (encryption-test/with-secret-key "whateverwhatever"
-      (t2/insert! :setting [{'key "enable-query-caching", 'value (encryption/maybe-encrypt "true")}
-                            {'key "query-caching-ttl-ratio", 'value (encryption/maybe-encrypt "100")}
-                            {'key "query-caching-min-ttl", 'value (encryption/maybe-encrypt "123")}]))
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting 'key "enable-query-caching"))))
     (encryption-test/with-secret-key "whateverwhatever"
@@ -2080,42 +2080,42 @@
   (testing "v51.2024-08-07T10:00:00"
     (impl/test-migrations ["v51.2024-08-07T10:00:00"] [migrate!]
       (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
-                                              {'first_name  "Howard"
-                                               'last_name   "Hughes"
-                                               'email       "howard@aircraft.com"
-                                               'password    "superstrong"
-                                               'date_joined :%now})
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                              {'name                   "My Saved Question"
-                                               'created_at             :%now
-                                               'updated_at             :%now
-                                               'creator_id             user-id
-                                               'display                "table"
-                                               'dataset_query          "{}"
-                                               'result_metadata        (json/encode result-metadata-for-viz-settings)
-                                               'visualization_settings (json/encode viz-settings-with-field-ref-keys)
-                                               'database_id            database-id
-                                               'collection_id          nil})]
+                                              {:name                   "My Saved Question"
+                                               :created_at             :%now
+                                               :updated_at             :%now
+                                               :creator_id             user-id
+                                               :display                "table"
+                                               :dataset_query          "{}"
+                                               :result_metadata        (json/encode result-metadata-for-viz-settings)
+                                               :visualization_settings (json/encode viz-settings-with-field-ref-keys)
+                                               :database_id            database-id
+                                               :collection_id          nil})]
         (migrate!)
         (testing "After the migration, column_settings are migrated to name-based keys"
           (is (= viz-settings-with-name-keys
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_card]
-                                    'where  ['= 'id card-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_card]
+                                    :where  ['= 'id card-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))
         (migrate! :down 49)
         (testing "After reversing the migration, column_settings are restored to field ref-based keys"
           (is (= viz-settings-with-field-ref-keys
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_card]
-                                    'where  ['= 'id card-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_card]
+                                    :where  ['= 'id card-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))))))
 
@@ -2123,52 +2123,52 @@
   (testing "v51.2024-08-07T11:00:00"
     (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
       (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
-                                              {'first_name  "Howard"
-                                               'last_name   "Hughes"
-                                               'email       "howard@aircraft.com"
-                                               'password    "superstrong"
-                                               'date_joined :%now})
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                  {'name       "DB"
-                                                   'engine     "h2"
-                                                   'created_at :%now
-                                                   'updated_at :%now
-                                                   'details    "{}"})
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                              {'name                   "My Saved Question"
-                                               'created_at             :%now
-                                               'updated_at             :%now
-                                               'creator_id             user-id
-                                               'display                "table"
-                                               'dataset_query          "{}"
-                                               'result_metadata        (json/encode result-metadata-for-viz-settings)
-                                               'visualization_settings "{}"
-                                               'database_id            database-id
-                                               'collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {'name                "My Dashboard"
-                                                                     'creator_id          user-id
-                                                                     'parameters          []})
-            dashcard-id (t2/insert-returning-pks! :model/DashboardCard {'dashboard_id dashboard-id
-                                                                        'visualization_settings (json/encode viz-settings-with-field-ref-keys)
-                                                                        'card_id      card-id
-                                                                        'size_x       4
-                                                                        'size_y       4
-                                                                        'col          1
-                                                                        'row          1})]
+                                              {:name                   "My Saved Question"
+                                               :created_at             :%now
+                                               :updated_at             :%now
+                                               :creator_id             user-id
+                                               :display                "table"
+                                               :dataset_query          "{}"
+                                               :result_metadata        (json/encode result-metadata-for-viz-settings)
+                                               :visualization_settings "{}"
+                                               :database_id            database-id
+                                               :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                        :visualization_settings (json/encode viz-settings-with-field-ref-keys)
+                                                                        :card_id      card-id
+                                                                        :size_x       4
+                                                                        :size_y       4
+                                                                        :col          1
+                                                                        :row          1})]
         (migrate!)
         (testing "After the migration, column_settings are migrated to name-based keys"
           (is (= viz-settings-with-name-keys
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))
         (migrate! :down 49)
         (testing "After reversing the migration, column_settings are restored to field ref-based keys"
           (is (= viz-settings-with-field-ref-keys
-                 (-> (t2/query-one {'select ['visualization_settings]
-                                    'from   ['report_dashboardcard]
-                                    'where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {:select ['visualization_settings]
+                                    :from   ['report_dashboardcard]
+                                    :where  ['= 'id dashcard-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))))))
 
@@ -2198,12 +2198,12 @@
   (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (is (false? (sample-content-created?)))
-      (t2/insert-returning-pks! :metabase_database {'name       "db"
-                                                    'engine     "h2"
-                                                    'created_at :%now
-                                                    'updated_at :%now
-                                                    'details    "{}"})
-      (t2/query {'delete-from 'metabase_database})
+      (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                    :engine     "h2"
+                                                    :created_at :%now
+                                                    :updated_at :%now
+                                                    :details    "{}"})
+      (t2/query {:delete-from 'metabase_database})
       (migrate!)
       (is (false? (sample-content-created?)))
       (is (empty? (t2/query "SELECT * FROM metabase_database"))
@@ -2215,12 +2215,12 @@
       (is (false? (sample-content-created?)))
       (t2/insert-returning-pks!
        :core_user
-       {'first_name    "Rasta"
-        'last_name     "Toucan"
-        'email         "rasta@metabase.com"
-        'password      "password"
-        'password_salt "and pepper"
-        'date_joined   :%now})
+       {:first_name    "Rasta"
+        :last_name     "Toucan"
+        :email         "rasta@metabase.com"
+        :password      "password"
+        :password_salt "and pepper"
+        :date_joined   :%now})
       (migrate!)
       (is (false? (sample-content-created?))))))
 
@@ -2397,15 +2397,15 @@
                                  :parameter_id string?
                                  :target ["dimension" ["field" 275 {:base-type "type/Text"}]]}])
             query-parameter-mappings (fn []
-                                       (->> (t2/query {'select   ['parameter_mappings]
-                                                       'from     ['report_dashboardcard]
-                                                       'where    ['in 'id [single-stage-dashcard-id ; stage 0
+                                       (->> (t2/query {:select   ['parameter_mappings]
+                                                       :from     ['report_dashboardcard]
+                                                       :where    ['in 'id [single-stage-dashcard-id ; stage 0
                                                                            native-dashcard-id       ; stage 0
                                                                            multi-stage-dashcard1-id ; stage 2
                                                                            multi-stage-dashcard2-id ; no params
                                                                            multi-stage-dashcard3-id ; stage 2
                                                                            multi-stage-model-dashcard-id]] ; stage 0
-                                                       'order-by ['id]})
+                                                       :order-by ['id]})
                                             (map #(-> % :parameter_mappings json/decode+kw))))]
         (migrate!)
         (testing "After the migration, dimension parameter_mappings have stage numbers"
@@ -2515,12 +2515,12 @@
                                                       [multi-stage-question-id dashboard-id multi-stage-model-id])
             no-vs-dashcard-id        (create-dashcard multi-stage-question-id {})
             query-viz-settings (fn []
-                                 (->> (t2/query {'select   ['visualization_settings]
-                                                 'from     ['report_dashboardcard]
-                                                 'where    ['in 'id [single-stage-dashcard-id
+                                 (->> (t2/query {:select   ['visualization_settings]
+                                                 :from     ['report_dashboardcard]
+                                                 :where    ['in 'id [single-stage-dashcard-id
                                                                      multi-stage-dashcard-id
                                                                      no-vs-dashcard-id]]
-                                                 'order-by ['id]})
+                                                 :order-by ['id]})
                                       (map #(-> % :visualization_settings json/decode+kw))))]
         (migrate!)
         (testing "After the migration, dimension parameterMappings have stage numbers"
@@ -2614,11 +2614,11 @@
                                         :destination-database false}
                                        details)]
                     (t2/insert! :metabase_database
-                                {'name name
-                                 'engine "clickhouse"
-                                 'created_at :%now
-                                 'updated_at :%now
-                                 'details (mi/encrypted-json-in details)})))
+                                {:name name
+                                 :engine "clickhouse"
+                                 :created_at :%now
+                                 :updated_at :%now
+                                 :details (mi/encrypted-json-in details)})))
                 (assert-pre-conditions []
                   (let [clickhouse-dbs (t2/select :metabase_database 'engine "clickhouse")
                         details-list (map #(mi/encrypted-json-out (:details %)) clickhouse-dbs)]
@@ -2707,11 +2707,11 @@
       (impl/test-migrations ["v58.2026-08-25T00:00:00"] [migrate!]
         (let [user-id  (:id (new-instance-with-default :core_user))
               ins-cred (fn [provider creds-str]
-                         (t2/insert-returning-pk! :auth_identity {'user_id     user-id
-                                                                  'provider    provider
-                                                                  'credentials creds-str
-                                                                  'created_at  :%now
-                                                                  'updated_at  :%now}))
+                         (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                                  :provider    provider
+                                                                  :credentials creds-str
+                                                                  :created_at  :%now
+                                                                  :updated_at  :%now}))
               plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
               enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
               enc-id   (ins-cred "google" enc-str)
@@ -2766,7 +2766,7 @@
                                                           :channel_type  "email"
                                                           :schedule_type "daily"
                                                           :details       pc-details}))
-            raw-pc       #(:details (t2/query-one {'select ['details] 'from ['pulse_channel] 'where ['= 'id pc-id]}))]
+            raw-pc       #(:details (t2/query-one {:select ['details] :from ['pulse_channel] :where ['= 'id pc-id]}))]
         (testing "plaintext before migration (written with no encryption key)"
           (is (not (encryption/possibly-encrypted-string? (raw-pc)))))
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
@@ -2786,20 +2786,20 @@
               user-settings (json/encode {:locale "en"})
               user-id       (:id (new-instance-with-default :core_user {:settings user-settings}))
               secret-bytes  (.getBytes "sooper-secret" "UTF-8")
-              secret-id     (t2/insert-returning-pk! :secret {'name       "s"
-                                                              'kind       "password"
-                                                              'value      secret-bytes
-                                                              'version    1
-                                                              'creator_id user-id
-                                                              'created_at :%now
-                                                              'updated_at :%now})
+              secret-id     (t2/insert-returning-pk! :secret {:name       "s"
+                                                              :kind       "password"
+                                                              :value      secret-bytes
+                                                              :version    1
+                                                              :creator_id user-id
+                                                              :created_at :%now
+                                                              :updated_at :%now})
               raw           (fn [table column id]
-                              (:value (t2/query-one {'select [[column 'value]] 'from [table] 'where ['= 'id id]})))
+                              (:value (t2/query-one {:select [[column 'value]] :from [table] :where ['= 'id id]})))
               ;; convert the blob inside the reduction, while its connection is still open
               raw-secret    (fn [id]
                               (first (into []
                                            (map (fn [{:keys [value]}] (#'custom-migrations/secret-value->bytes value)))
-                                           (t2/reducible-query {'select ['value] 'from ['secret] 'where ['= 'id id]}))))]
+                                           (t2/reducible-query {:select ['value] :from ['secret] :where ['= 'id id]}))))]
           (is (not (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id))))
           (migrate!)
           (testing "plaintext string values are encrypted and decrypt to the original"
@@ -2823,7 +2823,7 @@
   (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
-        (let [ins!       (fn [k v] (t2/query {'insert-into 'setting 'values [{'key k 'value v}]}))
+        (let [ins!       (fn [k v] (t2/query {:insert-into 'setting :values [{:key k :value v}]}))
               raw        (fn [k] (t2/select-one-fn :value :setting 'key k))
               enc-str    (encryption/maybe-encrypt "https://already.example")
               ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
@@ -2874,7 +2874,7 @@
   (testing "v58.2026-08-30T00:00:00 : plaintext rows of listed settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-setter-none-settings-key-1234"
       (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
-        (let [insert-setting! (fn [k v] (t2/query {'insert-into 'setting 'values [{'key k 'value v}]}))
+        (let [insert-setting! (fn [k v] (t2/query {:insert-into 'setting :values [{:key k :value v}]}))
               raw-setting     (fn [k] (t2/select-one-fn :value :setting 'key k))
               encrypted-value (encryption/maybe-encrypt "https://otel.example")]
           ;; a plaintext row from before the setting was encrypted
@@ -2909,13 +2909,13 @@
             insert!       (fn [source-type source target]
                             (t2/insert-returning-pk!
                              :transform
-                             {'name               "t"
-                              'source             source
-                              'target             target
-                              'source_type        source-type
-                              'source_database_id db-id
-                              'created_at         :%now
-                              'updated_at         :%now}))
+                             {:name               "t"
+                              :source             source
+                              :target             target
+                              :source_type        source-type
+                              :source_database_id db-id
+                              :created_at         :%now
+                              :updated_at         :%now}))
             ;; source.query.database takes precedence over target.database
             both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
             ;; source.query.database used when target has no database
@@ -2953,24 +2953,24 @@
         (impl/test-migrations
          ["v59.2026-03-04T00:00:00"] [migrate!]
           (let [db-id (t2/insert-returning-pk! :metabase_database
-                                               {'name "clickhouse cloud upload db"
-                                                'engine "clickhouse"
-                                                'created_at :%now
-                                                'updated_at :%now
-                                                'uploads_enabled true
-                                                'uploads_schema_name uploads-schema-name
-                                                'uploads_table_prefix "uploads_"
-                                                'details (mi/encrypted-json-in {:dbname "db_foo"})})
+                                               {:name "clickhouse cloud upload db"
+                                                :engine "clickhouse"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :uploads_enabled true
+                                                :uploads_schema_name uploads-schema-name
+                                                :uploads_table_prefix "uploads_"
+                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
                 insert-table! (fn [db-id name schema active is-upload display-name]
                                 (t2/insert-returning-pk! :metabase_table
-                                                         {'db_id db-id
-                                                          'name name
-                                                          'schema schema
-                                                          'active active
-                                                          'is_upload is-upload
-                                                          'display_name display-name
-                                                          'created_at :%now
-                                                          'updated_at :%now}))
+                                                         {:db_id db-id
+                                                          :name name
+                                                          :schema schema
+                                                          :active active
+                                                          :is_upload is-upload
+                                                          :display_name display-name
+                                                          :created_at :%now
+                                                          :updated_at :%now}))
                 ;; An uploads table in a good state, created before uploads_schema_name was set to null
                 uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
                 ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
@@ -2985,7 +2985,7 @@
             ;; The uploads db has the correct uploads_schema_name from the details
             (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database 'id db-id))))
             (are [exp table-id] (= exp
-                                   (t2/select-one [:metabase_table 'name 'schema 'active 'is_upload] 'id table-id))
+                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] 'id table-id))
               ;; The upload table that was already in a good state remains unchanged
               {:name "uploads_test_table_0"
                :schema "db_foo"
@@ -3021,24 +3021,24 @@
       (let [db-id    (:id (new-instance-with-default :metabase_database))
             table-id (:id (new-instance-with-default :metabase_table {:db_id db-id}))
             field-id (t2/insert-returning-pk! :metabase_field
-                                              {'name          "updated_at"
-                                               'table_id      table-id
-                                               'base_type     "type/DateTimeWithLocalTZ"
-                                               'database_type "timestamptz"
-                                               'active        true
-                                               'created_at    :%now
-                                               'updated_at    :%now})
+                                              {:name          "updated_at"
+                                               :table_id      table-id
+                                               :base_type     "type/DateTimeWithLocalTZ"
+                                               :database_type "timestamptz"
+                                               :active        true
+                                               :created_at    :%now
+                                               :updated_at    :%now})
             target   (json/encode {:type "table" :schema "public" :name "out"})
             insert-transform!
             (fn [source]
               (t2/insert-returning-pk!
-               :transform {'name               (mt/random-name)
-                           'source             source
-                           'target             target
-                           'source_type        "mbql"
-                           'source_database_id db-id
-                           'created_at         :%now
-                           'updated_at         :%now}))
+               :transform {:name               (mt/random-name)
+                           :source             source
+                           :target             target
+                           :source_type        "mbql"
+                           :source_database_id db-id
+                           :created_at         :%now
+                           :updated_at         :%now}))
             ;; Transform with resolvable legacy checkpoint strategy
             resolvable-source
             (json/encode {:type  "query"
@@ -3109,11 +3109,11 @@
         (let [confirmed-at "2026-07-01T12:00:00Z"
               insert-identity!
               (fn [user-id credentials-str]
-                (t2/insert-returning-pk! :auth_identity {'user_id     user-id
-                                                         'provider    "totp"
-                                                         'credentials credentials-str
-                                                         'created_at  :%now
-                                                         'updated_at  :%now}))
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
               enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
                                                 (encryption/maybe-encrypt
                                                  (json/encode {:secret "s1" :confirmed_at confirmed-at})))
@@ -3137,19 +3137,19 @@
             source    (json/encode {:type "query" :query {:database db-id}})
             ;; -- Transform with a target that has no existing metabase_table → should create provisional row --
             _         (t2/insert-returning-pk!
-                       :transform {'name               "create-output"
-                                   'source             source
-                                   'target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
-                                   'source_type        "mbql"
-                                   'source_database_id db-id
-                                   'target_db_id       db-id
-                                   'created_at         :%now
-                                   'updated_at         :%now})]
+                       :transform {:name               "create-output"
+                                   :source             source
+                                   :target             (json/encode {:type "table" :schema "public" :name "new_target_table"})
+                                   :source_type        "mbql"
+                                   :source_database_id db-id
+                                   :target_db_id       db-id
+                                   :created_at         :%now
+                                   :updated_at         :%now})]
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
-          (let [provisional (first (t2/query {'select ['active 'transform_target 'data_source 'data_authority 'display_name]
-                                              'from   ['metabase_table]
-                                              'where  ['and
+          (let [provisional (first (t2/query {:select ['active 'transform_target 'data_source 'data_authority 'display_name]
+                                              :from   ['metabase_table]
+                                              :where  ['and
                                                        ['= 'db_id db-id]
                                                        ['= 'name "new_target_table"]
                                                        ['= 'schema "public"]]}))]

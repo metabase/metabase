@@ -26,9 +26,9 @@
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp [:model/Field field]
-        (t2/query-one {'update 'metabase_field
-                       'set    {column (u/qualified-name unknown-type)}
-                       'where  ['= 'id (u/the-id field)]})
+        (t2/query-one {:update 'metabase_field
+                       :set    {column (u/qualified-name unknown-type)}
+                       :where  ['= 'id (u/the-id field)]})
         (is (= fallback-type
                (t2/select-one-fn column :model/Field 'id (u/the-id field))))))
     (testing (format "Should throw an Exception if you attempt to save a Field with an invalid %s" column)
@@ -125,15 +125,15 @@
                    :model/Table {table-id :id} {:db_id db-id}]
       (let [field-id (first (t2/insert-returning-pks!
                              :model/Field
-                             {'table_id          table-id
-                              'name              "broken_on_insert"
-                              'display_name      "broken_on_insert"
-                              'database_type     "NUMBER"
-                              'base_type         :type/Number
-                              'effective_type    :type/Text
-                              'coercion_strategy nil
-                              'position          0
-                              'database_position 0}))]
+                             {:table_id          table-id
+                              :name              "broken_on_insert"
+                              :display_name      "broken_on_insert"
+                              :database_type     "NUMBER"
+                              :base_type         :type/Number
+                              :effective_type    :type/Text
+                              :coercion_strategy nil
+                              :position          0
+                              :database_position 0}))]
         (is (=? {:base_type      :type/Number
                  :effective_type :type/Number}
                 (t2/select-one :model/Field 'id field-id)))))))
@@ -147,8 +147,8 @@
                                                 :name "broken_on_update"
                                                 :base_type :type/Number
                                                 :effective_type :type/Number}]
-      (t2/update! :model/Field field-id {'effective_type    :type/Text
-                                         'coercion_strategy nil})
+      (t2/update! :model/Field field-id {:effective_type    :type/Text
+                                         :coercion_strategy nil})
       (is (=? {:base_type      :type/Number
                :effective_type :type/Number}
               (t2/select-one :model/Field 'id field-id))))))
@@ -162,8 +162,8 @@
                                                 :name "with_coercion"
                                                 :base_type :type/Text
                                                 :effective_type :type/Text}]
-      (t2/update! :model/Field field-id {'effective_type    :type/Number
-                                         'coercion_strategy :Coercion/String->Number})
+      (t2/update! :model/Field field-id {:effective_type    :type/Number
+                                         :coercion_strategy :Coercion/String->Number})
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
                :coercion_strategy :Coercion/String->Number}
@@ -180,7 +180,7 @@
                                                 :effective_type    :type/Number
                                                 :coercion_strategy :Coercion/String->Number}]
       ;; user clears the coercion but doesn't reset effective_type — guard catches this
-      (t2/update! :model/Field field-id {'coercion_strategy nil})
+      (t2/update! :model/Field field-id {:coercion_strategy nil})
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Text
                :coercion_strategy nil}
@@ -206,103 +206,103 @@
               (fn [table-id]
                 (first (t2/insert-returning-pks!
                         :model/Field
-                        {'table_id          table-id
-                         'name              "ins_broken"
-                         'display_name      "ins_broken"
-                         'database_type     "NUMBER"
-                         'base_type         :type/Number
-                         'effective_type    :type/Text
-                         'coercion_strategy nil
-                         'position          0
-                         'database_position 0})))]
+                        {:table_id          table-id
+                         :name              "ins_broken"
+                         :display_name      "ins_broken"
+                         :database_type     "NUMBER"
+                         :base_type         :type/Number
+                         :effective_type    :type/Text
+                         :coercion_strategy nil
+                         :position          0
+                         :database_position 0})))]
              ["t2/insert! with effective_type only set (no coercion)"
               (fn [table-id]
                 (first (t2/insert-returning-pks!
                         :model/Field
-                        {'table_id          table-id
-                         'name              "ins_eff_only"
-                         'display_name      "ins_eff_only"
-                         'database_type     "NUMBER"
-                         'base_type         :type/Number
-                         'effective_type    :type/Integer
-                         'position          0
-                         'database_position 0})))]
+                        {:table_id          table-id
+                         :name              "ins_eff_only"
+                         :display_name      "ins_eff_only"
+                         :database_type     "NUMBER"
+                         :base_type         :type/Number
+                         :effective_type    :type/Integer
+                         :position          0
+                         :database_position 0})))]
              ["t2/update! sets effective_type to differ from base_type without coercion"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
-                                 {'table_id          table-id
-                                  'name              "upd_eff"
-                                  'display_name      "upd_eff"
-                                  'database_type     "NUMBER"
-                                  'base_type         :type/Number
-                                  'effective_type    :type/Number
-                                  'position          0
-                                  'database_position 0}))]
-                  (t2/update! :model/Field id {'effective_type :type/Text})
+                                 {:table_id          table-id
+                                  :name              "upd_eff"
+                                  :display_name      "upd_eff"
+                                  :database_type     "NUMBER"
+                                  :base_type         :type/Number
+                                  :effective_type    :type/Number
+                                  :position          0
+                                  :database_position 0}))]
+                  (t2/update! :model/Field id {:effective_type :type/Text})
                   id))]
              ["t2/update! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
-                                 {'table_id          table-id
-                                  'name              "upd_clear_coerce"
-                                  'display_name      "upd_clear_coerce"
-                                  'database_type     "TEXT"
-                                  'base_type         :type/Text
-                                  'effective_type    :type/Number
-                                  'coercion_strategy :Coercion/String->Number
-                                  'position          0
-                                  'database_position 0}))]
-                  (t2/update! :model/Field id {'coercion_strategy nil})
+                                 {:table_id          table-id
+                                  :name              "upd_clear_coerce"
+                                  :display_name      "upd_clear_coerce"
+                                  :database_type     "TEXT"
+                                  :base_type         :type/Text
+                                  :effective_type    :type/Number
+                                  :coercion_strategy :Coercion/String->Number
+                                  :position          0
+                                  :database_position 0}))]
+                  (t2/update! :model/Field id {:coercion_strategy nil})
                   id))]
              ["t2/update! changes base_type but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
-                                 {'table_id          table-id
-                                  'name              "upd_base"
-                                  'display_name      "upd_base"
-                                  'database_type     "TEXT"
-                                  'base_type         :type/Text
-                                  'effective_type    :type/Text
-                                  'position          0
-                                  'database_position 0}))]
-                  (t2/update! :model/Field id {'base_type :type/Number})
+                                 {:table_id          table-id
+                                  :name              "upd_base"
+                                  :display_name      "upd_base"
+                                  :database_type     "TEXT"
+                                  :base_type         :type/Text
+                                  :effective_type    :type/Text
+                                  :position          0
+                                  :database_position 0}))]
+                  (t2/update! :model/Field id {:base_type :type/Number})
                   id))]
              ["t2/update! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
-                                 {'table_id          table-id
-                                  'name              "upd_both"
-                                  'display_name      "upd_both"
-                                  'database_type     "NUMBER"
-                                  'base_type         :type/Number
-                                  'effective_type    :type/Number
-                                  'position          0
-                                  'database_position 0}))]
-                  (t2/update! :model/Field id {'effective_type    :type/Text
-                                               'coercion_strategy nil})
+                                 {:table_id          table-id
+                                  :name              "upd_both"
+                                  :display_name      "upd_both"
+                                  :database_type     "NUMBER"
+                                  :base_type         :type/Number
+                                  :effective_type    :type/Number
+                                  :position          0
+                                  :database_position 0}))]
+                  (t2/update! :model/Field id {:effective_type    :type/Text
+                                               :coercion_strategy nil})
                   id))]
              ["upsert-user-settings writes broken effective_type then any field update fires the merge-back overlay"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
-                                 {'table_id          table-id
-                                  'name              "upsert_then_upd"
-                                  'display_name      "upsert_then_upd"
-                                  'database_type     "NUMBER"
-                                  'base_type         :type/Number
-                                  'effective_type    :type/Number
-                                  'position          0
-                                  'database_position 0}))]
+                                 {:table_id          table-id
+                                  :name              "upsert_then_upd"
+                                  :display_name      "upsert_then_upd"
+                                  :database_type     "NUMBER"
+                                  :base_type         :type/Number
+                                  :effective_type    :type/Number
+                                  :position          0
+                                  :database_position 0}))]
                   ;; write a stale, no-coercion overlay into user-settings
                   (field-user-settings/upsert-user-settings
                    {:id id}
                    {:effective_type :type/Text :coercion_strategy nil})
                   ;; trigger before-update (which runs sync-user-settings overlay merge)
-                  (t2/update! :model/Field id {'display_name "trigger merge"})
+                  (t2/update! :model/Field id {:display_name "trigger merge"})
                   id))]]]
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}

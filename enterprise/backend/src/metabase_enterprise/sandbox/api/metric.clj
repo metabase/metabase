@@ -23,9 +23,9 @@
               name->fid    (when (seq col-names)
                              (into {}
                                    (map (juxt :name :id))
-                                   (t2/select [:model/Field 'id 'name]
+                                   (t2/select [:model/Field :id :name]
                                               'table_id table-id
-                                              'name ['in col-names])))]
+                                              'name [:in col-names])))]
           (not-empty (set (vals name->fid))))))))
 
 (defenterprise sandbox-restricted-fields
@@ -49,8 +49,8 @@
             cards-by-id (when (seq card-ids)
                           (into {}
                                 (map (juxt :id identity))
-                                (t2/select [:model/Card 'id 'result_metadata 'card_schema]
-                                           'id ['in card-ids])))]
+                                (t2/select [:model/Card :id :result_metadata :card_schema]
+                                           'id [:in card-ids])))]
         (not-empty
          (into {}
                (keep (fn [{:keys [table_id card_id]}]

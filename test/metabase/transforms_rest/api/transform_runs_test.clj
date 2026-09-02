@@ -211,7 +211,7 @@
                                                                 :run_method     "manual"
                                                                 :start_time     (parse-instant "2025-09-03T10:00:00")}]
           (t2/delete! :model/TransformJob 'id job-id)
-          (t2/delete! :model/Transform 'id ['in [ta-id tb-id]])
+          (t2/delete! :model/Transform 'id [:in [ta-id tb-id]])
           (let [rows (rows-by-type (get-runs))]
             (testing "job run survives (job_id has no FK) with its snapshot name"
               (let [row (rows ["job" job-run-id])]

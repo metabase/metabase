@@ -44,12 +44,12 @@
 (defn- persist-mcp-feedback!
   [{:keys [feedback conversation_data]}]
   (t2/insert! :model/McpFeedback
-              {'user_id           api/*current-user-id*
-               'positive          (:positive feedback)
-               'issue_type        (:issue_type feedback)
-               'freeform_feedback (:freeform_feedback feedback)
-               'prompt            (:prompt conversation_data)
-               'query             (:query conversation_data)}))
+              {:user_id           api/*current-user-id*
+               :positive          (:positive feedback)
+               :issue_type        (:issue_type feedback)
+               :freeform_feedback (:freeform_feedback feedback)
+               :prompt            (:prompt conversation_data)
+               :query             (:query conversation_data)}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"

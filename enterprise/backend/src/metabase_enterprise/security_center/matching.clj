@@ -167,5 +167,5 @@
                (catch Exception e
                  (log/warnf "Error evaluating advisory %s: %s" (:advisory_id advisory) (ex-message e))
                  (t2/update! :model/SecurityAdvisory (:id advisory)
-                             {'match_status      :error
-                              'last_evaluated_at (mi/now)}))))))))
+                             {:match_status      :error
+                              :last_evaluated_at (mi/now)}))))))))

@@ -795,7 +795,7 @@
   once before exposing them to unauthenticated users. The document and all cards must not be archived to be
   accessible publicly."
   [document-id]
-  (let [document     (-> (api/check-404 (t2/select-one [:model/Document 'id 'name 'document 'content_type 'created_at 'updated_at]
+  (let [document     (-> (api/check-404 (t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                                                        'id document-id, 'archived false))
                          ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
                          (t2/hydrate :cards))
@@ -816,7 +816,7 @@
 
   Returns the loaded `:model/Card` entity so the caller can thread it downstream without re-selecting it."
   [uuid card-id]
-  (let [document (api/check-404 (t2/select-one [:model/Document 'id 'document 'content_type] 'id (public-sharing/public-uuid->id :model/Document uuid)))]
+  (let [document (api/check-404 (t2/select-one [:model/Document :id :document :content_type] 'id (public-sharing/public-uuid->id :model/Document uuid)))]
     (api/check-404 (when (contains? (set (prose-mirror/card-ids document)) card-id)
                      (t2/select-one :model/Card 'id card-id 'document_id (:id document) 'archived false)))))
 

@@ -79,10 +79,10 @@
   []
   (let [segments  (t2/select :model/Segment
                              'archived false
-                             {'order-by [['%lower.name 'asc]]})
+                             {:order-by [['%lower.name 'asc]]})
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table 'id ['in table-ids]))
+                                                 (t2/select-fn-set :db_id :model/Table 'id [:in table-ids]))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))

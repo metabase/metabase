@@ -224,7 +224,7 @@
   [query :- :map
    target-alias :- :keyword
    with :- :keyword]
-  (let [selects     ('select query)
+  (let [selects     (:select query)
         idx         (first (keep-indexed (fn [index item]
                                            (when (and (coll? item)
                                                       (= (last item) target-alias))
@@ -232,7 +232,7 @@
                                          selects))
         with-select [with target-alias]]
     (if (some? idx)
-      (assoc query 'select (m/replace-nth idx with-select selects))
+      (assoc query :select (m/replace-nth idx with-select selects))
       (throw (ex-info "Failed to replace selector" {:status-code  400
                                                     :target-alias target-alias
                                                     :with         with})))))
@@ -373,9 +373,9 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-  [^:allow-subquery {'select ['%count.*]
-                     'from   ['report_dashboardcard]
-                     'where  ['= 'report_dashboardcard.card_id 'card.id]}
+  [^:allow-subquery {:select ['%count.*]
+                     :from   ['report_dashboardcard]
+                     :where  ['= 'report_dashboardcard.card_id 'card.id]}
    :dashboardcard_count])
 
 (def ^:private table-columns
@@ -526,16 +526,16 @@
     [[(t2/table-name db-model) alias]]))
 
 (mu/defn- base-query-for-model :- [:map {:closed true}
-                                   ['select :any]
-                                   ['from :any]
-                                   ['where {:optional true} :any]
-                                   ['join {:optional true} :any]
-                                   ['left-join {:optional true} :any]]
+                                   [:select :any]
+                                   [:from :any]
+                                   [:where {:optional true} :any]
+                                   [:join {:optional true} :any]
+                                   [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]
-  (-> {'select (select-clause-for-model model)
-       'from   (from-clause-for-model model)}
+  (-> {:select (select-clause-for-model model)
+       :from   (from-clause-for-model model)}
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
@@ -555,9 +555,9 @@
                           ;; from the collection picker or when browsing, so it shouldn't be visible in search either.
                           (when (:include-dashboard-questions? search-ctx)
                             [:exists
-                             ^:allow-subquery {'select 1
-                                               'from ['report_dashboardcard]
-                                               'where ['= 'card_id 'card.id]}])])
+                             ^:allow-subquery {:select 1
+                                               :from ['report_dashboardcard]
+                                               :where ['= 'card_id 'card.id]}])])
       (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
@@ -699,8 +699,8 @@
                                          assoc :allow-subquery true)
                              queries)
         query          (when (pos-int? (count nested-queries))
-                         (cond-> {'select ['*]
-                                  'from   [[^:allow-subquery {'union-all nested-queries} 'dummy_alias]]}
+                         (cond-> {:select ['*]
+                                  :from   [[^:allow-subquery {:union-all nested-queries} 'dummy_alias]]}
                            (seq ctes) (assoc :with ctes)))]
     (into #{} (map :model) (some-> query mdb/query))))
 
@@ -712,7 +712,7 @@
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (cond
       (= (count models) 0)
-      {'select [nil]}
+      {:select [nil]}
 
       (= (count models) 1)
       (merge (search-query-for-model (first models) search-ctx)
@@ -725,10 +725,10 @@
                                  query))
             {:keys [ctes queries]} (extract-and-hoist-ctes model-queries)
             queries (mapv #(vary-meta % assoc :allow-subquery true) queries)]
-        (cond-> {'select   ['*]
-                 'from     [[^:allow-subquery {'union-all queries} 'alias_is_required_by_sql_but_not_needed_here]]
-                 'order-by order-clause
-                 'limit    search.config/*db-max-results*}
+        (cond-> {:select   ['*]
+                 :from     [[^:allow-subquery {:union-all queries} 'alias_is_required_by_sql_but_not_needed_here]]
+                 :order-by order-clause
+                 :limit    search.config/*db-max-results*}
           (seq ctes) (assoc :with ctes))))))
 
 ;; Return a reducible-query corresponding to searching the entities without an index.

@@ -149,7 +149,7 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (t2/select [:model/User 'id 'email 'first_name 'last_name] 'id (keep :creator_id documents))
+   #(-> (t2/select [:model/User :id :email :first_name :last_name] 'id (keep :creator_id documents))
         (map (juxt :id identity))
         (into {}))
    :creator_id {:default {}}))
@@ -162,7 +162,7 @@
         ;; Fetch all cards for all documents in one batched query
         all-cards (when (seq document-ids)
                     (t2/select :model/Card
-                               'document_id ['in document-ids]
+                               'document_id [:in document-ids]
                                'archived false))
         ;; Group cards by document_id, then convert each group to a map keyed by card ID
         cards-by-doc-id (group-by :document_id all-cards)

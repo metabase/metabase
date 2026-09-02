@@ -27,9 +27,9 @@
   []
   (tracing/with-span :tasks "task.heartbeat.update" {}
     (let [updated (t2/update! :model/TaskRun
-                              {'status       :started
-                               'process_uuid config/local-process-uuid}
-                              {'updated_at (mi/now)})]
+                              {:status       :started
+                               :process_uuid config/local-process-uuid}
+                              {:updated_at (mi/now)})]
       (when (pos? updated)
         (log/debugf "Sent heartbeat for %d running task runs" updated))
       updated)))
@@ -55,10 +55,10 @@
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
       (let [orphaned (t2/update! :model/TaskHistory
-                                 {'status :started
-                                  'run_id ['in orphaned-run-ids]}
-                                 {'status   :unknown
-                                  'ended_at (mi/now)})]
+                                 {:status :started
+                                  :run_id ['in orphaned-run-ids]}
+                                 {:status   :unknown
+                                  :ended_at (mi/now)})]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

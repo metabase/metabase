@@ -21,7 +21,7 @@
                  'user_id user-id
                  'model "document"
                  'model_id document-id
-                 {'order-by [['id 'desc]]}))
+                 {:order-by [['id 'desc]]}))
 
 (deftest document-read-ee-test
   (mt/with-premium-features #{:audit-app}

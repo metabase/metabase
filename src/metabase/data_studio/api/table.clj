@@ -63,13 +63,13 @@
                                                                 [:and where [:= :id output-table-id]])))]]
                             [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
-            (t2/reducible-query {'select [[output-table-id 'table_id]]
-                                 'from   [[(t2/table-name :model/Dimension) 'dim]]
-                                 'join   [[(t2/table-name :model/Field) 'source_field]
+            (t2/reducible-query {:select [[output-table-id 'table_id]]
+                                 :from   [[(t2/table-name :model/Dimension) 'dim]]
+                                 :join   [[(t2/table-name :model/Field) 'source_field]
                                           ['= 'dim.field_id 'source_field.id]
                                           [(t2/table-name :model/Field) 'target_field]
                                           ['= 'dim.human_readable_field_id 'target_field.id]]
-                                 'where  ['and
+                                 :where  ['and
                                           ['= 'dim.type "external"]
                                           ['in input-table-id tables]
                                           not-in-tables]})))))
@@ -90,7 +90,7 @@
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
   ^:allow-subquery
-  {'select ['id] 'from [(t2/table-name :model/Table)] 'where where})
+  {:select ['id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.
@@ -197,14 +197,14 @@
                          :owner_email
                          :owner_user_id
                          :entity_type]
-        existing-tables (t2/select :model/Table {'where where})
+        existing-tables (t2/select :model/Table {:where where})
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
       (t2/update! :model/Table [:in table-ids] set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
-      (let [updated-tables (t2/select :model/Table 'id ['in table-ids])]
+      (let [updated-tables (t2/select :model/Table 'id [:in table-ids])]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-update {:object  table
                                                       :user-id api/*current-user-id*}))))
@@ -218,15 +218,15 @@
   (api/check-data-analyst)
   (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-tables   (t2/select fields {'where where 'limit 2})
+        selected-tables   (t2/select fields {:where where :limit 2})
         selected-table    (when-not (next selected-tables)
                             (first selected-tables))
         upstream-ids      (all-upstream-table-ids where)
         downstream-ids    (all-downstream-table-ids where)
         upstream-tables   (when (seq upstream-ids)
-                            (t2/select fields 'id ['in upstream-ids]))
+                            (t2/select fields 'id [:in upstream-ids]))
         downstream-tables (when (seq downstream-ids)
-                            (t2/select fields 'id ['in downstream-ids]))]
+                            (t2/select fields 'id [:in downstream-ids]))]
     {:selected_table              selected-table
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
@@ -244,9 +244,9 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (t2/select :model/Table {'where (table-selectors->filter body), 'order-by [['id]]})
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [['id]]})
         db-ids (sort (set (map :db_id tables)))]
-    (doseq [database (t2/select :model/Database 'id ['in db-ids])]
+    (doseq [database (t2/select :model/Database 'id [:in db-ids])]
       (try
         (binding [driver.settings/*allow-testing-h2-connections* true
                   driver.settings/*allow-testing-sqlite-connections* true]
@@ -264,7 +264,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (t2/select :model/Table {'where (table-selectors->filter body), 'order-by [['id]]})]
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [['id]]})]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
@@ -277,11 +277,11 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (t2/select :model/Table {'where (table-selectors->filter body), 'order-by [['id]]})]
-    (let [field-ids-to-delete-q           ^:allow-subquery {'select ['id]
-                                                            'from   [(t2/table-name :model/Field)]
-                                                            'where  ['in 'table_id (map :id tables)]}]
-      (t2/delete! (t2/table-name :model/FieldValues) 'field_id ['in field-ids-to-delete-q]))
+  (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [['id]]})]
+    (let [field-ids-to-delete-q           ^:allow-subquery {:select ['id]
+                                                            :from   [(t2/table-name :model/Field)]
+                                                            :where  ['in 'table_id (map :id tables)]}]
+      (t2/delete! (t2/table-name :model/FieldValues) 'field_id [:in field-ids-to-delete-q]))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

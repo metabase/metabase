@@ -235,7 +235,7 @@
                  :model/QueryExecution {id2 :id} (merge query-execution-defaults
                                                         {:error "some error"})
                  :model/QueryExecution {id3 :id} query-execution-defaults]
-    (t2/delete! :model/QueryExecution 'id ['not-in [id1 id2 id3]])
+    (t2/delete! :model/QueryExecution 'id [:not-in [id1 id2 id3]])
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new version of the executions metrics works the same way the old one did")))
@@ -255,7 +255,7 @@
                                                                                      (t/minus (t/minutes 10)))})]
             ;; QueryExecutions are written asynchronously in batches, so rows queued by other tests can commit at any
             ;; moment. Count against a table holding only the two rows under test instead of against a delta.
-            (t2/delete! :model/QueryExecution 'id ['not-in [inside outside]])
+            (t2/delete! :model/QueryExecution 'id [:not-in [inside outside]])
             (is (= 1 (:executions (#'stats/execution-metrics)))
                 "the 30 day cutoff includes the execution 10 minutes after it and excludes the one 10 minutes before")))))))
 

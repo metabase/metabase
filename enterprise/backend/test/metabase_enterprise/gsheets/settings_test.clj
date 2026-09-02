@@ -8,9 +8,9 @@
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
   `(try
-     (t2/update! :model/Database 'id 1 {'is_attached_dwh true})
+     (t2/update! :model/Database 'id 1 {:is_attached_dwh true})
      ~@body
-     (finally (t2/update! :model/Database 'id 1 {'is_attached_dwh false}))))
+     (finally (t2/update! :model/Database 'id 1 {:is_attached_dwh false}))))
 
 (deftest migrate-gsheet-value
   (let [test-uuid (str (random-uuid))

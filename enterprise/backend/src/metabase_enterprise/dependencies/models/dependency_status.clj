@@ -67,12 +67,12 @@
         table-wildcard (keyword (name table-name) "*")
         now (t/offset-date-time)]
     (t2/select model
-               {'select [table-wildcard]
-                'from table-name
-                'left-join ['dependency_status ['and
+               {:select [table-wildcard]
+                :from table-name
+                :left-join ['dependency_status ['and
                                                 ['= 'dependency_status.entity_id id-field]
                                                 ['= 'dependency_status.entity_type (name entity-type)]]]
-                'where ['or
+                :where ['or
                         ;; No status row yet — needs initial processing.
                         ['= 'dependency_status.entity_id nil]
                         ['and
@@ -87,15 +87,15 @@
                          ['or
                           ['is 'dependency_status.next_retry_at nil]
                           ['<= 'dependency_status.next_retry_at now]]]]
-                'order-by [[['case ['= 'dependency_status.stale true] ['inline 0] 'else ['inline 1]]]]
-                'limit batch-size})))
+                :order-by [[['case ['= 'dependency_status.stale true] [:inline 0] 'else [:inline 1]]]]
+                :limit batch-size})))
 
 (defn has-pending-retries?
   "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
   []
   (t2/exists? :model/DependencyStatus
               'terminal false
-              'next_retry_at ['not= nil]))
+              'next_retry_at [:not= nil]))
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,

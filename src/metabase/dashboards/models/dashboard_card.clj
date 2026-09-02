@@ -90,7 +90,7 @@
 (defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (t2/select-one [:model/Card 'dataset_query 'card_schema] 'id (u/the-id (:card_id dashcard))))
+                   (t2/select-one [:model/Card :dataset_query :card_schema] 'id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
@@ -141,11 +141,11 @@
     (let [dashcard-ids        (map :id dashcards)
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (t2/select
-                                       [:model/Card 'id 'name 'description 'display 'dataset_query 'type 'database_id
-                                        'visualization_settings 'collection_id 'card_schema 'series.dashboardcard_id]
-                                       {'left-join [['dashboardcard_series 'series] ['= 'report_card.id 'series.card_id]]
-                                        'where     ['in 'series.dashboardcard_id dashcard-ids]
-                                        'order-by  [['series.position 'asc]]}) series
+                                       [:model/Card :id :name :description :display :dataset_query :type :database_id
+                                        :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
+                                       {:left-join [['dashboardcard_series 'series] ['= 'report_card.id 'series.card_id]]
+                                        :where     ['in 'series.dashboardcard_id dashcard-ids]
+                                        :order-by  [['series.position 'asc]]}) series
                                   (group-by :dashboardcard_id series)
                                   (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
       (map (fn [dashcard]
@@ -171,13 +171,13 @@
 
   This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
-  (mdb/query {'select    ['newcard.*]
-              'from      [['report_dashboardcard 'dashcard]]
-              'left-join [['dashboardcard_series 'dashcardseries]
+  (mdb/query {:select    ['newcard.*]
+              :from      [['report_dashboardcard 'dashcard]]
+              :left-join [['dashboardcard_series 'dashcardseries]
                           ['= 'dashcard.id 'dashcardseries.dashboardcard_id]
                           ['report_card 'newcard]
                           ['= 'dashcardseries.card_id 'newcard.id]]
-              'where     ['and
+              :where     ['and
                           ['= 'newcard.archived false]
                           ['= 'dashcard.id (:id dashcard)]]}))
 
@@ -192,7 +192,7 @@
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
     ;; first off, just delete all series on the dashboard card (we add them again below)
-    (t2/delete! :model/DashboardCardSeries 'dashboardcard_id ['in (keys dashcard-id->card-ids)])
+    (t2/delete! :model/DashboardCardSeries 'dashboardcard_id [:in (keys dashcard-id->card-ids)])
     ;; now just insert all of the series that were given to us
     (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
                                       [i card-id]            (map-indexed vector card-ids)]
@@ -254,7 +254,7 @@
     (t2/with-transaction [_conn]
       (let [card-ids (keep :card_id dashboard-cards)]
         (when (seq card-ids)
-          (let [in-report-cards (t2/select :model/Card 'id ['in card-ids] 'document_id ['<> nil])]
+          (let [in-report-cards (t2/select :model/Card 'id [:in card-ids] 'document_id [:<> nil])]
             (when (seq in-report-cards)
               (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
                               {:status-code 400
@@ -269,7 +269,7 @@
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
-        (-> (t2/select :model/DashboardCard 'id ['in dashboard-card-ids])
+        (-> (t2/select :model/DashboardCard 'id [:in dashboard-card-ids])
             (t2/hydrate :series))))))
 
 (defn- cleanup-orphaned-inline-parameters!
@@ -278,7 +278,7 @@
    from deleted cards become orphaned."
   [dashboard-card-ids]
   (when (seq dashboard-card-ids)
-    (let [cards-being-deleted (t2/select :model/DashboardCard 'id ['in dashboard-card-ids])
+    (let [cards-being-deleted (t2/select :model/DashboardCard 'id [:in dashboard-card-ids])
           orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
           ;; Get dashboard IDs (should all be the same, but let's be safe)
           dashboard-ids (set (map :dashboard_id cards-being-deleted))]
@@ -289,7 +289,7 @@
               cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
                                       current-params)]
           (when (not= (count current-params) (count cleaned-params))
-            (t2/update! :model/Dashboard dashboard-id {'parameters cleaned-params})
+            (t2/update! :model/Dashboard dashboard-id {:parameters cleaned-params})
             (count orphaned-param-ids)))))))
 
 (defn delete-dashboard-cards!
@@ -300,8 +300,8 @@
     ;; Clean up inline parameters before deletion (since we need to read the cards first)
     (cleanup-orphaned-inline-parameters! dashboard-card-ids)
     ;; Delete the cards
-    (t2/delete! :model/PulseCard 'dashboard_card_id ['in dashboard-card-ids])
-    (t2/delete! :model/DashboardCard 'id ['in dashboard-card-ids])))
+    (t2/delete! :model/PulseCard 'dashboard_card_id [:in dashboard-card-ids])
+    (t2/delete! :model/DashboardCard 'id [:in dashboard-card-ids])))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
@@ -367,9 +367,9 @@
 (defn link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
-  ^:allow-subquery {'select (select-clause-for-link-card-model model)
-                    'from   (t2/table-name (serdes/link-card-model->toucan-model model))
-                    'where  (if (coll? id-or-ids)
+  ^:allow-subquery {:select (select-clause-for-link-card-model model)
+                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
+                    :where  (if (coll? id-or-ids)
                               [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
                               [:= :id (ensure-integer-link-card-id id-or-ids)])})
 
@@ -377,8 +377,8 @@
   [link-card-model->ids]
   (if (= 1 (count link-card-model->ids))
     (apply link-card-info-query-for-model (first link-card-model->ids))
-    {'select   ['*]
-     'from     [[^:allow-subquery {'union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
+    {:select   ['*]
+     :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  'alias_is_required_by_sql_but_not_needed_here]]}))
 
 (mi/define-batched-hydration-method dashcard-linkcard-info

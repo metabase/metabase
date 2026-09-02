@@ -39,7 +39,7 @@
       (mt/with-temp [:model/User       {user-id :id}       {}
                      :model/Collection {collection-id :id} {:type "library-data"}]
         (try
-          (t2/update! :model/Table (mt/id :venues) {'is_published true 'collection_id collection-id})
+          (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
           (let [all-users (perms/all-users-group)]
             (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
             (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
@@ -50,7 +50,7 @@
             (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
           (f user-id collection-id)
           (finally
-            (t2/update! :model/Table (mt/id :venues) {'is_published false 'collection_id nil})))))))
+            (t2/update! :model/Table (mt/id :venues) {:is_published false :collection_id nil})))))))
 
 (deftest published-table-test
   (testing "Published tables grant query access via collection permissions only with library enabled\n"
@@ -77,7 +77,7 @@
                   (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
                   (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
                   (when table-is-published?
-                    (t2/update! :model/Table (mt/id :venues) {'is_published true 'collection_id collection-id}))
+                    (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id}))
                   (if collection-readable?
                     (perms/grant-collection-read-permissions! group-id collection-id)
                     (do
@@ -105,7 +105,7 @@
           (mt/with-temp [:model/User       {user-id :id} {:email "view-data-test@example.com"}
                          :model/Collection collection    {:type "library-data"}]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {'is_published true 'collection_id (u/the-id collection)})
+            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :blocked)
@@ -213,7 +213,7 @@
         {:gtaps {:venues {:query (mt/mbql-query venues {:filter [:= $venues.price 4]})}}}
         (mt/with-temp [:model/Collection {collection-id :id} {:type "library-data"}]
           (try
-            (t2/update! :model/Table (mt/id :venues) {'is_published true 'collection_id collection-id})
+            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
             (perms/grant-collection-read-permissions! &group collection-id)
             (testing "POST /api/dataset row count reflects the sandbox filter, not the full table"
               (let [full-count  (mt/with-test-user :crowberto
@@ -229,4 +229,4 @@
                 (is (every? #(= 4 (nth % price-index)) (mt/rows result))
                     "every returned row has price = 4, per the sandbox filter")))
             (finally
-              (t2/update! :model/Table (mt/id :venues) {'is_published false 'collection_id nil}))))))))
+              (t2/update! :model/Table (mt/id :venues) {:is_published false :collection_id nil}))))))))

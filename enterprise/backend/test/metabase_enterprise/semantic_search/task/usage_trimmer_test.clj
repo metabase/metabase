@@ -21,17 +21,17 @@
     (let [now (LocalDateTime/now)
           ;; semantic.task.trimmer/storage-months is set to 2
           long-ago (.minusMonths now 6)]
-      (t2/insert! :model/SemanticSearchTokenTracking {'model_name "model now"
-                                                      'request_type :index
-                                                      'created_at (Timestamp/valueOf now)
-                                                      'total_tokens 999})
-      (t2/insert! :model/SemanticSearchTokenTracking {'model_name "model long-ago"
-                                                      'request_type :query
-                                                      'created_at (Timestamp/valueOf long-ago)
-                                                      'total_tokens 1000})
+      (t2/insert! :model/SemanticSearchTokenTracking {:model_name "model now"
+                                                      :request_type :index
+                                                      :created_at (Timestamp/valueOf now)
+                                                      :total_tokens 999})
+      (t2/insert! :model/SemanticSearchTokenTracking {:model_name "model long-ago"
+                                                      :request_type :query
+                                                      :created_at (Timestamp/valueOf long-ago)
+                                                      :total_tokens 1000})
       (is (=? [{:model_name "model now"}
                {:model_name "model long-ago"}]
-              (t2/select :model/SemanticSearchTokenTracking {'order-by [['total_tokens 'asc]]})))
+              (t2/select :model/SemanticSearchTokenTracking {:order-by [['total_tokens 'asc]]})))
       (@#'semantic.task.trimmer/trim-old-token-data!)
       (is (=? [{:model_name "model now"}]
-              (t2/select :model/SemanticSearchTokenTracking {'order-by [['total_tokens 'asc]]}))))))
+              (t2/select :model/SemanticSearchTokenTracking {:order-by [['total_tokens 'asc]]}))))))

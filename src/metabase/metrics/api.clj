@@ -51,14 +51,14 @@
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (defn- count-metrics []
-  (t2/count :model/Card {'where (queries/visible-metric-cards-where-clause)}))
+  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
 
 (defn- select-metrics [limit offset]
-  (-> (t2/select [:model/Card 'id 'name 'description 'collection_id]
-                 {'where    (queries/visible-metric-cards-where-clause)
-                  'order-by [['name 'asc]]
-                  'limit    limit
-                  'offset   offset})
+  (-> (t2/select [:model/Card :id :name :description :collection_id]
+                 {:where    (queries/visible-metric-cards-where-clause)
+                  :order-by [['name 'asc]]
+                  :limit    limit
+                  :offset   offset})
       (t2/hydrate :collection)))
 
 (api.macros/defendpoint :get "/"

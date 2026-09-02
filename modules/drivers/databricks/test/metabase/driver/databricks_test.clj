@@ -366,11 +366,11 @@
               (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table 'db_id (mt/id) 'active true)))
               (is (= 52 (count (t2/select
                                 :model/Field
-                                'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
+                                'table_id [:in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
                                 'active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
           (testing "With multi-level-schema on"
-            (t2/update! :model/Database db-id {'details (assoc details
+            (t2/update! :model/Database db-id {:details (assoc details
                                                                :multi-level-schema true
                                                                :schema-filters-patterns multi-pattern)})
             (mt/with-db
@@ -382,18 +382,18 @@
               ;; Adds four fields for metabase_ci_multicatalog.test_schema.test id,name,ci_venue_id,drivers_venue_id
               (is (= 56 (count (t2/select
                                 :model/Field
-                                'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
+                                'table_id [:in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
                                 'active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
           (testing "With multi-level-schema off"
-            (t2/update! :model/Database db-id {'details (assoc details :multi-level-schema false)})
+            (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
             (mt/with-db
               (t2/select-one :model/Database db-id)
               (sync/sync-database! (mt/db))
               (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table 'db_id (mt/id) 'active true)))
               (is (= 52 (count (t2/select
                                 :model/Field
-                                'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
+                                'table_id [:in (t2/select-fn-set :id :model/Table 'db_id (mt/id) 'active true)]
                                 'active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1}))))))))))))
 
@@ -421,11 +421,11 @@
               (is (= #{"test-data"}
                      (t2/select-fn-set :schema :model/Table 'db_id (mt/id))))))
           (testing "With multi-level-schema on, schemas are qualified"
-            (t2/update! :model/Database db-id {'details (assoc details
+            (t2/update! :model/Database db-id {:details (assoc details
                                                                :multi-level-schema true
                                                                :schema-filters-patterns multi-pattern)})
             ;; Deactivate its tables for testing
-            (t2/update! :model/Table {'db_id db-id} {'active false})
+            (t2/update! :model/Table {:db_id db-id} {:active false})
             (mt/with-db
               (t2/select-one :model/Database db-id)
               (sync/sync-database! (mt/db))
@@ -484,9 +484,9 @@
                                  :model/Table
                                  'db_id db-id
                                  [:composite :schema :name]
-                                 ['in [[:composite catalog+schema "venues"]
+                                 [:in [[:composite catalog+schema "venues"]
                                        [:composite multi-catalog+schema "test"]]]
-                                 {'order-by ['schema]})
+                                 {:order-by ['schema]})
                   t1-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t1-id))
                   t2-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t2-id))
                   fk-query (-> (lib/query mp (lib.metadata/table mp t1-id))

@@ -37,7 +37,7 @@
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/Map]]]]]]
   (api/check-400 (t2/exists? :model/DatabaseRouter 'database_id router_database_id))
-  (api/check-400 (not (t2/exists? :model/Database 'router_database_id router_database_id 'name ['in (map :name destinations)]))
+  (api/check-400 (not (t2/exists? :model/Database 'router_database_id router_database_id 'name [:in (map :name destinations)]))
                  "A destination database with that name already exists.")
   (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (t2/select-one :model/Database 'id router_database_id)]
     (if-let [invalid-destinations (->> destinations
@@ -93,8 +93,8 @@
                                                    :details {:db_routing :enabled
                                                              :routing_attribute user-attribute}})
     (if (t2/select-one :model/DatabaseRouter 'database_id db-id)
-      (t2/update! :model/DatabaseRouter 'database_id db-id {'user_attribute user-attribute})
-      (t2/insert! :model/DatabaseRouter {'database_id db-id 'user_attribute user-attribute}))))
+      (t2/update! :model/DatabaseRouter 'database_id db-id {:user_attribute user-attribute})
+      (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

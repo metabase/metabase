@@ -41,9 +41,9 @@
   Computed as `now - min(created_at)` so it keeps climbing while the runner is stalled."
   []
   (if-let [oldest (t2/select-one-fn :created_at :model/ExplorationQuery
-                                    {'where    ['= 'status "pending"]
-                                     'order-by [['created_at 'asc]]
-                                     'limit    1})]
+                                    {:where    ['= 'status "pending"]
+                                     :order-by [['created_at 'asc]]
+                                     :limit    1})]
     (max 0 (.toSeconds (Duration/between ^OffsetDateTime oldest (OffsetDateTime/now))))
     0))
 
@@ -64,10 +64,10 @@
   "Load the `ExplorationQuery` `query-id` if it is still work to do, else nil."
   [query-id]
   (t2/select-one :model/ExplorationQuery
-                 {'select ['eq.*]
-                  'from   [['exploration_query 'eq]]
-                  'join   [['exploration_thread 'et] ['= 'et.id 'eq.exploration_thread_id]]
-                  'where  ['and
+                 {:select ['eq.*]
+                  :from   [['exploration_query 'eq]]
+                  :join   [['exploration_thread 'et] ['= 'et.id 'eq.exploration_thread_id]]
+                  :where  ['and
                            ['= 'eq.id query-id]
                            ['= 'eq.status "pending"]
                            ['= 'et.canceled_at nil]]}))
@@ -124,7 +124,7 @@
                           {:row-id (:id row) :variant variant})))
         (let [token (compute-data-access-token dq (:database_id row))]
           (t2/update! :model/ExplorationQuery (:id row)
-                      {'dataset_query dq 'name nm 'data_access_token token})
+                      {:dataset_query dq :name nm :data_access_token token})
           (assoc row :dataset_query dq :name nm :data_access_token token))))))
 
 (defn- safe-chart-config
@@ -178,16 +178,16 @@
   [thread-id]
   (pos?
    (t2/query-one
-    {'update 'exploration_thread
-     'set    {'analysis_started_at (OffsetDateTime/now)
-              'completed_at        (OffsetDateTime/now)}
-     'where  ['and
+    {:update 'exploration_thread
+     :set    {:analysis_started_at (OffsetDateTime/now)
+              :completed_at        (OffsetDateTime/now)}
+     :where  ['and
               ['= 'id thread-id]
               ['= 'analysis_started_at nil]
               ['= 'canceled_at nil]
-              ['not-exists ^:allow-subquery {'select [1]
-                                             'from   ['exploration_query]
-                                             'where  ['and
+              ['not-exists ^:allow-subquery {:select [1]
+                                             :from   ['exploration_query]
+                                             :where  ['and
                                                       ['= 'exploration_thread_id thread-id]
                                                       ['= 'status "pending"]]}]]})))
 
@@ -208,9 +208,9 @@
   "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
   [exploration-query]
   (t2/select-one-fn :creator_id :model/Exploration
-                    {'join  ['exploration_thread
+                    {:join  ['exploration_thread
                              ['= 'exploration_thread.exploration_id 'exploration.id]]
-                     'where ['= 'exploration_thread.id (:exploration_thread_id exploration-query)]}))
+                     :where ['= 'exploration_thread.id (:exploration_thread_id exploration-query)]}))
 
 (defn- exploration-id
   "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."
@@ -349,28 +349,28 @@
       (let [sr-id (first
                    (t2/insert-returning-pks!
                     :model/StoredResult
-                    {'result_data       bytes
-                     'creator_id        creator-id
-                     'database_id       db-id
-                     'dataset_query     (:dataset_query row)
-                     'row_count         row-count
-                     'data_access_token token}))]
+                    {:result_data       bytes
+                     :creator_id        creator-id
+                     :database_id       db-id
+                     :dataset_query     (:dataset_query row)
+                     :row_count         row-count
+                     :data_access_token token}))]
         (t2/insert! :model/ExplorationQueryResult
-                    {'exploration_query_id             (:id row)
-                     'stored_result_id                 sr-id
-                     'chart_stats                      stats
-                     'interestingness_score            score
-                     'contextual_interestingness_score (:score ctx)
-                     'metric_description               (:metric-description ctx)
-                     'chart_description                (:chart-description ctx)})
+                    {:exploration_query_id             (:id row)
+                     :stored_result_id                 sr-id
+                     :chart_stats                      stats
+                     :interestingness_score            score
+                     :contextual_interestingness_score (:score ctx)
+                     :metric_description               (:metric-description ctx)
+                     :chart_description                (:chart-description ctx)})
         ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
         (t2/insert! :model/StoredResultUse
-                    {'stored_result_id sr-id
-                     'exploration_id   (exploration-id row)})
+                    {:stored_result_id sr-id
+                     :exploration_id   (exploration-id row)})
         (t2/update! :model/ExplorationQuery (:id row)
-                    {'status      "done"
-                     'started_at  started
-                     'finished_at (OffsetDateTime/now)})))
+                    {:status      "done"
+                     :started_at  started
+                     :finished_at (OffsetDateTime/now)})))
     true
     (catch Exception e
       (if (t2/exists? :model/ExplorationQueryResult 'exploration_query_id (:id row))
@@ -405,7 +405,7 @@
             (record-query-outcome! "done"))
           (:exploration_thread_id row))))
     (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery
-                      'id query-id 'status ['in ["done" "error" "canceled"]])))
+                      'id query-id 'status [:in ["done" "error" "canceled"]])))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
@@ -415,10 +415,10 @@
   [query-id message]
   (let [thread-id (t2/select-one-fn :exploration_thread_id :model/ExplorationQuery 'id query-id)]
     (when (pos? (t2/update! :model/ExplorationQuery
-                            {'id query-id 'status "pending"}
-                            {'status        "error"
-                             'error_message message
-                             'finished_at   (OffsetDateTime/now)}))
+                            {:id query-id :status "pending"}
+                            {:status        "error"
+                             :error_message message
+                             :finished_at   (OffsetDateTime/now)}))
       (record-query-outcome! "error"))
     thread-id))
 
@@ -428,16 +428,16 @@
   saw the rows that existed at cancel time; rows the planner inserted after that are still `pending`
   on a canceled thread. Flip them so the query table matches its owning thread's terminal state."
   [thread-id]
-  (when (t2/exists? :model/ExplorationThread 'id thread-id 'canceled_at ['not= nil])
+  (when (t2/exists? :model/ExplorationThread 'id thread-id 'canceled_at [:not= nil])
     (t2/update! :model/ExplorationQuery
-                {'exploration_thread_id thread-id
-                 'status                "pending"}
-                {'status "canceled"})))
+                {:exploration_thread_id thread-id
+                 :status                "pending"}
+                {:status "canceled"})))
 
 (defn plan-thread!
   "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
   [thread-id]
-  (let [thread   (t2/select-one [:model/ExplorationThread 'id 'canceled_at 'analysis_started_at] 'id thread-id)
+  (let [thread   (t2/select-one [:model/ExplorationThread :id :canceled_at :analysis_started_at] 'id thread-id)
         planned? (cond
                    ;; `restart` deletes and re-creates a thread's work; a message for a thread that
                    ;; no longer exists is a no-op.

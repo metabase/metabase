@@ -56,12 +56,12 @@
 (defn- update-use-tenants! [new-val]
   (when-not new-val
     ;; deactivate all tenants
-    (t2/query {'update 'tenant
-               'set {'is_active false}})
+    (t2/query {:update 'tenant
+               :set {:is_active false}})
     ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
-    (t2/update! :model/User 'tenant_id ['not= nil]
+    (t2/update! :model/User 'tenant_id [:not= nil]
                 'is_active true
-                {'is_active false 'deactivated_with_tenant true}))
+                {:is_active false :deactivated_with_tenant true}))
   (setting/set-value-of-type! :boolean :use-tenants new-val))
 
 (defsetting use-tenants

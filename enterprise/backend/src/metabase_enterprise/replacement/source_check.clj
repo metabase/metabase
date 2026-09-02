@@ -18,16 +18,16 @@
   via `sandbox.table_id` or indirectly via a scoping card whose `table_id` matches."
   [table-id :- ::lib.schema.id/table]
   (or (t2/exists? :model/Sandbox 'table_id table-id)
-      (let [sandbox-card-ids (t2/select-fn-set :card_id :model/Sandbox 'card_id ['not= nil])]
+      (let [sandbox-card-ids (t2/select-fn-set :card_id :model/Sandbox 'card_id [:not= nil])]
         (boolean
          (when (seq sandbox-card-ids)
-           (t2/exists? :model/Card 'id ['in sandbox-card-ids] 'table_id table-id))))))
+           (t2/exists? :model/Card 'id [:in sandbox-card-ids] 'table_id table-id))))))
 
 (mu/defn- has-incoming-fks? :- :boolean
   "Returns true if any active field has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
   (if-let [field-ids (not-empty (t2/select-pks-set :model/Field 'table_id table-id 'active true))]
-    (t2/exists? :model/Field 'fk_target_field_id ['in field-ids] 'active true)
+    (t2/exists? :model/Field 'fk_target_field_id [:in field-ids] 'active true)
     false))
 
 (mu/defn- format-column :- ::replacement.schema/column

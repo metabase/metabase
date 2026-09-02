@@ -30,7 +30,7 @@
                           :user_id support-user-id
                           :session_key "test1"
                           :auth_identity_id (t2/select-one-pk :model/AuthIdentity 'user_id support-user-id)}]
-            (t2/update! :model/SupportAccessGrantLog grant-id {'notes "Updated notes"})
+            (t2/update! :model/SupportAccessGrantLog grant-id {:notes "Updated notes"})
             (is (some? (t2/select-one :model/Session 'id session-id))
                 "Session should still exist after non-revocation update")
             (is (nil? (:expires_at (t2/select-one :model/AuthIdentity 'provider "password" 'user_id support-user-id)))
@@ -68,7 +68,7 @@
                                                                 'user_id other-user-id
                                                                 'provider "password")}]
               (let [revoked-timestamp (t/offset-date-time)]
-                (t2/update! :model/SupportAccessGrantLog grant-id {'revoked_at revoked-timestamp})
+                (t2/update! :model/SupportAccessGrantLog grant-id {:revoked_at revoked-timestamp})
                 (is (nil? (t2/select-one :model/Session 'id support-session-id))
                     "Support user session should be deleted")
                 (is (some? (t2/select-one :model/Session 'id other-session-id))

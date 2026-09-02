@@ -75,15 +75,15 @@
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
       (let [db (t2/insert-returning-instance! :model/Database
-                                              {'name canonical-db-name
-                                               'description "Development database for analytics views and content"
-                                               'engine (name db-type)
-                                               'details {:is-audit-dev true}
-                                               'is_audit false ; Important: not an audit DB
-                                               'is_full_sync true
-                                               'is_on_demand false
-                                               'creator_id user-id
-                                               'auto_run_queries true})]
+                                              {:name canonical-db-name
+                                               :description "Development database for analytics views and content"
+                                               :engine (name db-type)
+                                               :details {:is-audit-dev true}
+                                               :is_audit false ; Important: not an audit DB
+                                               :is_full_sync true
+                                               :is_on_demand false
+                                               :creator_id user-id
+                                               :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
         (sync/sync-database! db {:scan :schema})
         db))))
@@ -280,7 +280,7 @@
 (defn- first-admin-user
   "Get the first admin user (by ID)."
   []
-  (t2/select-one [:model/User 'id 'email] 'is_superuser true {'order-by [['id 'asc]]}))
+  (t2/select-one [:model/User :id :email] 'is_superuser true {:order-by [['id 'asc]]}))
 
 (defn find-analytics-collection
   "Get the analytics collection"

@@ -23,16 +23,16 @@
                  pk-column-name]}]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
                          ^:allow-subquery
-                         {'select [[['min 'f.id] 'id]]
+                         {:select [[['min 'f.id] 'id]]
                           ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
                           ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
                           ;; non-unique when lower-cased for some DBs. We have been doing case-insensitive matching
                           ;; since #5510 so this preserves behaviour to avoid possible regressions.
                           ;; It's possible this is to avoid
-                          'from   [['metabase_field 'f]]
-                          'join   [['metabase_table 't] ['= 'f.table_id 't.id]]
-                          'left-join [['metabase_field_user_settings 'u] ['= 'f.id 'u.field_id]]
-                          'where  ['and
+                          :from   [['metabase_field 'f]]
+                          :join   [['metabase_table 't] ['= 'f.table_id 't.id]]
+                          :left-join [['metabase_field_user_settings 'u] ['= 'f.id 'u.field_id]]
+                          :where  ['and
                                    ;; ensure we are not overriding user-set fks
                                    ['= 'u.fk_target_field_id nil]
                                    ['= 'u.semantic_type nil]
@@ -58,32 +58,32 @@
 
         q (case (mdb/db-type)
             :mysql
-            {'update ['metabase_field 'f]
-             'join   [[fk-field-id-query 'fk] ['= 'fk.id 'f.id]
+            {:update ['metabase_field 'f]
+             :join   [[fk-field-id-query 'fk] ['= 'fk.id 'f.id]
                       [pk-field-id-query 'pk]
                       (valid-condition :pk.id)]
-             'set    {'fk_target_field_id 'pk.id
+             :set    {:fk_target_field_id 'pk.id
                       ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
-                      'has_field_values   ['case ['= 'has_field_values "auto-list"] nil 'else 'has_field_values]
-                      'semantic_type      "type/FK"}}
+                      :has_field_values   ['case ['= 'has_field_values "auto-list"] nil 'else 'has_field_values]
+                      :semantic_type      "type/FK"}}
             :postgres
-            {'update ['metabase_field 'f]
-             'from   [[fk-field-id-query 'fk]]
-             'join   [[pk-field-id-query 'pk] true]
-             'set    {'fk_target_field_id 'pk.id
+            {:update ['metabase_field 'f]
+             :from   [[fk-field-id-query 'fk]]
+             :join   [[pk-field-id-query 'pk] true]
+             :set    {:fk_target_field_id 'pk.id
                       ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
-                      'has_field_values   ['case ['= 'has_field_values "auto-list"] nil 'else 'has_field_values]
-                      'semantic_type      "type/FK"}
-             'where  ['and
+                      :has_field_values   ['case ['= 'has_field_values "auto-list"] nil 'else 'has_field_values]
+                      :semantic_type      "type/FK"}
+             :where  ['and
                       ['= 'fk.id 'f.id]
                       (valid-condition :pk.id)]}
             :h2
-            {'update ['metabase_field 'f]
-             'set    {'fk_target_field_id pk-field-id-query
+            {:update ['metabase_field 'f]
+             :set    {:fk_target_field_id pk-field-id-query
                       ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
-                      'has_field_values   ['case ['= 'has_field_values "auto-list"] nil 'else 'has_field_values]
-                      'semantic_type      "type/FK"}
-             'where  ['and
+                      :has_field_values   ['case ['= 'has_field_values "auto-list"] nil 'else 'has_field_values]
+                      :semantic_type      "type/FK"}
+             :where  ['and
                       ['= 'f.id fk-field-id-query]
                       ['not= pk-field-id-query nil]
                       (valid-condition pk-field-id-query)]})]

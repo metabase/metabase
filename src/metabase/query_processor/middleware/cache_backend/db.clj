@@ -48,7 +48,7 @@
   (t2/select-one-fn (fn [row]
                       {:results    (results-as-bytes row)
                        :updated-at (:updated_at row)})
-                    [:model/QueryCache 'results 'updated_at]
+                    [:model/QueryCache :results :updated_at]
                     'query_hash query-hash))
 
 (defn invalidated-at-ttl
@@ -90,9 +90,9 @@
   scheduler; bumping it here would let a crashed refresh silently extend the row's freshness (#76856)."
   [query-hash lease-ms]
   (pos? (t2/update! (t2/table-name :model/QueryCache)
-                    {'query_hash                                         query-hash
+                    {:query_hash                                         query-hash
                      [:coalesce :refresh_started_at lease-free-sentinel] ['< (ms-ago lease-ms)]}
-                    {'refresh_started_at (t/offset-date-time)})))
+                    {:refresh_started_at (t/offset-date-time)})))
 
 (defn delete-entry!
   "Delete the cache entry for `query-hash`, if one exists. Deleting the row also releases any held refresh lease, so
@@ -113,7 +113,7 @@
   (log/trace "Purging old cache entries.")
   (try
     (t2/delete! (t2/table-name :model/QueryCache)
-                'updated_at ['<= (seconds-ago max-age-seconds)])
+                'updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/errorf "Error purging old cache entries: %s" (ex-message e))))
   nil)

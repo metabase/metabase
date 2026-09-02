@@ -87,9 +87,9 @@
 
 (def ^:private base-lock-sql
   (delay
-    (first (mdb.query/compile {'select ['lock.lock_name]
-                               'from [['metabase_cluster_lock 'lock]]
-                               'where ['= 'lock.lock_name ['raw "?"]]}))))
+    (first (mdb.query/compile {:select ['lock.lock_name]
+                               :from [['metabase_cluster_lock 'lock]]
+                               :where ['= 'lock.lock_name [:raw "?"]]}))))
 
 (defn- lock-sql ^String [mode]
   (str @base-lock-sql (lock-clause mode)))
@@ -192,9 +192,9 @@
   based on observed cross-connection behavior rather than direct measurement. If the failure persists, revisit this
   path before adding more workarounds."
   [lock-name-str timeout]
-  (let [[sql] (mdb.query/compile {'insert-into ['metabase_cluster_lock]
-                                  'columns     ['lock_name]
-                                  'values      [[['raw "?"]]]})]
+  (let [[sql] (mdb.query/compile {:insert-into ['metabase_cluster_lock]
+                                  :columns     ['lock_name]
+                                  :values      [[[:raw "?"]]]})]
     (with-open [conn (checkout-connection!)
                 stmt (.prepareStatement conn ^String sql)]
       ;; The row must be durable before the SELECT below can find it, and the pool does not guarantee autocommit.
@@ -234,9 +234,9 @@
   `conn` (ambient resolution would select another connection under a detached lock) and uses the same timeout
   as the SELECT, because concurrent first-time inserts block on the winner's uncommitted unique-index entry."
   [^Connection conn lock-name-str timeout]
-  (let [[sql] (mdb.query/compile {'insert-into ['metabase_cluster_lock]
-                                  'columns     ['lock_name]
-                                  'values      [[['raw "?"]]]})]
+  (let [[sql] (mdb.query/compile {:insert-into ['metabase_cluster_lock]
+                                  :columns     ['lock_name]
+                                  :values      [[[:raw "?"]]]})]
     (with-open [insert-stmt (.prepareStatement conn ^String sql)]
       (u.connection/set-query-timeout! insert-stmt timeout)
       (.setString insert-stmt 1 lock-name-str)

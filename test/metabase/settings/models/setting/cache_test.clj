@@ -25,8 +25,8 @@
   "Simulate a different instance updating the value of `settings-last-updated` in the DB by updating its value without
   updating our locally cached value.."
   []
-  (t2/update! :model/Setting {'key setting.cache/settings-last-updated-key}
-              {'value ^:allow-raw-sql [:raw (case (mdb/db-type)
+  (t2/update! :model/Setting {:key setting.cache/settings-last-updated-key}
+              {:value ^:allow-raw-sql [:raw (case (mdb/db-type)
                                               ;; make it one second in the future so we don't end up getting an exact match when we try to test
                                               ;; to see if things update below
                                               :h2       "cast(dateadd('second', 1, current_timestamp) AS text)"
@@ -35,8 +35,8 @@
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
   (if new-value
-    (t2/update! :model/Setting {'key (name setting-name)} {'value new-value})
-    (t2/delete! (t2/table-name :model/Setting) {'key (name setting-name)}))
+    (t2/update! :model/Setting {:key (name setting-name)} {:value new-value})
+    (t2/delete! (t2/table-name :model/Setting) {:key (name setting-name)}))
   (update-settings-last-updated-value-in-db!))
 
 (defn reset-last-update-check!

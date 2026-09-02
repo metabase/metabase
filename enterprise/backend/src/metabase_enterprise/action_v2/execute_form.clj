@@ -92,7 +92,7 @@
   (let [table                       (api/read-check (t2/select-one :model/Table 'id table-id 'active true))
         database                    (t2/select-one :model/Database 'id (:db_id table))
         _                           (actions/check-data-editing-enabled-for-database! database)
-        fields                      (-> (t2/select :model/Field 'table_id table-id 'active true {'order-by [['position]]})
+        fields                      (-> (t2/select :model/Field 'table_id table-id 'active true {:order-by [['position]]})
                                         (t2/hydrate :dimensions
                                                     :has_field_values
                                                     :values))

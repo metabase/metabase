@@ -150,7 +150,7 @@
   (testing "GET /api/collection?personal-only=true check that we see all personal collections if you are an admin."
     (mt/with-temp [:model/Collection collection-1 {:name "Collection 1"}]
       (perms/grant-collection-read-permissions! (perms/all-users-group) collection-1)
-      (is (= (->> (t2/select :model/Collection {'where ['!= 'personal_owner_id nil]})
+      (is (= (->> (t2/select :model/Collection {:where ['!= 'personal_owner_id nil]})
                   (map :name)
                   (into #{}))
              (->> (mt/user-http-request :crowberto :get 200 "collection" :personal-only true)
@@ -808,14 +808,14 @@
                        (mt/with-temp [:model/Collection {coll-id :id} {}]
                          (doseq [i (range n)]
                            (t2/insert! :model/Card
-                                       {'name                   (str "n1q card " i)
-                                        'type                   :question
-                                        'creator_id             (mt/user->id :crowberto)
-                                        'collection_id          coll-id
-                                        'database_id            (mt/id)
-                                        'dataset_query          (mt/mbql-query venues)
-                                        'display                "table"
-                                        'visualization_settings {}}))
+                                       {:name                   (str "n1q card " i)
+                                        :type                   :question
+                                        :creator_id             (mt/user->id :crowberto)
+                                        :collection_id          coll-id
+                                        :database_id            (mt/id)
+                                        :dataset_query          (mt/mbql-query venues)
+                                        :display                "table"
+                                        :visualization_settings {}}))
                          ;; warm any lazily-initialized caches the first request would otherwise pay for
                          (items! coll-id)
                          (t2/with-call-count [cc]
@@ -1391,10 +1391,10 @@
                                                      :object   (revision/serialize-instance card2 card2-id card2)}]
         ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
         (is (= 1
-               (t2/query-one {'update 'revision
+               (t2/query-one {:update 'revision
                               ;; in the past
-                              'set    {'timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                              'where  ['= 'id (:id revision1)]})))
+                              :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
+                              :where  ['= 'id (:id revision1)]})))
         (testing "Results include last edited information from the `Revision` table"
           (is (= [{:name "AA"}
                   {:name "Card with history 1",
@@ -1498,16 +1498,16 @@
                                                        :user_id  failuser-id
                                                        :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
-          (t2/query-one {'update 'revision
+          (t2/query-one {:update 'revision
                          ;; in the past
-                         'set    {'timestamp (at-year 2015)}
-                         'where  ['in 'id (map :id [card-revision1 dash-revision1])]})
+                         :set    {:timestamp (at-year 2015)}
+                         :where  ['in 'id (map :id [card-revision1 dash-revision1])]})
           ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
           ;; id. Query assumes increasing timestamps with ids
-          (t2/query-one {'update 'revision
-                         'set    {'timestamp (at-year 2021)
-                                  'user_id   passuser-id}
-                         'where  ['in 'id (map :id [card-revision2 dash-revision2])]}))
+          (t2/query-one {:update 'revision
+                         :set    {:timestamp (at-year 2021)
+                                  :user_id   passuser-id}
+                         :where  ['in 'id (map :id [card-revision2 dash-revision2])]}))
         (is (= ["pass" "pass"]
                (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items") :models ["dashboard" "card"])
                     :data
@@ -3959,20 +3959,20 @@
         ;; identical timestamps and tiebreak non-deterministically.
         (let [t (java.time.OffsetDateTime/now)]
           (t2/insert! :model/Revision
-                      {'model       "Exploration"
-                       'model_id    (:id e)
-                       'user_id     (mt/user->id :crowberto)
-                       'object      (revision/serialize-instance :model/Exploration (:id e)
+                      {:model       "Exploration"
+                       :model_id    (:id e)
+                       :user_id     (mt/user->id :crowberto)
+                       :object      (revision/serialize-instance :model/Exploration (:id e)
                                                                  (t2/select-one :model/Exploration 'id (:id e)))
-                       'timestamp   (.minusSeconds t 60)
-                       'is_creation true})
+                       :timestamp   (.minusSeconds t 60)
+                       :is_creation true})
           (t2/insert! :model/Revision
-                      {'model     "Document"
-                       'model_id  (:id doc)
-                       'user_id   (mt/user->id :rasta)
-                       'object    (revision/serialize-instance :model/Document (:id doc)
+                      {:model     "Document"
+                       :model_id  (:id doc)
+                       :user_id   (mt/user->id :rasta)
+                       :object    (revision/serialize-instance :model/Document (:id doc)
                                                                (t2/select-one :model/Document 'id (:id doc)))
-                       'timestamp t}))
+                       :timestamp t}))
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]

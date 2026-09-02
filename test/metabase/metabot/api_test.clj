@@ -393,16 +393,16 @@
           external-id     (str (random-uuid))
           user-id         (mt/user->id :rasta)]
       (try
-        (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
+        (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
         (let [message-id (first (t2/insert-returning-pks!
                                  :model/MetabotMessage
-                                 {'conversation_id conversation-id
-                                  'role            "assistant"
-                                  'profile_id      "gpt-x"
-                                  'external_id     external-id
-                                  'total_tokens    5
-                                  'data            [{:type "text" :text "hi"}]
-                                  'data_version    2}))]
+                                 {:conversation_id conversation-id
+                                  :role            "assistant"
+                                  :profile_id      "gpt-x"
+                                  :external_id     external-id
+                                  :total_tokens    5
+                                  :data            [{:type "text" :text "hi"}]
+                                  :data_version    2}))]
           (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
                                           {:metabot_id  1
                                            :message_id  external-id
@@ -574,9 +574,9 @@
 
 (defn- conversation-rows
   [conversation-id]
-  (t2/select [:model/MetabotMessage 'id 'external_id 'role 'deleted_at 'deleted_by_user_id]
+  (t2/select [:model/MetabotMessage :id :external_id :role :deleted_at :deleted_by_user_id]
              'conversation_id conversation-id
-             {'order-by [['created_at 'asc] ['id 'asc]]}))
+             {:order-by [['created_at 'asc] ['id 'asc]]}))
 
 (deftest agent-streaming-start-event-carries-user-message-id-test
   (testing "the start event's messageMetadata.userMessageId is the persisted user row's external_id"
@@ -1208,7 +1208,7 @@
                   (is (= "1.2.3.4" (ip-for conversation-id)))))
               (testing "null IP on pre-feature rows is backfilled on next call"
                 (let [conversation-id (str (random-uuid))]
-                  (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id (mt/user->id :rasta)})
+                  (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
                   (api/streaming-request (request-body conversation-id) (info-with-ip "9.9.9.9"))
                   (is (= "9.9.9.9" (ip-for conversation-id))))))
             (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]

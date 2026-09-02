@@ -35,8 +35,8 @@
   ["outbox-require" "outbox-try" "outbox-never" "outbox-chunked" "outbox-dedup" "outbox-recover"])
 
 (defn- clear-outbox! [t]
-  (t2/delete! :queue_message_outbox 'queue_name ['in test-queue-names])
-  (try (t) (finally (t2/delete! :queue_message_outbox 'queue_name ['in test-queue-names]))))
+  (t2/delete! :queue_message_outbox 'queue_name [:in test-queue-names])
+  (try (t) (finally (t2/delete! :queue_message_outbox 'queue_name [:in test-queue-names]))))
 
 ;; These tests read/write the `queue_message_outbox` table directly, so the app-db must be migrated.
 (use-fixtures :once (fixtures/initialize :db))
@@ -122,10 +122,10 @@
                        {:queue/outbox-chunked ["a" "b" "c" "d" "e"]}})]
         (outbox/insert-outbox-rows!))
       (is (= 3 (outbox-count "outbox-chunked")) "5 messages, max-batch 2 -> 3 rows (2,2,1)")
-      (let [payloads (->> (t2/query {'select   ['payload]
-                                     'from     ['queue_message_outbox]
-                                     'where    ['= 'queue_name "outbox-chunked"]
-                                     'order-by [['id 'asc]]})
+      (let [payloads (->> (t2/query {:select   ['payload]
+                                     :from     ['queue_message_outbox]
+                                     :where    ['= 'queue_name "outbox-chunked"]
+                                     :order-by [['id 'asc]]})
                           (map (comp payload/decode :payload)))]
         (is (= [["a" "b"] ["c" "d"] ["e"]] payloads))))))
 
@@ -137,9 +137,9 @@
                        {:queue/outbox-dedup ["a" "a" "b" "a"]}})]
         (outbox/insert-outbox-rows!))
       (is (= 1 (outbox-count "outbox-dedup")))
-      (let [msgs (->> (t2/query {'select ['payload]
-                                 'from   ['queue_message_outbox]
-                                 'where  ['= 'queue_name "outbox-dedup"]})
+      (let [msgs (->> (t2/query {:select ['payload]
+                                 :from   ['queue_message_outbox]
+                                 :where  ['= 'queue_name "outbox-dedup"]})
                       (mapcat (comp payload/decode :payload)))]
         (is (= ["a" "b"] (vec msgs)))))))
 
@@ -193,9 +193,9 @@
       {:queue/outbox-recover (fn [m] (swap! heard conj m))}
       (testing "a row a crash left behind is republished and deleted by the recovery sweep"
         (t2/insert! :queue_message_outbox
-                    {'queue_name "outbox-recover"
-                     'payload    (payload/encode ["recovered"])
-                     'created_at (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))})
+                    {:queue_name "outbox-recover"
+                     :payload    (payload/encode ["recovered"])
+                     :created_at (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))})
         (is (= 1 (outbox-count "outbox-recover")))
         (is (= 1 (outbox/recover-outbox!)) "one row republished")
         (mq.tu/eventually! ctx #(= ["recovered"] @heard) 5000)
@@ -207,7 +207,7 @@
     (mq.tu/with-test-mq [_ctx]
       (let [pl (payload/encode ["keep-me"])
             id (t2/insert-returning-pk! :queue_message_outbox
-                                        {'queue_name "outbox-require" 'payload pl})]
+                                        {:queue_name "outbox-require" :payload pl})]
         ;; Point the active backend at quartz with no scheduler so publish! throws; the per-row
         ;; try/catch in publish-outbox-rows! must then leave the row in place for recovery.
         (binding [q.backend/*backend*          q.quartz/backend
@@ -228,7 +228,7 @@
       (mt/with-temp-scheduler!
         (let [pl (payload/encode ["keep-me-too"])
               id (t2/insert-returning-pk! :queue_message_outbox
-                                          {'queue_name "outbox-require" 'payload pl})]
+                                          {:queue_name "outbox-require" :payload pl})]
           (binding [q.backend/*backend* q.quartz/backend]
             (with-redefs [task/scheduler-disabled? (constantly true)]
               (outbox/publish-outbox-rows!
@@ -244,10 +244,10 @@
             bad     (payload/encode ["bad"])
             old     (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))
             good-id (t2/insert-returning-pk! :queue_message_outbox
-                                             {'queue_name "outbox-recover" 'payload good 'created_at old})
+                                             {:queue_name "outbox-recover" :payload good :created_at old})
             ;; higher id -> published after the good row (order-by id asc)
             bad-id  (t2/insert-returning-pk! :queue_message_outbox
-                                             {'queue_name "outbox-recover" 'payload bad 'created_at old})
+                                             {:queue_name "outbox-recover" :payload bad :created_at old})
             published (atom [])
             ;; capture the unpatched fn via original-fn — a bare var ref would resolve to the
             ;; with-dynamic-fn-redefs proxy and recurse (see that macro's docstring).
@@ -271,9 +271,9 @@
       (let [p1   (payload/encode ["one"])
             p2   (payload/encode ["two"])
             p3   (payload/encode ["three"])
-            id1  (t2/insert-returning-pk! :queue_message_outbox {'queue_name "outbox-require" 'payload p1})
-            id2  (t2/insert-returning-pk! :queue_message_outbox {'queue_name "outbox-require" 'payload p2})
-            id3  (t2/insert-returning-pk! :queue_message_outbox {'queue_name "outbox-require" 'payload p3})
+            id1  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p1})
+            id2  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p2})
+            id3  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p3})
             published (atom [])
             real-publish (dynamic-redefs/original-fn #'transport/publish-encoded!)]
         (with-dynamic-fn-redefs [transport/publish-encoded!
@@ -296,8 +296,8 @@
   (mq.tu/with-test-mq [_ctx]
     (testing "rows younger than the recovery age are left for the normal after-commit path"
       (t2/insert! :queue_message_outbox
-                  {'queue_name "outbox-recover"
-                   'payload    (payload/encode ["fresh"])})
+                  {:queue_name "outbox-recover"
+                   :payload    (payload/encode ["fresh"])})
       (is (= 0 (outbox/recover-outbox!)) "no rows old enough to recover")
       (is (= 1 (outbox-count "outbox-recover")) "fresh row left in place"))))
 
@@ -314,7 +314,7 @@
 
 (defn- insert-stale-row! [payload]
   (t2/insert-returning-pk! :queue_message_outbox
-                           {'queue_name "outbox-recover" 'payload payload 'created_at stale-ts}))
+                           {:queue_name "outbox-recover" :payload payload :created_at stale-ts}))
 
 (defn- always-fail-publish []
   (fn [_channel _payload] (throw (ex-info "always boom" {}))))
@@ -326,7 +326,7 @@
         (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered"))
         (is (t2/exists? :queue_message_outbox 'id id) "poison row retained for a later sweep")
-        (let [row (t2/select-one [:queue_message_outbox 'publish_attempts 'next_attempt_at] 'id id)]
+        (let [row (t2/select-one [:queue_message_outbox :publish_attempts :next_attempt_at] 'id id)]
           (is (= 1 (:publish_attempts row))
               "attempts bumped exactly once for the one sweep (the failed row is skipped, not re-claimed)")
           (is (some? (:next_attempt_at row)) "a backed-off retry time is scheduled"))))))
@@ -338,19 +338,19 @@
         (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
           ;; sweep 1: attempt bumped and a future next_attempt_at scheduled (backing off)
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
-          (let [row (t2/select-one [:queue_message_outbox 'publish_attempts 'next_attempt_at] 'id id)]
+          (let [row (t2/select-one [:queue_message_outbox :publish_attempts :next_attempt_at] 'id id)]
             (is (= 1 (:publish_attempts row)) "attempts bumped")
             (is (.isAfter (->instant (:next_attempt_at row)) (Instant/now))
                 "next attempt scheduled in the future"))
           ;; immediate re-sweep: the row is not due yet, so it is skipped (attempts unchanged)
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
-          (is (= 1 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
+          (is (= 1 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] 'id id)))
               "a row that is not yet due is not re-attempted before its backoff elapses")
           ;; force the row due and sweep again: re-attempted, attempt count grows, still retained
           (t2/update! :queue_message_outbox 'id id
-                      {'next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
+                      {:next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
-          (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
+          (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] 'id id)))
               "a due row is re-attempted and its attempt count keeps growing")
           (is (t2/exists? :queue_message_outbox 'id id)
               "the row is never dropped no matter how many times it fails"))))))
@@ -412,7 +412,7 @@
             "only ONE publish is attempted — the sweep stops on the first backend-unavailable error")
         (doseq [id ids]
           (is (t2/exists? :queue_message_outbox 'id id) "every row is retained for the next sweep")
-          (is (= 0 (:publish_attempts (t2/select-one [:queue_message_outbox 'publish_attempts] 'id id)))
+          (is (= 0 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] 'id id)))
               "no row is bumped — a backend being down doesn't burn anyone's retry budget"))))))
 
 (deftest recover-outbox-message-specific-failure-still-continues-past-it-test

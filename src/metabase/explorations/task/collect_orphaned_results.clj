@@ -58,21 +58,21 @@
   []
   (mapv :id
         (t2/query
-         {'select   ['sr.id]
-          'from     [['stored_result 'sr]]
-          'where    ['and
-                     ['not ['exists ^:allow-subquery {'select [1]
-                                                      'from   [['exploration_query_result 'eqr]]
-                                                      'where  ['= 'eqr.stored_result_id 'sr.id]}]]
-                     ['not ['exists ^:allow-subquery {'select [1]
-                                                      'from   [['stored_result_use 'sru]]
-                                                      'where  ['and
+         {:select   ['sr.id]
+          :from     [['stored_result 'sr]]
+          :where    ['and
+                     ['not ['exists ^:allow-subquery {:select [1]
+                                                      :from   [['exploration_query_result 'eqr]]
+                                                      :where  ['= 'eqr.stored_result_id 'sr.id]}]]
+                     ['not ['exists ^:allow-subquery {:select [1]
+                                                      :from   [['stored_result_use 'sru]]
+                                                      :where  ['and
                                                                ['= 'sru.stored_result_id 'sr.id]
                                                                ['not= 'sru.card_id nil]]}]]
                      ['< 'sr.created_at (t/minus (t/offset-date-time)
                                                  (t/minutes grace-period-minutes))]]
-          'order-by [['sr.id 'asc]]
-          'limit    batch-size})))
+          :order-by [['sr.id 'asc]]
+          :limit    batch-size})))
 
 (defn collect-orphaned-results!
   "Delete every unreachable `stored_result`, in batches. Returns the number collected."
@@ -85,7 +85,7 @@
             total)
         ;; Selected and deleted as two statements: MySQL/MariaDB reject deleting from a table that a
         ;; subquery in the same statement reads (error 1093).
-        (let [deleted (t2/delete! :model/StoredResult 'id ['in ids])]
+        (let [deleted (t2/delete! :model/StoredResult 'id [:in ids])]
           (if (pos? deleted)
             (recur (+ total (long deleted)))
             ;; Nothing deleted despite finding rows — another writer got there first. Stop rather

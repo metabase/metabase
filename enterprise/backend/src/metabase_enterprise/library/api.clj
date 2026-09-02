@@ -27,8 +27,8 @@
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
-        below-card-types (t2/select-fn-set :type [:model/Card 'type] 'collection_id ['in descendent-ids])
-        below-tables? (t2/exists? :model/Table 'is_published true 'collection_id ['in descendent-ids])]
+        below-card-types (t2/select-fn-set :type [:model/Card :type] 'collection_id [:in descendent-ids])
+        below-tables? (t2/exists? :model/Table 'is_published true 'collection_id [:in descendent-ids])]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}
@@ -56,7 +56,7 @@
 (defn- select-collections
   []
   (t2/select :model/Collection
-             {'where    ['and
+             {:where    ['and
                          ['in 'type [collection/library-collection-type
                                      collection/library-data-collection-type
                                      collection/library-metrics-collection-type]]
@@ -66,7 +66,7 @@
                            :include-trash-collection? false
                            :permission-level          :read
                            :archive-operation-id      nil})]
-              'order-by [['%lower.name 'asc]]}))
+              :order-by [['%lower.name 'asc]]}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -86,9 +86,9 @@
                                          {:dataset #{}
                                           :metric  #{}
                                           :card    #{}}
-                                         (t2/reducible-query {'select-distinct ['collection_id 'type]
-                                                              'from            ['report_card]
-                                                              'where           ['= 'archived false]}))]
+                                         (t2/reducible-query {:select-distinct ['collection_id 'type]
+                                                              :from            ['report_card]
+                                                              :where           ['= 'archived false]}))]
     (collection/collections->tree collection-type-ids collections)))
 
 (def ^{:arglists '([request respond raise])} routes

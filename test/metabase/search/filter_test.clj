@@ -103,26 +103,26 @@
     (testing "The kitchen sink context is complete"
       (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
     (testing "In the general case, we simply filter by models, and exclude dashboard cards"
-      (is (= {'select ['some 'stuff],
-              'from 'somewhere,
-              'where
+      (is (= {:select ['some 'stuff],
+              :from 'somewhere,
+              :where
               ['and
                ['= 1 2]
                ['or ['= nil 'search_index.dashboard_id] nil]
                ['= nil 'search_index.exploration_id]]}
-             (search.filter/with-filters {:models []} {'select ['some 'stuff], 'from 'somewhere})))
-      (is (= {'select ['some 'stuff],
-              'from 'somewhere,
-              'where
+             (search.filter/with-filters {:models []} {:select ['some 'stuff], :from 'somewhere})))
+      (is (= {:select ['some 'stuff],
+              :from 'somewhere,
+              :where
               ['and
                ['in 'search_index.model ["a"]]
                ['or ['= nil 'search_index.dashboard_id] nil]
                ['= nil 'search_index.exploration_id]]}
-             (search.filter/with-filters {:models ["a"]} {'select ['some 'stuff], 'from 'somewhere}))))
+             (search.filter/with-filters {:models ["a"]} {:select ['some 'stuff], :from 'somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
-      (is (= {'select ['some 'stuff],
-              'from 'somewhere,
-              'where
+      (is (= {:select ['some 'stuff],
+              :from 'somewhere,
+              :where
               #{['in 'search_index.last_editor_id [321]]
                 ['in 'search_index.creator_id [123]]
                 ['or ['= 'search_index.collection_id 5] ['like 'collection.location "%/5/%"]]
@@ -132,7 +132,7 @@
                 ['in 'search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 ['or
                  ['= nil 'search_index.dashboard_id]
-                 ['not= ['inline 0] ['coalesce 'search_index.dashboardcard_count ['inline 0]]]]
+                 ['not= [:inline 0] ['coalesce 'search_index.dashboardcard_count [:inline 0]]]]
                 ['= nil 'search_index.exploration_id]
                 ['in
                  'search_index.model
@@ -157,7 +157,7 @@
                 ['= 'search_index.database_id 231]
                 ['in 'search_index.display_type ["line"]]
                 ['>= ['cast 'search_index.last_edited_at 'date] #t "2024-10-02"]}}
-             (-> (search.filter/with-filters kitchen-sink-filter-context {'select ['some 'stuff], 'from 'somewhere})
+             (-> (search.filter/with-filters kitchen-sink-filter-context {:select ['some 'stuff], :from 'somewhere})
                  (update :where set)))))))
 
 (deftest personal-collections-where-clause-set-based-test

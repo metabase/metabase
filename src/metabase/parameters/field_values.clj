@@ -40,7 +40,7 @@
   "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
   [field-ids]
   (when (seq field-ids)
-    (let [field-ids (->> (t2/select :model/Field 'id ['in (set field-ids)])
+    (let [field-ids (->> (t2/select :model/Field 'id [:in (set field-ids)])
                          field/readable-fields-only
                          (map :id))]
       (when (seq field-ids)
@@ -82,7 +82,7 @@
   Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
   [field-ids]
   (let [fields                 (when (seq field-ids)
-                                 (t2/hydrate (t2/select :model/Field 'id ['in (set field-ids)]) :table))
+                                 (t2/hydrate (t2/select :model/Field 'id [:in (set field-ids)]) :table))
         {normal-fields   false
          advanced-fields true} (group-by requires-advanced-field-value? fields)]
     (merge

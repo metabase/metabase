@@ -39,10 +39,10 @@
      (mt/with-temporary-setting-values [~'mfa-enforcement :optional]
        (let [~secret-binding (totp/generate-secret)]
          (try
-           (t2/insert! :model/AuthIdentity {'user_id     (mt/user->id :rasta)
-                                            'provider    "totp"
-                                            'confirmed_at (t/instant)
-                                            'credentials  {:secret ~secret-binding}})
+           (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
+                                            :provider    "totp"
+                                            :confirmed_at (t/instant)
+                                            :credentials  {:secret ~secret-binding}})
            ~@body
            (finally
              (t2/delete! :model/AuthIdentity 'user_id (mt/user->id :rasta) 'provider "totp")))))))
@@ -150,13 +150,13 @@
 (deftest deactivated-user-cannot-verify-test
   (with-enrolled-rasta! [secret]
     (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
-      (t2/update! :model/User (mt/user->id :rasta) {'is_active false})
+      (t2/update! :model/User (mt/user->id :rasta) {:is_active false})
       (try
         (testing "a challenge token does not outlive the account: deactivated mid-challenge gets the same 401 as a bad token"
           (mt/client :post 401 "session/mfa/verify"
                      {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)}))
         (finally
-          (t2/update! :model/User (mt/user->id :rasta) {'is_active true}))))))
+          (t2/update! :model/User (mt/user->id :rasta) {:is_active true}))))))
 
 (deftest successful-verify-does-not-count-toward-throttle-test
   (with-enrolled-rasta! [secret]
@@ -219,10 +219,10 @@
     (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (mt/with-temp [:model/User {user-id :id, email :email} {}]
         (try
-          (t2/insert! :model/AuthIdentity {'user_id     user-id
-                                           'provider    "totp"
-                                           'confirmed_at (t/instant)
-                                           'credentials  {:secret (totp/generate-secret)}})
+          (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                           :provider    "totp"
+                                           :confirmed_at (t/instant)
+                                           :credentials  {:secret (totp/generate-secret)}})
           (let [new-password (str "New-" (random-uuid))
                 resp         (mt/client :post 200 "session/reset_password"
                                         {:token    (auth-identity/create-password-reset! user-id)

@@ -39,7 +39,7 @@
   [table limit]
   (t2/select :model/Field
              'table_id (u/the-id table), 'active true, 'visibility_type "normal"
-             {'order-by [['id 'asc]] 'limit limit}))
+             {:order-by [['id 'asc]] :limit limit}))
 
 (defn- warn-too-many-fields!
   "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
@@ -237,10 +237,10 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (t2/select-pk->fn :db_id 'Table 'id ['in table-ids]))
+                               (t2/select-pk->fn :db_id 'Table 'id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
                                (t2/select-pk->fn :is_on_demand 'Database
-                                                 'id ['in (set (vals table-id->db-id))]))]
+                                                 'id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
@@ -260,9 +260,9 @@
                  (->> field-ids
                       (partition-all *on-demand-select-batch-size*)
                       (mapcat (fn [batch]
-                                (t2/select ['Field 'name 'id 'base_type 'effective_type 'coercion_strategy
-                                            'semantic_type 'visibility_type 'table_id 'has_field_values]
-                                           'id ['in batch])))))
+                                (t2/select [:Field :name :id :base_type :effective_type :coercion_strategy
+                                            :semantic_type :visibility_type :table_id :has_field_values]
+                                           'id [:in batch])))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
         on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
     (when (seq on-demand-fields)

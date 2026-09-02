@@ -170,8 +170,8 @@
                                                       :model_collection_id coll-id
                                                       :status "synced"
                                                       :status_changed_at (t/offset-date-time)}]
-          (is (= 2 (t2/count :model/RemoteSyncObject 'model_type ['in ["Collection" "NativeQuerySnippet"]]
-                             'model_id ['in [coll-id (:id snippet)]]))
+          (is (= 2 (t2/count :model/RemoteSyncObject 'model_type [:in ["Collection" "NativeQuerySnippet"]]
+                             'model_id [:in [coll-id (:id snippet)]]))
               "Should have 2 tracking entries")
           (rs-events/disable-snippet-tracking!)
           ;; Verify tracking entries removed
@@ -218,13 +218,13 @@
       (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
         ;; Ensure library exists and is not synced initially
         (when-let [library (collection/library-collection)]
-          (t2/update! :model/Collection (:id library) {'is_remote_synced false}))
+          (t2/update! :model/Collection (:id library) {:is_remote_synced false}))
         (t2/delete! :model/RemoteSyncObject 'model_type "NativeQuerySnippet")
         (is (zero? (t2/count :model/RemoteSyncObject 'model_type "NativeQuerySnippet"))
             "Should have no snippet tracking initially")
         ;; Enable Library sync and verify snippets get tracked
         (when-let [library (collection/library-collection)]
-          (t2/update! :model/Collection (:id library) {'is_remote_synced true})
+          (t2/update! :model/Collection (:id library) {:is_remote_synced true})
           (events/publish-event! :event/collection-update
                                  {:object (t2/select-one :model/Collection 'id (:id library))
                                   :user-id (mt/user->id :rasta)})
@@ -233,7 +233,7 @@
                           'model_id (:id snippet))
               "Snippet should be tracked after Library becomes synced")
           ;; Disable Library sync and verify snippets get untracked
-          (t2/update! :model/Collection (:id library) {'is_remote_synced false})
+          (t2/update! :model/Collection (:id library) {:is_remote_synced false})
           (events/publish-event! :event/collection-update
                                  {:object (t2/select-one :model/Collection 'id (:id library))
                                   :user-id (mt/user->id :rasta)})
@@ -286,7 +286,7 @@ is_sample: false
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temporary-setting-values [remote-sync-type :read-write
                                            remote-sync-enabled true]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {coll-id :id}
                            {:name "Snippets Collection"
                             :namespace :snippets
@@ -321,7 +321,7 @@ is_sample: false
 (deftest import-snippets-from-yaml-test
   (testing "Import brings in snippets from YAML files"
     (mt/with-model-cleanup [:model/NativeQuerySnippet :model/Collection :model/RemoteSyncTask]
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (collections.tu/with-library-synced
           (mt/with-temporary-setting-values [remote-sync-enabled true]
             (let [coll-entity-id "snippets-coll-importx"
@@ -384,7 +384,7 @@ is_sample: false
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temporary-setting-values [remote-sync-type :read-write
                                            remote-sync-enabled true]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                 ;; Use valid 21-char NanoID format entity_ids
                 coll-entity-id (u/generate-nano-id)
                 snippet-entity-id (u/generate-nano-id)]

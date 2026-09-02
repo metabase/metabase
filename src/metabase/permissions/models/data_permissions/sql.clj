@@ -80,9 +80,9 @@
   "Returns a simple IN clause to check if dp.group_id is in the user's groups.
    This is more efficient than nested EXISTS subqueries."
   [user-id :- pos-int?]
-  [:in :dp.group_id    ^:allow-subquery {'select ['group_id]
-                                         'from   ['permissions_group_membership]
-                                         'where  ['= 'user_id ['inline user-id]]}])
+  [:in :dp.group_id    ^:allow-subquery {:select ['group_id]
+                                         :from   ['permissions_group_membership]
+                                         :where  ['= 'user_id [:inline user-id]]}])
 
 (mu/defn- has-perms-for-table-as-honey-sql?
   "Builds an EXIST (SELECT ...) half-join to filter tables that a user has the required permissions for. It builds the subselect by as a
@@ -92,17 +92,17 @@
    perm-type        :- :keyword
    required-level   :- :keyword
    & [most-or-least :- [:maybe [:enum :most :least]]]]
-  [:exists    ^:allow-subquery {'select [1]
-                                'from   [['data_permissions 'dp]]
-                                'where  ['and
+  [:exists    ^:allow-subquery {:select [1]
+                                :from   [['data_permissions 'dp]]
+                                :where  ['and
                                          ['= 'dp.perm_type (h2x/literal perm-type)]
                                          ['or
                                           ['and ['= 'mt.db_id 'dp.db_id]
                                            ['= 'dp.table_id nil]]
                                           ['= 'mt.id 'dp.table_id]]
                                          (user-in-group-clause user-id)]
-                                'group-by ['mt.id]
-                                'having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
+                                :group-by ['mt.id]
+                                :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (def UserInfo
   "The user-id to use in the visibility query and their superuser status."
@@ -130,11 +130,11 @@
    permission-mapping                               :- PermissionMapping
    & [{:keys [active-only?] :or {active-only? false}}]]
   ^:allow-subquery
-  {'select [(case select-column
+  {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
-   'from   [['metabase_table 'mt]]
-   'where  (if (or is-superuser?
+   :from   [['metabase_table 'mt]]
+   :where  (if (or is-superuser?
                    (and is-data-analyst?
                         (contains? permission-mapping :perms/manage-table-metadata)))
              (if active-only?
@@ -223,35 +223,35 @@
           active-clause (when active-only? [:= :mt.active true])
           permission-branches (cond-> [;; Table-level permissions (direct grant to table)
                                        ^:allow-subquery
-                                       {'select ['mt.id 'dp.perm_type 'dp.perm_value]
-                                        'from   [['data_permissions 'dp]]
-                                        'join   [['metabase_table 'mt] ['= 'mt.id 'dp.table_id]]
-                                        'where  (into [:and
+                                       {:select ['mt.id 'dp.perm_type 'dp.perm_value]
+                                        :from   [['data_permissions 'dp]]
+                                        :join   [['metabase_table 'mt] ['= 'mt.id 'dp.table_id]]
+                                        :where  (into [:and
                                                        [:not= :dp.table_id nil]
                                                        user-groups-clause
                                                        perm-type-filter]
                                                       (when active-clause [active-clause]))}
                                        ;; Database-level permissions (applies to all tables in db)
                                        ^:allow-subquery
-                                       {'select ['mt.id 'dp.perm_type 'dp.perm_value]
-                                        'from   [['data_permissions 'dp]]
-                                        'join   [['metabase_table 'mt] ['= 'mt.db_id 'dp.db_id]]
-                                        'where  (into [:and
+                                       {:select ['mt.id 'dp.perm_type 'dp.perm_value]
+                                        :from   [['data_permissions 'dp]]
+                                        :join   [['metabase_table 'mt] ['= 'mt.db_id 'dp.db_id]]
+                                        :where  (into [:and
                                                        [:= :dp.table_id nil]
                                                        user-groups-clause
                                                        perm-type-filter]
                                                       (when active-clause [active-clause]))}]
                                 published-grant-rows (conj published-grant-rows))]
       {:with [;; First CTE: collect all permission grants that apply to each table
-              [:table_permissions ^:allow-subquery {'union-all permission-branches}]
+              [:table_permissions ^:allow-subquery {:union-all permission-branches}]
               ;; Second CTE: aggregate and filter by permission requirements
               [:permitted_tables
                ^:allow-subquery
-               {'select   ['dp.id]
-                'from     [['table_permissions 'dp]]
-                'group-by ['dp.id]
-                'having   having-conditions}]]
-       :clause [:in column-or-exp ^:allow-subquery {'select ['id] 'from ['permitted_tables]}]})))
+               {:select   ['dp.id]
+                :from     [['table_permissions 'dp]]
+                :group-by ['dp.id]
+                :having   having-conditions}]]
+       :clause [:in column-or-exp ^:allow-subquery {:select ['id] :from ['permitted_tables]}]})))
 
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
@@ -259,9 +259,9 @@
   [{:keys [user-id is-superuser?]} :- UserInfo
    permission-mapping              :- PermissionMapping]
   ^:allow-subquery
-  {'select ['mt.id 'dp.group_id 'dp.perm_type 'dp.perm_value]
-   'from   [['metabase_table 'mt]]
-   'join   [['data_permissions 'dp] ['or
+  {:select ['mt.id 'dp.group_id 'dp.perm_type 'dp.perm_value]
+   :from   [['metabase_table 'mt]]
+   :join   [['data_permissions 'dp] ['or
                                      ['and
                                       ['= 'mt.db_id 'dp.db_id]
                                       ['= 'dp.table_id nil]]
@@ -269,8 +269,8 @@
             ['permissions_group 'pg] ['= 'pg.id 'dp.group_id]
             ['permissions_group_membership 'pgm] ['and
                                                   ['= 'pgm.group_id 'pg.id]
-                                                  ['= 'pgm.user_id ['inline user-id]]]]
-   'where  (if is-superuser?
+                                                  ['= 'pgm.user_id [:inline user-id]]]]
+   :where  (if is-superuser?
              [:= [:inline 1] [:inline 1]]
              (into [:or]
                    (map (fn [[perm-type perm-level]]
@@ -292,14 +292,14 @@
    perm-type :- :keyword
    required-level :- :keyword
    & [most-or-least :- [:maybe [:enum :most :least]]]]
-  [:exists    ^:allow-subquery {'select [1]
-                                'from [['data_permissions 'dp]]
-                                'where ['and
+  [:exists    ^:allow-subquery {:select [1]
+                                :from [['data_permissions 'dp]]
+                                :where ['and
                                         ['= 'dp.perm_type (h2x/literal perm-type)]
                                         ['= 'md.id 'dp.db_id]
                                         (user-in-group-clause user-id)]
-                                'group-by ['md.id]
-                                'having [(perm-condition perm-type required-level (or most-or-least :least))]}])
+                                :group-by ['md.id]
+                                :having [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (mu/defn visible-database-filter-select
   "Selects database IDs that are visible to the provided user given a mapping of permission types to the required value.
@@ -307,10 +307,10 @@
   [{:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping :- PermissionMapping]
   ^:allow-subquery
-  {'select ['md.id]
-   'from [['metabase_database 'md]]
+  {:select ['md.id]
+   :from [['metabase_database 'md]]
    ;; Superusers see all databases. Data analysts see all databases when checking manage-table-metadata.
-   'where (if (or is-superuser?
+   :where (if (or is-superuser?
                   (and is-data-analyst?
                        (contains? permission-mapping :perms/manage-table-metadata)))
             [:= [:inline 1] [:inline 1]]

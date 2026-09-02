@@ -16,7 +16,7 @@
       (mt/with-temp [:model/Collection {coll-id :id :as coll} {}
                      :model/Card       {card-id :id} {:collection_id coll-id}]
         ;; rasta has no read access to coll; crowberto (an admin) can read everything.
-        (t2/insert! :model/CardBookmark {'user_id (mt/user->id :rasta) 'card_id card-id})
+        (t2/insert! :model/CardBookmark {:user_id (mt/user->id :rasta) :card_id card-id})
         (testing "querying as an admin current-user still filters using rasta's (empty) permissions"
           (mt/with-current-user (mt/user->id :crowberto)
             (is (empty? (bookmark/bookmarks-for-user (mt/user->id :rasta))))))

@@ -177,7 +177,7 @@
   "Marks any remote-synced-collection as non-remote-synced"
   []
   (binding [*clearing-remote-sync* true]
-    (t2/update! :model/Collection 'is_remote_synced true {'is_remote_synced false})))
+    (t2/update! :model/Collection 'is_remote_synced true {:is_remote_synced false})))
 
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
@@ -251,19 +251,19 @@
   []
   (when-not (nil? (library-collection))
     (throw (ex-info "Library already exists" {})))
-  (let [library       (t2/insert-returning-instance! :model/Collection {'name     "Library"
-                                                                        'type     library-collection-type
-                                                                        'location "/"
-                                                                        'entity_id library-entity-id})
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                                        :type     library-collection-type
+                                                                        :location "/"
+                                                                        :entity_id library-entity-id})
         base-location (str "/" (:id library) "/")
-        data          (t2/insert-returning-instance! :model/Collection {'name     "Data"
-                                                                        'type     library-data-collection-type
-                                                                        'location base-location
-                                                                        'entity_id library-data-entity-id})
-        metrics       (t2/insert-returning-instance! :model/Collection {'name     "Metrics"
-                                                                        'type     library-metrics-collection-type
-                                                                        'location base-location
-                                                                        'entity_id library-metrics-entity-id})]
+        data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
+                                                                        :type     library-data-collection-type
+                                                                        :location base-location
+                                                                        :entity_id library-data-entity-id})
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
+                                                                        :type     library-metrics-collection-type
+                                                                        :location base-location
+                                                                        :entity_id library-metrics-entity-id})]
     (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions 'collection_id (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col)
@@ -429,7 +429,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (t2/count :model/Collection 'id ['in ids])))))
+        (t2/count :model/Collection 'id [:in ids])))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -538,7 +538,7 @@
 (mu/defn descendant-ids :- [:maybe [:set ms/PositiveInt]]
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (t2/select-pks-set :model/Collection 'location ['like (str (children-location collection) \%)]))
+  (t2/select-pks-set :model/Collection 'location [:like (str (children-location collection) \%)]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
@@ -567,8 +567,8 @@
   [user-or-ids user-or-site]
   (into {} (when-let [ids (seq (filter some? (map u/the-id user-or-ids)))]
              (t2/select-pk->fn #(format-personal-collection-name (:first_name %) (:last_name %) (:email %) user-or-site)
-                               [:model/User 'first_name 'last_name 'email 'id]
-                               'id ['in ids]))))
+                               [:model/User :first_name :last_name :email :id]
+                               'id [:in ids]))))
 
 (mu/defn user->personal-collection-name :- ms/NonBlankString
   "Calls `user->personal-collection-names` for a single user-id and returns the name"
@@ -635,7 +635,7 @@
     (when-let [id (first (location-path->ids (:location collection)))]
       (t2/exists? :model/Collection
                   'id                id
-                  'personal_owner_id ['not= nil])))))
+                  'personal_owner_id [:not= nil])))))
 
 (def ^:private CollectionWithNamespace
   "Schema for a Collection instance that has a valid `:location`, and a `:namespace` key *present* (but not
@@ -665,8 +665,8 @@
     (or (user->existing-personal-collection user-or-id)
         (try
           (first (t2/insert-returning-instances! :model/Collection
-                                                 {'name              (user->personal-collection-name user-or-id :site)
-                                                  'personal_owner_id (u/the-id user-or-id)}))
+                                                 {:name              (user->personal-collection-name user-or-id :site)
+                                                  :personal_owner_id (u/the-id user-or-id)}))
           ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
           ;; condition where some other thread created it in the meantime; try one last time to fetch it
           (catch Throwable e
@@ -715,11 +715,11 @@
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
     (let [non-api-user-ids (t2/select-pks-set :model/User
-                                              'id ['in (set (map u/the-id users))]
-                                              'type ['not= :api-key])
+                                              'id [:in (set (map u/the-id users))]
+                                              'type [:not= :api-key])
           user-id->collection-id (when (seq non-api-user-ids)
                                    (t2/select-fn->pk :personal_owner_id :model/Collection
-                                                     'personal_owner_id ['in non-api-user-ids]))]
+                                                     'personal_owner_id [:in non-api-user-ids]))]
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
       ;; as a side-effect. This will ensure this property never comes back as `nil`
@@ -745,7 +745,7 @@
         [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
         ;; root collection is nil
         [collection]))
-    (let [personal-collection-ids (t2/select-pks-set :model/Collection 'personal_owner_id ['not= nil])
+    (let [personal-collection-ids (t2/select-pks-set :model/Collection 'personal_owner_id [:not= nil])
           ;; Personal Collections only ever live in the Root Collection, so a Collection is inside one exactly when
           ;; the first ID of its location path is a Personal Collection. Testing that ID against the set beats
           ;; scanning every personal collection per row: instances with thousands of each made this quadratic.
@@ -805,11 +805,11 @@
    (fn can-access-root-collection?*
      [{:keys [current-user-id is-superuser?]} read-or-write]
      (or is-superuser?
-         (t2/exists? :model/Permissions {'select ['p.*]
-                                         'from [['permissions 'p]]
-                                         'join [['permissions_group 'pg] ['= 'pg.id 'p.group_id]
+         (t2/exists? :model/Permissions {:select ['p.*]
+                                         :from [['permissions 'p]]
+                                         :join [['permissions_group 'pg] ['= 'pg.id 'p.group_id]
                                                 ['permissions_group_membership 'pgm] ['= 'pgm.group_id 'pg.id]]
-                                         'where ['and
+                                         :where ['and
                                                  ['= 'pgm.user_id current-user-id]
                                                  ['or
                                                   ['= 'p.object "/collection/root/"]
@@ -863,46 +863,46 @@
    ;; - archive operation id (when we archive a collection and subcollections together, we mark the whole archived
    ;;   tree so you can look at it in isolation)
    ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
-   ^:allow-subquery {'select 'id
+   ^:allow-subquery {:select 'id
                      ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
                      ;; that's all of them. For regular users, it's:
                      ;; a) the collections they have permission in the DB for,
                      ;; b) the trash collection, and
                      ;; c) their personal collection and its descendants
-                     'from [(if is-superuser?
+                     :from [(if is-superuser?
                               [:collection :c]
-                              [^:allow-subquery {'union-all (keep identity [^:allow-subquery {'select visible-union-columns
-                                                                                              'from   [['collection 'c]]
-                                                                                              'where ['and ['exists ^:allow-subquery {'select [1]
-                                                                                                                                      'from [['permissions 'p]]
-                                                                                                                                      'inner-join [['permissions_group_membership 'pgm] ['= 'p.group_id 'pgm.group_id]]
-                                                                                                                                      'where ['and
-                                                                                                                                              ['= 'pgm.user_id ['inline current-user-id]]
+                              [^:allow-subquery {:union-all (keep identity [^:allow-subquery {:select visible-union-columns
+                                                                                              :from   [['collection 'c]]
+                                                                                              :where ['and ['exists ^:allow-subquery {:select [1]
+                                                                                                                                      :from [['permissions 'p]]
+                                                                                                                                      :inner-join [['permissions_group_membership 'pgm] ['= 'p.group_id 'pgm.group_id]]
+                                                                                                                                      :where ['and
+                                                                                                                                              ['= 'pgm.user_id [:inline current-user-id]]
                                                                                                                                               ['= 'c.id 'p.collection_id]
                                                                                                                                               ['= 'p.perm_type (h2x/literal "perms/collection-access")]
                                                                                                                                               ['or
                                                                                                                                                ['= 'p.perm_value (h2x/literal "read-and-write")]
                                                                                                                                                (when (= :read (:permission-level visibility-config))
                                                                                                                                                  [:= :p.perm_value (h2x/literal "read")])]]}]]}
-                                                                            ^:allow-subquery {'select visible-union-columns
-                                                                                              'from   [['collection 'c]]
-                                                                                              'where  ['= 'type (h2x/literal trash-collection-type)]}
+                                                                            ^:allow-subquery {:select visible-union-columns
+                                                                                              :from   [['collection 'c]]
+                                                                                              :where  ['= 'type (h2x/literal trash-collection-type)]}
                                                                             (when-let [personal-collection-and-descendant-ids
                                                                                        (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                                                              ^:allow-subquery {'select visible-union-columns
-                                                                                                'from   [['collection 'c]]
-                                                                                                'where  ['in 'id ['inline personal-collection-and-descendant-ids]]})
+                                                                              ^:allow-subquery {:select visible-union-columns
+                                                                                                :from   [['collection 'c]]
+                                                                                                :where  ['in 'id [:inline personal-collection-and-descendant-ids]]})
                                                                             (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
-                                                                              ^:allow-subquery {'select visible-union-columns
-                                                                                                'from [['collection 'c]]
-                                                                                                'where ['in 'id ['inline tenant-collection-and-descendant-ids]]})
+                                                                              ^:allow-subquery {:select visible-union-columns
+                                                                                                :from [['collection 'c]]
+                                                                                                :where ['in 'id [:inline tenant-collection-and-descendant-ids]]})
                                                                             (when (perms/is-data-analyst? current-user-id)
-                                                                              ^:allow-subquery {'select visible-union-columns
-                                                                                                'from [['collection 'c]]
-                                                                                                'where ['= 'namespace ^:allow-raw-sql ['inline "transforms"]]})])}
+                                                                              ^:allow-subquery {:select visible-union-columns
+                                                                                                :from [['collection 'c]]
+                                                                                                :where ['= 'namespace ^:allow-raw-sql [:inline "transforms"]]})])}
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
-                     'where ['and
+                     :where ['and
                              ;; hiding the trash collection when desired...
                              (when-not (:include-trash-collection? visibility-config)
                                [:not= [:inline (trash-collection-id)] :c.id])
@@ -916,10 +916,10 @@
                                 ;; the trash collection is included when viewing archived-only
                                 [:= :id [:inline (trash-collection-id)]]])
                              (when-not (perms/use-tenants)
-                               [:not [:exists ^:allow-subquery {'select [1]
-                                                                'from [['collection 'sub_c]]
-                                                                'where ['and ['= 'c.id 'sub_c.id]
-                                                                        ['= 'sub_c.namespace ^:allow-raw-sql ['inline "shared-tenant-collection"]]]}]])
+                               [:not [:exists ^:allow-subquery {:select [1]
+                                                                :from [['collection 'sub_c]]
+                                                                :where ['and ['= 'c.id 'sub_c.id]
+                                                                        ['= 'sub_c.namespace ^:allow-raw-sql [:inline "shared-tenant-collection"]]]}]])
                              ;; excluding things outside of the `archive_operation_id` you wanted...
                              (when-let [op-id (:archive-operation-id visibility-config)]
                                [:or
@@ -952,7 +952,7 @@
       [:in
        collection-id-field
        (if cte-name
-         ^:allow-subquery {'select 'id 'from cte-name}
+         ^:allow-subquery {:select 'id :from cte-name}
          (visible-collection-query visibility-config user-scope))]])))
 
 (defn- effective-child-of-filter-clause
@@ -969,9 +969,9 @@
         ;; an effective child is a descendant of the parent collection
         [:like (->col "location") (str (children-location parent-coll) "%")]
         ;; but NOT a child of any OTHER visible collection.
-        [:not [:exists ^:allow-subquery {'select 1
-                                         'from [['collection 'c2]]
-                                         'where ['and
+        [:not [:exists ^:allow-subquery {:select 1
+                                         :from [['collection 'c2]]
+                                         :where ['and
                                                  (visible-collection-filter-clause :c2.id visibility-config)
                                                  ['= (->col "location") ['concat 'c2.location 'c2.id (h2x/literal "/")]]
                                                  (when-not (collection.root/is-root-collection? parent-coll)
@@ -1045,8 +1045,8 @@
         id->parent-coll (merge {nil (effective-parent-root)}
                                (when (seq parent-ids)
                                  (t2/select-pk->fn identity :model/Collection
-                                                   {'select effective-parent-fields
-                                                    'where ['in 'id parent-ids]})))]
+                                                   {:select effective-parent-fields
+                                                    :where ['in 'id parent-ids]})))]
     (map
      (fn [collection]
        (let [parent-id (-> collection :effective_location location-path->parent-id)]
@@ -1060,9 +1060,9 @@
 (mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf :model/Collection)]]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (t2/select [:model/Collection 'name 'id 'personal_owner_id]
-               'id ['in ancestor-ids]
-               {'order-by ['location]})))
+    (t2/select [:model/Collection :name :id :personal_owner_id]
+               'id [:in ancestor-ids]
+               {:order-by ['location]})))
 
 (mi/define-simple-hydration-method ancestors
   :ancestors
@@ -1107,7 +1107,7 @@
   [collections]
   (let [all-ids (mapcat #(some-> % effective-location-path location-path->ids) collections)
         collection-id->collection (if (seq all-ids)
-                                    (t2/select-pk->fn identity :model/Collection 'id ['in all-ids])
+                                    (t2/select-pk->fn identity :model/Collection 'id [:in all-ids])
                                     {})]
     (map (fn [collection]
            (assoc collection
@@ -1136,8 +1136,8 @@
   "Return all descendant collections of a `collection`, including children, grandchildren, and so forth."
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   (or
-   (t2/select [:model/Collection 'name 'id 'location 'description]
-              {'where (apply
+   (t2/select [:model/Collection :name :id :location :description]
+              {:where (apply
                        vector
                        :and
                        [:like :location (str (children-location collection) "%")]
@@ -1160,8 +1160,8 @@
    & additional-honeysql-where-clauses]
   (if (empty? collections)
     []
-    (t2/select [:model/Collection 'name 'id 'location 'description 'type]
-               {'where (apply
+    (t2/select [:model/Collection :name :id :location :description :type]
+               {:where (apply
                         vector
                         :and
                         (into [:or]
@@ -1215,9 +1215,9 @@
    additional-honeysql-where-clauses))
 
 (mu/defn effective-children-query :- [:map
-                                      ['select :any]
-                                      ['from   :any]
-                                      ['where  :any]]
+                                      [:select :any]
+                                      [:from   :any]
+                                      [:where  :any]]
   "Return a query for the descendant Collections of a `collection`
   that should be presented to the current user as the children of this Collection.
   This takes into account descendants that get filtered out when the current user can't see them. For
@@ -1244,14 +1244,14 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses]
-  ^:allow-subquery {'select ['id 'name 'description 'type]
-                    'from   [['collection 'col]]
-                    'where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
+  ^:allow-subquery {:select ['id 'name 'description 'type]
+                    :from   [['collection 'col]]
+                    :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (t2/select [:model/Collection 'id 'name 'description 'type]
-                  {'where (apply effective-children-where-clause
+  (set (t2/select [:model/Collection :id :name :description :type]
+                  {:where (apply effective-children-where-clause
                                  collection
                                  (t2/table-name :model/Collection)
                                  default-visibility-config
@@ -1292,14 +1292,14 @@
     (case model-key
       :model/Collection
       ;; Collections use their own :id for eligibility, plus namespace and is_remote_synced
-      (t2/select [model-key 'id 'namespace 'is_remote_synced] 'id ['in ids])
+      (t2/select [model-key :id :namespace :is_remote_synced] 'id [:in ids])
       :model/Table
-      (t2/select [model-key 'id 'collection_id 'is_published] 'id ['in ids])
+      (t2/select [model-key :id :collection_id :is_published] 'id [:in ids])
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
       ;; Default - most models just need id and collection_id
-      (t2/select [model-key 'id 'collection_id] 'id ['in ids]))))
+      (t2/select [model-key :id :collection_id] 'id [:in ids]))))
 
 (defn- filter-eligible-dependents
   "Filter a list of dependent info maps to only include those that are eligible for remote sync.
@@ -1346,7 +1346,7 @@
   [{:keys [id archived] :as model}]
   (let [;; Get ALL top-level remote-synced collections
         all-remote-synced-roots (t2/select-pks-set :model/Collection
-                                                   {'where ['and
+                                                   {:where ['and
                                                             ['= 'is_remote_synced true]
                                                             ['= 'location "/"]]})
         ;; Traverse descendants of all remote-synced roots combined
@@ -1512,9 +1512,9 @@
   (mi/instances-with-hydrated-data items k
                                    #(into {}
                                           (t2/select-pk->fn :namespace [model 'id [:c.namespace :namespace]]
-                                                            {'where ['in (keyword (str (name (t2/table-name model)) ".id"))
+                                                            {:where ['in (keyword (str (name (t2/table-name model)) ".id"))
                                                                      (map :id items)]
-                                                             'join [['collection 'c]
+                                                             :join [['collection 'c]
                                                                     ['= 'collection_id 'c.id]]}))
                                    :id
                                    {:default nil}))
@@ -1541,13 +1541,13 @@
   (when (= (audit/default-custom-reports-collection) collection)
     (throw (Exception. (tru "You cannot operate on the Custom Reports Collection."))))
   ;; also make sure we're not trying to operate on a PERSONAL Collection
-  (when (t2/exists? :model/Collection 'id (u/the-id collection), 'personal_owner_id ['not= nil])
+  (when (t2/exists? :model/Collection 'id (u/the-id collection), 'personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot operate on a Personal Collection."))))
   (set
    (for [collection-or-id (cons
                            collection
                            (t2/select-pks-set :model/Collection
-                                              'location ['like (str (children-location collection) "%")]
+                                              'location [:like (str (children-location collection) "%")]
                                               'archived false))]
      (perms/collection-readwrite-path collection-or-id))))
 
@@ -1660,34 +1660,34 @@
                                         (collection->descendant-ids collection
                                                                     :archived [:not= true]))]
       (t2/update! :model/Collection (u/the-id collection)
-                  {'archive_operation_id archive-operation-id
-                   'archived_directly    true
-                   'archived             true})
+                  {:archive_operation_id archive-operation-id
+                   :archived_directly    true
+                   :archived             true})
       (t2/query-one
-       {'update 'collection
-        'set    {'archive_operation_id archive-operation-id
-                 'archived_directly    false
-                 'archived             true}
-        'where  ['and
+       {:update 'collection
+        :set    {:archive_operation_id archive-operation-id
+                 :archived_directly    false
+                 :archived             true}
+        :where  ['and
                  ['like 'location (str (children-location collection) "%")]
                  ['not 'archived]]})
       (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (t2/update! model {'collection_id ['in affected-collection-ids]}
-                    {'archived true}))
+        (t2/update! model {:collection_id ['in affected-collection-ids]}
+                    {:archived true}))
       (doseq [model (archived-directly-models)]
-        (t2/update! model {'collection_id    ['in affected-collection-ids]
-                           'archived_directly false}
-                    {'archived true}))
+        (t2/update! model {:collection_id    ['in affected-collection-ids]
+                           :archived_directly false}
+                    {:archived true}))
       (let [library-data-ids (t2/select-pks-set :model/Collection
-                                                'id   ['in affected-collection-ids]
+                                                'id   [:in affected-collection-ids]
                                                 'type library-data-collection-type)]
         (when (seq library-data-ids)
           (let [published-table-ids (t2/select-pks-set :model/Table
-                                                       'collection_id ['in library-data-ids]
+                                                       'collection_id [:in library-data-ids]
                                                        'is_published  true)]
-            (t2/update! :model/Table {'collection_id ['in library-data-ids]}
-                        {'collection_id nil
-                         'is_published  false})
+            (t2/update! :model/Table {:collection_id ['in library-data-ids]}
+                        {:collection_id nil
+                         :is_published  false})
             (unpublish-downstream-fk-tables! published-table-ids)))))
     (let [updated-collection (t2/select-one :model/Collection 'id (:id collection))]
       (when (:is_remote_synced updated-collection)
@@ -1729,29 +1729,29 @@
        (:can_restore (t2/hydrate collection :can_restore))))
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {'location             new-location
-                   'is_remote_synced (boolean new-parent-is-remote-synced?)
-                   'archive_operation_id nil
-                   'archived_directly    nil
-                   'archived             false})
+                  {:location             new-location
+                   :is_remote_synced (boolean new-parent-is-remote-synced?)
+                   :archive_operation_id nil
+                   :archived_directly    nil
+                   :archived             false})
       (t2/query-one
-       {'update 'collection
-        'set    {'location             ['replace 'location orig-children-location new-children-location]
-                 'is_remote_synced (boolean new-parent-is-remote-synced?)
-                 'archive_operation_id nil
-                 'archived_directly    nil
-                 'archived             false}
-        'where  ['and
+       {:update 'collection
+        :set    {:location             ['replace 'location orig-children-location new-children-location]
+                 :is_remote_synced (boolean new-parent-is-remote-synced?)
+                 :archive_operation_id nil
+                 :archived_directly    nil
+                 :archived             false}
+        :where  ['and
                  ['like 'location (str orig-children-location "%")]
                  ['= 'archive_operation_id (:archive_operation_id collection)]
                  ['not= 'archived_directly true]]})
       (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (t2/update! model {'collection_id ['in affected-collection-ids]}
-                    {'archived false}))
+        (t2/update! model {:collection_id ['in affected-collection-ids]}
+                    {:archived false}))
       (doseq [model (archived-directly-models)]
-        (t2/update! model {'collection_id     ['in affected-collection-ids]
-                           'archived_directly false}
-                    {'archived false}))
+        (t2/update! model {:collection_id     ['in affected-collection-ids]
+                           :archived_directly false}
+                    {:archived false}))
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
@@ -1787,14 +1787,14 @@
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {'location new-location
-                   'is_remote_synced (boolean will-be-in-remote-synced?)})
+                  {:location new-location
+                   :is_remote_synced (boolean will-be-in-remote-synced?)})
       ;; we need to update all the descendant collections as well...
       (u/prog1 (t2/query-one
-                {'update 'collection
-                 'set {'location ['replace 'location orig-children-location new-children-location]
-                       'is_remote_synced (boolean will-be-in-remote-synced?)}
-                 'where ['like 'location (str orig-children-location "%")]})
+                {:update 'collection
+                 :set {:location ['replace 'location orig-children-location new-children-location]
+                       :is_remote_synced (boolean will-be-in-remote-synced?)}
+                 :where ['like 'location (str orig-children-location "%")]})
         (when into-remote-synced?
           (check-non-remote-synced-dependencies collection))
         (when (moving-from-remote-synced? (parent-id* collection) (parent-id* {:location new-location}))
@@ -1937,8 +1937,8 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (ms/InstanceOf :model/Collection)]
-  (t2/query-one {'delete-from 'permissions
-                 'where       ['in 'object (for [collection (cons collection (descendants collection))
+  (t2/query-one {:delete-from 'permissions
+                 :where       ['in 'object (for [collection (cons collection (descendants collection))
                                                  path-fn    [perms/collection-read-path
                                                              perms/collection-readwrite-path]]
                                              (path-fn collection))]}))
@@ -2057,24 +2057,24 @@
   (t2/delete! :model/Collection 'location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
         published-table-ids     (t2/select-pks-set :model/Table
-                                                   'collection_id ['in affected-collection-ids]
+                                                   'collection_id [:in affected-collection-ids]
                                                    'is_published  true)]
-    (t2/update! :model/Table 'collection_id ['in affected-collection-ids] {'collection_id nil
-                                                                           'is_published  false})
+    (t2/update! :model/Table 'collection_id [:in affected-collection-ids] {:collection_id nil
+                                                                           :is_published  false})
     (unpublish-downstream-fk-tables! published-table-ids)
     (doseq [model [:model/Card
                    :model/Dashboard
                    :model/NativeQuerySnippet
                    :model/Pulse
                    :model/Timeline]]
-      (t2/delete! model 'collection_id ['in affected-collection-ids])))
+      (t2/delete! model 'collection_id [:in affected-collection-ids])))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (t2/query-one {'delete-from 'permissions
-                 'where       ['or
+  (t2/query-one {:delete-from 'permissions
+                 :where       ['or
                                ['= 'object (perms/collection-readwrite-path collection)]
                                ['= 'object (perms/collection-read-path collection)]]}))
 
@@ -2084,7 +2084,7 @@
 (defmethod mi/perms-objects-set :model/Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
-                     (t2/select-one [:model/Collection 'id 'namespace] 'id (collection-or-id))
+                     (t2/select-one [:model/Collection :id :namespace] 'id (collection-or-id))
                      collection-or-id)]
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
              (not (premium-features/enable-snippet-collections?)))
@@ -2117,7 +2117,7 @@
                           [:not= :type trash-collection-type]]]
     (if (seq collection-set)
       (t2/reducible-select :model/Collection
-                           {'where
+                           {:where
                             ['and
                              (when skip-archived [:not :archived])
                              ['or
@@ -2126,16 +2126,16 @@
                              not-trash-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
-                            'order-by serdes/stable-storage-order})
+                            :order-by serdes/stable-storage-order})
       (t2/reducible-select :model/Collection
-                           {'where
+                           {:where
                             ['and
                              (when skip-archived [:not :archived])
                              ['= 'personal_owner_id nil]
                              not-trash-clause
                              (or where true)]
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
-                            'order-by serdes/stable-storage-order}))))
+                            :order-by serdes/stable-storage-order}))))
 
 (defmethod serdes/deserialization-dependencies "Collection"
   [{:keys [parent_id]}]
@@ -2164,18 +2164,18 @@
   (let [location    (when id (t2/select-one-fn :location :model/Collection 'id id))
         child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
                       (into {} (for [child-id (t2/select-pks-set :model/Collection
-                                                                 {'where ['and
+                                                                 {:where ['and
                                                                           ['= 'location (str location id "/")]
                                                                           (when skip-archived [:not :archived])
                                                                           ['or
                                                                            ['not= 'type trash-collection-type]
                                                                            ['= 'type nil]]]})]
                                  {["Collection" child-id] {"Collection" id}})))
-        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {'where ['and
+        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {:where ['and
                                                                                         ['= 'collection_id id]
                                                                                         (when skip-archived [:not :archived])]})]
                                {["Dashboard" dash-id] {"Collection" id}}))
-        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {'where ['and
+        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where ['and
                                                                                    ['= 'collection_id id]
                                                                                    (when skip-archived [:not :archived])
                                                                                    ;; Cards materialized by an exploration
@@ -2186,29 +2186,29 @@
                                                                                    ['or
                                                                                     ['= 'document_id nil]
                                                                                     ['in 'document_id
-                                                                                     ^:allow-subquery {'select ['id]
-                                                                                                       'from   ['document]
-                                                                                                       'where  ['= 'exploration_id nil]}]]]})]
+                                                                                     ^:allow-subquery {:select ['id]
+                                                                                                       :from   ['document]
+                                                                                                       :where  ['= 'exploration_id nil]}]]]})]
                                {["Card" card-id] {"Collection" id}}))
         documents (when config/ee-available?
-                    (into {} (for [doc-id (t2/select-pks-set :model/Document {'where
+                    (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
                                                                               ['and ['= 'collection_id id]
                                                                                ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
                                                                                ['= 'exploration_id nil]
                                                                                (when skip-archived [:not :archived])]})]
                                {["Document" doc-id] {"Collection" id}})))
-        timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {'where ['and
+        timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where ['and
                                                                                            ['= 'collection_id id]
                                                                                            (when skip-archived [:not :archived])]})]
                                {["Timeline" timeline-id] {"Collection" id}}))
-        tables      (into {} (for [table-id (t2/select-pks-set :model/Table {'where ['and
+        tables      (into {} (for [table-id (t2/select-pks-set :model/Table {:where ['and
                                                                                      ['= 'collection_id id]
                                                                                      ['= 'is_published true]
                                                                                      (when skip-archived [:= :archived_at nil])]})]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?
-                      (into {} (for [transform-id (t2/select-pks-set :model/Transform {'where ['= 'collection_id id]})]
+                      (into {} (for [transform-id (t2/select-pks-set :model/Transform {:where ['= 'collection_id id]})]
                                  {["Transform" transform-id] {"Collection" id}})))]
     (merge child-colls dashboards cards documents timelines tables transforms)))
 
@@ -2304,7 +2304,7 @@
     (check-collection-namespace Card new-collection-id)"
   [model collection-id]
   (when collection-id
-    (let [collection           (or (t2/select-one [:model/Collection 'namespace] 'id collection-id)
+    (let [collection           (or (t2/select-one [:model/Collection :namespace] 'id collection-id)
                                    (let [msg (tru "Collection does not exist.")]
                                      (throw (ex-info msg {:status-code 404
                                                           :errors      {:collection_id msg}}))))
@@ -2437,12 +2437,12 @@
                                            (t2/hydrate archived-colls :parent_id)))
           parent-ids (keep val coll-id->parent-id)
           parent-id->archived? (when (seq parent-ids)
-                                 (t2/select-pk->fn :archived :model/Collection 'id ['in parent-ids]))
+                                 (t2/select-pk->fn :archived :model/Collection 'id [:in parent-ids]))
           ;; Batch: get all descendants for all archive_operation_ids
           op-ids (keep :archive_operation_id archived-colls)
           all-descendants (when (seq op-ids)
                             (t2/select :model/Collection
-                                       'archive_operation_id ['in op-ids]
+                                       'archive_operation_id [:in op-ids]
                                        'archived true))
           op-id->descendant-ids (update-vals (group-by :archive_operation_id all-descendants)
                                              #(map :id %))]
@@ -2542,7 +2542,7 @@
   "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
   (when collection-id
-    (pos-int? (t2/count :model/Collection 'id collection-id 'type ['in [library-collection-type
+    (pos-int? (t2/count :model/Collection 'id collection-id 'type [:in [library-collection-type
                                                                         library-data-collection-type
                                                                         library-metrics-collection-type]]))))
 

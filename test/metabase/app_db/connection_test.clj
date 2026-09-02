@@ -608,9 +608,9 @@
     (try
       (mdb.connection/with-unshared-connection [conn]
         (.setAutoCommit ^Connection conn false)
-        (t2/query-one conn {'insert-into 'metabase_cluster_lock
-                            'columns     ['lock_name]
-                            'values      [[lock-name]]})
+        (t2/query-one conn {:insert-into 'metabase_cluster_lock
+                            :columns     ['lock_name]
+                            :values      [[lock-name]]})
         (testing "the write is visible on the unshared connection before close"
           (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
                                           lock-name]))))))

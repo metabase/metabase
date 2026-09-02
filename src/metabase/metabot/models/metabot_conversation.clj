@@ -32,7 +32,7 @@
               (or (= originator-id user-id)
                   (participant? conversation-id user-id))))))
   ([_model pk]
-   (when-let [instance (t2/select-one [:model/MetabotConversation 'id 'user_id] 'id pk)]
+   (when-let [instance (t2/select-one [:model/MetabotConversation :id :user_id] 'id pk)]
      (mi/can-read? instance))))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]

@@ -316,7 +316,7 @@
   (t2/select-one :model/Field
                  'table_id    (u/the-id table)
                  '%lower.name (u/lower-case-en (:field-name this))
-                 {'order-by [['id 'asc]]}))
+                 {:order-by [['id 'asc]]}))
 
 (defmethod metabase-instance TableDefinition
   [this database]
@@ -326,7 +326,7 @@
             (t2/select-one :model/Table
                            'db_id       (:id database)
                            '%lower.name table-name
-                           {'order-by [['id 'asc]]}))]
+                           {:order-by [['id 'asc]]}))]
     (or (table-with-name (u/lower-case-en (:table-name this)))
         (when-let [dataset-name (get-in database [:settings :database-source-dataset-name])]
           (table-with-name (db-qualified-table-name dataset-name (:table-name this)))))))
@@ -345,7 +345,7 @@
   (t2/select-one :model/Database
                  'name   (database-display-name-for-driver driver database-name)
                  'engine driver
-                 {'order-by [['id 'asc]]}))
+                 {:order-by [['id 'asc]]}))
 
 (declare after-run)
 
@@ -959,7 +959,7 @@
   [dataset-name :- ms/NonBlankString]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
-                                       {:eof nil, :readers {'t #'u.date/parse}}
+                                       {:eof nil, :readers {:t #'u.date/parse}}
                                        (slurp (str edn-definitions-dir dataset-name ".edn")))]
                     (dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))

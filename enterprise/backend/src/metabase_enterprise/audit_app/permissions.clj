@@ -74,7 +74,7 @@
       (let [create-queries-value (case tyype
                                    (:read :write) :query-builder
                                    :none  :no)
-            view-tables         (t2/select :model/Table 'db_id audit/audit-db-id 'name ['in audit-db-view-names])]
+            view-tables         (t2/select :model/Table 'db_id audit/audit-db-id 'name [:in audit-db-view-names])]
         (doseq [table view-tables]
           (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))
         (cond-> changes

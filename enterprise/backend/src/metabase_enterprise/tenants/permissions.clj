@@ -15,8 +15,8 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (ms/InstanceOf :model/Collection)]
-  (t2/query-one {'delete-from 'permissions
-                 'where       ['in 'object (for [coll (cons collection (collection/descendants collection))
+  (t2/query-one {:delete-from 'permissions
+                 :where       ['in 'object (for [coll (cons collection (collection/descendants collection))
                                                  path-fn [perms/collection-read-path
                                                           perms/collection-readwrite-path]]
                                              (path-fn coll))]}))

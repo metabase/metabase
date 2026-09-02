@@ -103,7 +103,7 @@
       (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
       (let [closure-transforms (if (seq dependencies)
-                                 (t2/select :model/Transform 'id ['in (keys dependencies)])
+                                 (t2/select :model/Transform 'id [:in (keys dependencies)])
                                  [])]
         (dependencies->plan dependencies closure-transforms)))))
 
@@ -337,7 +337,7 @@
 
 (defn- app-db-now
   []
-  (:now (t2/query-one {'select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) 'now]]})))
+  (:now (t2/query-one {:select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) 'now]]})))
 
 (defn run-transforms!
   "Run the transforms of `plan`, honoring the DAG.
@@ -406,7 +406,7 @@
 (defn- job-transform-ids [job-id]
   (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag 'job_id job-id)]
     (if (seq tag-ids)
-      (or (t2/select-fn-set :transform_id :model/TransformTransformTag 'tag_id ['in tag-ids])
+      (or (t2/select-fn-set :transform_id :model/TransformTransformTag 'tag_id [:in tag-ids])
           #{})
       #{})))
 
@@ -493,7 +493,7 @@
   (when-some [revisions (seq (revisions/revisions :model/Transform transform-id))]
     (let [user-ids (map :user_id revisions)
           distinct-user-ids (distinct user-ids)
-          users (t2/select :model/User 'id ['in distinct-user-ids] 'is_active true)
+          users (t2/select :model/User 'id [:in distinct-user-ids] 'is_active true)
           by-id (u/index-by :id users)]
       ;; maintain order
       (map by-id distinct-user-ids))))

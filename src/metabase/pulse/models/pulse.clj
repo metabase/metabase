@@ -91,8 +91,8 @@
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
     (when (contains? changes :archived)
       (if (:archived changes)
-        (t2/update! :model/PulseChannel 'pulse_id (u/the-id notification) {'enabled false})
-        (t2/update! :model/PulseChannel 'pulse_id (u/the-id notification) {'enabled true})))
+        (t2/update! :model/PulseChannel 'pulse_id (u/the-id notification) {:enabled false})
+        (t2/update! :model/PulseChannel 'pulse_id (u/the-id notification) {:enabled true})))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
@@ -243,7 +243,7 @@
   [_model k pulses]
   (mi/instances-with-hydrated-data
    pulses k
-   #(group-by :pulse_id (t2/select :model/PulseChannel 'pulse_id ['in (map :id pulses)]))
+   #(group-by :pulse_id (t2/select :model/PulseChannel 'pulse_id [:in (map :id pulses)]))
    :id
    {:default []}))
 
@@ -256,17 +256,17 @@
   [pulse-ids]
   (t2/select
    :model/Card
-   {'select    ['c.id 'c.name 'c.description 'c.collection_id 'c.display 'pc.include_csv 'pc.include_xls 'pc.format_rows 'pc.pivot_results
+   {:select    ['c.id 'c.name 'c.description 'c.collection_id 'c.display 'pc.include_csv 'pc.include_xls 'pc.format_rows 'pc.pivot_results
                 'pc.dashboard_card_id 'dc.dashboard_id [nil 'parameter_mappings] ['p.id 'pulse_id]] ;; :dc.parameter_mappings - how do you select this?
-    'from      [['pulse 'p]]
-    'join      [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
+    :from      [['pulse 'p]]
+    :join      [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
                 ['report_card 'c] ['= 'c.id 'pc.card_id]]
-    'left-join [['report_dashboardcard 'dc] ['= 'pc.dashboard_card_id 'dc.id]]
-    'where     ['and
+    :left-join [['report_dashboardcard 'dc] ['= 'pc.dashboard_card_id 'dc.id]]
+    :where     ['and
                 ['in 'p.id pulse-ids]
                 (when-not *allow-hydrate-archived-cards*
                   [:= :c.archived false])]
-    'order-by [['pc.position 'asc]]}))
+    :order-by [['pc.position 'asc]]}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -331,7 +331,7 @@
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
-  (some-> (t2/select-one :model/Pulse, 'id (u/the-id alert-or-id), 'alert_condition ['not= nil])
+  (some-> (t2/select-one :model/Pulse, 'id (u/the-id alert-or-id), 'alert_condition [:not= nil])
           hydrate-notification
           notification->alert))
 
@@ -346,18 +346,18 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
    (assert boolean? archived?)
-   (let [query (merge {'select-distinct ['p.* [['lower 'p.name] 'lower-name]]
-                       'from            [['pulse 'p]]
-                       'where           ['and
+   (let [query (merge {:select-distinct ['p.* [['lower 'p.name] 'lower-name]]
+                       :from            [['pulse 'p]]
+                       :where           ['and
                                          ['not= 'p.alert_condition nil]
                                          ['= 'p.archived archived?]
                                          (when user-id
                                            [:or
                                             [:= :p.creator_id user-id]
                                             [:= :pcr.user_id user-id]])]
-                       'order-by        [['lower-name 'asc]]}
+                       :order-by        [['lower-name 'asc]]}
                       (when user-id
-                        {'left-join [['pulse_channel 'pchan] ['= 'p.id 'pchan.pulse_id]
+                        {:left-join [['pulse_channel 'pchan] ['= 'p.id 'pchan.pulse_id]
                                      ['pulse_channel_recipient 'pcr] ['= 'pchan.id 'pcr.pulse_channel_id]]}))]
      (for [alert (hydrate-notifications (query-as :model/Pulse query))
            :let  [alert (notification->alert alert)]
@@ -372,14 +372,14 @@
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query {'select-distinct ['p.* [['lower 'p.name] 'lower-name]]
-               'from            [['pulse 'p]]
-               'left-join       (concat
+  (let [query {:select-distinct ['p.* [['lower 'p.name] 'lower-name]]
+               :from            [['pulse 'p]]
+               :left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
                                  (when user-id
                                    [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
-               'where           ['and
+               :where           ['and
                                  ['= 'p.alert_condition nil]
                                  ['= 'p.archived archived?]
                                  ;; Only return dashboard subscriptions for non-archived dashboards
@@ -396,7 +396,7 @@
                                     [:or
                                      [:= :p.creator_id user-id]
                                      [:= :pcr.user_id user-id]]])]
-               'order-by        [['lower-name 'asc]]}]
+               :order-by        [['lower-name 'asc]]}]
     (for [pulse (query-as :model/Pulse query)]
       (-> pulse
           (dissoc :lower-name)
@@ -413,12 +413,12 @@
   (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
        (query-as :model/Pulse
-                 {'select ['p.*]
-                  'from   [['pulse 'p]]
-                  'join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
+                 {:select ['p.*]
+                  :from   [['pulse 'p]]
+                  :join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
                            ['pulse_channel 'pchan] ['= 'pchan.pulse_id 'p.id]
                            ['pulse_channel_recipient 'pcr] ['= 'pchan.id 'pcr.pulse_channel_id]]
-                  'where  ['and
+                  :where  ['and
                            ['not= 'p.alert_condition nil]
                            ['= 'pc.card_id card-id]
                            ['= 'pcr.user_id user-id]
@@ -435,10 +435,10 @@
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
          (query-as :model/Pulse
-                   {'select ['p.*]
-                    'from   [['pulse 'p]]
-                    'join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
-                    'where  ['and
+                   {:select ['p.*]
+                    :from   [['pulse 'p]]
+                    :join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
+                    :where  ['and
                              ['not= 'p.alert_condition nil]
                              ['in 'pc.card_id card-ids]
                              ['= 'p.archived archived?]]}))))
@@ -517,7 +517,7 @@
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
       (when (seq to-delete)
         (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
-        (t2/delete! :model/PulseChannel 'id ['in (map :id to-delete)])))))
+        (t2/delete! :model/PulseChannel 'id [:in (map :id to-delete)])))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
@@ -562,9 +562,9 @@
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
-  (t2/select [:model/PulseCard [:card_id :id] 'include_csv 'include_xls 'dashboard_card_id]
+  (t2/select [:model/PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
              'pulse_id (u/the-id notification-or-id)
-             {'order-by [['position 'asc]]}))
+             {:order-by [['position 'asc]]}))
 
 (mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id new-card-refs :- [:sequential CardRef]]

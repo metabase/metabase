@@ -456,7 +456,7 @@
                                  :value-ref title-field-ref}]
             ;; need user metadata edits to find linked tables to an otherwise opaque native query
             (t2/update! :model/Card (:id model)
-                        {'result_metadata (annotating results-meta id-field-ref
+                        {:result_metadata (annotating results-meta id-field-ref
                                                       #(assoc % :id id-field-id))})
             (assert (= (-> (t2/select-one-fn :result_metadata :model/Card
                                              'id (:id model))

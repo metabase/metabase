@@ -38,9 +38,9 @@
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
   (let [glossary (t2/insert-returning-instance! :model/Glossary
-                                                {'term       term
-                                                 'definition definition
-                                                 'creator_id api/*current-user-id*})]
+                                                {:term       term
+                                                 :definition definition
+                                                 :creator_id api/*current-user-id*})]
     (events/publish-event! :event/glossary-create
                            {:object glossary
                             :user-id api/*current-user-id*})
@@ -59,7 +59,7 @@
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
   (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary 'id id))]
-    (t2/update! :model/Glossary id {'term term 'definition definition})
+    (t2/update! :model/Glossary id {:term term :definition definition})
     (let [glossary (t2/select-one :model/Glossary 'id id)]
       (events/publish-event! :event/glossary-update
                              {:object glossary

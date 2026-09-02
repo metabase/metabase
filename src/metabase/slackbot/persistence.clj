@@ -26,7 +26,7 @@
                     'conversation_id conversation-id
                     'role "assistant"
                     'deleted_at nil
-                    'slack_msg_id ['in slack-msg-ids])
+                    'slack_msg_id [:in slack-msg-ids])
          ;; A failed turn's state is dropped by [[metabase.metabot.persistence/conversation-state]], so
          ;; replaying its tool calls would announce queries the seeded state does not contain.
          (filter metabot.persistence/replayable-assistant-row?)
@@ -43,8 +43,8 @@
                       :model/MetabotMessage
                       'conversation_id conversation-id
                       'role "assistant"
-                      'deleted_at ['not= nil]
-                      'slack_msg_id ['in slack-msg-ids])))
+                      'deleted_at [:not= nil]
+                      'slack_msg_id [:in slack-msg-ids])))
 
 (defn state-messages
   "The assistant rows of a Slack thread in reader order, for feeding
@@ -54,11 +54,11 @@
   `data` blobs aren't loaded just to get at `state`. Not usable for history replay —
   see [[message-history]] for that."
   [conversation-id]
-  (t2/select [:model/MetabotMessage 'id 'role 'state 'error 'finished]
+  (t2/select [:model/MetabotMessage :id :role :state :error :finished]
              'conversation_id conversation-id
              'role "assistant"
              'deleted_at nil
-             {'order-by [['created_at 'asc] ['id 'asc]]}))
+             {:order-by [['created_at 'asc] ['id 'asc]]}))
 
 (defn response-owner-user-id
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.

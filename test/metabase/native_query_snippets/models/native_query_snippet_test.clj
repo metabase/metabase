@@ -13,7 +13,7 @@
       (is (thrown-with-msg?
            Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
-           (t2/update! :model/NativeQuerySnippet snippet-id {'creator_id (mt/user->id :rasta)})))
+           (t2/update! :model/NativeQuerySnippet snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet 'id snippet-id))))))
 
@@ -33,7 +33,7 @@
                      :model/Collection         {dest-collection-id :id}   {:namespace dest}
                      :model/NativeQuerySnippet {snippet-id :id} (when source
                                                                   {:collection_id source-collection-id})]
-        (t2/update! :model/NativeQuerySnippet snippet-id {'collection_id (when dest dest-collection-id)})
+        (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id :model/NativeQuerySnippet 'id snippet-id))))))
   (doseq [collection-namespace [nil "x"]]
@@ -44,10 +44,10 @@
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
              (t2/insert! :model/NativeQuerySnippet
-                         {'name          (mt/random-name)
-                          'content       "1 = 1"
-                          'creator_id    (mt/user->id :rasta)
-                          'collection_id collection-id})))))
+                         {:name          (mt/random-name)
+                          :content       "1 = 1"
+                          :creator_id    (mt/user->id :rasta)
+                          :collection_id collection-id})))))
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
       (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet {snippet-id :id}           {:collection_id source-collection-id}
@@ -55,7 +55,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (t2/update! :model/NativeQuerySnippet snippet-id {'collection_id dest-collection-id})))))))
+             (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id dest-collection-id})))))))
 
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
@@ -69,7 +69,7 @@
   (testing "Can find params on update"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "id"}]
       (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet 'id snippet-id)))
-      (t2/update! :model/NativeQuerySnippet 'id snippet-id {'content "{{id}}"})
+      (t2/update! :model/NativeQuerySnippet 'id snippet-id {:content "{{id}}"})
       (is (=? {"id" {:type :text,
                      :name "id",
                      :display-name "ID"}}
@@ -104,10 +104,10 @@
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
       (testing "nil in -> {} out"
         (let [snippet (t2/insert-returning-instance! :model/NativeQuerySnippet
-                                                     {'name "nil-tags"
-                                                      'content "SELECT 1"
-                                                      'creator_id user-id
-                                                      'template_tags nil})
+                                                     {:name "nil-tags"
+                                                      :content "SELECT 1"
+                                                      :creator_id user-id
+                                                      :template_tags nil})
               extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
           ;; toucan hooks populate it:
           (is (= {} (:template_tags extracted)))
@@ -140,7 +140,7 @@
                    :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id coll-id}
                    :model/NativeQuerySnippet snippet3 {:name "snippet3" :content "SELECT 3" :collection_id coll-id}]
       (mt/with-test-user :crowberto
-        (let [snippets (t2/select :model/NativeQuerySnippet 'id ['in [(:id snippet1) (:id snippet2) (:id snippet3)]])
+        (let [snippets (t2/select :model/NativeQuerySnippet 'id [:in [(:id snippet1) (:id snippet2) (:id snippet3)]])
               hydrated (t2/hydrate snippets :can_write)]
           (testing "all snippets have :can_write hydrated"
             (is (every? #(contains? % :can_write) hydrated)))

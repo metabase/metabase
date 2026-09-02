@@ -21,13 +21,13 @@
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (mt/with-test-user :crowberto
           (t2/delete! :model/Setting 'key "instance-creation")
-          (let [first-user-creation (:min (t2/select-one ['User [:%min.date_joined :min]]))
+          (let [first-user-creation (:min (t2/select-one [:User [:%min.date_joined :min]]))
                 instance-creation   (analytics.settings/instance-creation)]
             (is (= (u.date/format-rfc3339 first-user-creation)
                    instance-creation)))))
       (finally
         (when original-value
-          (t2/update! :model/Setting {'key "instance-creation"} {'value original-value}))))))
+          (t2/update! :model/Setting {:key "instance-creation"} {:value original-value}))))))
 
 (deftest analytics-pii-retention-enabled-feature-gate-test
   (testing "analytics-pii-retention-enabled is gated behind the :audit-app premium feature"

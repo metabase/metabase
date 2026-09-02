@@ -29,7 +29,7 @@
             (is (= "Creator" (get-in hydrated [:creator :last_name])))
             (is (= "test.creator@example.com" (get-in hydrated [:creator :email])))))
         (testing "Batch glossary entry hydration"
-          (let [glossary-entries (t2/select :model/Glossary 'id ['in [(:id glossary1) (:id glossary2)]])
+          (let [glossary-entries (t2/select :model/Glossary 'id [:in [(:id glossary1) (:id glossary2)]])
                 hydrated (t2/hydrate glossary-entries :creator)]
             (is (= 2 (count hydrated)))
             (is (every? #(some? (:creator %)) hydrated))
@@ -40,6 +40,6 @@
               (is (= "Second" (get-in creators-by-id [(:id glossary2) :first_name]))))))
         (testing "Glossary created without creator_id defaults to internal user"
           (let [glossary-no-creator (t2/insert-returning-instance! :model/Glossary
-                                                                   {'term       "SQL"
-                                                                    'definition "Structured Query Language"})]
+                                                                   {:term       "SQL"
+                                                                    :definition "Structured Query Language"})]
             (is (= config/internal-mb-user-id (:creator_id glossary-no-creator)))))))))

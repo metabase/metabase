@@ -12,10 +12,10 @@
   [user-id]
   (let [id (session/generate-session-id)]
     (t2/insert! (t2/table-name :model/Session)
-                {'id         id
-                 'key_hashed (session/hash-session-key (str (random-uuid)))
-                 'user_id    user-id
-                 'created_at :%now})
+                {:id         id
+                 :key_hashed (session/hash-session-key (str (random-uuid)))
+                 :user_id    user-id
+                 :created_at :%now})
     id))
 
 (deftest revoke-on-event-test
@@ -36,9 +36,9 @@
       (let [session-id (insert-session! user-id)]
         (is (t2/exists? :model/Session 'id session-id)
             "session exists while the user is active")
-        (t2/update! :model/User user-id {'is_active false})
+        (t2/update! :model/User user-id {:is_active false})
         (is (not (t2/exists? :model/Session 'id session-id))
             "deactivation revokes the session")
-        (t2/update! :model/User user-id {'is_active true})
+        (t2/update! :model/User user-id {:is_active true})
         (is (not (t2/exists? :model/Session 'id session-id))
             "reactivation does not revive the pre-deactivation session")))))

@@ -29,7 +29,7 @@
                      :last_name        "Era"
                      :email            "cam+config-file-test@metabase.com"
                      :login_attributes {"a" "1"}}
-                    (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                    (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                    'email "cam+config-file-test@metabase.com")))
       (is (= 1
              (t2/count :model/User 'email "cam+config-file-test@metabase.com"))))
@@ -54,7 +54,7 @@
                        :last_name        "Saul"
                        :email            "cam+config-file-test@metabase.com"
                        :login_attributes {"a" "1" "b" "2"}}
-                      (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                      (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                      'email "cam+config-file-test@metabase.com")))
         (testing "Password should be hashed, but it should be a NEW HASH"
           (let [new-hashed-password (hashed-password)]
@@ -104,7 +104,7 @@
                       (t2/select-one :model/User 'email "cam+config-file-admin-test-2@metabase.com")))
         (is (= 1
                (t2/count :model/User 'email "cam+config-file-admin-test-2@metabase.com"))))
-      (finally (t2/delete! :model/User 'email ['in #{"cam+config-file-admin-test@metabase.com"
+      (finally (t2/delete! :model/User 'email [:in #{"cam+config-file-admin-test@metabase.com"
                                                      "cam+config-file-admin-test-2@metabase.com"}])))))
 
 (deftest init-from-config-file-env-var-for-password-test
@@ -120,7 +120,7 @@
                                       :email      "cam+config-file-password-test@metabase.com"
                                       :password   "{{env USER_PASSWORD}}"}]}}
                   {:expand-templates? true})))
-          (let [user (t2/select-one [:model/User 'id 'first_name 'last_name 'email]
+          (let [user (t2/select-one [:model/User :id :first_name :last_name :email]
                                     'email "cam+config-file-password-test@metabase.com")
                 {:keys [password_hash password_salt]} (t2/select-one-fn :credentials :model/AuthIdentity
                                                                         'user_id (:id user) 'provider "password")]

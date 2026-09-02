@@ -499,7 +499,7 @@
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                   table       (t2/select-one :model/Table 'db_id (mt/id) 'name "long_json_table")
-                  json-fields (t2/select :model/Field 'table_id (:id table) 'name ['in ["short_json" "long_json"]])
+                  json-fields (t2/select :model/Field 'table_id (:id table) 'name [:in ["short_json" "long_json"]])
                   pks         ["id"]
                   sample      (fn []
                                 (let [rows (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
@@ -831,12 +831,12 @@
                                    (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                    :model/Field
                                    'table_id orders-id
-                                   {'order-by ['database_position]})
+                                   {:order-by ['database_position]})
                   view-fields (t2/select-fn-vec
                                (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                :model/Field
                                'table_id orders-m-id
-                               {'order-by ['database_position]})]
+                               {:order-by ['database_position]})]
               (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
                              (:name view-instance)))
               (is (some? orders-m-id))

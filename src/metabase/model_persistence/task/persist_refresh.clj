@@ -63,13 +63,13 @@
             definition            (persisted-info/metadata->definition (:result_metadata card)
                                                                        (:table_name persisted-info))
             _                     (t2/update! :model/PersistedInfo (u/the-id persisted-info)
-                                              {'definition      definition,
-                                               'query_hash      (persisted-info/query-hash (:dataset_query card))
-                                               'active          false,
-                                               'refresh_begin   :%now,
-                                               'refresh_end     nil,
-                                               'state           "refreshing"
-                                               'state_change_at :%now})
+                                              {:definition      definition,
+                                               :query_hash      (persisted-info/query-hash (:dataset_query card))
+                                               :active          false,
+                                               :refresh_begin   :%now,
+                                               :refresh_end     nil,
+                                               :state           "refreshing"
+                                               :state_change_at :%now})
             {:keys [state error]} (try
                                     (refresh! refresher database definition card)
                                     (catch Exception e
@@ -77,11 +77,11 @@
                                                  (:card_id persisted-info) (ex-message e))
                                       {:state :error :error (ex-message e)}))]
         (t2/update! :model/PersistedInfo (u/the-id persisted-info)
-                    {'active          (= state :success),
-                     'refresh_end     :%now,
-                     'state           (if (= state :success) "persisted" "error")
-                     'state_change_at :%now
-                     'error           (when (= state :error) error)})
+                    {:active          (= state :success),
+                     :refresh_end     :%now,
+                     :state           (if (= state :success) "persisted" "error")
+                     :state_change_at :%now
+                     :error           (when (= state :error) error)})
         (if (= :success state)
           (update stats :success inc)
           (-> stats
@@ -100,7 +100,7 @@
   (try
     (let [error-details       (error-details task-details)
           error-details-by-id (m/index-by :persisted-info-id error-details)
-          persisted-infos     (->> (t2/hydrate (t2/select :model/PersistedInfo 'id ['in (keys error-details-by-id)])
+          persisted-infos     (->> (t2/hydrate (t2/select :model/PersistedInfo 'id [:in (keys error-details-by-id)])
                                                [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
       (events/publish-event! :event/persisted-model-refresh-error
@@ -128,12 +128,12 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (t2/select :model/Database 'id ['in (map :database_id deletables)]))
+    (let [db-id->db    (m/index-by :id (t2/select :model/Database 'id [:in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state :model/PersistedInfo 'id (:id persisted-info))
-                                         card-info     (t2/select-one [:model/Card 'archived 'type 'card_schema]
+                                         card-info     (t2/select-one [:model/Card :archived :type :card_schema]
                                                                       'id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
@@ -161,10 +161,10 @@
   persisted info records pointing to cards that are no longer models, archived cards/models, and all records where the corresponding
   card or database has been permanently deleted."
   []
-  (let [hsql {'select    ['p.*]
-              'from      [['persisted_info 'p]]
-              'left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
-              'where     ['or
+  (let [hsql {:select    ['p.*]
+              :from      [['persisted_info 'p]]
+              :left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
+              :where     ['or
                           ['and
                            ['in 'state (persisted-info/prunable-states)]
                            ;; Buffer deletions for an hour if the
@@ -183,10 +183,10 @@
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (let [hsql {'select    ['p.* 'c.type 'c.archived 'c.name]
-              'from      [['persisted_info 'p]]
-              'left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
-              'where     ['and
+  (let [hsql {:select    ['p.* 'c.type 'c.archived 'c.name]
+              :from      [['persisted_info 'p]]
+              :left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
+              :where     ['and
                           ['= 'p.database_id database-id]
                           ['in 'p.state (persisted-info/refreshable-states)]
                           ['= 'c.archived false]

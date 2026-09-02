@@ -171,7 +171,7 @@
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
                     new-details (merge details (tx/bad-connection-details driver/*driver*))]
-                (t2/update! :model/Database (u/the-id db) {'details new-details}))
+                (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
@@ -362,9 +362,9 @@
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-fks` should be usable in the way we used to use the old `describe-table-fks` method"
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
-      (let [orders   (t2/select-one [:model/Table 'name 'schema] (mt/id :orders))
-            products (t2/select-one [:model/Table 'name 'schema] (mt/id :products))
-            people   (t2/select-one [:model/Table 'name 'schema] (mt/id :people))
+      (let [orders   (t2/select-one [:model/Table :name :schema] (mt/id :orders))
+            products (t2/select-one [:model/Table :name :schema] (mt/id :products))
+            people   (t2/select-one [:model/Table :name :schema] (mt/id :people))
             fmt      (partial ddl.i/format-name driver/*driver*)]
         (is (= #{{:fk-table-schema (:schema orders)
                   :fk-table-name   (:name orders)

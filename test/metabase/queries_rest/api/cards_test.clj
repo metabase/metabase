@@ -84,7 +84,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
         (mt/user-http-request :rasta :post 403 "cards/move" {:card_ids [card-1-id card-2-id]
                                                              :dashboard_id dest-dash-id})
-        (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card 'id ['in [card-1-id card-2-id]])))))))
+        (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card 'id [:in [card-1-id card-2-id]])))))))
 
 (deftest bulk-move-endpoint-works-5
   (testing "mixed permissions"
@@ -98,7 +98,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
         (mt/user-http-request :rasta :post 403 "cards/move" {:card_ids [card-1-id card-2-id]
                                                              :dashboard_id dest-dash-id})
-        (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card 'id ['in [card-1-id card-2-id]])))))))
+        (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card 'id [:in [card-1-id card-2-id]])))))))
 
 (deftest dashboards-for-cards-endpoint-has-no-n+1
   (mt/with-temp [:model/Card {c1 :id} {}

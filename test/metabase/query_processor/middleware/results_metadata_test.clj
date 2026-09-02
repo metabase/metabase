@@ -519,7 +519,7 @@
     (let [run-with-filter!
           (fn [product-id]
             (t2/update! :model/Card card-id
-                        {'dataset_query (mt/mbql-query orders
+                        {:dataset_query (mt/mbql-query orders
                                           {:aggregation [[:count] [:sum $total]]
                                            :breakout    [$product_id]
                                            :filter      [:= $product_id product-id]})})

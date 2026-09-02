@@ -41,8 +41,8 @@
   "Return a map of [severity acknowledged?] → count for advisories whose
    match_status places them in the vulnerable bucket."
   []
-  (->> (t2/reducible-select [:model/SecurityAdvisory 'severity 'acknowledged_at]
-                            'match_status ['in vulnerable-statuses])
+  (->> (t2/reducible-select [:model/SecurityAdvisory :severity :acknowledged_at]
+                            'match_status [:in vulnerable-statuses])
        (reduce (fn [acc {:keys [severity acknowledged_at]}]
                  (update acc (label-of severity (some? acknowledged_at)) (fnil inc 0)))
                {})))

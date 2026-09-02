@@ -150,14 +150,14 @@
 (mu/defn- build-table-lookup-map
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn->pk (juxt (constantly database-id) :name)
-                    [:model/Table 'id 'name]
+                    [:model/Table :id :name]
                     'db_id  database-id
                     'active true))
 
 (mu/defn- build-field-lookup-map
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn->pk (juxt :parent_id :name)
-                    [:model/Field 'id 'name 'parent_id]
+                    [:model/Field :id :name :parent_id]
                     'table_id table-id
                     'active   true))
 
@@ -205,10 +205,10 @@
 
 (defn- table-id-from-app-db
   [db-id table-name]
-  (t2/select-one-pk [:model/Table 'id] 'db_id db-id, 'name table-name, 'active true))
+  (t2/select-one-pk [:model/Table :id] 'db_id db-id, 'name table-name, 'active true))
 
 (defn- throw-unfound-table-error [db-id table-name]
-  (let [{driver :engine, db-name :name} (t2/select-one [:model/Database 'name 'engine] 'id db-id)]
+  (let [{driver :engine, db-name :name} (t2/select-one [:model/Database :name :engine] 'id db-id)]
     (throw
      (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                          (pr-str table-name) driver db-id (pr-str db-name)
@@ -225,7 +225,7 @@
    table-name :- :string]
   (or (cached-table-id db-id table-name)
       (table-id-from-app-db db-id table-name)
-      (let [db-name              (database-source-dataset-name (t2/select-one [:model/Database 'settings] 'id db-id))
+      (let [db-name              (database-source-dataset-name (t2/select-one [:model/Database :settings] 'id db-id))
             qualified-table-name (tx/db-qualified-table-name db-name table-name)]
         (cached-table-id db-id qualified-table-name)
         (table-id-from-app-db db-id qualified-table-name))
@@ -238,7 +238,7 @@
   (if parent-id
     (str (t2/select-one-fn (fn [field]
                              (qualified-field-name (:parent_id field) (:name field)))
-                           [:model/Field 'parent_id 'name]
+                           [:model/Field :parent_id :name]
                            'id parent-id
                            'active true)
          \.
@@ -249,12 +249,12 @@
   (t2/select-fn->fn :id
                     (fn [field]
                       (qualified-field-name (:parent_id field) (:name field)))
-                    [:model/Field 'id 'parent_id 'name]
+                    [:model/Field :id :parent_id :name]
                     'active true, 'table_id table-id))
 
 (defn- throw-unfound-field-errror
   [table-id parent-id field-name]
-  (let [table-name      (t2/select-one-fn :name [:model/Table 'name] 'id table-id)
+  (let [table-name      (t2/select-one-fn :name [:model/Table :name] 'id table-id)
         field-name      (qualified-field-name parent-id field-name)
         all-field-names (all-field-names table-id)]
     (throw
@@ -285,7 +285,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (let [old-fields (t2/select :model/Field 'table_id old-table-id, 'active true, {'order-by [['id 'asc]]})]
+  (let [old-fields (t2/select :model/Field 'table_id old-table-id, 'active true, {:order-by [['id 'asc]]})]
     (t2/insert! :model/Field
                 (for [field old-fields]
                   (-> field
@@ -308,14 +308,14 @@
               :let                                   [new-parent-id (get old-id->new-id old-parent-id)]
               :when                                  (and new-parent-id
                                                           (not= new-parent-id old-parent-id))]
-        (t2/update! :model/Field new-id {'parent_id new-parent-id})))
+        (t2/update! :model/Field new-id {:parent_id new-parent-id})))
     ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
     ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
     ;; up in whatever a test counts.
     (let [old-field-id->name (t2/select-pk->fn :name :model/Field 'table_id old-table-id 'active true)
           new-field-name->id (t2/select-fn->pk :name :model/Field 'table_id new-table-id 'active true)
           old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
-                               (t2/select :model/FieldValues 'field_id ['in (set field-ids)] 'type :full))]
+                               (t2/select :model/FieldValues 'field_id [:in (set field-ids)] 'type :full))]
       (t2/insert! :model/FieldValues
                   (for [{old-field-id :field_id, :as field-values} old-field-values
                         :let                                       [field-name (get old-field-id->name old-field-id)]]
@@ -328,7 +328,7 @@
                         (update :human_readable_values not-empty)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (t2/select :model/Table 'db_id old-db-id, 'active true, {'order-by [['id 'asc]]})
+  (let [old-tables    (t2/select :model/Table 'db_id old-db-id, 'active true, {:order-by [['id 'asc]]})
         new-table-ids (sort ; sorting by PK recovers the insertion order, because insert-returning-pks! doesn't guarantee this
                        (t2/insert-returning-pks! :model/Table
                                                  (for [table old-tables]
@@ -340,15 +340,15 @@
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
-          (mdb/query {'select    [['source-field.name 'source-field]
+          (mdb/query {:select    [['source-field.name 'source-field]
                                   ['source-table.name 'source-table]
                                   ['target-field.name 'target-field]
                                   ['target-table.name 'target-table]]
-                      'from      [['metabase_field 'source-field]]
-                      'left-join [['metabase_table 'source-table] ['= 'source-field.table_id 'source-table.id]
+                      :from      [['metabase_field 'source-field]]
+                      :left-join [['metabase_table 'source-table] ['= 'source-field.table_id 'source-table.id]
                                   ['metabase_field 'target-field] ['= 'source-field.fk_target_field_id 'target-field.id]
                                   ['metabase_table 'target-table] ['= 'target-field.table_id 'target-table.id]]
-                      'where     ['and
+                      :where     ['and
                                   ['= 'source-table.db_id old-db-id]
                                   ['= 'target-table.db_id old-db-id]
                                   'source-field.active
@@ -357,7 +357,7 @@
                                   'target-table.active
                                   ['not= 'source-field.fk_target_field_id nil]]})]
     (t2/update! :model/Field (the-field-id (the-table-id new-db-id source-table) source-field)
-                {'fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
+                {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]
   (copy-db-tables! old-db-id new-db-id)
@@ -376,7 +376,7 @@
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
-      (let [secrets (t2/select [:model/Secret 'id 'name 'kind 'source 'value] 'id ['in (set (vals prop->old-id))])
+      (let [secrets (t2/select [:model/Secret :id :name :kind :source :value] 'id [:in (set (vals prop->old-id))])
             new-ids (t2/insert-returning-pks! :model/Secret (map #(dissoc % :id) secrets))
             old-id->new-id (zipmap (map :id secrets) new-ids)]
         (assoc database

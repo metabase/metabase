@@ -122,7 +122,7 @@
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select (into [:model/Field] param-field-columns)
-                                         'table_id      ['in table-ids]
+                                         'table_id      [:in table-ids]
                                          'semantic_type (app-db/isa :type/Name)
                                          'active        true)
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
@@ -193,7 +193,7 @@
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (t2/select (into [:model/Field] param-field-columns) 'id ['in field-ids])
+                          (m/index-by :id (-> (t2/select (into [:model/Field] param-field-columns) 'id [:in field-ids])
                                               (t2/hydrate :has_field_values :name_field
                                                           [:target :has_field_values :name_field]
                                                           [:dimensions [:human_readable_field :has_field_values]])

@@ -120,8 +120,8 @@
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
         (t2/update! :model/Database (u/the-id database)
-                    {'metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
-                     'cache_field_values_schedule "0 11 11 11 11 ?"})      ; Every November 11th at 11:11 AM
+                    {:metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
+                     :cache_field_values_schedule "0 11 11 11 11 ?"})      ; Every November 11th at 11:11 AM
         (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
                 (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
                (current-tasks-for-db database)))))))
@@ -131,7 +131,7 @@
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
         (t2/update! :model/Database (u/the-id database)
-                    {'cache_field_values_schedule "0 15 10 ? * MON-FRI"})
+                    {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
         (is (= [sync-job
                 (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
                (current-tasks-for-db database)))))))
@@ -140,7 +140,7 @@
   (with-scheduler-setup!
     (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
       (t2/update! :model/Database (u/the-id database)
-                  {'metadata_sync_schedule "0 15 10 ? * MON-FRI"})
+                  {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
       (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
               fv-job]
              (current-tasks-for-db database))))))
@@ -151,7 +151,7 @@
       (testing (format "Insert DB with invalid %s" k)
         (is (thrown?
              Exception
-             (t2/insert! :model/Database {'engine :postgres, k "0 * ABCD"})))))))
+             (t2/insert! :model/Database {:engine :postgres, k "0 * ABCD"})))))))
 
 (deftest validate-schedules-test-2
   (testing "Check that you can't INSERT a DB with an invalid schedule"
@@ -159,7 +159,7 @@
       (testing (format "Insert DB with invalid %s" k)
         (is (thrown?
              Exception
-             (t2/insert! :model/Database {'engine :postgres, k "0 * ABCD"})))))))
+             (t2/insert! :model/Database {:engine :postgres, k "0 * ABCD"})))))))
 
 ;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and
 ;; defrecord emits a put method and things get
@@ -378,7 +378,7 @@
     (mt/with-temp [:model/Database db {:metadata_sync_schedule      sync-default
                                        :cache_field_values_schedule fv-default
                                        :details                     {:let-user-control-scheduling true}}]
-      (t2/update! :model/Database (u/the-id db) {'details (assoc (:details db)
+      (t2/update! :model/Database (u/the-id db) {:details (assoc (:details db)
                                                                  :let-user-control-scheduling true)})
       (let [before (t2/select-one :model/Database 'id (u/the-id db))]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
@@ -393,13 +393,13 @@
   (testing "Randomizes sample dbs with the old sync string (ADM-943)"
     (mt/with-model-cleanup [:model/Database]
       ;; Need to call it this way to avoid callbacks
-      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database) {'details   "{}"
-                                                                            'engine    "h2"
-                                                                            'is_sample true
-                                                                            'name      "populate-collection-created-at-test-db-1"
-                                                                            'created_at :%now
-                                                                            'updated_at :%now
-                                                                            'metadata_sync_schedule "0 43 * * * ? *"})
+      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database) {:details   "{}"
+                                                                            :engine    "h2"
+                                                                            :is_sample true
+                                                                            :name      "populate-collection-created-at-test-db-1"
+                                                                            :created_at :%now
+                                                                            :updated_at :%now
+                                                                            :metadata_sync_schedule "0 43 * * * ? *"})
             before (t2/select-one :model/Database 'id db-id)]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
         (let [after (t2/select :model/Database 'id db-id)]

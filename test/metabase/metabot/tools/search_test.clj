@@ -674,7 +674,7 @@
                 by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
                 metric-res (get by-id [metric-id "metric"])
                 db-name   (t2/select-one-fn :name :model/Database 'id (mt/id))
-                orders-t  (t2/select-one [:model/Table 'schema 'name] 'id (mt/id :orders))]
+                orders-t  (t2/select-one [:model/Table :schema :name] 'id (mt/id :orders))]
             (is (some? metric-res) "metric should appear in search results")
             (testing "base_table_* fields are populated"
               (is (= (mt/id :orders) (:base_table_id metric-res)))

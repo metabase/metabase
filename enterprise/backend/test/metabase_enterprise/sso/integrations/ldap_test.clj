@@ -179,7 +179,7 @@
                                          "sn"        "Smith"
                                          "cn"        "John Smith"}
                       :common_name      "John Smith"}
-                     (into {} (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                     (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              'email "john.smith@metabase.com")))))))))))
 
 (deftest new-user-attributes-not-synced-when-disabled-test
@@ -202,7 +202,7 @@
                       :email            "john.smith@metabase.com"
                       :login_attributes nil
                       :common_name      "John Smith"}
-                     (into {} (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                     (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              'email "john.smith@metabase.com")))))))))))
 
 (deftest update-attributes-on-login-test
@@ -239,7 +239,7 @@
                                          "givenname" "John"
                                          "sn"        "Smith"
                                          "cn"        "John Smith"}}
-                     (into {} (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                     (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              'email "john.smith@metabase.com")))))))))))
 
 (deftest update-attributes-disabled-test
@@ -271,7 +271,7 @@
                       :common_name      "John Smith"
                       :email            "john.smith@metabase.com"
                       :login_attributes nil}
-                     (into {} (t2/select-one [:model/User 'first_name 'last_name 'email 'login_attributes]
+                     (into {} (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                              'email "john.smith@metabase.com")))))))))))
 
 (deftest create-new-user-test
@@ -292,7 +292,7 @@
                     :last_name   "Smith"
                     :common_name "John Smith"
                     :email       "john.smith@metabase.com"}
-                   (into {} (t2/select-one [:model/User 'first_name 'last_name 'email] 'email "john.smith@metabase.com"))))))))))
+                   (into {} (t2/select-one [:model/User :first_name :last_name :email] 'email "john.smith@metabase.com"))))))))))
 
 (deftest create-user-without-givenname-test
   (mt/with-premium-features #{:sso-ldap}
@@ -311,7 +311,7 @@
             (is (= {:first_name  nil
                     :last_name   "Miller"
                     :common_name "Miller"}
-                   (into {} (t2/select-one [:model/User 'first_name 'last_name] 'email "jane.miller@metabase.com"))))))))))
+                   (into {} (t2/select-one [:model/User :first_name :last_name] 'email "jane.miller@metabase.com"))))))))))
 
 (deftest ldap-no-user-provisioning-test
   (mt/with-premium-features #{:sso-ldap}

@@ -84,7 +84,7 @@
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxxxx" :location "/"}
                            :model/Transform transform {:name "Synced Transform" :collection_id coll-id}
                            :model/RemoteSyncObject _rso1 {:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
@@ -265,7 +265,7 @@
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxxxx" :location "/"}
                            :model/Transform transform {:name "Export Transform" :collection_id coll-id}
                            :model/RemoteSyncObject _rso1 {:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
@@ -294,7 +294,7 @@
                                          remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {rs-coll-id :id rs-coll-eid :entity_id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxxxxx" :location "/"}
                            :model/RemoteSyncObject _rso {:model_type "Collection" :model_id rs-coll-id :model_name "Remote Synced" :status "create" :status_changed_at (t/offset-date-time)}]
               (let [saved-coll (t2/select-one :model/Collection 'id rs-coll-id)]
@@ -320,7 +320,7 @@
                                          remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {rs-coll-id :id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxxxxx" :location "/"}
                            :model/RemoteSyncObject _rso {:model_type "Collection" :model_id rs-coll-id :model_name "Remote Synced" :status "create" :status_changed_at (t/offset-date-time)}]
               ;; Start with transform files already on the remote (from a previous export when setting was enabled)
@@ -367,7 +367,7 @@ is_sample: false
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
-          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 coll-entity-id      "transforms-coll-xxxxx"
                 transform-entity-id "test-transform-xxxxxx"
                 test-files {"main" {"collections/transforms/transforms/transforms.yaml"
@@ -387,7 +387,7 @@ is_sample: false
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
-          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 coll-entity-id      "xforms-coll-legacy-01"
                 transform-entity-id "python-legacy-fmt-01x"
                 ;; Use old map format: {alias: table_id} — this is how pre-unification exports look
@@ -422,7 +422,7 @@ is_sample: false
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
             (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
                            {:name "Transforms Collection"
                             :namespace collection/transforms-ns
@@ -460,7 +460,7 @@ is_sample: false
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % "transforms_collection") (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % "child_transform") (keys (get @(:files-atom mock-source) "main"))))
-                (t2/update! :model/Collection coll-id {'archived true})
+                (t2/update! :model/Collection coll-id {:archived true})
                 (events/publish-event! :event/collection-update
                                        {:object (t2/select-one :model/Collection 'id coll-id)
                                         :user-id (mt/user->id :rasta)})
@@ -501,7 +501,7 @@ is_sample: false
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-coll-entity-id (u/generate-nano-id)
                 remote-coll-entity-id (u/generate-nano-id)]
             (mt/with-temp [:model/Collection {local-coll-id :id} {:name "Local Transforms Collection"
@@ -525,7 +525,7 @@ is_sample: false
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
               coll-entity-id (u/generate-nano-id)
               local-transform-entity-id (u/generate-nano-id)
               remote-transform-entity-id (u/generate-nano-id)]
@@ -561,7 +561,7 @@ is_sample: false
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-coll-entity-id (u/generate-nano-id)
                 local-transform-entity-id (u/generate-nano-id)
                 remote-coll-entity-id (u/generate-nano-id)]
@@ -611,7 +611,7 @@ serdes/meta:
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [library (t2/insert-returning-instance! :model/PythonLibrary {'path "common.py" 'source "# test"})]
+        (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (is (t2/exists? :model/RemoteSyncObject
                           'model_type "PythonLibrary"
                           'model_id (:id library))
@@ -622,7 +622,7 @@ serdes/meta:
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
-        (let [library (t2/insert-returning-instance! :model/PythonLibrary {'path "common.py" 'source "# test"})]
+        (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (is (not (t2/exists? :model/RemoteSyncObject
                                'model_type "PythonLibrary"
                                'model_id (:id library)))
@@ -633,10 +633,10 @@ serdes/meta:
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [library (t2/insert-returning-instance! :model/PythonLibrary {'path "common.py" 'source "# test"})]
-          (t2/update! :model/RemoteSyncObject {'model_type "PythonLibrary" 'model_id (:id library)}
-                      {'status "synced"})
-          (t2/update! :model/PythonLibrary (:id library) {'source "# updated"})
+        (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+          (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
+                      {:status "synced"})
+          (t2/update! :model/PythonLibrary (:id library) {:source "# updated"})
           (let [entry (t2/select-one :model/RemoteSyncObject
                                      'model_type "PythonLibrary"
                                      'model_id (:id library))]
@@ -650,10 +650,10 @@ serdes/meta:
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})
-                library (t2/insert-returning-instance! :model/PythonLibrary {'path "common.py" 'source "# shared code"})]
-            (t2/update! :model/RemoteSyncObject {'model_type "PythonLibrary" 'model_id (:id library)}
-                        {'status "create"})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# shared code"})]
+            (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
+                        {:status "create"})
             (let [mock-source (test-helpers/create-mock-source)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
               (is (= :success (:status result))
@@ -668,7 +668,7 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 lib-entity-id (u/generate-nano-id)
                 test-files {"main" {"python_libraries/common_py.yaml"
                                     (generate-python-library-yaml lib-entity-id "common.py" "def shared_func():\n    return 42")}}
@@ -689,8 +689,8 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/PythonLibrary]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
-                local-library (t2/insert-returning-instance! :model/PythonLibrary {'path "common.py" 'source "# local only"})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local only"})]
             (is (t2/exists? :model/PythonLibrary 'id (:id local-library))
                 "Local PythonLibrary should exist before import")
             (let [test-files {"main" {}}
@@ -712,12 +712,12 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
             ;; Create the builtin library explicitly (fixture cleans PythonLibrary before test)
             (t2/insert-returning-instance! :model/PythonLibrary
-                                           {'path "common.py"
-                                            'source "# builtin"
-                                            'entity_id transforms-python/builtin-entity-id})
+                                           {:path "common.py"
+                                            :source "# builtin"
+                                            :entity_id transforms-python/builtin-entity-id})
             (is (t2/exists? :model/PythonLibrary 'entity_id transforms-python/builtin-entity-id)
                 "Built-in PythonLibrary should exist before import")
             (let [test-files {"main" {}}  ;; Empty remote - no python libraries
@@ -734,8 +734,8 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
-                local-library (t2/insert-returning-instance! :model/PythonLibrary {'path "common.py" 'source "# local version"})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local version"})
                 local-entity-id (:entity_id local-library)]
             (is (t2/exists? :model/PythonLibrary 'path "common.py")
                 "Local PythonLibrary should exist before import")
@@ -758,7 +758,7 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/TransformTag]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-transform-entity-id (u/generate-nano-id)
                 local-tag-entity-id (u/generate-nano-id)]
             (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
@@ -795,7 +795,7 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/TransformTag]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-transform-entity-id (u/generate-nano-id)
                 local-tag-entity-id (u/generate-nano-id)
                 remote-transform-entity-id (u/generate-nano-id)
@@ -841,7 +841,7 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/TransformTag]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-transform-entity-id (u/generate-nano-id)
                 local-tag-entity-id (u/generate-nano-id)]
             (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Local Transforms Collection"
@@ -897,12 +897,12 @@ serdes/meta:
                                                                     :collection_id coll-id}]
             ;; a prior successful import makes this NOT a first import, so the legacy first-import conflict
             ;; gate would not fire — the deletion-conflict gate must catch it regardless.
-            (t2/insert! :model/RemoteSyncTask {'sync_task_type "import"
-                                               'initiated_by (mt/user->id :rasta)
-                                               'cancelled false
-                                               'version "prior-version"
-                                               'ended_at (t/offset-date-time)})
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+            (t2/insert! :model/RemoteSyncTask {:sync_task_type "import"
+                                               :initiated_by (mt/user->id :rasta)
+                                               :cancelled false
+                                               :version "prior-version"
+                                               :ended_at (t/offset-date-time)})
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                   test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
                                       (test-helpers/generate-collection-yaml (u/generate-nano-id) "Remote Collection")}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
@@ -926,12 +926,12 @@ serdes/meta:
                                                                     :entity_id (u/generate-nano-id)
                                                                     :collection_id coll-id}]
             ;; mark the transform as already synced — its removal is a normal reconcile, not data loss
-            (t2/insert! :model/RemoteSyncObject {'model_type "Transform"
-                                                 'model_id local-transform-id
-                                                 'model_name "Synced Transform"
-                                                 'status "synced"
-                                                 'status_changed_at (t/offset-date-time)})
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+            (t2/insert! :model/RemoteSyncObject {:model_type "Transform"
+                                                 :model_id local-transform-id
+                                                 :model_name "Synced Transform"
+                                                 :status "synced"
+                                                 :status_changed_at (t/offset-date-time)})
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                   test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
                                       (test-helpers/generate-collection-yaml (u/generate-nano-id) "Remote Collection")}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
@@ -950,7 +950,7 @@ serdes/meta:
           (mt/with-temp [:model/TransformTag {builtin-tag-id :id} {:name "Built-in Tag"
                                                                    :entity_id (u/generate-nano-id)
                                                                    :built_in_type "hourly"}]
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                   test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
                                       (test-helpers/generate-collection-yaml (u/generate-nano-id) "Remote Collection")}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
@@ -966,7 +966,7 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-transform-entity-id (u/generate-nano-id)
                 remote-transform-entity-id (u/generate-nano-id)
                 remote-coll-entity-id (u/generate-nano-id)]
@@ -1038,7 +1038,7 @@ serdes/meta:
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/TransformTag :model/Collection]
-          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-tag-entity-id (u/generate-nano-id)
                 remote-tag-entity-id (u/generate-nano-id)
                 coll-entity-id (u/generate-nano-id)]

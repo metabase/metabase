@@ -25,7 +25,7 @@
   "List configured metabot instances"
   []
   (api/check-superuser)
-  {:items (t2/select :model/Metabot {'order-by [['name 'asc]]})})
+  {:items (t2/select :model/Metabot {:order-by [['name 'asc]]})})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -103,13 +103,13 @@
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)
-        base-query (cond-> {'join  [[^:allow-subquery {'select ['id 'name 'type]
-                                                       'from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
+        base-query (cond-> {:join  [[^:allow-subquery {:select ['id 'name 'type]
+                                                       :from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
                                                                  'scope]]}
                                      'card]
                                     ['and
                                      ['= 'card.id 'metabot_prompt.card_id]]]
-                            'where ['and
+                            :where ['and
                                     ['= 'metabot_prompt.metabot_id id]]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))
@@ -119,13 +119,13 @@
                    [[:card.name :asc]
                     [:id :asc]])
         prompts (t2/select [:model/MetabotPrompt
-                            'id
-                            'prompt
-                            'model
+                            :id
+                            :prompt
+                            :model
                             [:card_id :model_id]
                             [:card.name :model_name]
-                            'created_at
-                            'updated_at]
+                            :created_at
+                            :updated_at]
                            (cond-> base-query
                              true             (assoc :order-by order-by)
                              (request/limit)  (assoc :limit    (request/limit))
@@ -156,7 +156,7 @@
                               [:id pos-int?]
                               [:prompt-id pos-int?]]]
   (api/check-superuser)
-  (t2/delete! :model/MetabotPrompt {'where ['and
+  (t2/delete! :model/MetabotPrompt {:where ['and
                                             ['= 'id prompt-id]
                                             ['= 'metabot_id id]]})
   api/generic-204-no-content)

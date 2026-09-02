@@ -75,14 +75,14 @@
 (mu/defn- table->fields :- [:maybe [:sequential i/FieldInstance]]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-  (t2/select [:model/Field 'name 'database_type 'base_type 'effective_type 'coercion_strategy 'semantic_type
-              'parent_id 'id 'description 'database_position 'nfc_path
-              'database_is_auto_increment 'database_required
-              'database_default 'database_is_generated 'database_is_nullable 'database_is_pk
-              'database_partitioned 'json_unfolding 'position 'preview_display]
+  (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+              :parent_id :id :description :database_position :nfc_path
+              :database_is_auto_increment :database_required
+              :database_default :database_is_generated :database_is_nullable :database_is_pk
+              :database_partitioned :json_unfolding :position :preview_display]
              'table_id  (u/the-id table)
              'active    true
-             {'order-by table/field-order-rule}))
+             {:order-by table/field-order-rule}))
 
 (mu/defn our-metadata :- [:set common/TableMetadataFieldWithID]
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

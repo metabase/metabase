@@ -114,7 +114,7 @@
 
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
-  (and (t2/exists? :model/Database 'id db-or-id 'router_database_id ['not= nil])
+  (and (t2/exists? :model/Database 'id db-or-id 'router_database_id [:not= nil])
        (not= *database-routing-on* :on)))
 
 (defn assert-not-direct-destination-access!

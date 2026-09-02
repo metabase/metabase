@@ -374,7 +374,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection 'id ['in collection-ids]))
+                                      (t2/select :model/Collection 'id [:in collection-ids]))
                                 {})
         ;; Associate collection info with each table so table-editable? doesn't need to query
         tables-with-collection (for [table tables]
@@ -396,8 +396,8 @@
     tables
     (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User 'id 'email 'first_name 'last_name]
-                                        'id ['in owner-user-ids]))]
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        'id [:in owner-user-ids]))]
       (for [table tables]
         (assoc table :owner
                (cond
@@ -434,11 +434,11 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (t2/update! :model/Field (u/the-id field) {'position new-position}))
+                  (t2/update! :model/Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [:model/Field 'id]
+                (t2/select [:model/Field :id]
                            'table_id  (u/the-id table)
-                           {'order-by (case (:field_order table)
+                           {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
                                         :smart        [[[:case
                                                          (app-db/isa :semantic_type :type/PK)       0
@@ -463,11 +463,11 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    (t2/update! :model/Table (u/the-id table) {'field_order :custom})
+    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]
-                    (t2/update! :model/Field field-id {'position        position
-                                                       'custom_position position}))
+                    (t2/update! :model/Field field-id {:position        position
+                                                       :custom_position position}))
                   field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -477,9 +477,9 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(-> (group-by :table_id (t2/select [:model/FieldValues 'field_id 'values 'field.table_id]
-                                       {'join  [['metabase_field 'field] ['= 'metabase_fieldvalues.field_id 'field.id]]
-                                        'where ['and
+   #(-> (group-by :table_id (t2/select [:model/FieldValues :field_id :values :field.table_id]
+                                       {:join  [['metabase_field 'field] ['= 'metabase_fieldvalues.field_id 'field.id]]
+                                        :where ['and
                                                 ['in 'field.table_id [(map :id tables)]]
                                                 ['= 'field.visibility_type  "normal"]
                                                 ['= 'metabase_fieldvalues.type "full"]]}))
@@ -494,7 +494,7 @@
    #(let [transform-ids (->> tables (keep :transform_id) distinct)
           id->transform (when (seq transform-ids)
                           (t2/select-fn->fn :id identity :model/Transform
-                                            'id ['in transform-ids]))]
+                                            'id [:in transform-ids]))]
       (into {}
             (keep (fn [{:keys [id transform_id]}]
                     (when transform_id
@@ -527,7 +527,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (t2/select :model/Segment 'table_id ['in table-ids], 'archived false, {'order-by [['name 'asc]]}))
+      (t2/select :model/Segment 'table_id [:in table-ids], 'archived false, {:order-by [['name 'asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -536,7 +536,7 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (t2/select :model/Measure 'table_id ['in table-ids], 'archived false, {'order-by [['name 'asc]]}))
+      (t2/select :model/Measure 'table_id [:in table-ids], 'archived false, {:order-by [['name 'asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -546,10 +546,10 @@
   (with-objects :metrics
     (fn [table-ids]
       (->> (t2/select :model/Card
-                      'table_id ['in table-ids],
+                      'table_id [:in table-ids],
                       'archived false,
                       'type :metric,
-                      {'order-by [['name 'asc]]})
+                      {:order-by [['name 'asc]]})
            (filter mi/can-read?)))
     tables))
 
@@ -560,9 +560,9 @@
     (fn [table-ids]
       (t2/select :model/Field
                  'active          true
-                 'table_id        ['in table-ids]
-                 'visibility_type ['not= "retired"]
-                 {'order-by       field-order-rule}))
+                 'table_id        [:in table-ids]
+                 'visibility_type [:not= "retired"]
+                 {:order-by       field-order-rule}))
     tables))
 
 (mi/define-batched-hydration-method fields
@@ -590,18 +590,18 @@
         ;; Otherwise emit all Field ids for a full serdes backup/restore.
         fields   (if user-edits-only
                    (into {} (for [fus-field-id (t2/select-fn-set :field_id :model/FieldUserSettings
-                                                                 {'join  [['metabase_field 'f] ['= 'f.id 'field_id]]
-                                                                  'where ['= 'f.table_id id]})]
+                                                                 {:join  [['metabase_field 'f] ['= 'f.id 'field_id]]
+                                                                  :where ['= 'f.table_id id]})]
                               [["FieldUserSettings" fus-field-id] {"Table" id}]))
-                   (into {} (for [field-id (t2/select-pks-set :model/Field {'where ['= 'table_id id]})]
+                   (into {} (for [field-id (t2/select-pks-set :model/Field {:where ['= 'table_id id]})]
                               [["Field" field-id] {"Table" id}])))
         segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
-                                                              {'where ['and
+                                                              {:where ['and
                                                                        ['= 'table_id id]
                                                                        (when skip-archived [:not :archived])]})]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
-                                                              {'where ['and
+                                                              {:where ['and
                                                                        ['= 'table_id id]
                                                                        (when skip-archived [:not :archived])]})]
                             [["Measure" measure-id] {"Table" id}]))]

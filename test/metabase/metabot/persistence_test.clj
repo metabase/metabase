@@ -386,7 +386,7 @@
               [user-msg
                asst-msg]   (t2/select :model/MetabotMessage
                                       'conversation_id conversation-id
-                                      {'order-by [['created_at 'asc] ['id 'asc]]})]
+                                      {:order-by [['created_at 'asc] ['id 'asc]]})]
           (is (= user-id (:user_id conversation)))
           (is (= team-id (:slack_team_id conversation)))
           (is (= channel-id (:slack_channel_id conversation)))
@@ -435,7 +435,7 @@
                 (metabot-persistence/start-turn!
                  conversation-id "internal" {:role "user" :content "hi"})
                 rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
-                                {'order-by [['created_at 'asc] ['id 'asc]]})]
+                                {:order-by [['created_at 'asc] ['id 'asc]]})]
             (is (pos-int? assistant-msg-id))
             (is (string? assistant-external-id))
             (is (= 2 (count rows)))
@@ -524,7 +524,7 @@
                b-pk
                [{:type :text :text "reply-B"}])
               (let [rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
-                                    {'order-by [['created_at 'asc] ['id 'asc]]})]
+                                    {:order-by [['created_at 'asc] ['id 'asc]]})]
                 (is (= [:user :assistant :user :assistant] (mapv :role rows)))
                 (is (= ["A" "partial-A" "B" "reply-B"]
                        (mapv #(-> % :data first :text) rows)))))))))))
@@ -539,7 +539,7 @@
            conversation-id "internal" {:role "user" :content "hi"}))
         (let [[u a] (t2/select :model/MetabotMessage
                                'conversation_id conversation-id
-                               {'order-by [['id 'asc]]})]
+                               {:order-by [['id 'asc]]})]
           (is (= :user      (:role u)))
           (is (= :assistant (:role a)))
           (is (< (:id u) (:id a)) "user row is inserted first; smaller :id")
@@ -613,7 +613,7 @@
                                         :created_at      created-at
                                         :finished        true}
                                  deleted-at (assoc :deleted_at deleted-at))))]
-        (t2/insert! :model/MetabotConversation {'id conversation-id 'user_id user-id})
+        (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
         (insert! {:text "second" :created-at (.plusSeconds now 2)})
         (insert! {:text "first"  :created-at (.plusSeconds now 1)})
         (insert! {:text "deleted-third"
@@ -691,7 +691,7 @@
                b-pk [{:type :text :text "reply-B"}])
               ;; soft-delete only turn B's assistant reply — its user row stays undeleted
               ;; and is now the most-recent non-deleted row overall.
-              (t2/update! :model/MetabotMessage b-pk {'deleted_at (java.time.OffsetDateTime/now)})
+              (t2/update! :model/MetabotMessage b-pk {:deleted_at (java.time.OffsetDateTime/now)})
               (is (= a-ext (metabot-persistence/leaf-external-id conversation-id))
                   "must not fall through to turn B's undeleted user row"))))))))
 
@@ -812,15 +812,15 @@
                           a-pk [{:type :text :text "reply"}])
                 extra-pk (t2/insert-returning-pk!
                           :model/MetabotMessage
-                          {'conversation_id conversation-id
-                           'role            "assistant"
-                           'profile_id      "internal"
-                           'external_id     (str (random-uuid))
-                           'total_tokens    0
-                           'data            [{:type "text" :text "extra"}]
-                           'data_version    2
-                           'finished        true
-                           'created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
+                          {:conversation_id conversation-id
+                           :role            "assistant"
+                           :profile_id      "internal"
+                           :external_id     (str (random-uuid))
+                           :total_tokens    0
+                           :data            [{:type "text" :text "extra"}]
+                           :data_version    2
+                           :finished        true
+                           :created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
                 user-ext (t2/select-one-fn :external_id :model/MetabotMessage
                                            'conversation_id conversation-id 'role "user")]
             (metabot-persistence/retry-turn! conversation-id "internal" user-ext
@@ -845,7 +845,7 @@
              conversation-id "internal" {:role "user" :content "replacement"}
              :delete-message-ids [u-pk a-pk])
             (let [rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
-                                  {'order-by [['created_at 'asc] ['id 'asc]]})
+                                  {:order-by [['created_at 'asc] ['id 'asc]]})
                   live (remove :deleted_at rows)]
               (is (= [:user :assistant] (mapv :role live)))
               (is (= "replacement" (-> live first :data first :text)))
@@ -1406,15 +1406,15 @@
       (let [conversation-id (str (random-uuid))]
         (seed-turn! conversation-id "hi" [{:type :text :text "first reply"}])
         (t2/insert! :model/MetabotMessage
-                    {'conversation_id conversation-id
-                     'role            "assistant"
-                     'profile_id      "internal"
-                     'external_id     (str (random-uuid))
-                     'total_tokens    0
-                     'data            [{:type "text" :text "second reply"}]
-                     'data_version    2
-                     'finished        true
-                     'created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
+                    {:conversation_id conversation-id
+                     :role            "assistant"
+                     :profile_id      "internal"
+                     :external_id     (str (random-uuid))
+                     :total_tokens    0
+                     :data            [{:type "text" :text "second reply"}]
+                     :data_version    2
+                     :finished        true
+                     :created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
         (is (= [{:role :user :content "hi"}
                 {:role :assistant :content "second reply"}]
                (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))
@@ -1483,7 +1483,7 @@
           (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
                                            'conversation_id conversation-id
                                            'role "user"
-                                           {'order-by [['created_at 'desc] ['id 'desc]]})]
+                                           {:order-by [['created_at 'desc] ['id 'desc]]})]
             (metabot-persistence/retry-turn! conversation-id "internal" user-ext
                                              :delete-message-ids [two-pk])
             (is (= {:todos [{:id "a"}]} (cstate))

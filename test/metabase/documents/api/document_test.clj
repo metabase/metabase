@@ -193,7 +193,7 @@
                                                          :archived true}]
         ;; Ensure the source document embeds the cards we expect to be copied (and one archived card that should not).
         (t2/update! :model/Document doc-id
-                    {'document {:type "doc"
+                    {:document {:type "doc"
                                 :content [{:type "cardEmbed" :attrs {:id card-1-id :name nil}}
                                           {:type "paragraph"}
                                           {:type "cardEmbed" :attrs {:id card-2-id :name nil}}
@@ -2176,7 +2176,7 @@
             (is (= 200
                    (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
-            (t2/update! :model/Document (:id document) {'archived true})
+            (t2/update! :model/Document (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
@@ -2208,7 +2208,7 @@
                                                    :document {:type "doc"
                                                               :content [{:type "cardEmbed"
                                                                          :attrs {:id card-id}}]}}]
-        (t2/update! :model/Card card-id {'document_id doc-id})
+        (t2/update! :model/Card card-id {:document_id doc-id})
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
           (testing "Read-only users can download"
             (perms/grant-collection-read-permissions! group coll-id)
@@ -2241,7 +2241,7 @@
                                      :format_rows false
                                      :pivot_results false})))
           (testing "Archived document returns 404"
-            (t2/update! :model/Document doc-id {'archived true})
+            (t2/update! :model/Document doc-id {:archived true})
             (mt/user-http-request :rasta
                                   :post 404
                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2264,7 +2264,7 @@
                                                       :document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id card-id}}]}}]
-           (t2/update! :model/Card card-id {'document_id doc-id})
+           (t2/update! :model/Card card-id {:document_id doc-id})
            (let [all-users-group (perms/all-users-group)]
              ;; Grant collection read permissions so user can access the document
              (perms/grant-collection-read-permissions! all-users-group coll-id)
@@ -2675,7 +2675,7 @@
                                                          :dataset_query (mt/native-query
                                                                          {:query "SELECT COUNT(*) FROM VENUES"})
                                                          :display       :scalar}]
-          (t2/update! :model/Document doc-id {'document (card-embed-ast native-card-id)})
+          (t2/update! :model/Document doc-id {:document (card-embed-ast native-card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)

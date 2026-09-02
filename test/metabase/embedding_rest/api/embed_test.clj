@@ -1217,12 +1217,12 @@
         (with-new-secret-key!
           (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
             (t2/update! :model/Card (:id field-filter-card)
-                        {'enable_embedding true
-                         'embedding_params (zipmap (map :slug (:parameters field-filter-card))
+                        {:enable_embedding true
+                         :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                    (repeat "enabled"))})
             (t2/update! :model/Card (:id card)
-                        {'enable_embedding true
-                         'embedding_params (zipmap (map :slug (:parameters card))
+                        {:enable_embedding true
+                         :embedding_params (zipmap (map :slug (:parameters card))
                                                    (repeat "enabled"))})
             (testing "field filter based param"
               (let [response (dropdown field-filter-card (:field-values param-keys))]
@@ -1399,7 +1399,7 @@
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions :impersonation}
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {'enable_embedding true})
+        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding true})
         (letfn [(token [params]
                   (dash-token dashboard (when params {:params params})))
                 (values-url [& [params param-key]]
@@ -1419,7 +1419,7 @@
 (deftest chain-filter-embedding-disabled-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
-      (t2/update! :model/Dashboard (u/the-id dashboard) {'enable_embedding false})
+      (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (values-url)))))
@@ -1441,7 +1441,7 @@
   (testing "embedding with parameter that has source is a static list"
     (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
       (t2/update! :model/Dashboard (:id dashboard)
-                  {'embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
+                  {:embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
       (testing "Should work if the param we're fetching values for is enabled"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
           (is (= {:values          [["African"] ["American"] ["Asian"]]
@@ -1456,15 +1456,15 @@
   (testing "GET /api/embed/dashboard/:token/params/:key/values works for a card-source parameter"
     (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
       (t2/update! :model/Dashboard (u/the-id dashboard)
-                  {'parameters       (mapv (fn [p] (cond-> p (= (:id p) "_CARD_") (assoc :slug "card")))
+                  {:parameters       (mapv (fn [p] (cond-> p (= (:id p) "_CARD_") (assoc :slug "card")))
                                            (:parameters dashboard))
-                   'embedding_params {"card" "enabled"}})
+                   :embedding_params {"card" "enabled"}})
       (is (seq (:values (client/client :get 200 (values-url {} "_CARD_"))))))))
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (t2/update! :model/Dashboard (:id dashboard)
-                {'embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
+                {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
@@ -1505,7 +1505,7 @@
       (mt/with-no-data-perms-for-all-users!
         (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
           (t2/update! :model/Dashboard (:id dashboard)
-                      {'embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
+                      {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
           (testing "Should work if the param we're fetching values for is enabled"
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
@@ -1520,14 +1520,14 @@
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (t2/update! :model/Dashboard (:id dashboard)
-                  {'embedding_params {"category_id" "locked", "category_name" "locked"}})
+                  {:embedding_params {"category_id" "locked", "category_name" "locked"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
                    (client/client :get 400 url))))))
     (testing "Search param enabled\n"
       (t2/update! :model/Dashboard (:id dashboard)
-                  {'embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
+                  {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
           (testing (str "\n" url)
@@ -1553,14 +1553,14 @@
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
       (t2/update! :model/Dashboard (:id dashboard)
-                  {'embedding_params {"category_id" "disabled", "category_name" "disabled"}})
+                  {:embedding_params {"category_id" "disabled", "category_name" "disabled"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter\."
                    (client/client :get 400 url))))))
     (testing "Search param enabled\n"
       (t2/update! :model/Dashboard (:id dashboard)
-                  {'embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"}})
+                  {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"}})
       (testing "Requests should fail if the token has a disabled parameter"
         (doseq [url-fn [values-url search-url]
                 :let   [url (url-fn {"price" 4})]]
@@ -2244,8 +2244,8 @@
                                                             :target [:dimension (mt/$ids venues $name)]}]}]
       (with-embedding-enabled-and-new-secret-key!
         (t2/update! :model/Dashboard (:id dashboard)
-                    {'enable_embedding true
-                     'embedding_params {"name_contains" "enabled"}})
+                    {:enable_embedding true
+                     :embedding_params {"name_contains" "enabled"}})
         (letfn [(dashcard-query-url [params]
                   (format "embed/dashboard/%s/dashcard/%s/card/%s"
                           (dash-token dashboard (when params {:params params}))

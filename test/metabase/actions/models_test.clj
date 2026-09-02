@@ -228,20 +228,20 @@
         (doseq [type [:http :query]]
           (mt/with-actions [{:keys [action-id model-id]} {:type type}]
             (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-            (t2/update! :model/Card model-id {'type :question})
+            (t2/update! :model/Card model-id {:type :question})
             (is (true? (t2/select-one-fn :archived :model/Action action-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-          (t2/update! :model/Card model-id {'type :question})
+          (t2/update! :model/Card model-id {:type :question})
           (is (false? (t2/exists? :model/Action action-id)))))
       (testing "Actions can't be unarchived if their model is a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {}]
-          (t2/update! :model/Card model-id {'type :question})
+          (t2/update! :model/Card model-id {:type :question})
           (is (thrown-with-msg?
                Exception
                #"Actions must be made with models, not cards"
-               (t2/update! :model/Action action-id {'archived false}))))))))
+               (t2/update! :model/Action action-id {:archived false}))))))))
 
 (deftest model-to-saved-question-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -252,7 +252,7 @@
       (testing "Don't archive actions if updates a model dataset_query"
         (mt/with-actions [{:keys [action-id model-id]} {}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-          (t2/update! :model/Card model-id {'dataset_query (mt/mbql-query users {:limit 1})})
+          (t2/update! :model/Card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (false? (t2/select-one-fn :archived :model/Action action-id))))))))
 
 (deftest exclude-auto-increment-fields-for-create-implicit-actions-test
@@ -289,14 +289,14 @@
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select [:model/Field 'name 'database_type 'database_required 'database_is_auto_increment 'semantic_type]
+             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         'table_id (mt/id :default_uuid))))
       (is (= [{:database_is_auto_increment false
                :database_required          true
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select [:model/Field 'name 'database_type 'database_required 'database_is_auto_increment 'semantic_type]
+             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         'table_id (mt/id :required_uuid)))))
     (mt/with-actions-enabled
       (testing "PK with a default should be excluded from implicit create action parameters"

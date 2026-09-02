@@ -56,9 +56,9 @@
             (testing "with a cron failure from yesterday, admins get the digest"
               ;; the digest covers the previous calendar day; subtracting one day keeps the same
               ;; wall-clock time, so it always lands within yesterday's window
-              (t2/insert! :model/TransformJobRun {'job_id (:id job) 'run_method :cron 'status :failed
-                                                  'message "boom" 'is_active nil
-                                                  'start_time (t/minus (t/offset-date-time) (t/days 1))})
+              (t2/insert! :model/TransformJobRun {:job_id (:id job) :run_method :cron :status :failed
+                                                  :message "boom" :is_active nil
+                                                  :start_time (t/minus (t/offset-date-time) (t/days 1))})
               (transforms.notification/send-failure-digest!)
               ;; crowberto is a superuser and receives the admin digest
               (is (mt/received-email-subject? :crowberto #"Transform jobs that failed"))

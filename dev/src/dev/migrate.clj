@@ -30,10 +30,10 @@
 (defn- latest-migration
   []
   ((juxt :id :comments)
-   (t2/query-one {'select ['id 'comments]
-                  'from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
-                  'order-by [['orderexecuted 'desc]]
-                  'limit 1})))
+   (t2/query-one {:select ['id 'comments]
+                  :from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
+                  :order-by [['orderexecuted 'desc]]
+                  :limit 1})))
 
 (defn migrate!
   "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
@@ -56,14 +56,14 @@
 
 (defn- migration-since
   [id]
-  (->> (t2/query-one {'select [['%count.* 'count]]
-                      'from   [databasechangelog-name]
-                      'where  ['> 'orderexecuted {'select   ['orderexecuted]
-                                                  'from     [databasechangelog-name]
-                                                  'where    ['like 'id (format "%s%%" id)]
-                                                  'order-by [['orderexecuted 'desc]]
-                                                  'limit    1}]
-                      'limit 1})
+  (->> (t2/query-one {:select [['%count.* 'count]]
+                      :from   [databasechangelog-name]
+                      :where  ['> 'orderexecuted {:select   ['orderexecuted]
+                                                  :from     [databasechangelog-name]
+                                                  :where    ['like 'id (format "%s%%" id)]
+                                                  :order-by [['orderexecuted 'desc]]
+                                                  :limit    1}]
+                      :limit 1})
        :count
        ;; includes the selected id
        inc))
@@ -78,23 +78,23 @@
   []
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :quoted false)]
-    (if (= 1 (:count (t2/query-one {'select [[['count ['distinct 'deployment_id]] 'count]]
-                                    'from   [databasechangelog-name]
-                                    'limit  1})))
+    (if (= 1 (:count (t2/query-one {:select [[['count ['distinct 'deployment_id]] 'count]]
+                                    :from   [databasechangelog-name]
+                                    :limit  1})))
       0 ;; don't rollback if there was just one deployment of everything
-      (:count (t2/query-one {'select [['%count.* 'count]]
-                             'from   [databasechangelog-name]
-                             'where  ['= 'deployment_id {'select   ['deployment_id]
-                                                         'from     [databasechangelog-name]
-                                                         'order-by [['orderexecuted 'desc]]
-                                                         'limit    1}]})))))
+      (:count (t2/query-one {:select [['%count.* 'count]]
+                             :from   [databasechangelog-name]
+                             :where  ['= 'deployment_id {:select   ['deployment_id]
+                                                         :from     [databasechangelog-name]
+                                                         :order-by [['orderexecuted 'desc]]
+                                                         :limit    1}]})))))
 
 (defn reset-checksums!
   []
   (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
     (let [changelog-table (keyword (liquibase/changelog-table-name (mdb/data-source)))]
-      (t2/query {'update changelog-table
-                 'set    {'md5sum nil}}))
+      (t2/query {:update changelog-table
+                 :set    {:md5sum nil}}))
     (.setAutoCommit conn false)
     (liquibase/with-liquibase [liquibase conn]
       (liquibase/with-scope-locked liquibase
@@ -238,10 +238,10 @@
 
   They either have different id or are not present at all."
   []
-  (let [applied      (->> (t2/query {'from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
-                                     'select ['id 'comments 'author]
+  (let [applied      (->> (t2/query {:from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
+                                     :select ['id 'comments 'author]
                                      ;; ignore ancient history
-                                     'where  ['< ['age 'dateexecuted] ['raw "INTERVAL '2 year'"]]})
+                                     :where  ['< ['age 'dateexecuted] [:raw "INTERVAL '2 year'"]]})
                           (map t2/current))
         known        (mapv #(select-keys % [:id :comments :author]) (known-changesets))
         by-id        (group-by :id known)

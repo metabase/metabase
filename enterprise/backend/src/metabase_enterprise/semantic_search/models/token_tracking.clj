@@ -14,6 +14,6 @@
 (defn record-tokens
   "Record semantic search token usage."
   [model request-type total-tokens]
-  (t2/insert! :model/SemanticSearchTokenTracking {'model_name model
-                                                  'request_type request-type
-                                                  'total_tokens total-tokens}))
+  (t2/insert! :model/SemanticSearchTokenTracking {:model_name model
+                                                  :request_type request-type
+                                                  :total_tokens total-tokens}))

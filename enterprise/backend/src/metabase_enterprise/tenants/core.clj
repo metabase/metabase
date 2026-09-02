@@ -27,8 +27,8 @@
           (comp
            (mapcat keys)
            (distinct))
-          (t2/select-fn-reducible :attributes [:model/Tenant 'attributes]
-                                  {'where ['and
+          (t2/select-fn-reducible :attributes [:model/Tenant :attributes]
+                                  {:where ['and
                                            ['not= 'attributes nil]
                                            ['not= 'attributes "{}"]]}))
     #{}))

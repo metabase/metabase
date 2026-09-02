@@ -176,17 +176,17 @@
                                                'perm_type :perms/view-data
                                                'perm_value :blocked
                                                'group_id all-users-group-id
-                                               'db_id ['in db-ids]
-                                               {'select-distinct ['db_id]})
+                                               'db_id [:in db-ids]
+                                               {:select-distinct ['db_id]})
           impersonation-db-ids (t2/select-fn-set :db_id :model/ConnectionImpersonation
                                                  'group_id all-users-group-id
-                                                 'db_id ['in db-ids])
+                                                 'db_id [:in db-ids])
           sandbox-db-ids     (into #{}
                                    (map :db_id)
-                                   (t2/query {'select [['t.db_id 'db_id]]
-                                              'from   [[(t2/table-name :model/Sandbox) 's]]
-                                              'join   [[(t2/table-name :model/Table) 't] ['= 's.table_id 't.id]]
-                                              'where  ['and
+                                   (t2/query {:select [['t.db_id 'db_id]]
+                                              :from   [[(t2/table-name :model/Sandbox) 's]]
+                                              :join   [[(t2/table-name :model/Table) 't] ['= 's.table_id 't.id]]
+                                              :where  ['and
                                                        ['= 's.group_id all-users-group-id]
                                                        ['in 't.db_id db-ids]]}))
           blocked-dbs        (into (or blocked-db-ids #{})
@@ -202,12 +202,12 @@
     (let [blocked-group-ids   (t2/select-fn-set :group_id :model/DataPermissions
                                                 'perm_type :perms/view-data
                                                 'perm_value :blocked
-                                                'group_id ['in group-ids]
-                                                {'select-distinct ['group_id]})
+                                                'group_id [:in group-ids]
+                                                {:select-distinct ['group_id]})
           impersonation-group-ids (t2/select-fn-set :group_id :model/ConnectionImpersonation
-                                                    'group_id ['in group-ids])
+                                                    'group_id [:in group-ids])
           sandbox-group-ids   (t2/select-fn-set :group_id :model/Sandbox
-                                                'group_id ['in group-ids])
+                                                'group_id [:in group-ids])
           blocked-groups      (into (or blocked-group-ids #{})
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
@@ -224,14 +224,14 @@
                                               'db_id db-id
                                               'perm_type :perms/view-data
                                               'perm_value :blocked
-                                              'group_id ['in group-ids]
-                                              {'select-distinct ['group_id]})
+                                              'group_id [:in group-ids]
+                                              {:select-distinct ['group_id]})
           sandbox-group-ids (into #{}
                                   (map :group_id)
-                                  (t2/query {'select [['s.group_id 'group_id]]
-                                             'from   [[(t2/table-name :model/Sandbox) 's]]
-                                             'join   [[(t2/table-name :model/Table) 't] ['= 't.id 's.table_id]]
-                                             'where  ['and
+                                  (t2/query {:select [['s.group_id 'group_id]]
+                                             :from   [[(t2/table-name :model/Sandbox) 's]]
+                                             :join   [[(t2/table-name :model/Table) 't] ['= 't.id 's.table_id]]
+                                             :where  ['and
                                                       ['in 's.group_id group-ids]
                                                       ['= 't.db_id db-id]]}))
           blocked-groups    (into (or blocked-group-ids #{})

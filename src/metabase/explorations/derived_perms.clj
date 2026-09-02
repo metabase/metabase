@@ -91,10 +91,10 @@
   so a row that has one but no token is a write-path bug — adjudicated and denied, not skipped."
   [thread-ids]
   (t2/select [:model/ExplorationQuery
-              'id 'exploration_thread_id 'database_id 'dataset_query 'data_access_token]
-             'exploration_thread_id ['in thread-ids]
-             'dataset_query ['not= nil]
-             {'order-by [['id 'asc]]}))
+              :id :exploration_thread_id :database_id :dataset_query :data_access_token]
+             'exploration_thread_id [:in thread-ids]
+             'dataset_query [:not= nil]
+             {:order-by [['id 'asc]]}))
 
 (defn- lens-stamped-threads
   "The `exploration_thread` rows for `thread-ids` carrying a tracked lens, in the shape the gate takes.
@@ -107,12 +107,12 @@
   stamped, and, unlike the thread's queries, not deleted by a restart. A thread whose Card cannot be
   resolved is still returned, marked [[::indeterminate]] so it denies."
   [thread-ids]
-  (when-let [threads (seq (t2/select [:model/ExplorationThread 'id 'data_access_token]
-                                     'id ['in thread-ids]
-                                     'data_access_token ['not= nil]))]
-    (let [blocks    (t2/select [:model/ExplorationBlock 'exploration_thread_id 'metrics]
-                               'exploration_thread_id ['in (map :id threads)]
-                               {'order-by [['position 'desc] ['id 'desc]]})
+  (when-let [threads (seq (t2/select [:model/ExplorationThread :id :data_access_token]
+                                     'id [:in thread-ids]
+                                     'data_access_token [:not= nil]))]
+    (let [blocks    (t2/select [:model/ExplorationBlock :exploration_thread_id :metrics]
+                               'exploration_thread_id [:in (map :id threads)]
+                               {:order-by [['position 'desc] ['id 'desc]]})
           ;; descending order + `into {}` (later pairs win) leaves the thread's *first* block
           ;; standing, whose metric is the one the token was computed over.
           card-id   (into {} (keep (fn [b]
@@ -121,8 +121,8 @@
                           blocks)
           cards     (when (seq card-id)
                       ;; `:card_schema` is mandatory in any explicit Card column list
-                      (u/index-by :id (t2/select [:model/Card 'id 'card_schema 'database_id 'dataset_query]
-                                                 'id ['in (distinct (vals card-id))])))]
+                      (u/index-by :id (t2/select [:model/Card :id :card_schema :database_id :dataset_query]
+                                                 'id [:in (distinct (vals card-id))])))]
       (map (fn [{thread-id :id :as thread}]
              (let [card (get cards (get card-id thread-id))]
                (cond-> {:id                    thread-id
@@ -230,11 +230,11 @@
           comments
           (let [page->thread (into {}
                                    (map (juxt :id :thread_id))
-                                   (t2/query {'select [['p.id 'id] ['b.exploration_thread_id 'thread_id]]
-                                              'from   [['exploration_page 'p]]
-                                              'join   [['exploration_block 'b]
+                                   (t2/query {:select [['p.id 'id] ['b.exploration_thread_id 'thread_id]]
+                                              :from   [['exploration_page 'p]]
+                                              :join   [['exploration_block 'b]
                                                        ['= 'b.id 'p.exploration_block_id]]
-                                              'where  ['in 'b.exploration_thread_id (vec thread-ids)]}))]
+                                              :where  ['in 'b.exploration_thread_id (vec thread-ids)]}))]
             (mapv (fn [comment]
                     ;; A non-numeric `child_target_id` is a Summary block uuid, and a nil one is
                     ;; unanchored; both parse to nil and so fall through to the deny branch.

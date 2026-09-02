@@ -34,9 +34,9 @@
   `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
   [model active heartbeat-column ids]
   (when (seq ids)
-    (t2/query {'update (t2/table-name model)
-               'set    {heartbeat-column '%now}
-               'where  ['and active ['in 'id ids]]})))
+    (t2/query {:update (t2/table-name model)
+               :set    {heartbeat-column '%now}
+               :where  ['and active ['in 'id ids]]})))
 
 (defn heartbeat-and-reconcile!
   "Per-node tick for the runs this process owns: call `(heartbeat! ids)`, then `(on-gone id)` for
@@ -47,7 +47,7 @@
   [{:keys [model active ids heartbeat! on-gone]}]
   (when-let [ids (seq ids)]
     (heartbeat! ids)
-    (let [active-ids (t2/select-fn-set :id model {'where ['and ['in 'id ids] active]})]
+    (let [active-ids (t2/select-fn-set :id model {:where ['and ['in 'id ids] active]})]
       (doseq [id ids
               :when (not (contains? active-ids id))]
         (on-gone id)))))
@@ -59,10 +59,10 @@
   `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
   [{:keys [model active stale terminal]}]
   (t2/with-transaction [_conn]
-    (when-let [rows (not-empty (t2/select model {'where ['and active stale] 'for 'update}))]
-      (t2/query {'update (t2/table-name model)
-                 'set    terminal
-                 'where  ['and active ['in 'id (mapv :id rows)]]})
+    (when-let [rows (not-empty (t2/select model {:where ['and active stale] :for 'update}))]
+      (t2/query {:update (t2/table-name model)
+                 :set    terminal
+                 :where  ['and active ['in 'id (mapv :id rows)]]})
       rows)))
 
 (defn reap-orphaned!

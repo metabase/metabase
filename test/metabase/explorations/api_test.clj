@@ -81,14 +81,14 @@
                                             'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {'update 'report_card
-                   'set    {'archived true}
-                   'where  ['in 'id metric-ids]})
+        (t2/query {:update 'report_card
+                   :set    {:archived true}
+                   :where  ['in 'id metric-ids]})
         (thunk)
         (finally
-          (t2/query {'update 'report_card
-                     'set    {'archived false}
-                     'where  ['in 'id metric-ids]})))
+          (t2/query {:update 'report_card
+                     :set    {:archived false}
+                     :where  ['in 'id metric-ids]})))
       (thunk))))
 
 (defmacro with-sample-metrics-archived
@@ -107,8 +107,8 @@
     (when-let [ctx (qp.context/build-row-context q)]
       (when-let [dq (qp.variants/dataset-query (:query_type q) ctx)]
         (t2/update! :model/ExplorationQuery (:id q)
-                    {'dataset_query     dq
-                     'data_access_token (perms/data-access-token
+                    {:dataset_query     dq
+                     :data_access_token (perms/data-access-token
                                          {:database-id (:database_id q)
                                           :table-ids   (query-perms/query->resolved-source-table-ids dq)})})))))
 
@@ -169,7 +169,7 @@
                                      :explore_filters explore-filters})
         new-thread-id (->> (t2/select :model/ExplorationThread
                                       'exploration_id expl-id
-                                      {'order-by [['position 'desc] ['id 'desc]]})
+                                      {:order-by [['position 'desc] ['id 'desc]]})
                            first :id)]
     (query-plan/generate-query-plan! new-thread-id)
     (let [hydrated (mt/user-http-request user :get 200 (format "exploration/%d" expl-id))]
@@ -284,11 +284,11 @@
                             :table-id     (mt/id :venues)}]
           ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
           (t2/update! :model/Card (:id metric)
-                      {'dimensions         [{:id good-id :name "NAME" :display-name "Good"
+                      {:dimensions         [{:id good-id :name "NAME" :display-name "Good"
                                              :effective-type :type/Text}
                                             {:id bad-id  :name "ZZZ"  :display-name "Unresolvable"
                                              :effective-type :type/Text}]
-                       'dimension_mappings [good-mapping bad-mapping]})
+                       :dimension_mappings [good-mapping bad-mapping]})
           (let [response   (mt/user-http-request :rasta :get 200 "exploration/dimensions")
                 the-metric (first (filter #(= (:id metric) (:id %)) (:metrics response)))]
             (is (some? the-metric) "metric should be present in response")
@@ -425,7 +425,7 @@
             resp   (mt/user-http-request u :post 200 "exploration" body)
             tid    (-> resp :threads first :id)
             blocks (t2/select :model/ExplorationBlock
-                              'exploration_thread_id tid {'order-by [['position 'asc]]})]
+                              'exploration_thread_id tid {:order-by [['position 'asc]]})]
         (is (= "Blocked create" (:name resp)))
         (is (= 2 (count blocks)) "one row per block, no dedup")
         (is (= [0 1] (map :position blocks)))
@@ -870,9 +870,9 @@
         (is (pos? (count (:queries thread))) "the first run materialized queries")
         ;; Simulate a finished run so we can prove restart clears the terminal-state gates.
         (t2/update! :model/ExplorationThread orig-tid
-                    {'query_plan_started_at (t/offset-date-time)
-                     'analysis_started_at   (t/offset-date-time)
-                     'completed_at          (t/offset-date-time)})
+                    {:query_plan_started_at (t/offset-date-time)
+                     :analysis_started_at   (t/offset-date-time)
+                     :completed_at          (t/offset-date-time)})
         (let [resp     (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" orig-tid))
               threads  (:threads resp)
               rerun    (first threads)]
@@ -910,7 +910,7 @@
             tid     (-> created :threads first :id)]
         ;; Perms ride the thread's parent exploration, resolved by `write-check-thread`.
         ;; Mark the thread terminal — restart refuses in-flight threads with a 409.
-        (t2/update! :model/ExplorationThread tid {'completed_at (t/offset-date-time)})
+        (t2/update! :model/ExplorationThread tid {:completed_at (t/offset-date-time)})
         (mt/user-http-request other :post 403 (format "exploration/thread/%d/restart" tid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/thread/%d/restart" tid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -926,9 +926,9 @@
               ;; old "latest thread" rule would have picked.
               drill    (first (t2/insert-returning-instances!
                                :model/ExplorationThread
-                               {'exploration_id expl-id 'name "drill" 'position 1
-                                'completed_at   (t/offset-date-time)}))]
-          (t2/update! :model/ExplorationThread root-tid {'completed_at (t/offset-date-time)})
+                               {:exploration_id expl-id :name "drill" :position 1
+                                :completed_at   (t/offset-date-time)}))]
+          (t2/update! :model/ExplorationThread root-tid {:completed_at (t/offset-date-time)})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid))
           (is (nil? (t2/select-one-fn :completed_at :model/ExplorationThread 'id root-tid))
               "the named (root) thread was reset")
@@ -1114,17 +1114,17 @@
                                                        ;; Production-shaped: real query + unrestricted
                                                        ;; token, so the derived-data gate admits the
                                                        ;; creator on their current perms.
-                                                       {'result_data       (byte-array [0])
-                                                        'row_count         37
-                                                        'creator_id        (:id u)
-                                                        'database_id       (mt/id)
-                                                        'dataset_query     (:dataset_query metric)
-                                                        'data_access_token {}}))]
+                                                       {:result_data       (byte-array [0])
+                                                        :row_count         37
+                                                        :creator_id        (:id u)
+                                                        :database_id       (mt/id)
+                                                        :dataset_query     (:dataset_query metric)
+                                                        :data_access_token {}}))]
             (t2/insert! :model/ExplorationQueryResult
-                        {'exploration_query_id             qid
-                         'stored_result_id                 sr-id
-                         'interestingness_score            0.42
-                         'contextual_interestingness_score 0.83}))
+                        {:exploration_query_id             qid
+                         :stored_result_id                 sr-id
+                         :interestingness_score            0.42
+                         :contextual_interestingness_score 0.83}))
           (let [q (fetch-query)]
             (is (= 0.42 (:interestingness_score q)))
             (is (= 0.83 (:contextual_interestingness_score q)))
@@ -1148,24 +1148,24 @@
         ;; and the gate needs a query it can resolve source tables from to compare the lens.
         dataset-query (t2/select-one-fn :dataset_query :model/Card 'id card-id)
         creator-id    (t2/select-one-fn :creator_id :model/Exploration
-                                        {'select ['e.creator_id]
-                                         'from   [['exploration 'e]]
-                                         'join   [['exploration_thread 't] ['= 't.exploration_id 'e.id]
+                                        {:select ['e.creator_id]
+                                         :from   [['exploration 'e]]
+                                         :join   [['exploration_thread 't] ['= 't.exploration_id 'e.id]
                                                   ['exploration_query 'q]  ['= 'q.exploration_thread_id 't.id]]
-                                         'where  ['= 'q.id query-id]})
+                                         :where  ['= 'q.id query-id]})
         sr-id         (first (t2/insert-returning-pks!
                               :model/StoredResult
-                              {'result_data       bytes
-                               'creator_id        creator-id
-                               'database_id       (mt/id)
-                               'dataset_query     dataset-query
-                               'data_access_token {}}))]
+                              {:result_data       bytes
+                               :creator_id        creator-id
+                               :database_id       (mt/id)
+                               :dataset_query     dataset-query
+                               :data_access_token {}}))]
     (t2/insert! :model/ExplorationQueryResult
-                {'exploration_query_id query-id
-                 'stored_result_id     sr-id})))
+                {:exploration_query_id query-id
+                 :stored_result_id     sr-id})))
 
 (defn- mark-done! [query-id]
-  (t2/update! :model/ExplorationQuery query-id {'status "done"}))
+  (t2/update! :model/ExplorationQuery query-id {:status "done"}))
 
 (deftest exploration-query-result-streams-stored-result-test
   (testing "GET /query/:id streams the stored worker result as JSON"
@@ -1217,7 +1217,7 @@
             qid    (-> resp :threads first :queries first :id)
             ;; stands in for a driver error carrying SQL and row values the reader can't query
             secret "SECRET_VALUE_FROM_DRIVER_ERROR"]
-        (t2/update! :model/ExplorationQuery qid {'status "error" 'error_message secret})
+        (t2/update! :model/ExplorationQuery qid {:status "error" :error_message secret})
         (testing "GET /query/:id — the endpoint that already allowlists its 409 payload"
           (let [body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
             (is (not (str/includes? (pr-str body) secret)))
@@ -1447,8 +1447,8 @@
         (testing "but once the source thread's results carry a lens this caller has no part in,
                   the drill is refused rather than copying its values into a fresh thread"
           (t2/update! :model/ExplorationQuery
-                      {'exploration_thread_id (:id src)}
-                      {'data_access_token {:sandbox {1 "a-lens-this-caller-does-not-share"}}})
+                      {:exploration_thread_id (:id src)}
+                      {:data_access_token {:sandbox {1 "a-lens-this-caller-does-not-share"}}})
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request u :post 403
                                        (format "exploration/%d/explore-further" expl-id) drill))))))))
@@ -1481,7 +1481,7 @@
                                                     :display_value "2"}]}))
         (let [new-thread-id (->> (t2/select :model/ExplorationThread
                                             'exploration_id expl-id
-                                            {'order-by [['position 'desc] ['id 'desc]]})
+                                            {:order-by [['position 'desc] ['id 'desc]]})
                                  first :id)]
           (is (= [new-thread-id] @enqueued)
               "explore-further must enqueue planning for the new thread via start-thread!"))))))
@@ -1578,7 +1578,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {'dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
         (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                        'exploration_query_id qid)
               before (t2/select :model/StoredResultUse 'stored_result_id sr-id)
@@ -1636,7 +1636,7 @@
                           :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {'dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
         (let [doc   (mt/user-http-request u :post 200
                                           (format "exploration/%d/summary/append" expl-id)
                                           (assoc append-display+viz :exploration_query_ids [qid]))
@@ -1704,7 +1704,7 @@
         (store-fake-result! qid qp-out)
         (mark-done! qid)
         ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
-        (t2/update! :model/ExplorationQuery qid {'dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
         (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                           'exploration_query_id qid)
               doc       (t2/select-one :model/Document 'id doc-id)
@@ -1744,7 +1744,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {'dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
         (mt/user-http-request u :post 200
                               (format "exploration/%d/summary/append" eid)
                               (assoc append-display+viz :exploration_query_ids [qid]))
@@ -2236,37 +2236,37 @@
   need the full create flow; this skips planning and result writing entirely."
   [user-id n]
   (let [card        (first (t2/insert-returning-instances! :model/Card
-                                                           {'name          "cancel-fixture metric"
-                                                            'type          :metric
-                                                            'creator_id    user-id
-                                                            'database_id   (mt/id)
-                                                            'display       "table"
-                                                            'visualization_settings {}
-                                                            'dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}))
+                                                           {:name          "cancel-fixture metric"
+                                                            :type          :metric
+                                                            :creator_id    user-id
+                                                            :database_id   (mt/id)
+                                                            :display       "table"
+                                                            :visualization_settings {}
+                                                            :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}))
         exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                           {'name       "cancel-fixture"
-                                                            'creator_id user-id}))
+                                                           {:name       "cancel-fixture"
+                                                            :creator_id user-id}))
         thread      (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                           {'exploration_id (:id exploration)
-                                                            'position       0
-                                                            'started_at     (t/offset-date-time)}))
+                                                           {:exploration_id (:id exploration)
+                                                            :position       0
+                                                            :started_at     (t/offset-date-time)}))
         group-id    (t2/insert-returning-pk! :model/ExplorationBlock
-                                             {'exploration_thread_id (:id thread)})
+                                             {:exploration_thread_id (:id thread)})
         eq-ids      (vec (for [i (range n)]
                            (let [page-id (t2/insert-returning-pk! :model/ExplorationPage
-                                                                  {'exploration_block_id group-id
-                                                                   'card_id              (:id card)
-                                                                   'dimension_id         (str "d" i)
-                                                                   'query_type           "default"})]
+                                                                  {:exploration_block_id group-id
+                                                                   :card_id              (:id card)
+                                                                   :dimension_id         (str "d" i)
+                                                                   :query_type           "default"})]
                              (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
-                                                                         {'exploration_thread_id (:id thread)
-                                                                          'card_id               (:id card)
-                                                                          'database_id           (:database_id card)
-                                                                          'page_id               page-id
-                                                                          'dimension_id          (str "d" i)
-                                                                          'dataset_query         (:dataset_query card)
-                                                                          'status                "pending"
-                                                                          'position              i}))))))]
+                                                                         {:exploration_thread_id (:id thread)
+                                                                          :card_id               (:id card)
+                                                                          :database_id           (:database_id card)
+                                                                          :page_id               page-id
+                                                                          :dimension_id          (str "d" i)
+                                                                          :dataset_query         (:dataset_query card)
+                                                                          :status                "pending"
+                                                                          :position              i}))))))]
     {:thread-id (:id thread) :eq-ids eq-ids}))
 
 (deftest thread-cancel-sets-timestamps-and-flips-pending-test
@@ -2281,7 +2281,7 @@
           (is (some? (:canceled_at thread)))
           (is (some? (:completed_at thread))))
         (is (every? #(= "canceled" %)
-                    (map :status (t2/select :model/ExplorationQuery 'id ['in eq-ids])))
+                    (map :status (t2/select :model/ExplorationQuery 'id [:in eq-ids])))
             "all pending EQs are flipped to canceled")))))
 
 (deftest thread-cancel-idempotent-on-already-canceled-test
@@ -2299,7 +2299,7 @@
     (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
       (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
             _    (t2/update! :model/ExplorationThread thread-id
-                             {'completed_at (t/offset-date-time)})
+                             {:completed_at (t/offset-date-time)})
             resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
         (is (nil? (:canceled_at resp))
             "naturally-completed thread keeps canceled_at NULL — cancel was a no-op")
@@ -2344,8 +2344,8 @@
   `/mine` query keys off `user_id` + `timestamp` only, so the snapshot can be empty."
   [model id user-id ts]
   (t2/insert! :model/Revision
-              {'model model 'model_id id 'user_id user-id 'object {}
-               'timestamp ts 'is_creation false 'is_reversion false 'most_recent false}))
+              {:model model :model_id id :user_id user-id :object {}
+               :timestamp ts :is_creation false :is_reversion false :most_recent false}))
 
 (defn- mine-names
   "Names in the order `GET /mine` returns them for `user`."
@@ -2454,20 +2454,20 @@
   created ids."
   [{:keys [creator-id collection-id card-id database-id dimension-id metrics dimensions query-type]}]
   (let [expl   (first (t2/insert-returning-instances! :model/Exploration
-                                                      {'name "src" 'creator_id creator-id
-                                                       'collection_id collection-id}))
+                                                      {:name "src" :creator_id creator-id
+                                                       :collection_id collection-id}))
         thread (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                      {'exploration_id (:id expl) 'name "t" 'position 0}))
+                                                      {:exploration_id (:id expl) :name "t" :position 0}))
         block  (first (t2/insert-returning-instances! :model/ExplorationBlock
-                                                      {'exploration_thread_id (:id thread)
-                                                       'metrics metrics
-                                                       'dimensions (or dimensions []) 'position 0}))
+                                                      {:exploration_thread_id (:id thread)
+                                                       :metrics metrics
+                                                       :dimensions (or dimensions []) :position 0}))
         page   (first (t2/insert-returning-instances! :model/ExplorationPage
-                                                      {'exploration_block_id (:id block)
-                                                       'card_id card-id 'dimension_id dimension-id}))]
+                                                      {:exploration_block_id (:id block)
+                                                       :card_id card-id :dimension_id dimension-id}))]
     (t2/insert! :model/ExplorationQuery
-                {'exploration_thread_id (:id thread) 'card_id card-id 'database_id database-id
-                 'dimension_id dimension-id 'page_id (:id page) 'query_type (or query-type "default")})
+                {:exploration_thread_id (:id thread) :card_id card-id :database_id database-id
+                 :dimension_id dimension-id :page_id (:id page) :query_type (or query-type "default")})
     {:exploration-id (:id expl) :thread-id (:id thread) :block-id (:id block) :page-id (:id page)}))
 
 (deftest explore-further-rejects-page-from-another-exploration-test
@@ -2573,9 +2573,9 @@
                                            {:page_id         (:page-id src)
                                             :explore_filters [new-f]})
               new-block (->> (t2/select :model/ExplorationBlock
-                                        {'join  [['exploration_thread 't]
+                                        {:join  [['exploration_thread 't]
                                                  ['= 't.id 'exploration_block.exploration_thread_id]]
-                                         'where ['and
+                                         :where ['and
                                                  ['= 't.exploration_id (:exploration-id src)]
                                                  ['not= 'exploration_block.exploration_thread_id (:thread-id src)]]})
                              first)
@@ -2604,7 +2604,7 @@
                   :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})]
         ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
         ;; a made-up id would violate the source_page_id FK.
-        (t2/update! :model/ExplorationThread (:thread-id src) {'source_page_id (:page-id src)})
+        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
@@ -2614,7 +2614,7 @@
                                                   :display_value "2"}]})
         (let [new-thread (t2/select-one :model/ExplorationThread
                                         'exploration_id (:exploration-id src)
-                                        {'order-by [['position 'desc] ['id 'desc]]})]
+                                        {:order-by [['position 'desc] ['id 'desc]]})]
           (is (= "Price: 2" (:name new-thread))
               "nested follow-up omits the metric prefix"))))))
 
@@ -2651,7 +2651,7 @@
                                                     :display_value "2"}]})
           (let [new-thread (t2/select-one :model/ExplorationThread
                                           'exploration_id (:exploration-id src)
-                                          {'order-by [['position 'desc] ['id 'desc]]})]
+                                          {:order-by [['position 'desc] ['id 'desc]]})]
             (is (= "Number of venues → Category: gadget, Price: 2" (:name new-thread))
                 "top-level follow-up names all filters as Metric → Column: Value")))))))
 
@@ -2805,14 +2805,14 @@
               "its materialized queries are untouched"))
         (testing "a canceled thread with a query still mid-QP-execution returns 409"
           (t2/update! :model/ExplorationThread tid
-                      {'canceled_at  (t/offset-date-time)
-                       'completed_at (t/offset-date-time)})
-          (t2/update! :model/ExplorationQuery eq-id {'status "running" 'started_at (t/offset-date-time)})
+                      {:canceled_at  (t/offset-date-time)
+                       :completed_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationQuery eq-id {:status "running" :started_at (t/offset-date-time)})
           (mt/user-http-request u :post 409 (format "exploration/thread/%d/restart" tid))
           (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread 'id tid))
               "the terminal stamp survives — nothing was reset"))
         (testing "once no query is mid-execution, restart succeeds and leaves the thread claimable"
-          (t2/update! :model/ExplorationQuery eq-id {'status "canceled"})
+          (t2/update! :model/ExplorationQuery eq-id {:status "canceled"})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
           (let [thread (t2/select-one :model/ExplorationThread 'id tid)]
             ;; exactly the state the planning worker's claim-unplanned-thread! predicate claims:
@@ -2855,7 +2855,7 @@
     (doseq [qid qids]
       (store-fake-result! qid qp-out)
       (mark-done! qid)
-      (t2/update! :model/ExplorationQuery qid {'dataset_query (:dataset_query metric)}))
+      (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)}))
     {:exploration-id (:id resp) :document-id (-> resp :document :id) :query-ids qids}))
 
 (defn- combine-with-perms-stubbed!
@@ -2896,14 +2896,14 @@
             doc    (t2/select-one :model/Document 'id document-id)
             sr-2   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                      'exploration_query_id (second query-ids))]
-        (t2/update! :model/StoredResult sr-2 {'data_access_token {:sandbox {1 "deadbeef"}}})
+        (t2/update! :model/StoredResult sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"different data-access contexts"
              (combine-with-perms-stubbed!
               query-ids document-id (:collection_id doc) u
               {:display "bar" :visualization-settings {}})))
         (testing "and a source with no recorded lens at all is refused too"
-          (t2/update! :model/StoredResult sr-2 {'data_access_token nil})
+          (t2/update! :model/StoredResult sr-2 {:data_access_token nil})
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"no recorded data-access context"
                (combine-with-perms-stubbed!
@@ -2924,7 +2924,7 @@
                                              (lib/aggregate (lib/count)))))]
         ;; Give the second source a genuinely different query, so "checked the first one" and
         ;; "checked them all" are distinguishable.
-        (t2/update! :model/ExplorationQuery (second query-ids) {'dataset_query other-q})
+        (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
         (let [checked (atom [])]
           (with-redefs [query-perms/check-run-permissions-for-query
                         (fn [q] (swap! checked conj q) nil)]

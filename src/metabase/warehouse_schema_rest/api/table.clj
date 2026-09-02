@@ -120,12 +120,12 @@
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      published-only          (conj [:= :is_published true])
                      (and unused-only (premium-features/has-feature? :dependencies))
-                     (conj [:not-exists ^:allow-subquery {'select ['*]
-                                                          'from   [['dependency 'd]]
-                                                          'where  ['and
+                     (conj [:not-exists ^:allow-subquery {:select ['*]
+                                                          :from   [['dependency 'd]]
+                                                          :where  ['and
                                                                    ['= 'd.to_entity_id 'metabase_table.id]
                                                                    ['= 'd.to_entity_type "table"]]}]))
-        query      {'where where, 'order-by [['name 'asc]]}
+        query      {:where where, :order-by [['name 'asc]]}
         hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
@@ -249,7 +249,7 @@
 
 (defn- update-tables!
   [ids {:keys [collection_id visibility_type] :as body}]
-  (let [existing-tables (t2/select :model/Table 'id ['in ids])]
+  (let [existing-tables (t2/select :model/Table 'id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (when collection_id
@@ -381,8 +381,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
-  (when-let [field-ids (seq (t2/select-pks-set :model/Field, 'table_id id, 'visibility_type ['not= "retired"], 'active true))]
-    (for [origin-field (t2/select :model/Field, 'fk_target_field_id ['in field-ids], 'active true)
+  (when-let [field-ids (seq (t2/select-pks-set :model/Field, 'table_id id, 'visibility_type [:not= "retired"], 'active true))]
+    (for [origin-field (t2/select :model/Field, 'fk_target_field_id [:in field-ids], 'active true)
           :let [origin-field (t2/hydrate origin-field [:table :db])]
           :when (and (-> origin-field :table :active)
                      (mi/can-read? origin-field))
@@ -432,7 +432,7 @@
                     [:id ms/PositiveInt]]]
   (api/write-check (t2/select-one :model/Table 'id id))
   (when-let [field-ids (t2/select-pks-set :model/Field 'table_id id)]
-    (t2/delete! (t2/table-name :model/FieldValues) 'field_id ['in field-ids]))
+    (t2/delete! (t2/table-name :model/FieldValues) 'field_id [:in field-ids]))
   {:status :success})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

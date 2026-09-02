@@ -293,7 +293,7 @@
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
         ;; Modify entities in the database
-        (t2/update! :model/Dashboard {'id (:id dash)} {'name "urquan"})
+        (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
         (t2/delete! :model/Card (:id card))
         (let [re-indexed? (atom false)
               _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]

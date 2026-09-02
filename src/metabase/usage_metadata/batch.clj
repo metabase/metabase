@@ -90,11 +90,11 @@
   Identical hashes produce identical facts, so collapse at the DB and iterate
   unique hashes. Per-execution totals come from multiplying by `:n`."
   [bucket-date]
-  (t2/select [:model/QueryExecution 'hash [:%count.* :n]]
-             {'where    ['and
+  (t2/select [:model/QueryExecution :hash [:%count.* :n]]
+             {:where    ['and
                          ['>= 'started_at (utc-day-start bucket-date)]
                          ['<  'started_at (utc-day-end bucket-date)]]
-              'group-by ['hash]}))
+              :group-by ['hash]}))
 
 (defn- add-skip [stats reason n]
   (update-in stats [:skipped-rows reason] (fnil + 0) n))
@@ -285,8 +285,8 @@
                               stats
                               (mdb/streaming-reducible
                                (fn [conn]
-                                 (t2/reducible-select :conn conn [:model/Query 'query_hash 'query]
-                                                      'query_hash ['in hash-chunk])))))
+                                 (t2/reducible-select :conn conn [:model/Query :query_hash :query]
+                                                      'query_hash [:in hash-chunk])))))
                            initial-stats
                            (partition-all hash-chunk-size raw-hashes))
          seen-hashes      (:seen-hashes after-stream)
@@ -326,7 +326,7 @@
   (let [retention-days (max 1 (or retention-days 1))
         cutoff-day     (t/minus today (t/days retention-days))]
     (doseq [model rollup-models]
-      (t2/delete! model 'bucket_date ['< cutoff-day]))
+      (t2/delete! model 'bucket_date [:< cutoff-day]))
     cutoff-day))
 
 (defn run-batch!

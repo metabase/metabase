@@ -65,7 +65,7 @@
   [exploration-id new-coll-id]
   (t2/update! :model/Document
               'exploration_id exploration-id
-              {'collection_id new-coll-id}))
+              {:collection_id new-coll-id}))
 
 (defn- cascade-archived-to-documents!
   "Propagate an Exploration's archive flip to its Summary document.
@@ -78,25 +78,25 @@
     (t2/update! :model/Document
                 'exploration_id exploration-id
                 'archived       false
-                {'archived true 'archived_directly false})
+                {:archived true :archived_directly false})
     (t2/update! :model/Document
                 'exploration_id      exploration-id
                 'archived            true
                 'archived_directly   false
-                {'archived false})))
+                {:archived false})))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
   must not call this — there is one Summary per exploration."
   [exploration-id coll-id]
   (t2/insert! :model/Document
-              {'name            summary-document-name
-               'document        {:type "doc" :content []}
-               'content_type    documents/prose-mirror-content-type
-               'creator_id      api/*current-user-id*
-               'collection_id   coll-id
-               'exploration_id  exploration-id
-               'is_placeholder  true}))
+              {:name            summary-document-name
+               :document        {:type "doc" :content []}
+               :content_type    documents/prose-mirror-content-type
+               :creator_id      api/*current-user-id*
+               :collection_id   coll-id
+               :exploration_id  exploration-id
+               :is_placeholder  true}))
 
 (defn- blocks-by-thread-id
   "The persisted blocks (`ExplorationBlock`) for `thread-ids`, in authoring order, grouped by
@@ -105,8 +105,8 @@
   (when (seq thread-ids)
     (group-by :exploration_thread_id
               (t2/select :model/ExplorationBlock
-                         'exploration_thread_id ['in thread-ids]
-                         {'order-by [['position 'asc] ['id 'asc]]}))))
+                         'exploration_thread_id [:in thread-ids]
+                         {:order-by [['position 'asc] ['id 'asc]]}))))
 
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
@@ -146,10 +146,10 @@
         pages-by-block   (when (seq block-ids)
                            (group-by :exploration_block_id
                                      (t2/select :model/ExplorationPage
-                                                'exploration_block_id ['in block-ids])))
+                                                'exploration_block_id [:in block-ids])))
         card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-blocks))
         cards            (when (seq card-ids)
-                           (t2/select [:model/Card 'id 'name] 'id ['in card-ids]))
+                           (t2/select [:model/Card :id :name] 'id [:in card-ids]))
         card-name-by-id  (into {} (map (juxt :id :name)) cards)]
     (mapv (fn [thread]
             (let [blocks (get blocks-by-thread (:id thread) [])
@@ -281,19 +281,19 @@
   [thread-id]
   (t2/with-transaction [_conn]
     (when (pos? (t2/query-one
-                 {'update 'exploration_thread
-                  'set    {'started_at            (t/offset-date-time)
-                           'query_plan_started_at nil
-                           'query_plan_transcript nil
-                           'analysis_started_at   nil
-                           'completed_at          nil
-                           'canceled_at           nil}
-                  'where  ['and
+                 {:update 'exploration_thread
+                  :set    {:started_at            (t/offset-date-time)
+                           :query_plan_started_at nil
+                           :query_plan_transcript nil
+                           :analysis_started_at   nil
+                           :completed_at          nil
+                           :canceled_at           nil}
+                  :where  ['and
                            ['= 'id thread-id]
                            ['not= 'completed_at nil]
-                           ['not-exists ^:allow-subquery {'select [1]
-                                                          'from   ['exploration_query]
-                                                          'where  ['and
+                           ['not-exists ^:allow-subquery {:select [1]
+                                                          :from   ['exploration_query]
+                                                          :where  ['and
                                                                    ['= 'exploration_thread_id thread-id]
                                                                    ['= 'status "running"]]}]]}))
       (t2/delete! :model/ExplorationQuery 'exploration_thread_id thread-id)
@@ -651,20 +651,20 @@
   (let [persisted
         (t2/with-transaction [_]
           (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                                   {'name          name
-                                                                    'description   description
-                                                                    'collection_id collection_id
-                                                                    'creator_id    api/*current-user-id*}))
+                                                                   {:name          name
+                                                                    :description   description
+                                                                    :collection_id collection_id
+                                                                    :creator_id    api/*current-user-id*}))
                 ;; `started_at` marks the thread as started (past the draft phase). Planning itself
                 ;; is kicked off by the `start-thread!` enqueue below — its plan message rides a
                 ;; `:transactional :require` queue, so it publishes only once this whole transaction,
                 ;; including the dependent block/timeline rows below, commits atomically.
                 ;; The plan listener therefore can never observe (or plan) a half-built thread.
                 thread      (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                                   {'exploration_id (:id exploration)
-                                                                    'prompt         prompt
-                                                                    'position       0
-                                                                    'started_at     (t/offset-date-time)}))
+                                                                   {:exploration_id (:id exploration)
+                                                                    :prompt         prompt
+                                                                    :position       0
+                                                                    :started_at     (t/offset-date-time)}))
                 tid         (:id thread)]
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
@@ -740,32 +740,32 @@
                               (:metrics block))
           timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
                                           'exploration_thread_id src-thread-id
-                                          {'order-by [['position 'asc] ['id 'asc]]})
+                                          {:order-by [['position 'asc] ['id 'asc]]})
           next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
                                                    'exploration_id id
-                                                   {'order-by [['position 'desc] ['id 'desc]]})
+                                                   {:order-by [['position 'desc] ['id 'desc]]})
                                  0))]
       (t2/with-transaction [_]
         (let [thread (first (t2/insert-returning-instances!
                              :model/ExplorationThread
-                             {'exploration_id id
-                              'name           (explore-further-thread-name card-name
+                             {:exploration_id id
+                              :name           (explore-further-thread-name card-name
                                                                            enriched-filters
                                                                            top-level-follow-up?)
-                              'data_access_token (drill-thread-token exploration cards)
-                              'position       next-position
+                              :data_access_token (drill-thread-token exploration cards)
+                              :position       next-position
                               ;; drill lineage — lets the sidebar nest this thread
                               ;; under the one owning the drilled page
-                              'source_page_id page_id}))
+                              :source_page_id page_id}))
               tid    (:id thread)]
           (t2/insert! :model/ExplorationBlock
-                      {'exploration_thread_id tid
-                       'metrics               metrics'
-                       'dimensions            (stringify-dim-types (:dimensions block))
-                       'position              0})
+                      {:exploration_thread_id tid
+                       :metrics               metrics'
+                       :dimensions            (stringify-dim-types (:dimensions block))
+                       :position              0})
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
-          (t2/update! :model/ExplorationThread tid {'started_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
           (explorations.queues/start-thread! tid)
           (let [persisted (t2/select-one :model/Exploration 'id id)]
             (events/publish-event! :event/exploration-update
@@ -800,37 +800,37 @@
   `current_user_last_touched_at` is non-null on every row. `limit`/`offset` are appended only when
   paged."
   [user-id limit offset]
-  (let [my-touches         ^:allow-subquery {'union-all
-                                             [^:allow-subquery {'select [['model_id 'eid] ['timestamp 'ts]]
-                                                                'from   ['revision]
-                                                                'where  ['and ['= 'model "Exploration"] ['= 'user_id user-id]]}
+  (let [my-touches         ^:allow-subquery {:union-all
+                                             [^:allow-subquery {:select [['model_id 'eid] ['timestamp 'ts]]
+                                                                :from   ['revision]
+                                                                :where  ['and ['= 'model "Exploration"] ['= 'user_id user-id]]}
                                               ^:allow-subquery
-                                              {'select [['d.exploration_id 'eid] ['dr.timestamp 'ts]]
-                                               'from   [['revision 'dr]]
-                                               'join   [['document 'd] ['= 'd.id 'dr.model_id]]
-                                               'where  ['and
+                                              {:select [['d.exploration_id 'eid] ['dr.timestamp 'ts]]
+                                               :from   [['revision 'dr]]
+                                               :join   [['document 'd] ['= 'd.id 'dr.model_id]]
+                                               :where  ['and
                                                         ['= 'dr.model "Document"]
                                                         ['= 'dr.user_id user-id]
                                                         ['not= 'd.exploration_id nil]]}
                                               ^:allow-subquery
-                                              {'select [['id 'eid] ['created_at 'ts]]
-                                               'from   ['exploration]
-                                               'where  ['= 'creator_id user-id]}]}
+                                              {:select [['id 'eid] ['created_at 'ts]]
+                                               :from   ['exploration]
+                                               :where  ['= 'creator_id user-id]}]}
         ;; MAX rather than GREATEST — the latter's NULL semantics differ across app DBs. And
         ;; `my-touches` is a derived table here rather than a sibling CTE: a second `:with` binding
         ;; that selects from the first silently returns no rows under our HoneySQL/H2 stack.
-        agg                ^:allow-subquery {'select   ['eid [['max 'ts] 'max_ts]]
-                                             'from     [[my-touches 'my_touches]]
-                                             'group-by ['eid]}]
-    (cond-> {'select   ['exploration.*
+        agg                ^:allow-subquery {:select   ['eid [['max 'ts] 'max_ts]]
+                                             :from     [[my-touches 'my_touches]]
+                                             :group-by ['eid]}]
+    (cond-> {:select   ['exploration.*
                         ['agg.max_ts 'current_user_last_touched_at]
                         [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
-             'from     ['exploration]
-             'join     [[agg 'agg] ['= 'agg.eid 'exploration.id]]
-             'where    ['and
+             :from     ['exploration]
+             :join     [[agg 'agg] ['= 'agg.eid 'exploration.id]]
+             :where    ['and
                         ['= 'exploration.archived false]
                         (collection/visible-collection-filter-clause :exploration.collection_id)]
-             'order-by [['current_user_last_touched_at 'desc] ['exploration.id 'desc]]}
+             :order-by [['current_user_last_touched_at 'desc] ['exploration.id 'desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
 
@@ -957,8 +957,8 @@
       (t2/update! :model/ExplorationThread
                   'id           thread-id
                   'completed_at nil
-                  {'canceled_at now
-                   'completed_at now})
+                  {:canceled_at now
+                   :completed_at now})
       ;; Bulk-flip pending → canceled. SKIP LOCKED on Postgres/MySQL skips the row currently
       ;; held by an in-flight QP worker so this API call doesn't block on QP duration; that row
       ;; will commit as `done` (or `error`) naturally. H2 has only one worker (see worker-count
@@ -970,18 +970,18 @@
       ;; so the SKIP LOCKED semantics are preserved.
       (let [pending-ids (map :id
                              (t2/query
-                              (cond-> {'select ['id]
-                                       'from   ['exploration_query]
-                                       'where  ['and
+                              (cond-> {:select ['id]
+                                       :from   ['exploration_query]
+                                       :where  ['and
                                                 ['= 'exploration_thread_id thread-id]
                                                 ['= 'status "pending"]]}
                                 (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))))]
         (when (seq pending-ids)
           (t2/query
-           {'update (t2/table-name :model/ExplorationQuery)
-            'set    {'status "canceled"}
-            'where  ['in 'id pending-ids]})))))
-  (t2/select-one [:model/ExplorationThread 'id 'canceled_at 'completed_at] 'id thread-id))
+           {:update (t2/table-name :model/ExplorationQuery)
+            :set    {:status "canceled"}
+            :where  ['in 'id pending-ids]})))))
+  (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] 'id thread-id))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up
@@ -1039,7 +1039,7 @@
    {:keys [starred]} :- [:map [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
-    (t2/update! :model/ExplorationPage id {'starred starred}))
+    (t2/update! :model/ExplorationPage id {:starred starred}))
   nil)
 
 (api.macros/defendpoint :put "/pages/hidden" :- :nil
@@ -1053,7 +1053,7 @@
   (doseq [id page_ids]
     (api/write-check (get-exploration-page-or-404 id)))
   (when (seq page_ids)
-    (t2/update! :model/ExplorationPage 'id ['in page_ids] {'hidden hidden}))
+    (t2/update! :model/ExplorationPage 'id [:in page_ids] {:hidden hidden}))
   nil)
 
 (defn- summary-document-or-404
@@ -1070,19 +1070,19 @@
   (let [distinct-ids (distinct eq-ids)]
     (= (count distinct-ids)
        (t2/count :model/ExplorationQuery
-                 {'where ['and
+                 {:where ['and
                           ['in 'id distinct-ids]
                           ['in 'exploration_thread_id
-                           ^:allow-subquery {'select ['id]
-                                             'from   ['exploration_thread]
-                                             'where  ['= 'exploration_id exploration-id]}]]}))))
+                           ^:allow-subquery {:select ['id]
+                                             :from   ['exploration_thread]
+                                             :where  ['= 'exploration_id exploration-id]}]]}))))
 
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."
   [doc-id]
   (t2/select-one [:model/Document
-                  'id 'name 'exploration_id 'creator_id 'content_type
-                  'created_at 'updated_at 'archived 'is_placeholder]
+                  :id :name :exploration_id :creator_id :content_type
+                  :created_at :updated_at :archived :is_placeholder]
                  'id doc-id))
 
 (defn- page-explore-filters

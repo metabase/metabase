@@ -82,7 +82,7 @@
   (when user-or-user-id
     (or
      (if (integer? user-or-user-id)
-       (:settings (t2/select-one [:model/User 'settings] 'id user-or-user-id))
+       (:settings (t2/select-one [:model/User :settings] 'id user-or-user-id))
        (:settings user-or-user-id))
      {})))
 
@@ -293,8 +293,8 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership 'user_id [:group_id :id] 'is_group_manager]
-                                                             'user_id ['in (set (map u/the-id users))]))
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+                                                             'user_id [:in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
                                               [:id (when (premium-features/enable-advanced-permissions?)
@@ -312,8 +312,8 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership 'user_id 'group_id]
-                                                             'user_id ['in (set (map u/the-id users))]))]
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
+                                                             'user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -350,7 +350,7 @@
           tenant-ids            (set (map :tenant_id users-with-tenant-ids))
           tenant-id->collection-id (when (seq tenant-ids)
                                      (t2/select-pk->fn :tenant_collection_id :model/Tenant
-                                                       'id ['in tenant-ids]))]
+                                                       'id [:in tenant-ids]))]
       ;; now for each User, try to find the corresponding tenant collection ID
       (for [user users]
         (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]
@@ -463,10 +463,10 @@
   "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
   manage-table-metadata."
   []
-  [:exists ^:allow-subquery {'select [1]
-                             'from   [['permissions_group_membership 'pgm]]
-                             'join   [['data_permissions 'p] ['= 'p.group_id 'pgm.group_id]]
-                             'where  ['and
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [['permissions_group_membership 'pgm]]
+                             :join   [['data_permissions 'p] ['= 'p.group_id 'pgm.group_id]]
+                             :where  ['and
                                       ['= 'pgm.user_id 'core_user.id]
                                       ['= 'p.perm_type "perms/manage-table-metadata"]
                                       ['= 'p.perm_value "yes"]]}])
@@ -476,14 +476,14 @@
   Ignore the All-user groups."
   [user-id]
   (map :user_id
-       (t2/query {'select-distinct ['permissions_group_membership.user_id]
-                  'from ['permissions_group_membership]
-                  'where ['in 'permissions_group_membership.group_id
+       (t2/query {:select-distinct ['permissions_group_membership.user_id]
+                  :from ['permissions_group_membership]
+                  :where ['in 'permissions_group_membership.group_id
                           ;; get all the groups ids that the current user is in
                           ^:allow-subquery
-                          {'select-distinct ['permissions_group_membership.group_id]
-                           'from  ['permissions_group_membership]
-                           'where ['and ['= 'permissions_group_membership.user_id user-id]
+                          {:select-distinct ['permissions_group_membership.group_id]
+                           :from  ['permissions_group_membership]
+                           :where ['and ['= 'permissions_group_membership.user_id user-id]
                                    ['not= 'permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
 
 (defn filter-clauses

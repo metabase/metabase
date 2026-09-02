@@ -31,7 +31,7 @@
 (defn source-table-entry
   "Build a full source-table-entry from alias + table_id by looking up database_id and schema."
   [alias table-id]
-  (let [{:keys [db_id schema]} (t2/select-one [:model/Table 'db_id 'schema] 'id table-id)]
+  (let [{:keys [db_id schema]} (t2/select-one [:model/Table :db_id :schema] 'id table-id)]
     {:alias alias :table_id table-id :database_id db_id :schema schema}))
 
 (defn default-source-table-entry
@@ -46,16 +46,16 @@
                        (t2/select-one-pk :model/Table
                                          'db_id  (mt/id)
                                          'active true
-                                         'id     ['in ^:allow-subquery {'select ['table_id]
-                                                                        'from   [(t2/table-name :model/Field)]
+                                         'id     [:in ^:allow-subquery {:select ['table_id]
+                                                                        :from   [(t2/table-name :model/Field)]
                                                                         ;; Mirror the QP's queryable-column filter (active-column-pred):
                                                                         ;; active, and visibility not sensitive/retired, else the picked
                                                                         ;; table still yields no implicit fields.
-                                                                        'where  ['and
+                                                                        :where  ['and
                                                                                  ['= 'active true]
                                                                                  ['or ['= 'visibility_type nil]
                                                                                   ['not-in 'visibility_type ["sensitive" "retired"]]]]}]
-                                         {'order-by [['id 'asc]]}))))
+                                         {:order-by [['id 'asc]]}))))
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.

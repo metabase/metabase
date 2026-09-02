@@ -276,7 +276,7 @@
     (let [field-names (driver-api/cached-value
                        [::correct-columns-name table-id]
                        (fn []
-                         (t2/select-fn-vec :name [:model/Field 'name] 'table_id table-id)
+                         (t2/select-fn-vec :name [:model/Field :name] 'table_id table-id)
                          ;; can't use lib here because fields from lib only return active fields and visible fields
                          ;; :/
                          #_(let [database (driver-api/cached-database-via-table-id table-id)]

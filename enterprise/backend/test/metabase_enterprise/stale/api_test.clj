@@ -69,7 +69,7 @@
       (with-collection-hierarchy! [{:keys [a b]}]
         (stale.test/with-stale-items [:model/Card card   {:collection_id (:id a)}
                                       :model/Card hidden {:collection_id (:id b)}]
-          (t2/update! :model/Collection (:id b) {'archived true})
+          (t2/update! :model/Collection (:id b) {:archived true})
           (let [result (mt/user-http-request :crowberto :get 200 (stale-url a) :is_recursive true)
                 ids    (->> result :data (map (juxt :model :id)) set)]
             (is (contains? ids ["card" (u/the-id card)]))

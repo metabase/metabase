@@ -961,10 +961,10 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card 'dataset_query] native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
-              (t2/update! :model/Card native-id {'result_metadata source-cols})
+              (t2/update! :model/Card native-id {:result_metadata source-cols})
               (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
               (ts/with-db dest-db

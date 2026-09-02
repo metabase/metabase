@@ -258,7 +258,7 @@
       (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
         (let [token (auth-identity/generate-reset-token user-id)]
           (t2/update! :model/AuthIdentity (:id auth-identity)
-                      {'credentials {:token_hash   (u.password/hash-bcrypt token)
+                      {:credentials {:token_hash   (u.password/hash-bcrypt token)
                                      :expires_at   (t/plus (t/instant) (t/hours 48))
                                      :grant_ends_at grant-ends-at
                                      :consumed_at  nil}})
@@ -270,7 +270,7 @@
     (when-let [{user-id      :id
                 sso-source   :sso_source
                 is-active?   :is_active :as user}
-               (t2/select-one [:model/User 'id 'sso_source 'is_active]
+               (t2/select-one [:model/User :id :sso_source :is_active]
                               '%lower.email
                               (u/lower-case-en email))]
       (cond
@@ -490,7 +490,7 @@
          (events/publish-event! :event/mfa-verification-failed
                                 {:object (t2/select-one :model/User 'id user-id)})
          (throw (ex-info (tru "Invalid authentication code.") {:status-code 401})))))
-    (let [user (t2/select-one [:model/User 'id 'is_active 'last_login 'tenant_id] 'id user-id)]
+    (let [user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] 'id user-id)]
       ;; the account can be deactivated (or deleted) between the password step and here; a
       ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
       (when-not (:is_active user)

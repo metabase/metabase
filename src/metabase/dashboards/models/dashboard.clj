@@ -144,8 +144,8 @@
   (mi/instances-with-hydrated-data
    dashboards k
    #(group-by :dashboard_id (t2/select :model/DashboardTab
-                                       'dashboard_id ['in (map :id dashboards)]
-                                       {'order-by [['dashboard_id 'asc] ['position 'asc] ['id 'asc]]}))
+                                       'dashboard_id [:in (map :id dashboards)]
+                                       {:order-by [['dashboard_id 'asc] ['position 'asc] ['id 'asc]]}))
    :id
    {:default []}))
 
@@ -155,11 +155,11 @@
    dashboards k
    #(group-by :dashboard_id
               (t2/select :model/DashboardCard
-                         {'select    ['dashcard.* ['collection.authority_level 'collection_authority_level]]
-                          'from      [['report_dashboardcard 'dashcard]]
-                          'left-join [['report_card 'card] ['= 'dashcard.card_id 'card.id]
+                         {:select    ['dashcard.* ['collection.authority_level 'collection_authority_level]]
+                          :from      [['report_dashboardcard 'dashcard]]
+                          :left-join [['report_card 'card] ['= 'dashcard.card_id 'card.id]
                                       ['collection 'collection] ['= 'collection.id 'card.collection_id]]
-                          'where     ['and
+                          :where     ['and
                                       ['in 'dashcard.dashboard_id (map :id dashboards)]
                                       ['or
                                        ;; show it if:
@@ -170,7 +170,7 @@
                                         ['not= 'card.dashboard_id nil]
                                         ['= 'card.archived_directly false]]
                                        ['= 'card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                          'order-by  [['dashcard.dashboard_id] ['dashcard.created_at 'asc]]}))
+                          :order-by  [['dashcard.dashboard_id] ['dashcard.created_at 'asc]]}))
    :id
    {:default []}))
 
@@ -181,10 +181,10 @@
   (when (seq dashboards)
     (let [coll-id->level (into {}
                                (map (juxt :id :authority_level))
-                               (app-db/query {'select    ['dashboard.id 'collection.authority_level]
-                                              'from      [['report_dashboard 'dashboard]]
-                                              'left-join [['collection 'collection] ['= 'collection.id 'dashboard.collection_id]]
-                                              'where     ['in 'dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+                               (app-db/query {:select    ['dashboard.id 'collection.authority_level]
+                                              :from      [['report_dashboard 'dashboard]]
+                                              :left-join [['collection 'collection] ['= 'collection.id 'dashboard.collection_id]]
+                                              :where     ['in 'dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
@@ -204,9 +204,9 @@
         ;; DQs that ARE used get unarchived
         internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
     (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (t2/update! :model/Card 'id ['in ids] {'archived true 'archived_directly true}))
+      (t2/update! :model/Card 'id [:in ids] {:archived true :archived_directly true}))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (t2/update! :model/Card 'id ['in ids] {'archived false 'archived_directly false}))))
+      (t2/update! :model/Card 'id [:in ids] {:archived false :archived_directly false}))))
 
 (defn cascade-card-state-from-dashboard-update!
   "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
@@ -222,15 +222,15 @@
         (t2/update! :model/Card
                     'dashboard_id id
                     'archived false
-                    {'archived true 'archived_directly false})
+                    {:archived true :archived_directly false})
         (t2/update! :model/Card
                     'dashboard_id id
                     'archived true
                     'archived_directly false
-                    {'archived false})))
+                    {:archived false})))
     (when (api/column-will-change? :collection_id current-dash updates)
       (t2/update! :model/Card 'dashboard_id id
-                  {'collection_id (:collection_id updates)}))))
+                  {:collection_id (:collection_id updates)}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -347,7 +347,7 @@
                          (assoc mapping ::card-id (or (:card_id mapping) card_id)))
         card-ids       (into #{} (keep ::card-id) mappings)
         card-id->query (when (seq card-ids)
-                         (t2/select-pk->fn :dataset_query :model/Card 'id ['in card-ids]))
+                         (t2/select-pk->fn :dataset_query :model/Card 'id [:in card-ids]))
         field-ids      (into []
                              (keep (fn [{:keys [target] ::keys [card-id]}]
                                      (when target
@@ -501,7 +501,7 @@
   (dashboard-deps false dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
-  (let [dashcards (t2/select [:model/DashboardCard 'id 'card_id 'action_id 'parameter_mappings 'visualization_settings]
+  (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              'dashboard_id id)
         dashboard (t2/select-one :model/Dashboard 'id id)
         dash-id   id]
@@ -516,8 +516,8 @@
                               card_id (conj card_id))]
                 {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
      (when (not-empty dashcards)
-       (into {} (for [{:keys [id card_id dashboardcard_id]} (t2/select [:model/DashboardCardSeries 'id 'card_id 'dashboardcard_id]
-                                                                       'dashboardcard_id ['in (map :id dashcards)])]
+       (into {} (for [{:keys [id card_id dashboardcard_id]} (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id]
+                                                                       'dashboardcard_id [:in (map :id dashcards)])]
                   {["Card" card_id] {"DashboardCardSeries" id
                                      "DashboardCard"       dashboardcard_id
                                      "Dashboard"           dash-id}})))
@@ -585,12 +585,12 @@
 
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]
-  ^:allow-subquery {'select ['report_dashboard.id
+  ^:allow-subquery {:select ['report_dashboard.id
                              [(h2x/literal "Dashboard") 'model]
                              ['report_dashboard.name 'name]
                              ['last_viewed_at 'last_used_at]]
-                    'from 'report_dashboard
-                    'left-join ['pulse ['and
+                    :from 'report_dashboard
+                    :left-join ['pulse ['and
                                         ['= 'pulse.archived false]
                                         ['= 'pulse.dashboard_id 'report_dashboard.id]]
                                 'collection ['= 'collection.id 'report_dashboard.collection_id]
@@ -599,7 +599,7 @@
                                                     ['= 'moderation_review.moderated_item_type (h2x/literal "dashboard")]
                                                     ['= 'moderation_review.most_recent true]
                                                     ['= 'moderation_review.status (h2x/literal "verified")]]]
-                    'where ['and
+                    :where ['and
                             ['= 'pulse.id nil]
                             ['= 'moderation_review.id nil]
                             ['= 'report_dashboard.archived false]

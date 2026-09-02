@@ -78,8 +78,8 @@
                               :es    :spanish
                               :sv    :swedish
                               :tr    :turkish}
-             available-languages (->> (t2/query {'select ['cfgname]
-                                                 'from   ['pg_ts_config]})
+             available-languages (->> (t2/query {:select ['cfgname]
+                                                 :from   ['pg_ts_config]})
                                       (map :cfgname)
                                       (map keyword)
                                       set)]

@@ -62,7 +62,7 @@
             (let [stale-count (fn []
                                 (t2/count :model/DependencyStatus
                                           'entity_type :card
-                                          'entity_id ['in [card1-id card2-id card3-id]]
+                                          'entity_id [:in [card1-id card2-id card3-id]]
                                           'stale true))]
               (is (= 3 (stale-count)))
               ;; first run, should process 2 cards
@@ -213,7 +213,7 @@
                 (let [processed? (fn []
                                    (= 2 (t2/count :model/DependencyStatus
                                                   'entity_type :card
-                                                  'entity_id ['in [card1-id card2-id]]
+                                                  'entity_id [:in [card1-id card2-id]]
                                                   'stale false
                                                   'dependency_analysis_version dependencies.model/current-dependency-analysis-version)))]
                   (is (not (processed?)))
@@ -388,13 +388,13 @@
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
                              'entity_type :card
-                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'entity_id [:in [card1-id card2-id card3-id]]
                              'stale true)))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
           (is (= 3 (t2/count :model/DependencyStatus
                              'entity_type :card
-                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'entity_id [:in [card1-id card2-id card3-id]]
                              'stale false
                              'dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
 
@@ -415,13 +415,13 @@
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
                              'entity_type :card
-                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'entity_id [:in [card1-id card2-id card3-id]]
                              'stale true)))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
           (is (= 3 (t2/count :model/DependencyStatus
                              'entity_type :card
-                             'entity_id ['in [card1-id card2-id card3-id]]
+                             'entity_id [:in [card1-id card2-id card3-id]]
                              'stale false
                              'dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
 
@@ -431,10 +431,10 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         ;; Create a dependency_status entry with an old version (not stale, but outdated)
-        (t2/insert! :model/DependencyStatus {'entity_type :card
-                                             'entity_id card-id
-                                             'dependency_analysis_version 0
-                                             'stale false})
+        (t2/insert! :model/DependencyStatus {:entity_type :card
+                                             :entity_id card-id
+                                             :dependency_analysis_version 0
+                                             :stale false})
         (backfill-dependencies-single-trigger!)
         (assert-processed :card card-id)
         (is (t2/exists? :model/Dependency 'from_entity_type :card 'from_entity_id card-id
@@ -559,7 +559,7 @@
       (deps.dependency-status/record-failure! :card card-id 5 60)
       (is (t2/exists? :model/DependencyStatus
                       'entity_type :card 'entity_id card-id
-                      'terminal false 'next_retry_at ['not= nil])
+                      'terminal false 'next_retry_at [:not= nil])
           "test setup: the card must be in retry backoff")
       (let [actionable? (fn [licence]
                           (with-redefs [premium-features/canonically-has-feature? (constantly licence)]

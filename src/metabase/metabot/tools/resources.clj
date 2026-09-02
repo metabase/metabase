@@ -281,7 +281,7 @@
 (defn- present-source-card
   "Resolve a source-card id to a typed item map (model / metric / question)."
   [source-card-id]
-  (let [src-card (t2/select-one [:model/Card 'id 'type 'card_schema] 'id source-card-id)
+  (let [src-card (t2/select-one [:model/Card :id :type :card_schema] 'id source-card-id)
         src-type (case (:type src-card)
                    :model  "model"
                    :metric "metric"
@@ -313,10 +313,10 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
-  (let [all (t2/select [:model/Database 'id 'name 'engine 'description 'is_audit]
+  (let [all (t2/select [:model/Database :id :name :engine :description :is_audit]
                        'is_audit false
                        'router_database_id nil
-                       {'order-by [['%lower.name 'asc]]})
+                       {:order-by [['%lower.name 'asc]]})
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)
@@ -333,10 +333,10 @@
                           ;; Exclude the system Trash collection from navigation listings.
                           [:or [:= :type nil] [:!= :type "trash"]]]
                    (not tree?) (conj [:= :location "/"]))
-        colls    (->> (t2/select [:model/Collection 'id 'name 'location 'authority_level
-                                  'description 'personal_owner_id]
-                                 {'where    where
-                                  'order-by [['location 'asc] ['%lower.name 'asc]]})
+        colls    (->> (t2/select [:model/Collection :id :name :location :authority_level
+                                  :description :personal_owner_id]
+                                 {:where    where
+                                  :order-by [['location 'asc] ['%lower.name 'asc]]})
                       (filter mi/can-read?))
         ;; For tree mode, compute path names by chaining ancestor names.
         id->name (when tree? (into {} (map (juxt :id :name)) colls))
@@ -384,10 +384,10 @@
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
         _      (perms/prime-table-perms-cache {:db-ids #{db-id}})
-        tables (->> (t2/select [:model/Table 'id 'name 'display_name 'schema 'db_id 'description]
+        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                'db_id  db-id
                                'active true
-                               {'order-by [['%lower.schema 'asc] ['%lower.name 'asc]]})
+                               {:order-by [['%lower.schema 'asc] ['%lower.name 'asc]]})
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-tables tables query-params)))
@@ -395,12 +395,12 @@
 (defn- fetch-database-models [id-str query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        models (->> (t2/select [:model/Card 'id 'name 'type 'description 'card_schema
-                                'collection_id 'database_id 'table_id]
+        models (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                :collection_id :database_id :table_id]
                                'type        :model
                                'database_id db-id
                                'archived    false
-                               {'order-by [['%lower.name 'asc]]})
+                               {:order-by [['%lower.name 'asc]]})
                     (filter mi/can-read?)
                     (mapv present-card))]
     (list-result :database-models models query-params)))
@@ -409,10 +409,10 @@
   (let [db-id   (parse-long id-str)
         _       (warehouses/get-database db-id)
         rows    (t2/query
-                 {'select-distinct ['schema]
-                  'from            ['metabase_table]
-                  'where           ['and ['= 'db_id db-id] ['= 'active true]]
-                  'order-by        [['schema 'asc]]})
+                 {:select-distinct ['schema]
+                  :from            ['metabase_table]
+                  :where           ['and ['= 'db_id db-id] ['= 'active true]]
+                  :order-by        [['schema 'asc]]})
         schemas (->> rows
                      (keep :schema)
                      (mapv (fn [s]
@@ -425,11 +425,11 @@
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        tables (->> (t2/select [:model/Table 'id 'name 'display_name 'schema 'db_id 'description]
+        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
                                'db_id  db-id
                                'schema schema-name
                                'active true
-                               {'order-by [['%lower.name 'asc]]})
+                               {:order-by [['%lower.name 'asc]]})
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
@@ -444,28 +444,28 @@
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
           coll           (api/read-check :model/Collection coll-id)
-          cards          (->> (t2/select [:model/Card 'id 'name 'type 'description 'card_schema
-                                          'collection_id 'database_id 'table_id]
-                                         {'where    ['and ['= 'collection_id coll-id] ['= 'archived false]]
-                                          'order-by [['%lower.name 'asc]]})
+          cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                          :collection_id :database_id :table_id]
+                                         {:where    ['and ['= 'collection_id coll-id] ['= 'archived false]]
+                                          :order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
-          dashboards     (->> (t2/select [:model/Dashboard 'id 'name 'description 'collection_id]
+          dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
                                          'collection_id coll-id
                                          'archived      false
-                                         {'order-by [['%lower.name 'asc]]})
+                                         {:order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
-          documents      (->> (t2/select [:model/Document 'id 'name 'collection_id 'exploration_id]
+          documents      (->> (t2/select [:model/Document :id :name :collection_id :exploration_id]
                                          'collection_id  coll-id
                                          'archived       false
                                          'exploration_id nil
-                                         {'order-by [['%lower.name 'asc]]})
+                                         {:order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
-          subcollections (->> (t2/select [:model/Collection 'id 'name 'location 'authority_level
-                                          'description 'personal_owner_id]
+          subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
+                                          :description :personal_owner_id]
                                          'location (str (:location coll) coll-id "/")
                                          'archived false
-                                         {'order-by [['%lower.name 'asc]]})
+                                         {:order-by [['%lower.name 'asc]]})
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -476,11 +476,11 @@
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll-id (parse-long id-str)
         coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (t2/select [:model/Collection 'id 'name 'location 'authority_level
-                                 'description 'personal_owner_id]
+        subs    (->> (t2/select [:model/Collection :id :name :location :authority_level
+                                 :description :personal_owner_id]
                                 'location (str (:location coll) coll-id "/")
                                 'archived false
-                                {'order-by [['%lower.name 'asc]]})
+                                {:order-by [['%lower.name 'asc]]})
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -548,11 +548,11 @@
         table      (api/read-check :model/Table table-id)
         db-id      (:db_id table)
         _          (check-resource-database db-id)
-        cards      (->> (t2/select [:model/Card 'id 'name 'type 'description 'card_schema
-                                    'collection_id 'database_id 'table_id]
+        cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                    :collection_id :database_id :table_id]
                                    'table_id table-id
                                    'archived false
-                                   {'order-by [['%lower.name 'asc]]})
+                                   {:order-by [['%lower.name 'asc]]})
                         (filter mi/can-read?)
                         (mapv present-card))
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
@@ -560,10 +560,10 @@
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (t2/select [:model/Transform 'id 'name 'description
-                                      'source_database_id 'source]
+                     (->> (t2/select [:model/Transform :id :name :description
+                                      :source_database_id :source]
                                      'source_database_id db-id
-                                     {'order-by [['%lower.name 'asc]]})
+                                     {:order-by [['%lower.name 'asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)
                           (mapv present-transform)))]
@@ -638,8 +638,8 @@
   (let [transform        (transforms/get-transform (parse-long id-str))
         source-table-ids (transform-source-table-ids transform)
         source-tables    (when (seq source-table-ids)
-                           (->> (t2/select [:model/Table 'id 'name 'display_name 'schema 'db_id 'description]
-                                           'id ['in (set source-table-ids)])
+                           (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
+                                           'id [:in (set source-table-ids)])
                                 (filter mi/can-read?)
                                 (mapv present-table)))
         db-id            (:source_database_id transform)
@@ -709,17 +709,17 @@
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        tabs         (t2/select [:model/DashboardTab 'id 'name] 'dashboard_id dashboard-id
-                                {'order-by [['position 'asc] ['id 'asc]]})
-        dashcards    (t2/select [:model/DashboardCard 'id 'card_id 'action_id 'dashboard_tab_id
-                                 'visualization_settings]
+        tabs         (t2/select [:model/DashboardTab :id :name] 'dashboard_id dashboard-id
+                                {:order-by [['position 'asc] ['id 'asc]]})
+        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
+                                 :visualization_settings]
                                 'dashboard_id dashboard-id
-                                {'order-by [['row 'asc] ['col 'asc]]})
+                                {:order-by [['row 'asc] ['col 'asc]]})
         card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
-                       (->> (t2/select [:model/Card 'id 'name 'type 'description 'card_schema
-                                        'collection_id 'database_id 'table_id]
-                                       'id ['in card-ids]
+                       (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                        :collection_id :database_id :table_id]
+                                       'id [:in card-ids]
                                        'archived false)
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))

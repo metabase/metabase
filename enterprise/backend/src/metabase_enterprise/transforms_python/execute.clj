@@ -28,7 +28,7 @@
   [run-id message-log]
   (t2/update! :model/TransformRun
               'id run-id
-              {'message (base/message-log->string message-log)}))
+              {:message (base/message-log->string message-log)}))
 
 (def ^:private ^Duration python-message-loop-sleep-duration
   (Duration/ofMillis 1000))

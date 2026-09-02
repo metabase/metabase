@@ -39,7 +39,7 @@
             a structural filter would also drop it"
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-test-db! {:mode :mock-indexed}
-        (let [{card-id :id coll-id :collection_id} (t2/select-one [:model/Card 'id 'collection_id]
+        (let [{card-id :id coll-id :collection_id} (t2/select-one [:model/Card :id :collection_id]
                                                                   'name "Dog Training Guide")]
           (mt/with-non-admin-groups-no-collection-perms (t2/select-one :model/Collection 'id coll-id)
             (mt/with-test-user :rasta

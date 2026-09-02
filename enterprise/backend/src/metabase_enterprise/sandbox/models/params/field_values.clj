@@ -25,7 +25,7 @@
     (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership 'user_id api/*current-user-id*)
           sandboxes (when (seq group-ids)
                       (t2/select :model/Sandbox
-                                 'group_id ['in group-ids]
+                                 'group_id [:in group-ids]
                                  'table_id table-id))]
       (when sandboxes
         (sandboxing/assert-one-sandbox-per-table sandboxes)

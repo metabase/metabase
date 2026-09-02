@@ -176,7 +176,7 @@
       (auth-identity/set-password! (:id user) "test-password")
       (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
             password-auth (t2/select-one :model/AuthIdentity 'user_id (:id user) 'provider "password")]
-        (t2/update! :model/AuthIdentity (:id password-auth) {'expires_at expires-at})
+        (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
         (let [device-info {:device_id "test-device-expires"
                            :embedded false
                            :token_exchange false

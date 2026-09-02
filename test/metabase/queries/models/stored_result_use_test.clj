@@ -11,9 +11,9 @@
 (defn- stored-result! []
   (let [mp (mt/metadata-provider)]
     (first (t2/insert-returning-pks! :model/StoredResult
-                                     {'result_data   (byte-array [1 2 3])
-                                      'database_id   (mt/id)
-                                      'dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}))))
+                                     {:result_data   (byte-array [1 2 3])
+                                      :database_id   (mt/id)
+                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}))))
 
 (deftest exactly-one-reference-required-test
   (testing "stored_result_use requires exactly one of :card_id / :exploration_id"
@@ -24,18 +24,18 @@
       (let [sr-id (stored-result!)]
         (testing "card_id only succeeds"
           (let [id (first (t2/insert-returning-pks! :model/StoredResultUse
-                                                    {'stored_result_id sr-id 'card_id (:id card)}))]
+                                                    {:stored_result_id sr-id :card_id (:id card)}))]
             (is (=? {:card_id (:id card) :exploration_id nil}
                     (t2/select-one :model/StoredResultUse 'id id)))))
         (testing "neither set is rejected"
           (is (thrown? Exception
-                       (t2/insert! :model/StoredResultUse {'stored_result_id sr-id}))))
+                       (t2/insert! :model/StoredResultUse {:stored_result_id sr-id}))))
         (testing "both set is rejected"
           (is (thrown? Exception
                        (t2/insert! :model/StoredResultUse
-                                   {'stored_result_id sr-id
-                                    'card_id          (:id card)
-                                    'exploration_id   (:id expl)}))))))))
+                                   {:stored_result_id sr-id
+                                    :card_id          (:id card)
+                                    :exploration_id   (:id expl)}))))))))
 
 (deftest exploration-reference-test
   (testing "exploration_id only succeeds"
@@ -43,7 +43,7 @@
                    :model/Exploration expl {:name "sru-test" :creator_id (:id u)}]
       (let [sr-id (stored-result!)
             id    (first (t2/insert-returning-pks! :model/StoredResultUse
-                                                   {'stored_result_id sr-id 'exploration_id (:id expl)}))]
+                                                   {:stored_result_id sr-id :exploration_id (:id expl)}))]
         (is (=? {:card_id nil :exploration_id (:id expl)}
                 (t2/select-one :model/StoredResultUse 'id id)))))))
 
@@ -76,7 +76,7 @@
                                                      :document_id   (:id other-doc)
                                                      :collection_id (:id coll)}]
         (let [sr-id (stored-result!)]
-          (t2/insert! :model/StoredResultUse {'stored_result_id sr-id 'card_id (:id owned)})
+          (t2/insert! :model/StoredResultUse {:stored_result_id sr-id :card_id (:id owned)})
           (testing "carries when the snapshot is already paired with a card in this document"
             (queries/carry-pairings-for-document! (:id doc) [[(:id new-card) sr-id]])
             (is (some? (t2/select-one :model/StoredResultUse
@@ -104,12 +104,12 @@
   [token]
   (let [q (venues-count-query)]
     (first (t2/insert-returning-pks! :model/StoredResult
-                                     {'result_data       (byte-array [1 2 3])
-                                      'creator_id        (mt/user->id :rasta)
-                                      'database_id       (mt/id)
-                                      'dataset_query     q
-                                      'row_count         1
-                                      'data_access_token token}))))
+                                     {:result_data       (byte-array [1 2 3])
+                                      :creator_id        (mt/user->id :rasta)
+                                      :database_id       (mt/id)
+                                      :dataset_query     q
+                                      :row_count         1
+                                      :data_access_token token}))))
 
 (defn- gate-verdict! [card-id user-kw]
   (request/with-current-user (mt/user->id user-kw)
@@ -125,10 +125,10 @@
                                          :dataset_query (venues-count-query)}]
     (let [viewable   (snapshot-with-token! {})
           unviewable (snapshot-with-token! nil)]
-      (t2/insert! :model/StoredResultUse {'stored_result_id viewable 'card_id (:id card)})
+      (t2/insert! :model/StoredResultUse {:stored_result_id viewable :card_id (:id card)})
       (testing "a card whose only snapshot is viewable is served"
         (is (= :allowed (gate-verdict! (:id card) :rasta))))
-      (t2/insert! :model/StoredResultUse {'stored_result_id unviewable 'card_id (:id card)})
+      (t2/insert! :model/StoredResultUse {:stored_result_id unviewable :card_id (:id card)})
       (testing "adding a source the viewer may not see denies the whole card — a composite blob draws its
                 rows from every paired snapshot, not just the one named in the request"
         (is (= [:denied :incompatible-context] (gate-verdict! (:id card) :rasta))))

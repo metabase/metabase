@@ -436,11 +436,11 @@
                               (jdbc/execute!
                                conn
                                (-> (sql.helpers/select 'entity_type 'entity_local_id 'doc_type 'doc_text
-                                                       [['raw distance] 'distance])
+                                                       [[:raw distance] 'distance])
                                    (sql.helpers/from (keyword (index-table/vectors-table)))
                                    ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
                                    ;; library set is tiny.
-                                   (sql.helpers/order-by [['raw (ranking-sql distance)] 'asc])
+                                   (sql.helpers/order-by [[:raw (ranking-sql distance)] 'asc])
                                    (sql.helpers/limit limit)
                                    (sql/format {:quoted true}))
                                {:builder-fn jdbc.rs/as-unqualified-lower-maps})

@@ -281,13 +281,13 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (t2/update! :model/Database (:id database) {'settings {:database-enable-actions true}})))))
+             (t2/update! :model/Database (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
       (mt/with-temp [:model/Database database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (t2/update! :model/Database (:id database) {'engine :sqlite})))))))
+             (t2/update! :model/Database (:id database) {:engine :sqlite})))))))
 
 (deftest ^:parallel sensitive-data-redacted-test
   (let [encode-decode (comp json/decode json/encode)
@@ -506,21 +506,21 @@
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
       (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database db-id {'details {:keystore-path "secret-path"}})
+      (t2/update! :model/Database db-id {:details {:keystore-path "secret-path"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
       (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database db-id {'details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
+      (t2/update! :model/Database db-id {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database db-id {'details {:keystore-options "local"
+      (t2/update! :model/Database db-id {:details {:keystore-options "local"
                                                    :keystore-path "prefer-path"
                                                    :keystore-value "ignore-value"}})
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database db-id {'details {:keystore-value nil}})
+      (t2/update! :model/Database db-id {:details {:keystore-value nil}})
       (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
       (is (=? nil
               (secret/latest-for-id secret-id))))))
@@ -662,7 +662,7 @@
                                        :version 1
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
-                  (t2/update! :model/Database id {'details (assoc details :password-path "/path/to/my/password-file")})
+                  (t2/update! :model/Database id {:details (assoc details :password-path "/path/to/my/password-file")})
                   (check-db-fn (t2/select-one :model/Database 'id id) {:kind    :password
                                                                        :source  :file-path
                                                                        :version 2
@@ -698,7 +698,7 @@
                                        :name    "Secret Test"
                                        :details {:host "localhost"}}]
       (let [db-id (:id db)]
-        (t2/update! :model/Database db-id {'write_data_details {:keystore-value "write-secret"}})
+        (t2/update! :model/Database db-id {:write_data_details {:keystore-value "write-secret"}})
         (let [raw-write-details (t2/select-one-fn
                                  (comp json/decode+kw :write_data_details)
                                  (t2/table-name :model/Database) db-id)]
@@ -786,7 +786,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"private or internal network address"
-           (t2/update! :model/Database (:id db) {'engine (u/qualified-name ::alternate-details-driver)}))))))
+           (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
 (deftest overlay-details-are-validated-the-way-they-are-resolved-test
   ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
@@ -796,12 +796,12 @@
     (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
                                        :details {:host "8.8.8.8"}}]
       (testing "an overlay carrying only credentials inherits the host it will be merged with"
-        (is (pos? (t2/update! :model/Database (:id db) {'write_data_details {:user "hummingbird"}}))))
+        (is (pos? (t2/update! :model/Database (:id db) {:write_data_details {:user "hummingbird"}}))))
       (testing "an overlay that repoints the connection at an internal address is refused"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"private or internal network address"
-             (t2/update! :model/Database (:id db) {'admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+             (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
 (deftest audit-db-is-not-subject-to-the-network-policy-test
   ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
@@ -816,21 +816,21 @@
     (testing "the audit db can be created"
       (mt/with-temp [:model/Database db {:is_audit true, :engine :h2, :details {}}]
         (testing "and its engine can be flipped the way installing analytics flips it"
-          (is (pos? (t2/update! :model/Database (:id db) {'engine "postgres"}))))))
+          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))))
     (testing "an ordinary database with the same empty details is still refused"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"private or internal network address"
-           (t2/insert! :model/Database {'name "not the audit db", 'engine :postgres, 'details {}}))))
+           (t2/insert! :model/Database {:name "not the audit db", :engine :postgres, :details {}}))))
     (testing "`is_audit` is not itself a way past the policy -- serdes import can set it, so the exemption is
              narrowed to the detail-less shape the analytics installer actually writes"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"private or internal network address"
-           (t2/insert! :model/Database {'name       "audit-flavored smuggling"
-                                        'is_audit   true
-                                        'engine     (u/qualified-name ::host-details-driver)
-                                        'details    {:host "127.0.0.1"}}))))))
+           (t2/insert! :model/Database {:name       "audit-flavored smuggling"
+                                        :is_audit   true
+                                        :engine     (u/qualified-name ::host-details-driver)
+                                        :details    {:host "127.0.0.1"}}))))))
 
 (deftest attached-dwh-relaxes-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
@@ -842,26 +842,26 @@
                                              :is_attached_dwh true
                                              :details         {:host "10.224.7.141"}}]
             (testing "and updated"
-              (is (pos? (t2/update! :model/Database (:id db) {'details {:host "10.224.7.142"}})))))))
+              (is (pos? (t2/update! :model/Database (:id db) {:details {:host "10.224.7.142"}})))))))
       (testing "loopback and link-local stay blocked even for the attached DWH"
         (doseq [host ["127.0.0.1" "169.254.169.254"]]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"private or internal network address"
-               (t2/insert! :model/Database {'name            "attached dwh"
-                                            'engine          (u/qualified-name ::host-details-driver)
-                                            'is_attached_dwh true
-                                            'details         {:host host}}))
+               (t2/insert! :model/Database {:name            "attached dwh"
+                                            :engine          (u/qualified-name ::host-details-driver)
+                                            :is_attached_dwh true
+                                            :details         {:host host}}))
               (str "should be refused: " host)))))
     (testing "without the :attached-dwh token feature the flag confers no exemption"
       (mt/with-premium-features #{}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"private or internal network address"
-             (t2/insert! :model/Database {'name            "dwh-flavored smuggling"
-                                          'engine          (u/qualified-name ::host-details-driver)
-                                          'is_attached_dwh true
-                                          'details         {:host "10.224.7.141"}})))))))
+             (t2/insert! :model/Database {:name            "dwh-flavored smuggling"
+                                          :engine          (u/qualified-name ::host-details-driver)
+                                          :is_attached_dwh true
+                                          :details         {:host "10.224.7.141"}})))))))
 
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
@@ -907,7 +907,7 @@
   [db-ids user-info permission-mapping column-field]
   (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
     (t2/select-pks-set :model/Database
-                       {'where ['and
+                       {:where ['and
                                 clause
                                 ['in 'id db-ids]]})))
 
@@ -928,7 +928,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -954,7 +954,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -980,7 +980,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1006,7 +1006,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1032,7 +1032,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1059,7 +1059,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1086,7 +1086,7 @@
                      :model/PermissionsGroup pg2 {}]
         (perms/add-user-to-group! (mt/user->id :rasta) pg1)
         (perms/add-user-to-group! (mt/user->id :rasta) pg2)
-        (t2/delete! :model/DataPermissions 'db_id ['in [db1-id db2-id db3-id]])
+        (t2/delete! :model/DataPermissions 'db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
@@ -1097,7 +1097,7 @@
         (perms-group-membership/with-allow-direct-deletion
           (t2/delete! :model/PermissionsGroupMembership
                       'user_id (mt/user->id :rasta)
-                      'group_id ['in [(:id pg1) (:id pg2)]]))
+                      'group_id [:in [(:id pg1) (:id pg2)]]))
         (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
                                           {:user-id (mt/user->id :rasta) :is-superuser? false}
                                           default-permission-mapping
@@ -1205,8 +1205,8 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"router_database_id"
-           (t2/update! :model/Database normal-id {'router_database_id router-id})))))
+           (t2/update! :model/Database normal-id {:router_database_id router-id})))))
   (testing "a no-op update that does not touch router_database_id is allowed (destination can still be edited)"
     (mt/with-temp [:model/Database {router-id :id} {}
                    :model/Database {dest-id :id} {:router_database_id router-id}]
-      (is (t2/update! :model/Database dest-id {'name "renamed-destination"})))))
+      (is (t2/update! :model/Database dest-id {:name "renamed-destination"})))))

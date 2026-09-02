@@ -31,7 +31,7 @@
                     (mfa/mfa-enabled?))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
-                    (t2/exists? :model/Database 'engine ['in (descendants driver/hierarchy :sql)]))
+                    (t2/exists? :model/Database 'engine [:in (descendants driver/hierarchy :sql)]))
     :enabled   (t2/exists? :model/Sandbox)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)

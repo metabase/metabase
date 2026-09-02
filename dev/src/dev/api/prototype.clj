@@ -47,19 +47,19 @@
                       (let [obj-v (get obj (name query-k))]
                         (= query-v (str obj-v))))
                     query-args))
-          (map row->json (t2/query {'select   ['id 'content]
-                                    'from     [(prototype-table)]
-                                    'where    ['= 'type type]
-                                    'order-by [['id 'asc]]}))))
+          (map row->json (t2/query {:select   ['id 'content]
+                                    :from     [(prototype-table)]
+                                    :where    ['= 'type type]
+                                    :order-by [['id 'asc]]}))))
 
 (api.macros/defendpoint :get "/:type/:id"
   "Returns an existing record"
   [{:keys [type id]} :- [:map
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]]
-  (-> (api/check-404 (t2/query-one {'select ['id 'content]
-                                    'from   [(prototype-table)]
-                                    'where  ['= 'id id]}))
+  (-> (api/check-404 (t2/query-one {:select ['id 'content]
+                                    :from   [(prototype-table)]
+                                    :where  ['= 'id id]}))
       (api/check-404)
       (row->json)))
 
@@ -70,8 +70,8 @@
    _query-params
    body]
   (let [id (t2/insert-returning-pk! (prototype-table)
-                                    {'type    type
-                                     'content (json/encode body)})]
+                                    {:type    type
+                                     :content (json/encode body)})]
     (assoc body :id id)))
 
 (api.macros/defendpoint :put "/:type/:id"
@@ -82,8 +82,8 @@
    _query-params
    body]
   (t2/update! (prototype-table) id
-              {'type    type
-               'content (json/encode body)})
+              {:type    type
+               :content (json/encode body)})
   (assoc body :id id))
 
 (api.macros/defendpoint :delete "/:type/:id"

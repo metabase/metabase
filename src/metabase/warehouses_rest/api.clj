@@ -74,9 +74,9 @@
   [dbs & {:keys [can-query? can-write-metadata?]}]
   (let [all-tables (t2/select :model/Table
                               'active          true
-                              'db_id           ['in (map :id dbs)]
+                              'db_id           [:in (map :id dbs)]
                               'visibility_type nil
-                              {'order-by [['%lower.schema 'asc]
+                              {:order-by [['%lower.schema 'asc]
                                           ['%lower.display_name 'asc]]})
         _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
@@ -96,9 +96,9 @@
   (if (empty? dbs)
     dbs
     (let [db-ids        (map :id dbs)
-          rows          (t2/query {'select-distinct ['db_id 'schema]
-                                   'from            [(t2/table-name :model/Table)]
-                                   'where           ['and
+          rows          (t2/query {:select-distinct ['db_id 'schema]
+                                   :from            [(t2/table-name :model/Table)]
+                                   :where           ['and
                                                      ['in 'db_id db-ids]
                                                      ['= 'active true]
                                                      ['= 'visibility_type nil]]})
@@ -222,19 +222,19 @@
            xform)
      (completing conj #(t2/hydrate % :collection :metrics))
      []
-     (t2/reducible-query {'select   ['name 'description 'database_id 'dataset_query 'id 'collection_id
+     (t2/reducible-query {:select   ['name 'description 'database_id 'dataset_query 'id 'collection_id
                                      'result_metadata 'type 'source_card_id 'card_schema
-                                     [^:allow-subquery {'select   ['status]
-                                                        'from     ['moderation_review]
-                                                        'where    ['and
+                                     [^:allow-subquery {:select   ['status]
+                                                        :from     ['moderation_review]
+                                                        :where    ['and
                                                                    ['= 'moderated_item_type "card"]
                                                                    ['= 'moderated_item_id 'report_card.id]
                                                                    ['= 'most_recent true]]
-                                                        'order-by [['id 'desc]]
-                                                        'limit    1}
+                                                        :order-by [['id 'desc]]
+                                                        :limit    1}
                                       'moderated_status]]
-                          'from     ['report_card]
-                          'where    (into [:and
+                          :from     ['report_card]
+                          :where    (into [:and
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
                                            ;; always return metrics for now
@@ -242,7 +242,7 @@
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-filter-clause)]
                                           additional-constraints)
-                          'order-by [['%lower.name 'asc]]}))))
+                          :order-by [['%lower.name 'asc]]}))))
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -349,8 +349,8 @@
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
                                          (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
                        base-where)
-        dbs (t2/select :model/Database {'order-by ['%lower.name '%lower.engine]
-                                        'where where-clause})
+        dbs (t2/select :model/Database {:order-by ['%lower.name '%lower.engine]
+                                        :where where-clause})
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
@@ -557,9 +557,9 @@
 
 (defn- card-query
   [db-id model type-str]
-  ^:allow-subquery {'select [['%count.* model]]
-                    'from   ['report_card]
-                    'where  ['and
+  ^:allow-subquery {:select [['%count.* model]]
+                    :from   ['report_card]
+                    :where  ['and
                              ['= 'database_id db-id]
                              ['= 'type type-str]]})
 
@@ -577,17 +577,17 @@
 
 (defmethod database-usage-query :segment
   [_ db-id]
-  ^:allow-subquery {'select [['%count.* 'segment]]
-                    'from   ['segment]
-                    'where  ['in 'table_id ^:allow-subquery {'select ['id]
-                                                             'from   ['metabase_table]
-                                                             'where  ['= 'db_id db-id]}]})
+  ^:allow-subquery {:select [['%count.* 'segment]]
+                    :from   ['segment]
+                    :where  ['in 'table_id ^:allow-subquery {:select ['id]
+                                                             :from   ['metabase_table]
+                                                             :where  ['= 'db_id db-id]}]})
 
 (defmethod database-usage-query :transform
   [_ db-id]
-  ^:allow-subquery {'select [['%count.* 'transform]]
-                    'from   ['transform]
-                    'where  ['or
+  ^:allow-subquery {:select [['%count.* 'transform]]
+                    :from   ['transform]
+                    :where  ['or
                              ['= 'source_database_id db-id]
                              ['= 'target_db_id db-id]]})
 
@@ -606,8 +606,8 @@
   (api/check-superuser)
   (check-database-exists id)
   (first (mdb/query
-          {'select ['*]
-           'from   (for [model database-usage-models
+          {:select ['*]
+           :from   (for [model database-usage-models
                          :let [query (database-usage-query model id)]
                          :when query]
                      [query model])})))
@@ -703,13 +703,13 @@
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id like-pattern limit]
-  (t2/select [:model/Table 'id 'db_id 'schema 'name]
-             {'where    ['and ['= 'db_id db-id]
+  (t2/select [:model/Table :id :db_id :schema :name]
+             {:where    ['and ['= 'db_id db-id]
                          ['= 'active true]
                          ['like '%lower.name like-pattern]
                          ['= 'visibility_type nil]]
-              'order-by [['%lower.name 'asc]]
-              'limit    limit}))
+              :order-by [['%lower.name 'asc]]
+              :limit    limit}))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -725,9 +725,9 @@
                         second
                         (str/replace #"-" " ")
                         u/lower-case-en)]
-    (t2/select [:model/Card 'id 'type 'database_id 'name 'collection_id
-                [:collection.name :collection_name] 'card_schema]
-               {'where    ['and
+    (t2/select [:model/Card :id :type :database_id :name :collection_id
+                [:collection.name :collection_name] :card_schema]
+               {:where    ['and
                            ['= 'report_card.database_id database-id]
                            ['= 'report_card.archived false]
                            (when-not include-dashboard-questions?
@@ -749,30 +749,30 @@
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (h2x/like-substring search-name)])]
-                'left-join [['collection 'collection] ['= 'collection.id 'report_card.collection_id]]
+                :left-join [['collection 'collection] ['= 'collection.id 'report_card.collection_id]]
                 ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
                 ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
                 ;; fancy `CASE` expression or something so we can sort things exactly how we like.
-                'order-by [['type 'asc]
+                :order-by [['type 'asc]
                            ['report_card.id 'desc]] ; sort by most recently created after sorting by type
-                'limit    50})))
+                :limit    50})))
 
 (defn- autocomplete-fields [db-id like-pattern limit]
   ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
-  (t2/select [:model/Field 'name 'base_type 'semantic_type 'id 'table_id [:table.name :table_name]]
+  (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              'metabase_field.active          true
-             :%lower.metabase_field/name     ['like like-pattern]
-             'metabase_field.visibility_type ['not-in ["sensitive" "retired"]]
+             :%lower.metabase_field/name     [:like like-pattern]
+             'metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              'table.db_id                    db-id
-             {'order-by   [[['lower 'metabase_field.name] 'asc]
+             {:order-by   [[['lower 'metabase_field.name] 'asc]
                            [['lower 'table.name] 'asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              'inner-join [['metabase_table 'table] ['and 'table.active
+              :inner-join [['metabase_table 'table] ['and 'table.active
                                                      ['= 'table.id 'metabase_field.table_id]]]
-              'limit      limit}))
+              :limit      limit}))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -875,9 +875,9 @@
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
   (perms/prime-table-perms-cache {:db-ids #{id}})
-  (let [fields (filter mi/can-read? (-> (t2/select [:model/Field 'id 'name 'display_name 'table_id 'base_type 'semantic_type]
-                                                   'table_id        ['in (t2/select-fn-set :id :model/Table, 'db_id id)]
-                                                   'visibility_type ['not-in ["sensitive" "retired"]])
+  (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
+                                                   'table_id        [:in (t2/select-fn-set :id :model/Table, 'db_id id)]
+                                                   'visibility_type [:not-in ["sensitive" "retired"]])
                                         (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
@@ -1199,7 +1199,7 @@
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
-          (t2/update! :model/Database id {'cache_ttl cache_ttl}))
+          (t2/update! :model/Database id {:cache_ttl cache_ttl}))
         (let [db (t2/select-one :model/Database 'id id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
@@ -1291,7 +1291,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (t2/update! :model/Table {'id ['in table-ids]} {'initial_sync_status "complete"})))
+      (t2/update! :model/Table {:id ['in table-ids]} {:initial_sync_status "complete"})))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
@@ -1333,12 +1333,12 @@
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (t2/query-one {'delete-from 'metabase_fieldvalues
-                 'where      ['in 'field_id
-                              ^:allow-subquery {'select     ['f.id]
-                                                'from       [['metabase_field 'f]]
-                                                'right-join [['metabase_table 't] ['= 'f.table_id 't.id]]
-                                                'where      ['= 't.db_id (u/the-id database-or-id)]}]}))
+  (t2/query-one {:delete-from 'metabase_fieldvalues
+                 :where      ['in 'field_id
+                              ^:allow-subquery {:select     ['f.id]
+                                                :from       [['metabase_field 'f]]
+                                                :right-join [['metabase_table 't] ['= 'f.table_id 't.id]]
+                                                :where      ['= 't.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;
@@ -1433,7 +1433,7 @@
                            (merge
                             {:order-by [[:%lower.schema :asc]]}
                             (when clauses
-                              {'where (into [:and] clauses)})))
+                              {:where (into [:and] clauses)})))
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -1508,13 +1508,13 @@
                                        'db_id db-id
                                        'schema schema
                                        'active true
-                                       {'order-by [['display_name 'asc]]})
+                                       {:order-by [['display_name 'asc]]})
                             (t2/select :model/Table
                                        'db_id db-id
                                        'schema schema
                                        'active true
                                        'visibility_type nil
-                                       {'order-by [['display_name 'asc]]}))
+                                       {:order-by [['display_name 'asc]]}))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (if-let [f (when config/ee-available?

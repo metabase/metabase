@@ -47,16 +47,16 @@
                                        [4 "root"       0]]
                    :when              model-id]
                ^:allow-subquery
-               {'from   ['cache_config]
-                'select ['id
-                         [['inline i] 'ordering]]
-                'where  ['and
+               {:from   ['cache_config]
+                :select ['id
+                         [[:inline i] 'ordering]]
+                :where  ['and
                          ['= 'model model]
                          ['= 'model_id model-id]]})
-        q            ^:allow-subquery {'from     [[^:allow-subquery {'union-all qs} 'unused_alias]]
-                                       'select   ['id]
-                                       'order-by 'ordering
-                                       'limit    ['inline 1]}
+        q            ^:allow-subquery {:from     [[^:allow-subquery {:union-all qs} 'unused_alias]]
+                                       :select   ['id]
+                                       :order-by 'ordering
+                                       :limit    [:inline 1]}
         item (t2/select-one :model/CacheConfig 'id q)]
     (cache/card-strategy item card)))
 

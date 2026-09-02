@@ -29,8 +29,8 @@
        (finally
          (with-bindings {(var perms-group/*allow-modifying-magic-groups*) true}
            (t2/update! :model/PermissionsGroup 'id (:id original-group#)
-                       {'magic_group_type perms-group/data-analyst-magic-group-type
-                        'name             (:name original-group#)}))))))
+                       {:magic_group_type perms-group/data-analyst-magic-group-type
+                        :name             (:name original-group#)}))))))
 
 (deftest sync-data-analyst-group-for-oss!-ee-noop-test
   (testing "When we canonically have the feature, sync-data-analyst-group-for-oss! does nothing"
@@ -77,7 +77,7 @@
         (let [original-group-id (t2/select-one-pk :model/PermissionsGroup 'magic_group_type perms-group/data-analyst-magic-group-type)]
           ;; Simulate the migration conflict scenario: rename the magic group to the fallback name
           (with-bindings {(var perms-group/*allow-modifying-magic-groups*) true}
-            (t2/update! :model/PermissionsGroup original-group-id {'name "Metabase Data Analysts"}))
+            (t2/update! :model/PermissionsGroup original-group-id {:name "Metabase Data Analysts"}))
           (mt/with-temp [:model/User {user-id :id} {}]
             (perms/add-user-to-group! user-id original-group-id)
             (perms-group/sync-data-analyst-group-for-oss!)

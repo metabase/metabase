@@ -44,8 +44,8 @@
    explorations k
    #(group-by :exploration_id
               (t2/select :model/ExplorationThread
-                         'exploration_id ['in (map :id explorations)]
-                         {'order-by [['position 'asc] ['id 'asc]]}))
+                         'exploration_id [:in (map :id explorations)]
+                         {:order-by [['position 'asc] ['id 'asc]]}))
    :id
    {:default []}))
 
@@ -58,10 +58,10 @@
           (map (fn [[eid docs]] [eid (first docs)]))
           (group-by :exploration_id
                     (t2/select [:model/Document
-                                'id 'name 'exploration_id 'creator_id 'content_type
-                                'created_at 'updated_at 'archived 'is_placeholder]
-                               'exploration_id ['in (map :id explorations)]
-                               {'order-by [['created_at 'asc] ['id 'asc]]})))
+                                :id :name :exploration_id :creator_id :content_type
+                                :created_at :updated_at :archived :is_placeholder]
+                               'exploration_id [:in (map :id explorations)]
+                               {:order-by [['created_at 'asc] ['id 'asc]]})))
    :id
    {:default nil}))
 

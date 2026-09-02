@@ -182,7 +182,7 @@
   (t2/select :model/MetabotMessage
              'conversation_id conversation-id
              'deleted_at nil
-             {'order-by [['created_at 'asc] ['id 'asc]]}))
+             {:order-by [['created_at 'asc] ['id 'asc]]}))
 
 (def ^:private opening-message-limit 10)
 
@@ -192,14 +192,14 @@
   (t2/select :model/MetabotMessage
              'conversation_id conversation-id
              'deleted_at nil
-             {'order-by [['created_at 'asc] ['id 'asc]]
-              'limit    opening-message-limit}))
+             {:order-by [['created_at 'asc] ['id 'asc]]
+              :limit    opening-message-limit}))
 
 (defmacro with-conversation-lock
   "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
   [conversation-id & body]
   `(t2/with-transaction [_conn#]
-     (t2/select-one :model/MetabotConversation 'id ~conversation-id {'for 'update})
+     (t2/select-one :model/MetabotConversation 'id ~conversation-id {:for 'update})
      ~@body))
 
 (defn soft-delete-messages!
@@ -209,8 +209,8 @@
   [conditions deleted-by-user-id]
   {:pre [(seq conditions)]}
   (t2/update! :model/MetabotMessage conditions
-              {'deleted_at         [:now]
-               'deleted_by_user_id deleted-by-user-id}))
+              {:deleted_at         [:now]
+               :deleted_by_user_id deleted-by-user-id}))
 
 (defn- insert-assistant-placeholder!
   "Insert a turn's in-flight assistant row (`:finished` nil until
@@ -426,11 +426,11 @@
   Filters to :assistant so a deleted trailing reply doesn't fall back to a user row."
   [conversation-id]
   (t2/select-one :model/MetabotMessage
-                 {'where    ['and
+                 {:where    ['and
                              ['= 'conversation_id conversation-id]
                              ['= 'deleted_at nil]
                              ['= 'role "assistant"]]
-                  'order-by [['created_at 'desc] ['id 'desc]]}))
+                  :order-by [['created_at 'desc] ['id 'desc]]}))
 
 (defn leaf-external-id
   "The [[leaf-message]]'s `external_id`, or nil."
@@ -545,15 +545,15 @@
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
-    (t2/update! :model/MetabotMessage msg-id {'slack_msg_id slack-msg-id})))
+    (t2/update! :model/MetabotMessage msg-id {:slack_msg_id slack-msg-id})))
 
 (defn set-conversation-title-if-missing!
   "Set a conversation title only when it has not already been generated."
   [conversation-id title]
   (when (and conversation-id (not (str/blank? title)))
     (t2/update! :model/MetabotConversation
-                {'id conversation-id 'title nil}
-                {'title title})))
+                {:id conversation-id :title nil}
+                {:title title})))
 
 (defn conversation-title
   "Return the current persisted title for a conversation."
@@ -810,10 +810,10 @@
        :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
                                             {:card_id  id
                                              :chart_id metabot_chart_id})
-                                          (t2/select [:model/Card 'id 'metabot_chart_id]
+                                          (t2/select [:model/Card :id :metabot_chart_id]
                                                      'metabot_conversation_id conversation-id
                                                      'archived false
-                                                     {'order-by [['id 'asc]]}))
+                                                     {:order-by [['id 'asc]]}))
        :messages                    (messages->chat-messages messages)})))
 
 ;;; ---------------------------------------- Forking ----------------------------------------
@@ -864,9 +864,9 @@
             new-conversation-id (str (random-uuid))]
         (t2/with-transaction [_conn]
           (t2/insert! :model/MetabotConversation
-                      {'id                          new-conversation-id
-                       'user_id                     user-id
-                       'forked_from_conversation_id conversation-id})
+                      {:id                          new-conversation-id
+                       :user_id                     user-id
+                       :forked_from_conversation_id conversation-id})
           (t2/insert! :model/MetabotMessage
                       (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
         new-conversation-id))))

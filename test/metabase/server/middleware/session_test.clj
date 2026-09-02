@@ -42,16 +42,16 @@
     (mt/with-temp [:model/User {user-id :id} {:is_active true}]
       (let [session-key (str (random-uuid))]
         (t2/insert! (t2/table-name :model/Session)
-                    {'id         (session/generate-session-id)
-                     'key_hashed (session/hash-session-key session-key)
-                     'user_id    user-id
-                     'created_at :%now})
+                    {:id         (session/generate-session-id)
+                     :key_hashed (session/hash-session-key session-key)
+                     :user_id    user-id
+                     :created_at :%now})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User user-id {'is_active false})
+        (t2/update! :model/User user-id {:is_active false})
         (testing "after deactivation the session no longer authenticates"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User user-id {'is_active true})
+        (t2/update! :model/User user-id {:is_active true})
         (testing "after reactivation the same session STILL does not authenticate"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
@@ -69,7 +69,7 @@
             (let [session-id (session/generate-session-id)
                   session-key (str (random-uuid))
                   session-key-hashed (session/hash-session-key session-key)]
-              (t2/insert! (t2/table-name :model/Session) {'id session-id 'key_hashed session-key-hashed, 'user_id user-id, 'created_at created-at})
+              (t2/insert! (t2/table-name :model/Session) {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-key nil)]
                 (if expected
                   (is (nil? session))
@@ -294,16 +294,16 @@
           (is (= (mt/user->id :lucky)
                  (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
         (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
-          (t2/query {'update 'api_key
-                     'set    {'key (u.password/hash-bcrypt "mb_encrypted123")}
-                     'where  ['= 'id api-key-id]})
+          (t2/query {:update 'api_key
+                     :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
+                     :where  ['= 'id api-key-id]})
           (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
               "strict decrypt rejects the unencrypted hash")
           ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
           ;; strict decrypt on the corrupted plaintext value
-          (t2/query {'update 'api_key
-                     'set    {'key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
-                     'where  ['= 'id api-key-id]}))))))
+          (t2/query {:update 'api_key
+                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
+                     :where  ['= 'id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
@@ -352,10 +352,10 @@
         (testing "authenticates while its synthetic user is active"
           (is (authed?)))
         (testing "deactivating the creator does NOT revoke the key — creator_id is attribution only"
-          (t2/update! :model/User creator-id {'is_active false})
+          (t2/update! :model/User creator-id {:is_active false})
           (is (authed?)))
         (testing "deactivating the key's own synthetic user DOES revoke it"
-          (t2/update! :model/User synthetic-id {'is_active false})
+          (t2/update! :model/User synthetic-id {:is_active false})
           (is (not (authed?))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2
@@ -413,9 +413,9 @@
 (deftest cannot-use-session-id-for-auth
   (testing "The session id is checked on requests, but only for uuid-formatted keys. Allowing users to auth with core_session.id values would be a security risk."
     (try
-      (t2/insert! :model/Session {'id         test-session-id
-                                  'key_hashed test-session-key-hashed
-                                  'user_id    (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id         test-session-id
+                                  :key_hashed test-session-key-hashed
+                                  :user_id    (mt/user->id :lucky)})
       (is (= nil (#'mw.session/current-user-info-for-session test-session-id nil)))
       (finally
         (t2/delete! :model/Session 'id test-session-id)))))
@@ -425,9 +425,9 @@
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
     ;; the way we'd expect :/
     (try
-      (t2/insert! :model/Session {'id         test-session-id
-                                  'key_hashed test-session-key-hashed
-                                  'user_id    (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id         test-session-id
+                                  :key_hashed test-session-key-hashed
+                                  :user_id    (mt/user->id :lucky)})
       (is (= {:metabase-user-id (mt/user->id :lucky),
               :is-superuser? false,
               :is-group-manager? false,
@@ -441,9 +441,9 @@
 (deftest current-user-info-for-session-test-2
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (t2/insert! :model/Session {'id         test-session-id
-                                  'key_hashed test-session-key-hashed
-                                  'user_id    (mt/user->id :crowberto)})
+      (t2/insert! :model/Session {:id         test-session-id
+                                  :key_hashed test-session-key-hashed
+                                  :user_id    (mt/user->id :crowberto)})
       (is (= {:metabase-user-id (mt/user->id :crowberto),
               :is-superuser? true,
               :is-group-manager? false,
@@ -460,11 +460,11 @@
       (mt/with-user-in-groups [group-1 {:name "New Group 1"}
                                group-2 {:name "New Group 2"}
                                user    [group-1 group-2]]
-        (t2/update! :model/PermissionsGroupMembership {'user_id (:id user), 'group_id (:id group-2)}
-                    {'is_group_manager true})
-        (t2/insert! :model/Session {'id         test-session-id
-                                    'key_hashed test-session-key-hashed
-                                    'user_id    (:id user)})
+        (t2/update! :model/PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
+                    {:is_group_manager true})
+        (t2/insert! :model/Session {:id         test-session-id
+                                    :key_hashed test-session-key-hashed
+                                    :user_id    (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
           (mt/with-premium-features #{}
             (is (= false
@@ -481,20 +481,20 @@
 (deftest current-user-info-for-session-test-4
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (t2/insert! :model/Session {'id              test-session-id
-                                  'key_hashed      test-session-key-hashed
-                                  'user_id         (mt/user->id :lucky)
-                                  'anti_csrf_token test-anti-csrf-token})
+      (t2/insert! :model/Session {:id              test-session-id
+                                  :key_hashed      test-session-key-hashed
+                                  :user_id         (mt/user->id :lucky)
+                                  :anti_csrf_token test-anti-csrf-token})
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session 'id test-session-id)))
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (t2/insert! :model/Session {'id              test-session-id
-                                    'key_hashed      test-session-key-hashed
-                                    'user_id         (mt/user->id :lucky)
-                                    'anti_csrf_token test-anti-csrf-token})
+        (t2/insert! :model/Session {:id              test-session-id
+                                    :key_hashed      test-session-key-hashed
+                                    :user_id         (mt/user->id :lucky)
+                                    :anti_csrf_token test-anti-csrf-token})
         (is (= {:metabase-user-id (mt/user->id :lucky),
                 :is-superuser? false,
                 :is-group-manager? false,
@@ -506,10 +506,10 @@
           (t2/delete! :model/Session 'id test-session-id)))
       (testing "(unless the token is wrong)"
         (try
-          (t2/insert! :model/Session {'id              test-session-id
-                                      'key_hashed      test-session-key-hashed
-                                      'user_id         (mt/user->id :lucky)
-                                      'anti_csrf_token test-anti-csrf-token})
+          (t2/insert! :model/Session {:id              test-session-id
+                                      :key_hashed      test-session-key-hashed
+                                      :user_id         (mt/user->id :lucky)
+                                      :anti_csrf_token test-anti-csrf-token})
           (is (= nil
                  (#'mw.session/current-user-info-for-session test-session-key (str/join (reverse test-anti-csrf-token)))))
           (finally
@@ -518,9 +518,9 @@
 (deftest current-user-info-for-session-test-5
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (t2/insert! :model/Session {'id         test-session-id
-                                  'key_hashed test-session-key-hashed
-                                  'user_id    (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id         test-session-id
+                                  :key_hashed test-session-key-hashed
+                                  :user_id    (mt/user->id :lucky)})
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
       (finally
@@ -529,11 +529,11 @@
 (deftest current-user-info-for-session-test-6
   (testing "shouldn't fetch expired sessions"
     (try
-      (t2/insert! :model/Session {'id         test-session-id
-                                  'key_hashed test-session-key-hashed
-                                  'user_id    (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id         test-session-id
+                                  :key_hashed test-session-key-hashed
+                                  :user_id    (mt/user->id :lucky)})
       ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (t2/query-one {'update (t2/table-name :model/Session), 'set {'created_at (t/instant 1000)}, 'where ['= 'id test-session-id]})
+      (t2/query-one {:update (t2/table-name :model/Session), :set {:created_at (t/instant 1000)}, :where ['= 'id test-session-id]})
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
@@ -542,7 +542,7 @@
 (deftest current-user-info-for-session-test-7
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (t2/insert! :model/Session {'id test-session-id 'key_hashed test-session-key-hashed, 'user_id (mt/user->id :trashbird)})
+      (t2/insert! :model/Session {:id test-session-id :key_hashed test-session-key-hashed, :user_id (mt/user->id :trashbird)})
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
@@ -558,20 +558,20 @@
                         "custom-oidc" "slack-connect" "support-access-grant"]]
         (testing (str "provider: " provider)
           (let [ai         (first (t2/insert-returning-instances! (t2/table-name :model/AuthIdentity)
-                                                                  {'user_id     user-id
-                                                                   'provider    provider
-                                                                   'provider_id (str user-id "-" provider)
-                                                                   'created_at  :%now
-                                                                   'updated_at  :%now}))
+                                                                  {:user_id     user-id
+                                                                   :provider    provider
+                                                                   :provider_id (str user-id "-" provider)
+                                                                   :created_at  :%now
+                                                                   :updated_at  :%now}))
                 session-key (session/generate-session-key)
                 session-id  (session/generate-session-id)]
             (try
               (t2/insert! (t2/table-name :model/Session)
-                          {'id                session-id
-                           'key_hashed        (session/hash-session-key session-key)
-                           'user_id           user-id
-                           'auth_identity_id  (:id ai)
-                           'created_at        :%now})
+                          {:id                session-id
+                           :key_hashed        (session/hash-session-key session-key)
+                           :user_id           user-id
+                           :auth_identity_id  (:id ai)
+                           :created_at        :%now})
               (is (= provider
                      (:auth-provider (#'mw.session/current-user-info-for-session session-key nil))))
               (finally
@@ -631,7 +631,7 @@
           (let [session-id (session/generate-session-id)
                 session-key (str (random-uuid))
                 session-key-hashed (session/hash-session-key session-key)]
-            (t2/insert! :model/Session {'id session-id 'key_hashed session-key-hashed, 'user_id user-id})
+            (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id})
             (is (= nil
                    (session-locale session-key)))
             (testing "w/ X-Metabase-Locale header"
@@ -642,7 +642,7 @@
           (let [session-id (session/generate-session-id)
                 session-key (str (random-uuid))
                 session-key-hashed (session/hash-session-key session-key)]
-            (t2/insert! :model/Session {'id session-id 'key_hashed session-key-hashed, 'user_id user-id, 'created_at :%now})
+            (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-key)))
             (testing "w/ X-Metabase-Locale header"
@@ -703,8 +703,8 @@
               session-key (str (random-uuid))
               key-hashed  (session/hash-session-key session-key)]
           (t2/insert! (t2/table-name :model/Session)
-                      {'id session-id 'key_hashed key-hashed 'user_id user-id 'created_at :%now
-                       'last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
+                      {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
+                       :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
 (deftest auth-method-test

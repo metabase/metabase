@@ -201,7 +201,7 @@
         (testing "warm the provider's by-name cache while the table is still active"
           (is (= [true] (mapv :active (by-name))))
           (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
-        (t2/update! :model/Table (:id gone) {'active false})
+        (t2/update! :model/Table (:id gone) {:active false})
         (testing "the cache still surfaces the stale ACTIVE row by name"
           (is (= [true] (mapv :active (by-name)))))
         (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"

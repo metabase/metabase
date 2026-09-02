@@ -58,12 +58,12 @@
   [refresh-defs]
   (fn []
     (let [card-ids      (into #{} (map :card-id refresh-defs))
-          cards-by-id   (t2/select-pk->fn identity :model/Card 'id ['in card-ids])
+          cards-by-id   (t2/select-pk->fn identity :model/Card 'id [:in card-ids])
           all-db-ids    (into #{} (keep (comp :database_id val)) cards-by-id)
           router-db-ids (if (seq all-db-ids)
                           (t2/select-fn-set :database_id
                                             :model/DatabaseRouter
-                                            'database_id ['in all-db-ids])
+                                            'database_id [:in all-db-ids])
                           #{})]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
         (let [card (get cards-by-id card-id)]
@@ -100,15 +100,15 @@
         (for [{:keys [model model_id config]} cache-configs]
           (let [rerun-cutoff (duration-ago config)]
             ^:allow-subquery {:nest
-                              ^:allow-subquery {'select   [['q.query 'query]
+                              ^:allow-subquery {:select   [['q.query 'query]
                                                            ['qc.query_hash 'cache-hash]
                                                            ['qe.card_id 'card-id]
                                                            ['qe.dashboard_id 'dashboard-id]
                                                            [['count 'q.query_hash] 'count]]
-                                                'from     [[(t2/table-name :model/Query) 'q]]
-                                                'join     [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]
+                                                :from     [[(t2/table-name :model/Query) 'q]]
+                                                :join     [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]
                                                            [(t2/table-name :model/QueryCache) 'qc] ['= 'qc.query_hash 'qe.cache_hash]]
-                                                'where    ['and
+                                                :where    ['and
                                                            (case model
                                                              "question" [:= :qe.card_id model_id]
                                                              "dashboard" [:= :qe.dashboard_id model_id])
@@ -127,9 +127,9 @@
                                                               ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
                                                               [:not= :qe.context (name :cache-refresh)]]
                                                              [:= :qe.parameterized false])]
-                                                'group-by ['q.query_hash 'q.query 'qc.query_hash 'qe.card_id 'qe.dashboard_id]}}))]
-    {'select ['u.query 'u.cache-hash 'u.card-id 'u.dashboard-id 'u.count]
-     'from   [[^:allow-subquery {'union queries} 'u]]}))
+                                                :group-by ['q.query_hash 'q.query 'qc.query_hash 'qe.card_id 'qe.dashboard_id]}}))]
+    {:select ['u.query 'u.cache-hash 'u.card-id 'u.dashboard-id 'u.count]
+     :from   [[^:allow-subquery {:union queries} 'u]]}))
 
 (defn- select-parameterized-queries
   "Given a list of parameterized query definitions from the Query table with additional :count and :card-id keys,
@@ -157,7 +157,7 @@
   to re-run them before the cache has been refreshed. "
   [queries]
   (doseq [batch (partition 1000 1000 nil queries)]
-    (t2/delete! :model/QueryCache 'query_hash ['in (map :cache-hash batch)])))
+    (t2/delete! :model/QueryCache 'query_hash [:in (map :cache-hash batch)])))
 
 (defn- maybe-refresh-duration-caches!
   "Detects caches with strategy=duration that are eligible for refreshing, and returns a count of the refresh jobs that
@@ -182,10 +182,10 @@
   "HoneySQL query for finding the the base query definition we should run for a card ID (i.e. the unparameterized
   query)."
   [card-id]
-  {'select ['q.query ['qe.card_id 'card-id]]
-   'from   [[(t2/table-name :model/Query) 'q]]
-   'join   [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]]
-   'where  ['and
+  {:select ['q.query ['qe.card_id 'card-id]]
+   :from   [[(t2/table-name :model/Query) 'q]]
+   :join   [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]]
+   :where  ['and
             ['= 'qe.card_id card-id]
             ['= 'qe.parameterized false]
             ['= 'qe.error nil]
@@ -194,15 +194,15 @@
             ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been executed at
             ;; all in the last month (including cache hits) we won't bother refreshing it again.
             ['>= 'qe.started_at (duration-ago {:duration 30 :unit "days"})]]
-   'order-by [['qe.started_at 'desc]]
-   'limit  1})
+   :order-by [['qe.started_at 'desc]]
+   :limit  1})
 
 (defn- scheduled-parameterized-queries-to-rerun-honeysql
   [card-id rerun-cutoff]
-  {'select   ['q.query ['qe.card_id 'card-id]]
-   'from     [[(t2/table-name :model/Query) 'q]]
-   'join     [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]]
-   'where    ['and
+  {:select   ['q.query ['qe.card_id 'card-id]]
+   :from     [[(t2/table-name :model/Query) 'q]]
+   :join     [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]]
+   :where    ['and
               ['= 'qe.card_id card-id]
               ['>= 'qe.started_at rerun-cutoff]
               ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
@@ -210,10 +210,10 @@
               ['= 'parameterized true]
               ['= 'qe.error nil]
               ['= 'qe.is_sandboxed false]]
-   'group-by ['q.query_hash 'q.query 'qe.card_id]
-   'order-by [[['count 'q.query_hash] 'desc]
+   :group-by ['q.query_hash 'q.query 'qe.card_id]
+   :order-by [[['count 'q.query_hash] 'desc]
               [['min 'qe.started_at] 'asc]]
-   'limit    *parameterized-queries-to-rerun-per-card*})
+   :limit    *parameterized-queries-to-rerun-per-card*})
 
 (defn- scheduled-queries-to-rerun
   "Returns a list containing all of the parameterized query definitions that we should preemptively rerun for a given
@@ -267,7 +267,7 @@
   [strategy]
   (t2/select :model/CacheConfig
              'strategy strategy
-             {'where ['or
+             {:where ['or
                       ['= 'next_run_at nil]
                       ['<= 'next_run_at (t/offset-date-time)]]}))
 
@@ -291,9 +291,9 @@
         (reduce
          (fn [refreshed-count {:keys [id config refresh_automatically] :as cache-config}]
            (t2/update! :model/CacheConfig
-                       {'id id}
-                       {'next_run_at    (calc-next-run (:schedule config) now)
-                        'invalidated_at now})
+                       {:id id}
+                       {:next_run_at    (calc-next-run (:schedule config) now)
+                        :invalidated_at now})
            (if (and (premium-features/enable-preemptive-caching?) refresh_automatically)
              (do
                (refresh-schedule-cache! cache-config)

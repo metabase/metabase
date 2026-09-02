@@ -365,7 +365,7 @@
 (defn- read-cache-from-db
   "Read a cached token status hash from the premium_features_token_cache table. Returns nil if not found."
   [token-hash]
-  (t2/select-one [:model/PremiumFeaturesCache 'token_status_hash 'updated_at] 'token_hash token-hash))
+  (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] 'token_hash token-hash))
 
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
@@ -375,17 +375,17 @@
   (t2/with-connection [_conn (app-db/app-db)]
     (let [now     (t/offset-date-time)
           updated (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
-                              {'token_status_hash result-hash 'updated_at now})]
+                              {:token_status_hash result-hash :updated_at now})]
       (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
         ;; we should always be updating this row with the timestamp if it's there.
         (try
-          (t2/insert! :model/PremiumFeaturesCache {'token_hash        token-hash
-                                                   'token_status_hash result-hash
-                                                   'updated_at        now})
+          (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
+                                                   :token_status_hash result-hash
+                                                   :updated_at        now})
           (catch Exception _e
             ;; Another instance inserted first — update instead.
             (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
-                        {'token_status_hash result-hash 'updated_at now})))))))
+                        {:token_status_hash result-hash :updated_at now})))))))
 
 (defn- clear-db-cache!
   "Delete all rows from the premium_features_token_cache table."

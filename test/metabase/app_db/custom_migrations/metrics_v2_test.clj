@@ -160,17 +160,17 @@
                                   :created_at (Instant/now)
                                   :updated_at (Instant/now)))
           user-id (t2/insert-returning-pk! :core_user
-                                           {'first_name  "Howard"
-                                            'last_name   "Hughes"
-                                            'email       "howard@aircraft.com"
-                                            'password    "superstrong"
-                                            'date_joined :%now})
+                                           {:first_name  "Howard"
+                                            :last_name   "Hughes"
+                                            :email       "howard@aircraft.com"
+                                            :password    "superstrong"
+                                            :date_joined :%now})
           database-id (t2/insert-returning-pk! :metabase_database
-                                               {'name       "DB"
-                                                'engine     "h2"
-                                                'created_at :%now
-                                                'updated_at :%now
-                                                'details    "{}"})
+                                               {:name       "DB"
+                                                :engine     "h2"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :details    "{}"})
           table-id (t2/insert-returning-pk! :metabase_table
                                             (add-timestamps
                                              {:name "orders"
@@ -227,7 +227,7 @@
       (testing "forward migration"
         (migrate!)
         (let [migration-coll (t2/select-one :collection 'name "Migrated Metrics v1")
-              coll-permissions (t2/select :permissions 'object ['like (str "/collection/" (:id migration-coll) "/%")])
+              coll-permissions (t2/select :permissions 'object [:like (str "/collection/" (:id migration-coll) "/%")])
               metric-cards (t2/select :report_card 'collection_id (:id migration-coll))
               rewritten-card (t2/select-one :report_card card-id)
               rewritten-query (-> rewritten-card :dataset_query normalized-query)]

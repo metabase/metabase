@@ -117,7 +117,7 @@
         (let [existing-name-field (t2/count :model/Field
                                             'table_id table-id
                                             'active true
-                                            'visibility_type ['not-in ["sensitive" "retired"]]
+                                            'visibility_type [:not-in ["sensitive" "retired"]]
                                             'semantic_type :type/Name)
               {:keys [fields-failed]}
               (reduce (fn [state field]

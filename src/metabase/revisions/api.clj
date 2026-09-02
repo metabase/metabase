@@ -73,10 +73,10 @@
       (into parameter-cards
             (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id id)
                     (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                                      {'where ['in 'dashboardcard_id
-                                               ^:allow-subquery {'select ['id]
-                                                                 'from   [(t2/table-name :model/DashboardCard)]
-                                                                 'where  ['= 'dashboard_id id]}]})))
+                                      {:where ['in 'dashboardcard_id
+                                               ^:allow-subquery {:select ['id]
+                                                                 :from   [(t2/table-name :model/DashboardCard)]
+                                                                 :where  ['= 'dashboard_id id]}]})))
       parameter-cards)))
 
 (defn- revision-parameter-field-ids
@@ -95,7 +95,7 @@
                              mapping)
             card-ids       (into #{} (keep :card_id) mappings)
             card-id->query (when (seq card-ids)
-                             (t2/select-pk->fn :dataset_query :model/Card 'id ['in card-ids]))]
+                             (t2/select-pk->fn :dataset_query :model/Card 'id [:in card-ids]))]
         (into [] (keep (fn [{:keys [target card_id]}]
                          (resolve-target target (card-id->query card_id))))
               mappings))

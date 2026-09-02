@@ -46,8 +46,8 @@
   "Given a numeric table_id, return a portable table reference [db-name schema table-name]."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table 'id 'db_id 'name 'schema] 'id table-id)
-          db-name                     (t2/select-one-fn :name [:model/Database 'id 'name] 'id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] 'id table-id)
+          db-name                     (t2/select-one-fn :name [:model/Database :id :name] 'id db_id)]
       [db-name schema name])))
 
 (defn export-field-fk
@@ -91,10 +91,10 @@
   triple doesn't match any existing row. Returns the new table id."
   [db-id schema table-name]
   (:id (t2/insert-returning-instance! :model/Table
-                                      {'db_id  db-id
-                                       'schema schema
-                                       'name   table-name
-                                       'active false})))
+                                      {:db_id  db-id
+                                       :schema schema
+                                       :name   table-name
+                                       :active false})))
 
 (defn- synthesize-field!
   "Walks a field path from top-level to deepest, returning each existing field id and creating any
@@ -108,12 +108,12 @@
                                            'name      field-name
                                            'parent_id parent-id)
                          (t2/insert-returning-pk! :model/Field
-                                                  {'table_id      table-id
-                                                   'parent_id     parent-id
-                                                   'name          field-name
-                                                   'active        false
-                                                   'base_type     :type/*
-                                                   'database_type "NULL"}))]
+                                                  {:table_id      table-id
+                                                   :parent_id     parent-id
+                                                   :name          field-name
+                                                   :active        false
+                                                   :base_type     :type/*
+                                                   :database_type "NULL"}))]
         (recur field-id (rest remaining)))
       parent-id)))
 

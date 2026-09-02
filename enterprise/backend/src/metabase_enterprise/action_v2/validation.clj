@@ -136,7 +136,7 @@
   "Validate rows of a given table"
   [table-id-or-fields inputs]
   (let [fields (if (int? table-id-or-fields)
-                 (t2/select-fn->fn :name identity [:model/Field 'name 'database_required 'base_type] 'table_id table-id-or-fields)
+                 (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] 'table_id table-id-or-fields)
                  (u/index-by :name table-id-or-fields))
         errors (mapv #(validate-input % fields) inputs)]
     (when (some some? errors)

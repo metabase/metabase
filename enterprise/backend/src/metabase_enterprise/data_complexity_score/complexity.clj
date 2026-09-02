@@ -124,12 +124,12 @@
   (into {}
         (mapcat (fn [chunk]
                   (map (juxt :table_id :field_count)
-                       (t2/query {'select   ['table_id ['%count.* 'field_count]]
-                                  'from     ['metabase_field]
-                                  'where    ['and
+                       (t2/query {:select   ['table_id ['%count.* 'field_count]]
+                                  :from     ['metabase_field]
+                                  :where    ['and
                                              ['= 'active true]
                                              ['in 'table_id chunk]]
-                                  'group-by ['table_id]}))))
+                                  :group-by ['table_id]}))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- table-measure-names
@@ -139,9 +139,9 @@
   (into {}
         (mapcat (fn [chunk]
                   (u/group-by :table_id :name
-                              (t2/select [:model/Measure 'table_id 'name]
+                              (t2/select [:model/Measure :table_id :name]
                                          'archived false
-                                         'table_id ['in chunk]))))
+                                         'table_id [:in chunk]))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
@@ -203,7 +203,7 @@
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (t2/select-fn-set :id :model/Database 'router_database_id ['not= nil]))
+  (t2/select-fn-set :id :model/Database 'router_database_id [:not= nil]))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -244,14 +244,14 @@
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`. `:card_schema` is required by `:model/Card`'s post-select hooks
         ;; even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card 'id 'name 'type 'collection_id 'card_schema]
-                                     'type        ['in ["metric" "model"]]
+        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
+                                     'type        [:in ["metric" "model"]]
                                      'archived    false
-                                     'database_id ['not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table 'id 'name 'collection_id 'is_published
-                                      'visibility_type 'db_id 'data_layer 'data_authority]
+                                     'database_id [:not= audit/audit-db-id])
+        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
+                                      :visibility_type :db_id :data_layer :data_authority]
                                      'active true
-                                     'db_id  ['not= audit/audit-db-id])
+                                     'db_id  [:not= audit/audit-db-id])
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)

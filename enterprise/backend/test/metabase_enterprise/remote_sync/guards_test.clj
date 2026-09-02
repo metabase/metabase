@@ -53,11 +53,11 @@
     (let [two-hours-ago (t/minus (t/offset-date-time) (t/hours 2))
           stale-task    (t2/insert-returning-instance!
                          :model/RemoteSyncTask
-                         {'sync_task_type          "import"
-                          'initiated_by            (mt/user->id :rasta)
-                          'started_at              two-hours-ago
-                          'last_progress_report_at two-hours-ago
-                          'progress                0.5})]
+                         {:sync_task_type          "import"
+                          :initiated_by            (mt/user->id :rasta)
+                          :started_at              two-hours-ago
+                          :last_progress_report_at two-hours-ago
+                          :progress                0.5})]
       (guards/ensure-no-active-task!)
       (let [after (t2/select-one :model/RemoteSyncTask 'id (:id stale-task))]
         (is (true? (:cancelled after))

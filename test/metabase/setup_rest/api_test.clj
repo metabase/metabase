@@ -238,7 +238,7 @@
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
-    (let [user-count (t2/count :model/User {'where ['not= 'id config/internal-mb-user-id]})]
+    (let [user-count (t2/count :model/User {:where ['not= 'id config/internal-mb-user-id]})]
       (if (zero? user-count)
         (is (not (setup/has-user-setup)))
         (is (setup/has-user-setup))))))

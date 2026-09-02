@@ -7,11 +7,11 @@
 
 (defn- most-recent-view
   [user-id model-id model-type]
-  (t2/select-one [:model/RecentViews 'user_id 'model 'model_id]
+  (t2/select-one [:model/RecentViews :user_id :model :model_id]
                  'user_id  user-id
                  'model_id model-id
                  'model    model-type
-                 {'order-by [['id 'desc]]}))
+                 {:order-by [['id 'desc]]}))
 
 (deftest card-query-test
   (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]

@@ -33,7 +33,7 @@
         (let [before (t2/count :model/AuditLog 'topic "remote-sync-import")]
           (#'task.import/auto-import!)
           (is (= (inc before) (t2/count :model/AuditLog 'topic "remote-sync-import")))
-          (let [entry (t2/select-one :model/AuditLog 'topic "remote-sync-import" {'order-by [['id 'desc]]})]
+          (let [entry (t2/select-one :model/AuditLog 'topic "remote-sync-import" {:order-by [['id 'desc]]})]
             (testing "system-triggered, so no user"
               (is (nil? (:user_id entry))))
             (testing "marked as automatic so it can be distinguished from manual imports"

@@ -19,15 +19,15 @@
    :run_method mi/transform-keyword})
 
 (defn- latest-runs-query [job-ids]
-  {'with [['ranked_runs
+  {:with [['ranked_runs
            ^:allow-subquery
-           {'select ['*
-                     [['over [['row_number] ^:allow-subquery {'partition-by 'job_id, 'order-by [['start_time 'desc]]}]] 'rn]]
-            'from ['transform_job_run]
-            'where ['in 'job_id job-ids]}]]
-   'select ['*]
-   'from ['ranked_runs]
-   'where ['= 'rn ['inline 1]]})
+           {:select ['*
+                     [['over [['row_number] ^:allow-subquery {:partition-by 'job_id, :order-by [['start_time 'desc]]}]] 'rn]]
+            :from ['transform_job_run]
+            :where ['in 'job_id job-ids]}]]
+   :select ['*]
+   :from ['ranked_runs]
+   :where ['= 'rn [:inline 1]]})
 
 (defn latest-runs
   "Return the latest runs for `job-ids`."
@@ -42,14 +42,14 @@
   ([job-id run-method]
    ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
    ;; LocalizedString into the snapshot
-   (let [job (t2/select-one [:model/TransformJob 'name 'entity_id 'built_in_type] 'id job-id)]
+   (let [job (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] 'id job-id)]
      (t2/insert-returning-instance! :model/TransformJobRun
-                                    {'job_id        job-id
-                                     'job_name      (some-> (:name job) str)
-                                     'job_entity_id (:entity_id job)
-                                     'run_method    run-method
-                                     'status        :started
-                                     'is_active     true}))))
+                                    {:job_id        job-id
+                                     :job_name      (some-> (:name job) str)
+                                     :job_entity_id (:entity_id job)
+                                     :run_method    run-method
+                                     :status        :started
+                                     :is_active     true}))))
 
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
@@ -85,11 +85,11 @@
                           where (assoc :where where)))
      :limit  limit
      :offset offset
-     :total  (t2/count :model/TransformJobRun (if where {'where where} {}))}))
+     :total  (t2/count :model/TransformJobRun (if where {:where where} {}))}))
 
 (defn transform-runs-for-job-run
   "Return transform runs that were part of the given job run, ordered by start time."
   [job-run-id]
   (t2/select :model/TransformRun
-             {'where    ['= 'job_run_id job-run-id]
-              'order-by [['start_time 'asc]]}))
+             {:where    ['= 'job_run_id job-run-id]
+              :order-by [['start_time 'asc]]}))

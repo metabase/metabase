@@ -53,8 +53,8 @@
 
 (defn- delete-conversations!
   [conversation-ids]
-  (t2/delete! :model/AiUsageLog {'where ['in 'conversation_id (vec conversation-ids)]})
-  (t2/delete! :model/MetabotConversation {'where ['in 'id (vec conversation-ids)]}))
+  (t2/delete! :model/AiUsageLog {:where ['in 'conversation_id (vec conversation-ids)]})
+  (t2/delete! :model/MetabotConversation {:where ['in 'id (vec conversation-ids)]}))
 
 (defn- insert-feedback!
   [{:keys [message-id user-id positive issue-type freeform created-at updated-at]}]

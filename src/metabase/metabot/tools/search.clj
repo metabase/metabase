@@ -97,7 +97,7 @@
   [results]
   (let [coll-ids     (->> results (keep #(get-in % [:collection :id])) distinct)
         descriptions (when (seq coll-ids)
-                       (t2/select-pk->fn :description :model/Collection 'id ['in coll-ids]))]
+                       (t2/select-pk->fn :description :model/Collection 'id [:in coll-ids]))]
     (cond->> results
       (seq descriptions) (mapv (fn [r]
                                  (let [cid (-> r :collection :id)]
@@ -112,7 +112,7 @@
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
         id->db (when (seq db-ids)
-                 (t2/select-pk->fn (juxt :engine :name) :model/Database 'id ['in db-ids]))]
+                 (t2/select-pk->fn (juxt :engine :name) :model/Database 'id [:in db-ids]))]
     (cond->> results
       (seq id->db) (mapv (fn [r]
                            (let [[engine db-name] (get id->db (:database_id r))]
@@ -132,7 +132,7 @@
                       (keep :id)
                       distinct)
         id->eid  (when (seq card-ids)
-                   (t2/select-pk->fn :entity_id :model/Card 'id ['in card-ids]))]
+                   (t2/select-pk->fn :entity_id :model/Card 'id [:in card-ids]))]
     (cond->> results
       (seq id->eid) (mapv (fn [r]
                             (if-let [eid (and (carded-types (:type r))
@@ -160,14 +160,14 @@
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->table-id (when (seq metric-ids)
-                            (t2/select-pk->fn :table_id :model/Card 'id ['in metric-ids]))
+                            (t2/select-pk->fn :table_id :model/Card 'id [:in metric-ids]))
         table-ids (->> card-id->table-id vals (remove nil?) distinct)
         table-id->info (when (seq table-ids)
                          (into {}
                                (comp (filter mi/can-read?)
                                      (map (juxt :id (juxt :schema :name))))
-                               (t2/select [:model/Table 'id 'schema 'name 'db_id]
-                                          'id ['in table-ids])))
+                               (t2/select [:model/Table :id :schema :name :db_id]
+                                          'id [:in table-ids])))
         metric-id->table-info
         (into {}
               (keep (fn [[metric-id table-id]]
@@ -196,7 +196,7 @@
   [results]
   (let [transform-ids (->> results (filter #(= "transform" (:type %))) (map :id) set)
         readable-ids (when (seq transform-ids)
-                       (->> (t2/select :model/Transform 'id ['in transform-ids])
+                       (->> (t2/select :model/Transform 'id [:in transform-ids])
                             transforms/add-source-readable
                             (filter :source_readable)
                             (map :id)
@@ -216,7 +216,7 @@
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
                        (->> (t2/select :model/Document
-                                       'id ['in document-ids]
+                                       'id [:in document-ids]
                                        'archived false)
                             (filter mi/can-read?)
                             (map (juxt :id identity))
@@ -378,7 +378,7 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (t2/select [:model/Table 'id 'name 'display_name 'db_id 'schema 'description] 'id ['in ids]))]
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] 'id [:in ids]))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -397,17 +397,17 @@
         id->card  (when (seq ids)
                     (into {} (map (juxt :id identity))
                           (filter mi/can-read?
-                                  (t2/select [:model/Card 'id 'name 'description 'database_id 'collection_id
-                                              'card_schema 'type]
-                                             'id ['in ids]))))
+                                  (t2/select [:model/Card :id :name :description :database_id :collection_id
+                                              :card_schema :type]
+                                             'id [:in ids]))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (into {} (map (juxt :id identity))
-                          (t2/select [:model/Collection 'id 'name 'authority_level] 'id ['in coll-ids])))
+                          (t2/select [:model/Collection :id :name :authority_level] 'id [:in coll-ids])))
         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
                     (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                      'moderated_item_id ['in ids] 'moderated_item_type "card"
+                                      'moderated_item_id [:in ids] 'moderated_item_type "card"
                                       'most_recent true 'status "verified"))]
     (for [id ids
           :let [c (id->card id)]
@@ -434,13 +434,13 @@
           fetch   (fn [model ids]
                     (when-let [ids (not-empty (distinct ids))]
                       (filter mi/can-read?
-                              (t2/select [model 'id 'name 'description 'table_id 'entity_id] 'id ['in ids]))))
+                              (t2/select [model :id :name :description :table_id :entity_id] 'id [:in ids]))))
           rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
                           (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
                     (into {} (map (juxt :id identity))
-                          (t2/select [:model/Table 'id 'name 'schema 'db_id] 'id ['in tbl-ids])))]
+                          (t2/select [:model/Table :id :name :schema :db_id] 'id [:in tbl-ids])))]
       (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}

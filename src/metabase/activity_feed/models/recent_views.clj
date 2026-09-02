@@ -68,7 +68,7 @@
   (->> (t2/select :model/RecentViews
                   'user_id user-id
                   'context context
-                  {'order-by [['timestamp 'desc]]})
+                  {:order-by [['timestamp 'desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
@@ -116,22 +116,22 @@
 (defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
                     :model/RecentViews
-                    {'select ['rv.id]
-                     'from [['recent_views 'rv]]
-                     'where ['and
+                    {:select ['rv.id]
+                     :from [['recent_views 'rv]]
+                     :where ['and
                              ['= 'rv.model (rv-model->db-model model)]
                              ['= 'rv.user_id user-id]
                              ['= 'rv.context (h2x/literal (name context))]
                              (when-let [card-type (rv-model->card-type model)]
                                [:= :rc.type (h2x/literal card-type)])]
-                     'left-join [['report_card 'rc]
+                     :left-join [['report_card 'rc]
                                  ['and
                                   ['= 'rc.id 'rv.model_id]
                                   ['= 'rv.model (h2x/literal "card")]]]
-                     'order-by [['rv.timestamp 'desc]]
+                     :order-by [['rv.timestamp 'desc]]
                      ;; mysql doesn't support offset without limit :derp:
-                     'limit 100000
-                     'offset *recent-views-stored-per-user-per-model*}))
+                     :limit 100000
+                     :offset *recent-views-stored-per-user-per-model*}))
 
 (defn- overflowing-model-buckets [user-id context]
   (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
@@ -167,7 +167,7 @@
                                     (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
                               views)]
           (when (seq prune-ids)
-            (t2/delete! :model/RecentViews 'id ['in prune-ids]))))
+            (t2/delete! :model/RecentViews 'id [:in prune-ids]))))
       (catch Exception e
         (log/error e "Failed to update users recent views")))))
 
@@ -200,13 +200,13 @@
   (t2/select-one-fn
    :model_id
    :model/RecentViews
-   {'where    ['and
+   {:where    ['and
                ['= 'user_id user-id]
                ['= 'model (h2x/literal "dashboard")]
                ['> 'timestamp (t/minus (t/zoned-date-time) (t/days 1))]
                ['not= 'd.archived true]]
-    'order-by [['recent_views.id 'desc]]
-    'left-join [['report_dashboard 'd]
+    :order-by [['recent_views.id 'desc]]
+    :left-join [['report_dashboard 'd]
                 ['= 'recent_views.model_id 'd.id]]}))
 
 (def Item
@@ -294,7 +294,7 @@
   (if-not (seq card-ids)
     []
     (t2/select :model/Card
-               {'select ['card.name
+               {:select ['card.name
                          'card.description
                          'card.archived
                          'card.id
@@ -312,9 +312,9 @@
                          ['collection.id 'collection_id]
                          ['collection.name 'collection_name]
                          ['collection.authority_level 'collection_authority_level]]
-                'from [['report_card 'card]]
-                'where ['in 'card.id card-ids]
-                'left-join [['moderation_review 'mr]
+                :from [['report_card 'card]]
+                :where ['in 'card.id card-ids]
+                :left-join [['moderation_review 'mr]
                             ['and
                              ['= 'mr.moderated_item_id 'card.id]
                              ['= 'mr.moderated_item_type "card"]
@@ -407,7 +407,7 @@
   (if (empty? dashboard-ids)
     []
     (t2/select :model/Dashboard
-               {'select ['dash.id
+               {:select ['dash.id
                          'dash.name
                          'dash.description
                          'dash.archived
@@ -416,9 +416,9 @@
                          ['c.name 'collection_name]
                          ['c.authority_level 'collection_authority_level]
                          ['mr.status 'moderated-status]]
-                'from [['report_dashboard 'dash]]
-                'where ['in 'dash.id dashboard-ids]
-                'left-join [['moderation_review 'mr]
+                :from [['report_dashboard 'dash]]
+                :where ['in 'dash.id dashboard-ids]
+                :left-join [['moderation_review 'mr]
                             ['and
                              ['= 'mr.moderated_item_id 'dash.id]
                              ['= 'mr.moderated_item_type "dashboard"]
@@ -450,9 +450,9 @@
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
-                                 {'select ['id 'name 'description 'authority_level
+                                 {:select ['id 'name 'description 'authority_level
                                            'archived 'location 'type]
-                                  'where ['and
+                                  :where ['and
                                           ['in 'id collection-ids]
                                           ['= 'archived false]]})]
       (->> (t2/hydrate collections :effective_parent)
@@ -481,18 +481,18 @@
   (if-not (seq table-ids)
     []
     (t2/select :model/Table
-               {'select ['t.id 't.name 't.description
+               {:select ['t.id 't.name 't.description
                          't.display_name 't.active 't.visibility_type 't.schema
                          ['db.name 'database-name]
                          ['db.id 'db_id]
                          ['db.initial_sync_status 'initial-sync-status]]
-                'from [['metabase_table 't]]
-                'where ['and
+                :from [['metabase_table 't]]
+                :where ['and
                         ['or
                          ['= 'visibility_type nil]
                          ['!= 'visibility_type "hidden"]]
                         ['in 't.id table-ids]]
-                'left-join [['metabase_database 'db]
+                :left-join [['metabase_database 'db]
                             ['= 'db.id 't.db_id]]})))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
@@ -527,9 +527,9 @@
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
   (let [db-models (rv-models->db-models models)]
-    (t2/select :model/RecentViews {'select    ['rv.* ['rc.type 'card_type]]
-                                   'from      [['recent_views 'rv]]
-                                   'where     ['and
+    (t2/select :model/RecentViews {:select    ['rv.* ['rc.type 'card_type]]
+                                   :from      [['recent_views 'rv]]
+                                   :where     ['and
                                                ['= 'rv.user_id user-id]
                                                ['in 'rv.context (map query-context->recent-context context)]
                                                (when (seq db-models)
@@ -555,7 +555,7 @@
                                                ;; exploration documents are accessible only through their owning Exploration;
                                                ;; hide them from recents to match search and collection-listing behavior.
                                                ['or ['!= 'rv.model "document"] ['= 'doc.exploration_id nil]]]
-                                   'left-join [['report_card 'rc]
+                                   :left-join [['report_card 'rc]
                                                ['and
                                                 ;; only want to join on card_type if it's a card
                                                 ['= 'rv.model "card"]
@@ -568,7 +568,7 @@
                                                ['and
                                                 ['= 'rv.model "document"]
                                                 ['= 'doc.id 'rv.model_id]]]
-                                   'order-by  [['rv.timestamp 'desc]]})))
+                                   :order-by  [['rv.timestamp 'desc]]})))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
@@ -595,16 +595,16 @@
   (if-not (seq document-ids)
     []
     (let [documents (t2/select :model/Document
-                               {'select ['d.id
+                               {:select ['d.id
                                          'd.name
                                          'd.archived
                                          ['d.collection_id 'entity-coll-id]
                                          ['c.id 'collection_id]
                                          ['c.name 'collection_name]
                                          ['c.authority_level 'collection_authority_level]]
-                                'from [['document 'd]]
-                                'where ['in 'd.id document-ids]
-                                'left-join [['collection 'c]
+                                :from [['document 'd]]
+                                :where ['in 'd.id document-ids]
+                                :left-join [['collection 'c]
                                             ['and
                                              ['= 'c.id 'd.collection_id]
                                              ['= 'c.archived false]]]})]

@@ -148,7 +148,7 @@
                                                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                          updated-db)))
                     nested-fields (fn []
-                                    (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
+                                    (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path [:not= nil])
                                          (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
                 (testing "nested fields are not created"
                   (is (empty? (nested-fields))))
@@ -195,7 +195,7 @@
                                                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
                                                                        updated-db)))
                   nested-fields          (fn []
-                                           (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path ['not= nil])
+                                           (->> (t2/select :model/Field 'table_id (mt/id :json) 'active true 'nfc_path [:not= nil])
                                                 (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
               (testing "json_unfolding is enabled by default at the field level"
                 (is (true? (:json_unfolding field))))

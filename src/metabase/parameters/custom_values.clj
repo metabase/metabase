@@ -222,7 +222,7 @@
   [field-ids]
   (when (and (seq field-ids) (every? pos-int? field-ids))
     (let [field-id-set (set field-ids)
-          fields (t2/select [:model/Field 'id 'fk_target_field_id 'semantic_type] 'id ['in field-id-set])]
+          fields (t2/select [:model/Field :id :fk_target_field_id :semantic_type] 'id [:in field-id-set])]
       ;; when every field could be found and all are keys
       (when (and (= (count field-id-set) (count fields))
                  (every? (fn [{:keys [semantic_type fk_target_field_id]}]

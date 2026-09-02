@@ -64,9 +64,9 @@
   (when (seq jobs)
     (let [job-ids         (map :id jobs)
           tag-mappings    (group-by :job_id
-                                    (t2/select [:model/TransformJobTransformTag 'job_id 'tag_id 'position]
-                                               'job_id ['in job-ids]
-                                               {'order-by [['position 'asc]]}))
+                                    (t2/select [:model/TransformJobTransformTag :job_id :tag_id :position]
+                                               'job_id [:in job-ids]
+                                               {:order-by [['position 'asc]]}))
           ;; Sort each job's tags by position
           sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
       (for [job jobs]
@@ -97,7 +97,7 @@
   write."
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (t2/update! :model/TransformJob {'id job-id, 'active false} {'active true}))
+    (when (pos? (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
       (transforms.schedule/initialize-job! (t2/select-one :model/TransformJob 'id job-id)))))
 
 (defn deactivate-job!
@@ -109,7 +109,7 @@
   [[activate-job!]]."
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (when (pos? (t2/update! :model/TransformJob {'id job-id, 'active true} {'active false}))
+    (when (pos? (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
       (transforms.schedule/delete-trigger! job-id))))
 
 (defn update-job-tags!
@@ -122,14 +122,14 @@
       (let [;; Deduplicate, just in case
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (t2/select [:model/TransformJobTransformTag 'tag_id 'position]
+            current-associations (t2/select [:model/TransformJobTransformTag :tag_id :position]
                                             'job_id job-id
-                                            {'order-by [['position 'asc]]})
+                                            {:order-by [['position 'asc]]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
                                    (into #{} (t2/select-fn-set :id :model/TransformTag
-                                                               'id ['in deduped-tag-ids])))
+                                                               'id [:in deduped-tag-ids])))
             ;; Filter to only valid tags, preserving order
             new-tag-ids          (if valid-tag-ids
                                    (filterv valid-tag-ids deduped-tag-ids)
@@ -145,13 +145,13 @@
         (when (seq to-delete)
           (t2/delete! :model/TransformJobTransformTag
                       'job_id job-id
-                      'tag_id ['in to-delete]))
+                      'tag_id [:in to-delete]))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
             (t2/update! :model/TransformJobTransformTag
-                        {'job_id job-id 'tag_id tag-id}
-                        {'position new-pos})))
+                        {:job_id job-id :tag_id tag-id}
+                        {:position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
           (t2/insert! :model/TransformJobTransformTag
@@ -203,8 +203,8 @@
     (let [job-ids      (into #{} (map u/the-id) jobs)
           tag-mappings (group-by :job_id
                                  (t2/select :model/TransformJobTransformTag
-                                            'job_id ['in job-ids]
-                                            {'order-by [['position 'asc]]}))]
+                                            'job_id [:in job-ids]
+                                            {:order-by [['position 'asc]]}))]
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 

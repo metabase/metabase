@@ -25,7 +25,7 @@
                             :semantic_type      :type/Name
                             :has_field_values   :list
                             :fk_target_field_id nil}}
-           (-> (t2/select-one [:model/Field 'name 'table_id 'semantic_type], 'id (mt/id :venues :id))
+           (-> (t2/select-one [:model/Field :name :table_id :semantic_type], 'id (mt/id :venues :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
@@ -39,7 +39,7 @@
             :table_id      (mt/id :venues)
             :semantic_type :type/Category
             :name_field    nil}
-           (-> (t2/select-one [:model/Field 'name 'table_id 'semantic_type], 'id (mt/id :venues :price))
+           (-> (t2/select-one [:model/Field :name :table_id :semantic_type], 'id (mt/id :venues :price))
                (t2/hydrate :name_field)
                mt/derecordize))))
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
@@ -47,22 +47,22 @@
             :table_id      (mt/id :checkins)
             :semantic_type :type/PK
             :name_field    nil}
-           (-> (t2/select-one [:model/Field 'name 'table_id 'semantic_type], 'id (mt/id :checkins :id))
+           (-> (t2/select-one [:model/Field :name :table_id :semantic_type], 'id (mt/id :checkins :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
   (testing "Inactive Entity Name fields should not be hydrated (#65207)"
     (let [name-field-id (mt/id :venues :name)]
       (try
-        (t2/update! :model/Field name-field-id {'active false})
+        (t2/update! :model/Field name-field-id {:active false})
         (is (= {:name          "ID"
                 :table_id      (mt/id :venues)
                 :semantic_type :type/PK
                 :name_field    nil}
-               (-> (t2/select-one [:model/Field 'name 'table_id 'semantic_type], 'id (mt/id :venues :id))
+               (-> (t2/select-one [:model/Field :name :table_id :semantic_type], 'id (mt/id :venues :id))
                    (t2/hydrate :name_field)
                    mt/derecordize)))
         (finally
-          (t2/update! :model/Field name-field-id {'active true}))))))
+          (t2/update! :model/Field name-field-id {:active true}))))))
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
@@ -276,7 +276,7 @@
            :model/DashboardCard dc2 {:dashboard_id dash-id :card_id (:id agg2)
                                      :parameter_mappings [{:parameter_id "p2" :card_id (:id agg2)
                                                            :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]}]}]
-          (let [dashcards (-> (t2/select :model/DashboardCard 'id ['in [(:id dc1) (:id dc2)]])
+          (let [dashcards (-> (t2/select :model/DashboardCard 'id [:in [(:id dc1) (:id dc2)]])
                               (t2/hydrate :card :series))]
             ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
             ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).

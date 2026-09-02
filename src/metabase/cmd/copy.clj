@@ -197,14 +197,14 @@
 (defn- model-select-fragment
   [model]
   (case model
-    :model/Field {'order-by [['id 'asc]]}
+    :model/Field {:order-by [['id 'asc]]}
     nil))
 
 (defn- sql-for-selecting-instances-from-source-db [model]
   (first
    (sql/format
-    (merge {'select [['*]]
-            'from   [[(t2/table-name model)]]}
+    (merge {:select [['*]]
+            :from   [[(t2/table-name model)]]}
            (model-select-fragment model))
     {:quoted false})))
 

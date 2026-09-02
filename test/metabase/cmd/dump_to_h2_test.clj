@@ -79,8 +79,8 @@
                   ;; does) so no encrypted column is left plaintext for the strict model reads
                   ;; the update and dump below trigger
                   (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
-                  (t2/insert! :model/Setting {'key "my-site-admin", 'value "baz"})
-                  (t2/update! :model/Database 1 {'details {:db "/tmp/test.db"}})
+                  (t2/insert! :model/Setting {:key "my-site-admin", :value "baz"})
+                  (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                   (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                   (dump-to-h2/dump-to-h2! h2-file-default-enc)))
@@ -127,14 +127,14 @@
                   ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
                   ;; does), otherwise the dump would hold data under an absent sentinel and its setup would refuse
                   (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
-                  (t2/insert! :model/Database {'engine          "h2"
-                                               'name            "normal-db"
-                                               'details         {:db "/tmp/test.db"}
-                                               'is_attached_dwh false})
-                  (t2/insert! :model/Database {'engine          "h2"
-                                               'name            "attached-dwh"
-                                               'details         {:db "/tmp/test.db"}
-                                               'is_attached_dwh true})
+                  (t2/insert! :model/Database {:engine          "h2"
+                                               :name            "normal-db"
+                                               :details         {:db "/tmp/test.db"}
+                                               :is_attached_dwh false})
+                  (t2/insert! :model/Database {:engine          "h2"
+                                               :name            "attached-dwh"
+                                               :details         {:db "/tmp/test.db"}
+                                               :is_attached_dwh true})
                   (dump-to-h2/dump-to-h2! h2-file {:dump-plaintext? true})))
               (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file))]
                 (testing "preserves details when is_attached_dwh is not set"

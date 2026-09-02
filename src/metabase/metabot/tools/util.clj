@@ -213,7 +213,7 @@
         ;; ids of collections under a Library-type root; their metrics/models are library-published content
         library-coll-ids (when library?
                            (let [roots (t2/select :model/Collection
-                                                  'type ['in (mapv name collection/library-collection-types)]
+                                                  'type [:in (mapv name collection/library-collection-types)]
                                                   'location "/")]
                              (into (set (map :id roots)) (mapcat collection/descendant-ids roots))))
         ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
@@ -229,9 +229,9 @@
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
                               [:in :report_card.collection_id collection-ids])
                             [:and true])
-        base-query ^:allow-subquery {'select ['report_card.*]
-                                     'from   [['report_card]]
-                                     'where ['and
+        base-query ^:allow-subquery {:select ['report_card.*]
+                                     :from   [['report_card]]
+                                     :where ['and
                                              ['!= 'report_card.database_id audit-app/audit-db-id]
                                              collection-filter
                                              ['in 'report_card.type ["metric" "model"]]
@@ -271,7 +271,7 @@
   [[metabase.metabot.tools.resources/check-resource-database]])."
   [db-ids]
   (when (seq db-ids)
-    (t2/select-fn-set :id :model/Database 'id ['in db-ids] 'router_database_id ['not= nil])))
+    (t2/select-fn-set :id :model/Database 'id [:in db-ids] 'router_database_id [:not= nil])))
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.

@@ -47,7 +47,7 @@
   "Create temporary SecurityAdvisories from [[test-advisories]] and execute `body`."
   [& body]
   (let [temps (mapcat (fn [advisory]
-                        [:model/SecurityAdvisory '_ advisory])
+                        [:model/SecurityAdvisory :_ advisory])
                       test-advisories)]
     `(mt/with-temp [~@temps]
        ~@body)))
@@ -118,9 +118,9 @@
           (testing "creates an audit log entry"
             (is (=? {:topic   :security-advisory-acknowledge
                      :user_id (mt/user->id :crowberto)}
-                    (t2/select-one [:model/AuditLog 'topic 'user_id]
+                    (t2/select-one [:model/AuditLog :topic :user_id]
                                    'topic :security-advisory-acknowledge
-                                   {'order-by [['id 'desc]]})))))
+                                   {:order-by [['id 'desc]]})))))
         (testing "cannot acknowledge twice"
           (mt/user-http-request :crowberto :post 409
                                 "ee/security-center/SC-0000-001/acknowledge"))

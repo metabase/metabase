@@ -24,7 +24,7 @@
   "Fetch tables by ID and build source info maps."
   [table-ids]
   (when (seq table-ids)
-    (t2/select [:model/Table [:id :table-id] [:name :table-name] 'schema [:db_id :db-id]] 'id ['in table-ids])))
+    (t2/select [:model/Table [:id :table-id] [:name :table-name] :schema [:db_id :db-id]] 'id [:in table-ids])))
 
 (defmulti extract-sources
   "Extract source table information for a transform.

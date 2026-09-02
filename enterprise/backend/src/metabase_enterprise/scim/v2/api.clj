@@ -152,10 +152,10 @@
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership 'pgm.user_id 'pg.name 'pg.entity_id]
-                                                             {'from [['permissions_group_membership 'pgm]]
-                                                              'join [['permissions_group 'pg] ['= 'pg.id 'group_id]]
-                                                              'where ['and
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
+                                                             {:from [['permissions_group_membership 'pgm]]
+                                                              :join [['permissions_group 'pg] ['= 'pg.id 'group_id]]
+                                                              :where ['and
                                                                       ['in 'user_id (map u/the-id users)]
                                                                       ['not= 'pg.id (:id (perms/all-users-group))]
                                                                       ['not= 'pg.id (:id (perms/admin-group))]]}))
@@ -206,7 +206,7 @@
   [entity-id]
   (or (t2/select-one (cons :model/User user-cols)
                      'entity_id entity-id
-                     {'where ['= 'type "personal"]})
+                     {:where ['= 'type "personal"]})
       (throw-scim-error 404 "User not found")))
 
 (defn- ^:private user-filter-clause
@@ -235,15 +235,15 @@
           where-clause   [:and [:= :type "personal"]
                           (when filter-param (user-filter-clause filter-param))]
           users          (t2/select (cons :model/User user-cols)
-                                    {'where    where-clause
-                                     'limit    limit
-                                     'offset   offset
-                                     'order-by [['id 'asc]]})
+                                    {:where    where-clause
+                                     :limit    limit
+                                     :offset   offset
+                                     :order-by [['id 'asc]]})
           hydrated-users (t2/hydrate users :scim_user_group_memberships)
           results-count  (count hydrated-users)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
-                          :totalResults (t2/count :model/User {'where where-clause})
+                          :totalResults (t2/count :model/User {:where where-clause})
                           :startIndex   (inc offset)
                           :itemsPerPage items-per-page
                           :Resources    (map mb-user->scim hydrated-users)}]
@@ -378,10 +378,10 @@
   "Add to each `group` a list of :members where each item is a map with 2 keys [:email :entity_id]."
   [groups]
   (when (seq groups)
-    (let [group-id->members (group-by :group_id (t2/select [:model/PermissionsGroupMembership 'pgm.group_id 'u.email 'u.entity_id]
-                                                           {'from [['permissions_group_membership 'pgm]]
-                                                            'join [['core_user 'u] ['= 'u.id 'pgm.user_id]]
-                                                            'where ['in 'pgm.group_id (map u/the-id groups)]}))
+    (let [group-id->members (group-by :group_id (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
+                                                           {:from [['permissions_group_membership 'pgm]]
+                                                            :join [['core_user 'u] ['= 'u.id 'pgm.user_id]]
+                                                            :where ['in 'pgm.group_id (map u/the-id groups)]}))
           group->member     (fn [member] (select-keys member [:email :entity_id]))]
       (for [group groups]
         (assoc group :members (->> (group-id->members (u/the-id group))
@@ -394,7 +394,7 @@
   [entity-id]
   (or (t2/select-one (cons :model/PermissionsGroup group-cols)
                      'entity_id entity-id
-                     {'where
+                     {:where
                       ['and
                        ['not= 'id (:id (perms/all-users-group))]
                        ['not= 'id (:id (perms/admin-group))]]})
@@ -444,14 +444,14 @@
                           [:not= :id (:id perms/admin-group)]
                           (when filter-param (group-filter-clause filter-param))]
           groups         (t2/select (cons :model/PermissionsGroup group-cols)
-                                    {'where    where-clause
-                                     'limit    limit
-                                     'offset   offset
-                                     'order-by [['id 'asc]]})
+                                    {:where    where-clause
+                                     :limit    limit
+                                     :offset   offset
+                                     :order-by [['id 'asc]]})
           results-count  (count groups)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
-                          :totalResults (t2/count :model/PermissionsGroup {'where where-clause})
+                          :totalResults (t2/count :model/PermissionsGroup {:where where-clause})
                           :startIndex   (inc offset)
                           :itemsPerPage items-per-page
                           :Resources    (map mb-group->scim groups)}]
@@ -474,7 +474,7 @@
   "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
   any existing members."
   [group-id user-entity-ids]
-  (let [user-ids (t2/select-fn-set :id :model/User {'where ['in 'entity_id user-entity-ids]})]
+  (let [user-ids (t2/select-fn-set :id :model/User {:where ['in 'entity_id user-entity-ids]})]
     (when-let [memberships (not-empty (map
                                        (fn [user-id] {:group group-id :user user-id})
                                        user-ids))]
@@ -496,7 +496,7 @@
       (when (t2/exists? :model/PermissionsGroup '%lower.name (u/lower-case-en group-name))
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {'name group-name}))]
+        (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -519,7 +519,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (t2/update! :model/PermissionsGroup (u/the-id group) {'name group-name})
+          (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)

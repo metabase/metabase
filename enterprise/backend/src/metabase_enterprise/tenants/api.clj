@@ -88,18 +88,18 @@
   (t2/with-transaction [_cn]
     (collection/with-allow-modifying-tenant-root-collections
       (let [tenant-before-update (t2/select-one :model/Tenant tenant-id)
-            _                    (t2/update! :model/Tenant {'id tenant-id} tenant)
+            _                    (t2/update! :model/Tenant {:id tenant-id} tenant)
             tenant-after-update  (t2/select-one :model/Tenant tenant-id)]
         (when (false? is_active)
-          (t2/update! :model/User {'is_active true 'tenant_id tenant-id}
-                      {'is_active false 'deactivated_with_tenant true})
+          (t2/update! :model/User {:is_active true :tenant_id tenant-id}
+                      {:is_active false :deactivated_with_tenant true})
           (some-> (t2/select-one :model/Collection
                                  'id (:tenant_collection_id tenant-before-update)
                                  'archived false)
                   collection/archive-collection!))
         (when (true? is_active)
-          (t2/update! :model/User {'is_active false 'tenant_id tenant-id 'deactivated_with_tenant true}
-                      {'is_active true 'deactivated_with_tenant nil})
+          (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
+                      {:is_active true :deactivated_with_tenant nil})
           (some-> (t2/select-one :model/Collection
                                  'id (:tenant_collection_id tenant-before-update)
                                  'archived true)
@@ -115,7 +115,7 @@
    tenant :- UpdateTenantArguments]
   (api/check-403 api/*is-superuser?*)
   (when (:name tenant)
-    (api/check-400 (not (t2/exists? :model/Tenant 'name (:name tenant) 'id ['not= id]))
+    (api/check-400 (not (t2/exists? :model/Tenant 'name (:name tenant) 'id [:not= id]))
                    "This name is already taken."))
   (present-tenant (update-tenant! id tenant)))
 

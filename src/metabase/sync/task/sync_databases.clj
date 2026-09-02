@@ -378,9 +378,9 @@
                     (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))
                     counter))))
              (t2/reducible-query
-              {'select ['*]
-               'from   ['metabase_database]
-               'where  ['or
+              {:select ['*]
+               :from   ['metabase_database]
+               :where  ['or
                         ['and ['= 'is_sample true]
                          ['= 'metadata_sync_schedule sync.schedules/old-sample-metadata-sync-schedule-cron-string]]
                         ['in

@@ -136,7 +136,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection 'id ['in collection-ids]))
+                                      (t2/select :model/Collection 'id [:in collection-ids]))
                                 {})
         ;; Associate collection info with each segment's table
         segments-with-collection (for [segment segments-with-tables
@@ -184,7 +184,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one ['Table 'db_id 'schema 'id] 'id (u/the-id (:table_id segment))))]
+                  (t2/select-one [:Table :db_id :schema :id] 'id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition

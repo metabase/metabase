@@ -44,9 +44,9 @@
       (letfn [(insert-snippets! [n]
                 (dotimes [_ n]
                   (t2/insert! :model/NativeQuerySnippet
-                              {'name       (mt/random-name)
-                               'content    "1 = 1"
-                               'creator_id (mt/user->id :crowberto)})))
+                              {:name       (mt/random-name)
+                               :content    "1 = 1"
+                               :creator_id (mt/user->id :crowberto)})))
               (warm-call-count! []
                 ;; first request pays one-time priming; measure the second. Use a non-admin so the
                 ;; per-snippet permission check does not short-circuit on superuser status.

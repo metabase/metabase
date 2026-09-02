@@ -73,7 +73,7 @@
     (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
                            (query->source-card-id query))
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card 'entity_id 'result_metadata 'type 'card_schema] 'id source-card-id))
+                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] 'id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}

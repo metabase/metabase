@@ -29,8 +29,8 @@
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
                    (t2/select-fn->fn :id #(select-keys % [:id :common_name :email])
-                                     [:model/User 'id 'first_name 'last_name 'email]
-                                     'id ['in (set user-ids)]))]
+                                     [:model/User :id :first_name :last_name :email]
+                                     'id [:in (set user-ids)]))]
     (mi/instances-with-hydrated-data
      advisories k
      (constantly id->user)
@@ -45,8 +45,8 @@
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
   (let [now (mi/now)]
     (t2/update! :model/SecurityAdvisory (:id advisory)
-                {'acknowledged_by user-id
-                 'acknowledged_at now})
+                {:acknowledged_by user-id
+                 :acknowledged_at now})
     (events/publish-event! :event/security-advisory-acknowledge
                            {:object  advisory
                             :user-id user-id})
@@ -60,5 +60,5 @@
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
    advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
   [advisory-ids user-id]
-  (let [advisories (t2/select :model/SecurityAdvisory 'advisory_id ['in (set advisory-ids)] 'acknowledged_at nil)]
+  (let [advisories (t2/select :model/SecurityAdvisory 'advisory_id [:in (set advisory-ids)] 'acknowledged_at nil)]
     (mapv #(acknowledge! % user-id) advisories)))

@@ -126,7 +126,7 @@
   [table]
   (->> (t2/select-fn-set :fk_target_field_id :model/Field
                          'table_id           (:id table)
-                         'fk_target_field_id ['not= nil]
+                         'fk_target_field_id [:not= nil]
                          'active             true)
        (map (comp (partial t2/select-one :model/Table :id)
                   :table_id
@@ -141,7 +141,7 @@
                                                'table_id (:id table)
                                                'active   true))]
     (->> (t2/select-fn-set :table_id :model/Field
-                           'fk_target_field_id ['in fields]
+                           'fk_target_field_id [:in fields]
                            'active             true)
          (map (partial t2/select-one :model/Table :id))
          filter-visible
@@ -153,8 +153,8 @@
   (if-let [dashboards (not-empty (t2/select-fn-set :dashboard_id :model/DashboardCard
                                                    'card_id (:id card)))]
     (->> (t2/select-fn-set :card_id :model/DashboardCard
-                           'dashboard_id ['in dashboards]
-                           'card_id      ['not= (:id card)])
+                           'dashboard_id [:in dashboards]
+                           'card_id      [:not= (:id card)])
          (map (partial t2/select-one :model/Card :id))
          filter-visible
          (take max-matches))
@@ -164,7 +164,7 @@
   [card]
   (->> (t2/select :model/Card
                   'table_id (:table_id card)
-                  'type ['in [:model :question]]
+                  'type [:in [:model :question]]
                   'archived false)
        filter-visible
        (rank-by-similarity card)
@@ -185,8 +185,8 @@
   (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id :model/Revision
                                                         'model     "Dashboard"
                                                         'user_id   api/*current-user-id*
-                                                        {'order-by [['timestamp 'desc]]}))]
-    (->> (t2/select :model/Dashboard 'id ['in dashboard-ids])
+                                                        {:order-by [['timestamp 'desc]]}))]
+    (->> (t2/select :model/Dashboard 'id [:in dashboard-ids])
          filter-visible
          (take max-serendipity-matches))))
 
@@ -206,7 +206,7 @@
                            (map :dashboard_id)
                            distinct)
         best          (when (seq dashboard-ids)
-                        (->> (t2/select :model/Dashboard 'id ['in dashboard-ids])
+                        (->> (t2/select :model/Dashboard 'id [:in dashboard-ids])
                              filter-visible
                              (take max-best-matches)))]
     (concat best recent)))
@@ -274,7 +274,7 @@
      :tables      (->> (t2/select :model/Table
                                   'db_id           (:db_id table)
                                   'schema          (:schema table)
-                                  'id              ['not= (:id table)]
+                                  'id              [:not= (:id table)]
                                   'visibility_type nil
                                   'active          true)
                        (remove (set (concat linking-to linked-from)))
@@ -296,7 +296,7 @@
                     interesting-mix)
      :fields   (->> (t2/select :model/Field
                                'table_id        (:id table)
-                               'id              ['not= (:id field)]
+                               'id              [:not= (:id field)]
                                'visibility_type "normal"
                                'active          true)
                     filter-visible

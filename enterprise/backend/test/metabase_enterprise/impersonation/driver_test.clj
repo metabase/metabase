@@ -306,7 +306,7 @@
                                        :details details})))]
           (sync/sync-database! database {:scan :schema})
           (t2/update! :model/Database 'id (u/the-id database)
-                      {'details (cond-> (impersonation-details driver source-db)
+                      {:details (cond-> (impersonation-details driver source-db)
                                   (driver/database-supports? driver :connection-impersonation-requires-role nil)
                                   (assoc :role (impersonation-default-role driver)))})
           ;; the pools opened during sync authenticate as the granting user; tests must not inherit them
@@ -338,7 +338,7 @@
                             ;; the linter's concern is a fixture racing tests that share the rows it touches; these
                             ;; ids were created by this namespace and are deleted after its last test finishes.
                             #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                            (t2/delete! :model/Database 'id ['in ids]))))))
+                            (t2/delete! :model/Database 'id [:in ids]))))))
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
@@ -870,7 +870,7 @@
                 (is (=? {:state  "persisted"
                          :active true
                          :error  nil}
-                        (t2/select-one [:model/PersistedInfo 'state 'active 'error]
+                        (t2/select-one [:model/PersistedInfo :state :active :error]
                                        'database_id (mt/id)
                                        'card_id (:id model))))))))))))
 

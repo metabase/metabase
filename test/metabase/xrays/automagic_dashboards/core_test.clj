@@ -218,7 +218,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
-                                       (t2/select :model/Table 'db_id (mt/id) 'active true {'order-by [['name 'asc]]})
+                                       (t2/select :model/Table 'db_id (mt/id) 'active true {:order-by [['name 'asc]]})
                                        [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
 
@@ -244,9 +244,9 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [field (t2/select :model/Field
-                               'table_id ['in (t2/select-fn-set :id :model/Table 'db_id (mt/id))]
+                               'table_id [:in (t2/select-fn-set :id :model/Table 'db_id (mt/id))]
                                'visibility_type "normal"
-                               {'order-by [['id 'asc]]})]
+                               {:order-by [['id 'asc]]})]
         (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
 (deftest ^:parallel parameter-mapping-test
@@ -480,7 +480,7 @@
         ;; These can be matched against dimension definitions with simple 1-element vector table specs
         ;; Example: {:field_type [:type/CreationTimestamp]}
         ;; More context is needed (see below test) for two-element dimension definitions
-        (let [context    {:source {:fields (t2/select :model/Field 'id ['in [(mt/id :people :created_at)
+        (let [context    {:source {:fields (t2/select :model/Field 'id [:in [(mt/id :people :created_at)
                                                                              (mt/id :people :latitude)
                                                                              (mt/id :orders :created_at)]])}}
               ;; Lifted from the GenericTable dimensions definition

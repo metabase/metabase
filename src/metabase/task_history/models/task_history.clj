@@ -48,10 +48,10 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (t2/select-one-fn :ended_at :model/TaskHistory {'limit    1
-                                                                               'offset   num-rows-to-keep
-                                                                               'order-by [['ended_at 'desc]]})]
-    (t2/delete! (t2/table-name :model/TaskHistory) 'ended_at ['<= clean-before-date])))
+  (when-let [clean-before-date (t2/select-one-fn :ended_at :model/TaskHistory {:limit    1
+                                                                               :offset   num-rows-to-keep
+                                                                               :order-by [['ended_at 'desc]]})]
+    (t2/delete! (t2/table-name :model/TaskHistory) 'ended_at [:<= clean-before-date])))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
@@ -78,7 +78,7 @@
   [{:keys [status task]}]
   (when (or status task)
     ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
-    {'where (cond-> [:and]
+    {:where (cond-> [:and]
               task   (conj [:= :task_history.task task])
               status (conj [:= :task_history.status (name status)]))}))
 
@@ -100,9 +100,9 @@
   [{col :sort_column
     dir :sort_direction}]
   (if-let [order-col (join-sort-columns col)]
-    {'select    ['task_history.*]
-     'left-join ['metabase_database ['= 'task_history.db_id 'metabase_database.id]]
-     'order-by  [[order-col dir] ['task_history.id 'desc]]}
+    {:select    ['task_history.*]
+     :left-join ['metabase_database ['= 'task_history.db_id 'metabase_database.id]]
+     :order-by  [[order-col dir] ['task_history.id 'desc]]}
     {:order-by [[col dir] [:id :desc]]}))
 
 (def ^:private available-sort-columns
@@ -134,8 +134,8 @@
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
-  (vec (t2/select-fn-vec :task [:model/TaskHistory 'task] {'group-by ['task]
-                                                           'order-by ['task]})))
+  (vec (t2/select-fn-vec :task [:model/TaskHistory :task] {:group-by ['task]
+                                                           :order-by ['task]})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |

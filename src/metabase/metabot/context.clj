@@ -202,9 +202,9 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables    (t2/select [:model/Table 'id 'name 'schema 'description]
+    (let [raw-tables    (t2/select [:model/Table :id :name :schema :description]
                                    'db_id database-id
-                                   'id ['in table-ids]
+                                   'id [:in table-ids]
                                    'active true
                                    'visibility_type nil)
           queryable-ids (metabot.perms/queryable-table-ids (map :id raw-tables))]

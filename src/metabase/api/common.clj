@@ -462,9 +462,9 @@
    new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse Document]]
-                       (t2/update! model {'collection_id       collection-id
-                                          'collection_position position-update-clause}
-                                   {'collection_position [plus-or-minus :collection_position 1]})))]
+                       (t2/update! model {:collection_id       collection-id
+                                          :collection_position position-update-clause}
+                                   {:collection_position [plus-or-minus :collection_position 1]})))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)

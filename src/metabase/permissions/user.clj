@@ -34,11 +34,11 @@
                       (map permissions.path/collection-readwrite-path ((requiring-resolve 'metabase.collections.models.collection/collections-in-namespace)
                                                                        :transforms))))
             ;; include the other Perms entries for any Group this User is in (1 DB Call)
-            (map :object (app-db/query {'select ['p.object]
-                                        'from   [['permissions_group_membership 'pgm]]
-                                        'join   [['permissions_group 'pg] ['= 'pgm.group_id 'pg.id]
+            (map :object (app-db/query {:select ['p.object]
+                                        :from   [['permissions_group_membership 'pgm]]
+                                        :join   [['permissions_group 'pg] ['= 'pgm.group_id 'pg.id]
                                                  ['permissions 'p]        ['= 'p.group_id 'pg.id]]
-                                        'where  ['= 'pgm.user_id user-id]})))))))
+                                        :where  ['= 'pgm.user_id user-id]})))))))
 
 (defn query-creation-capabilities
   "Returns a map with `:can-create-queries` and `:can-create-native-queries` for the given user,

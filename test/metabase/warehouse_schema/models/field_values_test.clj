@@ -302,7 +302,7 @@
                _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field 'id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues 'field_id field-id)]
            ;; Add in human readable values for remapping
-           (is (t2/update! :model/FieldValues field-values-id {'human_readable_values ["a" "b" "c"]}))
+           (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
            (let [expected-original-values {:values                [1 2 3]
                                            :human_readable_values ["a" "b" "c"]}
                  expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -339,7 +339,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
-             (t2/update! :model/FieldValues id {'human_readable_values {"1" "A", "2", "B"}})))))))
+             (t2/update! :model/FieldValues id {:human_readable_values {"1" "A", "2", "B"}})))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
@@ -431,7 +431,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {'values [1 2 3]})
+    (t2/update! :model/FieldValues (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? :model/FieldValues 'id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -440,7 +440,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {'updated_at (t/zoned-date-time)})
+    (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues 'id (:id sandbox-fv)))))
 
 (deftest select-coherence-test

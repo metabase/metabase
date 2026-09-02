@@ -38,7 +38,7 @@
         (try
           ;; Clear the fingerprint -- pre-#436 (and pre this fix, for this call site) this would have
           ;; forced an unsandboxed on-demand refingerprint via get-or-create-fingerprint!.
-          (t2/update! :model/Field field-id {'fingerprint nil 'fingerprint_version 0})
+          (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
           (let [result (metabot.tools.field-stats/field-values
                         {:entity-type "table", :entity-id table-id, :field-id field-id})]
             (testing "no fingerprint statistics are returned to the sandboxed user"
@@ -46,7 +46,7 @@
             (testing "no fingerprint was computed or saved to the shared Field row"
               (is (nil? (t2/select-one-fn :fingerprint :model/Field 'id field-id)))))
           (finally
-            (t2/update! :model/Field field-id {'fingerprint original-fp})))))))
+            (t2/update! :model/Field field-id {:fingerprint original-fp})))))))
 
 (deftest fingerprint-withheld-for-sandboxed-user-test
   (testing "An existing global fingerprint is withheld from a sandboxed user, even though it's already
@@ -106,12 +106,12 @@
               (is (nil? (get-in result [:structured-output :value_metadata :statistics])))))
           (testing "a missing fingerprint is not computed or saved"
             (try
-              (t2/update! :model/Field field-id {'fingerprint nil 'fingerprint_version 0})
+              (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
               (metabot.tools.field-stats/field-values
                {:entity-type "table", :entity-id table-id, :field-id field-id})
               (is (nil? (t2/select-one-fn :fingerprint :model/Field 'id field-id)))
               (finally
-                (t2/update! :model/Field field-id {'fingerprint original-fp})))))))))
+                (t2/update! :model/Field field-id {:fingerprint original-fp})))))))))
 
 (deftest fingerprint-withheld-for-routed-user-test
   (testing "A database-routed user gets no fingerprint statistics, and no on-demand refingerprint is
@@ -129,7 +129,7 @@
                           {:entity-type "table", :entity-id (:id table), :field-id (:id field)})]
               (is (nil? (get-in result [:structured-output :value_metadata :statistics])))))
           (testing "a missing fingerprint is not computed or saved"
-            (t2/update! :model/Field (:id field) {'fingerprint nil 'fingerprint_version 0})
+            (t2/update! :model/Field (:id field) {:fingerprint nil :fingerprint_version 0})
             (metabot.tools.field-stats/field-values
              {:entity-type "table", :entity-id (:id table), :field-id (:id field)})
             (is (nil? (t2/select-one-fn :fingerprint :model/Field 'id (:id field))))))))))

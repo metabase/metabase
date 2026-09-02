@@ -148,7 +148,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true remote-sync-enabled true]
         (mt/with-model-cleanup [:model/PythonLibrary]
-          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {'path "lib.py" 'source "# x"})]
+          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
             (is (= "synced" (noop-update-status! "PythonLibrary" (:id lib) :event/python-library-update lib)))))))))
 
 ;;; ------------------------------------------- edge cases -------------------------------------------
@@ -158,8 +158,8 @@
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
                    :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
       (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {'model_type "Card" 'model_id (:id card) 'model_name "C"
-                                           'status "synced" 'status_changed_at (t/offset-date-time)})
+      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
+                                           :status "synced" :status_changed_at (t/offset-date-time)})
       (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
       (is (= "update" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))))
           "A null content_hash baseline must be treated as dirty"))))
@@ -169,11 +169,11 @@
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
                    :model/Card card {:name "Original" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
       (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {'model_type "Card" 'model_id (:id card) 'model_name "Original"
-                                           'status "synced"
-                                           'content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-                                           'status_changed_at (t/offset-date-time)})
-      (t2/update! :model/Card (:id card) {'name "Renamed"})
+      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "Original"
+                                           :status "synced"
+                                           :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+                                           :status_changed_at (t/offset-date-time)})
+      (t2/update! :model/Card (:id card) {:name "Renamed"})
       (events/publish-event! :event/card-update {:object (t2/select-one :model/Card 'id (:id card))
                                                  :previous-object card
                                                  :user-id (mt/user->id :rasta)})
@@ -185,10 +185,10 @@
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
                    :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
       (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {'model_type "Card" 'model_id (:id card) 'model_name "C"
-                                           'status "update"
-                                           'content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-                                           'status_changed_at (t/offset-date-time)})
+      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
+                                           :status "update"
+                                           :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+                                           :status_changed_at (t/offset-date-time)})
       (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
       (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject 'model_type "Card" 'model_id (:id card))))
           "Content matching the baseline must clear a stale dirty flag")
@@ -213,7 +213,7 @@
                        :model/FieldUserSettings _ {:field_id (:id field) :description "curated"}
                        :model/Measure measure {:name "M" :table_id (:id table)}]
           (mt/with-model-cleanup [:model/RemoteSyncTask]
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
                   rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
                                 [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
                                  ["FieldUserSettings" (:id field)] ["Measure" (:id measure)]])]
@@ -236,8 +236,8 @@
                    :model/Card c3 {:name "C3" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
       (t2/delete! :model/RemoteSyncObject)
       (doseq [card [c1 c2 c3]]
-        (t2/insert! :model/RemoteSyncObject {'model_type "Card" 'model_id (:id card) 'model_name (:name card)
-                                             'status "create" 'status_changed_at (t/offset-date-time)}))
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name (:name card)
+                                             :status "create" :status_changed_at (t/offset-date-time)}))
       ;; synced entries keyed by RSO id, carrying each card's real content hash
       (let [synced (mapv (fn [r] {:id (:id r) :file_path "p"
                                   :content_hash (source/row->content-hash (select-keys r [:model_type :model_id]))})
@@ -279,7 +279,7 @@
    status of [model-type model-id]. `target` is {:model-type :model-id :topic :object :payload}."
   [seeds {:keys [model-type model-id topic object payload]}]
   (mt/with-model-cleanup [:model/RemoteSyncTask]
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
       (t2/delete! :model/RemoteSyncObject)
       (doseq [seed seeds]
         (t2/insert! :model/RemoteSyncObject (merge {:status "create" :status_changed_at (t/offset-date-time)} seed)))
@@ -360,7 +360,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true remote-sync-enabled true]
         (mt/with-model-cleanup [:model/PythonLibrary]
-          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {'path "lib.py" 'source "# x"})]
+          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
             (is (= "synced"
                    (export-baseline-then-noop-status!
                     [{:model_type "PythonLibrary" :model_id (:id lib) :model_name "lib.py"}]
@@ -371,7 +371,7 @@
             content_hash, and a subsequent no-op update stays synced (GHY-3933)"
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "export" 'initiated_by (mt/user->id :rasta)})]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
           (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS" :location "/"}
                          :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
                          :model/RemoteSyncObject _ {:model_type "Collection" :model_id (:id coll) :model_name "RS" :status "create" :status_changed_at (t/offset-date-time)}
@@ -403,7 +403,7 @@
    returns the resulting RemoteSyncObject status. `payload-fn` (optional) returns extra event payload."
   [files model-type lookup topic & {:keys [payload-fn]}]
   (mt/with-model-cleanup [:model/RemoteSyncTask]
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {'sync_task_type "import" 'initiated_by (mt/user->id :rasta)})
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
           ms      (test-helpers/create-mock-source :initial-files files)
           result  (impl/import! (source.p/snapshot ms) task-id :force? true :force-deletion? true)]
       (is (= :success (:status result)) (str "import should succeed: " result))

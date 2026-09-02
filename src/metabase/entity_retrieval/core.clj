@@ -79,7 +79,7 @@
           by-class (into {} (remove (comp str/blank? val))
                          (t2/select-fn->fn #(entity-class (:entity_type %) (:entity_local_id %))
                                            (comp :instructions :ai_context)
-                                           :model/OsiAiContext {'where clause}))]
+                                           :model/OsiAiContext {:where clause}))]
       ;; key the result back by the caller's original [type id] ref
       (into {} (keep (fn [[t id]]
                        (when-let [instr (by-class (entity-class t id))]

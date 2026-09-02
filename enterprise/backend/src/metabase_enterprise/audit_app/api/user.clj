@@ -45,6 +45,6 @@
   (t2/delete! :model/PulseChannelRecipient 'user_id id)
   (t2/delete! :model/NotificationRecipient 'user_id id)
   ;; archive anything they created.
-  (t2/update! :model/Pulse {'creator_id id, 'archived false} {'archived true})
-  (t2/update! :model/Notification {'creator_id id 'active true} {'active false})
+  (t2/update! :model/Pulse {:creator_id id, :archived false} {:archived true})
+  (t2/update! :model/Notification {:creator_id id :active true} {:active false})
   api/generic-204-no-content)

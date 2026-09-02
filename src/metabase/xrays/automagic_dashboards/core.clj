@@ -409,7 +409,7 @@
   (let [fields (field/with-targets
                  (t2/select :model/Field
                             'table_id           (u/the-id table)
-                            'fk_target_field_id ['not= nil]
+                            'fk_target_field_id [:not= nil]
                             'active             true))]
     (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
     (for [{:keys [id target]} fields
@@ -428,7 +428,7 @@
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
       (comp (->> (-> (t2/select :model/Field
-                                'table_id ['in (map u/the-id tables)]
+                                'table_id [:in (map u/the-id tables)]
                                 'visibility_type "normal"
                                 'preview_display true
                                 'active true)
@@ -935,27 +935,27 @@
   Filters out tables that are link-tables"
   [clauses]
   (->>
-   (t2/select [:model/Table 'id 'schema 'display_name 'entity_type 'db_id
+   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
                [:ts.count :num-fields]
                [[:and
                  [:>= :ts.count 2]
                  [:= :ts.count_non_pks 1]] :list-like?]]
-              {'inner-join [[^:allow-subquery {'select   ['f.table_id
+              {:inner-join [[^:allow-subquery {:select   ['f.table_id
                                                           ['%count.* "count"]
                                                           [['count ['case ['or ['not= 'semantic_type "type/PK"]
                                                                            ['= 'f.semantic_type nil]]
-                                                                    ['inline 1] 'else ['inline nil]]]
+                                                                    [:inline 1] 'else [:inline nil]]]
                                                            'count_non_pks]
                                                           [['count ['case ['in 'f.semantic_type ["type/PK" "type/FK"]]
-                                                                    ['inline 1] 'else ['inline nil]]]
+                                                                    [:inline 1] 'else [:inline nil]]]
                                                            'count_pks_and_fks]]
-                                               'from     [['metabase_field 'f]]
-                                               'where    ['= 'f.active true]
-                                               'group-by ['f.table_id]} 'ts]
+                                               :from     [['metabase_field 'f]]
+                                               :where    ['= 'f.active true]
+                                               :group-by ['f.table_id]} 'ts]
                             ['and ['= 'ts.table_id 'id]
                              ['> 'ts.count 0]
                              ['!= 'ts.count 'ts.count_pks_and_fks]]]
-               'where (into [:and] clauses)})
+               :where (into [:and] clauses)})
    (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables

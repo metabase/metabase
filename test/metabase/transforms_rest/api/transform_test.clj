@@ -1434,7 +1434,7 @@
                         (finally
                           (t2/delete! :model/Transform 'id (:id transform-response)))))
                     (finally
-                      (t2/delete! :model/TransformTag 'id ['in [(:id tag1) (:id tag2)]])))))
+                      (t2/delete! :model/TransformTag 'id [:in [(:id tag1) (:id tag2)]])))))
               (testing "Can create transform without tags"
                 (let [transform-request (assoc-in (mt/with-temp-defaults :model/Transform)
                                                   [:target :schema] schema)

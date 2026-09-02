@@ -118,16 +118,16 @@
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
-       (cond-> {'select    [['session.user_id 'metabase-user-id]
+       (cond-> {:select    [['session.user_id 'metabase-user-id]
                             ['user.is_superuser 'is-superuser?]
                             ['user.is_data_analyst 'is-data-analyst?]
                             ['user.locale 'user-locale]
                             ['auth_identity.provider 'auth-provider]]
-                'from      [['core_session 'session]]
-                'left-join [['core_user 'user] ['= 'session.user_id 'user.id]
+                :from      [['core_session 'session]]
+                :left-join [['core_user 'user] ['= 'session.user_id 'user.id]
                             ['tenant] ['= 'tenant.id 'user.tenant_id]
                             ['auth_identity] ['= 'auth_identity.id 'session.auth_identity_id]]
-                'where     (into [:and
+                :where     (into [:and
                                   (if enable-tenants?
                                     [:or [:= :tenant.id nil] :tenant.is_active]
                                     [:= :tenant.id nil])
@@ -142,7 +142,7 @@
                                  (when session-timeout-seconds
                                    [[:> [:coalesce :session.last_active_at :session.created_at]
                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
-                'limit     ['inline 1]}
+                :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
           (sql.helpers/select
@@ -159,17 +159,17 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {'select    [['api_key.user_id 'metabase-user-id]
+       (cond-> {:select    [['api_key.user_id 'metabase-user-id]
                             ['api_key.key 'api-key]
                             ['user.is_superuser 'is-superuser?]
                             ['user.is_data_analyst 'is-data-analyst?]
                             ['user.locale 'user-locale]]
-                'from      'api_key
-                'left-join [['core_user 'user] ['= 'api_key.user_id 'user.id]]
-                'where     ['and
+                :from      'api_key
+                :left-join [['core_user 'user] ['= 'api_key.user_id 'user.id]]
+                :where     ['and
                             ['= 'user.is_active true]
-                            ['= 'api_key.key_prefix ^:allow-raw-sql ['raw "?"]]]
-                'limit     ['inline 1]}
+                            ['= 'api_key.key_prefix ^:allow-raw-sql [:raw "?"]]]
+                :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
           (sql.helpers/select
@@ -186,15 +186,15 @@
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
-       (cond-> {'select    [['user.id 'metabase-user-id]
+       (cond-> {:select    [['user.id 'metabase-user-id]
                             ['user.is_superuser 'is-superuser?]
                             ['user.is_data_analyst 'is-data-analyst?]
                             ['user.locale 'user-locale]]
-                'from      [['core_user 'user]]
-                'where     ['and
+                :from      [['core_user 'user]]
+                :where     ['and
                             ['= 'user.is_active true]
-                            ['= 'user.id ^:allow-raw-sql ['raw "?"]]]
-                'limit     ['inline 1]}
+                            ['= 'user.id ^:allow-raw-sql [:raw "?"]]]
+                :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
           (sql.helpers/select
@@ -415,9 +415,9 @@
     (let [hashed (session/hash-session-key session-key)]
       (when (session/record-session-activity-update! hashed)
         (try
-          (t2/query-one {'update (t2/table-name :model/Session)
-                         'set    {'last_active_at '%now}
-                         'where  ['= 'key_hashed hashed]})
+          (t2/query-one {:update (t2/table-name :model/Session)
+                         :set    {:last_active_at '%now}
+                         :where  ['= 'key_hashed hashed]})
           (catch Exception e
             (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))))
 

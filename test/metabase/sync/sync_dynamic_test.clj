@@ -30,7 +30,7 @@
                                :json-unfolding]))))))))
 
 (defn- get-tables [database-or-id]
-  (->> (t2/hydrate (t2/select :model/Table, 'db_id (u/the-id database-or-id), {'order-by ['id]}) :fields)
+  (->> (t2/hydrate (t2/select :model/Table, 'db_id (u/the-id database-or-id), {:order-by ['id]}) :fields)
        (mapv mt/boolean-ids-and-timestamps)))
 
 (deftest sync-nested-fields-test

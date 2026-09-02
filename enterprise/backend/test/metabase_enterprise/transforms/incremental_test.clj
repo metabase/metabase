@@ -604,7 +604,7 @@
                            :target-incremental-strategy {:type "append"}}]
               (mt/with-temp [:model/Transform transform {:name "test transform" :source source, :target target}]
                 ;; Mark the field as inactive
-                (t2/update! :model/Field field-id {'active false})
+                (t2/update! :model/Field field-id {:active false})
                 (try
                   (testing "Transform execution fails with inactive checkpoint field"
                     (is (thrown-with-msg?
@@ -613,7 +613,7 @@
                          (transforms.execute/execute! transform {:run-method :manual}))))
                   (finally
                     ;; Restore field to active state for other tests
-                    (t2/update! :model/Field field-id {'active true})))))))))))
+                    (t2/update! :model/Field field-id {:active true})))))))))))
 
 (deftest changing-query-keeps-checkpoint-test
   (mt/test-drivers #{:postgres}
@@ -652,7 +652,7 @@
                 (is (= 16 (count (pg-table-rows db-spec target-table)))))
               (t2/update! :model/Transform
                           (:id transform)
-                          {'source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")})
+                          {:source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")})
               (testing "run after query change with no new data keeps same row count"
                 (transforms.execute/execute! (t2/select-one :model/Transform (:id transform)) {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))
@@ -774,9 +774,9 @@
                     (transforms.tu/wait-for-table table-name 10000)
                     (is (some? (get-checkpoint-value (:id transform)))))
                   ;; the driver's own first index kind: a kind it doesn't advertise is dropped before any DDL runs.
-                  (t2/insert! :model/TableIndex {'transform_id (:id transform)
-                                                 'index_name   "mid_run_idx"
-                                                 'structured   (assoc (first indexes) :name "mid_run_idx")})
+                  (t2/insert! :model/TableIndex {:transform_id (:id transform)
+                                                 :index_name   "mid_run_idx"
+                                                 :structured   (assoc (first indexes) :name "mid_run_idx")})
                   (testing "the watermark survives the request untouched"
                     (is (some? (get-checkpoint-value (:id transform)))))
                   (testing "the next run rebuilds and the index lands in the warehouse"

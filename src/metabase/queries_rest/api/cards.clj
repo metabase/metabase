@@ -27,7 +27,7 @@
    _query-params
    {:keys [card_ids]} :- [:map
                           [:card_ids [:sequential ms/PositiveInt]]]]
-  (let [id->card (t2/select-fn->fn :id identity :model/Card 'id ['in card_ids])]
+  (let [id->card (t2/select-fn->fn :id identity :model/Card 'id [:in card_ids])]
     (as-> card_ids $
       (mapv id->card $)
       (t2/hydrate $ :in_dashboards)

@@ -92,12 +92,12 @@
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
   ;; obtain a lock on the existing revisions for this entity to prevent concurrent inserts of new revisions
-  (t2/query {'select ['id]
-             'from ['revision]
-             'where ['and
+  (t2/query {:select ['id]
+             :from ['revision]
+             :where ['and
                      ['= 'model model]
                      ['= 'model_id model_id]]
-             'for 'update})
+             :for 'update})
   (assoc revision
          :timestamp (or (:timestamp revision) :%now)
          :metabase_version config/mb-version-string
@@ -130,9 +130,9 @@
   (when-let [old-revisions (seq (drop max-revisions (t2/select-fn-vec :id :model/Revision
                                                                       'model    (name model)
                                                                       'model_id id
-                                                                      {'order-by [['timestamp 'desc]
+                                                                      {:order-by [['timestamp 'desc]
                                                                                   ['id 'desc]]})))]
-    (t2/delete! :model/Revision 'id ['in old-revisions])))
+    (t2/delete! :model/Revision 'id [:in old-revisions])))
 
 (t2/define-after-insert :model/Revision
   [revision]
@@ -142,8 +142,8 @@
       ;; Note 2: We don't allow updating revision but this is a special case, so we by pass the check by
       ;; updating directly with the table name
       (t2/update! (t2/table-name :model/Revision)
-                  {'model model 'model_id model_id 'most_recent true 'id ['not= id]}
-                  {'most_recent false})
+                  {:model model :model_id model_id :most_recent true :id ['not= id]}
+                  {:most_recent false})
       (delete-old-revisions! model model_id))))
 
 ;;; # Functions
@@ -188,7 +188,7 @@
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (let [model-name (name model)]
-    (t2/select :model/Revision 'model model-name 'model_id id {'order-by [['id 'desc]]})))
+    (t2/select :model/Revision 'model model-name 'model_id id {:order-by [['id 'desc]]})))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` that the current user may see, and add details. Diffs and descriptions
@@ -217,7 +217,7 @@
                                         [:message      {:optional true} [:maybe :string]]]]
   (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object (t2/select-one-fn :object :model/Revision 'model entity-name 'model_id id {'order-by [['id 'desc]]})
+        last-object (t2/select-one-fn :object :model/Revision 'model entity-name 'model_id id {:order-by [['id 'desc]]})
         ;; For Card entities, ensure :card_schema is excluded from comparison
         ;; Old revisions might have :card_schema added by after-select, but this field
         ;; shouldn't trigger new revisions as it's a technical/internal field
@@ -254,11 +254,11 @@
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
                                         (t2/select-one-fn :object :model/Revision
-                                                          'model model-name 'model_id id {'order-by [['id 'desc]]}))]
+                                                          'model model-name 'model_id id {:order-by [['id 'desc]]}))]
         ;; Do the reversion of the object
         (revert-to-revision! entity id user-id serialized-instance)
         ;; Push a new revision to record this change
-        (let [last-revision (t2/select-one :model/Revision 'model model-name, 'model_id id, {'order-by [['id 'desc]]})]
+        (let [last-revision (t2/select-one :model/Revision 'model model-name, 'model_id id, {:order-by [['id 'desc]]})]
           (if already-in-target-state?
             last-revision
             (let [new-revision (first (t2/insert-returning-instances! :model/Revision

@@ -168,7 +168,7 @@
   ([token age-ms local-cache]
    (let [token-hash (#'token-check/hash-token token)
          new-ts     (t/minus (t/offset-date-time) (t/millis age-ms))]
-     (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash {'updated_at new-ts})
+     (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash {:updated_at new-ts})
      (when local-cache
        (swap! local-cache update token-hash assoc :updated-at (t/minus (t/instant) (t/millis age-ms)))))))
 
@@ -679,7 +679,7 @@
         (is (= 1 @call-count))
         ;; Tamper with the DB hash — simulate someone modifying the row
         (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
-                    {'token_status_hash "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"})
+                    {:token_status_hash "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"})
         ;; Expire local-cached-token-checker
         (Thread/sleep 5)
         ;; Next check should detect hash mismatch and re-fetch from MetaStore

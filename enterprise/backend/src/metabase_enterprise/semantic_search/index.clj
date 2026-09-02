@@ -134,8 +134,8 @@
    Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
-    (let [colls                (t2/select [:model/Collection 'id 'personal_owner_id 'location]
-                                          'id ['in collection-ids])
+    (let [colls                (t2/select [:model/Collection :id :personal_owner_id :location]
+                                          'id [:in collection-ids])
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
           direct               (into {} (map (juxt :id :personal_owner_id)) personal)
@@ -147,9 +147,9 @@
           root-id->owner       (into direct
                                      (map (juxt :id :personal_owner_id))
                                      (when (seq unknown-roots)
-                                       (t2/select [:model/Collection 'id 'personal_owner_id]
-                                                  'id ['in unknown-roots]
-                                                  'personal_owner_id ['not= nil])))]
+                                       (t2/select [:model/Collection :id :personal_owner_id]
+                                                  'id [:in unknown-roots]
+                                                  'personal_owner_id [:not= nil])))]
       (into direct
             (keep (fn [[coll-id root-id]]
                     (when-let [owner (get root-id->owner root-id)]
@@ -521,7 +521,7 @@
         [sql & params] (sql-format-quoted
                         (sql.helpers/create-index
                          [(keyword (hnsw-index-name index)) 'if-not-exists]
-                         [(keyword table-name) 'using-hnsw [['raw "embedding vector_cosine_ops"]]]))
+                         [(keyword table-name) 'using-hnsw [[:raw "embedding vector_cosine_ops"]]]))
         sql            (cond-> sql
                          concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
     (jdbc/execute! connectable (into [sql] params))))
@@ -700,19 +700,19 @@
         vector-column (if (:search-native-query search-context)
                         :text_search_with_native_query_vector
                         :text_search_vector)]
-    {'select (into common-search-columns
+    {:select (into common-search-columns
                    [[[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
                      :keyword_rank]])
-     'from [(keyword (:table-name index))]
+     :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-     'join [[['to_tsquery ^:allow-raw-sql ['inline tsv-lang] ['lift ts-search-expr]]
+     :join [[['to_tsquery ^:allow-raw-sql [:inline tsv-lang] [:lift ts-search-expr]]
              'query] ['= 1 1]]
-     'where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
+     :where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
               (if (seq filters)
                 (into [:and ts-query-filter] [filters])
                 ts-query-filter))
-     'order-by [['keyword_rank 'asc]]
-     'limit (semantic-settings/semantic-search-results-limit)}))
+     :order-by [['keyword_rank 'asc]]
+     :limit (semantic-settings/semantic-search-results-limit)}))
 
 (def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
@@ -727,21 +727,21 @@
   ;; asked for -- or none at all. `brute-force-search-query` sidesteps both by skipping the index and scanning
   ;; every filtered row.
   ;; TODO: only pull in necessary extra columns from configured filters
-  (let [hnsw-query {'select (into common-search-columns
+  (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
-                    'from   [(keyword (:table-name index))]
-                    'order-by [[['raw (str "embedding <=> " embedding-literal)] 'asc]]
-                    'limit  (semantic-settings/semantic-search-results-limit)}
+                    :from   [(keyword (:table-name index))]
+                    :order-by [[[:raw (str "embedding <=> " embedding-literal)] 'asc]]
+                    :limit  (semantic-settings/semantic-search-results-limit)}
         ;; `semantic_rank` feeds the RRF scorer; `semantic_distance` feeds the semantic-distance scorer.
-        base-query {'with [['vector_candidates hnsw-query]]
-                    'select (into common-search-columns
+        base-query {:with [['vector_candidates hnsw-query]]
+                    :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                                    [:distance :semantic_distance]])
-                    'from ['vector_candidates]
-                    'where ['<= 'distance max-cosine-distance]
-                    'order-by [['semantic_rank 'asc]]}]
+                    :from ['vector_candidates]
+                    :where ['<= 'distance max-cosine-distance]
+                    :order-by [['semantic_rank 'asc]]}]
     (if filters
-      (update base-query 'where #(into ['and] [% filters]))
+      (update base-query :where #(into ['and] [% filters]))
       base-query)))
 
 (defn- brute-force-search-query
@@ -754,18 +754,18 @@
   ;; either recompute the distance for the qual, or need a subquery optimization fence (Postgres pulls a
   ;; plain subquery back up and re-inlines the expression) -- not worth it for an exact scan that already
   ;; touches every filtered row.
-  (let [filtered-query (cond-> {'select (into common-search-columns
+  (let [filtered-query (cond-> {:select (into common-search-columns
                                               [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
-                                'from   [(keyword (:table-name index))]}
+                                :from   [(keyword (:table-name index))]}
                          filters (assoc :where filters))]
-    {'with     [['vector_candidates filtered-query 'materialized]]
-     'select   (into common-search-columns
+    {:with     [['vector_candidates filtered-query 'materialized]]
+     :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                       [:distance :semantic_distance]])
-     'from     ['vector_candidates]
-     'where    ['<= 'distance max-cosine-distance]
-     'order-by [['semantic_rank 'asc]]
-     'limit    (semantic-settings/semantic-search-results-limit)}))
+     :from     ['vector_candidates]
+     :where    ['<= 'distance max-cosine-distance]
+     :order-by [['semantic_rank 'asc]]
+     :limit    (semantic-settings/semantic-search-results-limit)}))
 
 (defn- hnsw-iterative-search-query
   "Build the semantic vector subquery as an index-backed iterative scan with `filters` applied inline."
@@ -777,19 +777,19 @@
   ;; not the SQL shape.
   ;; The cutoff stays in the outer query (like `hnsw-search-query`) so the inner scan fills up to the limit
   ;; before trimming.
-  (let [inner (cond-> {'select   (into common-search-columns
+  (let [inner (cond-> {:select   (into common-search-columns
                                        [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
-                       'from     [(keyword (:table-name index))]
-                       'order-by [[['raw (str "embedding <=> " embedding-literal)] 'asc]]
-                       'limit    (semantic-settings/semantic-search-results-limit)}
+                       :from     [(keyword (:table-name index))]
+                       :order-by [[[:raw (str "embedding <=> " embedding-literal)] 'asc]]
+                       :limit    (semantic-settings/semantic-search-results-limit)}
                 filters (assoc :where filters))]
-    {'with     [['vector_candidates inner]]
-     'select   (into common-search-columns
+    {:with     [['vector_candidates inner]]
+     :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                       [:distance :semantic_distance]])
-     'from     ['vector_candidates]
-     'where    ['<= 'distance max-cosine-distance]
-     'order-by [['semantic_rank 'asc]]}))
+     :from     ['vector_candidates]
+     :where    ['<= 'distance max-cosine-distance]
+     :order-by [['semantic_rank 'asc]]}))
 
 (defn- vector-search-strategy
   "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting."
@@ -877,7 +877,7 @@
 
   Takes a query map and returns {:ctes [...] :query query-without-with}"
   [query]
-  (if-not ('with query)
+  (if-not (:with query)
     {:ctes [] :query query}
     (let [ctes (reduce
                 ;; `assoc` swaps the (possibly flattened) inner query back into the binding while preserving the
@@ -886,9 +886,9 @@
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
                     (into acc (conj ctes (assoc cte-binding 1 query)))))
                 []
-                ('with query))]
+                (:with query))]
       {:ctes ctes
-       :query (dissoc query 'with)})))
+       :query (dissoc query :with)})))
 
 (defn- hybrid-select
   "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
@@ -905,16 +905,16 @@
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
         keyword-results (keyword-search-query index search-context)
-        full-query {'with [['vector_results semantic-results]
+        full-query {:with [['vector_results semantic-results]
                            ['text_results keyword-results]]
-                    'select (into
+                    :select (into
                              (mapv hybrid-select common-search-columns)
                              [[:v.semantic_rank :semantic_rank]
                               [:v.semantic_distance :semantic_distance]
                               [:t.keyword_rank :keyword_rank]])
-                    'from [['vector_results 'v]]
-                    'full-join [['text_results 't] ['= 'v.id 't.id]]
-                    'limit (semantic-settings/semantic-search-results-limit)}]
+                    :from [['vector_results 'v]]
+                    :full-join [['text_results 't] ['= 'v.id 't.id]]
+                    :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
 (defn- scored-search-query
@@ -930,10 +930,10 @@
   (let [hybrid-query (hybrid-search-query index embedding search-context)
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
-        full-query {'with all-ctes
-                    'select ['id 'model_id 'model 'content 'verified 'legacy_input 'semantic_rank 'semantic_distance 'keyword_rank]
-                    'from [['hybrid_results 'search_index]]
-                    'limit (semantic-settings/semantic-search-results-limit)}]
+        full-query {:with all-ctes
+                    :select ['id 'model_id 'model 'content 'verified 'legacy_input 'semantic_rank 'semantic_distance 'keyword_rank]
+                    :from [['hybrid_results 'search_index]]
+                    :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
 (defn- legacy-input-with-score
@@ -997,7 +997,7 @@
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (t2/select t2-model 'id ['in (map :id docs)])]
+                                 t2-instance (t2/select t2-model 'id [:in (map :id docs)])]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1018,8 +1018,8 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (t2/select [:collection 'id 'location]
-                                          'id ['in collection-ids])
+                          (->> (t2/select [:collection :id :location]
+                                          'id [:in collection-ids])
                                (into {} (map (juxt :id identity)))))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
@@ -1135,7 +1135,7 @@
   The vector scan's `tuples-scanned` relative to this is the overfetch."
   [conn index search-context]
   (let [filters (search-filters search-context)
-        q       (cond-> {'select [[['raw "count(*)"] 'n]] 'from [(keyword (:table-name index))]}
+        q       (cond-> {:select [[[:raw "count(*)"] 'n]] :from [(keyword (:table-name index))]}
                   filters (assoc :where filters))]
     (:n (jdbc/execute-one! conn (sql-format-quoted q) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
@@ -1312,9 +1312,9 @@
   "Whether a single `(model, id)` row survives `where` against the index `table`."
   [db table model id where]
   (some? (jdbc/execute-one! db (sql-format-quoted
-                                {'select [[['inline 1] 'one]]
-                                 'from   [table]
-                                 'where  (into [:and [:= :model model] [:= :model_id (str id)]]
+                                {:select [[[:inline 1] 'one]]
+                                 :from   [table]
+                                 :where  (into [:and [:= :model model] [:= :model_id (str id)]]
                                                (when where [where]))})
                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
@@ -1325,9 +1325,9 @@
   [db index search-context model id]
   (let [table (keyword (:table-name index))
         row   (jdbc/execute-one! db (sql-format-quoted
-                                     {'select ['model 'model_id 'legacy_input]
-                                      'from   [table]
-                                      'where  ['and ['= 'model model] ['= 'model_id (str id)]]})
+                                     {:select ['model 'model_id 'legacy_input]
+                                      :from   [table]
+                                      :where  ['and ['= 'model model] ['= 'model_id (str id)]]})
                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (cond
       (nil? row)
@@ -1347,9 +1347,9 @@
               (let [embedding (embedding/get-embedding (:embedding-model index) search-string
                                                        {:type :query :record-tokens? true})
                     distance  (-> (jdbc/execute-one! db (sql-format-quoted
-                                                         {'select [[['raw (str "embedding <=> " (format-embedding embedding))] 'distance]]
-                                                          'from   [table]
-                                                          'where  ['and ['= 'model model] ['= 'model_id (str id)]]})
+                                                         {:select [[[:raw (str "embedding <=> " (format-embedding embedding))] 'distance]]
+                                                          :from   [table]
+                                                          :where  ['and ['= 'model model] ['= 'model_id (str id)]]})
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                   :distance)]
                 ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it

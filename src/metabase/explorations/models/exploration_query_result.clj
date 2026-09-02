@@ -162,7 +162,7 @@
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
-                        (t2/select-one [:model/Card 'name 'description 'display 'visualization_settings]
+                        (t2/select-one [:model/Card :name :description :display :visualization_settings]
                                        'id card-id))
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
@@ -181,17 +181,17 @@
                                  (:id first-sr)
                                  (first (t2/insert-returning-pks!
                                          :model/StoredResult
-                                         {'result_data   composite-bytes
-                                          'creator_id    creator-id
-                                          'database_id   (or (:database_id first-sr)
+                                         {:result_data   composite-bytes
+                                          :creator_id    creator-id
+                                          :database_id   (or (:database_id first-sr)
                                                              (-> dataset-query :database))
-                                          'dataset_query dataset-query
+                                          :dataset_query dataset-query
                                           ;; `composite/combine` refreshed :row_count to the
                                           ;; combined row set's size.
-                                          'row_count     (:row_count composite-qp)
+                                          :row_count     (:row_count composite-qp)
                                           ;; Without this the read gate denies the composite to
                                           ;; every non-superuser. See [[composite-data-access-token]].
-                                          'data_access_token (composite-data-access-token eq-results)})))
+                                          :data_access_token (composite-data-access-token eq-results)})))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))
@@ -208,8 +208,8 @@
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
-          (t2/insert! :model/StoredResultUse {'stored_result_id stored-result-id 'card_id card-id})
+          (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
           (when-not single?
             (doseq [{:keys [sr]} eq-results]
-              (t2/insert! :model/StoredResultUse {'stored_result_id (:id sr) 'card_id card-id})))
+              (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id})))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))

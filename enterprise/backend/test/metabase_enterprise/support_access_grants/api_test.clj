@@ -93,10 +93,10 @@
   (mt/with-model-cleanup [:model/SupportAccessGrantLog]
     (dotimes [i 3]
       (t2/insert! :model/SupportAccessGrantLog
-                  {'user_id (mt/user->id :crowberto)
-                   'ticket_number (str "SUPPORT-3" i)
-                   'grant_start_timestamp (t/instant)
-                   'grant_end_timestamp (t/plus (t/instant) (t/minutes 240))}))
+                  {:user_id (mt/user->id :crowberto)
+                   :ticket_number (str "SUPPORT-3" i)
+                   :grant_start_timestamp (t/instant)
+                   :grant_end_timestamp (t/plus (t/instant) (t/minutes 240))}))
     (let [response (mt/user-http-request :crowberto :get 200 "ee/support-access-grant")]
       (is (map? response))
       (is (contains? response :data))
@@ -124,10 +124,10 @@
     (mt/with-model-cleanup [:model/SupportAccessGrantLog]
       (let [ticket "SUPPORT-FILTER-TEST"]
         (t2/insert! :model/SupportAccessGrantLog
-                    {'user_id user-id
-                     'ticket_number ticket
-                     'grant_start_timestamp (t/instant)
-                     'grant_end_timestamp (t/plus (t/instant) (t/minutes 240))})
+                    {:user_id user-id
+                     :ticket_number ticket
+                     :grant_start_timestamp (t/instant)
+                     :grant_end_timestamp (t/plus (t/instant) (t/minutes 240))})
         (let [response (mt/user-http-request :crowberto :get 200 "ee/support-access-grant"
                                              :ticket-number ticket)]
           (is (= 1 (count (:data response))))
@@ -137,10 +137,10 @@
   (mt/with-temp [:model/User {user-id :id} {}]
     (mt/with-model-cleanup [:model/SupportAccessGrantLog]
       (t2/insert! :model/SupportAccessGrantLog
-                  {'user_id user-id
-                   'ticket_number "SUPPORT-USER-FILTER"
-                   'grant_start_timestamp (t/instant)
-                   'grant_end_timestamp (t/plus (t/instant) (t/minutes 240))})
+                  {:user_id user-id
+                   :ticket_number "SUPPORT-USER-FILTER"
+                   :grant_start_timestamp (t/instant)
+                   :grant_end_timestamp (t/plus (t/instant) (t/minutes 240))})
       (let [response (mt/user-http-request :crowberto :get 200 "ee/support-access-grant"
                                            :user-id user-id)]
         (is (>= (count (:data response)) 1))
@@ -151,12 +151,12 @@
     (mt/with-model-cleanup [:model/SupportAccessGrantLog]
       (let [now (t/instant)]
         (t2/insert! :model/SupportAccessGrantLog
-                    {'user_id user-id
-                     'ticket_number "SUPPORT-REVOKED"
-                     'grant_start_timestamp now
-                     'grant_end_timestamp (t/plus now (t/minutes 240))
-                     'revoked_at now
-                     'revoked_by_user_id user-id})
+                    {:user_id user-id
+                     :ticket_number "SUPPORT-REVOKED"
+                     :grant_start_timestamp now
+                     :grant_end_timestamp (t/plus now (t/minutes 240))
+                     :revoked_at now
+                     :revoked_by_user_id user-id})
         (let [response (mt/user-http-request :crowberto :get 200 "ee/support-access-grant"
                                              :ticket-number "SUPPORT-REVOKED")]
           (is (= 0 (count (:data response)))))))))
@@ -166,12 +166,12 @@
     (mt/with-model-cleanup [:model/SupportAccessGrantLog]
       (let [now (t/instant)]
         (t2/insert! :model/SupportAccessGrantLog
-                    {'user_id user-id
-                     'ticket_number "SUPPORT-REVOKED-2"
-                     'grant_start_timestamp now
-                     'grant_end_timestamp (t/plus now (t/minutes 240))
-                     'revoked_at now
-                     'revoked_by_user_id user-id})
+                    {:user_id user-id
+                     :ticket_number "SUPPORT-REVOKED-2"
+                     :grant_start_timestamp now
+                     :grant_end_timestamp (t/plus now (t/minutes 240))
+                     :revoked_at now
+                     :revoked_by_user_id user-id})
         (let [response (mt/user-http-request :crowberto :get 200 "ee/support-access-grant"
                                              :ticket-number "SUPPORT-REVOKED-2"
                                              :include-revoked true)]

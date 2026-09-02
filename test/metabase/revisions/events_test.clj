@@ -60,7 +60,7 @@
                :object       (card->revision-object card)
                :is_reversion false
                :is_creation  true}
-              (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+              (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                              'model       "Card"
                              'model_id    card-id))))))
 
@@ -74,7 +74,7 @@
                :object       (card->revision-object card)
                :is_reversion false
                :is_creation  false}
-              (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+              (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                              'model       "Card"
                              'model_id    card-id))))))
 
@@ -103,7 +103,7 @@
                 :object       (assoc (dashboard->revision-object dashboard) :cards [])
                 :is_reversion false
                 :is_creation  true}
-               (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+               (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                               'model "Dashboard"
                               'model_id dashboard-id)))))))
 
@@ -118,7 +118,7 @@
                 :object       (dashboard->revision-object dashboard)
                 :is_reversion false
                 :is_creation  false}
-               (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+               (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                               'model    "Dashboard"
                               'model_id dashboard-id)))))))
 
@@ -148,7 +148,7 @@
                                    :cards [(assoc (apply dissoc dashcard @#'impl.dashboard/excluded-columns-for-dashcard-revision) :series [])])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             'model    "Dashboard"
                             'model_id dashboard-id))))))
 
@@ -165,7 +165,7 @@
               :object       (assoc (dashboard->revision-object dashboard) :cards [])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             'model    "Dashboard"
                             'model_id dashboard-id))))))
 
@@ -174,7 +174,7 @@
     (mt/with-temp [:model/Dashboard     {dashboard-id :id, :as dashboard} {}
                    :model/Card          {card-id :id}                     (card-properties)
                    :model/DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
-      (t2/update! :model/DashboardCard (:id dashcard) {'size_x 3})
+      (t2/update! :model/DashboardCard (:id dashcard) {:size_x 3})
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :crowberto)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -194,7 +194,7 @@
                                                                                    :dashboard_id           dashboard-id}])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             'model    "Dashboard"
                             'model_id dashboard-id))))))
 
@@ -216,7 +216,7 @@
                                            :dashboard_id dashboard-id}])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             'model    "Dashboard"
                             'model_id dashboard-id))))))
 
@@ -227,7 +227,7 @@
        :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
                                                                :position     0
                                                                :dashboard_id dashboard-id}]
-      (t2/update! :model/DashboardTab dashtab-id {'name "New name"})
+      (t2/update! :model/DashboardTab dashtab-id {:name "New name"})
       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
@@ -239,7 +239,7 @@
                                            :dashboard_id dashboard-id}])
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             'model    "Dashboard"
                             'model_id dashboard-id))))))
 
@@ -258,7 +258,7 @@
               :object       (dashboard->revision-object dashboard)
               :is_reversion false
               :is_creation  false}
-             (t2/select-one [:model/Revision 'model 'model_id 'user_id 'object 'is_reversion 'is_creation]
+             (t2/select-one [:model/Revision :model :model_id :user_id :object :is_reversion :is_creation]
                             'model    "Dashboard"
                             'model_id dashboard-id))))))
 
@@ -320,7 +320,7 @@
                :is_reversion false
                :is_creation  false
                :message      "updated"}
-              (update (t2/select-one [:model/Revision 'model 'user_id 'object 'is_reversion 'is_creation 'message]
+              (update (t2/select-one [:model/Revision :model :user_id :object :is_reversion :is_creation :message]
                                      'model "Segment"
                                      'model_id (:id segment))
                       :object dissoc :id :table_id))))))
@@ -352,7 +352,7 @@
                :is_reversion false
                :is_creation  false
                :message      nil}
-              (update (t2/select-one [:model/Revision 'model 'user_id 'object 'is_reversion 'is_creation 'message]
+              (update (t2/select-one [:model/Revision :model :user_id :object :is_reversion :is_creation :message]
                                      'model "Segment"
                                      'model_id (:id segment))
                       :object dissoc :id :table_id))))))

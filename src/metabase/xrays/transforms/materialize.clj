@@ -16,7 +16,7 @@
 (defn- root-container-location
   []
   (collection/children-location
-   (t2/select-one [:model/Collection 'location 'id]
+   (t2/select-one [:model/Collection :location :id]
                   'id (get-or-create-root-container-collection!))))
 
 (mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
@@ -35,9 +35,9 @@
    (create-collection! collection-name description (root-container-location)))
   ([collection-name description location]
    (first (t2/insert-returning-pks! :model/Collection
-                                    {'name        collection-name
-                                     'description description
-                                     'location    location}))))
+                                    {:name        collection-name
+                                     :description description
+                                     :location    location}))))
 
 (defn- get-or-create-root-container-collection!
   "Get or create container collection for transforms in the root collection."

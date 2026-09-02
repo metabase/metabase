@@ -36,19 +36,19 @@
      ;; Clear existing library collections
      (t2/update! (t2/table-name :model/Collection)
                  'type collection/library-collection-type
-                 {'type nil})
+                 {:type nil})
      (t2/update! (t2/table-name :model/Collection)
                  'type collection/library-data-collection-type
-                 {'type nil})
+                 {:type nil})
      (t2/update! (t2/table-name :model/Collection)
                  'type collection/library-metrics-collection-type
-                 {'type nil})
+                 {:type nil})
      (try
        ~@body
        (finally
          ;; Clean up any created library collections
          (t2/delete! :model/Collection
-                     'type ['in [collection/library-collection-type
+                     'type [:in [collection/library-collection-type
                                  collection/library-data-collection-type
                                  collection/library-metrics-collection-type]])))))
 
@@ -60,10 +60,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection (:id library) {'is_remote_synced true})
+        (t2/update! :model/Collection (:id library) {:is_remote_synced true})
         (f)
         (finally
-          (t2/update! :model/Collection (:id library) {'is_remote_synced (boolean original-synced)}))))
+          (t2/update! :model/Collection (:id library) {:is_remote_synced (boolean original-synced)}))))
     ;; No library collection exists, create one for the test
     (mt/with-temp [:model/Collection _ {:name "Library" :type collection/library-collection-type :is_remote_synced true :location "/"}]
       (f))))
@@ -80,10 +80,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection (:id library) {'is_remote_synced false})
+        (t2/update! :model/Collection (:id library) {:is_remote_synced false})
         (f)
         (finally
-          (t2/update! :model/Collection (:id library) {'is_remote_synced (boolean original-synced)}))))
+          (t2/update! :model/Collection (:id library) {:is_remote_synced (boolean original-synced)}))))
     (f)))
 
 (defmacro with-library-not-synced

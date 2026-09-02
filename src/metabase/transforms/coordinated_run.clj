@@ -14,7 +14,7 @@
 (defn add-run-activity!
   "Note that a run has had activity (touches `updated_at`)."
   [model run-id]
-  (t2/update! model 'id run-id 'is_active true {'updated_at :%now}))
+  (t2/update! model 'id run-id 'is_active true {:updated_at :%now}))
 
 (defn succeed-started-run!
   "Mark a started run as successfully completed."
@@ -47,10 +47,10 @@
   (t2/update! model
               'id        run-id
               'is_active true
-              {'status    :canceled
-               'is_active nil
-               'end_time  :%now
-               'message   "Canceled"}))
+              {:status    :canceled
+               :is_active nil
+               :end_time  :%now
+               :message   "Canceled"}))
 
 (defn cancel!
   "Cancel an in-progress coordinated run: mark it canceled and request cancellation of its

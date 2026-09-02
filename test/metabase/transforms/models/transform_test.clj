@@ -34,7 +34,7 @@
                     :source {:type "python"
                              :body "print(\"hello\")"}}]
       (is (nil? (:source_database_id transform)))
-      (t2/update! :model/Transform (:id transform) {'source {:type  "query"
+      (t2/update! :model/Transform (:id transform) {:source {:type  "query"
                                                              :query {:database (mt/id)
                                                                      :type     "native"
                                                                      :native   {:query "SELECT 1"}}}})
@@ -72,18 +72,18 @@
     (temp-transform-with-index!
      (fn [transform-id index-id]
        (t2/update! :model/Transform transform-id
-                   {'source {:type "query" :query (query-test-util/make-query :source-table "checkins")}})
+                   {:source {:type "query" :query (query-test-util/make-query :source-table "checkins")}})
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
   (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
        (t2/update! :model/Transform transform-id
-                   {'target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
+                   {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform transform-id {'name "renamed"})
+       (t2/update! :model/Transform transform-id {:name "renamed"})
        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex index-id)))))))
 
 (deftest can-read-write-on-orphaned-transform-test
@@ -176,7 +176,7 @@
           (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform" :source source}]
             (is (some #(= :event/create-transform (first %)) @events-published))
             (reset! events-published [])
-            (t2/update! :model/Transform transform-id {'name "Updated Name"})
+            (t2/update! :model/Transform transform-id {:name "Updated Name"})
             (is (some #(= :event/update-transform (first %)) @events-published))
             (reset! events-published [])
             (t2/delete! :model/Transform transform-id)
@@ -185,7 +185,7 @@
         (testing "events are suppressed during deserialization"
           (binding [mi/*deserializing?* true]
             (mt/with-temp [:model/Transform {transform-id :id} {:name "Deserialized Transform" :source source}]
-              (t2/update! :model/Transform transform-id {'name "Deserialized Update"})
+              (t2/update! :model/Transform transform-id {:name "Deserialized Update"})
               (t2/delete! :model/Transform transform-id)))
           (is (empty? @events-published)))))))
 
@@ -209,10 +209,10 @@
                                      :type     "query"
                                      :query    {:source-table (mt/id :orders)}}}}]
       ;; seed a cached value (as the lazy read path would)
-      (t2/update! :model/Transform id {'table_dependencies [{:table (mt/id :orders)}]})
+      (t2/update! :model/Transform id {:table_dependencies [{:table (mt/id :orders)}]})
       (is (= [{:table (mt/id :orders)}] (stored-deps id)))
       (t2/update! :model/Transform id
-                  {'source {:type  "query"
+                  {:source {:type  "query"
                             :query {:database (mt/id)
                                     :type     "query"
                                     :query    {:source-table (mt/id :people)}}}})

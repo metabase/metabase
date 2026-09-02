@@ -37,7 +37,7 @@
 
                           :update
                           #(mt/with-temp [:model/PulseChannel {pulse-channel-id :id} {:pulse_id pulse-id}]
-                             (t2/update! :model/PulseChannel pulse-channel-id {'details {:emails emails}})))]
+                             (t2/update! :model/PulseChannel pulse-channel-id {:details {:emails emails}})))]
               (if fail?
                 (testing "should fail"
                   (is (thrown-with-msg?
@@ -67,9 +67,9 @@
                    clojure.lang.ExceptionInfo
                    #"The following email addresses are not allowed: .*"
                    (t2/insert! :model/NotificationRecipient
-                               {'type                    :notification-recipient/raw-value
-                                'details                 {:value "cam@disallowed-domain.com"}
-                                'notification_handler_id handler-id}))))
+                               {:type                    :notification-recipient/raw-value
+                                :details                 {:value "cam@disallowed-domain.com"}
+                                :notification_handler_id handler-id}))))
             (testing "POST /api/notification/unsubscribe/undo with a disallowed email fails"
               (is (= "The following email addresses are not allowed: cam@disallowed-domain.com"
                      (api:unsubscribe-undo 403 handler-id "cam@disallowed-domain.com")))

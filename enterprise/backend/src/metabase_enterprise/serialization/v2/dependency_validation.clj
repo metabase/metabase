@@ -24,7 +24,7 @@
     "[no collection]"))
 
 (defn- entity-label [{:keys [model id]}]
-  (let [entity (t2/select-one [model 'collection_id] 'id id)]
+  (let [entity (t2/select-one [model :collection_id] 'id id)]
     (format "%s %d (from collection %s)" (name model) id (collection-label (:collection_id entity)))))
 
 (defn- resize-batch
@@ -72,7 +72,7 @@
   (into #{}
         (comp (distinct)
               (partition-all serdes/query-batch-size)
-              (mapcat #(t2/select-pks-set (keyword "model" model) {'where ['in 'id %]})))
+              (mapcat #(t2/select-pks-set (keyword "model" model) {:where ['in 'id %]})))
         ids))
 
 (def ^:private structural-content-models
