@@ -8,6 +8,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
@@ -28,6 +29,7 @@
       "azure"     (azure/reasoning-model? model)
       "bedrock"   (bedrock/reasoning-model? model)
       "deepseek"  (deepseek/reasoning-model? model)
+      "mistral"    (mistral/reasoning-model? model)
       "openai"     (openai/reasoning-model? model)
       "openrouter" (openrouter/reasoning-model? model)
       "google"     (google/reasoning-model? model)

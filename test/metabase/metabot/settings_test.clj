@@ -195,7 +195,8 @@
                        (connection "azure" "azure")
                        (connection "zai" "zai")
                        (connection "openrouter" "openrouter")
-                       (connection "google" "google")]
+                       (connection "google" "google")
+                       (connection "mistral" "mistral")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -227,7 +228,10 @@
                "google/google/gemini-3.5-flash"             true
                "google/google/gemini-3.7-flash"             true
                ;; off-catalog: no thinking directive — see google/models.clj
-               "google/google/gemini-2.5-flash"             false}]
+               "google/google/gemini-2.5-flash"             false
+               "mistral/mistral-medium-3-5"                 true
+               ;; catalog aliases are not resolved — see mistral/reasoning-model?
+               "mistral/mistral-medium-latest"              false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
