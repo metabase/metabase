@@ -7,7 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions-rest.queries :as permissions-rest.queries]
+   [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -120,7 +120,7 @@
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
   [limit offset query]
-  (permissions-rest.queries/permissions-groups
+  (permissions-rest.db/permissions-groups
    (cond-> {:order-by [:%lower.name]}
      (some? limit)  (sql.helpers/limit  limit)
      (some? offset) (sql.helpers/offset offset)
@@ -191,7 +191,7 @@
                                              [:= :is_tenant_group nil]]]
                 base-where)]
     (-> (ordered-groups (request/limit) (request/offset) where)
-        permissions-rest.queries/hydrate-member-count
+        permissions-rest.db/hydrate-member-count
         (maybe-fix-names))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -205,8 +205,8 @@
   (perms/check-manager-of-group id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
   (api/check-404
-   (some-> (permissions-rest.queries/permissions-group id)
-           permissions-rest.queries/hydrate-members
+   (some-> (permissions-rest.db/permissions-group id)
+           permissions-rest.db/hydrate-members
            (maybe-fix-name (setting/get :use-tenants)))))
 
 (api.macros/defendpoint :get "/invite-group-ids"
@@ -245,7 +245,7 @@
     (when-not (setting/get :use-tenants)
       (throw (ex-info (tru "Tenant groups cannot be created while the Tenants feature is disabled.")
                       {:status-code 400}))))
-  (u/prog1 (permissions-rest.queries/insert-permissions-group! name (boolean is_tenant_group))
+  (u/prog1 (permissions-rest.db/insert-permissions-group! name (boolean is_tenant_group))
     (events/publish-event! :event/group-create {:object <>
                                                 :user-id api/*current-user-id*})))
 
@@ -262,11 +262,11 @@
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.queries/permissions-group group-id)]
+  (let [group (permissions-rest.db/permissions-group group-id)]
     (api/check-404 group)
-    (permissions-rest.queries/rename-permissions-group! group-id name)
+    (permissions-rest.db/rename-permissions-group! group-id name)
     ;; return the updated group
-    (u/prog1 (permissions-rest.queries/permissions-group group-id)
+    (u/prog1 (permissions-rest.db/permissions-group group-id)
       (events/publish-event! :event/group-update
                              {:user-id api/*current-user-id*
                               :object <>
@@ -282,8 +282,8 @@
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.queries/permissions-group group-id)]
-    (permissions-rest.queries/delete-permissions-group! group-id)
+  (let [group (permissions-rest.db/permissions-group group-id)]
+    (permissions-rest.db/delete-permissions-group! group-id)
     (events/publish-event! :event/group-delete {:object group
                                                 :user-id api/*current-user-id*}))
   api/generic-204-no-content)
@@ -303,7 +303,7 @@
                  :is_group_manager boolean}]}"
   []
   (perms/check-group-manager)
-  (group-by :user_id (permissions-rest.queries/group-memberships
+  (group-by :user_id (permissions-rest.db/group-memberships
                       (cond-> {}
                         (and (not api/*is-superuser?*)
                              api/*is-group-manager?*)
@@ -340,12 +340,12 @@
       ;; enable `is_group_manager` require advanced-permissions enabled
       (perms/check-advanced-permissions-enabled :group-manager)
       (api/check
-       (permissions-rest.queries/non-admin-user-exists? user_id)
+       (permissions-rest.db/non-admin-user-exists? user_id)
        [400 (tru "Admin cannot be a group manager.")]))
     (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
-    (:members (permissions-rest.queries/hydrate-members (t2/instance :model/PermissionsGroup {:id group_id})))))
+    (:members (permissions-rest.db/hydrate-members (t2/instance :model/PermissionsGroup {:id group_id})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -362,15 +362,15 @@
   (perms/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
   (perms/check-group-manager)
-  (let [old (permissions-rest.queries/group-membership id)]
+  (let [old (permissions-rest.db/group-membership id)]
     (api/check-404 old)
     (perms/check-tenant-groups-visible! [(:group_id old)])
     (perms/check-manager-of-group (:group_id old))
     (api/check
-     (permissions-rest.queries/non-admin-user-exists? (:user_id old))
+     (permissions-rest.db/non-admin-user-exists? (:user_id old))
      [400 (tru "Admin cannot be a group manager.")])
-    (permissions-rest.queries/set-group-membership-manager! (:id old) is_group_manager)
-    (permissions-rest.queries/group-membership (:id old))))
+    (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
+    (permissions-rest.db/group-membership (:id old))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -381,7 +381,7 @@
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
-  (api/check-404 (permissions-rest.queries/permissions-group-exists? group-id))
+  (api/check-404 (permissions-rest.db/permissions-group-exists? group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/check-tenant-groups-visible! [group-id])
   (perms/remove-all-users-from-group! group-id)
@@ -395,7 +395,7 @@
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [membership (permissions-rest.queries/group-membership id)]
+  (let [membership (permissions-rest.db/group-membership id)]
     (api/check-404 membership)
     (perms/check-tenant-groups-visible! [(:group_id membership)])
     (perms/check-manager-of-group (:group_id membership))

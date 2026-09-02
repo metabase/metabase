@@ -3,7 +3,7 @@
    pre-deactivation session cookie. (SEC-863)"
   (:require
    [metabase.events.core :as events]
-   [metabase.session.queries :as session.queries]
+   [metabase.session.db :as session.db]
    [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
@@ -11,4 +11,4 @@
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [user-id] :as _event}]
-  (session.queries/delete-sessions-for-user! user-id))
+  (session.db/delete-sessions-for-user! user-id))

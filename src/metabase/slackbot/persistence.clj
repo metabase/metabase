@@ -3,7 +3,7 @@
   (:require
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema.v2 :as schema.v2]
-   [metabase.slackbot.queries :as slackbot.queries]))
+   [metabase.slackbot.db :as slackbot.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,7 +22,7 @@
   Only [[metabase.metabot.persistence/replayable-assistant-row?]] rows contribute."
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
-    (->> (slackbot.queries/assistant-messages-by-slack-ids conversation-id slack-msg-ids)
+    (->> (slackbot.db/assistant-messages-by-slack-ids conversation-id slack-msg-ids)
          ;; A failed turn's state is dropped by [[metabase.metabot.persistence/conversation-state]], so
          ;; replaying its tool calls would announce queries the seeded state does not contain.
          (filter metabot.persistence/replayable-assistant-row?)
@@ -35,7 +35,7 @@
   "Slack message ids for assistant responses that were soft-deleted."
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
-    (slackbot.queries/deleted-assistant-slack-msg-ids conversation-id slack-msg-ids)))
+    (slackbot.db/deleted-assistant-slack-msg-ids conversation-id slack-msg-ids)))
 
 (defn state-messages
   "The assistant rows of a Slack thread in reader order, for feeding
@@ -45,13 +45,13 @@
   `data` blobs aren't loaded just to get at `state`. Not usable for history replay —
   see [[message-history]] for that."
   [conversation-id]
-  (slackbot.queries/assistant-state-messages conversation-id))
+  (slackbot.db/assistant-state-messages conversation-id))
 
 (defn response-owner-user-id
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.
    Returns nil when the message is not tracked."
   [channel-id slack-msg-id]
-  (slackbot.queries/assistant-response-user-id channel-id slack-msg-id))
+  (slackbot.db/assistant-response-user-id channel-id slack-msg-id))
 
 (defn soft-delete-response!
   "Mark the stored assistant response for this Slack channel/message as soft-deleted."

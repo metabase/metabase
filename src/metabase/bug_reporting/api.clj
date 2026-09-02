@@ -3,7 +3,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.bug-reporting.queries :as bug-reporting.queries]
+   [metabase.bug-reporting.db :as bug-reporting.db]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.permissions.core :as perms]
@@ -18,7 +18,7 @@
   "Make it easy for the user to tell us what they're using"
   []
   (merge
-   {:databases            (bug-reporting.queries/database-engines)
+   {:databases            (bug-reporting.db/database-engines)
     :run-mode             (config/config-kw :mb-run-mode)
     :plan-alias           (or (premium-features/plan-alias) "")
     :version              config/mb-version-info

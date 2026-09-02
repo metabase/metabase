@@ -1,6 +1,7 @@
 (ns metabase.actions.models
   (:require
    [medley.core :as m]
+   [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -80,12 +81,12 @@
   [_model k actions]
   (mi/instances-with-hydrated-data
    actions k
-   #(t2/select-pk->fn identity :model/Card :id [:in (map :model_id actions)])
+   #(actions.db/cards-by-id (map :model_id actions))
    :model_id))
 
 (defn- check-model-is-not-a-saved-question
   [model-id]
-  (when-not (= (t2/select-one-fn :type [:model/Card :type :card_schema] :id model-id) :model)
+  (when-not (= (actions.db/card-type model-id) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -98,14 +99,14 @@
   [{archived? :archived, id :id, model-id :model_id, :as changes}]
   (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed changes)
     (if archived?
-      (t2/delete! :model/DashboardCard :action_id id)
+      (actions.db/delete-dashcards-for-action! id)
       (check-model-is-not-a-saved-question model-id))))
 
 (mu/defmethod mi/perms-objects-set :model/Action :- [:set {:min 1} :string]
   [instance      :- [:map
                      [:model_id pos-int?]]
    read-or-write :- [:enum :read :write]]
-  (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
+  (mi/perms-objects-set (actions.db/card (:model_id instance)) read-or-write))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
@@ -150,12 +151,12 @@
   [action-data :- ::actions.schema/action.for-insert]
   (let [action-data (derive-query-action-database-id action-data)]
     (t2/with-transaction [_conn]
-      (let [action (first (t2/insert-returning-instances! :model/Action (select-keys action-data action-columns)))
+      (let [action (actions.db/insert-action! (select-keys action-data action-columns))
             model  (type->model (:type action))
             row    (-> (apply dissoc action-data action-columns)
                        (assoc :action_id (:id action))
                        (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
-        (t2/insert! model row)
+        (actions.db/insert-action-type-row! model row)
         (:id action)))))
 
 (mu/defn insert! :- ::actions.schema/id
@@ -171,7 +172,7 @@
                  (:dataset_query existing-action))]
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (t2/update! :model/Action id action-row))
+        (actions.db/update-action! id action-row))
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -180,9 +181,9 @@
               existing-model (type->model (:type existing-action))]
           (if (and (:type updates) (not= (:type updates) (:type existing-action)))
             (let [new-model (type->model (:type updates))]
-              (t2/delete! existing-model :action_id id)
-              (t2/insert! new-model (assoc type-row :action_id id)))
-            (t2/update! existing-model id type-row)))))))
+              (actions.db/delete-action-type-rows! existing-model id)
+              (actions.db/insert-action-type-row! new-model (assoc type-row :action_id id)))
+            (actions.db/update-action-type-row! existing-model id type-row)))))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -195,14 +196,14 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [query-actions (t2/select :model/QueryAction :action_id [:in (map :id actions)])
+    (let [query-actions (actions.db/query-actions (map :id actions))
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
-    (let [http-actions (t2/select :model/HTTPAction :action_id [:in (map :id actions)])
+    (let [http-actions (actions.db/http-actions (map :id actions))
           http-actions-by-action-id (m/index-by :action_id http-actions)]
       (map (fn [action]
              (let [http-action (get http-actions-by-action-id (:id action))]
@@ -215,7 +216,7 @@
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
-    (let [implicit-actions (t2/select :model/ImplicitAction :action_id [:in (map :id actions)])
+    (let [implicit-actions (actions.db/implicit-actions (map :id actions))
           implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
@@ -228,7 +229,7 @@
    for implicit actions, use [[select-action]] instead.
    `options` is passed to `t2/select` `& options` arg."
   [& options]
-  (let [{:keys [query http implicit]} (group-by :type (apply t2/select :model/Action options))
+  (let [{:keys [query http implicit]} (group-by :type (apply actions.db/actions options))
         query-actions                 (normalize-query-actions query)
         http-actions                  (normalize-http-actions http)
         implicit-actions              (normalize-implicit-actions implicit)]
@@ -248,7 +249,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :fields))]
+                 (actions.db/hydrate-fields (actions.db/tables table-ids)))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -319,25 +320,25 @@
                               (keep ::field-id))
                         implicit-parameters)]
     (when (seq field-ids)
-      (t2/select-pk->fn (fn [field]
-                          (merge
-                           (select-keys field [:base_type :display_name :description])
-                           {:title       (:display_name field)
-                            :placeholder (:display_name field)
-                            ;; these "illegal" camelCase keys are for viz
-                            ;; settings purposes, and that's what the FE uses.
-                            ;; See
-                            ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759981400217489?thread_ts=1759289751.539169&cid=C0645JP1W81
-                            :fieldType   (if (isa? (:base_type field) :type/Number) :number :string)
-                            :inputType   (condp #(isa? %2 %1) (:base_type field)
-                                           :type/Number   :number
-                                           :type/DateTime :datetime
-                                           :type/Time     :time
-                                           :type/Temporal :date
-                                           :type/Boolean  :boolean
-                                           :string)}))
-                        [:model/Field :id :base_type :display_name :description]
-                        :id [:in field-ids]))))
+      (into {}
+            (map (juxt :id (fn [field]
+                             (merge
+                              (select-keys field [:base_type :display_name :description])
+                              {:title       (:display_name field)
+                               :placeholder (:display_name field)
+                               ;; these "illegal" camelCase keys are for viz
+                               ;; settings purposes, and that's what the FE uses.
+                               ;; See
+                               ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759981400217489?thread_ts=1759289751.539169&cid=C0645JP1W81
+                               :fieldType   (if (isa? (:base_type field) :type/Number) :number :string)
+                               :inputType   (condp #(isa? %2 %1) (:base_type field)
+                                              :type/Number   :number
+                                              :type/DateTime :datetime
+                                              :type/Time     :time
+                                              :type/Temporal :date
+                                              :type/Boolean  :boolean
+                                              :string)}))))
+            (actions.db/fields-for-parameters field-ids)))))
 
 (defn- enrich-viz-settings-fields [viz-fields implicit-params field-id->viz-field]
   (let [param-ids          (map :id implicit-params)
@@ -386,7 +387,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (t2/select :model/Card :id [:in implicit-action-model-ids])))
+                                          (actions.db/cards implicit-action-model-ids)))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
@@ -414,11 +415,7 @@
                                                        :database-enable-actions)))
         id->database-enable-actions (into {}
                                           (map (juxt :id get-database-enable-actions))
-                                          (t2/query {:select [:action.id :db.settings]
-                                                     :from   :action
-                                                     :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                                              [:metabase_database :db] [:= :db.id :card.database_id]]
-                                                     :where  [:in :action.id action-ids]}))]
+                                          (actions.db/action-database-settings action-ids))]
     (map (fn [action]
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))
@@ -440,7 +437,7 @@
 (defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-or-dashcard-id]
-  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+  (some->> (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))
            (select-action :id)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
@@ -502,7 +499,7 @@
    (concat
     (when model_id [[{:model "Card" :id model_id}]])
     (when (= type :query)
-      (when-let [{:keys [database_id dataset_query]} (t2/select-one :model/QueryAction :action_id id)]
+      (when-let [{:keys [database_id dataset_query]} (actions.db/query-action id)]
         (concat
          (when database_id [[{:model "Database" :id database_id}]])
          (serdes/mbql-deps true dataset_query)))))))

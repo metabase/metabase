@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
-   [metabase.cache.queries :as cache.queries]
+   [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -42,8 +42,8 @@
   "Get the collection_id for the target entity of a CacheConfig."
   [{:keys [model model_id]}]
   (case model
-    "dashboard" (:collection_id (cache.queries/dashboard-collection-id model_id))
-    "question"  (:collection_id (cache.queries/card-collection-id model_id))
+    "dashboard" (:collection_id (cache.db/dashboard-collection-id model_id))
+    "question"  (:collection_id (cache.db/card-collection-id model_id))
     nil))
 
 (defmethod mi/can-write? :model/CacheConfig
@@ -57,7 +57,7 @@
        {:collection_id (target-collection-id instance)}
        :write))))
   ([_model pk]
-   (mi/can-write? (cache.queries/cache-config pk))))
+   (mi/can-write? (cache.db/cache-config pk))))
 
 (defmethod mi/can-read? :model/CacheConfig
   ([instance]
@@ -67,7 +67,7 @@
      "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
      "question"  (mi/can-read? :model/Card (:model_id instance))))
   ([_model pk]
-   (mi/can-read? (cache.queries/cache-config pk))))
+   (mi/can-read? (cache.db/cache-config pk))))
 
 (defn- can-set-cache-policy?
   "Check if the current user can set a cache policy for an entity.
@@ -84,7 +84,7 @@
    models k
    #(into {}
           (map (juxt :id can-set-cache-policy?))
-          (cache.queries/hydrate-collection (remove nil? models)))
+          (cache.db/hydrate-collection (remove nil? models)))
    :id
    {:default false}))
 
@@ -104,7 +104,7 @@
 (defn root-strategy
   "Returns root strategy, if it's defined."
   []
-  (cache.queries/root-ttl-cache-config))
+  (cache.db/root-ttl-cache-config))
 
 (defn row->config
   "Transform from how cache config is stored to how it's used/exposed in the API."
@@ -200,7 +200,7 @@
                 apply-sorting? (assoc :order-by [[(sort-column->order-by sort_column) sort_direction]])
                 limit          (assoc :limit limit)
                 offset         (assoc :offset offset))]
-    (->> (cache.queries/cache-configs query)
+    (->> (cache.db/cache-configs query)
          (mapv row->config))))
 
 (mu/defn get-list-total
@@ -209,14 +209,14 @@
   (let [query (-> (base-query models collection id)
                   (dissoc :select)
                   (assoc :select [[[:count :*] :count]]))]
-    (:count (cache.queries/cache-config-count query))))
+    (:count (cache.db/cache-config-count query))))
 
 (defn store!
   "Store cache configuration in DB."
   [user-id {:keys [model model_id] :as config}]
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
-          current (cache.queries/lock-cache-config model model_id)]
+          current (cache.db/lock-cache-config model model_id)]
       (u/prog1 (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
                                          (constantly data))
         (audit-caching-change! user-id <> current data)))))
@@ -224,8 +224,8 @@
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
   [user-id model model-ids]
-  (when-let [current (seq (cache.queries/cache-configs-for model model-ids))]
-    (cache.queries/delete-cache-configs! model model-ids)
+  (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
+    (cache.db/delete-cache-configs! model model-ids)
     (doseq [item current]
       (audit-caching-change! user-id
                              (:id item)
@@ -238,12 +238,12 @@
   (let [card-ids (concat
                   questions
                   (when (seq databases)
-                    (cache.queries/card-ids-for-databases databases))
+                    (cache.db/card-ids-for-databases databases))
                   (when (seq dashboards)
-                    (cache.queries/dashboard-card-ids dashboards)))]
+                    (cache.db/dashboard-card-ids dashboards)))]
     (if (empty? card-ids)
       -1
-      (cache.queries/invalidate-cards! card-ids (t/offset-date-time)))))
+      (cache.db/invalidate-cards! card-ids (t/offset-date-time)))))
 
 (defn- invalidate-cache-configs [databases dashboards questions]
   (let [model+ids (for [[k vs] [[:database databases]
@@ -254,7 +254,7 @@
     (if (empty? model+ids)
       -1
       ;; using JVM date rather than DB time since it's what are used in cache tasks
-      (cache.queries/invalidate-cache-configs! model+ids (t/offset-date-time)))))
+      (cache.db/invalidate-cache-configs! model+ids (t/offset-date-time)))))
 
 (defn invalidate!
   "Invalidate cache configuration. Accepts lists of ids for different types of models. If `with-overrides?` is passed,

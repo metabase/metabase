@@ -2,8 +2,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
-   [metabase.cache.queries :as cache.queries]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -105,11 +105,11 @@
     (throw (premium-features/ee-feature-error (tru "Granular Caching")))
 
     :else
-    (api/check-404 (cache.queries/any-with-ids (case model
-                                                 "database"  :model/Database
-                                                 "dashboard" :model/Dashboard
-                                                 "question"  :model/Card)
-                                               ids))))
+    (api/check-404 (cache.db/any-with-ids (case model
+                                            "database"  :model/Database
+                                            "dashboard" :model/Dashboard
+                                            "question"  :model/Card)
+                                          ids))))
 
 (mr/def ::cache-config-item
   [:map

@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.data-studio.queries :as data-studio.queries]
+   [metabase.data-studio.db :as data-studio.db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -64,7 +64,7 @@
                                                                 [:and where [:= :id output-table-id]])))]]
                             [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
-            (data-studio.queries/fk-remapped-table-ids input-table-id output-table-id tables not-in-tables)))))
+            (data-studio.db/fk-remapped-table-ids input-table-id output-table-id tables not-in-tables)))))
 
 (defn- upstream-table-ids
   "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
@@ -149,7 +149,7 @@
     (u.jvm/in-virtual-thread*
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (data-studio.queries/database db-id)]
+         (let [database (data-studio.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -189,14 +189,14 @@
                          :owner_email
                          :owner_user_id
                          :entity_type]
-        existing-tables (data-studio.queries/tables-where where)
+        existing-tables (data-studio.db/tables-where where)
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
-      (data-studio.queries/update-tables! table-ids set-map)
+      (data-studio.db/update-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
-      (let [updated-tables (data-studio.queries/tables table-ids)]
+      (let [updated-tables (data-studio.db/tables table-ids)]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-update {:object  table
                                                       :user-id api/*current-user-id*}))))
@@ -209,15 +209,15 @@
    body :- ::table-selectors]
   (api/check-data-analyst)
   (let [where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-tables   (data-studio.queries/selection-columns-for-tables-where where 2)
+        selected-tables   (data-studio.db/selection-columns-for-tables-where where 2)
         selected-table    (when-not (next selected-tables)
                             (first selected-tables))
         upstream-ids      (all-upstream-table-ids where)
         downstream-ids    (all-downstream-table-ids where)
         upstream-tables   (when (seq upstream-ids)
-                            (data-studio.queries/selection-columns-for-tables upstream-ids))
+                            (data-studio.db/selection-columns-for-tables upstream-ids))
         downstream-tables (when (seq downstream-ids)
-                            (data-studio.queries/selection-columns-for-tables downstream-ids))]
+                            (data-studio.db/selection-columns-for-tables downstream-ids))]
     {:selected_table              selected-table
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
@@ -235,9 +235,9 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (data-studio.queries/tables-where-in-id-order (table-selectors->filter body))
+  (let [tables (data-studio.db/tables-where-in-id-order (table-selectors->filter body))
         db-ids (sort (set (map :db_id tables)))]
-    (doseq [database (data-studio.queries/databases db-ids)]
+    (doseq [database (data-studio.db/databases db-ids)]
       (try
         (binding [driver.settings/*allow-testing-h2-connections* true
                   driver.settings/*allow-testing-sqlite-connections* true]
@@ -255,7 +255,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (data-studio.queries/tables-where-in-id-order (table-selectors->filter body))]
+  (let [tables (data-studio.db/tables-where-in-id-order (table-selectors->filter body))]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
@@ -268,8 +268,8 @@
    _
    body :- ::table-selectors]
   (api/check-data-analyst)
-  (let [tables (data-studio.queries/tables-where-in-id-order (table-selectors->filter body))]
-    (data-studio.queries/delete-field-values-for-tables! (map :id tables))
+  (let [tables (data-studio.db/tables-where-in-id-order (table-selectors->filter body))]
+    (data-studio.db/delete-field-values-for-tables! (map :id tables))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

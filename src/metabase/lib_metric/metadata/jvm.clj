@@ -8,10 +8,10 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.db :as lib-metric.db]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib-metric.metadata.provider :as provider]
-   [metabase.lib-metric.queries :as lib-metric.queries]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -24,7 +24,7 @@
   []
   (memoize/lru
    (fn [table-id]
-     (lib-metric.queries/table-database-id table-id))
+     (lib-metric.db/table-database-id table-id))
    :lru/threshold 1000))
 
 (defn- metric-spec->honey-sql
@@ -47,7 +47,7 @@
   [metadata-spec]
   (let [query (metric-spec->honey-sql metadata-spec)]
     (try
-      (lib-metric.queries/metrics query)
+      (lib-metric.db/metrics query)
       (catch Throwable e
         (throw (ex-info "Error fetching metrics with spec"
                         {:metadata-spec metadata-spec, :query query}
@@ -90,7 +90,7 @@
   [metadata-spec]
   (let [query (measure-spec->honey-sql metadata-spec)]
     (try
-      (lib-metric.queries/measures query)
+      (lib-metric.db/measures query)
       (catch Throwable e
         (throw (ex-info "Error fetching measures for dimensions"
                         {:metadata-spec metadata-spec, :query query}

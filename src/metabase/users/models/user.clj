@@ -13,7 +13,7 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
-   [metabase.users.queries :as users.queries]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -96,7 +96,7 @@
   (when user-or-user-id
     (settings-map
      (if (integer? user-or-user-id)
-       (:settings (users.queries/user-settings-row user-or-user-id))
+       (:settings (users.db/user-settings-row user-or-user-id))
        (:settings user-or-user-id)))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
@@ -173,7 +173,7 @@
   "Clean up user subscriptions when user is archived."
   [user-id active?]
   (when (false? active?)
-    (users.queries/delete-pulse-channel-recipients-for-user! user-id)))
+    (users.db/delete-pulse-channel-recipients-for-user! user-id)))
 
 (defn- prepare-archival-timestamp
   "Return a map with deactivated_at field based on is_active status.
@@ -233,7 +233,7 @@
         {:keys [email locale]
          superuser? :is_superuser
          active? :is_active} changes
-        in-admin-group?           (users.queries/group-membership-exists? (:id (perms/admin-group)) id)]
+        in-admin-group?           (users.db/group-membership-exists? (:id (perms/admin-group)) id)]
     (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
@@ -290,7 +290,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (users.queries/user-group-ids (u/the-id user-or-id))))
+    (users.db/user-group-ids (u/the-id user-or-id))))
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
@@ -304,7 +304,7 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (users.queries/group-memberships-for-users (set (map u/the-id users))))
+    (let [user-id->memberships (group-by :user_id (users.db/group-memberships-for-users (set (map u/the-id users))))
           membership->group    (fn [membership]
                                  (select-keys membership
                                               [:id (when (premium-features/enable-advanced-permissions?)
@@ -322,7 +322,7 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (users.queries/user-group-ids-for-users (set (map u/the-id users))))]
+    (let [user-id->memberships (group-by :user_id (users.db/user-group-ids-for-users (set (map u/the-id users))))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -333,7 +333,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (users.queries/user-count)]
+    (let [user-count (users.db/user-count)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
@@ -358,7 +358,7 @@
     (let [users-with-tenant-ids (filter :tenant_id users)
           tenant-ids            (set (map :tenant_id users-with-tenant-ids))
           tenant-id->collection-id (when (seq tenant-ids)
-                                     (users.queries/tenant-collection-ids tenant-ids))]
+                                     (users.db/tenant-collection-ids tenant-ids))]
       ;; now for each User, try to find the corresponding tenant collection ID
       (for [user users]
         (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]
@@ -378,7 +378,7 @@
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
   match any existing user."
   [new-user]
-  (users.queries/insert-user! new-user))
+  (users.db/insert-user! new-user))
 
 (mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending them a welcome email.
@@ -391,7 +391,7 @@
     setup?        :- :boolean
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
-   (u/prog1 (users.queries/insert-user! new-user)
+   (u/prog1 (users.db/insert-user! new-user)
      (events/publish-event! :event/user-invited
                             {:object
                              (cond-> (assoc <>
@@ -406,7 +406,7 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- users.schema/NewUser]
-  (u/prog1 (users.queries/insert-user! new-user)
+  (u/prog1 (users.db/insert-user! new-user)
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
       ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
@@ -484,7 +484,7 @@
   Ignore the All-user groups."
   [user-id]
   (map :user_id
-       (users.queries/same-groups-user-ids user-id (:id (perms/all-users-group)))))
+       (users.db/same-groups-user-ids user-id (:id (perms/all-users-group)))))
 
 (defn filter-clauses
   "Honeysql clauses for filtering on users.

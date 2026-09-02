@@ -4,7 +4,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
-   [metabase.channel.queries :as channel.queries]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -72,7 +72,7 @@
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]
     (when deactivation?
-      (channel.queries/delete-pulse-channels-for-channel! (:id instance)))
+      (channel.db/delete-pulse-channels-for-channel! (:id instance)))
     (cond-> instance
       deactivation?
       ;; Channel.name has an unique constraint and it's a useful property for serialization
@@ -84,7 +84,7 @@
 
 (defmethod serdes/load-find-local "Channel"
   [path]
-  (channel.queries/channel-by-name (:id (last path))))
+  (channel.db/channel-by-name (:id (last path))))
 
 (defmethod serdes/generate-path "Channel" [_ channel]
   [(serdes/infer-self-path "Channel" channel)])

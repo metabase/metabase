@@ -15,6 +15,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field :as field]
@@ -69,13 +70,7 @@
   "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
    the target field does not exist or belongs to a different database. Uses a single query."
   [source-field-id target-field-id param-name]
-  (let [result (first (t2/query {:select [[:source_t.db_id :source_db_id]
-                                          [:target_t.db_id :target_db_id]]
-                                 :from   [[(t2/table-name :model/Field) :sf]]
-                                 :join   [[(t2/table-name :model/Table) :source_t] [:= :sf.table_id :source_t.id]
-                                          [(t2/table-name :model/Field) :tf] [:= :tf.id target-field-id]
-                                          [(t2/table-name :model/Table) :target_t] [:= :tf.table_id :target_t.id]]
-                                 :where  [:= :sf.id source-field-id]}))]
+  (let [result (first (warehouse-schema-rest.db/field-and-target-database-ids source-field-id target-field-id))]
     (api/checkp result param-name "Invalid target field")
     (api/checkp (= (:source_db_id result) (:target_db_id result))
                 param-name "Target field must belong to the same database")))
@@ -90,7 +85,7 @@
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (t2/delete! :model/Dimension :id dimension-id))))
+      (warehouse-schema-rest.db/delete-dimension! dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -113,7 +108,7 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (t2/delete! :model/Dimension :id old-dim-id))))
+      (warehouse-schema-rest.db/delete-dimension! old-dim-id))))
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
@@ -122,20 +117,18 @@
   [old-field new-json-unfolding]
   (when (not= new-json-unfolding (:json_unfolding old-field))
     (if new-json-unfolding
-      (let [update-result (t2/update! :model/Field
-                                      :table_id (:table_id old-field)
-                                      :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
-                                      {:active true})]
+      (let [update-result (warehouse-schema-rest.db/set-nested-fields-active! (:table_id old-field)
+                                                                              (str "[\"" (:name old-field) "\",%]")
+                                                                              true)]
         (when (zero? update-result)
           ;; Sync the table if no nested fields exist. This means the table hasn't previously
           ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
           ;; JSON unfolding enabled.
           (let [table (field/table old-field)]
             (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
-      (t2/update! :model/Field
-                  :table_id (:table_id old-field)
-                  :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
-                  {:active false})))
+      (warehouse-schema-rest.db/set-nested-fields-active! (:table_id old-field)
+                                                          (str "[\"" (:name old-field) "\",%]")
+                                                          false)))
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -163,7 +156,7 @@
                   [:settings           {:optional true} [:maybe ms/Map]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
+  (let [field             (warehouse-schema-rest.db/hydrate-dimensions (api/write-check :model/Field id))
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (cond (not (contains? body :coercion_strategy))
@@ -189,7 +182,7 @@
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
-      (t2/update! :model/Dimension :field_id id {:name display-name}))
+      (warehouse-schema-rest.db/rename-dimension-for-field! id display-name))
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]
@@ -201,18 +194,18 @@
                          :effective_type effective-type
                          :coercion_strategy coercion-strategy)]
          (schema.field-user-settings/upsert-user-settings field body)
-         (t2/update! :model/Field
-                     id
-                     (u/select-keys-when body
-                                         {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
-                                                     :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                          :non-nil #{:display_name :visibility_type :settings}})))))
+         (warehouse-schema-rest.db/update-field!
+          id
+          (u/select-keys-when body
+                              {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
+                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                               :non-nil #{:display_name :visibility_type :settings}})))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (-> (t2/select-one :model/Field :id id)
-                 (t2/hydrate :dimensions :has_field_values)
+    (u/prog1 (-> (warehouse-schema-rest.db/field id)
+                 warehouse-schema-rest.db/hydrate-dimensions-and-has-field-values
                  (field/hydrate-target-with-write-perms))
       (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
       (when (not= effective-type (:effective_type field))
@@ -255,21 +248,21 @@
                  (and (= dimension-type "external")
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (let [existing-dimension (t2/select-one :model/Dimension :field_id id)]
+  (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
     (check-can-point-at-field! id human-readable-field-id
                                (:human_readable_field_id existing-dimension)
                                :human_readable_field_id)
     (if-let [dimension existing-dimension]
-      (t2/update! :model/Dimension (u/the-id dimension)
-                  {:type                    dimension-type
-                   :name                    dimension-name
-                   :human_readable_field_id human-readable-field-id})
-      (t2/insert! :model/Dimension
-                  {:field_id                id
-                   :type                    dimension-type
-                   :name                    dimension-name
-                   :human_readable_field_id human-readable-field-id})))
-  (t2/select-one :model/Dimension :field_id id))
+      (warehouse-schema-rest.db/update-dimension! (u/the-id dimension)
+                                                  {:type                    dimension-type
+                                                   :name                    dimension-name
+                                                   :human_readable_field_id human-readable-field-id})
+      (warehouse-schema-rest.db/insert-dimension!
+       {:field_id                id
+        :type                    dimension-type
+        :name                    dimension-name
+        :human_readable_field_id human-readable-field-id})))
+  (warehouse-schema-rest.db/dimension-for-field id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -280,7 +273,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
-  (t2/delete! :model/Dimension :field_id id)
+  (warehouse-schema-rest.db/delete-dimensions-for-field! id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -293,7 +286,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [field (api/query-check (t2/select-one :model/Field :id id))]
+  (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs
@@ -345,7 +338,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
-  (let [field (api/write-check (t2/select-one :model/Field :id id))]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -365,7 +358,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
+  (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema-rest.db/field id)))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -384,8 +377,8 @@
                        [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
-  (let [field        (api/check-404 (t2/select-one :model/Field :id id))
-        search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
+  (let [field        (api/check-404 (warehouse-schema-rest.db/field id))
+        search-field (api/check-404 (warehouse-schema-rest.db/field search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
     (parameters.field/search-values field search-field value (request/limit))))
@@ -414,4 +407,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
+  (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

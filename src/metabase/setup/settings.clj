@@ -3,7 +3,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.setup.queries :as setup.queries]
+   [metabase.setup.db :as setup.db]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting setup-token
@@ -25,7 +25,7 @@
       (if (some? possible-override)
         possible-override
         (or (get @app-db-id->user-exists? (mdb/unique-identifier))
-            (let [exists? (boolean (seq (setup.queries/users-except config/internal-mb-user-id)))]
+            (let [exists? (boolean (seq (setup.db/users-except config/internal-mb-user-id)))]
               (swap! app-db-id->user-exists? assoc (mdb/unique-identifier) exists?)
               exists?))))))
 

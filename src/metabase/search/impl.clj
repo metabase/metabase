@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
@@ -124,7 +125,7 @@
   [search-ctx]
   (when (and (not (:is-superuser? search-ctx))
              (some #{"table" "indexed-entity"} (:models search-ctx)))
-    (perms/prime-table-perms-cache {:db-ids (t2/select-pks-set :model/Database :router_database_id nil)})))
+    (perms/prime-table-perms-cache {:db-ids (search.db/non-destination-database-ids)})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -132,7 +133,7 @@
   (let [user-ids             (set (flatten (for [result results]
                                              (remove nil? ((juxt :last_editor_id :creator_id) result)))))
         user-id->common-name (if (pos? (count user-ids))
-                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])
+                               (search.db/user-common-names user-ids)
                                {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
             (assoc result
@@ -147,11 +148,10 @@
                        (cond-> result
                          (= (:model result) "dataset")
                          (assoc :collection_effective_ancestors
-                                (->> (t2/hydrate
+                                (->> (search.db/hydrate-effective-ancestors
                                       (if (nil? (:collection_id result))
                                         collection/root-collection
-                                        {:location (:collection_location result)})
-                                      :effective_ancestors)
+                                        {:location (:collection_location result)}))
                                      :effective_ancestors
                                      ;; two pieces for backwards compatibility:
                                      ;; - remove the root collection
@@ -165,7 +165,7 @@
   Keeps search results in order."
   [search-results]
   (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
-        hydrated-colls (t2/hydrate collections :effective_parent)
+        hydrated-colls (search.db/hydrate-effective-parent collections)
         idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
     (map (fn [search-result]
            (if (mi/instance-of? :model/Collection search-result)
@@ -450,7 +450,7 @@
   (update result :pk_ref json/decode))
 
 (defn- hydrate-dashboards [results]
-  (->> (t2/hydrate results [:dashboard :moderation_status])
+  (->> (search.db/hydrate-dashboard-with-moderation-status results)
        (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
        (map #(dissoc % :dashboard_id))))
 
@@ -462,7 +462,7 @@
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
-                        (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
+                        (search.db/card-result-metadata card-ids))]
     (map (fn [{:keys [model id] :as item}]
            (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))

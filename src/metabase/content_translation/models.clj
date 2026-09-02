@@ -1,7 +1,7 @@
 (ns metabase.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
-   [metabase.content-translation.queries :as content-translation.queries]
+   [metabase.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -22,5 +22,5 @@
   ([locale]
    (premium-features/assert-has-feature :content-translation (tru "Content translation"))
    (if locale
-     (content-translation.queries/translations-for-locale locale)
-     (content-translation.queries/all-translations))))
+     (content-translation.db/translations-for-locale locale)
+     (content-translation.db/all-translations))))

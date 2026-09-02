@@ -3,8 +3,8 @@
   (:require
    [medley.core :as m]
    [metabase.api-keys.core :as-alias api-keys]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.models.api-key :as api-key]
-   [metabase.api-keys.queries :as api-keys.queries]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -20,7 +20,7 @@
   "Takes an ApiKey and hydrates/selects keys as necessary to put it into a standard form for responses"
   [api-key]
   (-> api-key
-      api-keys.queries/hydrate-group-and-updated-by
+      api-keys.db/hydrate-group-and-updated-by
       (select-keys [:created_at
                     :updated_at
                     :updated_by
@@ -55,7 +55,7 @@
   "Get the count of API keys in the DB with the default scope."
   []
   (api/check-superuser)
-  (api-keys.queries/unscoped-api-key-count))
+  (api-keys.db/unscoped-api-key-count))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -70,10 +70,10 @@
                                             [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                             [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
-  (api/let-404 [api-key-before (api-keys.queries/api-key id)]
+  (api/let-404 [api-key-before (api-keys.db/api-key id)]
     (-> api-key-before
         (m/assoc-some ::api-keys/group-id group-id, :name key-name)
-        api-keys.queries/save-api-key!
+        api-keys.db/save-api-key!
         present-api-key)))
 
 (api.macros/defendpoint :put "/:id/regenerate" :- [:map
@@ -85,7 +85,7 @@
   [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (api-keys.queries/api-key-exists? id))
+  (api/check-404 (api-keys.db/api-key-exists? id))
   (let [regenerated (api-key/regenerate! id)]
     {:id           id
      :unmasked_key (u.secret/expose (:unmasked-key regenerated))
@@ -100,7 +100,7 @@
   "Get a list of API keys with the default scope. Non-paginated."
   []
   (api/check-superuser)
-  (let [api-keys (api-keys.queries/hydrate-group-and-updated-by (api-keys.queries/unscoped-api-keys))]
+  (let [api-keys (api-keys.db/hydrate-group-and-updated-by (api-keys.db/unscoped-api-keys))]
     (map present-api-key api-keys)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -112,8 +112,8 @@
   [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (api-keys.queries/api-key-exists? id))
-  (api-keys.queries/delete-api-key! id)
+  (api/check-404 (api-keys.db/api-key-exists? id))
+  (api-keys.db/delete-api-key! id)
   api/generic-204-no-content)
 
 (comment

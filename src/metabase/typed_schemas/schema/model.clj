@@ -6,7 +6,7 @@
    [metabase.actions.core :as actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.typed-schemas.common :as common]
-   [metabase.typed-schemas.queries :as typed-schemas.queries]
+   [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.util :as u]))
 
@@ -46,7 +46,7 @@
 (defn- action-rows
   "Returns raw rows so we can detect actions that cannot be resolved to action details."
   [model-ids]
-  (typed-schemas.queries/model-actions model-ids))
+  (typed-schemas.db/model-actions model-ids))
 
 (defn- unresolved-action-rows
   "Returns action rows missing from resolved action details."

@@ -20,6 +20,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.send :as pulse.send]
@@ -123,13 +124,13 @@
        (update pulse :cards
                (fn [cards]
                  (mapv (fn [card] (assoc card :download_perms (case (perms/download-perms-level
-                                                                     (or (:dataset_query card) (t2/select-one-fn :dataset_query [:model/Card :dataset_query] (:id card)))
+                                                                     (or (:dataset_query card) (pulse.db/card-query (:id card)))
                                                                      api/*current-user-id*)
                                                                 :no :none
                                                                 :ten-thousand-rows :limited
                                                                 :one-million-rows :full
                                                                 :full :full))) cards))))
-     (t2/hydrate pulses :can_write))))
+     (pulse.db/hydrate-can-write pulses))))
 
 (defn create-pulse-with-perm-checks!
   "Create a new Pulse with permissions checks."
@@ -239,7 +240,7 @@
     (-> pulse
         maybe-filter-pulse-recipients
         maybe-strip-sensitive-metadata
-        (t2/hydrate :can_write))))
+        pulse.db/hydrate-can-write)))
 
 (defn- maybe-add-recipients
   "Sandboxed users and users using connection impersonation can't read the full recipient list for a pulse, so we need
@@ -337,7 +338,7 @@
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
-                       (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
+                       (assoc-in [:http :configured] (pulse.db/active-http-channel-exists?)))]
     {:channels (cond
                  (perms/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
@@ -413,10 +414,10 @@
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
-                pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (t2/select-one-pk :model/PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (t2/delete! :model/PulseChannelRecipient :id pcr-id))
+  (api/let-404 [pulse-id (pulse.db/pulse-id id)
+                pc-id    (pulse.db/email-pulse-channel-id pulse-id)
+                pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
+    (pulse.db/delete-pulse-channel-recipient! pcr-id))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

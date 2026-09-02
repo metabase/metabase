@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.indexed-entities.queries :as indexed-entities.queries]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
@@ -81,7 +81,7 @@
 
 (mu/defn ^:private fetch-values
   [model-index :- ::model-index]
-  (let [model     (indexed-entities.queries/card (:model_id model-index))
+  (let [model     (indexed-entities.db/card (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
@@ -125,9 +125,9 @@
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
-                                              (indexed-entities.queries/model-index-values (:id model-index)))]
+                                              (indexed-entities.db/model-index-values (:id model-index)))]
     (if-not (str/blank? error-message)
-      (indexed-entities.queries/mark-model-index-error! (:id model-index) error-message)
+      (indexed-entities.db/mark-model-index-error! (:id model-index) error-message)
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -137,25 +137,25 @@
                       :let [search-model-ids (map (fn [[pk]]
                                                     (str (:id model-index) ":" pk))
                                                   deletions-part)]]
-                (indexed-entities.queries/delete-model-index-values! (:id model-index) (->> deletions-part (map first)))
+                (indexed-entities.db/delete-model-index-values! (:id model-index) (->> deletions-part (map first)))
                 (search/delete! :model/ModelIndexValue search-model-ids)))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
-                (indexed-entities.queries/insert-model-index-values!
+                (indexed-entities.db/insert-model-index-values!
                  (map (fn [[id v]]
                         {:name           v
                          :model_pk       id
                          :model_index_id (:id model-index)})
                       additions-part)))))
-          (indexed-entities.queries/mark-model-index-indexed! (:id model-index)
-                                                              (if (> (count values-to-index) max-indexed-values)
-                                                                "overflow"
-                                                                "indexed")))
-        (run! search/update! (indexed-entities.queries/model-index-values-reducible (:id model-index)))
+          (indexed-entities.db/mark-model-index-indexed! (:id model-index)
+                                                         (if (> (count values-to-index) max-indexed-values)
+                                                           "overflow"
+                                                           "indexed")))
+        (run! search/update! (indexed-entities.db/model-index-values-reducible (:id model-index)))
         (catch Exception e
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))
-          (indexed-entities.queries/mark-model-index-error! (:id model-index) (ex-message e)))))))
+          (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
 
 ;;;; creation
 
@@ -167,13 +167,13 @@
 (defn create
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
-  (indexed-entities.queries/insert-model-index! {:model_id   model-id
-                                                 ;; todo: sanitize these?
-                                                 :pk_ref     pk-ref
-                                                 :value_ref  value-ref
-                                                 :schedule   (default-schedule)
-                                                 :state      "initial"
-                                                 :creator_id creator-id}))
+  (indexed-entities.db/insert-model-index! {:model_id   model-id
+                                            ;; todo: sanitize these?
+                                            :pk_ref     pk-ref
+                                            :value_ref  value-ref
+                                            :schedule   (default-schedule)
+                                            :state      "initial"
+                                            :creator_id creator-id}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -6,7 +6,7 @@
    [malli.util :as mut]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lm.schema]
-   [metabase.metrics.queries :as metrics.queries]
+   [metabase.metrics.db :as metrics.db]
    [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -221,7 +221,7 @@
         field->row (when (seq field-ids)
                      (into {}
                            (map (juxt :id #(update-keys (select-keys % field-cols) u/->kebab-case-en)))
-                           (metrics.queries/fields-with-columns field-cols field-ids)))
+                           (metrics.db/fields-with-columns field-cols field-ids)))
         nil-cols   (zipmap (map u/->kebab-case-en field-cols) (repeat nil))]
     (mapv (fn [metric pairs]
             (cond-> metric
@@ -239,7 +239,7 @@
    dimension-mappings :- [:maybe [:sequential :map]]
    dimension-id       :- :string]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field    (metrics.queries/field field-id)]
+        field    (metrics.db/field field-id)]
     (parameters/field->values field)))
 
 (mu/defn dimension-search-values :- [:sequential [:vector :string]]
@@ -259,11 +259,11 @@
    dimension-id       :- :string
    value              :- :string]
   (let [field-id        (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field           (metrics.queries/field field-id)
+        field           (metrics.db/field field-id)
         parsed-value    (parameters/parse-query-param-value-for-field field value)
         remapped-fid    (parameters/remapped-field-id field-id)]
     (if remapped-fid
-      (let [remapped-field (metrics.queries/field remapped-fid)]
+      (let [remapped-field (metrics.db/field remapped-fid)]
         (parameters/remapped-value field remapped-field parsed-value))
       ;; No remapping - return the value as-is
       [parsed-value])))

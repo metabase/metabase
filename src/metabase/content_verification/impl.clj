@@ -1,7 +1,7 @@
 (ns metabase.content-verification.impl
   (:require
    [medley.core :as m]
-   [metabase.content-verification.queries :as content-verification.queries]
+   [metabase.content-verification.db :as content-verification.db]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -38,7 +38,7 @@
           item-types  (not-empty (into #{} (map (comp keyword object->type)) items*))
           all-reviews (when item-ids
                         (group-by (juxt :moderated_item_type :moderated_item_id)
-                                  (content-verification.queries/moderation-reviews-for-items item-types item-ids)))]
+                                  (content-verification.db/moderation-reviews-for-items item-types item-ids)))]
       (for [item items]
         (if (nil? item)
           nil
@@ -51,7 +51,7 @@
   [moderation-reviews]
   (when (seq moderation-reviews)
     (let [id->user (m/index-by :id
-                               (content-verification.queries/users (map :moderator_id moderation-reviews)))]
+                               (content-verification.db/users (map :moderator_id moderation-reviews)))]
       (for [mr moderation-reviews]
         (assoc mr :user (get id->user (:moderator_id mr)))))))
 
@@ -65,7 +65,7 @@
           ;; constrain on `:moderated_item_type` too so the `(moderated_item_type, moderated_item_id)` index is used
           item-types (not-empty (into #{} (map (comp keyword object->type)) items*))
           type+id->status (when item-ids
-                            (->> (content-verification.queries/most-recent-moderation-review-statuses item-types item-ids)
+                            (->> (content-verification.db/most-recent-moderation-review-statuses item-types item-ids)
                                  (group-by (juxt :moderated_item_type :moderated_item_id))
                                  (m/map-vals #(:status (first %)))))]
       (for [item items]

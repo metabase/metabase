@@ -2,7 +2,7 @@
   "Integration between AuthIdentity and Session systems. Provides wrappers around
   session creation that track authentication provider usage."
   (:require
-   [metabase.auth-identity.queries :as auth-identity.queries]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -22,15 +22,15 @@
   [user device-info provider]
   (let [user-id (u/the-id user)
         provider-str (name provider)
-        auth-identity (auth-identity.queries/auth-identity-expiry user-id provider-str)
+        auth-identity (auth-identity.db/auth-identity-expiry user-id provider-str)
         auth-identity-id (:id auth-identity)
         session-key (str (random-uuid))
         session-id (string/random-string 12)
         session (t2/with-transaction [_]
-                  (u/prog1 (auth-identity.queries/insert-session! session-id user-id auth-identity-id session-key (:expires_at auth-identity))
+                  (u/prog1 (auth-identity.db/insert-session! session-id user-id auth-identity-id session-key (:expires_at auth-identity))
                     (when provider-str
                       (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
-                      (auth-identity.queries/touch-auth-identity! auth-identity-id))
+                      (auth-identity.db/touch-auth-identity! auth-identity-id))
                     (when device-info
                       (login-history/record-login-history! session-id user device-info))))]
     (assoc session

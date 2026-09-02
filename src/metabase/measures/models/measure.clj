@@ -9,7 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
-   [metabase.measures.queries :as measures.queries]
+   [metabase.measures.db :as measures.db]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -57,17 +57,17 @@
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (measures.queries/table (:table_id instance)))]
+                   (measures.db/table (:table_id instance)))]
      (mi/can-read? table)))
   ([_model pk]
-   (mi/can-read? (measures.queries/measure pk))))
+   (mi/can-read? (measures.db/measure pk))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (measures.queries/table (:table_id instance)))]
+                   (measures.db/table (:table_id instance)))]
      (and (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -78,14 +78,14 @@
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([_model pk]
-   (mi/can-write? (measures.queries/measure pk))))
+   (mi/can-write? (measures.db/measure pk))))
 
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
-                  (measures.queries/table (:table_id instance)))]
+                  (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -101,7 +101,7 @@
    then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
    on each measure. This avoids N+1 queries when checking permissions for multiple measures."
   [_model k measures]
-  (let [measures-with-tables (measures.queries/hydrate-table (remove nil? measures))
+  (let [measures-with-tables (measures.db/hydrate-table (remove nil? measures))
         ;; Get all unique collection IDs from the hydrated tables
         collection-ids (->> measures-with-tables
                             (keep (comp :collection_id :table))
@@ -110,7 +110,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (measures.queries/collections collection-ids))
+                                      (measures.db/collections collection-ids))
                                 {})
         ;; Associate collection info with each measure's table
         measures-with-collection (for [measure measures-with-tables
@@ -152,7 +152,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (measures.queries/table-perms-columns (u/the-id (:table_id measure))))]
+                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
@@ -240,4 +240,4 @@
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
-    (measures.queries/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))

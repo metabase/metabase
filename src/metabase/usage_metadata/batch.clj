@@ -3,13 +3,13 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
-   [metabase.usage-metadata.queries :as usage-metadata.queries]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.usage-metadata.store :as usage-metadata.store]
    [metabase.util.json :as json]
@@ -90,7 +90,7 @@
   Identical hashes produce identical facts, so collapse at the DB and iterate
   unique hashes. Per-execution totals come from multiplying by `:n`."
   [bucket-date]
-  (usage-metadata.queries/query-execution-hash-counts (utc-day-start bucket-date) (utc-day-end bucket-date)))
+  (usage-metadata.db/query-execution-hash-counts (utc-day-start bucket-date) (utc-day-end bucket-date)))
 
 (defn- add-skip [stats reason n]
   (update-in stats [:skipped-rows reason] (fnil + 0) n))
@@ -213,7 +213,7 @@
 
 (defn- field-fingerprint
   [field-id]
-  (some-> (usage-metadata.queries/raw-field-fingerprint field-id)
+  (some-> (usage-metadata.db/raw-field-fingerprint field-id)
           decode-fingerprint))
 
 (defn- profile-rows-for-dimensions
@@ -281,7 +281,7 @@
                               stats
                               (mdb/streaming-reducible
                                (fn [conn]
-                                 (usage-metadata.queries/queries-reducible conn hash-chunk)))))
+                                 (usage-metadata.db/queries-reducible conn hash-chunk)))))
                            initial-stats
                            (partition-all hash-chunk-size raw-hashes))
          seen-hashes      (:seen-hashes after-stream)
@@ -321,7 +321,7 @@
   (let [retention-days (max 1 (or retention-days 1))
         cutoff-day     (t/minus today (t/days retention-days))]
     (doseq [model rollup-models]
-      (usage-metadata.queries/delete-rollups-before! model cutoff-day))
+      (usage-metadata.db/delete-rollups-before! model cutoff-day))
     cutoff-day))
 
 (defn run-batch!

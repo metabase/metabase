@@ -10,9 +10,9 @@
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.email :as email]
    [metabase.channel.email.logo :as email.logo]
-   [metabase.channel.queries :as channel.queries]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
@@ -166,7 +166,7 @@
   []
   (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
-          (channel.queries/accepted-admin-emails)))
+          (channel.db/accepted-admin-emails)))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -219,7 +219,7 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
-  (let [user-info    (or (channel.queries/user-contact-info user-id)
+  (let [user-info    (or (channel.db/user-contact-info user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
@@ -271,7 +271,7 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (channel.queries/active-user-emails user-ids))))))
+        (channel.db/active-user-emails user-ids))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task.

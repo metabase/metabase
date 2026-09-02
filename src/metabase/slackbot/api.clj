@@ -15,9 +15,9 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
+   [metabase.slackbot.db :as slackbot.db]
    [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
-   [metabase.slackbot.queries :as slackbot.queries]
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.slackbot.streaming :as slackbot.streaming]
    [metabase.slackbot.uploads :as slackbot.uploads]
@@ -102,7 +102,7 @@
   signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
   identities without an explicit version are treated as version 0."
   [slack-user-id]
-  (let [identity (slackbot.queries/active-slack-connect-identity slack-user-id)]
+  (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
     (when (= (auth-identity-signing-secret-version identity)
              (current-signing-secret-version))
       (:user_id identity))))
@@ -586,7 +586,7 @@
   [{:keys [message_external_id channel_id message_ts]}]
   (or message_external_id
       (when (and channel_id message_ts)
-        (slackbot.queries/metabot-message-external-id channel_id message_ts))))
+        (slackbot.db/metabot-message-external-id channel_id message_ts))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.

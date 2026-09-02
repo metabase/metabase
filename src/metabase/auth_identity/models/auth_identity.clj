@@ -3,8 +3,8 @@
   for a User - a User can have multiple AuthIdentities (e.g., password + SSO)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
-   [metabase.auth-identity.queries :as auth-identity.queries]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -120,16 +120,16 @@
    (t2/with-transaction [_]
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
-       (if-let [pw-auth-identity (auth-identity.queries/auth-identity user-id "password")]
-         (auth-identity.queries/update-auth-identity! (u/the-id pw-auth-identity) attrs)
-         (auth-identity.queries/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
-     (auth-identity.queries/delete-auth-identities! user-id "emailed-secret-password-reset")
-     (auth-identity.queries/delete-sessions-for-user! user-id))))
+       (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
+         (auth-identity.db/update-auth-identity! (u/the-id pw-auth-identity) attrs)
+         (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
+     (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
+     (auth-identity.db/delete-sessions-for-user! user-id))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
   AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
   without reading the legacy `core_user.reset_token` column."
   [user-id :- ms/PositiveInt]
-  (get-in (auth-identity.queries/auth-identity user-id "emailed-secret-password-reset")
+  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
           [:credentials :token_hash]))

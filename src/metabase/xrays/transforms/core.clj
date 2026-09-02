@@ -11,11 +11,11 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]
-   [toucan2.core :as t2]))
+   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]))
 
 (mu/defn- add-bindings :- Bindings
   [bindings     :- Bindings
@@ -35,7 +35,7 @@
     field-name
 
     [:field (id :guard integer?) _]
-    (t2/select-one-fn :name :model/Field :id id)))
+    (xrays.db/field-name id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
@@ -189,9 +189,9 @@
 (mu/defn- tableset :- Tableset
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (-> (t2/select :model/Table :db_id db-id :schema schema)
+  (-> (xrays.db/tables-in-schema db-id schema)
       de/with-domain-entity
-      (t2/hydrate :fields)))
+      xrays.db/hydrate-fields))
 
 (mu/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.

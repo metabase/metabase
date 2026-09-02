@@ -12,7 +12,7 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
-   [metabase.llm.queries :as llm.queries]
+   [metabase.llm.db :as llm.db]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
@@ -41,7 +41,7 @@
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
-    (llm.queries/database-engine database-id)))
+    (llm.db/database-engine database-id)))
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.

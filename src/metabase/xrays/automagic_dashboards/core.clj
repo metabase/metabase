@@ -171,8 +171,8 @@
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.related :as related]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]
+   [metabase.xrays.related :as related]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -198,7 +198,7 @@
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
   [segment :- [:map [:definition ::segments.schema/definition]]]
-  (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
+  (let [table (->> segment :table_id xrays.db/table)]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name                 (:display_name table)
@@ -211,7 +211,7 @@
 
 (mu/defmethod ->root :xrays/Metric :- ::ads/root
   [{:keys [table-id], :as metric} :- ::ads/metric]
-  (let [table (some->> table-id (t2/select-one :model/Table :id))]
+  (let [table (some->> table-id xrays.db/table)]
     {:entity                     metric
      :full-name                  (if (:id metric)
                                    (trun "{0} metric" "{0} metrics" (:name metric))
@@ -258,7 +258,7 @@
   [card-or-question :- [:map
                         [:dataset_query ::ads/query]]]
   (when-let [source-card-id (source-card-id card-or-question)]
-    (t2/select-one :model/Card :id source-card-id)))
+    (xrays.db/card source-card-id)))
 
 (mu/defn- table-like?
   [{query :dataset_query, :as _card-or-question} :- [:map
@@ -288,7 +288,7 @@
                                 source-question
                                 (assoc :entity_type :entity/GenericTable))
     (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
-    :else                   (->> card table-id (t2/select-one :model/Table :id))))
+    :else                   (->> card table-id xrays.db/table)))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
   [card :- [:map
@@ -407,10 +407,7 @@
    be returned."
   [table]
   (let [fields (field/with-targets
-                 (t2/select :model/Field
-                            :table_id           (u/the-id table)
-                            :fk_target_field_id [:not= nil]
-                            :active             true))]
+                 (xrays.db/active-fk-fields-for-table (u/the-id table)))]
     (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
     (for [{:keys [id target]} fields
           :when (some-> target mi/can-read?)]
@@ -420,19 +417,15 @@
   (let [db-id (or ((some-fn :db_id :database_id) source)
                   (throw (ex-info "Source is missing Database ID"
                                   {:source source})))]
-    (t2/select-one :model/Database :id db-id)))
+    (xrays.db/database db-id)))
 
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."
   [{:keys [source _entity] :as _root} tables]
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
-      (comp (->> (-> (t2/select :model/Field
-                                :table_id [:in (map u/the-id tables)]
-                                :visibility_type "normal"
-                                :preview_display true
-                                :active true)
-                     (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
+      (comp (->> (-> (xrays.db/visible-fields-for-tables (map u/the-id tables))
+                     xrays.db/hydrate-field-details)
                  field/with-targets
                  (map #(assoc % :db db))
                  (group-by :table_id))
@@ -935,27 +928,7 @@
   Filters out tables that are link-tables"
   [clauses]
   (->>
-   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
-               [:ts.count :num-fields]
-               [[:and
-                 [:>= :ts.count 2]
-                 [:= :ts.count_non_pks 1]] :list-like?]]
-              {:inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                          [:%count.* "count"]
-                                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
-                                                                           [:= :f.semantic_type nil]]
-                                                                    [:inline 1] :else [:inline nil]]]
-                                                           :count_non_pks]
-                                                          [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
-                                                                    [:inline 1] :else [:inline nil]]]
-                                                           :count_pks_and_fks]]
-                                               :from     [[:metabase_field :f]]
-                                               :where    [:= :f.active true]
-                                               :group-by [:f.table_id]} :ts]
-                            [:and [:= :ts.table_id :id]
-                             [:> :ts.count 0]
-                             [:!= :ts.count :ts.count_pks_and_fks]]]
-               :where (into [:and] clauses)})
+   (xrays.db/candidate-tables (into [:and] clauses))
    (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables

@@ -2,8 +2,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.login-history.db :as login-history.db]
    [metabase.login-history.models.login-history :as login-history]
-   [metabase.login-history.queries :as login-history.queries]
    [metabase.util :as u]))
 
 (defn login-history
@@ -13,7 +13,7 @@
   ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
   ;; API endpoint?
   (login-history/human-friendly-infos
-   (login-history.queries/login-history-for-user (u/the-id user-or-id))))
+   (login-history.db/login-history-for-user (u/the-id user-or-id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

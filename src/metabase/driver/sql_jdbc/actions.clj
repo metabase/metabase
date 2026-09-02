@@ -9,7 +9,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.queries :as driver.queries]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -276,7 +276,7 @@
     (let [field-names (driver-api/cached-value
                        [::correct-columns-name table-id]
                        (fn []
-                         (driver.queries/table-field-names table-id)
+                         (driver.db/table-field-names table-id)
                          ;; can't use lib here because fields from lib only return active fields and visible fields
                          ;; :/
                          #_(let [database (driver-api/cached-database-via-table-id table-id)]

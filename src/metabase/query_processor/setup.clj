@@ -14,9 +14,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.queries :as query-processor.queries]
    [metabase.query-processor.schema :as qp.schema]
    ;; qp.setup is the code that initializes the ambient store for the legacy pipeline
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -60,7 +60,7 @@
                   :id          (:id card)
                   :name        (format "Card #%d" (:id card))
                   :database-id (:database_id card)}))
-          (query-processor.queries/card-database-ids (set id-set)))))
+          (query-processor.db/card-database-ids (set id-set)))))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider

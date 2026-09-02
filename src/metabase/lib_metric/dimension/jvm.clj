@@ -4,8 +4,8 @@
    via a direct database lookup, which is only available on the JVM."
   (:require
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.db :as lib-metric.db]
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
-   [metabase.lib-metric.queries :as lib-metric.queries]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf])
@@ -25,7 +25,7 @@
                                            [(:id field)
                                             (lib/infer-has-field-values
                                              (lib-be/instance->metadata field :metadata/column))]))
-                                    (lib-metric.queries/fields col-ids)))]
+                                    (lib-metric.db/fields col-ids)))]
       (perf/mapv (fn [col]
                    (if-let [hfv (get field-values-map (:id col))]
                      (assoc col :has-field-values hfv)
@@ -92,7 +92,7 @@
           (lib-metric.provider/database-provider-for-table mp table-id))
         (when-let [card-id (lib.util/source-card-id query-with-mp)]
           (when-let [{:keys [table_id database_id]}
-                     (lib-metric.queries/card-table-and-database-id card-id)]
+                     (lib-metric.db/card-table-and-database-id card-id)]
             (or (when table_id
                   (lib-metric.provider/database-provider-for-table mp table_id))
                 (when database_id

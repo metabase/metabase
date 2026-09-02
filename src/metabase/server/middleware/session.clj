@@ -31,7 +31,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
-   [metabase.server.queries :as server.queries]
+   [metabase.server.db :as server.db]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
@@ -225,7 +225,7 @@
           params  (concat [(session/hash-session-key session-key)]
                           (when (seq anti-csrf-token)
                             [anti-csrf-token]))]
-      (some-> (server.queries/user-info sql params)
+      (some-> (server.db/user-info sql params)
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
@@ -266,9 +266,9 @@
           (log/error "Ignoring invalid API Key")
           (log/errorf "Ignoring invalid API Key: %s" error))
         nil)
-      (let [user-info (-> (server.queries/user-info (user-data-for-api-key-prefix-query
-                                                     (premium-features/enable-advanced-permissions?))
-                                                    [(api-key/prefix api-key)])
+      (let [user-info (-> (server.db/user-info (user-data-for-api-key-prefix-query
+                                                (premium-features/enable-advanced-permissions?))
+                                               [(api-key/prefix api-key)])
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
@@ -305,8 +305,8 @@
   (when (init-status/complete?)
     (when-let [token (oauth-server/extract-bearer-token request)]
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
-        (some-> (server.queries/user-info (user-data-for-id-query (premium-features/enable-advanced-permissions?))
-                                          [user-id])
+        (some-> (server.db/user-info (user-data-for-id-query (premium-features/enable-advanced-permissions?))
+                                     [user-id])
                 (m/update-existing :is-group-manager? boolean)
                 (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
 
@@ -330,7 +330,7 @@
              (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))
     (when-let [{:keys [uid sid] :as claims}
                (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
-      (some-> (server.queries/user-info (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid])
+      (some-> (server.db/user-info (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid])
               (m/update-existing :is-group-manager? boolean)
               ;; Endpoint scope middleware treats this as session-like auth, but the
               ;; route allowlist above is the actual authorization boundary.
@@ -415,7 +415,7 @@
     (let [hashed (session/hash-session-key session-key)]
       (when (session/record-session-activity-update! hashed)
         (try
-          (server.queries/touch-session! hashed)
+          (server.db/touch-session! hashed)
           (catch Exception e
             (log/warnf "Failed to update session last_active_at: %s" (ex-message e))))))))
 

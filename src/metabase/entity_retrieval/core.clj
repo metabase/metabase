@@ -11,8 +11,8 @@
   the current user can read."
   (:require
    [clojure.string :as str]
+   [metabase.entity-retrieval.db :as entity-retrieval.db]
    [metabase.entity-retrieval.mirror]
-   [metabase.entity-retrieval.queries :as entity-retrieval.queries]
    [potemkin :as p]))
 
 (comment metabase.entity-retrieval.mirror/keep-me)
@@ -74,7 +74,7 @@
                          (comp (map (juxt #(entity-class (:entity_type %) (:entity_local_id %))
                                           (comp :instructions :ai_context)))
                                (remove (comp str/blank? second)))
-                         (entity-retrieval.queries/ai-contexts-for-entities pairs))]
+                         (entity-retrieval.db/ai-contexts-for-entities pairs))]
       ;; key the result back by the caller's original [type id] ref
       (into {} (keep (fn [[t id]]
                        (when-let [instr (by-class (entity-class t id))]

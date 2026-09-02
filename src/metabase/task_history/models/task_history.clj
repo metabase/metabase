@@ -9,8 +9,8 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
-   [metabase.task-history.queries :as task-history.queries]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -49,8 +49,8 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (task-history.queries/nth-newest-task-history-ended-at num-rows-to-keep)]
-    (task-history.queries/delete-task-history-ended-before! clean-before-date)))
+  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
+    (task-history.db/delete-task-history-ended-before! clean-before-date)))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
@@ -118,22 +118,22 @@
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
    params :- [:maybe [:merge FilterParams SortParams]]]
-  (task-history.queries/task-histories (merge (params->where params)
-                                              (params->order-by params)
-                                              (when limit
-                                                {:limit limit})
-                                              (when offset
-                                                {:offset offset}))))
+  (task-history.db/task-histories (merge (params->where params)
+                                         (params->order-by params)
+                                         (when limit
+                                           {:limit limit})
+                                         (when offset
+                                           {:offset offset}))))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
   [params :- FilterParams]
-  (task-history.queries/task-history-count ((fnil identity {}) (params->where params))))
+  (task-history.db/task-history-count ((fnil identity {}) (params->where params))))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
-  (vec (task-history.queries/distinct-task-names)))
+  (vec (task-history.db/distinct-task-names)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |
@@ -161,7 +161,7 @@
   (let [updated-info (merge {:ended_at (t/instant)
                              :duration (ns->ms (- (System/nanoTime) startime-ns))}
                             info)]
-    (task-history.queries/update-task-history! th-id updated-info)))
+    (task-history.db/update-task-history! th-id updated-info)))
 
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
@@ -238,7 +238,7 @@
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
         run-id          (task-run/current-run-id)
-        th-id           (task-history.queries/insert-task-history!
+        th-id           (task-history.db/insert-task-history!
                          (cond-> (assoc info
                                         :status     :started
                                         :started_at (t/instant))

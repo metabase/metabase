@@ -1,7 +1,7 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.queries :as remote-sync.queries]))
+   [metabase.remote-sync.db :as remote-sync.db]))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
@@ -71,7 +71,7 @@
     ;; For other models, check if they're in a remote-synced collection
     (let [collection-ids (into #{} (keep :collection_id) instances)
           remote-synced-coll-ids (when (seq collection-ids)
-                                   (remote-sync.queries/remote-synced-collection-ids collection-ids))]
+                                   (remote-sync.db/remote-synced-collection-ids collection-ids))]
       (into {}
             (map (fn [inst]
                    [(:id inst)

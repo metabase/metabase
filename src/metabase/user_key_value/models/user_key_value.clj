@@ -34,8 +34,8 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
-   [metabase.user-key-value.queries :as user-key-value.queries]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -59,13 +59,13 @@
                     (mtx/default-value-transformer)
                     {:name :database}))]
     (t2/with-transaction [_]
-      (if (user-key-value.queries/user-key-value user-id namespace key)
-        (user-key-value.queries/update-user-key-value! user-id namespace key value expires-at)
+      (if (user-key-value.db/user-key-value user-id namespace key)
+        (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
         (try
-          (user-key-value.queries/insert-user-key-value! user-id namespace key value expires-at)
+          (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at)
           ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
           (catch Exception _
-            (user-key-value.queries/update-user-key-value! user-id namespace key value expires-at)))))
+            (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)))))
     value))
 
 (mu/defn delete!
@@ -73,7 +73,7 @@
   [user-id :- :int
    namespace :- :string
    k :- :string]
-  (user-key-value.queries/delete-user-key-value! user-id namespace k))
+  (user-key-value.db/delete-user-key-value! user-id namespace k))
 
 (mu/defn retrieve
   "Retrieves a KV-pair"
@@ -81,7 +81,7 @@
    namespace :- :string
    k :- :string]
   (when-let [ukv
-             (user-key-value.queries/unexpired-user-key-value user-id namespace k)]
+             (user-key-value.db/unexpired-user-key-value user-id namespace k)]
     (:value (mc/decode ::types/user-key-value
                        ukv
                        (mtx/transformer
@@ -92,7 +92,7 @@
   "Retrieves all KV-pairs in a namespace"
   [user-id :- :int
    namespace :- :string]
-  (when-let [kvs (seq (user-key-value.queries/unexpired-user-key-values user-id namespace))]
+  (when-let [kvs (seq (user-key-value.db/unexpired-user-key-values user-id namespace))]
     (let [parsed-kvs (mc/decode [:sequential ::types/user-key-value]
                                 kvs
                                 (mtx/transformer

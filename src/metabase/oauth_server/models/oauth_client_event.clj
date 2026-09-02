@@ -6,7 +6,7 @@
    each decision a user makes via `POST /oauth/authorize/decision`, stamped with the deciding user's
    `user_id`."
   (:require
-   [metabase.oauth-server.queries :as oauth-server.queries]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -21,15 +21,15 @@
 (defn- client-pk
   "Look up the numeric `oauth_client.id` primary key for the given OAuth `client-id` (UUID)."
   [client-id]
-  (oauth-server.queries/oauth-client-pk client-id))
+  (oauth-server.db/oauth-client-pk client-id))
 
 (defn record-registration!
   "Record a `registered` event for the freshly-registered client identified by `client-id` (the OAuth
    UUID). No-op (with a warning) if the client row cannot be found."
   [client-id]
   (if-let [oauth-client-id (client-pk client-id)]
-    (oauth-server.queries/insert-client-event! {:oauth_client_id oauth-client-id
-                                                :event_type      "registered"})
+    (oauth-server.db/insert-client-event! {:oauth_client_id oauth-client-id
+                                           :event_type      "registered"})
     (log/warnf "Cannot record OAuth registration event: no client found for client_id %s" client-id)))
 
 (defn record-decision!
@@ -37,7 +37,7 @@
    (with a warning) if the client row cannot be found."
   [client-id user-id approved?]
   (if-let [oauth-client-id (client-pk client-id)]
-    (oauth-server.queries/insert-client-event! {:oauth_client_id oauth-client-id
-                                                :user_id         user-id
-                                                :event_type      (if approved? "approved" "denied")})
+    (oauth-server.db/insert-client-event! {:oauth_client_id oauth-client-id
+                                           :user_id         user-id
+                                           :event_type      (if approved? "approved" "denied")})
     (log/warnf "Cannot record OAuth decision event: no client found for client_id %s" client-id)))

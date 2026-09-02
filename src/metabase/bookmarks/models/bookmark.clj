@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.bookmarks.queries :as bookmarks.queries]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
@@ -203,10 +203,10 @@
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (bookmarks.queries/delete-bookmark-orderings-for-user! user-id)
-  (bookmarks.queries/insert-bookmark-orderings! (->> orderings
-                                                     (map #(select-keys % [:type :item_id]))
-                                                     (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+  (bookmarks.db/delete-bookmark-orderings-for-user! user-id)
+  (bookmarks.db/insert-bookmark-orderings! (->> orderings
+                                                (map #(select-keys % [:type :item_id]))
+                                                (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
 (t2/define-before-insert :model/CollectionBookmark [bookmark]
   (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))

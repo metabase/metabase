@@ -6,7 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.queries :as query-processor.queries]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -30,7 +30,7 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock cluster-lock/card-statistics-lock :retry-transient? true}
-        (query-processor.queries/update-cards-last-used-at! card-id->timestamp))
+        (query-processor.db/update-cards-last-used-at! card-id->timestamp))
       (catch Throwable e
         (log/errorf "Error updating used cards: %s" (ex-message e))))))
 

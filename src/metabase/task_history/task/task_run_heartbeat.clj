@@ -7,7 +7,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
-   [metabase.task-history.queries :as task-history.queries]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]))
@@ -26,7 +26,7 @@
   "Update updated_at for all :started runs belonging to this process."
   []
   (tracing/with-span :tasks "task.heartbeat.update" {}
-    (let [updated (task-history.queries/heartbeat-started-task-runs! config/local-process-uuid (mi/now))]
+    (let [updated (task-history.db/heartbeat-started-task-runs! config/local-process-uuid (mi/now))]
       (when (pos? updated)
         (log/debugf "Sent heartbeat for %d running task runs" updated))
       updated)))
@@ -51,7 +51,7 @@
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
-      (let [orphaned (task-history.queries/mark-started-tasks-unknown! orphaned-run-ids (mi/now))]
+      (let [orphaned (task-history.db/mark-started-tasks-unknown! orphaned-run-ids (mi/now))]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

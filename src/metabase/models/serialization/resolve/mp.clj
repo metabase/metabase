@@ -37,11 +37,11 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.models.db :as models.db]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.i18n :refer [tru]]
-   [potemkin.types :as p.types]
-   [toucan2.core :as t2]))
+   [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
 
@@ -85,7 +85,7 @@
   `001_update_migrations.yaml` `is_defective_duplicate` carve-out for pre-constraint rows)
   return more than one candidate so [[find-table]] can raise `:ambiguous-table`."
   [db-id schema table-name]
-  (t2/select :metadata/table :db_id db-id :schema schema :name table-name))
+  (models.db/metadata-tables db-id schema table-name))
 
 (defn- app-db-backed-provider?
   "True when `metadata-provider` is part of the production app-DB-backed wrapper chain
@@ -337,13 +337,13 @@
         ;; transforming the entire dataset_query just to export one stable identifier.
         ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
         ;; treat this as a full card row and demand it.
-        (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id)))
+        (models.db/card-serdes-columns card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
-        (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
+        (models.db/measure-serdes-columns measure-id)))
     (segment-by-id [_ segment-id]
       (when segment-id
-        (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id)))))
+        (models.db/segment-serdes-columns segment-id)))))
 
 ;;; ============================================================
 ;;; Resolver implementations

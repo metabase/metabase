@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
-   [metabase.cloud-migration.queries :as cloud-migration.queries]
+   [metabase.cloud-migration.db :as cloud-migration.db]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -91,9 +91,9 @@
   Works by checking how many Quartz nodes there are.
   See https://github.com/quartz-scheduler/quartz/issues/733"
   []
-  (>= (cloud-migration.queries/row-count (if (= (mdb/db-type) :postgres)
-                                           "qrtz_scheduler_state"
-                                           "QRTZ_SCHEDULER_STATE"))
+  (>= (cloud-migration.db/row-count (if (= (mdb/db-type) :postgres)
+                                      "qrtz_scheduler_state"
+                                      "QRTZ_SCHEDULER_STATE"))
       2))
 
 (defn- progress-file-input-stream
@@ -126,7 +126,7 @@
   This is the main cluster coordination mechanism for migrations, since any instance
   can cancel the migration, not just the one that initiated it."
   [id state progress]
-  (when (= 0 (cloud-migration.queries/set-cloud-migration-progress-if-not-in-states! id terminal-states state progress))
+  (when (= 0 (cloud-migration.db/set-cloud-migration-progress-if-not-in-states! id terminal-states state progress))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
 (defn abs-progress
@@ -221,7 +221,7 @@
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
-        (cloud-migration.queries/set-cloud-migration-state! id :init))
+        (cloud-migration.db/set-cloud-migration-state! id :init))
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -254,7 +254,7 @@
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do
-            (cloud-migration.queries/set-cloud-migration-state! id :error)
+            (cloud-migration.db/set-cloud-migration-state! id :error)
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {} e)))))
       (finally
@@ -290,10 +290,10 @@
   #_(def ^:private part-size 6e6)
 
   ;; add new
-  (cloud-migration.queries/insert-cloud-migration! (get-store-migration))
+  (cloud-migration.db/insert-cloud-migration! (get-store-migration))
 
   ;; get migration
-  @(def mig (cloud-migration.queries/latest-cloud-migration))
+  @(def mig (cloud-migration.db/latest-cloud-migration))
 
   ;; migrate
   (migrate! mig)
@@ -302,4 +302,4 @@
   (migrate! mig :retry? true)
 
   ;; cancel all
-  (cloud-migration.queries/cancel-cloud-migrations-not-in-states! terminal-states))
+  (cloud-migration.db/cancel-cloud-migrations-not-in-states! terminal-states))

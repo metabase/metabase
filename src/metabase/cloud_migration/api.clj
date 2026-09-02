@@ -6,8 +6,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.cloud-migration.db :as cloud-migration.db]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
-   [metabase.cloud-migration.queries :as cloud-migration.queries]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.premium-features.core :as premium-features]))
 
@@ -23,12 +23,12 @@
     (premium-features/is-hosted?)
     {:status 400 :body "Cannot migrate a hosted instance."}
 
-    (cloud-migration.queries/cloud-migration-not-in-states cloud-migration/terminal-states)
+    (cloud-migration.db/cloud-migration-not-in-states cloud-migration/terminal-states)
     {:status 409 :body "There's an ongoing migration already."}
 
     :else
     (try
-      (let [cloud-migration (cloud-migration.queries/insert-cloud-migration! (cloud-migration/get-store-migration))]
+      (let [cloud-migration (cloud-migration.db/insert-cloud-migration! (cloud-migration/get-store-migration))]
         (future (cloud-migration/migrate! cloud-migration))
         cloud-migration)
       (catch Exception e
@@ -45,7 +45,7 @@
   "Get the latest cloud migration, if any."
   []
   (api/check-superuser)
-  (cloud-migration.queries/latest-cloud-migration))
+  (cloud-migration.db/latest-cloud-migration))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -56,4 +56,4 @@
   []
   (api/check-superuser)
   (cloud-migration.settings/read-only-mode! false)
-  (cloud-migration.queries/cancel-cloud-migrations-not-in-states! cloud-migration/terminal-states))
+  (cloud-migration.db/cancel-cloud-migrations-not-in-states! cloud-migration/terminal-states))

@@ -8,9 +8,9 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.urls :as channel.urls]
+   [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
-   [metabase.comments.queries :as comments.queries]
    [metabase.comments.render :as comments.render]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -149,8 +149,8 @@
     {:disabled true
      :comments []}
     (let [_entity  (api/read-check (type->model target_type) target_id)
-          comments (-> (comments.queries/comments-for-target target_type target_id)
-                       comments.queries/hydrate-creator-and-reactions)]
+          comments (-> (comments.db/comments-for-target target_type target_id)
+                       comments.db/hydrate-creator-and-reactions)]
       ;; The read check above only proves the viewer may see the *target*, and for an exploration
       ;; that is collection permissions alone; the gate is what adjudicates the warehouse values a
       ;; `:context` carries (its dimension values and the `:highlight_label` summarizing them).
@@ -160,7 +160,7 @@
   "Restrict mentioned user ids to active users who can themselves read `entity`."
   [entity mention-ids]
   (when (seq mention-ids)
-    (->> (comments.queries/active-user-ids mention-ids)
+    (->> (comments.db/active-user-ids mention-ids)
          (filterv (fn [user-id]
                     (request/with-current-user user-id
                       (mi/can-read? entity)))))))
@@ -170,9 +170,9 @@
   [{:keys [target_type target_id parent_comment_id] :as comment}
    & [{:keys [entity parent]
        ;; if you don't pass them we'll try to fetch them
-       :or   {entity (comments.queries/entity (type->model target_type) target_id)
+       :or   {entity (comments.db/entity (type->model target_type) target_id)
               parent (when parent_comment_id
-                       (comments.queries/comment-by-id parent_comment_id))}}]]
+                       (comments.db/comment-by-id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
                      {:where [:in :id ^:allow-subquery {:from   [:comment]
                                                         :select [:creator_id]
@@ -183,7 +183,7 @@
                      {:where [:= :id (:creator_id entity)]})
         mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
-        recipients (-> (comments.queries/user-emails
+        recipients (-> (comments.db/user-emails
                         (cond-> clause
                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
                        (disj (:email @api/*current-user*)))
@@ -205,8 +205,8 @@
 (defn notify-comment-id!
   "Send a notification using only comment id"
   [comment-id]
-  (notify-comment! (-> (comments.queries/comment-by-id comment-id)
-                       comments.queries/hydrate-creator-and-reactions)))
+  (notify-comment! (-> (comments.db/comment-by-id comment-id)
+                       comments.db/hydrate-creator-and-reactions)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -222,20 +222,20 @@
                                                "Cannot comment on archived entities")))
         ;; If this is a reply, validate the parent comment exists and belongs to same entity
         parent     (when parent_comment_id
-                     (-> (api/check-404 (comments.queries/comment-by-id parent_comment_id))
+                     (-> (api/check-404 (comments.db/comment-by-id parent_comment_id))
                          (u/prog1 (api/check-400 (and (= (:target_type <>) target_type)
                                                       (= (:target_id <>) target_id)
                                                       (= (:child_target_id <>) child_target_id))
                                                  "Parent comment doesn't belong to the same entity"))
-                         comments.queries/hydrate-creator))
-        comment    (-> (comments.queries/insert-comment! {:target_type       target_type
-                                                          :target_id         target_id
-                                                          :child_target_id   child_target_id
-                                                          :context           context
-                                                          :parent_comment_id parent_comment_id
-                                                          :content           content
-                                                          :creator_id        api/*current-user-id*})
-                       comments.queries/hydrate-creator
+                         comments.db/hydrate-creator))
+        comment    (-> (comments.db/insert-comment! {:target_type       target_type
+                                                     :target_id         target_id
+                                                     :child_target_id   child_target_id
+                                                     :context           context
+                                                     :parent_comment_id parent_comment_id
+                                                     :content           content
+                                                     :creator_id        api/*current-user-id*})
+                       comments.db/hydrate-creator
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})
@@ -253,7 +253,7 @@
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
-  (let [comment (api/check-404 (comments.queries/comment-by-id comment-id))
+  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
@@ -270,9 +270,9 @@
     (when-let [updates (-> {:content content :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
-      (comments.queries/update-comment! comment-id updates))
-    (let [updated-comment (-> (comments.queries/comment-by-id comment-id)
-                              comments.queries/hydrate-creator-and-reactions)]
+      (comments.db/update-comment! comment-id updates))
+    (let [updated-comment (-> (comments.db/comment-by-id comment-id)
+                              comments.db/hydrate-creator-and-reactions)]
       (events/publish-event! :event/comment-update
                              {:object updated-comment
                               :user-id api/*current-user-id*})
@@ -286,7 +286,7 @@
   "Soft delete a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params]
-  (let [comment (api/check-404 (comments.queries/comment-by-id comment-id))]
+  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
@@ -295,7 +295,7 @@
                        (:is_superuser @api/*current-user*)))
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
     ;; Soft delete the comment
-    (comments.queries/soft-delete-comment! comment-id)
+    (comments.db/soft-delete-comment! comment-id)
     (events/publish-event! :event/comment-delete
                            {:object comment
                             :user-id api/*current-user-id*})
@@ -311,7 +311,7 @@
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
-  (let [comment (api/check-404 (comments.queries/comment-by-id comment-id))]
+  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
@@ -347,13 +347,13 @@
                  (user/filter-clauses {:limit  (request/limit)
                                        :offset (request/offset)})
                  restrict-to-visible-users)]
-    {:data   (->> (comments.queries/mention-users
+    {:data   (->> (comments.db/mention-users
                    (-> clauses
                        (sql.helpers/order-by [:%lower.first_name :asc]
                                              [:%lower.last_name :asc]
                                              [:id :asc])))
                   (mapv #(assoc % :model "user")))
-     :total  (:count (comments.queries/mention-user-count (users/filter-clauses-without-paging clauses)))
+     :total  (:count (comments.db/mention-user-count (users/filter-clauses-without-paging clauses)))
      :limit  (request/limit)
      :offset (request/offset)}))
 

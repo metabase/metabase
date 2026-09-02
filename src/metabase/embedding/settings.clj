@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
-   [metabase.embedding.queries :as embedding.queries]
+   [metabase.embedding.db :as embedding.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -69,8 +69,8 @@
                                                                       ;; Don't track "localhost:*" as a meaningful origin since it was
                                                                       ;; the old default and may still exist in migrated instances
                                                                       (and sdk-origins (not (str/blank? sdk-origins)) (not= "localhost:*" sdk-origins)))))
-                                   :number-embedded-questions  (embedding.queries/count-embedded-cards)
-                                   :number-embedded-dashboards (embedding.queries/count-embedded-dashboards)}))))))
+                                   :number-embedded-questions  (embedding.db/count-embedded-cards)
+                                   :number-embedded-dashboards (embedding.db/count-embedded-dashboards)}))))))
 
 (defsetting ^:deprecated enable-embedding
   ;; To be removed in 0.53.0

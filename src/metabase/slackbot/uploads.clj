@@ -6,7 +6,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.slackbot.client :as slackbot.client]
-   [metabase.slackbot.queries :as slackbot.queries]
+   [metabase.slackbot.db :as slackbot.db]
    [metabase.upload.core :as upload]
    [metabase.util.log :as log]))
 
@@ -115,7 +115,7 @@
   [files]
   (when (seq files)
     (if-let [{:keys [db_id schema_name] :as settings} (upload-settings)]
-      (let [db (slackbot.queries/database db_id)]
+      (let [db (slackbot.db/database db_id)]
         (if-not (upload/can-create-upload? db schema_name)
           {:error "You don't have permission to upload files. Contact your Metabase administrator."}
           (let [result (process-file-uploads settings files)]

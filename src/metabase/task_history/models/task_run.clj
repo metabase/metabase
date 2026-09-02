@@ -6,7 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.task-history.queries :as task-history.queries]
+   [metabase.task-history.db :as task-history.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -94,7 +94,7 @@
   "Create a new task run record. Returns the run ID."
   [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
   (let [now (mi/now)]
-    (task-history.queries/insert-task-run!
+    (task-history.db/insert-task-run!
      {:run_type        run_type
       :entity_type     entity_type
       :entity_id       entity_id
@@ -109,11 +109,11 @@
    Must be called manually for async flows, or automatically via [[with-task-run]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
-  (let [task-statuses (task-history.queries/task-statuses-for-run run-id)
+  (let [task-statuses (task-history.db/task-statuses-for-run run-id)
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (task-history.queries/finish-started-task-run! run-id status (t/instant))))
+    (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.

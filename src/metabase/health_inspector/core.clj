@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.health-inspector.queries :as health-inspector.queries]
+   [metabase.health-inspector.db :as health-inspector.db]
    [metabase.health-inspector.settings :as setting]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as schema]
@@ -31,7 +31,7 @@
 (defn ^:internal validate-queries
   "Determine how many saved queries are valid according to the malli schema."
   []
-  (let [queries (health-inspector.queries/unarchived-cards-reducible)
+  (let [queries (health-inspector.db/unarchived-cards-reducible)
         {:keys [total valid]} (reduce validate-query {:total 0 :valid 0} queries)
         ratio (if (zero? total)
                 1
@@ -80,9 +80,9 @@
   a misleading healthy score."
   [check-name result]
   (when (some? result)
-    (health-inspector.queries/insert-run! (-> result
-                                              (select-keys [:health :message])
-                                              (assoc :check_name (name check-name))))))
+    (health-inspector.db/insert-run! (-> result
+                                         (select-keys [:health :message])
+                                         (assoc :check_name (name check-name))))))
 
 (def ^:private run-retention-days
   "Days of health-inspector runs to keep. Metric checks embed changing values (coverage %, ages) in their
@@ -92,7 +92,7 @@
 (defn- delete-old-runs!
   "Delete health-inspector runs older than [[run-retention-days]]."
   []
-  (health-inspector.queries/delete-runs-before! (t/minus (t/offset-date-time) (t/days run-retention-days))))
+  (health-inspector.db/delete-runs-before! (t/minus (t/offset-date-time) (t/days run-retention-days))))
 
 (defn save-report
   "Run every registered check and persist the results (not-applicable (nil) checks are omitted), then prune
@@ -104,7 +104,7 @@
 
 (defn- latest-run
   [check-name]
-  (health-inspector.queries/latest-run (name check-name)))
+  (health-inspector.db/latest-run (name check-name)))
 
 (defn save-check-result!
   "Persist a precomputed check `result` (a `{:health :message}` map, or nil to skip). Skip the write when the
@@ -132,7 +132,7 @@
 (defn list-runs
   "Return the most recent health inspector runs from the DB."
   [limit]
-  (health-inspector.queries/latest-runs limit))
+  (health-inspector.db/latest-runs limit))
 
 (task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true} SaveReport [_]
   (when (setting/health-inspector-enabled)

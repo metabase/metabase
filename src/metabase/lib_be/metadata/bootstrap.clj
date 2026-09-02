@@ -1,6 +1,6 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
-   [metabase.lib-be.queries :as lib-be.queries]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -34,7 +34,7 @@
                   :id          (:id card)
                   :name        (format "Card #%d" (:id card))
                   :database-id (:database_id card)})
-               (lib-be.queries/card-database-ids (set id-set)))))
+               (lib-be.db/card-database-ids (set id-set)))))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider

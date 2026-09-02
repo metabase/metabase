@@ -29,7 +29,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.activity-feed.queries :as activity-feed.queries]
+   [metabase.activity-feed.db :as activity-feed.db]
    [metabase.batch-processing.core :as grouper]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as root]
@@ -66,7 +66,7 @@
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
   [user-id context]
-  (->> (activity-feed.queries/recent-views-for-user-context user-id context)
+  (->> (activity-feed.db/recent-views-for-user-context user-id context)
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
@@ -112,12 +112,12 @@
     (name model)))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
-  (activity-feed.queries/recent-view-ids-to-prune (rv-model->db-model model)
-                                                  user-id
-                                                  (h2x/literal (name context))
-                                                  (when-let [card-type (rv-model->card-type model)]
-                                                    [:= :rc.type (h2x/literal card-type)])
-                                                  *recent-views-stored-per-user-per-model*))
+  (activity-feed.db/recent-view-ids-to-prune (rv-model->db-model model)
+                                             user-id
+                                             (h2x/literal (name context))
+                                             (when-let [card-type (rv-model->card-type model)]
+                                               [:= :rc.type (h2x/literal card-type)])
+                                             *recent-views-stored-per-user-per-model*))
 
 (defn- overflowing-model-buckets [user-id context]
   (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
@@ -138,7 +138,7 @@
   (when (seq views)
     (try
       (t2/with-transaction [_conn]
-        (activity-feed.queries/insert-recent-views!
+        (activity-feed.db/insert-recent-views!
          (for [{:keys [user-id model model-id context timestamp]} views]
            {:user_id user-id
             :model (u/lower-case-en (name model))
@@ -153,7 +153,7 @@
                                     (mapcat (fn [[user-id context]] (ids-to-prune user-id context))))
                               views)]
           (when (seq prune-ids)
-            (activity-feed.queries/delete-recent-views! prune-ids))))
+            (activity-feed.db/delete-recent-views! prune-ids))))
       (catch Exception e
         (log/error e "Failed to update users recent views")))))
 
@@ -183,7 +183,7 @@
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
   [user-id]
-  (activity-feed.queries/most-recently-viewed-dashboard-id user-id (t/minus (t/zoned-date-time) (t/days 1))))
+  (activity-feed.db/most-recently-viewed-dashboard-id user-id (t/minus (t/zoned-date-time) (t/days 1))))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -269,7 +269,7 @@
   [card-ids]
   (if-not (seq card-ids)
     []
-    (activity-feed.queries/cards-for-recent-views card-ids)))
+    (activity-feed.db/cards-for-recent-views card-ids)))
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
@@ -351,7 +351,7 @@
   [dashboard-ids]
   (if (empty? dashboard-ids)
     []
-    (activity-feed.queries/dashboards-for-recent-views dashboard-ids)))
+    (activity-feed.db/dashboards-for-recent-views dashboard-ids)))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
@@ -374,8 +374,8 @@
   (if-not (seq collection-ids)
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
-          collections (activity-feed.queries/unarchived-collections-with-details collection-ids)]
-      (->> (activity-feed.queries/hydrate-effective-parent collections)
+          collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
+      (->> (activity-feed.db/hydrate-effective-parent collections)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
@@ -400,7 +400,7 @@
   [table-ids]
   (if-not (seq table-ids)
     []
-    (activity-feed.queries/visible-tables-for-recent-views table-ids)))
+    (activity-feed.db/visible-tables-for-recent-views table-ids)))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
@@ -434,48 +434,48 @@
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
   (let [db-models (rv-models->db-models models)]
-    (activity-feed.queries/recent-views-with-card-type {:select    [:rv.* [:rc.type :card_type]]
-                                                        :from      [[:recent_views :rv]]
-                                                        :where     [:and
-                                                                    [:= :rv.user_id user-id]
-                                                                    [:in :rv.context (map query-context->recent-context context)]
-                                                                    (when (seq db-models)
-                                                                      [:in :rv.model db-models])
-                                                                    ;; Additionally filter by card type to distinguish questions/models/metrics
-                                                                    (let [card-types (keep rv-model->card-type models)]
-                                                                      (when (seq card-types)
-                                                                        [:or
-                                                                         [:!= :rv.model "card"]
-                                                                         [:in :rc.type (map h2x/literal card-types)]]))
-                                                                    ;; include non-collections, or collections without a namespace/type.
-                                                                    [:or
-                                                                     [:= :coll.id nil]
-                                                                     [:and
-                                                                      ;; trash collection is never returned
-                                                                      [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
-                                                                      ;; collections in a different namespace can't interact with collections
-                                                                      ;; in the normal NULL namespace.
-                                                                      [:= nil :coll.namespace]
-                                                                      ;; exclude instance analytics for selects
-                                                                      (when (contains? (set context) :selections)
-                                                                        [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
-                                                                    ;; exploration documents are accessible only through their owning Exploration;
-                                                                    ;; hide them from recents to match search and collection-listing behavior.
-                                                                    [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
-                                                        :left-join [[:report_card :rc]
-                                                                    [:and
-                                                                     ;; only want to join on card_type if it's a card
-                                                                     [:= :rv.model "card"]
-                                                                     [:= :rc.id :rv.model_id]]
-                                                                    [:collection :coll]
-                                                                    [:and
-                                                                     [:= :rv.model "collection"]
-                                                                     [:= :coll.id :rv.model_id]]
-                                                                    [:document :doc]
-                                                                    [:and
-                                                                     [:= :rv.model "document"]
-                                                                     [:= :doc.id :rv.model_id]]]
-                                                        :order-by  [[:rv.timestamp :desc]]})))
+    (activity-feed.db/recent-views-with-card-type {:select    [:rv.* [:rc.type :card_type]]
+                                                   :from      [[:recent_views :rv]]
+                                                   :where     [:and
+                                                               [:= :rv.user_id user-id]
+                                                               [:in :rv.context (map query-context->recent-context context)]
+                                                               (when (seq db-models)
+                                                                 [:in :rv.model db-models])
+                                                               ;; Additionally filter by card type to distinguish questions/models/metrics
+                                                               (let [card-types (keep rv-model->card-type models)]
+                                                                 (when (seq card-types)
+                                                                   [:or
+                                                                    [:!= :rv.model "card"]
+                                                                    [:in :rc.type (map h2x/literal card-types)]]))
+                                                               ;; include non-collections, or collections without a namespace/type.
+                                                               [:or
+                                                                [:= :coll.id nil]
+                                                                [:and
+                                                                 ;; trash collection is never returned
+                                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
+                                                                 ;; collections in a different namespace can't interact with collections
+                                                                 ;; in the normal NULL namespace.
+                                                                 [:= nil :coll.namespace]
+                                                                 ;; exclude instance analytics for selects
+                                                                 (when (contains? (set context) :selections)
+                                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
+                                                               ;; exploration documents are accessible only through their owning Exploration;
+                                                               ;; hide them from recents to match search and collection-listing behavior.
+                                                               [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
+                                                   :left-join [[:report_card :rc]
+                                                               [:and
+                                                                ;; only want to join on card_type if it's a card
+                                                                [:= :rv.model "card"]
+                                                                [:= :rc.id :rv.model_id]]
+                                                               [:collection :coll]
+                                                               [:and
+                                                                [:= :rv.model "collection"]
+                                                                [:= :coll.id :rv.model_id]]
+                                                               [:document :doc]
+                                                               [:and
+                                                                [:= :rv.model "document"]
+                                                                [:= :doc.id :rv.model_id]]]
+                                                   :order-by  [[:rv.timestamp :desc]]})))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
@@ -501,7 +501,7 @@
   [document-ids]
   (if-not (seq document-ids)
     []
-    (let [documents (activity-feed.queries/documents-for-recent-views document-ids)]
+    (let [documents (activity-feed.db/documents-for-recent-views document-ids)]
       documents)))
 
 (defn- get-entity->id->data [views]

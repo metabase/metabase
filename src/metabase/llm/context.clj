@@ -7,7 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.llm.queries :as llm.queries]
+   [metabase.llm.db :as llm.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
@@ -67,11 +67,11 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [driver (llm.queries/database-engine database-id)
+      (let [driver (llm.db/database-engine database-id)
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
           (let [match-clauses (mapv table-match-clause tables)
-                matched-tables (llm.queries/active-tables-matching database-id match-clauses)]
+                matched-tables (llm.db/active-tables-matching database-id match-clauses)]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
@@ -106,16 +106,16 @@
                                   :is-superuser? api/*is-superuser?*}
                                  {:perms/view-data      :unrestricted
                                   :perms/create-queries :query-builder-and-native})
-          tables (llm.queries/visible-tables table-ids database-id
-                                             (cond-> {:where clause}
-                                               with (assoc :with with)))]
+          tables (llm.db/visible-tables table-ids database-id
+                                        (cond-> {:where clause}
+                                          with (assoc :with with)))]
       (into {} (map (juxt :id identity)) tables))))
 
 (defn get-accessible-card-ids
   "Return readable, non-archived Card IDs from `card-ids`."
   [card-ids]
   (when (seq card-ids)
-    (->> (llm.queries/unarchived-cards card-ids)
+    (->> (llm.db/unarchived-cards card-ids)
          (filter mi/can-read?)
          (map :id)
          set)))
@@ -184,7 +184,7 @@
       (let [;; Grouped by the persisted Field's own table_id, not the caller-supplied column's
             ;; :table-id, consistent with the permission checks elsewhere in this namespace.
             fields (filter field-values/field-should-have-field-values?
-                           (llm.queries/fields field-ids))
+                           (llm.db/fields field-ids))
             {restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table_id %)) fields)
             capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
         (into {}
@@ -204,7 +204,7 @@
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (let [fields              (llm.queries/field-names-and-tables target-ids)
+      (let [fields              (llm.db/field-names-and-tables target-ids)
             table-ids           (into #{} (map :table_id) fields)
             accessible-tables   (fetch-accessible-tables database-id table-ids)
             sandbox-restricted  (metabot.perms/sandbox-restricted-fields table-ids)]
@@ -236,11 +236,11 @@
                             (filter pos-int?)
                             set)]
     (when (seq missing-fp-ids)
-      (let [fields (llm.queries/fields missing-fp-ids)]
+      (let [fields (llm.db/fields missing-fp-ids)]
         (doseq [field fields]
           ;; Run with admin perms to match behavior during normal sync.
           (request/as-admin (sync/refingerprint-field! field)))
-        (llm.queries/field-fingerprints missing-fp-ids)))))
+        (llm.db/field-fingerprints missing-fp-ids)))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
 

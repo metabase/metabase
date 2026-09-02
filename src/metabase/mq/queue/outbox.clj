@@ -19,8 +19,8 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.mq.db :as mq.db]
    [metabase.mq.payload :as payload]
-   [metabase.mq.queries :as mq.queries]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.transaction :as mq.tx]
@@ -73,7 +73,7 @@
   "Insert one already-encoded batch `payload` for `channel` as a `queue_message_outbox` row and return
   its primary key."
   [channel payload]
-  (mq.queries/insert-outbox-row! (name channel) payload))
+  (mq.db/insert-outbox-row! (name channel) payload))
 
 (defn insert-outbox-rows!
   "before-commit callback: for every channel buffered in `*transaction-state*`, apply the queue's
@@ -113,7 +113,7 @@
                        []
                        (::rows @state))]
     (when (seq published-ids)
-      (mq.queries/delete-outbox-rows! published-ids))))
+      (mq.db/delete-outbox-rows! published-ids))))
 
 (defn defer-transactional!
   "Routes `msgs` for `channel` through the transactional outbox. Accumulates them per channel in
@@ -154,11 +154,11 @@
   (t2/with-transaction [_conn]
     (let [now    (Instant/now)
           now-ts (Timestamp/from now)
-          rows (mq.queries/due-outbox-rows after-id
-                                           now-ts
-                                           (Timestamp/from (.minusMillis now recovery-age-ms))
-                                           recovery-page-size
-                                           (for-update-clause))
+          rows (mq.db/due-outbox-rows after-id
+                                      now-ts
+                                      (Timestamp/from (.minusMillis now recovery-age-ms))
+                                      recovery-page-size
+                                      (for-update-clause))
           {:keys [recover-ids bumps backend-down?]}
           (reduce (fn [acc {:keys [id queue_name payload] :as row}]
                     (try
@@ -173,9 +173,9 @@
                   {:recover-ids [] :bumps [] :backend-down? false}
                   rows)]
       ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
-      (when (seq recover-ids) (mq.queries/delete-outbox-rows! recover-ids))
+      (when (seq recover-ids) (mq.db/delete-outbox-rows! recover-ids))
       (doseq [{:keys [id next-attempt-at]} bumps]
-        (mq.queries/bump-outbox-row! id next-attempt-at))
+        (mq.db/bump-outbox-row! id next-attempt-at))
       (when backend-down?
         (log/info "Outbox recovery: backend unavailable, remaining rows retry next run"))
       ;; nil next-after-id stops the sweep: no more due rows, or the backend is down.

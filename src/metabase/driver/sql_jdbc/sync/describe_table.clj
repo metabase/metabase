@@ -10,7 +10,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
-   [metabase.driver.queries :as driver.queries]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -750,7 +750,7 @@
   "Given a table return a list of json fields that need to unfold."
   [driver conn table]
   (let [fields-with-json-unfolding-disabled
-        (->> (driver.queries/json-field-names-with-unfolding-disabled (u/the-id table))
+        (->> (driver.db/json-field-names-with-unfolding-disabled (u/the-id table))
              ;; in a delay so we'll query only if there's at least one json field
              (delay))]
     (into #{}

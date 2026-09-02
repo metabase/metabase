@@ -7,10 +7,10 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.queries.core :as queries]
+   [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (def ^:private excluded-columns-for-dashboard-revision
@@ -32,13 +32,13 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (let [dashcards (or (:dashcards dashboard)
-                      (:dashcards (t2/hydrate dashboard :dashcards)))
+                      (:dashcards (revisions.db/hydrate-dashcards dashboard)))
         dashcards (when (seq dashcards)
                     (if (contains? (first dashcards) :series)
                       dashcards
-                      (t2/hydrate dashcards :series)))
+                      (revisions.db/hydrate-series dashcards)))
         tabs  (or (:tabs dashboard)
-                  (:tabs (t2/hydrate dashboard :tabs)))]
+                  (:tabs (revisions.db/hydrate-tabs dashboard)))]
     (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
         (assoc :cards (vec (for [dashboard-card dashcards]
                              (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
@@ -47,7 +47,7 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (->> (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :series)
+  (let [current-cards    (->> (revisions.db/hydrate-series (revisions.db/dashcards dashboard-id))
                               (mapv (fn [dashcard]
                                       (-> (apply dissoc (t2.realize/realize dashcard)
                                                  excluded-columns-for-dashcard-revision)
@@ -68,15 +68,7 @@
   [dashboard-id dashcards]
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (t2/select-pks-set :model/Card
-                                               {:where [:and
-                                                        [:in :id card-ids]
-                                                        ;; skip when archived
-                                                        [:= :archived false]
-                                                        ;; belong to this dashboard, or are not Dashboard Questions
-                                                        [:or
-                                                         [:= :dashboard_id dashboard-id]
-                                                         [:= :dashboard_id nil]]]}))
+                            (revisions.db/active-card-ids-for-dashboard card-ids dashboard-id))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -86,10 +78,7 @@
   [parameters]
   (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
         active-card-ids (when (seq card-ids)
-                          (t2/select-pks-set :model/Card
-                                             {:where [:and
-                                                      [:in :id card-ids]
-                                                      [:= :archived false]]}))
+                          (revisions.db/active-card-ids card-ids))
         invalid-card-ids (set/difference card-ids active-card-ids)]
     (if (empty? invalid-card-ids)
       parameters
@@ -110,8 +99,8 @@
                                                         (apply dissoc serialized-dashboard :cards :tabs excluded-columns-for-dashboard-revision))
     ;; Now update the tabs and cards as needed
     (let [serialized-dashcards      (:cards serialized-dashboard)
-          current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                                      :model/DashboardTab :dashboard_id dashboard-id)
+          current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
+                                          (revisions.db/dashboard-tabs dashboard-id))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
           _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
           serialized-dashcards      (cond->> serialized-dashcards

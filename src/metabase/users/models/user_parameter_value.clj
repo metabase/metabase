@@ -5,7 +5,7 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
-   [metabase.users.queries :as users.queries]
+   [metabase.users.db :as users.db]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -41,9 +41,9 @@
     (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
       (t2/with-transaction [_conn]
         (doseq [batch (partition-all 1000 parameters)]
-          (users.queries/delete-user-parameter-values! batch))
+          (users.db/delete-user-parameter-values! batch))
         (doseq [batch (partition-all 1000 to-insert)]
-          (users.queries/insert-user-parameter-values! (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch)))))))
+          (users.db/insert-user-parameter-values! (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch)))))))
 
 (defn- update-user-parameter-values* [inputs]
   (try
@@ -90,7 +90,7 @@
      dashboards
      :last_used_param_values
      (fn [] ;; return a map of {dashboard-id {parameter-id value}}
-       (let [upvs (users.queries/user-parameter-values-for-dashboards user-id (map :id dashboards))]
+       (let [upvs (users.db/user-parameter-values-for-dashboards user-id (map :id dashboards))]
          (as-> upvs result
            (group-by :dashboard_id result)
            (update-vals result (fn [upvs]

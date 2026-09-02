@@ -81,8 +81,8 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
+   [metabase.api.db :as api.db]
    [metabase.api.open-api :as open-api]
-   [metabase.api.queries :as api.queries]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -186,7 +186,7 @@
   ([entity id]
    (check-exists? entity :id id))
   ([entity k v & more]
-   (check-404 (apply api.queries/entity-exists? entity k v more))))
+   (check-404 (apply api.db/entity-exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
@@ -348,10 +348,10 @@
    obj)
 
   ([entity id]
-   (read-check (api.queries/entity-by-id entity id)))
+   (read-check (api.db/entity-by-id entity id)))
 
   ([entity id & other-conditions]
-   (read-check (apply api.queries/entity-by-id entity id other-conditions))))
+   (read-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn write-check
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -367,9 +367,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (write-check (api.queries/entity-by-id entity id)))
+   (write-check (api.db/entity-by-id entity id)))
   ([entity id & other-conditions]
-   (write-check (apply api.queries/entity-by-id entity id other-conditions))))
+   (write-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn query-check
   "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
@@ -386,9 +386,9 @@
        (throw e)))
    obj)
   ([entity id]
-   (query-check (api.queries/entity-by-id entity id)))
+   (query-check (api.db/entity-by-id entity id)))
   ([entity id & other-conditions]
-   (query-check (apply api.queries/entity-by-id entity id other-conditions))))
+   (query-check (apply api.db/entity-by-id entity id other-conditions))))
 
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
@@ -462,7 +462,7 @@
    new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse Document]]
-                       (api.queries/shift-collection-positions! model collection-id position-update-clause plus-or-minus)))]
+                       (api.db/shift-collection-positions! model collection-id position-update-clause plus-or-minus)))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)

@@ -13,8 +13,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.challenge :as session.challenge]
+   [metabase.session.db :as session.db]
    [metabase.session.models.session :as session]
-   [metabase.session.queries :as session.queries]
    [metabase.session.schema :as session.schema]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
@@ -220,7 +220,7 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (session.queries/delete-session-by-key-hashed! session-key-hashed)]
+        rows-deleted (session.db/delete-session-by-key-hashed! session-key-hashed)]
     ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
     ;; would keep resending the dead cookie
     (request/clear-session-cookie
@@ -251,15 +251,15 @@
   "Refresh the reset token on an existing support-access-grant AuthIdentity, preserving the grant
    binding. Returns the new plaintext token, or nil if the grant has expired."
   [user-id]
-  (when-let [auth-identity (session.queries/auth-identity-for-provider user-id "support-access-grant")]
+  (when-let [auth-identity (session.db/auth-identity-for-provider user-id "support-access-grant")]
     (let [grant-ends-at (get-in auth-identity [:credentials :grant_ends_at])]
       (when (and grant-ends-at (t/before? (t/instant) (t/instant grant-ends-at)))
         (let [token (auth-identity/generate-reset-token user-id)]
-          (session.queries/set-auth-identity-credentials! (:id auth-identity)
-                                                          {:token_hash   (u.password/hash-bcrypt token)
-                                                           :expires_at   (t/plus (t/instant) (t/hours 48))
-                                                           :grant_ends_at grant-ends-at
-                                                           :consumed_at  nil})
+          (session.db/set-auth-identity-credentials! (:id auth-identity)
+                                                     {:token_hash   (u.password/hash-bcrypt token)
+                                                      :expires_at   (t/plus (t/instant) (t/hours 48))
+                                                      :grant_ends_at grant-ends-at
+                                                      :consumed_at  nil})
           token)))))
 
 (defn- forgot-password-impl
@@ -268,7 +268,7 @@
     (when-let [{user-id      :id
                 sso-source   :sso_source
                 is-active?   :is_active :as user}
-               (session.queries/user-by-lower-email (u/lower-case-en email))]
+               (session.db/user-by-lower-email (u/lower-case-en email))]
       (cond
         ;; SSO users should use their SSO provider, not password reset.
         (sso-password-reset-disabled? sso-source)
@@ -277,7 +277,7 @@
         ;; Support-access users get a refreshed token bound to the grant.
         ;; If the grant has expired, refresh-support-access-token! returns nil and we silently
         ;; do nothing (same as a nonexistent account).
-        (session.queries/auth-identity-exists? user-id "support-access-grant")
+        (session.db/auth-identity-exists? user-id "support-access-grant")
         (when-let [reset-token (refresh-support-access-token! user-id)]
           (let [password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
             (messages/send-password-reset-email! email nil password-reset-url is-active?)))
@@ -484,9 +484,9 @@
      (fn []
        (when-not (verify-second-factor! user-id code jti)
          (events/publish-event! :event/mfa-verification-failed
-                                {:object (session.queries/user user-id)})
+                                {:object (session.db/user user-id)})
          (throw (ex-info (tru "Invalid authentication code.") {:status-code 401})))))
-    (let [user (session.queries/user-login-status user-id)]
+    (let [user (session.db/user-login-status user-id)]
       ;; the account can be deactivated (or deleted) between the password step and here; a
       ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
       (when-not (:is_active user)

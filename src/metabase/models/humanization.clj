@@ -10,13 +10,13 @@
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require
+   [metabase.models.db :as models.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (declare humanization-strategy)
 
@@ -47,9 +47,8 @@
                        (not custom-display-name?))
               (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
                          (name model) internal-name display-name new-strategy-display-name)
-              (t2/update! model id
-                          {:display_name new-strategy-display-name}))))
-        (t2/reducible-select [model :id :name :display_name])))
+              (models.db/set-display-name! model id new-strategy-display-name))))
+        (models.db/names-reducible model)))
 
 (mu/defn- re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from

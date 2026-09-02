@@ -23,8 +23,8 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.mq.db :as mq.db]
    [metabase.mq.quartz-affinity :as quartz-affinity]
-   [metabase.mq.queries :as mq.queries]
    [metabase.mq.settings :as mq.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -55,7 +55,7 @@
   lower-case* reference (`:qrtz_triggers`) fails on case-sensitive MySQL/MariaDB. (Quartz's own SQL
   references these tables the same unquoted upper-case way.)"
   [sched-name threshold]
-  (mq.queries/waiting-queue-triggers-before sched-name quartz-affinity/queue-job-group threshold))
+  (mq.db/waiting-queue-triggers-before sched-name quartz-affinity/queue-job-group threshold))
 
 (defn- drop-orphaned-triggers!
   "Drops queue message triggers that have sat `WAITING` — never acquired by any node — for longer than

@@ -4,7 +4,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.permissions.core :as perms]
-   [metabase.sso.queries :as sso.queries]
+   [metabase.sso.db :as sso.db]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -47,14 +47,14 @@
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
-   (let [current-group-ids  (sso.queries/user-group-ids-excluding (u/the-id user-or-id) (excluded-group-ids))
+   (let [current-group-ids  (sso.db/user-group-ids-excluding (u/the-id user-or-id) (excluded-group-ids))
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
                                                                          (excluded-group-ids)))]
      (sync-group-memberships*! user-or-id to-remove to-add)))
   ([user-or-id new-groups-or-ids mapped-groups-or-ids]
    (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
-                              (sso.queries/user-group-ids-among (u/the-id user-or-id) mapped-group-ids (excluded-group-ids)))
+                              (sso.db/user-group-ids-among (u/the-id user-or-id) mapped-group-ids (excluded-group-ids)))
          new-group-ids      (-> (set (map u/the-id new-groups-or-ids))
                                 (set/intersection mapped-group-ids)
                                 (set/difference (excluded-group-ids)))

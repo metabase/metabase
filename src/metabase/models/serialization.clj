@@ -68,6 +68,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.visualization-settings :as mb.viz]
@@ -175,7 +176,7 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+    (models.db/pk-by-entity-id model pk eid)))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -503,16 +504,16 @@
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (t2/reducible-select model (cond-> {:where (or where true)}
-                                   order-by (assoc :order-by order-by)))
-      (t2/reducible-select model (cond-> {:where [:and
-                                                  [:or
-                                                   [:in :collection_id collection-set]
-                                                   (when (some nil? collection-set)
-                                                     [:= :collection_id nil])]
-                                                  (when where
-                                                    where)]}
-                                   order-by (assoc :order-by order-by))))))
+      (models.db/entities-reducible model (cond-> {:where (or where true)}
+                                            order-by (assoc :order-by order-by)))
+      (models.db/entities-reducible model (cond-> {:where [:and
+                                                           [:or
+                                                            [:in :collection_id collection-set]
+                                                            (when (some nil? collection-set)
+                                                              [:= :collection_id nil])]
+                                                           (when where
+                                                             where)]}
+                                            order-by (assoc :order-by order-by))))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)
@@ -685,8 +686,8 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
-    (t2/update! model id ingested)
-    (t2/select-one model pk id)))
+    (models.db/update-entity! model id ingested)
+    (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -707,7 +708,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
+  (models.db/insert-entity! (t2.model/resolve-model (symbol model-name)) ingested))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -791,7 +792,7 @@
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (models.db/entity-by-entity-id model id-str))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
@@ -823,7 +824,7 @@
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
-  (let [colls     (t2/select ['Collection :id :entity_id :location :name])
+  (let [colls     (models.db/collection-paths-columns)
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
@@ -835,10 +836,10 @@
                                                       all-ids)]]
                            [entity_id path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (t2/select ['Dashboard :entity_id :name])]
+                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
-                         (for [{:keys [entity_id name]} (t2/select ['Document :entity_id :name])]
+                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
      :dashboards  dashboards
@@ -1011,16 +1012,7 @@
   "Returns the field hierarchy (field + parents) for a field ID. Used by resolvers."
   [id]
   (reverse
-   (t2/select :model/Field
-              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
-                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [[:metabase_field :mf]]
-                                                                                 :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                                                                 :where  [:= :id id]}
-                                                               ^:allow-subquery {:from   [[:metabase_field :pf]]
-                                                                                 :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                                                                 :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
-               :from           [:parents]
-               :select         [:name :table_id]})))
+   (models.db/field-hierarchy-rows id)))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -1926,12 +1918,12 @@
                                                   (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
                               (cond
                                 (nil? first-eid)            ; no entity id, just drop existing stuff
-                                (do (t2/delete! model backward-fk parent-id)
+                                (do (models.db/delete-children! model backward-fk parent-id)
                                     (doseq [ingested lst]
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
+                                (do (models.db/delete-children-except! model backward-fk parent-id (map :entity_id lst))
                                     (doseq [ingested lst
                                             :let [ingested (enrich ingested)
                                                   local    (lookup-by-id model (entity-id model-name ingested))]]

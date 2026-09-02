@@ -7,7 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.queries :as audit-app.queries]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as audit-app.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
@@ -24,10 +24,10 @@
         batch-size (audit-app.settings/audit-table-truncation-batch-size)]
     (case (mdb/db-type)
       (:postgres :h2)
-      (audit-app.queries/delete-oldest-rows-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
+      (audit-app.db/delete-oldest-rows-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
       (:mysql :mariadb)
-      (audit-app.queries/delete-oldest-rows-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
+      (audit-app.db/delete-oldest-rows-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"

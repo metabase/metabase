@@ -1,7 +1,7 @@
 (ns metabase.internal-stats.questions
   (:require
    [metabase.app-db.core :as db]
-   [metabase.internal-stats.queries :as internal-stats.queries]
+   [metabase.internal-stats.db :as internal-stats.db]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]))
 
@@ -42,7 +42,7 @@
   "Get metrics based on questions "
   []
   (let [json-supported? (contains? #{:mysql :mariadb :postgres} (db/db-type))]
-    (internal-stats.queries/card-statistics
+    (internal-stats.db/card-statistics
      (cond-> [[:%count.* :total]
               [(u/count-case [:= "native" :query_type])
                :native]

@@ -2,7 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.login-history.queries :as login-history.queries]
+   [metabase.login-history.db :as login-history.db]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
@@ -55,7 +55,7 @@
   (let [login-history (merge {:user_id    user-id
                               :session_id session-id}
                              (dissoc device-info :embedded :token_exchange))]
-    (login-history.queries/insert-login-history! login-history)
+    (login-history.db/insert-login-history! login-history)
     login-history))
 
 (t2/define-after-select :model/LoginHistory
@@ -68,14 +68,14 @@
 (defn first-login-ever?
   "Return true if this is the first login ever for the given user-id."
   [{user-id :user_id}]
-  (some-> (login-history.queries/login-history-ids-for-user user-id 2)
+  (some-> (login-history.db/login-history-ids-for-user user-id 2)
           count
           (= 1)))
 
 (defn first-login-on-this-device?
   "Return true if this is the first login for the given user-id on the device"
   [{user-id :user_id, device-id :device_id}]
-  (some-> (login-history.queries/login-history-ids-for-user-device user-id device-id 2)
+  (some-> (login-history.db/login-history-ids-for-user-device user-id device-id 2)
           count
           (= 1)))
 
@@ -89,7 +89,7 @@
   [user-id]
   (let [cutoff (h2x/add-interval-honeysql-form
                 (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]
-    (> (login-history.queries/first-device-login-count-since user-id cutoff)
+    (> (login-history.db/first-device-login-count-since user-id cutoff)
        (login-history.settings/new-device-email-rate-limit-cap))))
 
 (t2/define-before-update :model/LoginHistory [_login-history]

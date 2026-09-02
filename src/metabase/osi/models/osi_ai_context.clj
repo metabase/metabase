@@ -18,7 +18,7 @@
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.osi.queries :as osi.queries]
+   [metabase.osi.db :as osi.db]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -165,11 +165,11 @@
   [path]
   ;; Resolve the parent path back to a local entity, then find this row by its (entity_type, local-id) key.
   (when-let [{:keys [entity_type entity_local_id]} (parent-path->entity (pop path))]
-    (osi.queries/ai-context (entity-retrieval/normalize-entity-type entity_type) entity_local_id)))
+    (osi.db/ai-context (entity-retrieval/normalize-entity-type entity_type) entity_local_id)))
 
 (defmethod serdes/load-update! "OsiAiContext"
   [_model-name ingested local]
   ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
-  (osi.queries/update-ai-context! (:entity_type local) (:entity_local_id local) ingested)
-  (osi.queries/ai-context (:entity_type local) (:entity_local_id local)))
+  (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) ingested)
+  (osi.db/ai-context (:entity_type local) (:entity_local_id local)))

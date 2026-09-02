@@ -7,9 +7,9 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
-   [metabase.metrics.queries :as metrics.queries]
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -212,7 +212,7 @@
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
   [database-id]
-  (doseq [{:keys [id dimensions]} (metrics.queries/metric-cards-for-database database-id)
+  (doseq [{:keys [id dimensions]} (metrics.db/metric-cards-for-database database-id)
           :when (empty? dimensions)]
     (try
       (sync-dimensions! :metadata/metric id)

@@ -22,6 +22,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -121,14 +122,11 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (t2/select (into [:model/Field] param-field-columns)
-                                         :table_id      [:in table-ids]
-                                         :semantic_type (app-db/isa :type/Name)
-                                         :active        true)
+    (m/index-by :table_id (-> (parameters.db/active-name-fields-for-tables param-field-columns table-ids (app-db/isa :type/Name))
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
-                              (t2/hydrate :has_field_values)))))
+                              parameters.db/hydrate-has-field-values))))
 
 (methodical/defmethod t2/simple-hydrate [nil :name_field]
   "Not really 100% sure why this is even needed but when we do recursive hydration of `[:target :name_field]` it tries
@@ -193,10 +191,8 @@
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (t2/select (into [:model/Field] param-field-columns) :id [:in field-ids])
-                                              (t2/hydrate :has_field_values :name_field
-                                                          [:target :has_field_values :name_field]
-                                                          [:dimensions [:human_readable_field :has_field_values]])
+                          (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
+                                              parameters.db/hydrate-param-field-details
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
@@ -427,7 +423,7 @@
                                  dashcards->param-id->field-ids
                                  param-field-ids->fields)]
             (assoc dashboard k param-fields)))
-        (t2/hydrate dashboards [:dashcards :card :series])))
+        (parameters.db/hydrate-dashcards-with-cards-and-series dashboards)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

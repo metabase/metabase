@@ -6,9 +6,9 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-run :as task-run]
-   [metabase.task-history.queries :as task-history.queries]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -144,7 +144,7 @@
                             (mapcat (fn [[entity-type model]]
                                       (when-let [entity-runs (grouped entity-type)]
                                         (let [ids   (map :entity_id entity-runs)
-                                              names (task-history.queries/names-by-id model ids)]
+                                              names (task-history.db/names-by-id model ids)]
                                           (map (fn [[id name]] [[entity-type id] name]) names))))
                                     entity-type->model))]
       (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
@@ -155,7 +155,7 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (task-history.queries/task-counts-for-runs run-ids)
+          counts       (task-history.db/task-counts-for-runs run-ids)
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -235,11 +235,11 @@
   (let [where-clause (build-run-where-clause params)
         limit        (request/limit)
         offset       (request/offset)
-        runs         (task-history.queries/task-runs (merge where-clause
-                                                            (runs-order-by params)
-                                                            (when limit {:limit limit})
-                                                            (when offset {:offset offset})))]
-    {:total  (task-history.queries/task-run-count where-clause)
+        runs         (task-history.db/task-runs (merge where-clause
+                                                       (runs-order-by params)
+                                                       (when limit {:limit limit})
+                                                       (when offset {:offset offset})))]
+    {:total  (task-history.db/task-run-count where-clause)
      :limit  limit
      :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
@@ -248,8 +248,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (task-history.queries/task-run id))
-        tasks (task-history.queries/tasks-for-run id)]
+  (let [run   (api/check-404 (task-history.db/task-run id))
+        tasks (task-history.db/tasks-for-run id)]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -265,6 +265,6 @@
   (perms/check-has-application-permission :monitoring)
   (let [where-conditions [[:= :run_type (:run-type params)]
                           (timestamp-constraint :started_at (:started-at params))]]
-    (->> (task-history.queries/distinct-run-entities (into [:and] where-conditions))
+    (->> (task-history.db/distinct-run-entities (into [:and] where-conditions))
          (map #(update % :entity_type keyword))
          hydrate-entity-names)))

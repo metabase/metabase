@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
-   [metabase.request.queries :as request.queries]
+   [metabase.request.db :as request.db]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
@@ -11,7 +11,7 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (some-> (request.queries/current-user user-id)
+    (some-> (request.db/current-user user-id)
             user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
@@ -60,7 +60,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (request.queries/current-user-for-id current-user-id)))
+    (request.db/current-user-for-id current-user-id)))
 
 (defn do-as-admin
   "Execute `thunk` with admin perms."

@@ -1520,6 +1520,7 @@
                     :model/Dashboard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet

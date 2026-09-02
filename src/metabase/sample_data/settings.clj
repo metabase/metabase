@@ -1,6 +1,6 @@
 (ns metabase.sample-data.settings
   (:require
-   [metabase.sample-data.queries :as sample-data.queries]
+   [metabase.sample-data.db :as sample-data.db]
    [metabase.settings.core :refer [defsetting]]))
 
 (defsetting has-sample-database?
@@ -8,5 +8,5 @@
   :type       :boolean
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (sample-data.queries/sample-database-exists?))
+  :getter     (fn [] (sample-data.db/sample-database-exists?))
   :doc        false)

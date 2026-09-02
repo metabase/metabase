@@ -4,6 +4,7 @@
   These are the default resolvers used during normal serdes export/import
   against the application database."
   (:require
+   [metabase.models.db :as models.db]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.log :as log]
@@ -21,7 +22,7 @@
   [id model]
   (when id
     (let [model-name (name model)
-          entity     (t2/select-one model (first (t2/primary-keys model)) id)
+          entity     (models.db/entity-by-pk model (first (t2/primary-keys model)) id)
           path       (when entity
                        (mapv :id (serdes/generate-path model-name entity)))]
       (cond
@@ -35,7 +36,7 @@
 (defn export-fk-keyed
   "Given a numeric ID, look up a different identifying field for that entity."
   [id model field]
-  (t2/select-one-fn field model :id id))
+  (models.db/entity-field model id field))
 
 (defn export-user
   "Export a user as their email address."
@@ -46,8 +47,8 @@
   "Given a numeric table_id, return a portable table reference [db-name schema table-name]."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
-          db-name                     (t2/select-one-fn :name [:model/Database :id :name] :id db_id)]
+    (let [{:keys [db_id name schema]} (models.db/table-ref-columns table-id)
+          db-name                     (models.db/database-name db_id)]
       [db-name schema name])))
 
 (defn export-field-fk
@@ -76,7 +77,7 @@
 (defn import-fk-keyed
   "Given a portable identifying field value, return the numeric :id."
   [portable model field]
-  (t2/select-one-pk model field portable))
+  (models.db/pk-by-field model field portable))
 
 (defn import-user
   "Import a user by email, creating if needed. Returns PK."
@@ -90,11 +91,7 @@
   "Creates a new inactive Table for a deserialized reference whose `[db-name schema table-name]`
   triple doesn't match any existing row. Returns the new table id."
   [db-id schema table-name]
-  (:id (t2/insert-returning-instance! :model/Table
-                                      {:db_id  db-id
-                                       :schema schema
-                                       :name   table-name
-                                       :active false})))
+  (models.db/insert-inactive-table! db-id schema table-name))
 
 (defn- synthesize-field!
   "Walks a field path from top-level to deepest, returning each existing field id and creating any
@@ -103,17 +100,8 @@
   (loop [parent-id nil
          remaining field-names]
     (if-let [field-name (first remaining)]
-      (let [field-id (or (t2/select-one-pk :model/Field
-                                           :table_id  table-id
-                                           :name      field-name
-                                           :parent_id parent-id)
-                         (t2/insert-returning-pk! :model/Field
-                                                  {:table_id      table-id
-                                                   :parent_id     parent-id
-                                                   :name          field-name
-                                                   :active        false
-                                                   :base_type     :type/*
-                                                   :database_type "NULL"}))]
+      (let [field-id (or (models.db/field-pk table-id field-name parent-id)
+                         (models.db/insert-inactive-field! table-id parent-id field-name))]
         (recur field-id (rest remaining)))
       parent-id)))
 
@@ -122,13 +110,13 @@
   doesn't, synthesize an inactive Table from the path so we can still resolve the reference."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
-      (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
+    (if-let [db-id (models.db/database-id-by-name db-name)]
+      (or (models.db/table-id-by-name table-name schema db-id)
           (synthesize-table! db-id schema table-name))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
                       {:table-id       table-id
                        :db-name        db-name
-                       :database-names (sort (t2/select-fn-vec :name :model/Database))
+                       :database-names (sort (models.db/database-names))
                        :error          ::database-not-found})))))
 
 (defn import-field-fk
@@ -139,7 +127,7 @@
   (when field-id
     (let [table-id (resolve/import-table-fk resolver [db-name schema table-name])
           field-q  (serdes/recursively-find-field-q table-id (reverse fields))]
-      (or (t2/select-one-pk :model/Field field-q)
+      (or (models.db/field-pk-where field-q)
           (synthesize-field! table-id fields)))))
 
 ;;; ============================================================

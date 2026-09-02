@@ -8,7 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.segments.queries :as segments.queries]
+   [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -47,13 +47,13 @@
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
-                   (segments.queries/insert-segment! table-id api/*current-user-id* name description definition))]
+                   (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
-      (segments.queries/hydrate-creator segment))))
+      (segments.db/hydrate-creator segment))))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
-  (-> (api/read-check (segments.queries/segment id))
-      segments.queries/hydrate-creator))
+  (-> (api/read-check (segments.db/segment id))
+      segments.db/hydrate-creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -72,13 +72,13 @@
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
-  (let [segments  (segments.queries/unarchived-segments)
+  (let [segments  (segments.db/unarchived-segments)
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (segments.queries/table-database-ids table-ids))
+                                                 (segments.db/table-database-ids table-ids))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
-        segments.queries/hydrate-creator-and-definition-description)))
+        segments.db/hydrate-creator-and-definition-description)))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
@@ -99,7 +99,7 @@
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes
-      (segments.queries/update-segment! id changes))
+      (segments.db/update-segment! id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
@@ -150,4 +150,4 @@
   "Return related entities."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (segments.queries/segment id) api/read-check xrays/related))
+  (-> (segments.db/segment id) api/read-check xrays/related))

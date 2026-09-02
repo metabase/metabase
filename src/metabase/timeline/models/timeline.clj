@@ -3,8 +3,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
-   [metabase.timeline.queries :as timeline.queries]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -39,8 +39,8 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
-  (cond-> (timeline.queries/hydrate-creator-and-collection
-           (timeline.queries/timelines-for-collection collection-id (boolean archived?)))
+  (cond-> (timeline.db/hydrate-creator-and-collection
+           (timeline.db/timelines-for-collection collection-id (boolean archived?)))
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 

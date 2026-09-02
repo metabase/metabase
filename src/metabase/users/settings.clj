@@ -1,7 +1,7 @@
 (ns metabase.users.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.users.queries :as users.queries]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;; NB: Settings are also defined where they're used
@@ -19,7 +19,7 @@
   :type :integer
   :getter (fn []
             (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
-              (when (users.queries/database-exists? id) id))))
+              (when (users.db/database-exists? id) id))))
 
 (defsetting dismissed-excel-pivot-exports-banner
   (deferred-tru "Toggle which is true after a user has dismissed the excel pivot exports banner.")

@@ -10,7 +10,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.audit-app.core :as audit]
-   [metabase.permissions-rest.queries :as permissions-rest.queries]
+   [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
@@ -130,7 +130,7 @@
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms/admin-group))
-        db-ids         (if db-id [db-id] (permissions-rest.queries/non-destination-database-ids (when-not audit? [:not= :id audit/audit-db-id])))]
+        db-ids         (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? [:not= :id audit/audit-db-id])))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -148,7 +148,7 @@
   This is not stored in the data-permissions table, so we add it to the graph for the API."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
-        db-ids                (if db-id [db-id] (permissions-rest.queries/non-destination-database-ids (when-not audit? [:not= :id audit/audit-db-id])))]
+        db-ids                (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? [:not= :id audit/audit-db-id])))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -213,7 +213,7 @@
           (-> (t2.realize/realize row)
               (update :type keyword)
               (update :value keyword))))
-   (permissions-rest.queries/data-permissions-reducible
+   (permissions-rest.db/data-permissions-reducible
     [(when perm-type [:= :perm_type (u/qualified-name perm-type)])
      (when db-id [:= :db_id db-id])
      (when group-id [:= :group_id group-id])
@@ -606,7 +606,7 @@
    (let [affected-group-ids  (keys graph)
          affected-db-ids     (into #{} (mapcat keys) (vals graph))
          all-tables          (when (seq affected-db-ids)
-                               (permissions-rest.queries/tables-for-databases affected-db-ids))
+                               (permissions-rest.db/tables-for-databases affected-db-ids))
          tables-by-db-schema (group-by (juxt :db_id :schema) all-tables)
          tables-by-db        (group-by :db_id all-tables)
          current-perms       (or (perms/index-database-permissions affected-group-ids affected-db-ids) {})

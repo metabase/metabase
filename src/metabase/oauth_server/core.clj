@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.mcp.core :as mcp]
-   [metabase.oauth-server.queries :as oauth-server.queries]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
@@ -104,7 +104,7 @@
           (when (and (or (nil? expiry)
                          (t/after? (t/instant expiry) (t/instant)))
                      ;; Fail closed if the issuing client is gone (SEC-863).
-                     (oauth-server.queries/oauth-client-exists? (:client-id token-data)))
+                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               {:user-id user-id
                :scopes  (or (some->> (:scope token-data) (into #{})) #{})})))))))

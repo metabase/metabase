@@ -1,7 +1,7 @@
 (ns metabase.comments.models.comment-reaction
   "Model for comment reactions (emoji reactions on comments)"
   (:require
-   [metabase.comments.queries :as comments.queries]
+   [metabase.comments.db :as comments.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,7 +15,7 @@
   [_model k reactions]
   (mi/instances-with-hydrated-data
    reactions k
-   #(comments.queries/users-by-id (map :user_id reactions))
+   #(comments.db/users-by-id (map :user_id reactions))
    :user_id {:default {}}))
 
 ;;; Helpers
@@ -23,17 +23,17 @@
 (defn reaction-exists?
   "Check if a reaction already exists for a given comment, user, and emoji"
   [comment-id user-id emoji]
-  (comments.queries/reaction-exists? comment-id user-id emoji))
+  (comments.db/reaction-exists? comment-id user-id emoji))
 
 (defn create-reaction!
   "Create a new reaction"
   [comment-id user-id emoji]
-  (comments.queries/insert-reaction! comment-id user-id emoji))
+  (comments.db/insert-reaction! comment-id user-id emoji))
 
 (defn delete-reaction!
   "Delete a specific reaction"
   [comment-id user-id emoji]
-  (comments.queries/delete-reaction! comment-id user-id emoji))
+  (comments.db/delete-reaction! comment-id user-id emoji))
 
 (defn toggle-reaction
   "Toggle a reaction - add it if it doesn't exist, remove it if it does"
@@ -58,8 +58,8 @@
    Returns a map of `{comment-id {emoji [user1 user2...]}}."
   [current-user-id comment-ids]
   (when (seq comment-ids)
-    (let [reactions   (-> (comments.queries/reactions-for-comments comment-ids)
-                          comments.queries/hydrate-user)
+    (let [reactions   (-> (comments.db/reactions-for-comments comment-ids)
+                          comments.db/hydrate-user)
 
           ;; first user comes first if they reacted
           first-or-last (fn [acc user]

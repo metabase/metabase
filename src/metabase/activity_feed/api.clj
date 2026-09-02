@@ -1,8 +1,8 @@
 (ns metabase.activity-feed.api
   (:require
    [medley.core :as m]
+   [metabase.activity-feed.db :as activity-feed.db]
    [metabase.activity-feed.models.recent-views :as recent-views]
-   [metabase.activity-feed.queries :as activity-feed.queries]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
@@ -12,9 +12,9 @@
 (defn- models-query
   [model ids]
   (case model
-    "card"      (activity-feed.queries/recent-cards ids)
-    "dashboard" (activity-feed.queries/recent-dashboards ids)
-    "table"     (activity-feed.queries/recent-tables ids)))
+    "card"      (activity-feed.db/recent-cards ids)
+    "dashboard" (activity-feed.db/recent-dashboards ids)
+    "table"     (activity-feed.db/recent-tables ids)))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
@@ -27,7 +27,7 @@
                           (->> (models-query model (map :model_id views'))
                                (mapv #(assoc % :model model)))))
                       grouped)
-        items (->> (activity-feed.queries/hydrate-moderation-reviews items)
+        items (->> (activity-feed.db/hydrate-moderation-reviews items)
                    (map (fn [{:keys [moderation_reviews] :as item}]
                           (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
                             (assoc item :moderated_status status)))))]
@@ -46,8 +46,8 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit]
-  (let [dashboard-and-table-views (activity-feed.queries/recent-dashboard-and-table-views views-limit)
-        card-runs                 (->> (activity-feed.queries/recent-card-runs card-runs-limit)
+  (let [dashboard-and-table-views (activity-feed.db/recent-dashboard-and-table-views views-limit)
+        card-runs                 (->> (activity-feed.db/recent-card-runs card-runs-limit)
                                        (mapv #(-> %
                                                   (dissoc :row_count)
                                                   (assoc :model "card"))))]
@@ -103,9 +103,9 @@
                                         [:context  [:enum :selection]]]]
   (let [model-id model_id
         model-type (recent-views/rv-model->model model)]
-    (when-not (activity-feed.queries/entity-exists? model-type model-id)
+    (when-not (activity-feed.db/entity-exists? model-type model-id)
       (throw (ex-info "Model not found" {:model model :model_id model-id})))
-    (api/read-check (activity-feed.queries/entity model-type model-id))
+    (api/read-check (activity-feed.db/entity model-type model-id))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -120,9 +120,9 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
-    (let [dashboard (-> (activity-feed.queries/dashboard dashboard-id)
+    (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
                         api/check-404
-                        activity-feed.queries/hydrate-collection-is-personal)]
+                        activity-feed.db/hydrate-collection-is-personal)]
       (if (mi/can-read? dashboard)
         dashboard
         api/generic-204-no-content))

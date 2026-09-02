@@ -3,7 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.oauth-server.queries :as oauth-server.queries]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.request.current :as request]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -44,8 +44,8 @@
   (let [limit  (or (request/limit) 50)
         offset (or (request/offset) 0)
         where  (event-where-clause client-id event-type)
-        total  (:count (first (oauth-server.queries/client-event-count where)))
-        rows   (oauth-server.queries/client-events where limit offset)]
+        total  (:count (first (oauth-server.db/client-event-count where)))
+        rows   (oauth-server.db/client-events where limit offset)]
     {:total  (or total 0)
      :limit  limit
      :offset offset

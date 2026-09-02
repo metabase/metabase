@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
-   [metabase.typed-schemas.queries :as typed-schemas.queries]))
+   [metabase.typed-schemas.db :as typed-schemas.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +36,7 @@
   `metabase.metabot.tools.resources/check-resource-database`)."
   [db-ids]
   (when (seq db-ids)
-    (typed-schemas.queries/destination-database-ids db-ids)))
+    (typed-schemas.db/destination-database-ids db-ids)))
 
 (defn select-schema-cards
   "Returns readable, non-archived cards for schema generation.
@@ -45,7 +45,7 @@
   the same visibility, archived, database and collection filters, and exclude cards backed by a
   destination (routed) database -- see [[destination-db-ids]]."
   [card-type database-ids collection-ids]
-  (let [cards (->> (typed-schemas.queries/cards-ordered-by-name
+  (let [cards (->> (typed-schemas.db/cards-ordered-by-name
                     (cond-> [:and
                              [:= :type (name card-type)]
                              [:= :archived false]

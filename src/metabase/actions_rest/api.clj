@@ -1,7 +1,7 @@
 (ns metabase.actions-rest.api
   "`/api/action/` endpoints."
   (:require
-   [metabase.actions-rest.queries :as actions-rest.queries]
+   [metabase.actions-rest.db :as actions-rest.db]
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
@@ -37,15 +37,15 @@
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (actions-rest.queries/hydrate-creator (actions/select-actions models
-                                                                            :model_id [:in (map :id models)]
-                                                                            :archived false))
+              (actions-rest.db/hydrate-creator (actions/select-actions models
+                                                                       :model_id [:in (map :id models)]
+                                                                       :archived false))
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
                    ;; action permission keyed off of model permission
-                   (actions-rest.queries/unarchived-models-in-collections (collection/visible-collection-filter-clause)))]
+                   (actions-rest.db/unarchived-models-in-collections (collection/visible-collection-filter-clause)))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
@@ -53,14 +53,14 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (actions-rest.queries/public-actions))
+  (actions-rest.db/public-actions))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
-      actions-rest.queries/hydrate-creator
+      actions-rest.db/hydrate-creator
       api/read-check))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -76,7 +76,7 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id}))
-  (actions-rest.queries/delete-action! action-id)
+  (actions-rest.db/delete-action! action-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -103,7 +103,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (actions-rest.queries/database db-id))))
+       (actions-rest.db/database db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -169,7 +169,7 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (actions-rest.queries/set-action-public-uuid! id <> api/*current-user-id*)))}))
+                 (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -188,7 +188,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (actions-rest.queries/set-action-public-uuid! id nil nil)
+  (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]

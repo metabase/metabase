@@ -7,7 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
-   [metabase.typed-schemas.queries :as typed-schemas.queries]
+   [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.table :as schema.table]
    [metabase.util :as u]))
@@ -89,7 +89,7 @@
     (when (seq field-ids)
       (into {}
             (map (juxt :id :table_id))
-            (typed-schemas.queries/field-ids-and-table-ids field-ids)))))
+            (typed-schemas.db/field-ids-and-table-ids field-ids)))))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
@@ -144,7 +144,7 @@
   "Syncs and returns persisted metric dimensions with mapping metadata."
   [{:keys [id]}]
   (metrics/sync-dimensions! :metadata/metric id)
-  (let [{:keys [dimensions dimension_mappings]} (typed-schemas.queries/card-dimensions id)]
+  (let [{:keys [dimensions dimension_mappings]} (typed-schemas.db/card-dimensions id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
 (defn- readable-table-source-rows
@@ -152,7 +152,7 @@
   [table-ids]
   (when (seq table-ids)
     (perms/prime-table-perms-cache {:table-ids (set table-ids)})
-    (->> (typed-schemas.queries/table-names table-ids)
+    (->> (typed-schemas.db/table-names table-ids)
          (filter mi/can-read?))))
 
 (defn- table-key-disambiguators

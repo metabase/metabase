@@ -17,8 +17,8 @@
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   [metabase.query-processor.queries :as query-processor.queries]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.tracing.core :as tracing]
@@ -63,7 +63,7 @@
         (when (seq no-context)
           (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
         (when (seq with-context)
-          (query-processor.queries/insert-query-executions! (map #(dissoc % :json_query) with-context))))
+          (query-processor.db/insert-query-executions! (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
         (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 

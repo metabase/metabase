@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.appearance.queries :as appearance.queries]
+   [metabase.appearance.db :as appearance.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
@@ -402,7 +402,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :setter     :none
   :getter     (fn []
                 (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
-                  (when (and id (appearance.queries/unarchived-dashboard-exists? id))
+                  (when (and id (appearance.db/unarchived-dashboard-exists? id))
                     id)))
   :doc        false)
 

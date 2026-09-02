@@ -13,7 +13,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.view-log.queries :as view-log.queries]
+   [metabase.view-log.db :as view-log.db]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -55,7 +55,7 @@
           ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
           ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
-            (view-log.queries/increment-view-counts! model cnt->ids)))))
+            (view-log.db/increment-view-counts! model cnt->ids)))))
     (catch Exception e
       (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
@@ -82,7 +82,7 @@
 (defn- record-views!* [views]
   (log/debugf "Recording %d views" (count views))
   (try
-    (view-log.queries/insert-view-logs! views)
+    (view-log.db/insert-view-logs! views)
     (catch Exception e
       (log/errorf "Failed to record views: %s" (ex-message e)))))
 
@@ -146,7 +146,7 @@
      :user-id user-id}
     (try
       (when (and (= context :ad-hoc)
-                 (= :model (view-log.queries/card-type card-id)))
+                 (= :model (view-log.db/card-type card-id)))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card
                                       :object-id card-id
@@ -169,7 +169,7 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
-        (view-log.queries/update-dashboards-last-viewed-at! dashboard-id->timestamp))
+        (view-log.db/update-dashboards-last-viewed-at! dashboard-id->timestamp))
       (catch Exception e
         (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 

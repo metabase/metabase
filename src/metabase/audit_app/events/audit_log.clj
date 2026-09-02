@@ -1,8 +1,8 @@
 (ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
-   [metabase.audit-app.queries :as audit-app.queries]
    [metabase.events.core :as events]
    [metabase.util :as u]
    [methodical.core :as methodical]))
@@ -37,7 +37,7 @@
   (let [cards   (when (seq dashcards)
                   (into {}
                         (map (juxt :id #(select-keys % [:name :description])))
-                        (audit-app.queries/cards (map :card_id dashcards))))
+                        (audit-app.db/cards (map :card_id dashcards))))
         details (-> (select-keys object [:description :name :id])
                     (assoc :dashcards (for [{:keys [id card_id]} dashcards]
                                         (-> (cards card_id)
@@ -212,7 +212,7 @@
 
 (methodical/defmethod events/publish-event! ::install-event
   [topic _event]
-  (when-not (audit-app.queries/audit-log-topic-exists? "install")
+  (when-not (audit-app.db/audit-log-topic-exists? "install")
     (audit-log/record-event! topic {})))
 
 (events/derive! ::database-event ::event)

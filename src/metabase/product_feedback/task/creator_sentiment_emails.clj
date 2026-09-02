@@ -10,7 +10,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
-   [metabase.product-feedback.queries :as product-feedback.queries]
+   [metabase.product-feedback.db :as product-feedback.db]
    [metabase.task.core :as task]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
@@ -27,7 +27,7 @@
     - Created at least 1 dashboard
     - Only admins if whitelabeling is enabled"
   [has-whitelabelling?]
-  (product-feedback.queries/creator-sentiment-candidates
+  (product-feedback.db/creator-sentiment-candidates
    (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)
    (when has-whitelabelling? [:= :u.is_superuser true])))
 
@@ -47,11 +47,11 @@
   {:created_at     (analytics/instance-creation)
    :plan           (fetch-plan-info)
    :version        (config/mb-version-info :tag)
-   :num_users      (product-feedback.queries/active-personal-user-count)
-   :num_dashboards (product-feedback.queries/unarchived-dashboard-count)
-   :num_databases  (product-feedback.queries/non-audit-database-count)
-   :num_questions  (product-feedback.queries/unarchived-card-count "question")
-   :num_models     (product-feedback.queries/unarchived-card-count "model")})
+   :num_users      (product-feedback.db/active-personal-user-count)
+   :num_dashboards (product-feedback.db/unarchived-dashboard-count)
+   :num_databases  (product-feedback.db/non-audit-database-count)
+   :num_questions  (product-feedback.db/unarchived-card-count "question")
+   :num_models     (product-feedback.db/unarchived-card-count "model")})
 
 (defn- user-instance-info
   "Create a blob of instance/user data to be sent to the creator sentiment survey."

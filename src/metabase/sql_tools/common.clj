@@ -6,8 +6,8 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-tools.db :as sql-tools.db]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.sql-tools.queries :as sql-tools.queries]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
@@ -38,7 +38,7 @@
   (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
     ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
     ;; query naming a table that does not exist.
-    (set (sql-tools.queries/active-visible-table-ids-by-lower-name database-id names))
+    (set (sql-tools.db/active-visible-table-ids-by-lower-name database-id names))
     #{}))
 
 (defn find-table-or-transform

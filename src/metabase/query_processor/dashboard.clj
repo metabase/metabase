@@ -14,10 +14,10 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
-   [metabase.query-processor.queries :as query-processor.queries]
    [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -34,7 +34,7 @@
     (api/check-404
      (and (= (:dashboard_id dashcard) dashboard-id)
           (or (= (:card_id dashcard) card-id)
-              (query-processor.queries/dashcard-series-exists? card-id dashcard-id))))))
+              (query-processor.db/dashcard-series-exists? card-id dashcard-id))))))
 
 (defn- current-dimension-mapping?
   [provider query mapping]

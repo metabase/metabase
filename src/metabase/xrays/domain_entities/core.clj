@@ -9,8 +9,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
-   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]
+   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]))
 
 (mu/defn field-type :- [:or
                         ::lib.schema.common/base-type
@@ -123,7 +123,7 @@
 (mu/defn domain-entity-for-table :- [:maybe ::domain-entities.specs/instantiated-domain-entity]
   "Find the best fitting domain entity for given table."
   [table :- (ms/InstanceOf :model/Table)]
-  (let [table (t2/hydrate table :fields)]
+  (let [table (xrays.db/hydrate-fields table)]
     (some->> @*domain-entity-specs*
              vals
              (filter (partial satisfies-requirements? table))

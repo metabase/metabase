@@ -5,14 +5,14 @@
    [metabase.lib.core :as lib]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:const result-limit
   "How many results to return when chain filtering"
@@ -40,7 +40,7 @@
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
   are provided (rather than field-ids). This is a common case for nested queries."
   [dashboard param-key]
-  (let [dashboard       (t2/hydrate dashboard :resolved-params)
+  (let [dashboard       (parameters.db/hydrate-resolved-params dashboard)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
                               :let [field-ref ((some-fn lib/parameter-target-field-ref
@@ -83,7 +83,7 @@
     constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard   (cond-> dashboard
-                       (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
+                       (nil? (:resolved-params dashboard)) parameters.db/hydrate-resolved-params)
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (into #{} (map :field-id (param->fields param)))]
@@ -123,7 +123,7 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard (t2/hydrate dashboard :resolved-params)
+   (let [dashboard (parameters.db/hydrate-resolved-params dashboard)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
@@ -155,7 +155,7 @@
        (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
                        {:status-code 400
                         :parameter param-key})))
-     (let [dashboard (t2/hydrate dashboard :resolved-params)
+     (let [dashboard (parameters.db/hydrate-resolved-params dashboard)
            param (get-in dashboard [:resolved-params param-key])
            ;; Whatever the param's type, we want an equality constraint for the remapped value
            ;; lookup. Use op-override := instead of mutating the param type to :id (QUE2-326).

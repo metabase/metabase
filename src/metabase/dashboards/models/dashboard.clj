@@ -8,6 +8,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
@@ -60,7 +61,7 @@
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
+   (mi/can-write? (dashboards.db/dashboard pk))))
 
 (perms/define-collection-based-visibility! :model/Dashboard)
 
@@ -76,7 +77,7 @@
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id)))
+    (dashboards.db/delete-dashboard-revisions! dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
@@ -106,7 +107,7 @@
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
       (when (:archived changes)
-        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
+        (dashboards.db/delete-pulses-for-dashboard! (u/the-id dashboard))))))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -143,9 +144,7 @@
   [_model k dashboards]
   (mi/instances-with-hydrated-data
    dashboards k
-   #(group-by :dashboard_id (t2/select :model/DashboardTab
-                                       :dashboard_id [:in (map :id dashboards)]
-                                       {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
+   #(group-by :dashboard_id (dashboards.db/dashboard-tabs-for-dashboards (map :id dashboards)))
    :id
    {:default []}))
 
@@ -154,23 +153,7 @@
   (mi/instances-with-hydrated-data
    dashboards k
    #(group-by :dashboard_id
-              (t2/select :model/DashboardCard
-                         {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-                          :from      [[:report_dashboardcard :dashcard]]
-                          :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                                      [:collection :collection] [:= :collection.id :card.collection_id]]
-                          :where     [:and
-                                      [:in :dashcard.dashboard_id (map :id dashboards)]
-                                      [:or
-                                       ;; show it if:
-                                       ;; - the card isn't archived
-                                       [:= :card.archived false]
-                                       ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
-                                       [:and
-                                        [:not= :card.dashboard_id nil]
-                                        [:= :card.archived_directly false]]
-                                       [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                          :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
+              (dashboards.db/dashcards-with-visible-cards-for-dashboards (map :id dashboards)))
    :id
    {:default []}))
 
@@ -196,7 +179,7 @@
   appear on the dashboard are archived."
   [dashboard-id new-cards]
   (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
-        internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id dashboard-id)
+        internal-dashboard-question-ids (dashboards.db/internal-dashboard-question-ids dashboard-id)
         ;; the set of all card IDs that are present on the dashboard
         used-card-ids (into #{} (map :card_id new-cards))
         ;; DQs that aren't used get archived
@@ -204,9 +187,9 @@
         ;; DQs that ARE used get unarchived
         internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
     (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
+      (dashboards.db/set-cards-archived! ids true))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
+      (dashboards.db/set-cards-archived! ids false))))
 
 (defn cascade-card-state-from-dashboard-update!
   "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
@@ -219,18 +202,10 @@
   (let [id (:id current-dash)]
     (when (api/column-will-change? :archived current-dash updates)
       (if (:archived updates)
-        (t2/update! :model/Card
-                    :dashboard_id id
-                    :archived false
-                    {:archived true :archived_directly false})
-        (t2/update! :model/Card
-                    :dashboard_id id
-                    :archived true
-                    :archived_directly false
-                    {:archived false})))
+        (dashboards.db/archive-dashboard-questions! id)
+        (dashboards.db/unarchive-dashboard-questions! id)))
     (when (api/column-will-change? :collection_id current-dash updates)
-      (t2/update! :model/Card :dashboard_id id
-                  {:collection_id (:collection_id updates)}))))
+      (dashboards.db/move-dashboard-questions! id (:collection_id updates)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -239,8 +214,8 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (-> (t2/select-one :model/Dashboard :id (u/the-id dashboard-or-id))
-                 (t2/hydrate [:dashcards :card]))]
+  (let [dash (-> (dashboards.db/dashboard (u/the-id dashboard-or-id))
+                 dashboards.db/hydrate-dashcards-with-cards)]
     (params/dashcards->param-field-ids (:dashcards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
@@ -305,7 +280,7 @@
     ;; metadata (`type/Category`, `source/table-defaults`, ...) that
     ;; `param-target->field-id` later validates against `:metabase.queries.schema/card`.
     (let [dashcards-for-hydration (map #(dissoc % :card) new-dashcards)
-          new-param-field-ids    (params/dashcards->param-field-ids (t2/hydrate dashcards-for-hydration :card))]
+          new-param-field-ids    (params/dashcards->param-field-ids (dashboards.db/hydrate-card dashcards-for-hydration))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
 (defn- legacy-result-metadata-for-query
@@ -319,7 +294,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
+    (and (integer? (:id card)) (dashboards.db/card (:id card)))
     (do
       (api/read-check :model/Card (:id card))
       card)
@@ -327,18 +302,17 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [_    (query-perms/check-run-permissions-for-query (:dataset_query card))
-          card (first (t2/insert-returning-instances!
-                       :model/Card
-                       (-> card
-                           (update :result_metadata #(or % (-> card
-                                                               :dataset_query
-                                                               legacy-result-metadata-for-query)))
-                           (dissoc :id
-                                   :public_uuid :made_public_by_id
-                                   :enable_embedding :embedding_params)
-                           (assoc :creator_id api/*current-user-id*))))]
+          card (dashboards.db/insert-card!
+                (-> card
+                    (update :result_metadata #(or % (-> card
+                                                        :dataset_query
+                                                        legacy-result-metadata-for-query)))
+                    (dissoc :id
+                            :public_uuid :made_public_by_id
+                            :enable_embedding :embedding_params)
+                    (assoc :creator_id api/*current-user-id*)))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      (dashboards.db/hydrate-card-details card))))
 
 (defn- check-dashcard-parameter-mapping-permissions
   [dashcards]
@@ -347,7 +321,7 @@
                          (assoc mapping ::card-id (or (:card_id mapping) card_id)))
         card-ids       (into #{} (keep ::card-id) mappings)
         card-id->query (when (seq card-ids)
-                         (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+                         (dashboards.db/card-queries card-ids))
         field-ids      (into []
                              (keep (fn [{:keys [target] ::keys [card-id]}]
                                      (when target
@@ -363,16 +337,15 @@
     (let [{dashcards      :dashcards
            tabs           :tabs
            :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-          dashboard  (first (t2/insert-returning-instances!
-                             :model/Dashboard
-                             (-> dashboard
-                                 (dissoc :dashcards :tabs :rule :related
-                                         :transient_name :transient_filters :param_fields :more
-                                         :public_uuid :made_public_by_id
-                                         :enable_embedding :embedding_params)
-                                 (assoc :description description
-                                        :collection_id parent-collection-id
-                                        :creator_id api/*current-user-id*))))
+          dashboard  (dashboards.db/insert-dashboard!
+                      (-> dashboard
+                          (dissoc :dashcards :tabs :rule :related
+                                  :transient_name :transient_filters :param_fields :more
+                                  :public_uuid :made_public_by_id
+                                  :enable_embedding :embedding_params)
+                          (assoc :description description
+                                 :collection_id parent-collection-id
+                                 :creator_id api/*current-user-id*)))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
           dashcards-to-add (for [dashcard dashcards]
                              (let [card     (some-> dashcard :card
@@ -441,7 +414,7 @@
                                :dashcard     ...
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
-  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
+  (let [dashboards-with-cards (dashboards.db/hydrate-dashcards-cards-and-series dashboards)]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard
@@ -501,9 +474,8 @@
   (dashboard-deps false dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
-  (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
-                             :dashboard_id id)
-        dashboard (t2/select-one :model/Dashboard :id id)
+  (let [dashcards (dashboards.db/dashcard-serdes-columns id)
+        dashboard (dashboards.db/dashboard id)
         dash-id   id]
     (merge-with
      merge
@@ -516,8 +488,7 @@
                               card_id (conj card_id))]
                 {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
      (when (not-empty dashcards)
-       (into {} (for [{:keys [id card_id dashboardcard_id]} (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id]
-                                                                       :dashboardcard_id [:in (map :id dashcards)])]
+       (into {} (for [{:keys [id card_id dashboardcard_id]} (dashboards.db/dashcard-series-columns (map :id dashcards))]
                   {["Card" card_id] {"DashboardCardSeries" id
                                      "DashboardCard"       dashboardcard_id
                                      "Dashboard"           dash-id}})))
@@ -536,8 +507,8 @@
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
   ;; expects, then reuse the same walk as deserialization.
   (dashboard-deps true (-> dashboard
-                           (t2/hydrate :dashcards)
-                           (update :dashcards #(t2/hydrate % :series)))))
+                           dashboards.db/hydrate-dashcards
+                           (update :dashcards dashboards.db/hydrate-series))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

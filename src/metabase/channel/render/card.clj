@@ -1,7 +1,7 @@
 (ns metabase.channel.render.card
   (:require
    [hiccup.core :refer [h]]
-   [metabase.channel.queries :as channel.queries]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
@@ -367,5 +367,5 @@
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card]
-  (or (some->> card :database_id channel.queries/database qp.timezone/results-timezone-id)
+  (or (some->> card :database_id channel.db/database qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))

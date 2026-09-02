@@ -4,13 +4,13 @@
    [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
-   [metabase.usage-metadata.queries :as usage-metadata.queries]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -39,7 +39,7 @@
   [field-ids]
   (let [field-ids (into #{} (filter pos-int?) field-ids)
         rows      (when (seq field-ids)
-                    (usage-metadata.queries/field-names field-ids))]
+                    (usage-metadata.db/field-names field-ids))]
     (into {}
           (map (fn [{:keys [id name display_name]}]
                  [id {:id           id
@@ -55,9 +55,9 @@
         table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
         card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
         tables    (when (seq table-ids)
-                    (usage-metadata.queries/table-names table-ids))
+                    (usage-metadata.db/table-names table-ids))
         cards     (when (seq card-ids)
-                    (usage-metadata.queries/card-names card-ids))]
+                    (usage-metadata.db/card-names card-ids))]
     (into {}
           cat
           [(map (fn [{:keys [id name display_name db_id schema]}]
@@ -95,7 +95,7 @@
                 source-id   (conj [:= :source_id source-id])
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.queries/grouped-segment-rows where)))
+    (usage-metadata.db/grouped-segment-rows where)))
 
 (defn- grouped-metric-rows
   "Group + sum `source_metric_daily` counts for a source filter."
@@ -106,7 +106,7 @@
                 source-id   (conj [:= :source_id source-id])
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.queries/grouped-metric-rows where)))
+    (usage-metadata.db/grouped-metric-rows where)))
 
 (defn- grouped-dimension-rows
   "Group + sum `source_dimension_daily` counts for a source filter."
@@ -117,7 +117,7 @@
                 source-id   (conj [:= :source_id source-id])
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.queries/grouped-dimension-rows where)))
+    (usage-metadata.db/grouped-dimension-rows where)))
 
 (defn- decode-atom-fingerprints [x]
   (cond
@@ -137,7 +137,7 @@
                 source-id    (conj [:= :source_id source-id])
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (->> (usage-metadata.queries/grouped-composite-rows where)
+    (->> (usage-metadata.db/grouped-composite-rows where)
          (mapv (fn [row]
                  (update row :atom_fingerprints decode-atom-fingerprints))))))
 
@@ -149,7 +149,7 @@
                 source-id   (conj [:= :source_id source-id])
                 bucket-start (conj [:>= :bucket_date bucket-start])
                 bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.queries/grouped-profile-rows where)))
+    (usage-metadata.db/grouped-profile-rows where)))
 
 (defn- wrap-query
   "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."
@@ -177,12 +177,12 @@
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (usage-metadata.queries/segments where)
+        segments  (usage-metadata.db/segments where)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (usage-metadata.queries/table-database-ids table-ids)))]
+                          (usage-metadata.db/table-database-ids table-ids)))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]
@@ -205,7 +205,7 @@
 
 (defn- existing-metric-signatures*
   []
-  (let [cards (usage-metadata.queries/unarchived-metric-cards)]
+  (let [cards (usage-metadata.db/unarchived-metric-cards)]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [database_id dataset_query]}]
@@ -438,12 +438,12 @@
   [[source-type source-id]]
   (let [where     (cond-> [:and [:= :archived false]]
                     (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (usage-metadata.queries/segments where)
+        segments  (usage-metadata.db/segments where)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (usage-metadata.queries/table-database-ids table-ids)))]
+                          (usage-metadata.db/table-database-ids table-ids)))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]

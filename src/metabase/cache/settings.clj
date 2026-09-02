@@ -1,6 +1,6 @@
 (ns metabase.cache.settings
   (:require
-   [metabase.cache.queries :as cache.queries]
+   [metabase.cache.db :as cache.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
@@ -11,7 +11,7 @@
   :default    true
   :visibility :authenticated
   :audit      :getter
-  :getter     cache.queries/cache-config-exists?
+  :getter     cache.db/cache-config-exists?
   :setter     :none)
 
 (def ^:private ^:const global-max-caching-kb

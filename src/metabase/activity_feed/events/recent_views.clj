@@ -1,8 +1,8 @@
 (ns metabase.activity-feed.events.recent-views
   "This namespace is responsible for subscribing to events which should update the recent views for a user."
   (:require
+   [metabase.activity-feed.db :as activity-feed.db]
    [metabase.activity-feed.models.recent-views :as recent-views]
-   [metabase.activity-feed.queries :as activity-feed.queries]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.util :as u]
@@ -52,7 +52,7 @@
       ;; we don't want to count pinned card views or document cards
       (when (and user-id
                  (not (#{:collection :dashboard :dashboard-subscription} context))
-                 (not (activity-feed.queries/card-document-id card-id)))
+                 (not (activity-feed.db/card-document-id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
@@ -78,7 +78,7 @@
   (let [user-id (or user-id api/*current-user-id*)]
     (when (and user-id
                (= context :question)
-               (nil? (activity-feed.queries/card-document-id object-id)))
+               (nil? (activity-feed.db/card-document-id object-id)))
       (try
         (recent-views/update-users-recent-views! user-id :model/Card object-id :view)
         (catch Throwable e

@@ -12,7 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.queries :as query-processor.queries]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
@@ -86,7 +86,7 @@
                         (qp.store/miscellaneous-value [::card-stored-metadata]))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
-        (query-processor.queries/set-card-result-metadata! card-id actual-metadata)))
+        (query-processor.db/set-card-result-metadata! card-id actual-metadata)))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

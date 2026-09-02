@@ -8,7 +8,7 @@
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
-   [metabase.setup-rest.queries :as setup-rest.queries]
+   [metabase.setup-rest.db :as setup-rest.db]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -42,7 +42,7 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [new-user   (setup-rest.queries/insert-superuser! email first-name last-name)
+  (let [new-user   (setup-rest.db/insert-superuser! email first-name last-name)
         user-id    (u/the-id new-user)]
     (auth-identity/set-password! user-id password)
     (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]
@@ -100,7 +100,7 @@
                 (setting/restore-cache!)
                 (throw e))))]
     (let [{:keys [user-id session-key session]} (create!)
-          superuser (setup-rest.queries/user user-id)]
+          superuser (setup-rest.db/user user-id)]
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
