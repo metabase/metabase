@@ -1654,13 +1654,32 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
+def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
+    """sqlglot's tokenizer treats `?::` as a single token in every dialect, but only Databricks'
+    parser consumes it (the `expr?::type` try-cast operator). So a JDBC parameter followed by a
+    cast (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in every
+    other dialect. To work around this we rewrite `?::` to `? ::` outside Databricks (#81373).
+    """
+    if dialect == "databricks" or "?::" not in sql:
+        return sql
+    try:
+        tokens = sqlglot.tokenize(sql, read=dialect)
+    except Exception:
+        return sql
+    # Insert right-to-left so earlier token offsets stay valid.
+    for tok in reversed(tokens):
+        if tok.token_type == sqlglot.TokenType.QDCOLON:
+            sql = sql[: tok.start + 1] + " " + sql[tok.start + 1 :]
+    return sql
+
+
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
-        stmts = sqlglot.parse(sql, read=dialect)
+        stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
         if len(stmts) == 1:
