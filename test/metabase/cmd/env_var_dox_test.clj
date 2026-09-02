@@ -83,7 +83,7 @@
     (is (true? (sut/settable-in-config-file? {})))))
 
 (def ^:private env-var-only-note
-  "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).")
+  "Environment variable or `metabase.env` only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).")
 
 (deftest ^:parallel format-config-name-test
   (testing "Read-only settings are flagged as environment-variable-only, whatever their visibility"

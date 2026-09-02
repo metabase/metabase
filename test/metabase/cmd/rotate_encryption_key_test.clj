@@ -109,7 +109,7 @@
                                                                                  :creator_id @user-id}))]
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
-                (t2/insert! :model/Setting {:key "rotate-test-encrypted-setting", :value "encrypted with k1"})
+                (t2/insert! :model/Setting {:key "rotate-test-encrypted-setting", :value "encrypted with k1", :value_sysadmin "sysadmin value"})
                 (mdb.encryption/encrypt-db driver/*driver* data-source nil)
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                 ;; other encrypted-json columns that must also be re-encrypted on rotation
@@ -132,6 +132,7 @@
                   (testing "for values encrypted with the same key"
                     (is (not= "encrypted with k1" (raw-value "rotate-test-encrypted-setting")))
                     (is (= "encrypted with k1" (t2/select-one-fn :value :model/Setting :key "rotate-test-encrypted-setting")))
+                    (is (= "sysadmin value" (t2/select-one-fn :value_sysadmin :model/Setting :key "rotate-test-encrypted-setting")))
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))))
               (testing "settings-last-updated is updated AND plaintext"
                 (is (not= original-timestamp (raw-value "settings-last-updated")))
@@ -141,6 +142,7 @@
                 (testing "with new key"
                   (encryption-test/with-secret-key k2
                     (is (= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "rotate-test-plaintext-setting")))
+                    (is (= "sysadmin value" (t2/select-one-fn :value_sysadmin :model/Setting :key "rotate-test-encrypted-setting")))
                     (is (= {:db "/tmp/test.db"} (t2/select-one-fn :details :model/Database :id 1)))
                     (is (= {:database-enable-actions true} (t2/select-one-fn :settings :model/Database :id 1)))
                     (is (= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
@@ -150,6 +152,7 @@
                     ;; reading a value that looks encrypted but can't be decrypted with the current key throws rather
                     ;; than returning the raw ciphertext, so it can never be mistaken for a real plaintext value
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :value :model/Setting :key "rotate-test-plaintext-setting")))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :value_sysadmin :model/Setting :key "rotate-test-encrypted-setting")))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :id 1)))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/Database :id 1)))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/User :id @user-id)))
@@ -177,6 +180,7 @@
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "rotate-test-plaintext-setting")))
+                (is (= "sysadmin value" (t2/select-one-fn :value_sysadmin :setting :key "rotate-test-encrypted-setting")))
                 ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
                 ;; should be decrypted
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))

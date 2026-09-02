@@ -276,6 +276,7 @@
   with-anaphora
   with-prometheus-system!
   with-random-premium-token!
+  with-env-file-values!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file

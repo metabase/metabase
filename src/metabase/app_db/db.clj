@@ -26,6 +26,11 @@
   []
   (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))
 
+(defn reducible-setting-values-sysadmin
+  "A reducible of the key and `value_sysadmin` of every setting row that has one."
+  []
+  (t2/reducible-select [:setting :key :value_sysadmin] {:where [:!= :value_sysadmin nil]}))
+
 (defn unmigrated-settings?
   "Whether any setting row has a non-blank `value` but no `value_with_aad`."
   []
@@ -43,11 +48,11 @@
              :values      [{:key setting-key, :value value, :value_with_aad value-with-aad}]}))
 
 (defn update-setting-values!
-  "Set the columns in `changes` -- `:value` and/or `:value_with_aad`, nil writing NULL -- of the setting row with
-  `setting-key`."
+  "Set the columns in `changes` -- `:value`, `:value_with_aad` and/or `:value_sysadmin`, nil writing NULL -- of the
+  setting row with `setting-key`."
   [setting-key changes]
   (t2/query {:update :setting
-             :set    (select-keys changes [:value :value_with_aad])
+             :set    (select-keys changes [:value :value_with_aad :value_sysadmin])
              :where  [:= :key setting-key]}))
 
 (defn delete-setting!

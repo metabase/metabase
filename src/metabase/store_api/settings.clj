@@ -20,4 +20,5 @@
   :visibility :internal
   :default    (str "https://store-api" (when (default-to-staging?) ".staging") ".metabase.com")
   :doc        false
-  :export?    false)
+  :export?    false
+  :sysadmin-only? true)

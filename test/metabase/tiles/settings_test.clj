@@ -95,5 +95,5 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid map tile server URL"
                                 (tiles.settings/map-tile-server-url! "file:///etc/passwd"))))))
     (testing "only the three known values are accepted"
-      (is (thrown-with-msg? java.lang.AssertionError #"Invalid map-tile-server-allowed-networks"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #":allow-everything is not a valid value for setting map-tile-server-allowed-networks"
                             (tiles.settings/map-tile-server-allowed-networks! :allow-everything))))))

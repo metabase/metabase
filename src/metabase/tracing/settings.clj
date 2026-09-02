@@ -23,7 +23,8 @@
   :default    "http://localhost:4318/v1/traces"
   :visibility :internal
   :export?    false
-  :setter     :none)
+  :setter     :none
+  :sysadmin-only? true)
 
 (defsetting tracing-groups
   (deferred-tru "Comma-separated list of trace groups to enable, or \"all\" for everything.")

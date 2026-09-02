@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.notification.core :as notification]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
@@ -52,3 +53,28 @@
         (let [before (recipient-details)]
           (mdb/encrypt-plaintext-columns!)
           (is (= before (recipient-details))))))))
+
+(deftest encrypt-plaintext-columns!-value-sysadmin-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (let [aad       (mdb.setting/sysadmin-setting-aad "store-api-url")
+            raw-value #(t2/select-one-fn :value_sysadmin :setting :key "store-api-url")]
+        (t2/insert! :model/Setting {:key "store-api-url" :value "https://legacy" :value_sysadmin "https://sysadmin"})
+        (testing "a plaintext value_sysadmin (e.g. written before the key was set) is encrypted under its AAD"
+          (t2/query {:update :setting :set {:value_sysadmin "https://plain"} :where [:= :key "store-api-url"]})
+          (mdb/encrypt-plaintext-columns!)
+          (is (encryption/decryptable-string? (raw-value) {:aad aad}))
+          (is (= "https://plain" (encryption/decrypt (raw-value) {:aad aad}))))
+        (testing "idempotent: a value already encrypted under its AAD is left byte-identical"
+          (let [before (raw-value)]
+            (mdb/encrypt-plaintext-columns!)
+            (is (= before (raw-value)))))
+        (testing "a ciphertext that does not decrypt under the AAD -- e.g. copied from value -- is cleared, never trusted"
+          (t2/query {:update :setting
+                     :set    {:value_sysadmin (t2/select-one-fn :value :setting :key "store-api-url")}
+                     :where  [:= :key "store-api-url"]})
+          (mt/with-log-messages-for-level [messages :error]
+            (mdb/encrypt-plaintext-columns!)
+            (is (=? [{:message #".*store-api-url does not decrypt.*"}] (messages))))
+          (is (nil? (raw-value))))))))

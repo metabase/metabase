@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.enable-encryption :refer [enable-encryption!]]
@@ -51,7 +52,7 @@
     (encryption-test/with-secret-key nil
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
-        (t2/insert! :model/Setting {:key "enable-encryption-test-setting", :value "plain value"})
+        (t2/insert! :model/Setting {:key "enable-encryption-test-setting", :value "plain value", :value_sysadmin "plain sysadmin value"})
         (is (nil? (raw-value "encryption-check")))
         (encryption-test/with-secret-key "key1"
           (testing "startup refuses until the command has been run"
@@ -62,6 +63,11 @@
             (is (encryption/decryptable-string? (raw-value "encryption-check")))
             (is (encryption/decryptable-string? (raw-value "enable-encryption-test-setting")))
             (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "enable-encryption-test-setting")))
+            (testing "value_sysadmin is encrypted under the setting's own AAD"
+              (let [raw (t2/select-one-fn :value_sysadmin :setting :key "enable-encryption-test-setting")]
+                (is (encryption/decryptable-string? raw {:aad (mdb.setting/sysadmin-setting-aad "enable-encryption-test-setting")}))
+                (is (not (encryption/decryptable-string? raw))))
+              (is (= "plain sysadmin value" (t2/select-one-fn :value_sysadmin :model/Setting :key "enable-encryption-test-setting"))))
             (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)))
             (is (map? (t2/select-one-fn :details :model/Database))))
           (testing "startup now succeeds"

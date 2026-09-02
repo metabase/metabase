@@ -8,11 +8,13 @@
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header''s value, instead of its remote address.")
   :encryption :when-encryption-key-set
+  :visibility :internal
   :default "X-Forwarded-For"
-  :export? true
+  :export? false
   :audit   :getter
   :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
-                          u/lower-case-en)))
+                          u/lower-case-en))
+  :sysadmin-only? true)
 
 (defsetting not-behind-proxy
   (deferred-tru
@@ -21,7 +23,8 @@
   :type       :boolean
   :visibility :internal
   :default    false
-  :export?    false)
+  :export?    false
+  :sysadmin-only? true)
 
 (def ^:private possible-session-cookie-samesite-values
   #{:lax :none :strict nil})

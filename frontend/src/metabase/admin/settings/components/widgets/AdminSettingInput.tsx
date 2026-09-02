@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
+import {
+  isSettingSetFromEnvVar,
+  isSettingSysadminOnly,
+} from "metabase/admin/settings/settings";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
 import {
@@ -19,7 +22,6 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   SettingDefinition,
-  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -123,8 +125,13 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
         titleProps={titleProps}
         description={description ?? settingDescription}
       />
-      {settingDetails?.is_env_setting && settingDetails?.env_name ? (
-        <SetByEnvVar varName={settingDetails.env_name} />
+      {settingDetails &&
+      (isSettingSetFromEnvVar(settingDetails) ||
+        isSettingSysadminOnly(settingDetails)) ? (
+        <SetByEnvVar
+          varName={settingDetails.env_name ?? ""}
+          canOnlyBeSet={!isSettingSetFromEnvVar(settingDetails)}
+        />
       ) : (
         <BasicAdminSettingInput
           key={resetKey}
@@ -280,12 +287,16 @@ type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
   children: React.ReactNode;
 };
 
-export function SetByEnvVarWrapper<SettingName extends SettingKey>({
+export function SetByEnvVarWrapper<SettingName extends EnterpriseSettingKey>({
   settingKey,
   settingDetails,
   children,
 }: SetByEnvVarWrapperProps<SettingName>) {
-  if (isSettingSetFromEnvVar(settingDetails)) {
+  if (
+    settingDetails &&
+    (isSettingSetFromEnvVar(settingDetails) ||
+      isSettingSysadminOnly(settingDetails))
+  ) {
     return (
       <Box mb="xl">
         <SettingHeader
@@ -293,7 +304,10 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
           title={settingDetails.display_name}
           description={settingDetails.description}
         />
-        <SetByEnvVar varName={settingDetails.env_name} />
+        <SetByEnvVar
+          varName={settingDetails.env_name ?? ""}
+          canOnlyBeSet={!isSettingSetFromEnvVar(settingDetails)}
+        />
       </Box>
     );
   }

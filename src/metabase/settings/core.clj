@@ -73,6 +73,7 @@
   See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
   (:refer-clojure :exclude [get])
   (:require
+   [metabase.settings.env-file]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache]
    [metabase.settings.models.setting.multi-setting]
@@ -80,14 +81,18 @@
    [potemkin :as p]))
 
 (comment
+  metabase.settings.env-file/keep-me
   metabase.settings.models.setting/keep-me
   metabase.settings.models.setting.cache/keep-me
   metabase.settings.models.setting.multi-setting/keep-me
   metabase.settings.settings/keep-me)
 
 (p/import-vars
+ [metabase.settings.env-file
+  load-env-file!]
  [metabase.settings.models.setting
   admin-writable-site-wide-settings
+  backfill-sysadmin-values!
   can-read-setting?
   current-user-readable-visibilities
   custom-disabled-reasons!
@@ -102,6 +107,8 @@
   get-raw-value
   get-raw-value-source
   log-deprecated-env-var-usage!
+  log-unknown-env-file-keys!
+  merge-env-file-value!
   get-value-of-type
   has-advanced-setting-access?
   obfuscate-value
@@ -110,6 +117,7 @@
   registered-settings
   registered?
   resolve-setting
+  sysadmin-only?
   set!
   set-many!
   set-value-of-type!

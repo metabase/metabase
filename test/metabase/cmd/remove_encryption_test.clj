@@ -37,9 +37,11 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (encryption-test/with-secret-key "key1"
         (mdb/setup-db! :create-sample-content? true)
-        (t2/insert! :model/Setting {:key "remove-encryption-test-setting", :value "unencrypted value"})
+        (t2/insert! :model/Setting {:key "remove-encryption-test-setting", :value "unencrypted value", :value_sysadmin "sysadmin value"})
         (is (encryption/decryptable-string? (raw-value _conn "encryption-check")))
         (is (encryption/decryptable-string? (raw-value _conn "remove-encryption-test-setting")))
+        (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value_sysadmin :setting :key "remove-encryption-test-setting")))
         (remove-encryption!)
         (is (= "unencrypted" (raw-value _conn "encryption-check")))
-        (is (not (encryption/possibly-encrypted-string? (raw-value _conn "remove-encryption-test-setting"))))))))
+        (is (not (encryption/possibly-encrypted-string? (raw-value _conn "remove-encryption-test-setting"))))
+        (is (= "sysadmin value" (t2/select-one-fn :value_sysadmin :setting :key "remove-encryption-test-setting")))))))

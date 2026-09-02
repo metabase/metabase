@@ -26,6 +26,12 @@ export const getExtraFormFieldProps = (setting?: SettingDefinition) => {
       readOnly: true,
     };
   }
+  if (setting?.sysadmin_only) {
+    return {
+      description: t`This setting can only be set by the ${setting.env_name} environment variable.`,
+      readOnly: true,
+    };
+  }
   return {
     description: setting?.description ?? "",
     descriptionProps: SETTINGS_FIELD_DESCRIPTION_PROPS,

@@ -32,6 +32,11 @@
 ;; transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key only requires decrypting
 ;; the raw value with the current key and re-encrypting the resulting string. We list raw table names (not models) so
 ;; this also works for enterprise models that aren't loaded in every edition.
+(defn- sysadmin-aad-opts
+  "Encryption opts binding a `setting.value_sysadmin` ciphertext to `setting-key`'s row."
+  [setting-key]
+  {:aad (mdb.setting/sysadmin-setting-aad setting-key)})
+
 (def ^:private encrypted-string-columns
   [[:metabase_database :details]
    [:metabase_database :settings]
@@ -358,7 +363,21 @@
                                     (legacy-unencrypted-string? value_with_aad {:aad (mdb.setting/setting-aad key)}))
                                   (fn [{:keys [key value_with_aad]}]
                                     (mdb.db/update-setting-values! key {:value_with_aad (encrypt-setting-fn value_with_aad key)}))
-                                  (mdb.db/reducible-setting-values-with-aad)))))))
+                                  (mdb.db/reducible-setting-values-with-aad)))
+        ;; `setting.value_sysadmin` likewise, under its own AAD. A value that looks encrypted but does not decrypt there
+        ;; was not written by the column's writers -- a `value` ciphertext copied over, say -- and is cleared rather than
+        ;; re-encrypted into something that would then read fine.
+        (encrypt-legacy-values! "setting.value_sysadmin"
+                                (fn [{:keys [key value_sysadmin]}]
+                                  (legacy-unencrypted-string? value_sysadmin (sysadmin-aad-opts key)))
+                                (fn [{:keys [key value_sysadmin]}]
+                                  (if (encryption/possibly-encrypted-string? value_sysadmin)
+                                    (do
+                                      (log/errorf "setting.value_sysadmin for %s does not decrypt under the setting's name, so Metabase did not write it; clearing it."
+                                                  key)
+                                      (mdb.db/update-setting-values! key {:value_sysadmin nil}))
+                                    (mdb.db/update-setting-values! key {:value_sysadmin (encryption/encrypt value_sysadmin (sysadmin-aad-opts key))})))
+                                (mdb.db/reducible-setting-values-sysadmin))))))
 
 (defn- do-encryption
   "Encrypt or decrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -368,7 +387,11 @@
   [db-type data-source encrypting? to-key]
   (let [encrypt-str-fn     (if encrypting? #(encryption/maybe-encrypt % {:secret-key to-key}) identity)
         encrypt-bytes-fn   (if encrypting? #(encryption/maybe-encrypt-bytes % {:secret-key to-key}) identity)
-        encrypt-setting-fn (if encrypting? (encrypt-setting to-key) (fn [s _setting-key] s))]
+        encrypt-setting-fn (if encrypting? (encrypt-setting to-key) (fn [s _setting-key] s))
+        encrypt-sysadmin-fn (if encrypting?
+                              (fn [s setting-key]
+                                (encryption/maybe-encrypt s (assoc (sysadmin-aad-opts setting-key) :secret-key to-key)))
+                              (fn [s _setting-key] s))]
     (t2/with-transaction [_conn {:datasource data-source}]
       (let [check-status (encryption-check-status)]
         (when (= check-status :invalid)
@@ -385,7 +408,7 @@
       ;;
       ;; Both columns are re-encrypted: `value_with_aad` under each row's own AAD, and `value` because a version
       ;; predating that column reads it, so a rollback must not land on ciphertext under the old key.
-      (doseq [{:keys [key value value_with_aad]} (mdb.db/settings)]
+      (doseq [{:keys [key value value_with_aad value_sysadmin]} (mdb.db/settings)]
         (case key
           "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
                                     (mdb.db/update-setting-values! key {:value now, :value_with_aad (encrypt-setting-fn now key)}))
@@ -393,7 +416,8 @@
           (let [aad-opts {:aad (mdb.setting/setting-aad key)}
                 changes  (cond-> {}
                            (seq value)          (assoc :value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value)))
-                           (seq value_with_aad) (assoc :value_with_aad (encrypt-setting-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key)))]
+                           (seq value_with_aad) (assoc :value_with_aad (encrypt-setting-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key))
+                           (seq value_sysadmin) (assoc :value_sysadmin (encrypt-sysadmin-fn (encryption/maybe-decrypt-accepting-plaintext value_sysadmin (sysadmin-aad-opts key)) key)))]
             (when (seq changes)
               (mdb.db/update-setting-values! key changes)))))
       (replace-encryption-check! (when encrypting? encrypt-str-fn) (when encrypting? encrypt-setting-fn))

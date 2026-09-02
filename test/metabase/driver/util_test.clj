@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -895,6 +896,19 @@
                  #"private or internal network address"
                  (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
 
+(deftest warehouse-allowed-networks-validation-test
+  (testing "an unrecognized env value is ignored, so the default for where we run applies"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-everything"]
+      (mt/with-premium-features #{}
+        (is (= :allow-all (driver.settings/warehouse-allowed-networks))))
+      (mt/with-premium-features #{:hosting}
+        (is (= :external-only (driver.settings/warehouse-allowed-networks))))))
+  (testing "the setting is sysadmin-only: the admin API cannot widen it"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"can only be set by the MB_WAREHOUSE_ALLOWED_NETWORKS environment variable"
+         (setting/set! :warehouse-allowed-networks :allow-all)))))
+
 (deftest warehouse-allowed-networks-default-test
   (testing "self-hosted, with nothing configured, all networks are allowed"
     ;; a self-hosted warehouse on a private network is the normal case, not an attack
@@ -923,8 +937,9 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
-    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Unknown network policy"
-                            (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+  (testing "an unrecognized policy is ignored with a warning; on Cloud that leaves the external-only default"
+    (mt/with-premium-features #{:hosting}
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
+        (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))

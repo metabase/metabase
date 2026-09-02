@@ -3330,6 +3330,15 @@
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
 
+(deftest add-setting-value-sysadmin-test
+  (testing "v64.2026-09-02: setting gains a nullable value_sysadmin column and existing rows are untouched"
+    (impl/test-migrations ["v64.gj98asdfg2"] [migrate!]
+      (t2/insert! :setting {:key "sysadmin-migration-test" :value "legacy"})
+      (migrate!)
+      (is (=? {:key "sysadmin-migration-test" :value "legacy" :value_sysadmin nil}
+              (t2/select-one :setting :key "sysadmin-migration-test")))
+      (is (contains? (t2/select-one :setting :key "sysadmin-migration-test") :value_sysadmin)))))
+
 (deftest add-field-data-sensitivity-test
   (testing "v64.2026-09-01: data_sensitivity is added to metabase_field and metabase_field_user_settings as nullable columns"
     (impl/test-migrations ["v64.2026-09-01T00:00:00" "v64.2026-09-01T00:00:01"] [migrate!]

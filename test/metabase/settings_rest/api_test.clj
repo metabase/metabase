@@ -92,12 +92,14 @@
                :value          nil
                :is_env_setting false
                :env_name       "MB_TEST_SETTING_1"
+               :sysadmin_only false
                :description    "Test setting - this only shows up in dev (1)"
                :default        nil}
               {:key            "test-setting-2"
                :value          "FANCY"
                :is_env_setting false
                :env_name       "MB_TEST_SETTING_2"
+               :sysadmin_only false
                :description    "Test setting - this only shows up in dev (2)"
                :default        "[Default Value]"}]
              (fetch-test-settings [:test-setting-1 :test-setting-2 :test-setting-3]))))
@@ -111,6 +113,7 @@
                  :value nil,
                  :is_env_setting false,
                  :env_name "MB_TEST_SETTINGS_MANAGER_VISIBILITY",
+                 :sysadmin_only false,
                  :description "Setting to test the `:settings-manager` visibility level. This only shows up in dev.",
                  :default nil}]
                (fetch-test-settings :rasta [:test-setting-1 :test-settings-manager-visibility])))))
@@ -235,6 +238,7 @@
               :value          "**********LM"
               :is_env_setting false
               :env_name       "MB_TEST_SENSITIVE_SETTING"
+              :sysadmin_only false
               :description    "This is a sample sensitive Setting."
               :default        nil}
              (some (fn [{setting-name :key, :as setting}]
@@ -321,18 +325,21 @@
                  :value "ABC" ,
                  :is_env_setting false,
                  :env_name "MB_TEST_USER_LOCAL_ALLOWED_SETTING",
+                 :sysadmin_only false,
                  :description "test Setting",
                  :default nil}
                 {:key "test-user-local-only-audited-setting",
                  :value nil,
                  :is_env_setting false,
                  :env_name "MB_TEST_USER_LOCAL_ONLY_AUDITED_SETTING",
+                 :sysadmin_only false,
                  :description "Audited user-local setting",
                  :default nil}
                 {:key "test-user-local-only-setting",
                  :value "ABC" ,
                  :is_env_setting false,
                  :env_name "MB_TEST_USER_LOCAL_ONLY_SETTING",
+                 :sysadmin_only false,
                  :description "test Setting",
                  :default nil}]
                (fetch-user-local-test-settings :crowberto)))
@@ -440,3 +447,35 @@
         (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})
         (is (= "NEW"
                (mt/user-http-request user-id :get 200 "setting/test-user-local-only-setting")))))))
+
+(deftest sysadmin-only-setting-test
+  (testing "GET /api/setting includes :sysadmin_only"
+    (is (=? {:key            "test-sysadmin-only-admin-setting"
+             :value          nil
+             :is_env_setting false
+             :env_name       "MB_TEST_SYSADMIN_ONLY_ADMIN_SETTING"
+             :sysadmin_only true
+             :default        "server-default"}
+            (first (fetch-test-settings [:test-sysadmin-only-admin-setting])))))
+  (testing "PUT /api/setting/:key with a value returns a 400 for a sysadmin-only setting"
+    (let [response (mt/user-http-request :crowberto :put 400 "setting/test-sysadmin-only-admin-setting"
+                                         {:value "nope"})]
+      (is (= (str "Setting test-sysadmin-only-admin-setting can only be set by the"
+                  " MB_TEST_SYSADMIN_ONLY_ADMIN_SETTING environment variable.")
+             (:message response)))))
+  (testing "PUT /api/setting with a sysadmin-only setting in the payload returns a 400"
+    (mt/user-http-request :crowberto :put 400 "setting" {:test-sysadmin-only-admin-setting "nope"}))
+  (testing "PUT /api/setting/:key with a null value is rejected too, and leaves the stored value alone"
+    (mt/with-temporary-raw-setting-values [test-sysadmin-only-admin-setting "legacy"]
+      (mt/user-http-request :crowberto :put 400 "setting/test-sysadmin-only-admin-setting" {:value nil})
+      (is (= "legacy" (t2/select-one-fn :value :model/Setting :key "test-sysadmin-only-admin-setting"))))))
+
+(deftest value-validator-test
+  (testing "PUT /api/setting/:key with a value the setting's :value-validator rejects returns a 400"
+    (mt/with-temporary-setting-values [test-validated-keyword-setting :alpha]
+      (is (= "\"gamma\" is not a valid value for setting test-validated-keyword-setting."
+             (:message (mt/user-http-request :crowberto :put 400 "setting/test-validated-keyword-setting" {:value "gamma"}))))
+      (is (= :alpha (models.setting-test/test-validated-keyword-setting)))
+      (testing "and a valid one is accepted"
+        (mt/user-http-request :crowberto :put 204 "setting/test-validated-keyword-setting" {:value "beta"})
+        (is (= :beta (models.setting-test/test-validated-keyword-setting)))))))

@@ -177,6 +177,8 @@
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (pr-str (u.system-info/system-info)))
+  ;; before anything reads a setting: values in metabase.env act like env vars
+  (setting/load-env-file!)
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -202,6 +204,8 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+  ;; runs before anything reads settings -- see its docstring
+  (setting/backfill-sysadmin-values!)
   (mdb/encrypt-plaintext-columns!)
   ;; In OSS, convert any Data Analysts group with members to a normal visible group
   (perms/sync-data-analyst-group-for-oss!)
@@ -249,6 +253,7 @@
   (database/check-health!)
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
+  (setting/log-unknown-env-file-keys!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)

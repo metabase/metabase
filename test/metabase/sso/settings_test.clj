@@ -23,3 +23,15 @@
 (deftest ^:parallel send-new-sso-user-admin-email?-test
   (is ((some-fn nil? boolean?) (sso.settings/send-new-sso-user-admin-email?))
       "Make sure this Setting returns a boolean, not some other type of value. (It was returning a function before I fixed it.)"))
+
+(deftest oidc-allowed-networks-validation-test
+  (testing "an unrecognized env value is ignored, so the default applies"
+    (mt/with-temp-env-var-value! [mb-oidc-allowed-networks "allow-everything"]
+      (is (= :allow-all (sso.settings/oidc-allowed-networks)))))
+  (testing "a leftover application-database value is ignored outright, since the setting is sysadmin-only"
+    (mt/with-temporary-raw-setting-values [oidc-allowed-networks "allow-everything"]
+      (is (= :allow-all (sso.settings/oidc-allowed-networks)))))
+  (testing "recognized values are returned as-is"
+    (doseq [strategy [:external-only :allow-private :allow-all]]
+      (mt/with-temp-env-var-value! [mb-oidc-allowed-networks (name strategy)]
+        (is (= strategy (sso.settings/oidc-allowed-networks)))))))

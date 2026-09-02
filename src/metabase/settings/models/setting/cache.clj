@@ -35,10 +35,25 @@
        (add-watch :call-on-change (fn [_key _ref old new]
                                     (call-on-change old new)))))))
 
+;; The sysadmin cache mirrors `setting.value_sysadmin` the way `cache*` mirrors `setting.value`. Kept as a second map
+;; rather than a richer value in the first so the shape every existing reader of `cache` relies on stays the same.
+(def ^:private ^{:arglists '([])} sysadmin-cache*
+  (mdb/memoize-for-application-db
+   (fn []
+     (doto (atom nil)
+       (add-watch :call-on-change (fn [_key _ref old new]
+                                    (call-on-change old new)))))))
+
 (defn cache
   "Fetch the current contents of the Settings cache, a map of key (string) -> value (string)."
   []
   @(cache*))
+
+(defn sysadmin-cache
+  "Fetch the current contents of the sysadmin Settings cache, a map of key (string) -> `value_sysadmin` (string). Only
+  rows with a sysadmin value are present."
+  []
+  @(sysadmin-cache*))
 
 (defn update-cache!
   "Update the String value of a Setting in the Settings cache."
@@ -46,6 +61,13 @@
   (if (seq new-value)
     (swap! (cache*) assoc  setting-name new-value)
     (swap! (cache*) dissoc setting-name)))
+
+(defn update-sysadmin-cache!
+  "Update the String `value_sysadmin` of a Setting in the sysadmin Settings cache."
+  [setting-name, ^String new-value]
+  (if (seq new-value)
+    (swap! (sysadmin-cache*) assoc  setting-name new-value)
+    (swap! (sysadmin-cache*) dissoc setting-name)))
 
 ;; CACHE SYNCHRONIZATION
 ;;
@@ -144,7 +166,8 @@
   "Populate cache with the latest hotness from the db"
   []
   (log/debug "Refreshing Settings cache...")
-  (reset! (cache*) (settings.db/setting-values-by-key)))
+  (reset! (cache*) (settings.db/setting-values-by-key))
+  (reset! (sysadmin-cache*) (settings.db/sysadmin-setting-values-by-key)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

@@ -124,11 +124,11 @@
         (testing "returns default (nil) when neither managed-ai feature is enabled, even if a value is set"
           (mt/with-premium-features #{}
             (is (nil? (llm.settings/llm-proxy-base-url))))))))
-  (testing "cannot be set when neither managed-ai feature is enabled"
-    (mt/with-premium-features #{}
+  (testing "cannot be set through the setter at all: it is sysadmin-only"
+    (mt/with-premium-features #{:metabot-v3}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Setting llm-proxy-base-url is not enabled"
+           #"Setting llm-proxy-base-url can only be set by the MB_LLM_PROXY_BASE_URL environment variable"
            (llm.settings/llm-proxy-base-url! "https://proxy.example"))))))
 
 (deftest ai-service-base-url-feature-guard-test
@@ -146,11 +146,11 @@
         (testing "returns default (nil) when neither managed-ai feature is enabled, even if a value is set"
           (mt/with-premium-features #{}
             (is (nil? (llm.settings/ai-service-base-url))))))))
-  (testing "cannot be set when neither managed-ai feature is enabled"
-    (mt/with-premium-features #{}
+  (testing "cannot be set through the setter at all: it is sysadmin-only"
+    (mt/with-premium-features #{:metabase-ai-managed}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Setting ai-service-base-url is not enabled"
+           #"Setting ai-service-base-url can only be set by the MB_AI_SERVICE_BASE_URL environment variable"
            (llm.settings/ai-service-base-url! "https://ai-service.example"))))))
 
 ;;; ------------------------------------------- assert-llm-host-allowed! Tests -------------------------------------------

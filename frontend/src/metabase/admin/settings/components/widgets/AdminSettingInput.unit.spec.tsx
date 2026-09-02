@@ -14,7 +14,7 @@ import {
   waitFor,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { SettingKey } from "metabase-types/api";
+import type { SettingDefinition, SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -25,7 +25,16 @@ import {
   type AdminSettingInputProps,
 } from "./AdminSettingInput";
 
-const setup = (props: AdminSettingInputProps<SettingKey>) => {
+const setup = (
+  props: AdminSettingInputProps<SettingKey>,
+  settingDetails: SettingDefinition[] = [
+    createMockSettingDefinition({
+      key: "site-url",
+      is_env_setting: true,
+      env_name: "MB_HARDCODED_URL",
+    }),
+  ],
+) => {
   setupPropertiesEndpoints(
     createMockSettings({
       "site-name": "Metabased",
@@ -40,13 +49,7 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
     }),
   );
 
-  setupSettingsEndpoints([
-    createMockSettingDefinition({
-      key: "site-url",
-      is_env_setting: true,
-      env_name: "MB_HARDCODED_URL",
-    }),
-  ]);
+  setupSettingsEndpoints(settingDetails);
 
   setupUpdateSettingEndpoint();
   renderWithProviders(
@@ -562,6 +565,56 @@ describe("AdminSettingInput", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("MB_HARDCODED_URL")).toBeInTheDocument();
     expect(screen.getByText(/environment variable./)).toBeInTheDocument();
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("should display a notice instead of an input when a setting is sysadmin-only, even with no value set", async () => {
+    setup(
+      {
+        title: "Site Name",
+        name: "site-name",
+        inputType: "text",
+      },
+      [
+        createMockSettingDefinition({
+          key: "site-name",
+          sysadmin_only: true,
+          env_name: "MB_SITE_NAME",
+        }),
+      ],
+    );
+
+    expect(
+      await screen.findByText(/This setting can only be set by the/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MB_SITE_NAME")).toBeInTheDocument();
+    expect(screen.getByText(/environment variable./)).toBeInTheDocument();
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("should display the env var notice when a sysadmin-only setting is set by an environment variable", async () => {
+    setup(
+      {
+        title: "Site Name",
+        name: "site-name",
+        inputType: "text",
+      },
+      [
+        createMockSettingDefinition({
+          key: "site-name",
+          sysadmin_only: true,
+          is_env_setting: true,
+          env_name: "MB_SITE_NAME",
+        }),
+      ],
+    );
+
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MB_SITE_NAME")).toBeInTheDocument();
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });

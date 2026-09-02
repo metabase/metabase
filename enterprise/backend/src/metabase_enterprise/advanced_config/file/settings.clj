@@ -15,6 +15,13 @@
   (log/info "Setting setting values from config file")
   (doseq [[setting-name setting-value] settings]
     (log/infof "Setting value for Setting %s" setting-name)
-    (if (setting/registered? setting-name)
-      (setting/set! setting-name setting-value)
-      (log/warn (u/format-color :yellow "Ignoring unknown setting in config: %s." (name setting-name))))))
+    (cond
+      (not (setting/registered? setting-name))
+      (log/warn (u/format-color :yellow "Ignoring unknown setting in config: %s." (name setting-name)))
+
+      ;; a sysadmin-only setting goes into the in-memory metabase.env layer, never the DB
+      (setting/sysadmin-only? setting-name)
+      (setting/merge-env-file-value! setting-name setting-value)
+
+      :else
+      (setting/set! setting-name setting-value))))

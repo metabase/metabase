@@ -100,3 +100,18 @@
                (channel.settings/find-cached-slack-channel-or-username "U001"))))
       (testing "returns nil when not found"
         (is (nil? (channel.settings/find-cached-slack-channel-or-username "no-such-channel")))))))
+
+(deftest http-channel-allowed-networks-validation-test
+  (testing "an unrecognized env value is ignored, so the external-only default applies"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-everything"]
+      (is (= :external-only (channel.settings/http-channel-allowed-networks)))))
+  (testing "a leftover application-database value is ignored outright, since the setting is sysadmin-only"
+    (mt/with-temporary-raw-setting-values [http-channel-allowed-networks "allow-all"]
+      (is (= :external-only (channel.settings/http-channel-allowed-networks)))))
+  (testing "recognized values are returned as-is"
+    (doseq [strategy [:external-only :allow-private :allow-all]]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks (name strategy)]
+        (is (= strategy (channel.settings/http-channel-allowed-networks))))))
+  (testing "the deprecated env var name still works"
+    (mt/with-temp-env-var-value! [mb-http-channel-host-strategy "allow-private"]
+      (is (= :allow-private (channel.settings/http-channel-allowed-networks))))))

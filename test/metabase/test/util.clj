@@ -34,6 +34,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
+   [metabase.settings.env-file :as setting.env-file]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.task.core :as task]
@@ -502,7 +503,8 @@
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
   ;; app DB needs to be initialized if we're going to play around with the Settings cache.
   (initialize/initialize-if-needed! :db)
-  (let [value (str value)]
+  ;; a real env var never carries a keyword's leading colon, so `str` would round-trip `:foo` as `::foo`
+  (let [value (if (keyword? value) (name value) (str value))]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
         ;; temporarily override the underlying environment variable value
@@ -513,6 +515,27 @@
         (finally
           ;; flush the cache again so the original value of any env var Settings get restored
           (setting.cache/restore-cache!))))))
+
+(defn do-with-env-file-values!
+  "Impl for [[with-env-file-values!]]."
+  [values thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-env-file-values!")
+  (let [original (setting.env-file/env-file-values)]
+    (try
+      (setting.env-file/reset-env-file-values! values)
+      (thunk)
+      (finally
+        (setting.env-file/reset-env-file-values! original)))))
+
+(defmacro with-env-file-values!
+  "Temporarily replace the contents of the `metabase.env` layer (see [[metabase.settings.env-file]]) with `values`, a
+  map of environ-style keywords to strings, and execute `body`. Values there act like env vars for every Setting that
+  can be set from the environment, losing only to a real env var.
+
+    (with-env-file-values! {:mb-site-name \"From the file\"}
+      ...)"
+  [values & body]
+  `(do-with-env-file-values! ~values (fn [] ~@body)))
 
 (defmacro with-temp-env-var-value!
   "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
@@ -619,7 +642,10 @@
                   (catch Exception e
                     (when-not raw-setting?
                       (throw e))))]
-    (if (and (not raw-setting?) (setting/env-var-value setting-k))
+    (if (and (not raw-setting?)
+             (or (setting/env-var-value setting-k)
+                 ;; sysadmin-only settings reject every write, so the env var is the only way to give them a value
+                 (:sysadmin-only? setting)))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (raw-setting setting-k)

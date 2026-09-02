@@ -280,12 +280,11 @@
 (defsetting oidc-allowed-networks
   (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
   :type :keyword
+  :visibility :internal
   :default :allow-all
   :export? false
-  :setter (fn [new-value]
-            (when (some? new-value)
-              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
-            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+  :value-validator #{:allow-all :allow-private :external-only}
+  :sysadmin-only? true)
 
 (defn- ee-sso-configured? []
   (when config/ee-available?

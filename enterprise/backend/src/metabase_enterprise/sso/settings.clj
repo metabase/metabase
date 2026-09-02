@@ -329,7 +329,8 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :export?    false
   :sensitive? true
   :visibility :internal
-  :audit      :no-value)
+  :audit      :no-value
+  :sysadmin-only? true)
 
 (define-multi-setting-impl send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
