@@ -87,7 +87,7 @@
   (let [db            (t2/select-one :model/Database (mt/id))
         driver        (:engine db)
         auto-inc-type (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
-        column-map    (walk/postwalk-replace {:auto-inc-type auto-inc-type} column-map)
+        column-map    (walk/postwalk-replace {'auto-inc-type auto-inc-type} column-map)
         table-name    (str "temp_table_" (str/replace (random-uuid) "-" "_"))
         cleanup       (fn []
                         (driver/drop-table! driver (mt/id) table-name)

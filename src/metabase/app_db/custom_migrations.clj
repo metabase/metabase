@@ -1162,7 +1162,7 @@
   "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
   [file-name]
   (with-open [r (io/reader (io/resource file-name))]
-    (edn/read {:readers {:t u.date/parse}} (java.io.PushbackReader. r))))
+    (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
 (defn- no-user?
   "If there is a user that is not the internal user, we know it's not a fresh install."

@@ -74,37 +74,37 @@
 
 (def mutation-rules
   "Map of symbols to their mutations"
-  {:and 'or
-   :or 'and
-   :boolean 'not
-   :not 'boolean
-   :empty? 'seq
-   :seq 'empty?
-   :empty 'not-empty
-   :not-empty 'empty
-   :<= '<
-   :< '<=
-   :>= '>
-   :> '>=
-   := 'not=
-   :not= '=
-   :for 'doseq
-   :+ '-
-   :- '+
-   :* '/
-   :/ '*
+  {'and 'or
+   'or 'and
+   'boolean 'not
+   'not 'boolean
+   'empty? 'seq
+   'seq 'empty?
+   'empty 'not-empty
+   'not-empty 'empty
+   '<= '<
+   '< '<=
+   '>= '>
+   '> '>=
+   '= 'not=
+   'not= '=
+   'for 'doseq
+   '+ '-
+   '- '+
+   '* '/
+   '/ '*
    'true 'false
    'false 'true
-   :nil? 'some?
-   :some? 'nil?
-   :inc 'dec
-   :dec 'inc
-   :when 'when-not
-   :when-not 'when
-   :if 'if-not
-   :if-not 'if
-   :do 'comment
-   :let 'comment})
+   'nil? 'some?
+   'some? 'nil?
+   'inc 'dec
+   'dec 'inc
+   'when 'when-not
+   'when-not 'when
+   'if 'if-not
+   'if-not 'if
+   'do 'comment
+   'let 'comment})
 
 (defn find-function-source
   "Find the source code for a fully-qualified function name"

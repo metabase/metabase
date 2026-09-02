@@ -1415,7 +1415,7 @@
            (validate :string "Green Friend"))))
     (doseq [[tag valid-tag?]     {"String"           false
                                   "java.lang.String" true
-                                  :STRING            false
+                                  'STRING            false
                                   `str               false
                                   `String            true}
             [value valid-value?] {"Green Friend" true

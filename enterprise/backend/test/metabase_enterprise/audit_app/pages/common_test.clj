@@ -59,7 +59,7 @@
     (is (= {:where ['or
                     ['like ['lower 't.name] (h2x/like-substring "birds")]
                     ['like ['lower 'db.name] (h2x/like-substring "birds")]]}
-           (#'common/add-search-clause {} "birds" :t.name :db.name)))))
+           (#'common/add-search-clause {} "birds" 't.name 'db.name)))))
 
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"

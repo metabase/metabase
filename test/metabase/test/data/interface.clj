@@ -959,7 +959,7 @@
   [dataset-name :- ms/NonBlankString]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
-                                       {:eof nil, :readers {:t #'u.date/parse}}
+                                       {:eof nil, :readers {'t #'u.date/parse}}
                                        (slurp (str edn-definitions-dir dataset-name ".edn")))]
                     (dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))

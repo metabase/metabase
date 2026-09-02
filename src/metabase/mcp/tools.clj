@@ -151,7 +151,7 @@
   whose MCP-visible shape differs from the wire shape."
   []
   (-> (tools-manifest/generate-tools-manifest
-       {:metabase.agent-api.api "/api/agent"})
+       {'metabase.agent-api.api "/api/agent"})
       (update :tools apply-schema-overrides)))
 
 (def ^:private manifest-delay

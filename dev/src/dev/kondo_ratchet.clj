@@ -116,7 +116,7 @@
       ;; through the same Maven cache the JVM uses
       (when (System/getProperty "babashka.version")
         ((requiring-resolve 'babashka.deps/add-deps)
-         {:deps {:clj-kondo/clj-kondo {:mvn/version (pinned-kondo-version)}}})
+         {:deps {'clj-kondo/clj-kondo {:mvn/version (pinned-kondo-version)}}})
         (io/resource kondo-config-source))
       (throw (ex-info (str kondo-config-source " is not on the classpath; add the clj-kondo dependency")
                       {:resource kondo-config-source}))))
