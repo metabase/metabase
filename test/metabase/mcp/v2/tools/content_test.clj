@@ -748,6 +748,28 @@
           (is (= dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id))
               "the read persisted nothing to the metric's dimensions column"))))))
 
+(deftest get-content-dimensions-respects-a-curated-metric-test
+  (testing "GHY-4140: a metric whose dimensions were curated keeps them authoritative on read, the way
+            GET /api/metric/:id does. Reconciling a metric the MEASURE way — which is what
+            compute-dimensions did for every entity type — re-adds a dimension its owner deliberately
+            removed, and mints a fresh random id for every computed pair with no persisted mapping, so
+            two reads of an unchanged metric disagree."
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (venues-count-query)}]
+      (mt/with-test-user :crowberto
+        (let [computed (:dimensions (content-one {:items [{:type "metric" :id metric-id}]
+                                                  :include ["dimensions"]}))
+              ;; curate: persist a single dimension, the shape sync-dimensions! writes
+              curated  (vec (take 1 computed))]
+          (is (seq computed) "the metric must compute at least one dimension for this to prove anything")
+          (t2/update! :model/Card metric-id {:dimensions curated})
+          (let [row  (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
+                again (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
+            (is (= (count curated) (count (:dimensions row)))
+                "the curated set is not auto-extended back to every computed pair")
+            (is (= (:dimensions row) (:dimensions again))
+                "and two reads of an unchanged metric agree — no freshly minted ids")))))))
+
 (deftest question-projection-is-canonical-test
   (testing "GHY-4140: there is one :question projection, carrying get_content's enrichments, so
             loading this tool cannot silently reshape what browse_collection projects. A future
