@@ -1,0 +1,40 @@
+## Local envelope encryption (KEK/DEK).
+##
+## `MB_ENCRYPTION_SECRET_KEY` becomes a key-encryption key (KEK); Metabase mints random AES-256 data-encryption keys
+## (DEKs) and stores them here, each encrypted with the KEK. One row per DEK *generation*; the newest row
+## is the active generation used for new writes. Older generations stay readable forever. Rotating the KEK rewraps
+## these few rows instead of re-encrypting the whole app DB.
+##
+## `id` is the generation id embedded in v2 ciphertext. `key_material` is the KEK-wrapped DEK (nonce ‖ AES-256-GCM
+## ciphertext+tag), never the raw key — a stolen backup reveals nothing without the KEK from the environment.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-02T00:00:00
+      author: jds
+      comment: Create data_encryption_key table for local envelope encryption (wrapped per-generation DEKs)
+      changes:
+        - createTable:
+            tableName: data_encryption_key
+            remarks: Wrapped per-generation data-encryption keys (DEKs) for local envelope encryption. One row per generation; newest row is active.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: DEK generation id, embedded in v2 ciphertext to name the key that encrypted a value
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: key_material
+                  type: ${blob.type}
+                  remarks: The DEK wrapped (encrypted) under the KEK - nonce followed by AES-256-GCM ciphertext+tag. Never the raw key.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this DEK generation was minted
+                  constraints:
+                    nullable: false
