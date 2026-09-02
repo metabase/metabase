@@ -490,8 +490,8 @@
                            (count by-file)
                            linter))
           ;; An existing comment above the flagged form may justify the inserted ignore. Suggest an
-          ;; exemption only when the scanner still finds uncommented ignores; otherwise the next shrink
-          ;; would remove that exemption as stale.
+          ;; exemption only when the scanner still finds uncommented ignores; otherwise it is unnecessary
+          ;; and the ratchet check reports it as stale.
           (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
             (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
                                                               (kondo-ratchet/scan roots))))

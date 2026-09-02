@@ -3,7 +3,7 @@
 ;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
-;; `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions.
+;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.
 ;; The workflow runs it on master, so feature branches do not need to record reductions.
 ;; Raising or adding a budget (`--seed` for inline ignores, a manual edit for config) or widening the
 ;; exemptions must be explained in the PR.

@@ -116,7 +116,7 @@
                      :comment-exempt #{:grandfathered :none-left :still-needed}}
         occurrences [{:file "f.clj", :line 1, :linters [:grandfathered], :justified? true}
                      {:file "g.clj", :line 1, :linters [:still-needed], :justified? false}]]
-    (is (= {:lines   ["WARNING: :comment-exempt is no longer needed for these linters: :grandfathered, :none-left -- the shrink workflow removes the stale entries on master"
+    (is (= {:lines   ["WARNING: :comment-exempt is no longer needed for these linters: :grandfathered, :none-left -- delete the stale entries by hand"
                       "ok -- 2 ignore forms within 3 policies"]
             :thrown? false}
            (check-with! ratchets occurrences))

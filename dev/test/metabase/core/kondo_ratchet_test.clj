@@ -17,8 +17,8 @@
 ;;;; Budget semantics
 ;;;; ---------------------------------------------------------------------------
 
-;; Feature branches may leave budgets or exemptions stale after removing or justifying an ignore. The
-;; shrink workflow records those reductions after the branch merges.
+;; Feature branches may leave budgets above current counts and comment exemptions that are no longer
+;; needed. The shrink workflow lowers budgets after merge; stale exemptions must be removed by hand.
 (deftest ^:parallel reductions-are-tolerated-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
                      {:file "g.clj", :line 1, :linters [:b], :justified? true}]]
@@ -346,13 +346,13 @@
         (is (= text (slurp budgets))
             "nothing is written")))))
 
-(deftest ^:synchronized fix-keeps-empty-unlimited-linter-test
+(deftest ^:synchronized fix-keeps-decision-policies-test
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"
                               (make-array java.nio.file.attribute.FileAttribute 0)))
         ratchets    {:ignore-counts  {:free :unlimited, :empty :unlimited, :gone 2, :zero 0}
                      :config-counts  {}
-                     :comment-exempt #{}}
+                     :comment-exempt #{:empty}}
         budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         occurrences [{:file "f.clj", :line 1, :linters [:free]}]
         run!        #(str/split-lines (with-out-str (kondo-ratchet/fix!)))]
@@ -363,14 +363,16 @@
         (is (= ["dropped :gone (no ignores left)"
                 "dropped :zero (no ignores left)"
                 "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
+                "WARNING: :comment-exempt is no longer needed for these linters: :empty -- delete the stale entries by hand"
                 (str "wrote " (.getPath budgets))]
                (run!))
-            "the bounded zeros go, a hand-written 0 included; the unlimited zero stays and is reported")
+            "bounded zeros go; decision policies stay and are reported when no longer needed")
         (is (= {:ignore-counts  {:free :unlimited, :empty :unlimited}
                 :config-counts  {}
-                :comment-exempt #{}}
+                :comment-exempt #{:empty}}
                (kondo-ratchet/read-ratchets)))
         (is (= ["WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
+                "WARNING: :comment-exempt is no longer needed for these linters: :empty -- delete the stale entries by hand"
                 "unchanged"]
                (run!))
             "a second run changes nothing and still reports")))))
@@ -692,7 +694,7 @@
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
-            "unexempted :polite (all its ignores are justified now)"]
+            "WARNING: :comment-exempt is no longer needed for these linters: :polite -- delete the stale entries by hand"]
            (kondo-ratchet/change-report {:ignore-counts  {:empty  :unlimited
                                                           :free   :unlimited
                                                           :gone   5

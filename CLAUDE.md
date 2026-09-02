@@ -95,16 +95,15 @@ Both ratchet commands are quick Babashka tasks, not JVM test runs:
 
 ```bash
 ./bin/mage kondo-ratchets                       # validate the file without changing it
-./bin/mage kondo-ratchets-shrink [--seed :lint] # lower budgets and remove stale exemptions
+./bin/mage kondo-ratchets-shrink [--seed :lint] # lower budgets; optionally seed one
 ```
 
 `kondo-ratchets` is the command CI runs. It rejects suppression counts above their budgets, ignores without
 required justification comments, unknown linter names, and a missing or incorrectly formatted ratchets
 file. It allows budgets above the current counts.
 
-`kondo-ratchets-shrink` lowers budgets to the current counts, removes stale comment exemptions, and
-normalizes the file. It is the only Mage command that writes the file. With `--seed`, it can also add or
-raise an inline-ignore budget.
+`kondo-ratchets-shrink` lowers budgets to the current counts and normalizes the file. It is the only Mage
+command that writes the file. With `--seed`, it can also add or raise an inline-ignore budget.
 
 Every policy key must name a linter: one of the pinned clj-kondo version's built-ins, a linter configured
 under `.clj-kondo/`, or an external diagnostic such as `:clojure-lsp/unused-public-var`. Both commands
@@ -126,9 +125,10 @@ budget changes.
 Fix the underlying warning when possible. Adding a suppression is a last resort and requires approval.
 In every suppression map, `:clj-kondo/ignore` must be the first key. Unless every suppressed linter is in
 `:comment-exempt`, add a `;;` comment directly above the suppression or at the end of the same line to
-explain why it is necessary. The check reports missing comments. When a linter's last uncommented ignore
-is commented or removed, the check names the now-stale exemption as a warning and the shrink workflow
-removes it after the change lands.
+explain why it is necessary. The check reports missing comments.
+When a linter's last uncommented ignore is commented or removed, the check warns that its exemption is
+stale. Remove the entry by hand; nothing does so automatically. Like `:unlimited`, an exemption records a
+decision rather than a count.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
 flags, then `./bin/mage kondo-ratchets-shrink --seed :the-linter` records the budget. This lets the linter

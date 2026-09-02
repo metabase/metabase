@@ -3,8 +3,8 @@
 
   The policies include suppression budgets and linters exempt from justification comments.
   Checks fail when a suppression count exceeds its budget, but allow budgets above current counts.
-  `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions; it is the only Mage
-  command that writes the file.
+  `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one; it is
+  the only Mage command that writes the file.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
@@ -555,7 +555,7 @@
        ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions.\n"
+       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.\n"
        ";; The workflow runs it on master, so feature branches do not need to record reductions.\n"
        ";; Raising or adding a budget (`--seed` for inline ignores, a manual edit for config) or widening the\n"
        ";; exemptions must be explained in the PR.\n"
@@ -719,11 +719,11 @@
   (let [linters (stale-exemptions exempt occurrences)]
     (when (seq linters)
       (str "WARNING: :comment-exempt is no longer needed for these linters: " (str/join ", " linters)
-           " -- the shrink workflow removes the stale entries on master"))))
+           " -- delete the stale entries by hand"))))
 
 (defn change-report
-  "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
-  anything over budget and for `:unlimited` policies nothing uses any more."
+  "The lines [[fix!]] prints for budget changes, budget violations, unused `:unlimited` policies, and
+  stale comment exemptions."
   [{:keys [ignore-counts config-counts comment-exempt]} occurrences config-actual seeded]
   (let [actual (actual-counts occurrences)]
     (concat
@@ -754,12 +754,11 @@
          (< actual recorded)  (format "lowered config %s %d -> %d" linter recorded actual)
          :else                (format "WARNING: config suppressions for %s are over budget (%d recorded, %d actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
                                       linter recorded actual)))
-     (for [linter (stale-exemptions comment-exempt occurrences)]
-       (format "unexempted %s (all its ignores are justified now)" linter)))))
+     (some-> (stale-exemptions-warning comment-exempt occurrences) vector))))
 
 (defn fix!
-  "Rewrite [[*ratchets-file*]]: lower budgets, drop stale comment exemptions, normalize formatting.
-  Refuses to touch a file naming an unknown linter, whether seeded or recorded, and never removes one.
+  "Rewrite [[*ratchets-file*]]: lower budgets and normalize formatting.
+  Refuses to touch a file containing an unknown linter or to seed one, rather than silently dropping it.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count and bounds an unlimited one.
   Prints the [[change-report]], or `unchanged` on a no-op.
   Does nothing, including seeding, when the file sets `:disabled` to `true`."
@@ -778,7 +777,7 @@
              config-actual (config-suppressions)
              text          (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
                                     :config-counts  (lowered-counts config-counts config-actual [])
-                                    :comment-exempt (reduce disj comment-exempt (stale-exemptions comment-exempt occurrences))})
+                                    :comment-exempt comment-exempt})
              old           (slurp *ratchets-file*)]
          (run! println (change-report ratchets occurrences config-actual seeded))
          (if (= old text)
