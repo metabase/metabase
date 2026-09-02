@@ -3,6 +3,9 @@ import type { Timeline, TimelineEventId, TimelineId } from "metabase-types/api";
 import type { VisualizationSettingsDefinitions } from "../../types";
 
 export const TIMELINE_EVENTS_SETTINGS: VisualizationSettingsDefinitions = {
+  "timeline_events.enabled": {
+    getDefault: () => true,
+  },
   "timeline.selected_timeline_ids": {
     hidden: true,
     getDefault: () => [],
