@@ -242,7 +242,6 @@
   (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
-;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (defn- migrate-settings!
   "Run [[mdb.settings/migrate-settings!]] once the migrations have, in an encryption state where every row of the
   database can be read: a caller that skips [[mdb.encryption/check-encryption]] (`enable-encryption`, `copy!`) can get
@@ -254,6 +253,7 @@
   (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
     (mdb.settings/migrate-settings!)))
 
+;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe.
