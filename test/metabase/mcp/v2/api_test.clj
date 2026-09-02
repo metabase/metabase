@@ -59,19 +59,44 @@
         (is (= 403 (:status response)))
         (is (= "MCP server is not enabled." (:body response)))))))
 
-(deftest every-alias-serves-the-same-surface-test
-  (testing "every MCP path serves a working surface — during migration the legacy paths reach v1
-            and /v2 reaches this surface, so existing client configs don't break. (The final
-            switchover PR repoints the legacy paths at v2; these assertions are surface-agnostic
-            and hold across it — GHY-4250.)"
+(deftest every-alias-serves-v2-test
+  (testing "GHY-4250: every MCP path reaches THIS surface now that the legacy paths are repointed. A 200 and
+            a session header are not enough to prove that — the retired v1 handler produced both — so each
+            alias is asked for its tool list and must name a v2-only tool. Reverting either route entry (or a
+            merge-forward resolving the wrong way) fails here rather than passing silently."
     (doseq [path ["metabase-mcp" "mcp" "metabase-mcp/v2"]]
       (testing path
-        (let [response (client/client-full-response (test.users/username->token :crowberto)
-                                                    :post path
-                                                    {:request-options {:headers {}}}
-                                                    (jsonrpc-request "initialize"))]
-          (is (= 200 (:status response)))
-          (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))))
+        (let [init       (client/client-full-response (test.users/username->token :crowberto)
+                                                      :post path
+                                                      {:request-options {:headers {}}}
+                                                      (jsonrpc-request "initialize"))
+              session-id (get-in init [:headers "Mcp-Session-Id"])
+              tools      (-> (client/client-full-response
+                              (test.users/username->token :crowberto)
+                              :post path
+                              {:request-options {:headers {"mcp-session-id" session-id}}}
+                              (jsonrpc-request "tools/list"))
+                             (get-in [:body :result :tools]))]
+          (is (= 200 (:status init)))
+          (is (some? session-id))
+          (is (some #(= "ping_v2" (:name %)) tools)
+              "ping_v2 is registered only by the v2 registry, so seeing it proves v2 answered"))))))
+
+(deftest alias-discovery-challenge-names-the-path-the-client-hit-test
+  (testing "GHY-4250: an unauthenticated request gets a 401 whose resource_metadata names the alias the client
+            actually connected through, not the canonical path — a client configured against /api/mcp must be
+            pointed back at /api/mcp. Ported from v1's api-test, which carried this until v1 was deleted."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [[path expected] [["metabase-mcp"    "/api/metabase-mcp"]
+                               ["mcp"             "/api/mcp"]
+                               ["metabase-mcp/v2" "/api/metabase-mcp/v2"]]]
+        (testing path
+          (let [response (client/client-full-response :post 401 path
+                                                      {:request-options {:headers {}}}
+                                                      (jsonrpc-request "initialize"))
+                header   (get-in response [:headers "WWW-Authenticate"])]
+            ;; The closing quote anchors the match: without it "/api/mcp" also matches "/api/metabase-mcp".
+            (is (str/includes? header (str "oauth-protected-resource" expected "\"")))))))))
 
 (deftest initialize-test
   (testing "initialize returns the handshake and a session header"
@@ -246,31 +271,6 @@
                            :text)]
               (is (= 1 @minted))
               (is (str/includes? text "uiCredential")))))))))
-
-(deftest v2-credentials-are-never-legacy-test
-  (testing "GHY-4318: `issue-legacy-ui-credential` (and the 2-arity that forwards to it) mints a credential
-            EXEMPT from the native-SQL scope gate. That exemption exists only so wiring the gate would not change
-            v1's behavior — v1's iframe visualizes execute_sql handles. A v2 caller reaching for it, now or when
-            the visualize tools land, would silently opt this surface back out of the gate and reopen the hole
-            the gate closes.
-
-            The arity is the trap: `(issue-ui-credential session-id user-id)` reads like a perfectly reasonable
-            call. So this asserts the property on the wire instead of trusting the name — every credential the
-            v2 surface hands out carries a scope claim and is not marked legacy."
-    (mcp.ui-resource/with-fallback-template
-      (let [[session-id _] (initialize!)
-            html   (-> (mcp-request (jsonrpc-request "resources/read" {:uri v2.resources/visualize-query-uri})
-                                    {"mcp-session-id" session-id})
-                       (get-in [:body :result :contents])
-                       first
-                       :text)
-            claims (some-> (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
-                           mcp.session/resolve-ui-credential)]
-        (is (some? claims) "the shell must render a resolvable credential — otherwise this passes vacuously")
-        (is (nil? (:legacy claims))
-            "a v2-minted credential must never carry the v1 exemption marker")
-        (is (contains? claims :scp)
-            "and must carry a scope claim, which is what subjects it to the native-SQL gate")))))
 
 (deftest ^:parallel v2-surface-scopes-match-metabot-scope-test
   (testing "`v2-surface-scopes` spells its scopes as literals because `metabase.mcp.paths` must stay

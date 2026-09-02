@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
-   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    ;; Only for `registered-opt-in-scopes`. Deliberately NOT `mcp.v2.resources`: that reaches
@@ -62,7 +61,6 @@
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata, the
    scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query).
-   The v1 resource scopes stay in the union until the v1 surface retires.
 
    DCR snapshots this set into a client's registered scopes when the client registers without naming any, and
    the OAuth server's `validate-scope` then checks a requested scope against that per-client snapshot. So a
@@ -81,9 +79,7 @@
       ;; middleware's load path — the cycle `metabase.mcp.paths`' docstring exists to prevent. The literal set
       ;; already covers every scope the v2 tools and resources gate on, and
       ;; `v2-surface-scopes-match-metabot-scope-test` keeps it in step.
-      (into mcp.paths/v2-surface-scopes)
-      ;; v1 resource scopes (retire with the v1 surface)
-      (into (mcp.resources/resource-scopes))))
+      (into mcp.paths/v2-surface-scopes)))
 
 (defn v2-scopes
   "The scopes the v2 MCP surface itself gates on. Excludes the agent-API endpoint scopes
