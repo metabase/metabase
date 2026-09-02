@@ -1170,7 +1170,9 @@
    :uses #{analytics
            api
            driver
-           lib.legacy-mbql
+           lib
+           lib.be
+           lib.metadata
            lib.schema
            models
            permissions
