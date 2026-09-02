@@ -40,8 +40,7 @@ export function migrateStoredCustomVizSettings(
 
 /**
  * A dashcard override saved under a bare id has to keep overriding the card's
- * namespaced value once the two are merged, so it is namespaced first. The
- * card's own keys are the signal: they are known before the plugin registers.
+ * namespaced value once the two are merged, so it is namespaced first.
  */
 export function migrateStoredDashcardCustomVizSettings(
   display: VisualizationDisplay | undefined,
