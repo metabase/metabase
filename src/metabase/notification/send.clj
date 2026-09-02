@@ -153,6 +153,12 @@
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]
+          (try
+            (models.notification/validate-email-handlers! handlers)
+            (catch clojure.lang.ExceptionInfo _e
+              (throw (ex-info "A subscription recipient is not permitted by subscription-allowed-domains"
+                              {:status-code     403
+                               :notification-id id}))))
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}

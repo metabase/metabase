@@ -127,8 +127,8 @@
   :type       :string
   :feature    :embedding
   :export?    false
-  :visibility :public
-  :encryption :no
+  :visibility :authenticated
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting enable-embedding-static
@@ -181,9 +181,9 @@
   (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
   :type       :string
   :export?    false
-  :visibility :public
+  :visibility :authenticated
   :default    ""
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter
   :getter     #'-embedding-app-origins-sdk
   :setter     #'-embedding-app-origins-sdk!)

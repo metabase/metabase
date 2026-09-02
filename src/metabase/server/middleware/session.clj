@@ -31,6 +31,8 @@
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -109,7 +111,7 @@
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
@@ -148,7 +150,7 @@
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -206,11 +208,16 @@
   []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
-(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
-  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
-  ;; a useless hash, *then* return `false`.
-  (if api-key
-    (u.password/verify-password passed-api-key "" api-key)
+(defn- matching-api-key?
+  "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
+  path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
+  a value that is not valid ciphertext — e.g. a plaintext hash injected via direct SQL — decrypts to nil and is
+  rejected rather than trusted. With no usable hash we still compute a useless hash so the two cases can't be told apart
+  by timing."
+  [{:keys [api-key] :as _user-data} passed-api-key]
+  (if-let [stored-hash (when api-key
+                         (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
+    (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]

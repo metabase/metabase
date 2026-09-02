@@ -25,6 +25,7 @@
     :collection_id
     :collection_position
     :public_uuid
+    :public_uuid_prefix
     :made_public_by_id})
 
 (defmethod revisions/serialize-instance :model/Document

@@ -469,6 +469,41 @@
                                                                         :payload      {}
                                                                         :payload_type "notification/card"})))))
 
+(deftest update-notification-route-id-is-authoritative-test
+  (testing "PUT /api/notification/:id - the URL names the row being updated; body ids are ignored"
+    (notification.tu/with-card-notification
+      [notification {}]
+      (let [{notification-id    :id
+             payload-id         :payload_id
+             {card-id :card_id} :payload} notification
+            put! (fn [expected-status body]
+                   (mt/user-http-request :crowberto :put expected-status
+                                         (format "notification/%d" notification-id) body))]
+        (testing "a body that omits :id updates the row in place instead of deleting and recreating it"
+          (is (=? {:id     notification-id
+                   :active false}
+                  (put! 200 {:payload_type "notification/card"
+                             :active       false
+                             :payload      {:card_id        card-id
+                                            :send_condition "has_result"}})))
+          (testing "\nthe notification and its payload keep their primary keys"
+            (is (=? {:active     false
+                     :payload_id payload-id}
+                    (t2/select-one :model/Notification notification-id)))
+            (is (true? (t2/exists? :model/NotificationCard :id payload-id)))))
+        (testing "a body naming a different notification id is ignored - the URL row is updated in place"
+          (is (=? {:id notification-id}
+                  (put! 200 (assoc notification :id (inc notification-id)))))
+          (is (=? {:active     true
+                   :payload_id payload-id}
+                  (t2/select-one :model/Notification notification-id))))
+        (testing "a body payload naming a different payload row is ignored - the payload keeps its primary key"
+          (is (=? {:id notification-id}
+                  (put! 200 (assoc-in notification [:payload :id] (inc payload-id)))))
+          (is (true? (t2/exists? :model/NotificationCard :id payload-id))))
+        (testing "no orphan payload rows were created along the way"
+          (is (= 1 (t2/count :model/NotificationCard :card_id card-id))))))))
+
 (deftest send-notification-by-id-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
                                                        :details {:url         "https://metabase.com/testhttp"

@@ -104,6 +104,24 @@
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
 
+(deftest validate-db-details-additional-options-test
+  (testing "validate-db-details! rejects disallowed connection properties in additional-options"
+    (doseq [opt ["socketFactory=a.b.C"
+                 "sslfactory=a.b.C"
+                 "sslhostnameverifier=a.b.C"
+                 "sslpasswordcallback=a.b.C"
+                 "xmlFactoryFactory=a.b.C"
+                 "loggerFile=a/b"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :sql-jdbc {:additional-options opt}))))))
+  (testing "benign additional options and no additional options are allowed"
+    (doseq [details [{}
+                     {:additional-options nil}
+                     {:additional-options "prepareThreshold=5&tcpKeepAlive=true"}]]
+      (is (nil? (driver/validate-db-details! :sql-jdbc details))))))
+
 (defn- test-spliced-count-of [table filter-clause expected]
   (let [query        (mt/mbql-query nil
                        {:source-table (mt/id table)

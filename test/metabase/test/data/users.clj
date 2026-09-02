@@ -4,6 +4,7 @@
    [clojure.test :as t]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test.http-client :as client]
@@ -69,14 +70,14 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (t2/insert-returning-instance! :model/User
-                                           {:email        email
-                                            :first_name   first-name
-                                            :last_name    last-name
-                                            :password     password
-                                            :is_superuser superuser
-                                            :is_qbnewb    true
-                                            :is_active    active})))))
+            (u/prog1 (t2/insert-returning-instance! :model/User
+                                                    {:email        email
+                                                     :first_name   first-name
+                                                     :last_name    last-name
+                                                     :is_superuser superuser
+                                                     :is_qbnewb    true
+                                                     :is_active    active})
+              (auth-identity/set-password! (u/the-id <>) password))))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.
