@@ -15,7 +15,7 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import type { SdkBrowseCollectionId } from "embedding-sdk-bundle/types";
+import type { SdkBrowserCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
@@ -28,7 +28,7 @@ interface MetabaseBrowserProps {
 }
 
 type MetabaseBrowserView =
-  | { type: "collection"; id: SdkBrowseCollectionId }
+  | { type: "collection"; id: SdkBrowserCollectionId }
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
   | { type: "new-question" }

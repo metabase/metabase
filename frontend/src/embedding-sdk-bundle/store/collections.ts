@@ -5,7 +5,7 @@ import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import type {
-  SdkBrowseCollectionId,
+  SdkBrowserCollectionId,
   SdkCollectionId,
 } from "../types/collection";
 
@@ -70,7 +70,7 @@ export const getCollectionIdSlugFromReference = createSelector(
   [
     getUserPersonalCollectionId,
     getUserTenantCollectionId,
-    (_, collectionReference: SdkBrowseCollectionId) => collectionReference,
+    (_, collectionReference: SdkBrowserCollectionId) => collectionReference,
   ],
   (
     personalCollectionId,

@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
-import type { SdkBrowseCollectionId } from "embedding-sdk-bundle/types/collection";
+import type { SdkBrowserCollectionId } from "embedding-sdk-bundle/types/collection";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type { CollectionId } from "metabase-types/api";
 
 export const useCollectionData = (
-  collectionId: SdkBrowseCollectionId = "personal",
+  collectionId: SdkBrowserCollectionId = "personal",
   { skipCollectionFetching = false }: { skipCollectionFetching?: boolean } = {},
 ) => {
   const baseCollectionId = useSdkSelector((state) =>
