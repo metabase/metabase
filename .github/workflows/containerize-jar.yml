@@ -70,7 +70,7 @@ jobs:
         release: ${{ inputs.release }}
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    - name: Resolve image repo and tag 
+    - name: Resolve image repo and tag
       id: image
       uses: ./.github/actions/get-docker-info
       with:

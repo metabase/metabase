@@ -41,7 +41,7 @@ runs:
       id: docker-info
       uses: actions/github-script@v9
       with:
-        script: | # js      
+        script: | # js
           const branch = '${{ inputs.branch }}';
           const edition = '${{ inputs.edition }}';
           const owner = '${{ inputs.owner }}';
@@ -54,9 +54,9 @@ runs:
           let repo = '${{ inputs.repo }}';
           if (!repo) {
             if (branch === 'master') {
-              repo = edition === 'ee' ? `${owner}/metabase-enterprise-head` : `${owner}/metabase-head`; 
+              repo = edition === 'ee' ? `${owner}/metabase-enterprise-head` : `${owner}/metabase-head`;
             } else {
-              repo = `${owner}/metabase-dev`; 
+              repo = `${owner}/metabase-dev`;
             }
           }
 
