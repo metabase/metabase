@@ -43,8 +43,8 @@
 ;; Five scopes a human can actually read on a consent screen, replacing the per-entity leaves below
 ;; across the MCP surface. Those leaves stay declared: the agent API and Metabot's own tools still
 ;; gate on them, and a token carrying one satisfies no other name, so they can never be renamed
-;; away. (They gated MCP v1 too, until GHY-4250 removed that surface; those two callers are what
-;; keep them alive now.)
+;; away. (MCP v1's UI resources still register the `agent:viz:mcp-ui:*` leaves too; that surface
+;; goes with v1's retirement.)
 ;;
 ;; The `agent:` prefix is deliberate — these gate the agent API and Metabot too, not only MCP, so an
 ;; `mcp:` prefix would both misdescribe them and strand two prefixes side by side forever.
@@ -138,10 +138,10 @@
 ;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
 ;; viz-only grant would run a query the user thought they had declined. Client capability is gated
 ;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a
-;; separate scope was not a data boundary. The `agent:viz:mcp-ui:*` leaves that shipped in v0.62
-;; are removed here while the v1 resources still register those literal strings —
-;; string matching keeps them satisfied via the `agent:viz:*` wildcard, and their
-;; `scope-description` falls back to the raw string on the consent screen until v1 retires.
+;; separate scope was not a data boundary. The `agent:viz:mcp-ui:*` leaves declared above stay
+;; exactly as they shipped in v0.62: this slice adds scopes and removes none, so every token minted
+;; against the old concrete strings keeps matching (grant-side matching is prefix-based, and the
+;; `agent:viz:*` wildcard covers them as well).
 
 ;; Alert
 ;; Gates the agent-API create-alert endpoint; v2's alert_write gates on `agent:delivery:write`.
