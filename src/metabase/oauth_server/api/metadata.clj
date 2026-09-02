@@ -38,7 +38,7 @@
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
-;; One endpoint per MCP path (canonical and legacy), kept in sync with [[metabase.mcp.api/endpoint-paths]].
+;; One endpoint per MCP path (canonical, legacy and v2), kept in sync with [[metabase.mcp.paths/endpoint-paths]].
 ;; Each advertises its own path as `:resource`, so a strict RFC 9728 client connecting via the legacy
 ;; alias still sees a resource value matching the URL it hit.
 (def ^:private resource-metadata-response-schema
