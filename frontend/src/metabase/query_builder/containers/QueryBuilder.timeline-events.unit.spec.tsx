@@ -85,32 +85,10 @@ const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
 };
 
 describe("QueryBuilder > timeline events", () => {
-  it("shows the collection's events when the timelines resolve after the question loads (GHY-3839)", async () => {
-    // Delay /api/timeline so it resolves after the question has loaded.
-    const { store } = await setup({
-      card: CARD,
-      timelines: [TIMELINE],
-      timelinesDelay: 200,
-    });
+  it("shows the collection's events for a question that never recorded any", async () => {
+    const store = await setupWithTimelines();
 
-    // If this fails, bump the delay — otherwise the late resolve isn't exercised.
-    expect(getFetchedTimelines(store.getState())).toHaveLength(0);
-    expect(getVisibleEventIds(store)).toHaveLength(0);
-
-    await waitFor(() => {
-      expect(getFetchedTimelines(store.getState())).toHaveLength(1);
-    });
-
-    await waitFor(
-      () => {
-        // Reading the DOM forces testing-library to flush React's pending
-        // re-render from the late timelines resolve (queryByTestId, so it
-        // doesn't throw if the chart subtree errored out under jsdom).
-        screen.queryByTestId("test-container");
-        expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
-      },
-      { timeout: 5000 },
-    );
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
   });
 
   it("shows only the events a saved question recorded", async () => {

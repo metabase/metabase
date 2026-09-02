@@ -1,20 +1,13 @@
-import { useState } from "react";
-
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboardCollectionId } from "metabase/dashboard/timeline-events";
 import { useSelector } from "metabase/redux";
-import {
-  type TimelineEventModalState,
-  TimelineEventModals,
-} from "metabase/timelines/panel/components/TimelineEventModals";
-import { TimelineSidebarContent } from "metabase/timelines/panel/components/TimelineSidebarContent";
+import { TimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
+import type { TimeseriesXAxis } from "metabase/viz-core";
 import type { DashCardId, Timeline, TimelineEventId } from "metabase-types/api";
 
 import { useTimelineEventsHandlers } from "./use-timeline-events-handlers";
 
 export interface EventsPanelProps {
-  title: string;
-  onShowAllEvents?: () => void;
   /** the charts the toggles apply to */
   dashcardIds: DashCardId[];
   /** the chart a selected event is highlighted on; absent = every chart */
@@ -23,17 +16,21 @@ export interface EventsPanelProps {
   visibleEventIds: TimelineEventId[];
   partiallyVisibleEventIds?: TimelineEventId[];
   selectedEventIds: TimelineEventId[];
+  focusedEventIds?: TimelineEventId[];
+  xAxis?: TimeseriesXAxis | null;
+  onShowAllEvents?: () => void;
 }
 
 export function EventsPanel({
-  title,
-  onShowAllEvents,
   dashcardIds,
   selectionDashcardId,
   timelines,
   visibleEventIds,
   partiallyVisibleEventIds,
   selectedEventIds,
+  focusedEventIds,
+  xAxis,
+  onShowAllEvents,
 }: EventsPanelProps) {
   const { closeSidebar } = useDashboardContext();
   const collectionId = useSelector(getDashboardCollectionId);
@@ -46,35 +43,25 @@ export function EventsPanel({
     onDeselectEvents,
     onEventCreated,
   } = useTimelineEventsHandlers({ dashcardIds, selectionDashcardId });
-  const [modal, setModal] = useState<TimelineEventModalState | null>(null);
 
   return (
-    <>
-      <TimelineSidebarContent
-        title={title}
-        onShowAllEvents={onShowAllEvents}
-        onClose={closeSidebar}
-        timelines={timelines}
-        collectionId={collectionId}
-        visibleEventIds={visibleEventIds}
-        partiallyVisibleEventIds={partiallyVisibleEventIds}
-        selectedEventIds={selectedEventIds}
-        onNewEvent={() => setModal({ type: "new" })}
-        onEditEvent={(event) => setModal({ type: "edit", eventId: event.id })}
-        onMoveEvent={(event) => setModal({ type: "move", eventId: event.id })}
-        onShowTimelineEvents={onShowTimelineEvents}
-        onHideTimelineEvents={onHideTimelineEvents}
-        onShowTimeline={onShowTimeline}
-        onHideTimeline={onHideTimeline}
-        onSelectEvents={onSelectEvents}
-        onDeselectEvents={onDeselectEvents}
-      />
-      <TimelineEventModals
-        modal={modal}
-        collectionId={collectionId}
-        onEventCreated={onEventCreated}
-        onClose={() => setModal(null)}
-      />
-    </>
+    <TimelineSidebar
+      collectionId={collectionId}
+      timelines={timelines}
+      visibleEventIds={visibleEventIds}
+      partiallyVisibleEventIds={partiallyVisibleEventIds}
+      selectedEventIds={selectedEventIds}
+      focusedEventIds={focusedEventIds}
+      xAxis={xAxis}
+      onShowTimelineEvents={onShowTimelineEvents}
+      onHideTimelineEvents={onHideTimelineEvents}
+      onShowTimeline={onShowTimeline}
+      onHideTimeline={onHideTimeline}
+      onSelectEvents={onSelectEvents}
+      onDeselectEvents={onDeselectEvents}
+      onEventCreated={onEventCreated}
+      onShowAllEvents={onShowAllEvents}
+      onClose={closeSidebar}
+    />
   );
 }
