@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -23,14 +24,14 @@
 ;; PostgreSQL limits prepared statements to 65,535 bind parameters.
 (def ^:private max-in-clause-size 20000)
 
-(defn- chunked-select-pks
-  "Like `t2/select-pks-set` but chunks large ID sets to avoid exceeding the bind parameter limit.
-  `where-fn` takes a set of IDs and returns a HoneySQL where clause."
-  [model ids where-fn]
+(defn- chunked-collection-ids
+  "Like [[permissions.db/collection-ids-where]] but chunks large ID sets to avoid exceeding the bind parameter
+  limit. `where-fn` takes a set of IDs and returns a HoneySQL where clause."
+  [ids where-fn]
   (if (<= (count ids) max-in-clause-size)
-    (t2/select-pks-set model {:where (where-fn ids)})
+    (permissions.db/collection-ids-where (where-fn ids))
     (into #{} (mapcat (fn [chunk]
-                        (t2/select-pks-set model {:where (where-fn (set chunk))})))
+                        (permissions.db/collection-ids-where (where-fn (set chunk)))))
           (partition-all max-in-clause-size ids))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
@@ -82,7 +83,7 @@
                         (= readable 1) :read
                         :else :none)))
           accum
-          (t2/reducible-query
+          (permissions.db/collection-graph-rows-reducible
            {:with [[:eligible_collections
                     ^:allow-subquery
                     {:select [:id]
@@ -253,25 +254,25 @@
   revision number, which is used for consistency checks when updating the graph."
   [current-revision-number]
   (when api/*current-user-id*
-    (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision
-                                           :id (inc current-revision-number)
-                                           :user_id api/*current-user-id*
-                                           :before ""
-                                           :after ""))))
+    (permissions.db/insert-revision-returning-instance! :model/CollectionPermissionGraphRevision
+                                                        {:id      (inc current-revision-number)
+                                                         :user_id api/*current-user-id*
+                                                         :before  ""
+                                                         :after   ""})))
 
 (defn fill-revision-details!
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
    called after the revision number is updated."
   [revision-id before changes]
-  (future (t2/update! :model/CollectionPermissionGraphRevision revision-id {:before before :after changes})))
+  (future (permissions.db/update-collection-graph-revision! revision-id {:before before :after changes})))
 
 (defn- personal-collection-ids
   "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.
   These should never appear in permission graphs or be editable via the graph API."
   [collection-ids]
   (when-let [ids (seq (disj collection-ids :root))]
-    (chunked-select-pks
-     :model/Collection ids
+    (chunked-collection-ids
+     ids
      (fn [id-set]
        [:and
         [:in :id id-set]
@@ -296,8 +297,8 @@
   [graph collection-ids namespace]
   (let [ids          (disj collection-ids :root)
         other-ns-ids (when (seq ids)
-                       (chunked-select-pks
-                        :model/Collection ids
+                       (chunked-collection-ids
+                        ids
                         (fn [id-set]
                           [:and [:in :id id-set]
                            (cond->> [[:not= :namespace (some-> namespace name)]]
@@ -311,8 +312,7 @@
    Data Analysts always have full read-write access to library collections."
   [changes]
   (let [data-analyst-group-id (u/the-id (perms-group/data-analyst))
-        library-collection-ids (t2/select-pks-set :model/Collection
-                                                  :type [:in ["library" "library-data" "library-metrics"]])]
+        library-collection-ids (permissions.db/library-collection-ids)]
     (when-let [group-changes (get changes data-analyst-group-id)]
       (let [changed-collection-ids (set (keys group-changes))
             library-changes (set/intersection changed-collection-ids library-collection-ids)]

@@ -164,6 +164,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
@@ -296,10 +297,9 @@
   [collection-id :- [:maybe ms/PositiveInt]]
   (let [collection-or-root (or collection-id
                                {:metabase.collections.models.collection.root/is-root? true})]
-    (or (t2/select-fn-set :group_id :model/Permissions
-                          {:where [:in :object
-                                   [(permissions.path/collection-read-path collection-or-root)
-                                    (permissions.path/collection-readwrite-path collection-or-root)]]})
+    (or (permissions.db/group-ids-with-permission-objects
+         [(permissions.path/collection-read-path collection-or-root)
+          (permissions.path/collection-readwrite-path collection-or-root)])
         #{})))
 
 (doto :perms/use-parent-collection-perms
@@ -321,14 +321,14 @@
    models k
    #(into {}
           (map (juxt :id mi/can-write?))
-          (t2/hydrate (remove nil? models) :collection))
+          (permissions.db/hydrate-collection (remove nil? models)))
    :id
    {:default false}))
 
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
   (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+    (mi/can-write? (permissions.db/collection collection-id))
     (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -411,19 +411,18 @@
                                    (map (fn [path-form] [:like :object (str path-form "%")])
                                         paths))
                              other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object :model/Permissions where)]
+    (when-let [revoked (permissions.db/permission-objects-where where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! :model/Permissions where)
+      (permissions.db/delete-permissions-where! where)
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
   "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
   [group-or-id path]
   (try
-    (t2/insert! :model/Permissions
-                (map (fn [path-object]
-                       {:group_id (u/the-id group-or-id) :object path-object})
-                     (distinct (conj (perms.u/->v2-path path) path))))
+    (permissions.db/insert-permissions! (map (fn [path-object]
+                                               {:group_id (u/the-id group-or-id) :object path-object})
+                                             (distinct (conj (perms.u/->v2-path path) path))))
     (clear-current-user-cached-permissions!)
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
@@ -532,7 +531,7 @@
     `(do
        (defmethod mi/can-read? ~target
          ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
+         ([_# pk#]    (mi/can-read? (permissions.db/instance-by-id ~target pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
     (string? target)
@@ -577,7 +576,7 @@
   [collection-or-id]
   (if (map? collection-or-id)
     collection-or-id
-    (t2/select-one :model/Collection :id (u/the-id collection-or-id))))
+    (permissions.db/collection (u/the-id collection-or-id))))
 
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the

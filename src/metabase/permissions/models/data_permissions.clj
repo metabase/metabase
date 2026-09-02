@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -329,14 +330,14 @@
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*
-    (t2/select-one-fn :is_superuser :model/User :id user-id)))
+    (permissions.db/user-superuser? user-id)))
 
 (defn is-data-analyst?
   "Returns true if the given user ID is a data analyst. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-data-analyst?*
-    (t2/select-one-fn :is_data_analyst :model/User :id user-id)))
+    (permissions.db/user-data-analyst? user-id)))
 
 ;;; --------------------------------------------- Database level cache ---------------------------------------------
 
@@ -393,12 +394,12 @@
                            :every-table (value perm-type every_mn every_mx)
                            :any-table   (value perm-type any_mn any_mx)})))
             {}
-            (t2/query {:select   [:i.perm_type :i.db_id
-                                  [[:min :i.gmin] :any_mn]   [[:max :i.gmax] :any_mx]
-                                  [[:min :i.gmax] :every_mn] [[:max :i.gmax] :every_mx]
-                                  [[:min :i.dbmin] :db_mn]   [[:max :i.dbmax] :db_mx]]
-                       :from     [[per-group :i]]
-                       :group-by [:i.perm_type :i.db_id]}))))
+            (permissions.db/query-rows {:select   [:i.perm_type :i.db_id
+                                                   [[:min :i.gmin] :any_mn]   [[:max :i.gmax] :any_mx]
+                                                   [[:min :i.gmax] :every_mn] [[:max :i.gmax] :every_mx]
+                                                   [[:min :i.dbmin] :db_mn]   [[:max :i.dbmax] :db_mx]]
+                                        :from     [[per-group :i]]
+                                        :group-by [:i.perm_type :i.db_id]}))))
 
 (defn- load-database-perms!
   "Load `db-ids` into [[*db-permission-cache*]] and return the resulting per-user map."
@@ -473,12 +474,12 @@
                                       combine-rank-pairs [mn mx])
                            (assoc-in m [(keyword perm_type) db_id :db-level] [mn mx])))
                        {}
-                       (t2/query (assoc (perm-rows-query-base user-id db-ids)
-                                        :select [:p.perm_type :p.db_id :p.schema_name
-                                                 [table-level-case :table_level]
-                                                 [[:min value-rank-case] :mn]
-                                                 [[:max value-rank-case] :mx]]
-                                        :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))]
+                       (permissions.db/query-rows (assoc (perm-rows-query-base user-id db-ids)
+                                                         :select [:p.perm_type :p.db_id :p.schema_name
+                                                                  [table-level-case :table_level]
+                                                                  [[:min value-rank-case] :mn]
+                                                                  [[:max value-rank-case] :mx]]
+                                                         :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))]
     (into {}
           (map (fn [[perm-type db-id->folded]]
                  [perm-type
@@ -540,13 +541,13 @@
             (assoc-in m [(keyword perm_type) db_id table_id]
                       (ranks->most-permissive-value (keyword perm_type) [mn mx])))
           {}
-          (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
-                        (assoc :select [:p.perm_type :p.db_id :p.table_id
-                                        [[:min value-rank-case] :mn]
-                                        [[:max value-rank-case] :mx]]
-                               :group-by [:p.perm_type :p.db_id :p.table_id])
-                        (update :where conj [:not= :p.table_id nil])
-                        (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids]))))))
+          (permissions.db/query-rows (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
+                                         (assoc :select [:p.perm_type :p.db_id :p.table_id
+                                                         [[:min value-rank-case] :mn]
+                                                         [[:max value-rank-case] :mx]]
+                                                :group-by [:p.perm_type :p.db_id :p.table_id])
+                                         (update :where conj [:not= :p.table_id nil])
+                                         (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids]))))))
 
 (defn- merge-table-perms
   "Merge freshly loaded table permissions into cached ones, unioning the per-database table maps rather than replacing
@@ -739,8 +740,8 @@
                         (update :where conj [:or
                                              [:= :p.table_id nil]
                                              [:= :p.schema_name schema-name]]))
-        {:keys [mn mx]} (first (t2/query {:select [[[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
-                                          :from   [[per-group :i]]}))]
+        {:keys [mn mx]} (first (permissions.db/query-rows {:select [[[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
+                                                           :from   [[per-group :i]]}))]
     (when mn [mn mx])))
 
 (mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value
@@ -908,17 +909,10 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
-  (let [perm-values (t2/select-fn-set :value
-                                      :model/DataPermissions
-                                      {:select [[:p.perm_value :value]]
-                                       :from [[:data_permissions :p]]
-                                       :where [:and
-                                               [:in :p.group_id group-ids]
-                                               [:= :p.perm_type (u/qualified-name perm-type)]
-                                               [:= :p.db_id database-id]
-                                               [:or
-                                                [:= :table_id table-id]
-                                                [:= :table_id nil]]]})]
+  (let [perm-values (permissions.db/table-permission-values-for-groups group-ids
+                                                                       (u/qualified-name perm-type)
+                                                                       database-id
+                                                                       table-id)]
     (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
                                                                                 perm-type)))
         (least-permissive-value perm-type))))
@@ -935,7 +929,7 @@
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
   ;; destination databases are reachable only through their router and never carry permissions of their own
-  (let [db-ids     (if db-id [db-id] (t2/select-pks-vec :model/Database :router_database_id nil))
+  (let [db-ids     (if db-id [db-id] (permissions.db/non-destination-database-ids))
         perm-types (if perm-type [perm-type] (keys permissions.schema/data-permissions))]
     (into {} (map (fn [db-id]
                     [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
@@ -951,19 +945,9 @@
   [user-id & {:keys [db-id perm-type]}]
   (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
-    (let [data-perms    (t2/select :model/DataPermissions
-                                   {:select [[:p.perm_type :perm-type]
-                                             [:p.group_id :group-id]
-                                             [:p.perm_value :value]
-                                             [:p.db_id :db-id]
-                                             [:p.table_id :table-id]]
-                                    :from [[:permissions_group_membership :pgm]]
-                                    :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                                           [:data_permissions :p]   [:= :p.group_id :pg.id]]
-                                    :where [:and
-                                            [:= :pgm.user_id user-id]
-                                            (when db-id [:= :db_id db-id])
-                                            (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})
+    (let [data-perms    (permissions.db/user-data-permissions user-id
+                                                              (when db-id [:= :db_id db-id])
+                                                              (when perm-type [:= :perm_type (u/qualified-name perm-type)]))
           path->perms     (group-by (fn [{:keys [db-id perm-type table-id]}]
                                       (if table-id
                                         [db-id perm-type table-id]
@@ -1019,7 +1003,7 @@
   "Whether `db-id` is a destination database — one with `router_database_id` set."
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (t2/exists? :model/Database :id db-id :router_database_id [:not= nil]))))
+     (permissions.db/destination-database? db-id))))
 
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
@@ -1103,14 +1087,14 @@
   ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).
   #_(assert-no-destination-db-permissions! new-perms)
   (doseq [batched-new-perms (partition-all permission-batch-size new-perms)]
-    (t2/insert! :model/DataPermissions batched-new-perms)))
+    (permissions.db/insert-data-permissions! batched-new-perms)))
 
 (defn batch-delete-permissions!
   "Much like on insert, sometimes we have to delete more permission models than the psql limit of MAX 16-bit parameters.
   This batches our deletes into groups of `permission-batch-size`."
   [to-delete-ids]
   (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
-    (t2/delete! :model/DataPermissions :id [:in batched-to-delete-ids])))
+    (permissions.db/delete-data-permissions! batched-to-delete-ids)))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
@@ -1125,7 +1109,7 @@
   [group-ids db-ids]
   (when (and (seq group-ids) (seq db-ids))
     (group-by (juxt :group_id :db_id :perm_type)
-              (t2/select :model/DataPermissions :group_id [:in group-ids] :db_id [:in db-ids]))))
+              (permissions.db/data-permissions-for-groups-and-databases group-ids db-ids))))
 
 (mu/defn set-database-permission!
   "Set a single permission to a specified value for a given group and database. If a permission value already exists
@@ -1180,7 +1164,7 @@
          (let [{:keys [id db_id schema]}
                (if (map? table)
                  table
-                 (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                 (permissions.db/table-location table))]
            {:perm_type   perm-type
             :group_id    group-id
             :perm_value  value
@@ -1219,14 +1203,9 @@
       {:to-delete [] :to-insert []}
       ;; If we're setting any table permissions to a value that is different from the database-level permission,
       ;; we need to replace it with individual permission rows for every table in the database instead.
-      (let [other-new-perms (->> (t2/select [:model/Table :id :schema]
-                                            {:where
-                                             [:and
-                                              [:= :db_id db-id]
-                                              ;; We can't filter out *everything* here because
-                                              ;; max number of parameters is capped. But we might
-                                              ;; as well filter out what we can (conservatively).
-                                              [:not [:in :id (take 10000 table-ids)]]]})
+      ;; We can't filter out *everything* in the database because the max number of parameters is capped. But we
+      ;; might as well filter out what we can (conservatively).
+      (let [other-new-perms (->> (permissions.db/table-ids-and-schemas-excluding db-id (take 10000 table-ids))
                                  (keep (fn [table]
                                          ;; See above: we filtered out what we could in the database, but if
                                          ;; the number of tables is large we need to filter them out in
@@ -1250,14 +1229,10 @@
   [group-id db-id perm-type table-ids values new-perms]
   (let [existing-table-values (into #{}
                                     (map (comp keyword :perm_value))
-                                    (t2/query {:select-distinct [:perm_value]
-                                               :from [(t2/table-name :model/DataPermissions)]
-                                               :where [:and
-                                                       [:= :group_id group-id]
-                                                       [:= :db_id db-id]
-                                                       [:= :perm_type (u/qualified-name perm-type)]
-                                                       [:not= :table_id nil]
-                                                       [:not [:in :table_id table-ids]]]}))]
+                                    (permissions.db/other-table-permission-values group-id
+                                                                                  db-id
+                                                                                  (u/qualified-name perm-type)
+                                                                                  table-ids))]
     (if (and (= (count existing-table-values) 1)
              (= values existing-table-values))
       ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
@@ -1266,11 +1241,7 @@
                                  group-id db-id perm-type (first values))
       ;; Otherwise, just replace the rows for the individual table perm
       ;; only :id is consumed downstream (see [[set-table-permissions-internal!]]), so don't fetch full rows
-      (let [table-perms-to-delete (t2/select [:model/DataPermissions :id]
-                                             {:where [:and
-                                                      [:= :perm_type (u/qualified-name perm-type)]
-                                                      [:= :group_id group-id]
-                                                      [:in :table_id table-ids]]})]
+      (let [table-perms-to-delete (permissions.db/table-permission-ids (u/qualified-name perm-type) group-id table-ids)]
         {:to-delete table-perms-to-delete
          :to-insert new-perms}))))
 
@@ -1302,13 +1273,7 @@
       ;; implications include `view-data :unrestricted`, and the recursive table-level `view-data`
       ;; call coalesces to that same DB-level row.
       (apply merge-perm-changes
-             (if-let [existing-db-perm (t2/select-one :model/DataPermissions
-                                                      {:where
-                                                       [:and
-                                                        [:= :perm_type (u/qualified-name perm-type)]
-                                                        [:= :group_id  group-id]
-                                                        [:= :db_id     db-id]
-                                                        [:= :table_id  nil]]})]
+             (if-let [existing-db-perm (permissions.db/database-level-permission (u/qualified-name perm-type) group-id db-id)]
                (handle-existing-db-permission existing-db-perm
                                               values
                                               group-id
@@ -1352,7 +1317,7 @@
   (let [table-or-id (first (keys table-perms))
         db-id (if (map? table-or-id)
                 (:db_id table-or-id)
-                (t2/select-one-fn :db_id :model/Table table-or-id))]
+                (permissions.db/table-database-id table-or-id))]
     (with-cluster-lock {:perm-type (u/qualified-name perm-type)
                         :db-id db-id}
       (set-table-permissions-internal! group-or-id perm-type table-perms))))
@@ -1399,11 +1364,8 @@
             :perm_value perm-value
             :db_id      db-id}))
         ;; Regular groups: compute based on All Users group
-        (let [au-id    (t2/select-one-pk :model/PermissionsGroup
-                                         :magic_group_type "all-internal-users")
-              au-perms (t2/select :model/DataPermissions
-                                  {:select-distinct [:db_id :perm_type :perm_value]
-                                   :where [:= :group_id au-id]})
+        (let [au-id    (permissions.db/group-id-by-magic-type "all-internal-users")
+              au-perms (permissions.db/distinct-database-permission-values-for-group au-id)
               au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
                                  (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
                                {}
@@ -1446,16 +1408,9 @@
           ;; Batch-fetch distinct (group, perm-type, value) triples — we only need the set of unique values per
           ;; group to find the most restrictive level;
           all-perms    (when-not is-audit
-                         (t2/query {:select-distinct [:group_id :perm_type :perm_value]
-                                    :from   [[(t2/table-name :model/DataPermissions)]]
-                                    :where  [:and
-                                             [:in :group_id group-ids]
-                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]
-                                             [:not [:exists ^:allow-subquery {:select [1]
-                                                                              :from   [[(t2/table-name :model/Database) :audit_db]]
-                                                                              :where  [:and
-                                                                                       [:= :audit_db.is_audit true]
-                                                                                       [:= :audit_db.id :data_permissions.db_id]]}]]]}))
+                         (permissions.db/non-audit-permission-values-for-groups
+                          group-ids
+                          ["perms/create-queries" "perms/download-results"]))
           ;; Group by (group_id, perm_type) → set of values
           perms-by-grp (when all-perms
                          (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
@@ -1522,24 +1477,19 @@
   for new tables on `db-id`."
   [db-id group-ids perm-types]
   (let [qn          (mapv u/qualified-name perm-types)
-        db-level    (t2/select :model/DataPermissions
-                               {:where [:and [:= :db_id db-id] [:= :table_id nil]
-                                        [:in :group_id group-ids] [:in :perm_type qn]]})
+        db-level    (permissions.db/database-level-permissions db-id group-ids qn)
         ;; `schema-vals-idx` only needs the set of distinct perm-values per
         ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
         ;; keeps the result bounded by groups × perm-types × schemas × values
         ;; instead of growing with the table count, which can be millions of
         ;; rows on databases with very many tables (see #76077).
-        table-level (t2/select :model/DataPermissions
-                               {:select-distinct [:group_id :perm_type :schema_name :perm_value]
-                                :where [:and [:= :db_id db-id] [:not= :table_id nil]
-                                        [:in :group_id group-ids] [:in :perm_type qn]]})]
+        table-level (permissions.db/distinct-table-level-permission-values db-id group-ids qn)]
     {:db-id            db-id
      :db-level-idx     (into {} (map (juxt (juxt :group_id :perm_type) identity)) db-level)
      :schema-vals-idx  (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} table-level)
-     :all-db-tables    (t2/select [:model/Table :id :db_id :schema] :db_id db-id :active true)
+     :all-db-tables    (permissions.db/active-table-locations-for-database db-id)
      :view-data-levels (new-table-view-data-permission-levels db-id group-ids)}))
 
 (defn- compute-actual-value
@@ -1632,7 +1582,7 @@
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table
-                (t2/select-one [:model/Table :id :db_id :schema] :id table))]
+                (permissions.db/table-location table))]
     (set-default-table-permissions-bulk! (:db_id table) [[table group-perm-defaults]])))
 
 (defenterprise download-perms-level

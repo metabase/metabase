@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -63,12 +64,7 @@
   archived or have their admin status removed."
   [user-id]
   (when (zero?
-         (t2/count :model/PermissionsGroupMembership
-                   {:join   [[:core_user :user] [:= :user.id :user_id]]
-                    :where  [:and
-                             [:= :group_id (u/the-id (perms-group/admin))]
-                             [:= :user.is_active true]
-                             [:not= :user.id user-id]]}))
+         (permissions.db/other-active-member-count (u/the-id (perms-group/admin)) user-id))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
@@ -99,10 +95,10 @@
     (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false})))
+      (permissions.db/update-user! user_id {:is_superuser false})))
   ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
   (when (= group_id (:id (perms-group/data-analyst)))
-    (t2/update! 'User user_id {:is_data_analyst false})))
+    (permissions.db/update-user! user_id {:is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the
@@ -176,12 +172,8 @@
                                               [(conj uids user-id)
                                                (conj gids group-id)])
                                             [#{} #{}]))
-          group-id->tenant? (t2/select-pk->fn (comp boolean :is_tenant_group)
-                                              [:model/PermissionsGroup :id :is_tenant_group]
-                                              :id [:in group-ids])
-          user-id->tenant? (t2/select-pk->fn (comp (complement nil?) :tenant_id)
-                                             [:model/User :id :tenant_id]
-                                             :id [:in user-ids])
+          group-id->tenant? (comp boolean (permissions.db/group-tenant-flags group-ids))
+          user-id->tenant? (comp some? (permissions.db/user-tenant-ids user-ids))
 
           bad-user-group-pairs (->> (keys user-id-group-id->is-group-manager?)
                                     (keep (fn [[user-id group-id]]
@@ -218,16 +210,16 @@
 
           sql (add-users-to-groups-sql user-id-group-id->is-group-manager?)]
       (t2/with-transaction [_conn]
-        (when (< (t2/query-one sql)
+        (when (< (permissions.db/execute-one! sql)
                  (count user-id-group-id->is-group-manager?))
           ;; Theoretically, there could be a race condition in the above check: a user or group may be changed to a tenant
           ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
-          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+          (permissions.db/update-users! new-admin-ids {:is_superuser true}))
         (when (seq new-data-analyst-ids)
-          (t2/update! :model/User :id [:in new-data-analyst-ids] {:is_data_analyst true}))
+          (permissions.db/update-users! new-data-analyst-ids {:is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create
@@ -257,11 +249,9 @@
   (when (seq group-ids-or-groups)
     (let [user-id (u/the-id user-id-or-user)
           group-ids (map u/the-id group-ids-or-groups)
-          memberships (t2/select :model/PermissionsGroupMembership
-                                 :user_id user-id
-                                 :group_id [:in group-ids])]
+          memberships (permissions.db/memberships-for-user-in-groups user-id group-ids)]
       (binding [*allow-direct-deletion* true]
-        (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
+        (permissions.db/delete-memberships-for-user-in-groups! user-id group-ids))
       (doseq [membership memberships]
         (events/publish-event! :event/group-membership-delete {:object membership
                                                                :user-id api/*current-user-id*})))))
@@ -274,9 +264,9 @@
 (defn remove-all-users-from-group!
   "Removes all users from a group."
   [group-id]
-  (let [memberships (t2/select :model/PermissionsGroupMembership :group_id group-id)]
+  (let [memberships (permissions.db/memberships-for-group group-id)]
     (binding [*allow-direct-deletion* true]
-      (t2/delete! :model/PermissionsGroupMembership :group_id group-id))
+      (permissions.db/delete-memberships-for-group! group-id))
     (doseq [membership memberships]
       (events/publish-event! :event/group-membership-delete {:object membership
                                                              :user-id api/*current-user-id*}))))
@@ -284,9 +274,9 @@
 (defn remove-user-from-all-groups!
   "Removes a user from all groups."
   [user-id]
-  (let [memberships (t2/select :model/PermissionsGroupMembership :user_id user-id)]
+  (let [memberships (permissions.db/memberships-for-user user-id)]
     (binding [*allow-direct-deletion* true]
-      (t2/delete! :model/PermissionsGroupMembership :user_id user-id))
+      (permissions.db/delete-memberships-for-user! user-id))
     (doseq [membership memberships]
       (events/publish-event! :event/group-membership-delete {:object membership
                                                              :user-id api/*current-user-id*}))))
