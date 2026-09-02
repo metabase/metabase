@@ -225,9 +225,9 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   ;; `agent:content:*` rides both buckets: the type-generic content tools cover question/metric/
-   ;; segment/measure authoring (nlq) and dashboard/document (other-tools). An NLQ-permission user
-   ;; can create the content its type-generic write tools produce.
+   ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
+   ;; content and data structure, but content *writes* are an other-tools capability. Granting the
+   ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.
    ;;
    ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
    ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
@@ -239,7 +239,7 @@
                                         "agent:metric:*"
                                         "agent:timelines:*"
                                         "agent:explorations:*"
-                                        "agent:content:*"}
+                                        "agent:content:read"}
    ;; `agent:content:*` (the full read+write wildcard) rides other-tools, which owns content writes.
    ;; `agent:delivery:*` covers `agent:delivery:write`, the v2 scope that gates scheduled-delivery
    ;; setup — no other bucket's wildcard reaches it, so without this the scope would be dead config.

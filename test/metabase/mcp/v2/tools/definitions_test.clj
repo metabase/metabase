@@ -12,13 +12,11 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tools the assertions below drive.
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.definitions :as tools.definitions]
    [metabase.measures.api :as measures.api]
-   [metabase.metabot.scope :as metabot.scope]
    [metabase.permissions.core :as perms]
    [metabase.segments.api :as segments.api]
    [metabase.test :as mt]
@@ -505,14 +503,11 @@
   (testing "GHY-4137: a scope a tool checks must be grantable — advertised through registered-scopes"
     (is (set/subset? #{"agent:content:write"}
                      (registry/registered-scopes))))
-  (testing "GHY-4153/GHY-4154: the metabot NLQ permission bucket covers both scopes via its wildcards, alongside metric"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
-      (is (mcp.scope/matches? scopes "agent:content:write"))
-      (is (mcp.scope/matches? scopes "agent:content:write"))))
-  (testing "GHY-4153/GHY-4154: and the sql-generation bucket does not"
-    (let [scopes (metabot.scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
-      (is (not (mcp.scope/matches? scopes "agent:content:write")))
-      (is (not (mcp.scope/matches? scopes "agent:content:write"))))))
+  ;; GHY-4225: no assertion against the metabot permission buckets. In-app callers reach v2 through
+  ;; cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw their scopes from the
+  ;; tool registry (`registered-scopes`), not from `user-metabot-perms->scopes` — so
+  ;; `agent:content:write` reaching these tools never depends on a metabot wildcard.
+  )
 
 (deftest ^:parallel tools-list-visibility-test
   (testing "GHY-4137: each tool is visible exactly to tokens carrying its scope"
