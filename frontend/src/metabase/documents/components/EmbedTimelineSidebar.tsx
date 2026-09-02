@@ -6,7 +6,7 @@ import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { TimelineSidebar } from "metabase/timelines/questions/components/TimelineSidebar";
 import { Box, Loader, Stack, Text } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
+import { getTimelineEventSettings } from "metabase/viz-core";
 import type {
   CollectionId,
   TimelineEvent,
@@ -147,7 +147,7 @@ export function EmbedTimelineSidebar({
 
   if (isLoading) {
     return (
-      <Stack gap="lg" p="lg" className={S.loadingContainer}>
+      <Stack gap="xl" p="xl" className={S.loadingContainer}>
         <Box className={S.loadingContent}>
           <Loader size="lg" />
           <Text>{t`Loading timeline events...`}</Text>
@@ -158,7 +158,7 @@ export function EmbedTimelineSidebar({
 
   if (isError) {
     return (
-      <Stack gap="lg" p="lg" className={S.errorContainer}>
+      <Stack gap="xl" p="xl" className={S.errorContainer}>
         <Box className={S.errorContent}>
           <Text c="error">{t`Failed to load timeline events`}</Text>
         </Box>

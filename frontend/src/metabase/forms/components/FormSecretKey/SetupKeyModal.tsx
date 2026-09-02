@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { useMetadataToasts } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Alert,
   Button,
@@ -99,7 +99,7 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
             </Text>
           </Alert>
           {!!currentValue && (
-            <Alert size="compact" color="warning" mt="md">
+            <Alert size="compact" color="warning" mt="lg">
               <Text component="strong" fw="bold">
                 {t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
               </Text>

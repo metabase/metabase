@@ -1,5 +1,13 @@
 import { makeSandboxDistortionCallback } from "./distortions";
-import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
+import {
+  GLOBAL_BLOCKED_EVENT_TYPES,
+  addEventListenerDistortion,
+} from "./distortions-event";
+
+function asStringArg(value: object): string {
+  // type helper to pass non-string values as string in tests
+  return value as unknown as string;
+}
 
 const setterOf = (proto: object, key: string) =>
   Object.getOwnPropertyDescriptor(proto, key)?.set;
@@ -65,5 +73,43 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
     expect(distorted).not.toBe(onkeydownSetter);
 
     expect(() => distorted.call(document, () => {})).toThrow();
+  });
+});
+
+describe("addEventListenerDistortion", () => {
+  const addEventListener = addEventListenerDistortion("plugin 1");
+
+  it("blocks a global blocked event type supplied as a non-string", () => {
+    const type = { toString: () => "keydown" };
+
+    expect(() =>
+      addEventListener.call(document, asStringArg(type), () => {}),
+    ).toThrow(/blocked addEventListener for global event type: keydown/);
+  });
+
+  it("registers the listener for the same value the check saw", () => {
+    let reads = 0;
+    const type = { toString: () => (reads++ === 0 ? "click" : "keydown") };
+    const listener = jest.fn();
+
+    addEventListener.call(document, asStringArg(type), listener);
+
+    document.dispatchEvent(new Event("keydown"));
+    expect(listener).not.toHaveBeenCalled();
+
+    document.dispatchEvent(new Event("click"));
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    document.removeEventListener("click", listener);
+  });
+
+  it("allows blocked event types on non-global targets", () => {
+    const el = document.createElement("div");
+    const listener = jest.fn();
+
+    addEventListener.call(el, "keydown", listener);
+
+    el.dispatchEvent(new Event("keydown"));
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

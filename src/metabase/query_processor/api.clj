@@ -36,9 +36,11 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
+   ;; endpoint side effects: table-read events and source-card lookups hit the app db directly
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -223,8 +225,9 @@
             (let [compiled (qp.compile/compile-preprocessed preprocessed)
                   driver (driver.u/database->driver database)]
               ;; Return only the compiled query and its params, not the internal keys the compiler carries
-              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids).
-              (-> (select-keys compiled [:query :params])
+              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
+              ;; the frontend can pre-select the source table when converting a MongoDB question to native.
+              (-> (select-keys compiled [:query :params :collection])
                   (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
 (api.macros/defendpoint :post "/pivot"

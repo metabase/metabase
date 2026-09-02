@@ -1,4 +1,3 @@
-import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -40,7 +39,6 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -97,7 +95,6 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
       getDashboardCardQuery: builder.query<
         Dataset,

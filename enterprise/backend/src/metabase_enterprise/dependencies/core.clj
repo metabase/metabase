@@ -142,8 +142,8 @@
                        (merge errors)))
                  {} by-db))))))
 
-#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
+  (require '[metabase.premium-features.core])
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [base-mp (lib-be/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)

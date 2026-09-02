@@ -44,27 +44,27 @@ export const TaskRunDetailsPage = () => {
 
   return (
     <Flex h="100%" wrap="nowrap">
-      <MonitorMain gap="lg">
+      <MonitorMain gap="xl">
         <MonitorBackLink to={Urls.monitorTasksRuns()} label={t`Back to Runs`} />
 
         <MonitorPageContent className={S.content}>
           <Grid>
             <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
-              <MonitorHeaderTitle mb="md">{t`Run details`}</MonitorHeaderTitle>
+              <MonitorHeaderTitle mb="lg">{t`Run details`}</MonitorHeaderTitle>
               <Stack gap="sm">
-                <Flex gap="md">
+                <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`ID`}</Text>
                   <Text>{taskRun.id}</Text>
                 </Flex>
-                <Flex gap="md">
+                <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`Run type`}</Text>
                   <Text>{formatTaskRunType(taskRun.run_type)}</Text>
                 </Flex>
-                <Flex gap="md">
+                <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`Entity type`}</Text>
                   <Text>{formatTaskRunEntityType(taskRun.entity_type)}</Text>
                 </Flex>
-                <Flex gap="md" align="baseline">
+                <Flex gap="lg" align="baseline">
                   <Text fw="bold" w={120}>{t`Entity`}</Text>
                   <Anchor
                     component={Link}
@@ -77,11 +77,11 @@ export const TaskRunDetailsPage = () => {
                     {taskRun.entity_name ?? taskRun.entity_id}
                   </Anchor>
                 </Flex>
-                <Flex gap="md" align="center">
+                <Flex gap="lg" align="center">
                   <Text fw="bold" w={120}>{t`Status`}</Text>
                   <TaskRunStatusBadge taskRun={taskRun} />
                 </Flex>
-                <Flex gap="md">
+                <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`Started at`}</Text>
                   <Tooltip label={taskRun.started_at}>
                     <DateTime
@@ -92,7 +92,7 @@ export const TaskRunDetailsPage = () => {
                   </Tooltip>
                   <CopyButton value={taskRun.started_at} />
                 </Flex>
-                <Flex gap="md">
+                <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`Ended at`}</Text>
                   {taskRun.ended_at ? (
                     <>
@@ -109,7 +109,7 @@ export const TaskRunDetailsPage = () => {
                     EMPTY_CELL_PLACEHOLDER
                   )}
                 </Flex>
-                <Flex gap="md">
+                <Flex gap="lg">
                   <Text fw="bold" w={120}>{t`Task count`}</Text>
                   <Text>{renderTaskRunCounters(taskRun)}</Text>
                 </Flex>
@@ -117,7 +117,7 @@ export const TaskRunDetailsPage = () => {
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, lg: "auto" }}>
-              <MonitorHeaderTitle mb="md">{t`Associated tasks`}</MonitorHeaderTitle>
+              <MonitorHeaderTitle mb="lg">{t`Associated tasks`}</MonitorHeaderTitle>
               <table
                 className={cx(AdminS.ContentTable)}
                 data-testid="task-run-tasks-table"

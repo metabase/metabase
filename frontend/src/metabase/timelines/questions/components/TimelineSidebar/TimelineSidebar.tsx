@@ -13,7 +13,7 @@ import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
   TimeSeriesInterval,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+} from "metabase/viz-core";
 import type {
   CollectionId,
   DatetimeUnit,
@@ -133,7 +133,7 @@ export const TimelineSidebar = ({
   return (
     <SidebarContent title={title} onClose={onClose}>
       {focusedTimelineEventIds != null && (
-        <Box mx="lg" mb="sm">
+        <Box mx="xl" mb="sm">
           <Button
             p={0}
             variant="subtle"

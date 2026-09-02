@@ -1,13 +1,14 @@
 import { match } from "ts-pattern";
 
 import type { Dayjs } from "metabase/dayjs";
-import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
-import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
-import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
-import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 import type { QueryModalType } from "metabase/querying/constants";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
+
+import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
+import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
+import { SummarizeSidebar } from "../../sidebars/SummarizeSidebar";
+import { TimelineSidebar } from "../../sidebars/TimelineSidebar";
 
 interface StructuredQueryRightSidebarProps {
   deselectTimelineEvents: () => void;

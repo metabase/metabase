@@ -120,6 +120,26 @@
                :error-message "Not found."}
               (ex-data exception))))))
 
+(deftest select-tables-excludes-destination-database-tables-test
+  (testing "select-tables excludes tables backed by a destination (routed) database, even for a superuser"
+    (mt/with-temp [:model/Database {router-id :id}      {}
+                   :model/Database {destination-id :id} {:router_database_id router-id}
+                   :model/Table    {open-table-id :id}   {:db_id (mt/id)}]
+      ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
+      ;; `with-temp :model/Table` trips a different guard. Insert it directly, like the analogous
+      ;; metabot resource-guard tests do (metabase.metabot.agent.user-context-test,
+      ;; metabase.metabot.tools.metadata-test).
+      (let [destination-table-id (t2/insert-returning-pk!
+                                  (t2/table-name :model/Table)
+                                  {:db_id      destination-id
+                                   :name       "destination-table"
+                                   :active     true
+                                   :created_at :%now
+                                   :updated_at :%now})]
+        (mt/with-test-user :crowberto
+          (let [tables (schema.table/select-tables nil [open-table-id destination-table-id])]
+            (is (= [open-table-id] (map :id tables)))))))))
+
 ;; Batch measure definitions to avoid N+1 queries.
 (deftest table-schema-bulk-loads-measure-definitions-test
   (let [measure-select-count     (atom 0)

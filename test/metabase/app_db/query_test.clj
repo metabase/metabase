@@ -9,12 +9,15 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- verify-same-query
   "Ensure that the formatted native query derived from an mbql query produce the same results."

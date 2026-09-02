@@ -55,11 +55,11 @@ export const DeleteGroupMappingModal = ({
 
   return (
     <Modal opened onClose={onHide} title={t`Remove this group mapping?`}>
-      <Stack gap="lg" mt="sm">
+      <Stack gap="xl" mt="sm">
         <Text>{subtitle}</Text>
 
         <Box>
-          <Text mb="md">{whatShouldHappenText}</Text>
+          <Text mb="lg">{whatShouldHappenText}</Text>
           <Radio.Group
             value={value}
             onChange={(newValue) =>

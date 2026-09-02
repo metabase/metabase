@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.config.core :as config]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -23,6 +24,12 @@
 
 (p/defrecord+ ApplicationDB [^clojure.lang.Keyword db-type
                              ^javax.sql.DataSource data-source
+                             ;; Dedicated (smaller) connection pool for the Quartz JDBC job store, so job-store
+                             ;; operations can't be starved by application code saturating the main pool. When the
+                             ;; ApplicationDB is created without pooling (`:create-pool?` false, e.g. for test DBs)
+                             ;; this is just `data-source` itself. Access it via [[quartz-data-source]], which
+                             ;; respects `lock` below.
+                             ^javax.sql.DataSource quartz-data-source
                              ;; used by [[metabase.app-db.setup-db!]] and [[metabase.app-db.db-is-set-up?]] to record whether
                              ;; the usual setup steps have been performed (i.e., running Liquibase and Clojure-land data
                              ;; migrations).
@@ -71,9 +78,11 @@
 
   Options:
 
-  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database if
-    `data-source` is not already a pooled data source. Default: `false`. You should only do this for application DBs
-    that are expected to be long-lived; for test DBs that will be destroyed at the end of the test it's hardly worth it."
+  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database (plus a
+    dedicated Quartz pool -- see [[metabase.app-db.connection-pool-setup/quartz-connection-pool-data-source]]).
+    Default: `false`. Requires an unpooled `data-source`: passing an already-pooled one throws. You should only do
+    this for application DBs that are expected to be long-lived; for test DBs that will be destroyed at the end of
+    the test it's hardly worth it."
   ^ApplicationDB [db-type data-source & {:keys [create-pool?], :or {create-pool? false}}]
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
   {:pre [(#{:h2 :mysql :postgres} db-type)
@@ -83,6 +92,9 @@
     :data-source (if create-pool?
                    (connection-pool-setup/connection-pool-data-source db-type data-source)
                    data-source)
+    :quartz-data-source (if create-pool?
+                          (connection-pool-setup/quartz-connection-pool-data-source db-type data-source)
+                          data-source)
     :status      (atom initial-db-status)
     ;; for memoization purposes. See [[unique-identifier]] for more information.
     :id          (swap! application-db-counter inc)
@@ -114,6 +126,30 @@
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
   (.data-source *application-db*))
+
+(defn quartz-data-source
+  "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the current [[*application-db*]]'s
+  dedicated Quartz connection pool (or its regular data source if it was created without pooling).
+
+  Like connections acquired through the [[ApplicationDB]] itself, acquiring a connection through this takes the
+  application DB's read lock, so the testing API can block new connections while restoring the app DB."
+  ^javax.sql.DataSource []
+  (let [^ApplicationDB app-db            *application-db*
+        ^ReentrantReadWriteLock lock     (.lock app-db)
+        ^javax.sql.DataSource data-source (.quartz-data-source app-db)]
+    (reify javax.sql.DataSource
+      (getConnection [_]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source)
+          (finally
+            (.. lock readLock unlock))))
+      (getConnection [_ user password]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source user password)
+          (finally
+            (.. lock readLock unlock)))))))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -277,16 +313,24 @@
                             (if (= *transaction-depth* 1)
                               ;; The body committed the transaction, so the savepoint is gone. H2 and MySQL do this
                               ;; implicitly for DDL. Those writes are already durable; discard anything still pending.
-                              ;; TODO (Chris 2026-08-18) -- Consider rejecting DDL in rollback-only transactions and
-                              ;; fixing each caller.
-                              ;; The existing SQL guard does not cover raw SQL, and savepoints can also disappear in
-                              ;; ordinary nested transactions. Callers such as search's `drop-table!` use the ambient
-                              ;; connection; moving that DDL could block on locks held by the caller.
-                              (do
-                                (log/warnf (str "Could not roll back a rollback-only transaction (%s). Something in"
-                                                " it committed the transaction -- DDL commits implicitly on H2 and"
-                                                " MySQL -- so its writes up to that point are already durable.")
-                                           (ex-message rollback-e))
+                              (let [message (format (str "Could not roll back a rollback-only transaction (%s)."
+                                                         " Something in it committed the transaction -- DDL commits"
+                                                         " implicitly on H2 and MySQL -- so its writes up to that"
+                                                         " point are already durable.")
+                                                    (ex-message rollback-e))]
+                                ;; Every top-level `with-temp` is one of these scopes, so in a test the durable rows
+                                ;; leak into every later test. Fail here rather than in the unrelated test that
+                                ;; trips over them. Throwing covers every way the savepoint can go -- raw SQL DDL,
+                                ;; HoneySQL DDL, a deadlock -- which a guard on the SQL we build cannot: callers
+                                ;; such as search's `drop-table!` send raw SQL over the ambient connection.
+                                ;; The exceptional exit below rolls the connection back.
+                                (when config/is-test?
+                                  (throw (ex-info (str message " Those writes will leak into every later test."
+                                                       " Run the DDL outside the rollback-only scope, or on its"
+                                                       " own connection.")
+                                                  {}
+                                                  rollback-e)))
+                                (log/warn message)
                                 (rollback-connection!))
                               ;; In a nested scope, propagate the error. `rollback!` has marked the transaction tree
                               ;; as unsafe to commit.

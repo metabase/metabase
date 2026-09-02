@@ -150,7 +150,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           aria-label={t`Navigation links`}
           direction="column"
           ta="right"
-          p="md"
+          p="lg"
           gap="sm"
           miw="12rem"
           pos="fixed"

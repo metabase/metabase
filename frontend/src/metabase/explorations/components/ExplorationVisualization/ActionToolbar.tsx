@@ -37,7 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
+import { getTimelineEventSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationId,
@@ -318,7 +318,7 @@ export function ActionToolbar({
   };
 
   return (
-    <Group gap="md" align="center" wrap="nowrap" className={S.toolbarRow}>
+    <Group gap="lg" align="center" wrap="nowrap" className={S.toolbarRow}>
       <TriageNavButton
         label={t`Previous`}
         icon="chevronleft"
@@ -333,12 +333,12 @@ export function ActionToolbar({
       />
 
       <Group
-        gap="xs"
+        gap="xxs"
         bg="background-primary"
         bd="1px solid border"
         bdrs="lg"
         px="sm"
-        py="xs"
+        py="xxs"
         className={S.toolbar}
       >
         {showTimelineDropdown && (
@@ -349,7 +349,7 @@ export function ActionToolbar({
                   aria-label={t`Change selected timeline`}
                   bd="0.5px solid border"
                   bdrs="lg"
-                  py="xs"
+                  py="xxs"
                   px="sm"
                   gap={2}
                   className={S.timelineMenuTarget}
