@@ -297,7 +297,15 @@
             (testing "and the fields the call didn't name are untouched"
               (is (= "unchanged" (:description result)))
               (is (= "mcp_swap" (-> result :target :name)))
-              (is (= (venues-schema) (-> result :target :schema))))))))))
+              (is (= (venues-schema) (-> result :target :schema))))
+            (testing "the target's database follows the query being stored, not the one it replaced —
+                      a stale database in the echo is one the transform does not write, and passing that
+                      echo back unchanged would be refused by the target/query database check"
+              (is (= (mt/id) (-> result :target :database)))
+              (is (= (mt/id) (-> stored :target :database)))
+              (testing "so the echoed target round-trips"
+                (let [again (tool-result (write! {:method "update" :id id :target (:target result)}))]
+                  (is (= (mt/id) (-> again :target :database))))))))))))
 
 ;; TODO(query-track/execute_sql): restore when the execute_sql tool lands — this test mints a
 ;; query handle via `call-tool! ... "execute_sql"`, which isn't registered yet. (a query_handle on update)
