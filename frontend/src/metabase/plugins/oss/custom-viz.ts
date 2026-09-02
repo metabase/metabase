@@ -89,12 +89,6 @@ const getDefaultPluginCustomViz = () => ({
     _value: unknown,
   ): _value is WidgetMount<CustomVizSettingWidgetProps> => false,
 
-  /**
-   * Plugin widgets render their own bare setting id as the DOM id; the EE
-   * implementation strips the settings-key prefix for them.
-   */
-  getSettingWidgetDomId: (_widget: unknown, id: string): string => id,
-
   CustomVizSettingWidget: PluginPlaceholder<{
     mount: WidgetMount<CustomVizSettingWidgetProps>;
     widgetProps: CustomVizSettingWidgetProps;

@@ -36,10 +36,7 @@ import {
   useCustomVizPlugins,
 } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
 import type { SandboxMode } from "../../metabase-enterprise/custom_viz/sandbox";
-import {
-  getSettingWidgetDomId,
-  isWidgetMount,
-} from "../../metabase-enterprise/custom_viz/widget-mount";
+import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount";
 
 /**
  * EAJS has no eval-permissive page CSP in production, so its plugin sandbox
@@ -308,7 +305,6 @@ export function initializeSdkCustomVizPlugin() {
     getPluginAssetUrl,
     isCustomVizDisplay,
     isWidgetMount,
-    getSettingWidgetDomId,
     CustomVizSettingWidget,
     // Admin pages (ManageCustomVizPage, CustomVizPage, CustomVizDevPage) are
     // intentionally omitted — the SDK never renders them.

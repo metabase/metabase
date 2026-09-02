@@ -4,7 +4,6 @@ import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 import { isFunction, isObject } from "metabase-types/guards";
 
 import {
-  getSettingWidgetDomId,
   getWidgetMountPlugin,
   isWidgetMount,
   wrapPluginWidget,
@@ -56,11 +55,11 @@ describe("wrapPluginWidget", () => {
     expect(getWidgetMountPlugin(mount)).toBe(PLUGIN);
   });
 
-  it("mounts into the container with the plugin's own setting id", () => {
+  it("mounts into the container keeping the prefixed DOM id", () => {
     const { container, mountedProps, pluginWidget } = setup();
 
     expect(pluginWidget).toHaveBeenCalledWith(container, mountedProps);
-    expect(mountedProps).toMatchObject({ id: "threshold", value: 1 });
+    expect(mountedProps).toMatchObject({ id: `${PREFIX}threshold`, value: 1 });
   });
 
   it("forwards only the value to onChange", () => {
@@ -114,7 +113,7 @@ describe("wrapPluginWidget", () => {
 
     expect(handle.update).toHaveBeenCalledTimes(1);
     const updatedProps = jest.mocked(handle.update).mock.calls[0][0];
-    expect(updatedProps).toMatchObject({ id: "threshold", value: 2 });
+    expect(updatedProps).toMatchObject({ id: `${PREFIX}threshold`, value: 2 });
 
     getCallback(updatedProps, "onChangeSettings")({ threshold: 3 });
     expect(onChangeSettings).toHaveBeenCalledWith({
@@ -181,23 +180,6 @@ describe("wrapPluginWidget", () => {
     mountHandle.unmount();
 
     expect(handle.unmount).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("getSettingWidgetDomId", () => {
-  it("strips the prefix for a plugin mount", () => {
-    const { mount } = setup();
-
-    expect(getSettingWidgetDomId(mount, `${PREFIX}threshold`)).toBe(
-      "threshold",
-    );
-  });
-
-  it("returns the id unchanged for anything else", () => {
-    expect(getSettingWidgetDomId("input", `${PREFIX}threshold`)).toBe(
-      `${PREFIX}threshold`,
-    );
-    expect(getSettingWidgetDomId(() => null, "threshold")).toBe("threshold");
   });
 });
 
