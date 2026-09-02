@@ -1327,10 +1327,6 @@
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")
 
-(defmethod driver/validate-impersonated-query :sqlserver
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
-
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
   [_driver conn-spec & {:as _options}]
   ;; role is NULL because HAS_PERMS_BY_NAME checks the current user's effective

@@ -1250,3 +1250,16 @@
         (let [injected #(assoc (query %) :impersonation/allow-write? true)]
           (is (= :ok       (outcome (injected select))))
           (is (= :rejected (outcome (injected write)))))))))
+
+(deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
+  (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (let [query (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})]
+        (testing "a multi-statement native query is rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"single select statement"
+               (driver/validate-impersonated-query driver/*driver* (query "SELECT 1; SELECT 2")))))
+        (testing "a single select statement is still allowed"
+          (let [result (driver/validate-impersonated-query :mysql (query "SELECT 1"))]
+            (is (map? result))
+            (is (string? (get-in result [:stages 0 :native])))))))))
