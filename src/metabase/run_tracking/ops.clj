@@ -3,6 +3,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.run-tracking.queries :as run-tracking.queries]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2])
   (:import
@@ -34,9 +35,7 @@
   `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
   [model active heartbeat-column ids]
   (when (seq ids)
-    (t2/query {:update (t2/table-name model)
-               :set    {heartbeat-column :%now}
-               :where  [:and active [:in :id ids]]})))
+    (run-tracking.queries/heartbeat! model active heartbeat-column ids)))
 
 (defn heartbeat-and-reconcile!
   "Per-node tick for the runs this process owns: call `(heartbeat! ids)`, then `(on-gone id)` for
@@ -47,7 +46,7 @@
   [{:keys [model active ids heartbeat! on-gone]}]
   (when-let [ids (seq ids)]
     (heartbeat! ids)
-    (let [active-ids (t2/select-fn-set :id model {:where [:and [:in :id ids] active]})]
+    (let [active-ids (run-tracking.queries/active-ids model active ids)]
       (doseq [id ids
               :when (not (contains? active-ids id))]
         (on-gone id)))))
@@ -59,10 +58,8 @@
   `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
   [{:keys [model active stale terminal]}]
   (t2/with-transaction [_conn]
-    (when-let [rows (not-empty (t2/select model {:where [:and active stale] :for :update}))]
-      (t2/query {:update (t2/table-name model)
-                 :set    terminal
-                 :where  [:and active [:in :id (mapv :id rows)]]})
+    (when-let [rows (not-empty (run-tracking.queries/lock-active-stale-rows model active stale))]
+      (run-tracking.queries/set-terminal! model active (mapv :id rows) terminal)
       rows)))
 
 (defn reap-orphaned!

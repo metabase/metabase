@@ -7,6 +7,7 @@
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.lib-be.queries :as lib-be.queries]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -429,7 +430,7 @@
                             `lib.metadata.protocols/database
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (t2/select-one :metadata/database database-id))
+  (lib-be.queries/database database-id))
 
 (defn- db-id-key [metadata-type]
   (case metadata-type
@@ -538,7 +539,7 @@
    {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [query (metadata-spec->honey-sql database-id metadata-spec)]
     (lib.util/recover
-     (fn [] (t2/select metadata-type query))
+     (fn [] (lib-be.queries/metadatas metadata-type query))
      (fn [e]
        (throw (ex-info "Error fetching metadata with spec"
                        {:metadata-spec metadata-spec, :query query}

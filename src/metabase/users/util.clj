@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
+   [metabase.users.queries :as users.queries]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -53,7 +54,7 @@
 (defn fetch-user
   "Implementation for `/api/user` endpoints; fetch a User from the app DB."
   [& query-criteria]
-  (apply t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) query-criteria))
+  (apply users.queries/admin-or-self-visible-user user/admin-or-self-visible-columns query-criteria))
 
 (mu/defn invite-user!
   "Implementation for `POST /api/user`, invites a user to Metabase."
@@ -65,7 +66,7 @@
     :as   attributes} :- [:map
                           [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
   (api/check-superuser)
-  (api/check-400 (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
+  (api/check-400 (not (users.queries/user-email-exists? (u/lower-case-en email)))
                  {:errors     {:email (tru "Email address already in use.")}
                   :error_code "email-already-in-use"})
   (api/checkp (not (and tenant-id
@@ -96,7 +97,7 @@
                                :invited-user-id new-user-id
                                :source          (or source :admin)})
       (-> (fetch-user :id new-user-id)
-          (t2/hydrate :user_group_memberships)))))
+          users.queries/hydrate-user-group-memberships))))
 
 (defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."

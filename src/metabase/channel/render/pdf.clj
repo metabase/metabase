@@ -39,6 +39,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.queries :as channel.queries]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
@@ -57,8 +58,7 @@
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
-   [metabase.util.memoize :as memo]
-   [toucan2.core :as t2])
+   [metabase.util.memoize :as memo])
   (:import
    (java.awt Color)
    (java.awt.geom AffineTransform PathIterator)
@@ -1468,9 +1468,9 @@
                                     (map (juxt #(-> % :dashcard :id) identity)))
                            parts)
            dims      (paper-dims paper-key)
-           dash      (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+           dash      (channel.queries/dashboard dashboard-id)
+           tabs      (channel.queries/dashboard-tabs dashboard-id)
+           dcs       (channel.queries/hydrate-card (channel.queries/dashcards dashboard-id))
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)

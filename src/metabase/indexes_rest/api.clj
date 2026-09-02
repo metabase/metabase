@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexes-rest.queries :as indexes-rest.queries]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
    [metabase.indexes.schema :as schema]
@@ -70,7 +71,7 @@
         database-id (transforms-base.i/target-db-id transform)
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
-        warehouse   (or (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database-id)
+        warehouse   (or (reconcile/fetch-warehouse-indexes (indexes-rest.queries/database database-id)
                                                            schema table-name)
                         [])]
     {:data (reconcile/merge-indexes managed warehouse)}))
@@ -78,7 +79,7 @@
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (doto (api/check-404 (t2/select-one :model/TableIndex :id id))
+  (doto (api/check-404 (indexes-rest.queries/table-index id))
     (read-check-owner!)))
 
 (api.macros/defendpoint :post "/request" :- RequestIndex
@@ -95,11 +96,11 @@
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
     (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
     (try
-      (t2/insert-returning-instance! :model/TableIndex
-                                     {:transform_id transform_id
-                                      :index_name   idx-name
-                                      :structured   structured
-                                      :created_by   api/*current-user-id*})
+      (indexes-rest.queries/insert-table-index!
+       {:transform_id transform_id
+        :index_name   idx-name
+        :structured   structured
+        :created_by   api/*current-user-id*})
       (catch Exception e
         ;; the pre-check races a concurrent create; if the row exists now, surface the same 400
         (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
@@ -125,8 +126,8 @@
     (assert-stable-key! existing structured)
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
-      (t2/update! :model/TableIndex id {:structured structured})
-      (t2/select-one :model/TableIndex :id id))))
+      (indexes-rest.queries/set-table-index-structured! id structured)
+      (indexes-rest.queries/table-index id))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/request/:id"
@@ -135,5 +136,5 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (t2/update! :model/TableIndex id {:status :delete-pending}))
+    (indexes-rest.queries/set-table-index-status! id :delete-pending))
   api/generic-204-no-content)

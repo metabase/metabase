@@ -24,10 +24,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.mq.quartz-affinity :as quartz-affinity]
+   [metabase.mq.queries :as mq.queries]
    [metabase.mq.settings :as mq.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.lang.management ManagementFactory)
    (java.time Instant)
@@ -55,10 +55,7 @@
   lower-case* reference (`:qrtz_triggers`) fails on case-sensitive MySQL/MariaDB. (Quartz's own SQL
   references these tables the same unquoted upper-case way.)"
   [sched-name threshold]
-  (t2/query [(str "SELECT trigger_name, job_name FROM QRTZ_TRIGGERS"
-                  " WHERE sched_name = ? AND trigger_group = ? AND trigger_state = 'WAITING'"
-                  " AND start_time < ?")
-             sched-name quartz-affinity/queue-job-group threshold]))
+  (mq.queries/waiting-queue-triggers-before sched-name quartz-affinity/queue-job-group threshold))
 
 (defn- drop-orphaned-triggers!
   "Drops queue message triggers that have sat `WAITING` — never acquired by any node — for longer than

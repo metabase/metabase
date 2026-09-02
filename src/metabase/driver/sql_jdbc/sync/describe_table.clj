@@ -10,6 +10,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.queries :as driver.queries]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -25,10 +26,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
-   [potemkin :as p]
-   ;; sync-time read of already-synced Field rows; sync runs without a metadata provider
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
    (com.fasterxml.jackson.core
     JsonFactory
@@ -752,10 +750,7 @@
   "Given a table return a list of json fields that need to unfold."
   [driver conn table]
   (let [fields-with-json-unfolding-disabled
-        (->> (t2/select-fn-set :name [:model/Field :name]
-                               :table_id (u/the-id table)
-                               :base_type :type/JSON
-                               :json_unfolding false)
+        (->> (driver.queries/json-field-names-with-unfolding-disabled (u/the-id table))
              ;; in a delay so we'll query only if there's at least one json field
              (delay))]
     (into #{}

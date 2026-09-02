@@ -4,9 +4,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.glossary.queries :as glossary.queries]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -21,9 +21,7 @@
                   [:or
                    [:like [:lower :term] pattern]
                    [:like [:lower :definition] pattern]]))]
-    {:data (t2/hydrate (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
-                                                    where (assoc :where where)))
-                       :creator)}))
+    {:data (glossary.queries/hydrate-creator (glossary.queries/glossary-entries where))}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -37,14 +35,14 @@
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [glossary (t2/insert-returning-instance! :model/Glossary
-                                                {:term       term
-                                                 :definition definition
-                                                 :creator_id api/*current-user-id*})]
+  (let [glossary (glossary.queries/insert-glossary-entry!
+                  {:term       term
+                   :definition definition
+                   :creator_id api/*current-user-id*})]
     (events/publish-event! :event/glossary-create
                            {:object glossary
                             :user-id api/*current-user-id*})
-    (t2/hydrate glossary :creator)))
+    (glossary.queries/hydrate-creator glossary)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -58,14 +56,14 @@
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
   (api/check-data-analyst)
-  (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
-    (t2/update! :model/Glossary id {:term term :definition definition})
-    (let [glossary (t2/select-one :model/Glossary :id id)]
+  (let [previous-glossary (api/check-404 (glossary.queries/glossary-entry id))]
+    (glossary.queries/update-glossary-entry! id term definition)
+    (let [glossary (glossary.queries/glossary-entry id)]
       (events/publish-event! :event/glossary-update
                              {:object glossary
                               :previous-object previous-glossary
                               :user-id api/*current-user-id*})
-      (t2/hydrate glossary :creator))))
+      (glossary.queries/hydrate-creator glossary))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -75,8 +73,8 @@
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
-    (t2/delete! :model/Glossary :id id)
+  (let [glossary (api/check-404 (glossary.queries/glossary-entry id))]
+    (glossary.queries/delete-glossary-entry! id)
     (events/publish-event! :event/glossary-delete
                            {:object glossary
                             :user-id api/*current-user-id*}))

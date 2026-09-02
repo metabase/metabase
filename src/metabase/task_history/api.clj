@@ -8,13 +8,12 @@
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.queries :as task-history.queries]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -145,7 +144,7 @@
                             (mapcat (fn [[entity-type model]]
                                       (when-let [entity-runs (grouped entity-type)]
                                         (let [ids   (map :entity_id entity-runs)
-                                              names (t2/select-pk->fn :name model :id [:in ids])]
+                                              names (task-history.queries/names-by-id model ids)]
                                           (map (fn [[id name]] [[entity-type id] name]) names))))
                                     entity-type->model))]
       (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
@@ -156,13 +155,7 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (t2/query {:select   [:run_id
-                                             [[:count :id] :task_count]
-                                             [[:sum [:case [:= :status [::h2x/literal "success"]] [:inline 1] :else [:inline 0]]] :success_count]
-                                             [[:sum [:case [:= :status [::h2x/literal "failed"]] [:inline 1] :else [:inline 0]]] :failed_count]]
-                                  :from     :task_history
-                                  :where    [:in :run_id run-ids]
-                                  :group-by [:run_id]})
+          counts       (task-history.queries/task-counts-for-runs run-ids)
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -242,11 +235,11 @@
   (let [where-clause (build-run-where-clause params)
         limit        (request/limit)
         offset       (request/offset)
-        runs         (t2/select :model/TaskRun (merge where-clause
-                                                      (runs-order-by params)
-                                                      (when limit {:limit limit})
-                                                      (when offset {:offset offset})))]
-    {:total  (t2/count :model/TaskRun where-clause)
+        runs         (task-history.queries/task-runs (merge where-clause
+                                                            (runs-order-by params)
+                                                            (when limit {:limit limit})
+                                                            (when offset {:offset offset})))]
+    {:total  (task-history.queries/task-run-count where-clause)
      :limit  limit
      :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
@@ -255,8 +248,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
-        tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
+  (let [run   (api/check-404 (task-history.queries/task-run id))
+        tasks (task-history.queries/tasks-for-run id)]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -272,8 +265,6 @@
   (perms/check-has-application-permission :monitoring)
   (let [where-conditions [[:= :run_type (:run-type params)]
                           (timestamp-constraint :started_at (:started-at params))]]
-    (->> (t2/query {:select-distinct [:entity_type :entity_id]
-                    :from            :task_run
-                    :where           (into [:and] where-conditions)})
+    (->> (task-history.queries/distinct-run-entities (into [:and] where-conditions))
          (map #(update % :entity_type keyword))
          hydrate-entity-names)))

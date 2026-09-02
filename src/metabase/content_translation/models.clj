@@ -1,6 +1,7 @@
 (ns metabase.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
+   [metabase.content-translation.queries :as content-translation.queries]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -21,5 +22,5 @@
   ([locale]
    (premium-features/assert-has-feature :content-translation (tru "Content translation"))
    (if locale
-     (t2/select :model/ContentTranslation :locale locale {:order-by [:msgid]})
-     (t2/select :model/ContentTranslation {:order-by [:locale :msgid]}))))
+     (content-translation.queries/translations-for-locale locale)
+     (content-translation.queries/all-translations))))

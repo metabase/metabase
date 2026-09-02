@@ -11,11 +11,11 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib-metric.metadata.provider :as provider]
+   [metabase.lib-metric.queries :as lib-metric.queries]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.util.memoize :as memoize]
-   [toucan2.core :as t2]))
+   [metabase.util.memoize :as memoize]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +24,7 @@
   []
   (memoize/lru
    (fn [table-id]
-     (t2/select-one-fn :db_id :model/Table table-id))
+     (lib-metric.queries/table-database-id table-id))
    :lru/threshold 1000))
 
 (defn- metric-spec->honey-sql
@@ -47,7 +47,7 @@
   [metadata-spec]
   (let [query (metric-spec->honey-sql metadata-spec)]
     (try
-      (t2/select :metadata/metric query)
+      (lib-metric.queries/metrics query)
       (catch Throwable e
         (throw (ex-info "Error fetching metrics with spec"
                         {:metadata-spec metadata-spec, :query query}
@@ -90,7 +90,7 @@
   [metadata-spec]
   (let [query (measure-spec->honey-sql metadata-spec)]
     (try
-      (t2/select :metadata/measure query)
+      (lib-metric.queries/measures query)
       (catch Throwable e
         (throw (ex-info "Error fetching measures for dimensions"
                         {:metadata-spec metadata-spec, :query query}

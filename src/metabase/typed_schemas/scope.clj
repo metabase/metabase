@@ -28,8 +28,8 @@
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.typed-schemas.queries :as typed-schemas.queries]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,11 +51,11 @@
   (when database-ref
     (let [{:keys [id name]} database-ref]
       (if id
-        (let [database (t2/select-one :model/Database :id id)]
+        (let [database (typed-schemas.queries/database id)]
           (if (and database (mi/can-read? database))
             #{id}
             #{}))
-        (->> (t2/select :model/Database :name name)
+        (->> (typed-schemas.queries/databases-named name)
              (filter mi/can-read?)
              (map :id)
              set)))))
@@ -83,12 +83,12 @@
                           (mi/can-read? collection)))
         by-id      (when (seq ids)
                      (into {} (map (juxt :id identity))
-                           (t2/select :model/Collection :id [:in ids])))
+                           (typed-schemas.queries/collections ids)))
         ;; entity_id is a fixed-width char column; some app dbs return it
         ;; space-padded, so key the lookup by the trimmed value.
         by-eid     (when (seq entity-ids)
                      (into {} (map (juxt (comp str/trimr :entity_id) identity))
-                           (t2/select :model/Collection :entity_id [:in entity-ids])))
+                           (typed-schemas.queries/collections-by-entity-ids entity-ids)))
         resolved   (for [{:keys [id entity-id] :as collection-ref} collection-refs]
                      [collection-ref
                       (let [collection (if id (get by-id id) (get by-eid entity-id))]

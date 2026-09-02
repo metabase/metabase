@@ -16,14 +16,14 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.tiles.queries :as tiles.queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.web-mercator :as mercator]
-   [toucan2.core :as t2])
+   [metabase.util.web-mercator :as mercator])
   (:import
    (java.awt Color)
    (java.awt.image BufferedImage)
@@ -302,7 +302,7 @@
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card card-id))
+  (process-tiles-query-for-card (api/check-404 (tiles.queries/card card-id))
                                 parameters zoom x y lat-field lon-field))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -324,7 +324,7 @@
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-                                    (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-                                    (api/check-404 (t2/select-one :model/Card card-id))
+  (process-tiles-query-for-dashcard (api/check-404 (tiles.queries/dashboard dashboard-id))
+                                    (api/check-404 (tiles.queries/dashcard dashcard-id))
+                                    (api/check-404 (tiles.queries/card card-id))
                                     parameters zoom x y lat-field lon-field))

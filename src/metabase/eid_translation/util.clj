@@ -4,6 +4,7 @@
    [malli.error :as me]
    [metabase.batch-processing.core :as grouper]
    [metabase.eid-translation.impl :as eid-translation]
+   [metabase.eid-translation.queries :as eid-translation.queries]
    [metabase.eid-translation.settings :as eid-translation.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -106,7 +107,7 @@
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+        eid->id (into {} (eid-translation.queries/entity-id->id model eids))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}

@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.view-log.queries :as view-log.queries]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -54,14 +55,7 @@
           ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
           ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
-            ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
-            ;; specifically search-index enqueues on after-update.
-            (t2/query {:update (t2/table-name model)
-                       :set    {:view_count [:+ :view_count (into [:case]
-                                                                  (mapcat (fn [[cnt ids]]
-                                                                            [[:in :id ids] cnt])
-                                                                          cnt->ids))]}
-                       :where  [:in :id (apply concat (vals cnt->ids))]})))))
+            (view-log.queries/increment-view-counts! model cnt->ids)))))
     (catch Exception e
       (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
@@ -88,7 +82,7 @@
 (defn- record-views!* [views]
   (log/debugf "Recording %d views" (count views))
   (try
-    (t2/insert! :model/ViewLog views)
+    (view-log.queries/insert-view-logs! views)
     (catch Exception e
       (log/errorf "Failed to record views: %s" (ex-message e)))))
 
@@ -152,7 +146,7 @@
      :user-id user-id}
     (try
       (when (and (= context :ad-hoc)
-                 (= :model (t2/select-one-fn :type :model/Card :id card-id)))
+                 (= :model (view-log.queries/card-type card-id)))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card
                                       :object-id card-id
@@ -172,20 +166,10 @@
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
                                              (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
-      ;; Use t2/query (raw SQL) instead of t2/update! to avoid triggering Toucan2 model hooks
-      ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
-      ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
-      ;; in increment-view-counts!*
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
-        (t2/query {:update (t2/table-name :model/Dashboard)
-                   :set    {:last_viewed_at (into [:case]
-                                                  (mapcat (fn [[id timestamp]]
-                                                            [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                          dashboard-id->timestamp))
-                            :updated_at :updated_at}
-                   :where  [:in :id (keys dashboard-id->timestamp)]}))
+        (view-log.queries/update-dashboards-last-viewed-at! dashboard-id->timestamp))
       (catch Exception e
         (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 

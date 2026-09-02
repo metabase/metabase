@@ -9,13 +9,13 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.metrics.queries :as metrics.queries]
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.namespaces :as shared.ns]
-   [toucan2.core :as t2]))
+   [metabase.util.namespaces :as shared.ns]))
 
 ;;; ------------------------------------------------- Re-exports --------------------------------
 
@@ -212,9 +212,7 @@
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
   [database-id]
-  (doseq [{:keys [id dimensions]} (t2/select [:model/Card :id :dimensions]
-                                             :type "metric"
-                                             :database_id database-id)
+  (doseq [{:keys [id dimensions]} (metrics.queries/metric-cards-for-database database-id)
           :when (empty? dimensions)]
     (try
       (sync-dimensions! :metadata/metric id)

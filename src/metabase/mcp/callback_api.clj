@@ -8,12 +8,12 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.queries :as mcp.queries]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- mcp-session-id-from-headers
   [request]
@@ -43,13 +43,13 @@
 
 (defn- persist-mcp-feedback!
   [{:keys [feedback conversation_data]}]
-  (t2/insert! :model/McpFeedback
-              {:user_id           api/*current-user-id*
-               :positive          (:positive feedback)
-               :issue_type        (:issue_type feedback)
-               :freeform_feedback (:freeform_feedback feedback)
-               :prompt            (:prompt conversation_data)
-               :query             (:query conversation_data)}))
+  (mcp.queries/insert-feedback!
+   {:user_id           api/*current-user-id*
+    :positive          (:positive feedback)
+    :issue_type        (:issue_type feedback)
+    :freeform_feedback (:freeform_feedback feedback)
+    :prompt            (:prompt conversation_data)
+    :query             (:query conversation_data)}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/drills"

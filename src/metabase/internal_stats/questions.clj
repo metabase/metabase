@@ -1,9 +1,9 @@
 (ns metabase.internal-stats.questions
   (:require
    [metabase.app-db.core :as db]
+   [metabase.internal-stats.queries :as internal-stats.queries]
    [metabase.internal-stats.util :as u]
-   [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
+   [metabase.models.interface :as mi]))
 
 (defn- and-not-nil
   ([not-nil-field]
@@ -42,35 +42,35 @@
   "Get metrics based on questions "
   []
   (let [json-supported? (contains? #{:mysql :mariadb :postgres} (db/db-type))]
-    (t2/select-one (cond-> [:model/Card
-                            [:%count.* :total]
-                            [(u/count-case [:= "native" :query_type])
-                             :native]
-                            [(u/count-case [:!= "native" :query_type])
-                             :gui]
-                            [(u/count-case [:!= :dashboard_id nil])
-                             :is_dashboard_question]
-                            [(u/count-case [:= :enable_embedding [:inline true]])
-                             :total_embedded]
-                            [(u/count-case (and-not-nil :public_uuid))
-                             :total_public]]
-                     ;; json_exists/contains which we use to query json encoded data stored in text
-                     ;; columns is not supported on h2 databases, so we exclude these stats when
-                     ;; the app db is h2.
-                     json-supported? (conj
-                                      [(u/count-case (card-has-params))
-                                       :with_params]
-                                      [(u/count-case (and-not-nil (card-has-params) :public_uuid))
-                                       :with_params_public]
-                                      [(u/count-case [:and embedding-on (card-has-params)])
-                                       :with_params_embedded]
-                                      [(u/count-case [:and (contains-embedding-param "enabled")
-                                                      embedding-on])
-                                       :with_enabled_params]
-                                      [(u/count-case [:and (contains-embedding-param "locked")
-                                                      embedding-on])
-                                       :with_locked_params]
-                                      [(u/count-case [:and (contains-embedding-param "disabled")
-                                                      embedding-on])
-                                       :with_disabled_params]))
-                   {:where (mi/exclude-internal-content-hsql :model/Card)})))
+    (internal-stats.queries/card-statistics
+     (cond-> [[:%count.* :total]
+              [(u/count-case [:= "native" :query_type])
+               :native]
+              [(u/count-case [:!= "native" :query_type])
+               :gui]
+              [(u/count-case [:!= :dashboard_id nil])
+               :is_dashboard_question]
+              [(u/count-case [:= :enable_embedding [:inline true]])
+               :total_embedded]
+              [(u/count-case (and-not-nil :public_uuid))
+               :total_public]]
+       ;; json_exists/contains which we use to query json encoded data stored in text
+       ;; columns is not supported on h2 databases, so we exclude these stats when
+       ;; the app db is h2.
+       json-supported? (conj
+                        [(u/count-case (card-has-params))
+                         :with_params]
+                        [(u/count-case (and-not-nil (card-has-params) :public_uuid))
+                         :with_params_public]
+                        [(u/count-case [:and embedding-on (card-has-params)])
+                         :with_params_embedded]
+                        [(u/count-case [:and (contains-embedding-param "enabled")
+                                        embedding-on])
+                         :with_enabled_params]
+                        [(u/count-case [:and (contains-embedding-param "locked")
+                                        embedding-on])
+                         :with_locked_params]
+                        [(u/count-case [:and (contains-embedding-param "disabled")
+                                        embedding-on])
+                         :with_disabled_params]))
+     (mi/exclude-internal-content-hsql :model/Card))))

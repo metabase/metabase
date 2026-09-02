@@ -2,13 +2,13 @@
   "Password authentication provider implementation."
   (:require
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.queries :as auth-identity.queries]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,10 +40,8 @@
 (mu/defn- find-auth-identity-by-email
   "Find an AuthIdentity record by email address."
   [email :- ms/NonBlankString]
-  (when-let [user (t2/select-one :model/User :%lower.email (u/lower-case-en email))]
-    (t2/select-one :model/AuthIdentity
-                   :user_id (:id user)
-                   :provider "password")))
+  (when-let [user (auth-identity.queries/user-by-lower-email (u/lower-case-en email))]
+    (auth-identity.queries/auth-identity (:id user) "password")))
 
 (methodical/defmethod provider/authenticate :provider/password
   "Authenticate a user with email and password.

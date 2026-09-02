@@ -8,11 +8,11 @@
    [metabase.analytics.core :as analytics]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
+   [metabase.product-feedback.queries :as product-feedback.queries]
    [metabase.product-feedback.settings :as product-feedback.settings]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +27,7 @@
              (not (product-feedback.settings/follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(system/admin-email)`?
-    (when-let [admin (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
+    (when-let [admin (product-feedback.queries/oldest-active-admin)]
       (try
         (messages/send-follow-up-email! (:email admin))
         (catch Throwable e
@@ -38,7 +38,7 @@
 (defn- instance-creation-timestamp
   "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
   ^java.time.temporal.Temporal []
-  (t2/select-one-fn :date_joined :model/User, {:order-by [[:date_joined :asc]]}))
+  (product-feedback.queries/earliest-user-date-joined))
 
 (task/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done

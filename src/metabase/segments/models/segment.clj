@@ -13,6 +13,7 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.segments.queries :as segments.queries]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -79,10 +80,10 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
+   (let [table (:table (segments.queries/hydrate-table instance))]
      (mi/can-read? table)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (segments.queries/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -91,7 +92,7 @@
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (segments.queries/table (:table_id instance)))]
      (and (or (mi/superuser?)
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -101,8 +102,8 @@
                     (:db_id table)
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (segments.queries/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -111,7 +112,7 @@
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (segments.queries/table (:table_id instance)))]
     (and (or (mi/superuser?)
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -127,7 +128,7 @@
    then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
    on each segment. This avoids N+1 queries when checking permissions for multiple segments."
   [_model k segments]
-  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
+  (let [segments-with-tables (segments.queries/hydrate-table (remove nil? segments))
         ;; Get all unique collection IDs from the hydrated tables
         collection-ids (->> segments-with-tables
                             (keep (comp :collection_id :table))
@@ -136,7 +137,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (segments.queries/collections collection-ids))
                                 {})
         ;; Associate collection info with each segment's table
         segments-with-collection (for [segment segments-with-tables
@@ -157,7 +158,7 @@
   [{:keys [definition], table-id :table_id}]
   (when (some? definition)
     (let [database-id (when table-id
-                        (t2/select-one-fn :db_id :model/Table :id table-id))]
+                        (segments.queries/table-database-id table-id))]
       (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
@@ -184,7 +185,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (segments.queries/table-perms-columns (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition

@@ -3,8 +3,8 @@
   OSS product. EE-only code is located in `metabase-enterprise.audit-app.audit`."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.settings :as audit.settings]
-   [toucan2.core :as t2]))
+   [metabase.audit-app.queries :as audit-app.queries]
+   [metabase.audit-app.settings :as audit.settings]))
 
 ;; NOTE: Constants like `audit-db-id` and the entity IDs of audit collections are placed in OSS code because audit
 ;; content may be loaded on an OSS build in the case of an EE->OSS downgrade. In these situations, we still need
@@ -27,7 +27,7 @@
   (mdb/memoize-for-application-db
    (fn [checksum model entity-id]
      (when checksum
-       (t2/select-one model :entity_id entity-id)))))
+       (audit-app.queries/entity-by-entity-id model entity-id)))))
 
 (defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.

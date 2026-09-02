@@ -6,9 +6,9 @@
    [metabase.actions.core :as actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.queries :as typed-schemas.queries]
    [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,10 +46,7 @@
 (defn- action-rows
   "Returns raw rows so we can detect actions that cannot be resolved to action details."
   [model-ids]
-  (t2/select [:model/Action :id :model_id :name :type]
-             :model_id [:in model-ids]
-             :archived false
-             :type [:not= "http"]))
+  (typed-schemas.queries/model-actions model-ids))
 
 (defn- unresolved-action-rows
   "Returns action rows missing from resolved action details."

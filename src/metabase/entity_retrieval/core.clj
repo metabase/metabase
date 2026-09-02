@@ -12,8 +12,8 @@
   (:require
    [clojure.string :as str]
    [metabase.entity-retrieval.mirror]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [metabase.entity-retrieval.queries :as entity-retrieval.queries]
+   [potemkin :as p]))
 
 (comment metabase.entity-retrieval.mirror/keep-me)
 
@@ -68,18 +68,13 @@
   ref's) differs from the type it was curated under (a card-flavor relabel)."
   [entity-refs]
   (if-let [wanted (seq (into #{} (map (juxt :model :id)) entity-refs))]
-    ;; row-value IN isn't portable across our app DBs, so match the wanted (type, id) pairs with OR-of-ANDs.
     ;; Normalize each ref's type to the stored key, so a card ref (metric/model) matches its `card` row.
-    (let [clause   (into [:or]
-                         (map (fn [[t id]]
-                                [:and
-                                 [:= :entity_type (normalize-entity-type t)]
-                                 [:= :entity_local_id id]]))
-                         wanted)
-          by-class (into {} (remove (comp str/blank? val))
-                         (t2/select-fn->fn #(entity-class (:entity_type %) (:entity_local_id %))
-                                           (comp :instructions :ai_context)
-                                           :model/OsiAiContext {:where clause}))]
+    (let [pairs    (map (fn [[t id]] [(normalize-entity-type t) id]) wanted)
+          by-class (into {}
+                         (comp (map (juxt #(entity-class (:entity_type %) (:entity_local_id %))
+                                          (comp :instructions :ai_context)))
+                               (remove (comp str/blank? second)))
+                         (entity-retrieval.queries/ai-contexts-for-entities pairs))]
       ;; key the result back by the caller's original [type id] ref
       (into {} (keep (fn [[t id]]
                        (when-let [instr (by-class (entity-class t id))]

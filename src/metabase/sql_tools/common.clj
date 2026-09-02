@@ -7,10 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.interface :as sql-tools]
+   [metabase.sql-tools.queries :as sql-tools.queries]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -38,18 +38,7 @@
   (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
     ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
     ;; query naming a table that does not exist.
-    (set (t2/select-pks-set :model/Table
-                            {:where [:and
-                                     [:= :db_id database-id]
-                                     ;; `lower()` cannot use an index on the name column, but it still beats fetching every
-                                     ;; row for the Database.
-                                     [:in [:lower :name] names]
-                                     ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
-                                     ;; `:id` lookup does not apply it, so it has to happen here.
-                                     [:= :active true]
-                                     [:or
-                                      [:= :visibility_type nil]
-                                      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
+    (set (sql-tools.queries/active-visible-table-ids-by-lower-name database-id names))
     #{}))
 
 (defn find-table-or-transform

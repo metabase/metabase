@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.session.queries :as session.queries]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
@@ -39,7 +40,7 @@
         hsql            {:delete-from [(t2/table-name :model/Session)]
                          :where       where-clause}]
     (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
-      (t2/query-one hsql))))
+      (session.queries/delete-sessions! hsql))))
 
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))

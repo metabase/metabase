@@ -3,12 +3,12 @@
    pre-deactivation session cookie. (SEC-863)"
   (:require
    [metabase.events.core :as events]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.session.queries :as session.queries]
+   [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
 (events/derive! :event/user-credentials-revoked ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [user-id] :as _event}]
-  (t2/delete! :model/Session :user_id user-id))
+  (session.queries/delete-sessions-for-user! user-id))

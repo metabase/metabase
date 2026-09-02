@@ -7,11 +7,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.queries :as timeline.queries]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -34,7 +34,7 @@
        [:question_id  {:optional true} [:maybe ms/PositiveInt]]
        [:archived     {:optional true} [:maybe :boolean]]]]
   ;; deliberately not using api/check-404 so we can have a useful error message.
-  (let [timeline (t2/select-one :model/Timeline :id timeline_id)]
+  (let [timeline (timeline.queries/timeline timeline_id)]
     (when-not timeline
       (throw (ex-info (tru "Timeline with id {0} not found" timeline_id)
                       {:status-code 404})))
@@ -47,15 +47,15 @@
                           {:creator_id api/*current-user-id*
                            :timestamp  parsed}
                           (when-not icon
-                            {:icon (t2/select-one-fn :icon :model/Timeline :id timeline_id)}))]
+                            {:icon (timeline.queries/timeline-icon timeline_id)}))]
       (analytics/track-event! :snowplow/timeline
                               (cond-> {:event         :new-event-created
                                        :time_matters  time_matters
                                        :collection_id (:collection_id timeline)}
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
-      (u/prog1 (first (t2/insert-returning-instances! :model/TimelineEvent tl-event))
-        (events/publish-event! :event/timeline-create {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*})))))
+      (u/prog1 (timeline.queries/insert-timeline-event! tl-event)
+        (events/publish-event! :event/timeline-create {:object (timeline.queries/timeline (:timeline_id <>)) :user-id api/*current-user-id*})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -93,12 +93,12 @@
     (when (api/column-will-change? :timeline_id existing timeline-event-updates)
       (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (t2/update! :model/TimelineEvent id
-                (u/select-keys-when timeline-event-updates
-                                    :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-                                    :non-nil #{:name}))
-    (u/prog1 (t2/select-one :model/TimelineEvent :id id)
-      (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*}))))
+    (timeline.queries/update-timeline-event! id
+                                             (u/select-keys-when timeline-event-updates
+                                                                 :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
+                                                                 :non-nil #{:name}))
+    (u/prog1 (timeline.queries/timeline-event id)
+      (events/publish-event! :event/timeline-update {:object (timeline.queries/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -110,6 +110,6 @@
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
   (let [timeline-event (api/write-check :model/TimelineEvent id)]
-    (t2/delete! :model/TimelineEvent :id id)
-    (events/publish-event! :event/timeline-delete {:object (t2/select-one :model/Timeline :id (:timeline_id timeline-event)) :user-id api/*current-user-id*}))
+    (timeline.queries/delete-timeline-event! id)
+    (events/publish-event! :event/timeline-delete {:object (timeline.queries/timeline (:timeline_id timeline-event)) :user-id api/*current-user-id*}))
   api/generic-204-no-content)

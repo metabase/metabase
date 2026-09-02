@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
    [metabase.comments.models.comment-reaction :as comment-reaction]
+   [metabase.comments.queries :as comments.queries]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
@@ -29,8 +30,7 @@
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
-   #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                      :id (keep :creator_id comments))
+   #(comments.queries/users-by-id (keep :creator_id comments))
    :creator_id
    {:default {}}))
 

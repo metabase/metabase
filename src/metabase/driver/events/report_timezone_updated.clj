@@ -2,12 +2,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.queries :as driver.queries]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   ;; event handler runs outside any query; it enumerates Database rows itself, no metadata provider exists
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
 (events/derive! :event/report-timezone-updated ::event)
@@ -20,7 +18,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
+  (doseq [{driver :engine, id :id, :as database} (driver.queries/databases)]
     (try
       (driver/notify-database-updated driver database)
       (catch Throwable e

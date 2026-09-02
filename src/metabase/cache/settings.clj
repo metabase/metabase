@@ -1,9 +1,9 @@
 (ns metabase.cache.settings
   (:require
+   [metabase.cache.queries :as cache.queries]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting enable-query-caching
   (deferred-tru "Allow caching results of queries that take a long time to run.")
@@ -11,7 +11,7 @@
   :default    true
   :visibility :authenticated
   :audit      :getter
-  :getter     #(t2/exists? :model/CacheConfig)
+  :getter     cache.queries/cache-config-exists?
   :setter     :none)
 
 (def ^:private ^:const global-max-caching-kb

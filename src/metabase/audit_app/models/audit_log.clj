@@ -6,6 +6,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.audit-app.queries :as audit-app.queries]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -62,7 +63,7 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [:model/Card :name :description :card_schema], :id card_id)
+                               (-> (audit-app.queries/card-name-and-description card_id)
                                    (assoc :id id)
                                    (assoc :card_id card_id))))))
 
@@ -79,11 +80,11 @@
 (defmethod model-details :model/User
   [entity event-type]
   (case event-type
-    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
+    :user-update               (select-keys (audit-app.queries/hydrate-user-group-memberships entity)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
                                              :user_group_memberships :tenant_id])
-    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
+    :user-invited              (select-keys (audit-app.queries/hydrate-user-group-memberships entity)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
                                              :user_group_memberships :tenant_id])
@@ -115,7 +116,7 @@
   [metric _event-type]
   (let [table-id (:table_id metric)
         db-id    (when table-id
-                   (t2/select-one-fn :db_id :model/Table, :id table-id))]
+                   (audit-app.queries/table-database-id table-id))]
     (assoc
      (select-keys metric [:name :description :revision_message])
      :table_id    table-id
@@ -242,12 +243,7 @@
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
       (let [{:keys [user-id model-name model-id details unqualified-topic]}
             (construct-event topic params api/*current-user-id*)]
-        (t2/insert! :model/AuditLog
-                    :topic    unqualified-topic
-                    :details  details
-                    :model    model-name
-                    :model_id model-id
-                    :user_id  user-id)))))
+        (audit-app.queries/insert-audit-log! unqualified-topic details model-name model-id user-id)))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

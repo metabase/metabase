@@ -8,8 +8,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.bookmarks.models.bookmark :as bookmark]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.bookmarks.queries :as bookmarks.queries]
+   [metabase.util.malli.schema :as ms]))
 
 (def Models
   "Schema enumerating bookmarkable models."
@@ -52,10 +52,9 @@
                           [:id    ms/PositiveInt]]]
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
-    (api/check (not (t2/exists? bookmark-model item-key id
-                                :user_id api/*current-user-id*))
+    (api/check (not (bookmarks.queries/bookmark-exists? bookmark-model item-key id api/*current-user-id*))
                [400 "Bookmark already exists"])
-    (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
+    (bookmarks.queries/insert-bookmark! bookmark-model {item-key id :user_id api/*current-user-id*})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -68,9 +67,7 @@
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
-    (t2/delete! bookmark-model
-                :user_id api/*current-user-id*
-                item-key id)
+    (bookmarks.queries/delete-bookmark! bookmark-model api/*current-user-id* item-key id)
     api/generic-204-no-content))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

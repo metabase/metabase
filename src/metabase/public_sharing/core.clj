@@ -1,6 +1,7 @@
 (ns metabase.public-sharing.core
   (:require
    [medley.core :as m]
+   [metabase.public-sharing.queries :as public-sharing.queries]
    [metabase.public-sharing.settings :as public-sharing.settings]
    [toucan2.core :as t2]))
 
@@ -63,9 +64,7 @@
     (some (fn [{:keys [id public_uuid]}]
             (when (= uuid public_uuid)
               id))
-          (t2/select [model :id :public_uuid]
-                     :public_uuid_prefix (public-uuid-prefix uuid)
-                     :archived false))))
+          (public-sharing.queries/unarchived-ids-and-public-uuids-by-prefix model (public-uuid-prefix uuid)))))
 
 (defn public-uuid->model
   "Resolve a shared entity's public `uuid` to the full matching `model` row, or nil. Like [[public-uuid->id]] but
@@ -77,6 +76,4 @@
   [model uuid]
   (when uuid
     (m/find-first #(= uuid (:public_uuid %))
-                  (t2/select model
-                             :public_uuid_prefix (public-uuid-prefix uuid)
-                             :archived false))))
+                  (public-sharing.queries/unarchived-by-public-uuid-prefix model (public-uuid-prefix uuid)))))

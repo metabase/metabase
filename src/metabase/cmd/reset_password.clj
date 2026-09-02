@@ -2,9 +2,9 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.cmd.queries :as cmd.queries]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trs trs]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-trs trs]]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,7 +12,7 @@
   "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."
   [email-address]
   (let [{user-id :id, active? :is_active}
-        (or (t2/select-one [:model/User :id :is_active], :%lower.email (u/lower-case-en email-address))
+        (or (cmd.queries/user-id-and-active-by-email (u/lower-case-en email-address))
             (throw (Exception. (str (deferred-trs "No user found with email address ''{0}''. " email-address)
                                     (deferred-trs "Please check the spelling and try again.")))))]
     (when-not active?

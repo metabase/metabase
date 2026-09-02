@@ -18,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   [metabase.query-processor.queries :as query-processor.queries]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.tracing.core :as tracing]
@@ -25,10 +26,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in not-empty]]
-   ;; records QueryExecution rows in the app db; a write the metadata provider can't do
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -65,7 +63,7 @@
         (when (seq no-context)
           (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
         (when (seq with-context)
-          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
+          (query-processor.queries/insert-query-executions! (map #(dissoc % :json_query) with-context))))
       (catch Throwable e
         (log/errorf "Error saving query execution info: %s" (ex-message e))))))
 

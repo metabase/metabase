@@ -5,6 +5,7 @@
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.queries :as usage-metadata.queries]
    [toucan2.core :as t2]))
 
 (def ^:private insert-chunk-size
@@ -16,16 +17,16 @@
   [model rows]
   (when (seq rows)
     (doseq [chunk (partition-all insert-chunk-size rows)]
-      (t2/insert! model chunk))))
+      (usage-metadata.queries/insert-rows! model chunk))))
 
 (defn delete-day!
   "Delete all rollup rows for `bucket-date` across the usage metadata daily tables."
   [bucket-date]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceMetricDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceDimensionDaily :bucket_date bucket-date)
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date bucket-date)
+  (usage-metadata.queries/delete-rollups-for-day! :model/SourceSegmentDaily bucket-date)
+  (usage-metadata.queries/delete-rollups-for-day! :model/SourceSegmentCompositeDaily bucket-date)
+  (usage-metadata.queries/delete-rollups-for-day! :model/SourceMetricDaily bucket-date)
+  (usage-metadata.queries/delete-rollups-for-day! :model/SourceDimensionDaily bucket-date)
+  (usage-metadata.queries/delete-rollups-for-day! :model/SourceDimensionProfileDaily bucket-date)
   nil)
 
 (defn insert-segment-rollups!
@@ -38,7 +39,7 @@
   "Insert daily composite segment (whole-:and basket) rollup rows."
   [rows]
   (when (seq rows)
-    (t2/insert! :model/SourceSegmentCompositeDaily rows))
+    (usage-metadata.queries/insert-rows! :model/SourceSegmentCompositeDaily rows))
   nil)
 
 (defn insert-metric-rollups!

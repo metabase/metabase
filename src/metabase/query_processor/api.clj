@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.queries :as query-processor.queries]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -39,9 +40,7 @@
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   ;; endpoint side effects: table-read events and source-card lookups hit the app db directly
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -67,13 +66,13 @@
     (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
                      (lib/primary-source-table-id query))]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+        (events/publish-event! :event/table-read {:object  (query-processor.queries/table table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
                            (query->source-card-id query))
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+                           (query-processor.queries/source-card-metadata source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}

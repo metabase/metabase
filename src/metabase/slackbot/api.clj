@@ -17,6 +17,7 @@
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
+   [metabase.slackbot.queries :as slackbot.queries]
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.slackbot.streaming :as slackbot.streaming]
    [metabase.slackbot.uploads :as slackbot.uploads]
@@ -29,8 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [ring.util.codec :as codec])
   (:import
    (java.util.concurrent ExecutorService Executors ThreadFactory)))
 
@@ -102,12 +102,7 @@
   signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
   identities without an explicit version are treated as version 0."
   [slack-user-id]
-  (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                                :provider "slack-connect"
-                                :provider_id slack-user-id
-                                {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                                 :where    [:= :user.is_active true]
-                                 :order-by [[:created_at :desc]]})]
+  (let [identity (slackbot.queries/active-slack-connect-identity slack-user-id)]
     (when (= (auth-identity-signing-secret-version identity)
              (current-signing-secret-version))
       (:user_id identity))))
@@ -591,9 +586,7 @@
   [{:keys [message_external_id channel_id message_ts]}]
   (or message_external_id
       (when (and channel_id message_ts)
-        (t2/select-one-fn :external_id :model/MetabotMessage
-                          :channel_id   channel_id
-                          :slack_msg_id message_ts))))
+        (slackbot.queries/metabot-message-external-id channel_id message_ts))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.

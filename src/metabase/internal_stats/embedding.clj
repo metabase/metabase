@@ -1,13 +1,13 @@
 (ns metabase.internal-stats.embedding
   (:require
-   [toucan2.core :as t2]))
+   [metabase.internal-stats.queries :as internal-stats.queries]))
 
 (defn embedding-dashboard-count
   "Count dashboards enabled for embedding"
   []
-  (t2/count :model/Dashboard :enable_embedding true :archived false))
+  (internal-stats.queries/embedded-dashboard-count))
 
 (defn embedding-question-count
   "Count question cards enabled for embedding"
   []
-  (t2/count :model/Card :enable_embedding true :archived false :type :question))
+  (internal-stats.queries/embedded-question-count))

@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.events]
+   [metabase.remote-sync.queries :as remote-sync.queries]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,10 +13,6 @@
   (mi/instances-with-hydrated-data items k
                                    #(into {}
                                           (map (juxt :id (comp api/bit->boolean :is_remote_synced))
-                                               (t2/select [model :id [:c.is_remote_synced :is_remote_synced]]
-                                                          {:where [:in (keyword (str (name (t2/table-name model)) ".id"))
-                                                                   (map :id items)]
-                                                           :join [[:collection :c]
-                                                                  [:= :collection_id :c.id]]})))
+                                               (remote-sync.queries/is-remote-synced-by-id model (map :id items))))
                                    :id
                                    {:default false}))

@@ -15,12 +15,12 @@
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.queries :as mcp.queries]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.nio ByteBuffer)
    (java.nio.charset StandardCharsets)
@@ -315,7 +315,7 @@
    (i.e. no ownership to violate), or if the existing row belongs to `user-id`."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
-        owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
+        owner      (mcp.queries/session-user-id key-hashed)]
     (or (nil? owner) (= owner user-id))))
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
@@ -342,12 +342,12 @@
    ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
-     (t2/insert! :model/McpQueryHandle
-                 (cond-> {:id              handle-id
-                          :mcp_session_id  mcp-session-id
-                          :core_session_id core-session-id
-                          :encoded_query   encoded-query}
-                   prompt (assoc :prompt prompt)))
+     (mcp.queries/insert-query-handle!
+      (cond-> {:id              handle-id
+               :mcp_session_id  mcp-session-id
+               :core_session_id core-session-id
+               :encoded_query   encoded-query}
+        prompt (assoc :prompt prompt)))
      handle-id)))
 
 (defn- handle-id?
@@ -365,13 +365,7 @@
   (when (and user-id (handle-id? handle-id))
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
     ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
-    (let [row (t2/select-one :model/McpQueryHandle
-                             {:select [:mqh.*]
-                              :from   [[:mcp_query_handle :mqh]]
-                              :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
-                              :where  [:and
-                                       [:= :mqh.id handle-id]
-                                       [:= :cs.user_id user-id]]})]
+    (let [row (mcp.queries/query-handle-for-user handle-id user-id)]
       (when (and row (not= mcp-session-id (:mcp_session_id row)))
         (log/debugf "MCP handle %s resolved across sessions for user %s"
                     handle-id user-id))
@@ -402,8 +396,5 @@
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (t2/query {:delete-from :core_session
-               :where       [:and
-                             [:= :key_hashed key-hashed]
-                             [:= :user_id user-id]]})
-    (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))
+    (mcp.queries/delete-session-for-user! key-hashed user-id)
+    (mcp.queries/delete-query-handles-for-mcp-session! session-id)))

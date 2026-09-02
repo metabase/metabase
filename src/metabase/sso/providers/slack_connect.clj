@@ -4,10 +4,10 @@
   (:require
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.settings :as server.settings]
+   [metabase.sso.queries :as sso.queries]
    [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -147,13 +147,8 @@
    Used in link-only mode where we don't create users or sessions."
   [user-id provider-id]
   (when (and user-id provider-id)
-    (when-not (t2/exists? :model/AuthIdentity
-                          :user_id user-id
-                          :provider provider-name)
-      (t2/insert! :model/AuthIdentity
-                  {:user_id     user-id
-                   :provider    provider-name
-                   :provider_id provider-id}))))
+    (when-not (sso.queries/auth-identity-exists? user-id provider-name)
+      (sso.queries/insert-auth-identity! user-id provider-name provider-id))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
   [provider {:keys [user authenticated-user user-data] :as request}]
@@ -175,9 +170,8 @@
   (when (:success? result)
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
-      (t2/update! :model/AuthIdentity
-                  {:user_id user-id :provider provider-name}
-                  {:metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}})))
+      (sso.queries/set-auth-identity-metadata! user-id provider-name
+                                               {:signing_secret_version (server.settings/slack-connect-signing-secret-version)})))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))

@@ -2,6 +2,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.timeline.queries :as timeline.queries]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -45,7 +46,7 @@
 (defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (t2/select-one 'Timeline :id (:timeline_id event)))]
+                     (timeline.queries/timeline (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 (defmethod mi/can-create? :model/TimelineEvent
@@ -58,7 +59,7 @@
   [_model k events]
   (mi/instances-with-hydrated-data
    events k
-   #(t2/select-pk->fn identity :model/Timeline :id [:in (map :timeline_id events)])
+   #(timeline.queries/timelines-by-id (map :timeline_id events))
    :timeline_id))
 
 (defn- fetch-events
@@ -88,7 +89,7 @@
                               [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
                               [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (t2/hydrate (t2/select :model/TimelineEvent clause) :creator)))
+    (timeline.queries/hydrate-creator (timeline.queries/timeline-events clause))))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -112,10 +113,8 @@
 (defn dashcard-timeline-events
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
-  (let [timelines (t2/select :model/Timeline
-                             :collection_id collection_id
-                             :archived false)]
-    (->> (t2/hydrate timelines :creator [:collection :can_write])
+  (let [timelines (timeline.queries/timelines-for-collection collection_id false)]
+    (->> (timeline.queries/hydrate-creator-and-collection timelines)
          (map #(include-events-singular % {:events/all? true})))))
 
 ;;;; model

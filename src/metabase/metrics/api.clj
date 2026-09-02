@@ -10,6 +10,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.metrics.queries :as metrics.queries]
    [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -20,8 +21,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,15 +51,11 @@
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (defn- count-metrics []
-  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
+  (metrics.queries/metric-card-count (queries/visible-metric-cards-where-clause)))
 
 (defn- select-metrics [limit offset]
-  (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (queries/visible-metric-cards-where-clause)
-                  :order-by [[:name :asc]]
-                  :limit    limit
-                  :offset   offset})
-      (t2/hydrate :collection)))
+  (-> (metrics.queries/metric-cards-page (queries/visible-metric-cards-where-clause) limit offset)
+      metrics.queries/hydrate-collection))
 
 (api.macros/defendpoint :get "/"
   :- [:map
@@ -84,9 +80,9 @@
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt
                            include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric"))
+  (api/read-check (metrics.queries/metric-card id))
   (metrics/sync-dimensions! :metadata/metric id)
-  (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
+  (cond-> (-> (metrics.queries/metric-card id)
               metrics.perms/filter-dimensions-for-user
               (update :dimensions #(or % []))
               (update :dimension_mappings #(or % [])))
@@ -174,10 +170,10 @@
                       source-id   (lib-metric/expression-leaf-id leaf)]
                   (case source-type
                     :metric  (do
-                               (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+                               (api/read-check (metrics.queries/metric-card source-id))
                                [(lib-metric/expression-leaf-uuid leaf) source-id])
                     :measure (do
-                               (api/query-check (t2/select-one :model/Measure :id source-id))
+                               (api/query-check (metrics.queries/measure source-id))
                                nil))))
               (lib-metric/expression-leaves expression))))
 
@@ -345,10 +341,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- read-check-metric! [id]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/read-check (metrics.queries/metric-card id)))
 
 (defn- write-check-metric! [id]
-  (api/write-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/write-check (metrics.queries/metric-card id)))
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
