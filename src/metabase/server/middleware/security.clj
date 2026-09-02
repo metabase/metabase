@@ -555,11 +555,7 @@
 (defn site-origin
   "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
    `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
-   with `=`.
-
-   Public because it is the one origin on a request that the client cannot influence: `Origin` and `Host`
-   are both client-supplied, so anything validating a request against \"this instance\" has to come from
-   config. Used here to keep the instance out of an app's CSP, and by the MCP transport's origin guard."
+   with `=`."
   []
   (when-let [url (not-empty (system/site-url))]
     (try
