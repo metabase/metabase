@@ -835,7 +835,7 @@
                                                       all-ids)]]
                            [entity_id path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (t2/select [:model/Dashoard :entity_id :name])]
+                         (for [{:keys [entity_id name]} (t2/select [:model/Dashboard :entity_id :name])]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
                          (for [{:keys [entity_id name]} (t2/select [:model/Document :entity_id :name])]
