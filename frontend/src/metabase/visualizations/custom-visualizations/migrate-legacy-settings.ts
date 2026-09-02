@@ -5,8 +5,8 @@ import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { getCustomVizSettingKeyPrefix } from "./setting-keys";
 
-// Stored keys with no registered settings definition (or whose visualization
-// registers per entrypoint), so the registry can't vouch for them.
+// Stored keys with no registered settings definition, or whose visualization
+// is only registered by some bundles (e.g. registerDashboardVisualizations).
 const EXTRA_HOST_SETTING_KEYS: ReadonlySet<string> = new Set([
   "virtual_card",
   "visualization",
@@ -30,21 +30,16 @@ export function migrateStoredCustomVizSettings(
 
   const prefix = getCustomVizSettingKeyPrefix(display);
   const definitions = getDefinitions();
-
-  // Built lazily per call: plugins and their settings register after startup.
-  let hostSettingKeys: ReadonlySet<string> | undefined;
+  const hostSettingKeys = getHostSettingKeys();
 
   const legacyKeys = Object.keys(definitions)
     .filter((key) => key.startsWith(prefix))
     .map((key) => [key, key.slice(prefix.length)] as const)
     .filter(([, legacyKey]) => {
-      // A plugin must not capture or erase host settings by declaring a colliding
-      // id: `definitions` holds this display's ids (COMMON_SETTINGS included),
-      // the registry every other display's.
       return (
         Object.hasOwn(storedSettings, legacyKey) &&
         !Object.hasOwn(definitions, legacyKey) &&
-        !(hostSettingKeys ??= getHostSettingKeys()).has(legacyKey)
+        !hostSettingKeys.has(legacyKey)
       );
     });
 
