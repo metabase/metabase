@@ -1,0 +1,61 @@
+(ns metabase.metabot.capabilities
+  "Capability normalization and permission enforcement.
+
+  Capabilities arrive from the API as strings (e.g. \"frontend:navigate_user_v1\") while tool
+  metadata uses keywords (e.g. :frontend-navigate-user-v1)."
+  (:require
+   [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private api-string->capability-keyword
+  "Map from API capability strings (as sent by the frontend) to the keywords used in tool
+  `:capabilities` metadata."
+  {"frontend:navigate_user_v1"    :frontend-navigate-user-v1
+   "permission:save_questions"    :permission-save-questions
+   "permission:write_sql_queries" :permission-write-sql-queries
+   "permission:write_transforms"  :permission-write-transforms})
+
+(defn capability->keyword
+  "Normalize a capability value to a keyword.
+  Strings are looked up in the api-string->capability-keyword map; keywords are returned as-is."
+  [cap]
+  (if (keyword? cap)
+    cap
+    (or (api-string->capability-keyword cap)
+        ;; Fallback: keywordize unknown strings so new capabilities degrade
+        ;; gracefully without requiring a map update.
+        (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
+
+(def ^:private permission-capabilities
+  #{:permission-save-questions
+    :permission-write-sql-queries
+    :permission-write-transforms})
+
+(defn- granted-permission-capabilities
+  "Nil user grants everything as a crash guard -- `query-creation-capabilities` throws there under
+  EE with `:library`. Safe because `sql.common/check-native-query-access!` still refuses per
+  database."
+  []
+  (if (or api/*is-superuser?* (nil? api/*current-user-id*))
+    permission-capabilities
+    (let [{:keys [can-create-queries can-create-native-queries]}
+          (perms/query-creation-capabilities api/*current-user-id*)]
+      (cond-> #{}
+        can-create-queries        (conj :permission-save-questions)
+        can-create-native-queries (conj :permission-write-sql-queries)
+        api/*is-data-analyst?*    (conj :permission-write-transforms)))))
+
+(defn enforce-permissions
+  "Drop every client-claimed `permission:*` capability the current user has not been granted."
+  [capabilities]
+  (if (empty? capabilities)
+    capabilities
+    (let [granted (granted-permission-capabilities)]
+      (into #{}
+            (remove #(let [cap (capability->keyword %)]
+                       (and (contains? permission-capabilities cap)
+                            (not (contains? granted cap)))))
+            capabilities))))
