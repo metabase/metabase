@@ -1,5 +1,5 @@
-import type { LoginData } from "metabase/redux/auth";
 import type {
+  LoginData,
   MfaEnrollResponse,
   MfaMethod,
   PasswordResetTokenStatus,
