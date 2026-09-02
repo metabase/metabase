@@ -239,7 +239,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: transforms-python
+        logs-artifact-suffix: bigquery-transforms-python
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
