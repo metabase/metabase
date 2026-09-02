@@ -929,7 +929,7 @@ describe("admin > custom visualizations", () => {
       H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
-    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back and forth (metabase#GDGT-2218)", () => {
+    it("keeps a custom viz that cannot render the drilled data and shows its error (metabase#GDGT-2218)", () => {
       H.createQuestion(
         {
           name: "Custom Viz Drill Question",
@@ -953,23 +953,13 @@ describe("admin > custom visualizations", () => {
       H.popover().findByText("Time").click();
       H.popover().findByText("Created At").click();
 
-      H.echartsContainer().should("be.visible");
       H.main()
-        .findByText("Custom viz rendered successfully")
-        .should("not.exist");
-
-      cy.go("back");
-
-      H.main()
-        .findByText("Custom viz rendered successfully")
+        .findByText("Query results should only have 1 column")
         .should("be.visible");
-
-      cy.go("forward");
-
-      H.echartsContainer().should("be.visible");
       H.main()
         .findByText("Custom viz rendered successfully")
         .should("not.exist");
+      H.echartsContainer().should("not.exist");
     });
 
     it("calls onHover and renders a tooltip", () => {

@@ -291,6 +291,26 @@ describe("groupVisualizationsBySensibility", () => {
       },
     );
   });
+  it("keeps a custom visualization out of the sensible group even when its isSensible returns true", () => {
+    const display: CustomVizDisplayType = "custom:always-sensible-grouping";
+    registerVisualization({
+      identifier: display,
+      getUiName: () => "Always sensible",
+      checkRenderable: () => undefined,
+      isSensible: () => true,
+    });
+
+    const { recommended, sensible, nonsensible } =
+      groupVisualizationsBySensibility({
+        orderedVizTypes: [...DEFAULT_VIZ_ORDER, display],
+        data: createMockData({ numRows: 10, numMetrics: 1 }),
+      });
+
+    expect(recommended).not.toContain(display);
+    expect(sensible).not.toContain(display);
+    expect(nonsensible).toContain(display);
+  });
+
   it("recommends the correct visualizations for an unaggregated table", () => {
     const data = createMockDatasetData({
       cols: [
@@ -365,6 +385,20 @@ describe("getSensibleDisplays", () => {
 
   it("should keep every `isSensible` visualization for a single row (metabase#12476)", () => {
     expect(getSensibleDisplays(createMockRawSeries(1))).toContain("scalar");
+  });
+
+  it("should keep an always-sensible custom visualization without probing renderability", () => {
+    const display: CustomVizDisplayType = "custom:always-sensible";
+    const checkRenderable = jest.fn(throwUnsupportedData);
+    registerVisualization({
+      identifier: display,
+      getUiName: () => "Always sensible",
+      checkRenderable,
+      isSensible: () => true,
+    });
+
+    expect(getSensibleDisplays(createMockRawSeries(10))).toContain(display);
+    expect(checkRenderable).not.toHaveBeenCalled();
   });
 
   it("should keep a visualization without `isSensible` for an empty result", () => {

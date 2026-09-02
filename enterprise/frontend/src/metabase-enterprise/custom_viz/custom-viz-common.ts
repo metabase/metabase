@@ -59,6 +59,9 @@ export function applyDefaultVisualizationProps(
         );
       }
     },
+    // Always offered; checkRenderable reports errors at render time instead of
+    // deep-cloning the whole dataset on every sensibility probe.
+    isSensible: () => true,
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,
