@@ -438,19 +438,21 @@ describe("CollectionBrowser", () => {
 
       it('should map the "Our analytics" placeholder id back to the real root id', async () => {
         // Every collection has a numeric id, except the root, whose id is the
-        // string "root". `ItemsTable` needs a number, so that row carries
-        // ROOT_ITEM_ID. Skip the conversion back and the click asks for
-        // /api/collection/0/items, which is not a collection.
-        await setupAll();
+        // string "root". `ItemsTable` needs a number, so that row carries a
+        // placeholder. Skip the conversion back and both the host page and the
+        // request get an id that is not a collection.
+        const onClick = jest.fn();
+
+        await setupAll({ props: { onClick } });
 
         await userEvent.click(await screen.findByText("Our analytics"));
 
+        expect(onClick).toHaveBeenCalledWith(
+          expect.objectContaining({ id: ROOT_COLLECTION.id }),
+        );
         expect(
           await screen.findByTestId("collection-table"),
         ).toBeInTheDocument();
-        expect(
-          fetchMock.callHistory.calls("glob:*/api/collection/0/items*"),
-        ).toHaveLength(0);
         expect(
           fetchMock.callHistory.calls("path:/api/collection/root/items"),
         ).not.toHaveLength(0);

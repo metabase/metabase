@@ -8,6 +8,7 @@ import {
   useListCollectionItemsQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
@@ -28,9 +29,18 @@ const EMPTY_COLLECTIONS: Collection[] = [];
 
 /**
  * "Our analytics" has the id "root", but the table needs a number. Real
- * collection ids start at 1, so 0 stands in for it and the caller maps it back.
+ * collection ids start at 1, so -1 stands in for it and the caller maps it back.
  */
-export const ROOT_ITEM_ID = 0;
+const ROOT_ITEM_ID = -1;
+
+/**
+ * Maps the id back to "root" for the virtual root collection, so the host app
+ * and the navigation don't get the fake id.
+ */
+export const withRealCollectionId = (item: CollectionItem) => ({
+  ...item,
+  id: item.id === ROOT_ITEM_ID ? ROOT_COLLECTION.id : item.id,
+});
 
 /**
  * The rows of the virtual "All collections" root: "Our analytics", the shared

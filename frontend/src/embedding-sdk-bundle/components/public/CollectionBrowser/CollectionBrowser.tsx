@@ -9,8 +9,8 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
-  ROOT_ITEM_ID,
   useAllCollectionsItems,
+  withRealCollectionId,
 } from "embedding-sdk-bundle/hooks/private/use-all-collections-items";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
@@ -254,10 +254,7 @@ export const CollectionBrowserInner = ({
   };
 
   const onClickVirtualRootItem = (item: CollectionItem) =>
-    onClickItem({
-      ...item,
-      id: item.id === ROOT_ITEM_ID ? "root" : item.id,
-    });
+    onClickItem(withRealCollectionId(item));
 
   const collectionTypes = visibleEntityTypes
     .map((entityType) => ENTITY_NAME_MAP[entityType])

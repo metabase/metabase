@@ -246,10 +246,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                   item.type === "collection" ||
                   item.type === "all-collections"
                 ) {
-                  setCurrentView({
-                    type: "collection",
-                    id: item.type === "all-collections" ? "all" : item.id,
-                  });
+                  setCurrentView({ type: "collection", id: item.id });
 
                   // If we selected a collection, we go back to the browser component, we need to clear the stack
                   // metabase-browser is always at index 0, so we can pop length-1 times
