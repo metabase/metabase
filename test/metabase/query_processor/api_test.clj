@@ -1238,3 +1238,19 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+(deftest ^:parallel query-metadata-absolute-datetime-filter-test
+  (testing "POST /api/dataset/query_metadata"
+    (testing "a JSON-form filter with absolute-datetime endpoints should normalize rather than 400 (#BOT-2095)"
+      (let [date-field ["field" (mt/id :checkins :date) {"base-type" "type/Date"}]
+            query      {:database (mt/id)
+                        :type     "query"
+                        :query    {:source-table (mt/id :checkins)
+                                   :filter       ["between"
+                                                  date-field
+                                                  ["absolute-datetime" "2015-01-01" "day"]
+                                                  ["absolute-datetime" "2015-12-31" "day"]]}}]
+        ;; the response also carries the source table's FK targets, so assert membership rather than an exact vector
+        (is (some #(= (:id %) (mt/id :checkins))
+                  (:tables (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" query)))
+            "metadata for the source table should be returned")))))

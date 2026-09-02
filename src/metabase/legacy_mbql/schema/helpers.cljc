@@ -47,9 +47,14 @@
 (defn normalize-keyword
   "Like [[lib.schema.common/normalize-keyword]] but also converts the keyword to lower-kebabcase (this is needed in
   legacy MBQL because MBQL 1 used uppercase/snake_case keywords in some cases; Lib does not accept MBQL 1 as an input
-  directly (it is normalized to MBQL 4 first)."
+  directly (it is normalized to MBQL 4 first)).
+
+  Anything that is neither a string nor a keyword is returned unchanged."
   [x]
-  (some-> x lib.schema.common/memoized-kebab-key))
+  ;; leaving other types alone keeps schema decoding total: malli rejects them itself, rather than this blowing up
+  ;; partway through a decode with a `ClassCastException`.
+  (cond-> x
+    (or (keyword? x) (string? x)) lib.schema.common/memoized-kebab-key))
 
 (defn is-clause?
   "If `x` is an MBQL 4 clause, and an instance of clauses defined by keyword(s) `k-or-ks`?

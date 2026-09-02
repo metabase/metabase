@@ -232,6 +232,29 @@ describe("scenarios > question > new", () => {
     cy.findByText("37.65");
   });
 
+  it("should handle ad-hoc question with absolute-datetime filter endpoints (metabase#BOT-2095)", () => {
+    // Metabot builds filters with `absolute-datetime` endpoints where the UI would emit plain date
+    // strings. Opening such a question used to 400 on query_metadata and render the error boundary.
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: [
+            "between",
+            ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+            ["absolute-datetime", "2000-01-01", "day"],
+            ["absolute-datetime", "2050-12-31", "day"],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+    });
+
+    cy.findByTestId("scalar-value").should("be.visible");
+  });
+
   it("should suggest the currently viewed dashboard when saving question", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 

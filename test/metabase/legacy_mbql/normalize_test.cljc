@@ -298,6 +298,64 @@
    {{:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}
     {:query {:filter [:starts-with [:field 10 nil] "ABC" {:case-sensitive true}]}}}))
 
+(deftest ^:parallel normalize-filter-test-10
+  (normalize-tests
+   "the unit in absolute-datetime clauses should get normalized (#BOT-2095)"
+   {{:query {"FILTER" ["between" ["field" 10 {"base-type" "type/DateTime"}]
+                       ["absolute-datetime" "2025-01-01" "day"]
+                       ["absolute-datetime" "2025-12-31" "day"]]}}
+    {:query {:filter [:between [:field 10 {:base-type :type/DateTime}]
+                      [:absolute-datetime "2025-01-01" :day]
+                      [:absolute-datetime "2025-12-31" :day]]}}}
+   "including the datetime arm of the clause, whose unit comes from a different enum"
+   {{:query {"FILTER" ["=" ["field" 10 nil] ["absolute-datetime" "2025-01-01T10:00" "hour"]]}}
+    {:query {:filter [:= [:field 10 nil] [:absolute-datetime "2025-01-01T10:00" :hour]]}}}))
+
+(deftest ^:parallel normalize-filter-test-11
+  (normalize-tests
+   "the unit in time clauses should get normalized"
+   {{:query {"FILTER" ["<" ["field" 10 nil] ["time" "08:00:00" "minute"]]}}
+    {:query {:filter [:< [:field 10 nil] [:time "08:00:00" :minute]]}}}))
+
+(deftest ^:parallel normalize-filter-test-12
+  (normalize-tests
+   "the unit in during clauses should get normalized"
+   {{:query {"FILTER" ["during" ["field" 10 nil] "2025-01-01" "day"]}}
+    {:query {:filter [:during [:field 10 nil] "2025-01-01" :day]}}}))
+
+(deftest ^:parallel normalize-filter-test-13
+  (normalize-tests
+   "the unit in temporal-extract clauses should get normalized"
+   {{:query {"FILTER" ["=" ["temporal-extract" ["field" 10 nil] "day-of-week"] 1]}}
+    {:query {:filter [:= [:temporal-extract [:field 10 nil] :day-of-week] 1]}}}
+   "including MBQL 1 style snake_case units"
+   {{:query {"FILTER" ["=" ["temporal-extract" ["field" 10 nil] "DAY_OF_WEEK"] 1]}}
+    {:query {:filter [:= [:temporal-extract [:field 10 nil] :day-of-week] 1]}}}))
+
+(deftest ^:parallel normalize-filter-test-14
+  (normalize-tests
+   "every subclause should be normalized, not just the one carrying the temporal unit (#BOT-2095)"
+   {{:query {"FILTER" ["and"
+                       ["=" ["field" 10 nil] ["absolute-datetime" "2025-01-01" "day"]]
+                       ["=" ["field" 11 nil] "x"]]}}
+    {:query {:filter [:and
+                      [:= [:field 10 nil] [:absolute-datetime "2025-01-01" :day]]
+                      [:= [:field 11 nil] "x"]]}}}))
+
+;; `::ValueTypeInfo` is an open map whose keys are all optional, so this one used to normalize to string map keys
+;; *and still validate* -- it failed silently rather than erroring like the clauses above.
+(deftest ^:parallel normalize-filter-test-15
+  (normalize-tests
+   "the type info map in value clauses should get normalized"
+   {{:query {"FILTER" ["=" ["field" 10 nil] ["value" 1 {"unit" "day", "base_type" "type/DateTime"}]]}}
+    {:query {:filter [:= [:field 10 nil] [:value 1 {:unit :day, :base_type :type/DateTime}]]}}}))
+
+(deftest ^:parallel normalize-filter-test-16
+  (normalize-tests
+   "a unit that is neither a string nor a keyword should be left for validation to reject, not throw"
+   {{:query {"FILTER" ["=" ["field" 10 nil] ["absolute-datetime" "2025-01-01" 5]]}}
+    {:query {:filter [:= ["field" 10 nil] ["absolute-datetime" "2025-01-01" 5]]}}}))
+
 (deftest ^:parallel normalize-parmaeters-test
   (normalize-tests
    "make sure we're not running around trying to normalize the type in native query params"
@@ -664,7 +722,10 @@
     {:query {:expressions {"datetime-add" [:datetime-add [:field 1 nil] 1 :month]}}}
 
     {:query {:expressions {:datetime-subtract ["datetime-subtract" ["field" 1 nil] 1 "month"]}}}
-    {:query {:expressions {"datetime-subtract" [:datetime-subtract [:field 1 nil] 1 :month]}}}}))
+    {:query {:expressions {"datetime-subtract" [:datetime-subtract [:field 1 nil] 1 :month]}}}}
+   "MBQL 1 style uppercase units are normalized too, and do not strand their sibling arguments"
+   {{:query {:expressions {:datetime-add ["datetime-add" ["field" 1 nil] 1 "MONTH"]}}}
+    {:query {:expressions {"datetime-add" [:datetime-add [:field 1 nil] 1 :month]}}}}))
 
 (deftest ^:parallel normalize-expressions-test-4
   (normalize-tests
