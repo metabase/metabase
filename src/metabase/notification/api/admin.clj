@@ -212,12 +212,12 @@
               ;; `metabase.search.in-place.legacy/bookmark-col`. `has-failure?` runs it through
               ;; `bit->boolean` to absorb the MySQL/MariaDB bit-vs-boolean JDBC quirk.
               [['case
-                ['exists {:select [[1]]
-                          :from   [['task_history 'tf]]
-                          :where  ['and
-                                   ['= 'tf.run_id 'lr.run_id]
-                                   ['= 'tf.task task-channel-send]
-                                   ['= 'tf.status "failed"]]}]
+                ['exists ^:allow-subquery {:select [[1]]
+                                           :from   [['task_history 'tf]]
+                                           :where  ['and
+                                                    ['= 'tf.run_id 'lr.run_id]
+                                                    ['= 'tf.task task-channel-send]
+                                                    ['= 'tf.status "failed"]]}]
                 true
                 'else false]
                'has_failure]]
@@ -236,11 +236,11 @@
                                           ['in 'tr2.status terminal-statuses]
                                           ['> 'tr2.started_at lookback]
                                           ;; only keep runs that actually had channel-send rows
-                                          ['exists {:select [[1]]
-                                                    :from   [['task_history 'tx]]
-                                                    :where  ['and
-                                                             ['= 'tx.run_id 'tr2.id]
-                                                             ['= 'tx.task task-channel-send]]}]]}
+                                          ['exists ^:allow-subquery {:select [[1]]
+                                                                     :from   [['task_history 'tx]]
+                                                                     :where  ['and
+                                                                              ['= 'tx.run_id 'tr2.id]
+                                                                              ['= 'tx.task task-channel-send]]}]]}
                'lr]]
      :where ['= 'lr.rn 1]}))
 
@@ -263,7 +263,7 @@
   query needs no `DISTINCT`."
   [channels]
   (let [channels (if (sequential? channels) channels [channels])]
-    [:exists ^:allow-subquery ^:allow-subquery
+    [:exists ^:allow-subquery
      ^:allow-subquery
      {:select [[1]]
       :from   [(t2/table-name :model/NotificationHandler)]

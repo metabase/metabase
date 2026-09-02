@@ -823,7 +823,7 @@
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
-  (let [colls     (t2/select [:Collection :id :entity_id :location :name])
+  (let [colls     (t2/select [:model/Collection :id :entity_id :location :name])
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
@@ -835,10 +835,10 @@
                                                       all-ids)]]
                            [entity_id path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (t2/select [:Dashboard :entity_id :name])]
+                         (for [{:keys [entity_id name]} (t2/select [:model/Dashoard :entity_id :name])]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
-                         (for [{:keys [entity_id name]} (t2/select [:Document :entity_id :name])]
+                         (for [{:keys [entity_id name]} (t2/select [:model/Document :entity_id :name])]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
      :dashboards  dashboards

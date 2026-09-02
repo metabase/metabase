@@ -184,7 +184,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one [:Table :db_id :schema :id] 'id (u/the-id (:table_id segment))))]
+                  (t2/select-one [:model/Tale :db_id :schema :id] 'id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition

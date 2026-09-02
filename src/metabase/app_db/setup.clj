@@ -351,8 +351,11 @@
     (next-method query-type
                  model
                  (update parsed-args :kv-args keyword-conditions)
-                 ;; the map passed to `update!` is a conditions map rather than a query
-                 (if (and (isa? query-type :toucan.query-type/update.*) (map? resolved-query))
+                 ;; the map passed to `update!` (and re-used by the select that `before-update` runs) is a conditions
+                 ;; map rather than a query
+                 (if (and (or (isa? query-type :toucan.query-type/update.*)
+                              (isa? query-type :toucan.query-type/select.instances.from-update))
+                          (map? resolved-query))
                    (keyword-conditions resolved-query)
                    resolved-query))))
 
@@ -373,7 +376,7 @@
   [_query-type _model _parsed-args query]
   (cond-> query
     true
-    (dissoc 'delete)
+    (dissoc :delete)
 
     (contains? query :delete-from)
     (-> (dissoc :delete-from)

@@ -160,21 +160,21 @@
       ;; otherwise record the newly seen types and generate an appropriate clause
       (do
         (swap! already-seen set/union not-yet-seen)
-        [:and
-         [:< :fingerprint_version version]
-         [:in :base_type not-yet-seen]]))))
+        ['and
+         ['< 'fingerprint_version version]
+         ['in 'base_type not-yet-seen]]))))
 
 (def ^:private fields-to-fingerprint-base-clause
   "Base clause to get fields for fingerprinting. When refingerprinting, run as is. When fingerprinting in analysis, only
   look for fields without a fingerprint or whose version can be updated. This clauses is added on
   by [[versions-clauses]]."
-  [:and
-   [:= :active true]
-   [:or
-    [:not (app-db/isa :semantic_type :type/PK)]
-    [:= :semantic_type nil]]
-   [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
+  ['and
+   ['= 'active true]
+   ['or
+    ['not (app-db/isa :semantic_type :type/PK)]
+    ['= 'semantic_type nil]]
+   ['not-in 'visibility_type ["retired" "sensitive"]]
+   ['not-in 'base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
                              (u/qualified-name :type/*))]])
 
 (def ^:dynamic *refingerprint?*
@@ -187,7 +187,7 @@
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
    {:where (cond-> fields-to-fingerprint-base-clause
-             (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
+             (not *refingerprint?*) (conj (cons 'or (versions-clauses))))})
 
   ([table :- i/TableInstance]
    (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)

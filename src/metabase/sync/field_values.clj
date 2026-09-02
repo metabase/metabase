@@ -260,7 +260,7 @@
                  (->> field-ids
                       (partition-all *on-demand-select-batch-size*)
                       (mapcat (fn [batch]
-                                (t2/select [:Field :name :id :base_type :effective_type :coercion_strategy
+                                (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy
                                             :semantic_type :visibility_type :table_id :has_field_values]
                                            'id [:in batch])))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))

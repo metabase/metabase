@@ -151,7 +151,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (t2/select-one [:Table :db_id :schema :id] 'id (u/the-id (:table_id measure))))]
+                  (t2/select-one [:model/Tale :db_id :schema :id] 'id (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
