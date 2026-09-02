@@ -1,9 +1,9 @@
 const { H } = cy;
-import dayjs from "dayjs";
 import * as OTPAuth from "otpauth";
 
 import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 
 const { admin, nodata, normal } = USERS;
 
@@ -56,7 +56,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
       it("admin can remove a user's enrollment to unlock them", () => {
         enableMfa();
-        enrollNormalUser();
+        enrollUser();
 
         cy.log(
           "Admin drills into the enrolled list from the count on the card",
@@ -100,7 +100,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
       it("admin can search the users-without-2FA list", () => {
         enableMfa();
-        enrollNormalUser();
+        enrollUser();
 
         cy.signInAsAdmin();
         cy.visit("/admin/settings/authentication");
@@ -161,7 +161,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
       it("user can disable 2FA themselves and re-enroll", () => {
         enableMfa();
-        enrollNormalUser().then(({ secret }) => {
+        enrollUser().then(({ secret }) => {
           cy.log(
             "Disabling requires a fresh second factor, not just a password",
           );
@@ -192,7 +192,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         enableMfa();
         cy.intercept("POST", "/api/ee/mfa/recovery-codes").as("regenerate");
 
-        enrollNormalUser().then(({ secret, recoveryCodes }) => {
+        enrollUser().then(({ secret, recoveryCodes }) => {
           cy.log(
             "Sign in with a recovery code instead of an authenticator code",
           );
@@ -243,7 +243,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       it("an emailed one-time code works as a fallback second factor", () => {
         enableMfa();
         H.setupSMTP();
-        enrollNormalUser();
+        enrollUser();
 
         signInWithPassword();
         cy.findByTestId("login-page")
@@ -271,7 +271,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       it("resetting a forgotten password does not bypass the second factor", () => {
         enableMfa();
         H.setupSMTP();
-        enrollNormalUser().then(({ secret }) => {
+        enrollUser().then(({ secret }) => {
           cy.log("Request a reset link and set a new password");
           cy.signOut();
           cy.visit("/auth/forgot_password");
@@ -314,7 +314,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
       it("an enrolled user is still challenged and can disable 2FA after the license lapses", () => {
         enableMfa();
-        enrollNormalUser().then(({ secret, recoveryCodes }) => {
+        enrollUser().then(({ secret, recoveryCodes }) => {
           cy.log("Drop the premium token — the gate must fail closed");
           cy.signInAsAdmin();
           H.deleteToken();
@@ -368,19 +368,21 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         mfaToggle().should("not.be.checked").click();
         cy.wait("@updateSettings");
 
+        // Because the admin has not enrolled, they cannot set two factor to required
+        enforcementOption("Require by a certain date").should("be.disabled");
+        mfaSetting()
+          .findByText(/account before requiring it/)
+          .should("be.visible");
+
+        enrollUser("admin");
+        cy.reload();
+
         cy.log(
           "Enforcement and a default two-week grace period are saved together",
         );
         enforcementOption("Require by a certain date").click();
         cy.wait("@updateSettings");
 
-        mfaDeadline().should("have.value", deadline.format("MMMM D, YYYY"));
-
-        cy.log("Both settings survive a reload");
-        cy.reload();
-        mfaSetting().scrollIntoView();
-        mfaToggle().should("be.checked");
-        enforcementOption("Require by a certain date").should("be.checked");
         mfaDeadline().should("have.value", deadline.format("MMMM D, YYYY"));
       });
 
@@ -490,7 +492,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.wait("@login").then(({ response }) => {
           secret = response?.body.secret;
         });
-
         cy.findByTestId("login-page").within(() => {
           cy.findByText(
             "Two-factor authentication is required. Finish setting it up to sign in.",
@@ -554,20 +555,20 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.button("Save new password").click();
 
         cy.log("No session is minted — user must enroll in MFA");
-        let secret = "";
+
         cy.url().should("contain", "/auth/login");
         cy.findByLabelText("Email address").type(normal.email);
         cy.findByLabelText("Password").type(NEW_PASSWORD);
         cy.button("Sign in").click();
 
         cy.wait("@login").then(({ response }) => {
-          secret = response?.body.secret;
+          const secret = response?.body.secret;
+          cy.findByTestId("login-page").should("contain", secret);
+          cy.findByLabelText(
+            "Enter the 6-digit code from the authenticator app",
+          ).type(generateTotpCode(secret, Date.now() / 1000));
         });
 
-        cy.findByTestId("login-page").should("contain", secret);
-        cy.findByLabelText(
-          "Enter the 6-digit code from the authenticator app",
-        ).type(generateTotpCode(secret, Date.now() / 1000));
         cy.button("Set up authentication").click();
 
         cy.findByTestId("login-page")
@@ -701,10 +702,10 @@ function daysFromNow(days: number) {
   return dayjs().add(days, "day").startOf("day").toDate();
 }
 
-function enrollNormalUser() {
-  cy.signInAsNormalUser();
+function enrollUser(user: keyof typeof USERS = "normal") {
+  cy.signIn(user);
   return cy
-    .request("POST", "/api/ee/mfa/enroll", { password: normal.password })
+    .request("POST", "/api/ee/mfa/enroll", { password: USERS[user].password })
     .then(({ body: { secret } }) =>
       cy
         .request("POST", "/api/ee/mfa/enroll/confirm", {
