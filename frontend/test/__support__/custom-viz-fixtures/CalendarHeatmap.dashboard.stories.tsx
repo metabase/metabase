@@ -6,6 +6,11 @@ import { type ReactNode, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { getNextId } from "__support__/utils";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
@@ -13,11 +18,6 @@ import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,

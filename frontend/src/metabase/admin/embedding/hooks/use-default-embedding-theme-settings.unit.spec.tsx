@@ -1,6 +1,6 @@
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { getColors } from "metabase/ui/colors/colors";
 import type { ColorSettings } from "metabase-types/api/settings";
 

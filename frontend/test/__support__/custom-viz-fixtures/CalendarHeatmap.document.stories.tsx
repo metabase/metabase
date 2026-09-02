@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   ForceDocumentCardRenderDecorator,
@@ -18,7 +19,6 @@ import { Editor } from "metabase/documents/components/Editor/Editor";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCard,
   createMockCardQueryMetadata,

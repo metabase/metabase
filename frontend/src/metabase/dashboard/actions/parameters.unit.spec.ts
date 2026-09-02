@@ -1,12 +1,12 @@
 import { getMainStore } from "__support__/entities-store";
 import { setupFieldEndpoints } from "__support__/server-mocks";
-import { getParameters } from "metabase/dashboard/selectors";
-import type { State } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { getParameters } from "metabase/dashboard/selectors";
+import type { State } from "metabase/redux/store";
 import {
   createMockCard,
   createMockDashboardCard,

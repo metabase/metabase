@@ -25,6 +25,7 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -35,7 +36,6 @@ import {
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";

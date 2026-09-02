@@ -2,13 +2,10 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,

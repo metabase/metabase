@@ -19,6 +19,7 @@ import {
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { createMockDashboardState } from "__support__/state";
 import { screen } from "__support__/ui";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -26,7 +27,6 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {

@@ -5,10 +5,10 @@ import { useState } from "react";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Stack, Text } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";

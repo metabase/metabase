@@ -3,9 +3,9 @@ import type { ReactElement } from "react";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { DictionaryArray, TokenFeatures } from "metabase-types/api";
 import {
   createMockTokenFeatures,

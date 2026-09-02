@@ -4,6 +4,10 @@ import fetchMock from "fetch-mock";
 import { setupCardsForTableEndpoint } from "__support__/server-mocks";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -15,10 +19,6 @@ import {
 } from "__support__/ui";
 import { getMetadata } from "metabase/metadata-store";
 import { MODAL_TYPES } from "metabase/querying/constants";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {

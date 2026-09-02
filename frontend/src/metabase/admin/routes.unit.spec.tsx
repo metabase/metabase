@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { getStore, mainReducers } from "__support__/entities-store";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { createMockSettingsState } from "__support__/state";
 import { type RouteObject, toRouteObjects } from "metabase/router";
 
 import { getRoutes } from "./routes";
