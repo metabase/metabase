@@ -1,5 +1,6 @@
 .SegmentedControl {
   background-color: var(--sc-background-color);
+  box-shadow: var(--mantine-shadow-xs_outline);
 }
 
 .SegmentedControlLabel {

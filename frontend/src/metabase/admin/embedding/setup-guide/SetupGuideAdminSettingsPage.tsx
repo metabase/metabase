@@ -14,8 +14,8 @@ export const SetupGuideAdminSettingsPage = () => {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
-    <Stack mx="auto" py="xl" gap="xl" maw={800}>
-      <Stack gap="xs">
+    <Stack mx="auto" py="xxl" gap="xxl" maw={800}>
+      <Stack gap="xxs">
         <Title order={1} c="text-primary">{t`Embedding setup guide`}</Title>
 
         <Text c="text-secondary">{t`Follow the guide to get started with modular embedding`}</Text>

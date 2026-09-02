@@ -278,6 +278,9 @@ import transform_component from "./transform.svg?component";
 import trash_component from "./trash.svg?component";
 import trash_filled_component from "./trash_filled.svg?component";
 import treemap_component from "./treemap.svg?component";
+import trend_down_component from "./trend_down.svg?component";
+import trend_flat_component from "./trend_flat.svg?component";
+import trend_up_component from "./trend_up.svg?component";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_right_component from "./triangle_right.svg?component";
 import unarchive_component from "./unarchive.svg?component";
@@ -576,6 +579,9 @@ export const Icons: Record<IconName, React.VFC> = {
   trash: trash_component,
   trash_filled: trash_filled_component,
   treemap: treemap_component,
+  trend_down: trend_down_component,
+  trend_flat: trend_flat_component,
+  trend_up: trend_up_component,
   triangle_left: triangle_left_component,
   triangle_right: triangle_right_component,
   unarchive: unarchive_component,

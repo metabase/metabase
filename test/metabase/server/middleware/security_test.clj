@@ -955,8 +955,8 @@
           (is (= "img-src 'self' data: https://*.tile.openstreetmap.org"
                  (csp-directive "img-src")))))
       (testing "custom tile server host and port are allowed; path and query (e.g. api keys) are dropped"
-        (mt/with-temporary-setting-values [map-tile-server-url "https://tiles.example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
-          (is (= "img-src 'self' data: https://tiles.example.com:8443"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
+          (is (= "img-src 'self' data: https://example.com:8443"
                  (csp-directive "img-src")))))
       (testing "a relative tile template contributes no host"
         (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]

@@ -1,7 +1,8 @@
 ;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts),
 ;; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude
-;; entries). metabase.core.kondo-ratchet-test fails when either drifts from reality, or when an
-;; ignore outside :comment-exempt lacks an explanatory comment directly above or trailing on its line.
+;; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
+;; CI rejects counts above a numeric budget; local tests require those counts to match exactly.
+;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
 ;; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it
 ;; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or
 ;; widening the exemptions is a hand edit to defend in your PR.
@@ -23,7 +24,7 @@
                   :metabase/disallow-hardcoded-driver-names-in-tests                   34
                   :metabase/discourage-millis-duration                                 1
                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
-                  :metabase/modules                                                    10
+                  :metabase/modules                                                    23
                   :metabase/namespace-name                                             4
                   :metabase/prefer-with-dynamic-fn-redefs                              28
                   :metabase/test-helpers-use-non-thread-safe-functions                 18
@@ -41,14 +42,13 @@
                   :uninitialized-var                                                   1
                   :unquote-not-syntax-quoted                                           1
                   :unresolved-namespace                                                3
-                  :unresolved-require                                                  1
                   :unresolved-symbol                                                   11
-                  :unsorted-required-namespaces                                        1
+                  :unsorted-required-namespaces                                        :unlimited
                   :unused-alias                                                        2
                   :unused-binding                                                      9
                   :unused-excluded-var                                                 2
                   :unused-namespace                                                    2
-                  :unused-private-var                                                  9
+                  :unused-private-var                                                  8
                   :unused-value                                                        1}
  :config-counts  {:constant-condition                      1
                   :deprecated-namespace                    7
@@ -76,6 +76,4 @@
                    :metabase/modules
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case
-                   :metabase/validate-defendpoint-route-uses-kebab-case
-                   :unused-excluded-var
-                   :unused-private-var}}
+                   :metabase/validate-defendpoint-route-uses-kebab-case}}

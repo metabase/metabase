@@ -118,17 +118,17 @@ export const EditUserStrategyModal = ({
       <Modal
         opened={!confirmationModal && !isApplyingAfterConfirm}
         title={t`Pick a user strategy`}
-        padding="xl"
+        padding="xxl"
         size="md"
         onClose={onClose}
       >
         <LoadingAndErrorWrapper loading={isLoading} error={error}>
-          <Stack gap="md" mt="sm">
+          <Stack gap="lg" mt="sm">
             <Radio.Group
               value={selectedStrategy}
               onChange={setSelectedStrategy}
             >
-              <Stack gap="md">
+              <Stack gap="lg">
                 {strategyOptions.map((option) => (
                   <Radio.Card
                     key={option.value}
@@ -141,7 +141,7 @@ export const EditUserStrategyModal = ({
               </Stack>
             </Radio.Group>
 
-            <Flex justify="flex-end" gap="md" mt="md">
+            <Flex justify="flex-end" gap="lg" mt="lg">
               <Button variant="outline" onClick={handleCancel}>
                 {t`Cancel`}
               </Button>

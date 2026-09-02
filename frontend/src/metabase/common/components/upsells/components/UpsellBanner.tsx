@@ -94,7 +94,7 @@ export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
       <Flex align={hasBody ? "flex-start" : "center"} gap="sm" wrap="nowrap">
         <UpsellGem size={gemSize} mt={hasBody ? "1px" : undefined} />
 
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Title lh={1.25} order={3} size="md">
             {title}
           </Title>
@@ -106,7 +106,7 @@ export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
         </Stack>
       </Flex>
 
-      <Flex align="center" gap="md">
+      <Flex align="center" gap="lg">
         <UpsellCta
           onClick={handleClick}
           url={upgradeUrl}

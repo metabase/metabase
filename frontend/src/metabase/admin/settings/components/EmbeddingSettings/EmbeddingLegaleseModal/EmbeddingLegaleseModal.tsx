@@ -26,12 +26,12 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
       onClose={onClose}
       opened={opened}
       size={670}
-      padding="xl"
+      padding="xxl"
       withCloseButton={false}
       closeOnClickOutside={false}
     >
-      <Text mt="xs">{t`When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage.`}</Text>
-      <Group justify="right" mt="lg">
+      <Text mt="xxs">{t`When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage.`}</Text>
+      <Group justify="right" mt="xl">
         <Button
           onClick={onClose}
           variant="subtle"

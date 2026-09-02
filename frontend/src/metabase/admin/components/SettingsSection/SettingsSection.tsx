@@ -33,7 +33,7 @@ export function SettingsSection({
   return (
     <Box id={id} {...boxProps}>
       {children && (
-        <Stack gap="lg" className={S.SettingsSection} {...stackProps}>
+        <Stack gap="xl" className={S.SettingsSection} {...stackProps}>
           {(title || description) && (
             <Box mb="sm">
               {title && (
@@ -64,7 +64,7 @@ export function SettingsPageWrapper({
   children: React.ReactNode;
 } & Omit<StackProps, "title">) {
   return (
-    <Stack gap="lg" {...stackProps}>
+    <Stack gap="xl" {...stackProps}>
       {(title || description) && (
         <Stack gap="sm">
           {title && (

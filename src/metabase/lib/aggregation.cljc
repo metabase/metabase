@@ -1,4 +1,5 @@
 (ns metabase.lib.aggregation
+  ;; clj-kondo treats the CLJ-only doseq/for exclusions and performance refers as unused in the CLJS pass
   {:clj-kondo/ignore [:unused-excluded-var]}
   (:refer-clojure :exclude [count distinct max min select-keys mapv empty? not-empty #?(:clj doseq) #?(:clj for)])
   (:require

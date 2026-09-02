@@ -119,8 +119,8 @@ export const SdkIframeEmbedSetupContent = () => {
     >
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
-          <Stack className={S.SidebarContent} gap="md">
-            <Stack gap="md" flex={1}>
+          <Stack className={S.SidebarContent} gap="lg">
+            <Stack gap="lg" flex={1}>
               <StepContent />
             </Stack>
           </Stack>
@@ -156,7 +156,7 @@ export const SdkIframeEmbedSetupContent = () => {
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Stack align="center" gap="md">
+                <Stack align="center" gap="lg">
                   <Image
                     w={120}
                     h={120}

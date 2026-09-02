@@ -61,7 +61,7 @@ export function AreaLayout({
         justify="space-between"
         data-testid={testId}
       >
-        <Stack gap="md" flex={1} mih={0} className={S.upperGroup}>
+        <Stack gap="lg" flex={1} mih={0} className={S.upperGroup}>
           <AreaNavbarHeader
             logo={logo}
             title={title}
