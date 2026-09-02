@@ -182,6 +182,29 @@
                   (take max-restricted-field-values-fetches fields)))
         restricted-fields-by-table))
 
+(defn- field-values-for
+  "The values `field` should contribute to the DDL, or nil.
+
+   `restricted?` says the field's table is row-restricted for this user. Only then are the shared values
+   unsafe to show, and only then is it worth resolving values per user."
+  [field restricted?]
+  (if-not restricted?
+    ;; The user sees every row of this table, so the values sync cached are the values they would get.
+    ;; Resolving them per user instead would re-derive the impersonation role and routing destination
+    ;; once per field, and those are properties of the database, not of the field.
+    (not-empty (:values (field-values/get-or-create-full-field-values! field)))
+    (when-let [fv (try
+                    (params.field-values/get-or-create-field-values! field)
+                    (catch Exception e
+                      ;; Resolving the user's role throws when the impersonation attribute is missing. One
+                      ;; column's samples are not worth failing the request over.
+                      (log/warnf "Could not fetch field values for field %s: %s" (:id field) (ex-message e))
+                      nil))]
+      ;; `hash-input-for-sandbox` is gated on `:feature :sandboxes` while the restriction check is not, so
+      ;; a token-check blip can hand back the shared cache. Trust the row, not the feature.
+      (when (= :advanced (:type fv))
+        (not-empty (:values fv))))))
+
 (defn- fetch-field-values
   "Returns a map of field-id -> values vector for those `columns` that should have FieldValues.
    Values are the ones the current user is allowed to see, and are fetched from the source database when
@@ -199,9 +222,9 @@
             capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
         (into {}
               (keep (fn [field]
-                      (when-let [fv (params.field-values/get-or-create-field-values! field)]
-                        (when-let [values (not-empty (:values fv))]
-                          [(:id field) values]))))
+                      (when-let [values (field-values-for
+                                         field (contains? restricted-table-ids (:table_id field)))]
+                        [(:id field) values])))
               capped-fields)))))
 
 (defn- fetch-fk-targets

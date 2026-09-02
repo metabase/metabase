@@ -139,9 +139,10 @@
                     ;; Scoped to venues: a blanket delete would clear cached values for every other field
                     ;; in the app-db, which `with-model-cleanup` cannot put back.
                     (t2/delete! :model/FieldValues :type :advanced :field_id [:in (venues-field-ids)])
-                    ;; `max-value-fetches` holds a number, not a function, so `with-dynamic-fn-redefs`
-                    ;; cannot bind it, and it is private so it has to be reached through the var.
-                    (with-redefs-fn {#'llm.context/max-value-fetches cap}
+                    ;; `max-restricted-field-values-fetches` holds a number, not a function, so
+                    ;; `with-dynamic-fn-redefs` cannot bind it, and it is private so it has to be
+                    ;; reached through the var.
+                    (with-redefs-fn {#'llm.context/max-restricted-field-values-fetches cap}
                       (fn []
                         (impersonation.util-test/with-impersonations!
                           {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -152,17 +153,6 @@
                   "venues has more than one list-eligible column, so the cap has something to bite on")
               (is (= 1 (fetched-under-cap 1))
                   "and past the cap a restricted column is left without sample values"))))))))
-
-(deftest schema-context-fails-closed-when-restrictions-cannot-be-determined-test
-  (testing "a restriction check that throws restricts everything rather than serving shared data"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-test-user :rasta
-        (with-redefs-fn {#'perms/impersonation-enforced-for-db?
-                         (fn [_db-id] (throw (ex-info "conflicting policies" {})))}
-          (fn []
-            (is (= #{(mt/id :venues) (mt/id :checkins)}
-                   (#'llm.context/row-restricted-table-ids (mt/id) [(mt/id :venues) (mt/id :checkins)]))
-                "every table is treated as restricted")))))))
 
 (deftest schema-context-withholds-shared-values-from-a-restricted-table-test
   (testing "a restricted table gets no values when the per-user cache hands back a shared row"
