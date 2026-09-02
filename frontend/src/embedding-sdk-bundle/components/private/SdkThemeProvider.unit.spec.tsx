@@ -84,6 +84,28 @@ describe("SdkThemeProvider", () => {
     ensureMetabaseProviderPropsStore().cleanup();
   });
 
+  it("themes all mapped background colors from the V1 background color", async () => {
+    const handleCssVariablesChange = jest.fn();
+
+    renderSdkThemeProvider(
+      { colors: { background: "#123456" } },
+      handleCssVariablesChange,
+    );
+
+    await waitFor(() => {
+      expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
+        "--mb-color-background_surface-primary: #123456",
+      );
+    });
+
+    expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
+      "--mb-color-background-primary: #123456",
+    );
+    expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
+      "--mb-color-background_page-primary: #123456",
+    );
+  });
+
   it.each(THEME_CASES)(
     "$themeName base color variables are color scheme dependent",
     async ({ theme, expectedColor, unexpectedColor }) => {
