@@ -45,7 +45,7 @@
    #(group-by :exploration_id
               (t2/select :model/ExplorationThread
                          'exploration_id [:in (map :id explorations)]
-                         {:order-by [['position 'asc] ['id 'asc]]}))
+                         {'order-by [['position 'asc] ['id 'asc]]}))
    :id
    {:default []}))
 
@@ -61,7 +61,7 @@
                                 :id :name :exploration_id :creator_id :content_type
                                 :created_at :updated_at :archived :is_placeholder]
                                'exploration_id [:in (map :id explorations)]
-                               {:order-by [['created_at 'asc] ['id 'asc]]})))
+                               {'order-by [['created_at 'asc] ['id 'asc]]})))
    :id
    {:default nil}))
 

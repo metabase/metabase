@@ -56,12 +56,12 @@
         yesterday-utc (t/minus today-utc (t/days 1))
         counts-for    (fn [date]
                         (into {} (map (juxt :metered_as :cnt))
-                              (t2/query {:select   ['r.metered_as [['count 'r.id] 'cnt]]
-                                         :from     [['transform_run 'r]]
-                                         :where    ['and
+                              (t2/query {'select   ['r.metered_as [['count 'r.id] 'cnt]]
+                                         'from     [['transform_run 'r]]
+                                         'where    ['and
                                                     ['= 'r.status "succeeded"]
                                                     ['= ['cast 'r.end_time 'date] ['cast date 'date]]]
-                                         :group-by ['r.metered_as]})))
+                                         'group-by ['r.metered_as]})))
         yesterday     (counts-for yesterday-utc)
         today         (counts-for today-utc)]
     {:transform-basic-runs            (get yesterday "transform-basic" 0)

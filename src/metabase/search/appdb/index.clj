@@ -117,9 +117,9 @@
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
-       (t2/query {:select ['ist.table_name]
-                  :from   [['information_schema.tables 'ist]]
-                  :where  ['and
+       (t2/query {'select ['ist.table_name]
+                  'from   [['information_schema.tables 'ist]]
+                  'where  ['and
                            ['= 'ist.table_schema '%current_schema]
                            ['or
                             ['like ['lower 'ist.table_name] "search\\_index\\_\\_%"]
@@ -128,9 +128,9 @@
                              ["search_index" "search_index_next" "search_index_retired"]]]
                            ;; Exclude temp tables — they are managed by with-temp-index-table
                            ['not-like ['lower 'ist.table_name] "%\\_temp"]
-                           ['not ['exists ^:allow-subquery {:select [1]
-                                                            :from   [[(t2/table-name :model/SearchIndexMetadata) 'sim]]
-                                                            :where  ['and
+                           ['not ['exists ^:allow-subquery {'select [1]
+                                                            'from   [[(t2/table-name :model/SearchIndexMetadata) 'sim]]
+                                                            'where  ['and
                                                                      ['= 'sim.engine "appdb"]
                                                                      ['= ['lower 'sim.index_name] ['lower 'ist.table_name]]]}]]]})))
 
@@ -173,7 +173,7 @@
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
-          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
+          [:default ['raw "CURRENT_TIMESTAMP"]]
           :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]
@@ -438,7 +438,7 @@
                     'version (search.spec/index-version-hash)
                     'lang_code (i18n/site-locale-string)
                     'status :active
-                    {:order-by [['created_at 'desc]]}))
+                    {'order-by [['created_at 'desc]]}))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."

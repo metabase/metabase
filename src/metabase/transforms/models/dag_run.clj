@@ -49,5 +49,5 @@
   "Return the transform runs that were part of the given DAG run, ordered by start time."
   [dag-run-id]
   (t2/select :model/TransformRun
-             {:where    ['= 'dag_run_id dag-run-id]
-              :order-by [['start_time 'asc]]}))
+             {'where    ['= 'dag_run_id dag-run-id]
+              'order-by [['start_time 'asc]]}))

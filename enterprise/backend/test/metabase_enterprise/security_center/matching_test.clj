@@ -92,31 +92,31 @@
     (is (true? (matching/execute-matching-query! nil))))
   (testing "query that matches"
     (is (true? (matching/execute-matching-query!
-                {:default {:select [1] :from ['core_user] :limit 1}}))))
+                {:default {'select [1] 'from ['core_user] 'limit 1}}))))
   (testing "query that doesn't match"
     (is (false? (matching/execute-matching-query!
-                 {:default {:select [1] :from ['core_user]
-                            :where ['= 'email "nonexistent-user@example.com"] :limit 1}}))))
+                 {:default {'select [1] 'from ['core_user]
+                            'where ['= 'email "nonexistent-user@example.com"] 'limit 1}}))))
   (testing "dialect-specific query is preferred over default"
     (is (true? (matching/execute-matching-query!
-                {(mdb/db-type) {:select [1] :from ['core_user] :limit 1}
-                 :default      {:select [1] :from ['core_user]
-                                :where ['= 'email "nonexistent@example.com"] :limit 1}}))))
+                {(mdb/db-type) {'select [1] 'from ['core_user] 'limit 1}
+                 :default      {'select [1] 'from ['core_user]
+                                'where ['= 'email "nonexistent@example.com"] 'limit 1}}))))
   (testing "falls back to :default when dialect not present"
     (is (true? (matching/execute-matching-query!
-                {:some_other_db {:select [1] :from ['core_user]
-                                 :where ['= 'email "nonexistent@example.com"] :limit 1}
-                 :default       {:select [1] :from ['core_user] :limit 1}}))))
+                {:some_other_db {'select [1] 'from ['core_user]
+                                 'where ['= 'email "nonexistent@example.com"] 'limit 1}
+                 :default       {'select [1] 'from ['core_user] 'limit 1}}))))
   (testing "no dialect match and no default → :error"
     (is (= :error (matching/execute-matching-query!
-                   {:some_other_db {:select [1] :from ['core_user] :limit 1}}))))
+                   {:some_other_db {'select [1] 'from ['core_user] 'limit 1}}))))
   (testing "query against missing table returns :error"
     (is (= :error (matching/execute-matching-query!
-                   {:default {:select [1] :from ['nonexistent_table_xyz] :limit 1}}))))
+                   {:default {'select [1] 'from ['nonexistent_table_xyz] 'limit 1}}))))
   (when-not (= :h2 (mdb/db-type))
     (testing "write query is rejected by read-only connection"
       (matching/execute-matching-query!
-       {:default {:delete-from 'core_user}})
+       {:default {'delete-from 'core_user}})
       (testing "no rows were actually deleted"
         (is (pos? (t2/count :model/User)))))))
 
@@ -130,7 +130,7 @@
                       :description       "Test"
                       :remediation       "Upgrade"
                       :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                      :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
+                      :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -146,8 +146,8 @@
                       :description       "Test"
                       :remediation       "Upgrade"
                       :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                      :matching_query    {:default {:select [1] :from ['core_user]
-                                                    :where ['= 'email "nonexistent@example.com"] :limit 1}}
+                      :matching_query    {:default {'select [1] 'from ['core_user]
+                                                    'where ['= 'email "nonexistent@example.com"] 'limit 1}}
                       :match_status      "active"
                       :published_at      #t "2026-03-24T00:00:00Z"
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -177,7 +177,7 @@
                       :description       "Test"
                       :remediation       "Upgrade"
                       :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                      :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                      :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                       :match_status      "not_affected"
                       :published_at      #t "2026-03-24T00:00:00Z"
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -200,7 +200,7 @@
                       :description       "Test"
                       :remediation       "Upgrade"
                       :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
-                      :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                      :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                       :match_status      "unknown"
                       :published_at      #t "2026-03-24T00:00:00Z"
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -219,7 +219,7 @@
                         :description       "Test"
                         :remediation       "Upgrade"
                         :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
-                        :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                         :match_status      "resolved"
                         :last_evaluated_at past
                         :published_at      #t "2026-03-24T00:00:00Z"
@@ -236,7 +236,7 @@
                         :description       "Test"
                         :remediation       "Upgrade"
                         :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
-                        :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                         :match_status      "not_affected"
                         :last_evaluated_at past
                         :published_at      #t "2026-03-24T00:00:00Z"
@@ -253,7 +253,7 @@
                       :description       "Test"
                       :remediation       "Upgrade"
                       :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
-                      :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
+                      :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
                       :match_status      "active"
                       :published_at      #t "2026-03-24T00:00:00Z"
                       :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -278,7 +278,7 @@
                         :remediation       "Upgrade"
                         ;; Range that would normally match any realistic version.
                         :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                        :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
                         :match_status      "unknown"
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -293,8 +293,8 @@
       (testing "acked unaffected advisory transitioning to :active or :error clears the ack but preserves last_notified_at"
         (doseq [prior-status        ["resolved" "not_affected"]
                 [label new-status query]
-                [["active" :active {:default {:select [1] :from ['core_user] :limit 1}}]
-                 ["error"  :error  {:default {:select [1] :from ['nonexistent_table] :limit 1}}]]]
+                [["active" :active {:default {'select [1] 'from ['core_user] 'limit 1}}]
+                 ["error"  :error  {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}]]]
           (testing (str prior-status " -> " label)
             (mt/with-temp [:model/SecurityAdvisory advisory
                            {:advisory_id       (str "SC-REACT-" prior-status "-" label)
@@ -324,7 +324,7 @@
                         :description       "Test"
                         :remediation       "Upgrade"
                         :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                        :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
                         :match_status      "active"
                         :acknowledged_at   acked-at
                         :acknowledged_by   (mt/user->id :rasta)
@@ -343,7 +343,7 @@
                         :description       "Test"
                         :remediation       "Upgrade"
                         :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                        :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
                         :match_status      "not_affected"
                         :published_at      #t "2026-03-24T00:00:00Z"
                         :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -361,7 +361,7 @@
                     :description       "Test"
                     :remediation       "Upgrade"
                     :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                    :matching_query    {:default {:select [1] :from ['core_user] :limit 1}}
+                    :matching_query    {:default {'select [1] 'from ['core_user] 'limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"
                     :updated_at        #t "2026-03-24T00:00:00Z"}
@@ -372,8 +372,8 @@
                     :description       "Test"
                     :remediation       "Upgrade"
                     :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                    :matching_query    {:default {:select [1] :from ['core_user]
-                                                  :where ['= 'email "nonexistent@example.com"] :limit 1}}
+                    :matching_query    {:default {'select [1] 'from ['core_user]
+                                                  'where ['= 'email "nonexistent@example.com"] 'limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"
                     :updated_at        #t "2026-03-24T00:00:00Z"}
@@ -384,7 +384,7 @@
                     :description       "Test"
                     :remediation       "Upgrade"
                     :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                    :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                    :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                     :match_status      "not_affected"
                     :published_at      #t "2026-03-24T00:00:00Z"
                     :updated_at        #t "2026-03-24T00:00:00Z"}]
@@ -429,7 +429,7 @@
                         :remediation       "Upgrade"
                         :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
                         ;; would error if executed — proves the short-circuit avoids the query
-                        :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                         :match_status      "resolved"
                         :acknowledged_at   (mi/now)
                         :acknowledged_by   (mt/user->id :rasta)
@@ -443,7 +443,7 @@
                         :description       "Test"
                         :remediation       "Upgrade"
                         :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
-                        :matching_query    {:default {:select [1] :from ['nonexistent_table] :limit 1}}
+                        :matching_query    {:default {'select [1] 'from ['nonexistent_table] 'limit 1}}
                         :match_status      "not_affected"
                         :acknowledged_at   (mi/now)
                         :acknowledged_by   (mt/user->id :rasta)

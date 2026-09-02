@@ -63,16 +63,16 @@
     (is (= original-search-doc recovered-doc))))
 
 (defn- get-gate-rows! [pgvector index-metadata]
-  (jdbc/execute! pgvector (sql/format {:select   ['*]
-                                       :from     [(keyword (:gate-table-name index-metadata))]
-                                       :order-by [['id 'asc]]}
+  (jdbc/execute! pgvector (sql/format {'select   ['*]
+                                       'from     [(keyword (:gate-table-name index-metadata))]
+                                       'order-by [['id 'asc]]}
                                       :quoted true)
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- get-gate-row! [pgvector index-metadata id]
-  (jdbc/execute-one! pgvector (sql/format {:select ['*]
-                                           :from   [(keyword (:gate-table-name index-metadata))]
-                                           :where  ['= 'id id]}
+  (jdbc/execute-one! pgvector (sql/format {'select ['*]
+                                           'from   [(keyword (:gate-table-name index-metadata))]
+                                           'where  ['= 'id id]}
                                           :quoted true)
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -203,9 +203,9 @@
                                         (get-gate-rows! pgvector index-metadata))]
             (jdbc/execute-one!
              pgvector
-             (sql/format {:update (keyword (:gate-table-name index-metadata))
-                          :set    {:gated_at t}
-                          :where  ['= 'id id]}
+             (sql/format {'update (keyword (:gate-table-name index-metadata))
+                          'set    {:gated_at t}
+                          'where  ['= 'id id]}
                          :quoted true)))
           (let [[g1 g2 g3] (sort (map :gated_at (get-gate-rows! pgvector index-metadata)))
                 lag-tolerance  (Duration/ofSeconds 3)
@@ -280,12 +280,12 @@
         (semantic.gate/flush-watermark! pgvector index-metadata index2 watermark)
         (let [indexer-records
               (->> (jdbc/execute! pgvector
-                                  (-> {:select ['id
+                                  (-> {'select ['id
                                                 'indexer_last_poll
                                                 'indexer_last_seen
                                                 'indexer_last_seen_hash
                                                 'indexer_last_seen_id]
-                                       :from   [(keyword (:metadata-table-name index-metadata))]}
+                                       'from   [(keyword (:metadata-table-name index-metadata))]}
                                       (sql/format :quoted true))
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                    (sort-by :id))

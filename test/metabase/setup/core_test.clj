@@ -231,16 +231,16 @@
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
-                  {:keys [id value]} (t2/select [table :id [column :value]] {:where ['!= column nil]})]
+                  {:keys [id value]} (t2/select [table :id [column :value]] {'where ['!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-string? value)))))
         (testing "encrypted-at-rest bytes columns"
           (doseq [[table column] @#'mdb.encryption/encrypted-bytes-columns
-                  {:keys [id value]} (t2/select [table :id [column :value]] {:where ['!= column nil]})]
+                  {:keys [id value]} (t2/select [table :id [column :value]] {'where ['!= column nil]})]
             (testing (format "%s.%s id %s" (name table) (name column) id)
               (is (encryption/decryptable-bytes? (#'mdb.encryption/maybe-blob->bytes value))))))
         (testing "settings that are encrypted at rest"
-          (doseq [{k :key v :value} (t2/select :setting {:where ['!= 'value nil]})
+          (doseq [{k :key v :value} (t2/select :setting {'where ['!= 'value nil]})
                   :let [definition (get @setting/registered-settings (keyword k))]
                   :when (and definition (not= :no (:encryption definition)))]
             (testing k

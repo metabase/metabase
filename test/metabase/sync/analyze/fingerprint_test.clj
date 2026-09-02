@@ -47,7 +47,7 @@
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
                 "`*fingerprint-version->types-that-should-be-re-fingerprinted*`")
-    (is (= {:where
+    (is (= {'where
             ['and
              ['= 'active true]
              ['or
@@ -63,7 +63,7 @@
              (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-2
-  (is (= {:where
+  (is (= {'where
           ['and
            ['= 'active true]
            ['or
@@ -85,7 +85,7 @@
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-3
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
-    (is (= {:where
+    (is (= {'where
             ['and
              ['= 'active true]
              ['or
@@ -108,7 +108,7 @@
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-4
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
-    (is (= {:where
+    (is (= {'where
             ['and
              ['= 'active true]
              ['or
@@ -137,7 +137,7 @@
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-5
   (testing "when refingerprinting doesn't check for versions"
-    (is (= {:where ['and
+    (is (= {'where ['and
                     ['= 'active true]
                     ['or
                      ['not (app-db/isa :semantic_type :type/PK)]
@@ -356,13 +356,13 @@
                   ;; but it is bounded! it's less than the max fingerprint count PLUS the number of fields in the
                   ;; biggest table in (mt/db).
                   (+ @#'sync.fingerprint/max-refingerprint-field-count
-                     (:count (t2/query-one {:select [['%count.* 'count]]
-                                            :from 'metabase_field
-                                            :join [['metabase_table 'table] ['= 'table.id 'table_id]]
-                                            :where ['= 'table.db_id (mt/id)]
-                                            :group-by ['table_id]
-                                            :order-by [['count 'desc]]
-                                            :limit 1}))))))))))
+                     (:count (t2/query-one {'select [['%count.* 'count]]
+                                            'from 'metabase_field
+                                            'join [['metabase_table 'table] ['= 'table.id 'table_id]]
+                                            'where ['= 'table.db_id (mt/id)]
+                                            'group-by ['table_id]
+                                            'order-by [['count 'desc]]
+                                            'limit 1}))))))))))
 
 (defn- fingerprint-version-after-failure!
   "Create a fresh text Field at fingerprint_version 0 (eligible for fingerprinting up to version 5), run

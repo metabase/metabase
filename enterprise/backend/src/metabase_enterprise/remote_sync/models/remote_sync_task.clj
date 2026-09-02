@@ -160,14 +160,14 @@
   within the time limit), or nil if no active task exists."
   []
   (t2/select-one :model/RemoteSyncTask
-                 {:where ['and
+                 {'where ['and
                           ['<> 'started_at nil]
                           ['= 'ended_at nil]
                           ['<
                            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
                            'last_progress_report_at]]
-                  :limit 1
-                  :order-by [['started_at 'desc]
+                  'limit 1
+                  'order-by [['started_at 'desc]
                              ['id 'desc]]}))
 
 (defn supersede-stale-tasks!
@@ -187,11 +187,11 @@
   []
   (let [cutoff (t/minus (t/offset-date-time)
                         (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
-    (t2/query {:update (t2/table-name :model/RemoteSyncTask)
-               :set    {:cancelled     true
+    (t2/query {'update (t2/table-name :model/RemoteSyncTask)
+               'set    {:cancelled     true
                         :ended_at      (mi/now)
                         :error_message "Superseded after staleness timeout"}
-               :where  ['and
+               'where  ['and
                         ['<> 'started_at nil]
                         ['= 'ended_at nil]
                         ['< 'last_progress_report_at cutoff]]})))
@@ -202,10 +202,10 @@
   Returns the most recent RemoteSyncTask (running or completed), or nil if no tasks exist."
   []
   (t2/select-one :model/RemoteSyncTask
-                 {:where ['and
+                 {'where ['and
                           ['<> 'started_at nil]]
-                  :limit 1
-                  :order-by [['started_at 'desc]
+                  'limit 1
+                  'order-by [['started_at 'desc]
                              ['id 'desc]]}))
 
 (defn last-version
@@ -215,13 +215,13 @@
   tasks exist."
   []
   (:version (t2/select-one :model/RemoteSyncTask
-                           {:where ['and
+                           {'where ['and
                                     ['<> nil 'ended_at]
                                     ['= false 'cancelled]
                                     ['= nil 'error_message]
                                     ['<> nil 'version]]
-                            :limit 1
-                            :order-by [['started_at 'desc]
+                            'limit 1
+                            'order-by [['started_at 'desc]
                                        ['id 'desc]]})))
 
 (defn running?

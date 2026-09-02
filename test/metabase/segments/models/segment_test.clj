@@ -50,9 +50,9 @@
       ;; Direct DB insert to bypass validation
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id (mt/id :venues)
                                                       :definition {:filter 1000}}]
-        (t2/query-one {:update 'segment
-                       :set {:definition (json/encode {:filter "X"})}
-                       :where ['= 'id segment-id]})
+        (t2/query-one {'update 'segment
+                       'set {:definition (json/encode {:filter "X"})}
+                       'where ['= 'id segment-id]})
         (is (= {}
                (:definition (t2/select-one :model/Segment 'id segment-id)))))))
   (testing "...but should still throw them on insert"
@@ -121,10 +121,10 @@
     (mt/with-temp [:model/Segment {id :id} {:name "Expensive BBQ Spots"
                                             :definition (:query (mt/mbql-query venues
                                                                   {:filter 1000}))}]
-      (t2/query-one {:update 'segment
-                     :set {:definition (json/encode {:filter
+      (t2/query-one {'update 'segment
+                     'set {:definition (json/encode {:filter
                                                      [:= [:wheat-field Integer/MAX_VALUE nil] 4]})}
-                     :where ['= 'id id]})
+                     'where ['= 'id id]})
       (is (nil? (-> (t2/select-one :model/Segment id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))

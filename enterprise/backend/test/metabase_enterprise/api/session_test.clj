@@ -155,14 +155,14 @@
                          :last_active_at :%now})
             (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
           (testing "Session with last_active_at older than timeout should be expired"
-            (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
-                           :where  ['= 'key_hashed key-hashed]})
+            (t2/query-one {'update (t2/table-name :model/Session)
+                           'set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
+                           'where  ['= 'key_hashed key-hashed]})
             (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
           (testing "Session with last_active_at just within timeout should be valid"
-            (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -299 :second)}
-                           :where  ['= 'key_hashed key-hashed]})
+            (t2/query-one {'update (t2/table-name :model/Session)
+                           'set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -299 :second)}
+                           'where  ['= 'key_hashed key-hashed]})
             (is (some? (#'mw.session/current-user-info-for-session session-key nil)))))))))
 
 (deftest session-timeout-falls-back-to-created-at-test
@@ -178,9 +178,9 @@
                         {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now})
             (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
           (testing "old session with NULL last_active_at should be expired"
-            (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
-                           :where  ['= 'key_hashed key-hashed]})
+            (t2/query-one {'update (t2/table-name :model/Session)
+                           'set    {:created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
+                           'where  ['= 'key_hashed key-hashed]})
             (is (nil? (#'mw.session/current-user-info-for-session session-key nil)))))))))
 
 (deftest session-activity-update-throttle-test

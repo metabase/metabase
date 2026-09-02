@@ -608,7 +608,7 @@
             card-spec     (spec/spec-for-model-key :model/Card)
             ;; what remove-unsynced! would delete for Card (its predicate, run as a SELECT rather than a delete)
             would-delete  (t2/select-fn-set :name :model/Card
-                                            {:where (into [:and] (spec/removal-where-clauses
+                                            {'where (into [:and] (spec/removal-where-clauses
                                                                   card-spec synced-ids imported-eids))})
             flagged       (into #{}
                                 (comp (filter #(= "Card" (:model %))) (mapcat :names))

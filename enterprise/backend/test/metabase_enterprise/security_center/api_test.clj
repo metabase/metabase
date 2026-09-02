@@ -120,7 +120,7 @@
                      :user_id (mt/user->id :crowberto)}
                     (t2/select-one [:model/AuditLog :topic :user_id]
                                    'topic :security-advisory-acknowledge
-                                   {:order-by [['id 'desc]]})))))
+                                   {'order-by [['id 'desc]]})))))
         (testing "cannot acknowledge twice"
           (mt/user-http-request :crowberto :post 409
                                 "ee/security-center/SC-0000-001/acknowledge"))

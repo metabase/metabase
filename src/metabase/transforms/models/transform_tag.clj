@@ -45,11 +45,11 @@
               (update m transform_id (fnil conj #{}) schedule))
             {}
             (t2/select :model/TransformTransformTag
-                       {:select ['ttt.transform_id ['job.schedule 'schedule]]
-                        :from   [['transform_transform_tag 'ttt]]
-                        :join   [['transform_job_transform_tag 'jtt] ['= 'ttt.tag_id 'jtt.tag_id]
+                       {'select ['ttt.transform_id ['job.schedule 'schedule]]
+                        'from   [['transform_transform_tag 'ttt]]
+                        'join   [['transform_job_transform_tag 'jtt] ['= 'ttt.tag_id 'jtt.tag_id]
                                  ['transform_job 'job] ['= 'jtt.job_id 'job.id]]
-                        :where  ['and
+                        'where  ['and
                                  ['in 'ttt.transform_id transform-ids]
                                  ['= 'job.active true]]}))))
 

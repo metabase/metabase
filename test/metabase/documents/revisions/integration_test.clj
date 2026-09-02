@@ -205,7 +205,7 @@
           (testing "Update event triggers revision creation"
             (let [updated-document (assoc document :name "Updated Event Document")]
               (events/publish-event! :event/document-update {:object updated-document :user-id (mt/user->id :rasta)})
-              (let [revisions (t2/select :model/Revision 'model "Document" 'model_id doc-id {:order-by [['id 'desc]]})]
+              (let [revisions (t2/select :model/Revision 'model "Document" 'model_id doc-id {'order-by [['id 'desc]]})]
                 (is (= 2 (count revisions)))
                 (let [latest-revision (first revisions)]
                   (is (not (:is_creation latest-revision)))

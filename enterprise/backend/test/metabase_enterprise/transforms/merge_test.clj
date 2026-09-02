@@ -326,7 +326,7 @@
                         "late order 1 upserted, order 4 inserted, re-read rows not duplicated")
                     (testing "the run's recorded lo is the stored watermark pushed back by the lookback"
                       (let [run (t2/select-one :model/TransformRun 'transform_id (:id transform)
-                                               {:order-by [['id 'desc]]})]
+                                               {'order-by [['id 'desc]]})]
                         (is (= (u.date/format (t/minus (u.date/parse wm-before) (t/days 1)))
                                (:checkpoint_lo_value run)))))))
                 (testing "a run with no new rows leaves the target and the watermark unchanged"

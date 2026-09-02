@@ -1302,8 +1302,8 @@
   the bounded result set the fixed [[load-perm-context]] loads."
   [db-id group-ids]
   (count (t2/select :model/DataPermissions
-                    {:select-distinct ['group_id 'perm_type 'schema_name 'perm_value]
-                     :where ['and ['= 'db_id db-id] ['not= 'table_id nil]
+                    {'select-distinct ['group_id 'perm_type 'schema_name 'perm_value]
+                     'where ['and ['= 'db_id db-id] ['not= 'table_id nil]
                              ['in 'group_id group-ids]]})))
 
 (defn- make-granular-perms-scenario!
@@ -1363,11 +1363,11 @@
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} rows))
             all      (t2/select :model/DataPermissions
-                                {:where ['and ['= 'db_id db-id] ['not= 'table_id nil]
+                                {'where ['and ['= 'db_id db-id] ['not= 'table_id nil]
                                          ['in 'group_id group-ids]]})
             distinct (t2/select :model/DataPermissions
-                                {:select-distinct ['group_id 'perm_type 'schema_name 'perm_value]
-                                 :where ['and ['= 'db_id db-id] ['not= 'table_id nil]
+                                {'select-distinct ['group_id 'perm_type 'schema_name 'perm_value]
+                                 'where ['and ['= 'db_id db-id] ['not= 'table_id nil]
                                          ['in 'group_id group-ids]]})]
         (is (< (count distinct) (count all))
             "DISTINCT actually collapses duplicate rows")

@@ -45,11 +45,11 @@
     ;; serialize concurrent enrollments for the same user by locking the User row: with no totp
     ;; row yet there is nothing else to lock, and racing inserts would abort the transaction on
     ;; the unique (user_id, provider) constraint
-    (t2/select-one [:model/User :id] 'id user-id {:for 'update})
+    (t2/select-one [:model/User :id] 'id user-id {'for 'update})
     (let [auth-identity (t2/select-one :model/AuthIdentity
                                        'user_id user-id
                                        'provider "totp"
-                                       {:for 'update})]
+                                       {'for 'update})]
       (when-not (some-> auth-identity verification/confirmed?)
         (let [secret      (totp/generate-secret)
               credentials {:secret secret}]
@@ -70,7 +70,7 @@
     (when-let [auth-identity (t2/select-one :model/AuthIdentity
                                             'user_id user-id
                                             'provider "totp"
-                                            {:for 'update})]
+                                            {'for 'update})]
       (when-not (verification/confirmed? auth-identity)
         (when-let [secret (verification/stored-secret auth-identity)]
           (when-let [step (totp/matching-time-step secret code)]
@@ -99,7 +99,7 @@
     (when-let [auth-identity (t2/select-one :model/AuthIdentity
                                             'user_id user-id
                                             'provider "totp"
-                                            {:for 'update})]
+                                            {'for 'update})]
       (when (verification/confirmed? auth-identity)
         (let [codes (recovery-codes/generate-codes)]
           (t2/update! :model/AuthIdentity (:id auth-identity)

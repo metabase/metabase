@@ -217,7 +217,7 @@
   (def index (:index index-state))
 
   ;; warning: deletes everything
-  (jdbc/execute! pgvector ((requiring-resolve 'honey.sql/format) {:delete-from (keyword (:table-name index))} :quoted true))
+  (jdbc/execute! pgvector ((requiring-resolve 'honey.sql/format) {'delete-from (keyword (:table-name index))} :quoted true))
   (def searchable-documents (vec ((requiring-resolve 'metabase.search.ingestion/searchable-documents))))
   (index-documents! pgvector index-metadata searchable-documents)
   (mt/as-admin (query pgvector index-metadata {:search-string "sharp objects"})))

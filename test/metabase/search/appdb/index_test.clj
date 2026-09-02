@@ -690,8 +690,8 @@
             insert-rev! (fn []
                           ;; Raw SQL to bypass the before/after-insert hooks that would normally
                           ;; demote older revisions to most_recent=false.
-                          (t2/query {:insert-into [(t2/table-name :model/Revision)]
-                                     :values [{:model "Card"
+                          (t2/query {'insert-into [(t2/table-name :model/Revision)]
+                                     'values [{:model "Card"
                                                :model_id card-id
                                                :user_id (mt/user->id :rasta)
                                                :object "{}"

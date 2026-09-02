@@ -108,7 +108,7 @@
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select :model/Table
                                 'db_id (u/the-id db-or-id), 'active true, 'visibility_type nil
-                                {:order-by [['%lower.schema 'asc] ['%lower.display_name 'asc]]})))
+                                {'order-by [['%lower.schema 'asc] ['%lower.display_name 'asc]]})))
 
 (defn- field-details [field]
   (mt/derecordize
@@ -305,7 +305,7 @@
               :transform 2}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
-      (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [['id 'desc]]}))]
+      (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {'order-by [['id 'desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))

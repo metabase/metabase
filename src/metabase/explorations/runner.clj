@@ -41,9 +41,9 @@
   Computed as `now - min(created_at)` so it keeps climbing while the runner is stalled."
   []
   (if-let [oldest (t2/select-one-fn :created_at :model/ExplorationQuery
-                                    {:where    ['= 'status "pending"]
-                                     :order-by [['created_at 'asc]]
-                                     :limit    1})]
+                                    {'where    ['= 'status "pending"]
+                                     'order-by [['created_at 'asc]]
+                                     'limit    1})]
     (max 0 (.toSeconds (Duration/between ^OffsetDateTime oldest (OffsetDateTime/now))))
     0))
 
@@ -64,10 +64,10 @@
   "Load the `ExplorationQuery` `query-id` if it is still work to do, else nil."
   [query-id]
   (t2/select-one :model/ExplorationQuery
-                 {:select ['eq.*]
-                  :from   [['exploration_query 'eq]]
-                  :join   [['exploration_thread 'et] ['= 'et.id 'eq.exploration_thread_id]]
-                  :where  ['and
+                 {'select ['eq.*]
+                  'from   [['exploration_query 'eq]]
+                  'join   [['exploration_thread 'et] ['= 'et.id 'eq.exploration_thread_id]]
+                  'where  ['and
                            ['= 'eq.id query-id]
                            ['= 'eq.status "pending"]
                            ['= 'et.canceled_at nil]]}))
@@ -178,16 +178,16 @@
   [thread-id]
   (pos?
    (t2/query-one
-    {:update 'exploration_thread
-     :set    {:analysis_started_at (OffsetDateTime/now)
+    {'update 'exploration_thread
+     'set    {:analysis_started_at (OffsetDateTime/now)
               :completed_at        (OffsetDateTime/now)}
-     :where  ['and
+     'where  ['and
               ['= 'id thread-id]
               ['= 'analysis_started_at nil]
               ['= 'canceled_at nil]
-              ['not-exists ^:allow-subquery {:select [1]
-                                             :from   ['exploration_query]
-                                             :where  ['and
+              ['not-exists ^:allow-subquery {'select [1]
+                                             'from   ['exploration_query]
+                                             'where  ['and
                                                       ['= 'exploration_thread_id thread-id]
                                                       ['= 'status "pending"]]}]]})))
 
@@ -208,9 +208,9 @@
   "Walk EQ → ExplorationThread → Exploration.creator_id for stamping onto the stored_result."
   [exploration-query]
   (t2/select-one-fn :creator_id :model/Exploration
-                    {:join  ['exploration_thread
+                    {'join  ['exploration_thread
                              ['= 'exploration_thread.exploration_id 'exploration.id]]
-                     :where ['= 'exploration_thread.id (:exploration_thread_id exploration-query)]}))
+                     'where ['= 'exploration_thread.id (:exploration_thread_id exploration-query)]}))
 
 (defn- exploration-id
   "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."

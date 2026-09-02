@@ -503,9 +503,9 @@
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (t2/reducible-select model (cond-> {:where (or where true)}
+      (t2/reducible-select model (cond-> {'where (or where true)}
                                    order-by (assoc :order-by order-by)))
-      (t2/reducible-select model (cond-> {:where ['and
+      (t2/reducible-select model (cond-> {'where ['and
                                                   ['or
                                                    ['in 'collection_id collection-set]
                                                    (when (some nil? collection-set)
@@ -1012,15 +1012,15 @@
   [id]
   (reverse
    (t2/select :model/Field
-              {:with-recursive [[['parents ^:allow-subquery {:columns ['id 'name 'parent_id 'table_id]}]
-                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [['metabase_field 'mf]]
-                                                                                 :select ['mf.id 'mf.name 'mf.parent_id 'mf.table_id]
-                                                                                 :where  ['= 'id id]}
-                                                               ^:allow-subquery {:from   [['metabase_field 'pf]]
-                                                                                 :select ['pf.id 'pf.name 'pf.parent_id 'pf.table_id]
-                                                                                 :join   [['parents 'p] ['= 'p.parent_id 'pf.id]]}]}]]
-               :from           ['parents]
-               :select         ['name 'table_id]})))
+              {'with-recursive [[['parents ^:allow-subquery {'columns ['id 'name 'parent_id 'table_id]}]
+                                 ^:allow-subquery {'union-all [^:allow-subquery {'from   [['metabase_field 'mf]]
+                                                                                 'select ['mf.id 'mf.name 'mf.parent_id 'mf.table_id]
+                                                                                 'where  ['= 'id id]}
+                                                               ^:allow-subquery {'from   [['metabase_field 'pf]]
+                                                                                 'select ['pf.id 'pf.name 'pf.parent_id 'pf.table_id]
+                                                                                 'join   [['parents 'p] ['= 'p.parent_id 'pf.id]]}]}]]
+               'from           ['parents]
+               'select         ['name 'table_id]})))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -1028,9 +1028,9 @@
   `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
   [table-id [field & rest]]
   (when field
-    ^:allow-subquery {:from   ['metabase_field]
-                      :select ['id]
-                      :where  ['and
+    ^:allow-subquery {'from   ['metabase_field]
+                      'select ['id]
+                      'where  ['and
                                ['= 'table_id table-id]
                                ['= 'name field]
                                ['= 'parent_id (recursively-find-field-q table-id rest)]]}))

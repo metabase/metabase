@@ -831,12 +831,12 @@
                                    (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                    :model/Field
                                    'table_id orders-id
-                                   {:order-by ['database_position]})
+                                   {'order-by ['database_position]})
                   view-fields (t2/select-fn-vec
                                (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                :model/Field
                                'table_id orders-m-id
-                               {:order-by ['database_position]})]
+                               {'order-by ['database_position]})]
               (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
                              (:name view-instance)))
               (is (some? orders-m-id))

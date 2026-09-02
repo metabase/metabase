@@ -973,7 +973,7 @@
                                                                       'table_id (mt/id :lots-of-fields)
                                                                       'id       [:not-in #{(mt/id :lots-of-fields :a)
                                                                                            (mt/id :lots-of-fields :b)}]
-                                                                      {:order-by [['name 'asc]]})]
+                                                                      {'order-by [['name 'asc]]})]
                                           [:field id nil]))})]
         (t2/with-call-count [call-count-fn]
           (mt/with-native-query-testing-context query

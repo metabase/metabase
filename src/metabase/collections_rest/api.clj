@@ -60,7 +60,7 @@
 (defn- remove-other-users-personal-subcollections
   [user-id collections]
   (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
-                                                    {:where
+                                                    {'where
                                                      ['and ['!= 'personal_owner_id nil] ['!= 'personal_owner_id user-id]]}))
         personal-descendant? (fn [collection]
                                (let [first-parent-collection-id (-> collection
@@ -87,7 +87,7 @@
   [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
   (cond->>
    (t2/select :model/Collection
-              {:where ['and
+              {'where ['and
                        (case archived
                          nil nil
                          false [:and
@@ -121,7 +121,7 @@
                          :permission-level          :read
                          :archive-operation-id      nil})]
                ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[['case ['= 'authority_level "official"] 0 'else 1]] 'asc]
+               'order-by [[[['case ['= 'authority_level "official"] 0 'else 1]] 'asc]
                           [[['case
                              ['= 'type nil] 0
                              ['= 'type collection/trash-collection-type] 1
@@ -280,14 +280,14 @@
                                                {:dataset #{}
                                                 :metric  #{}
                                                 :card    #{}}
-                                               (t2/reducible-query {:select-distinct ['collection_id 'type]
-                                                                    :from            ['report_card]
-                                                                    :where           ['= 'archived false]}))
+                                               (t2/reducible-query {'select-distinct ['collection_id 'type]
+                                                                    'from            ['report_card]
+                                                                    'where           ['= 'archived false]}))
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
-                                         {:table (->> (t2/query {:select-distinct ['collection_id]
-                                                                 :from 'metabase_table
-                                                                 :where ['and
+                                         {:table (->> (t2/query {'select-distinct ['collection_id]
+                                                                 'from 'metabase_table
+                                                                 'where ['and
                                                                          ['= 'is_published true]
                                                                          ['= 'archived_at nil]]})
                                                       (map :collection_id)
@@ -441,7 +441,7 @@
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]
-  (-> {:select ['document.id
+  (-> {'select ['document.id
                 'document.name
                 'document.collection_id
                 'document.collection_position
@@ -454,13 +454,13 @@
                 ['u.last_name 'last_edit_last_name]
                 ['r.timestamp 'last_edit_timestamp]
                 [(h2x/literal "document") 'model]]
-       :from [['document 'document]]
-       :left-join [['revision 'r] ['and
+       'from [['document 'document]]
+       'left-join [['revision 'r] ['and
                                    ['= 'r.model_id 'document.id]
                                    ['= 'r.most_recent true]
                                    ['= 'r.model (h2x/literal "Document")]]
                    ['core_user 'u] ['= 'u.id 'r.user_id]]
-       :where ['and
+       'where ['and
                (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
@@ -492,26 +492,26 @@
   ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
   ;; the attached Document, so "Last edited" must reflect both sources.
   ^:allow-subquery
-  {:select ['exploration_id
+  {'select ['exploration_id
             'timestamp
             'user_id
-            [['over [['row_number] ^:allow-subquery {:partition-by ['exploration_id]
-                                                     :order-by     [['timestamp 'desc]]}]] 'rn]]
-   :from   [[^:allow-subquery {:union-all
-                               [^:allow-subquery {:select [['r.model_id 'exploration_id]
+            [['over [['row_number] ^:allow-subquery {'partition-by ['exploration_id]
+                                                     'order-by     [['timestamp 'desc]]}]] 'rn]]
+   'from   [[^:allow-subquery {'union-all
+                               [^:allow-subquery {'select [['r.model_id 'exploration_id]
                                                            ['r.timestamp 'timestamp]
                                                            ['r.user_id   'user_id]]
-                                                  :from   [['revision 'r]]
-                                                  :where  ['and
+                                                  'from   [['revision 'r]]
+                                                  'where  ['and
                                                            ['= 'r.model (h2x/literal "Exploration")]
                                                            ['= 'r.most_recent true]]}
                                 ^:allow-subquery
-                                {:select [['d.exploration_id 'exploration_id]
+                                {'select [['d.exploration_id 'exploration_id]
                                           ['r.timestamp      'timestamp]
                                           ['r.user_id        'user_id]]
-                                 :from   [['revision 'r]]
-                                 :join   [['document 'd] ['= 'd.id 'r.model_id]]
-                                 :where  ['and
+                                 'from   [['revision 'r]]
+                                 'join   [['document 'd] ['= 'd.id 'r.model_id]]
+                                 'where  ['and
                                           ['= 'r.model (h2x/literal "Document")]
                                           ['= 'r.most_recent true]
                                           ['not= 'd.exploration_id nil]]}]}
@@ -519,7 +519,7 @@
 
 (defmethod collection-children-query :exploration
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select ['exploration.id
+  (-> {'select ['exploration.id
                 'exploration.name
                 'exploration.description
                 'exploration.entity_id
@@ -533,13 +533,13 @@
                 ['u.last_name  'last_edit_last_name]
                 ['ere.timestamp 'last_edit_timestamp]
                 [(h2x/literal "exploration") 'model]]
-       :from [['exploration 'exploration]]
-       :left-join [[exploration-recent-edits-subquery 'ere]
+       'from [['exploration 'exploration]]
+       'left-join [[exploration-recent-edits-subquery 'ere]
                    ['and
                     ['= 'ere.exploration_id 'exploration.id]
                     ['= 'ere.rn [:inline 1]]]
                    ['core_user 'u] ['= 'u.id 'ere.user_id]]
-       :where ['and
+       'where ['and
                (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
                  [:= :exploration.archived_directly true]
@@ -551,15 +551,15 @@
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select-distinct ['p.id
+  (-> {'select-distinct ['p.id
                          'p.name
                          'p.entity_id
                          'p.collection_position
                          'p.collection_id
                          [(h2x/literal "pulse") 'model]]
-       :from            [['pulse 'p]]
-       :left-join       [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
-       :where           ['and
+       'from            [['pulse 'p]]
+       'left-join       [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
+       'where           ['and
                          ['= 'p.collection_id      (:id collection)]
                          ['= 'p.archived           (boolean archived?)]
                          ;; exclude alerts
@@ -580,9 +580,9 @@
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
   [_collection {:keys [archived?]}]
-  {:select ['id 'name 'entity_id [(h2x/literal "snippet") 'model]]
-   :from   [['native_query_snippet 'nqs]]
-   :where  ['= 'archived (boolean archived?)]})
+  {'select ['id 'name 'entity_id [(h2x/literal "snippet") 'model]]
+   'from   [['native_query_snippet 'nqs]]
+   'where  ['= 'archived (boolean archived?)]})
 
 (defmethod collection-children-query :snippet
   [_model collection options]
@@ -590,9 +590,9 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select ['id 'collection_id 'name [(h2x/literal "timeline") 'model] 'description 'entity_id 'icon]
-   :from   [['timeline 'timeline]]
-   :where  ['and
+  {'select ['id 'collection_id 'name [(h2x/literal "timeline") 'model] 'description 'entity_id 'icon]
+   'from   [['timeline 'timeline]]
+   'where  ['and
             (poison-when-pinned-clause pinned-state)
             ['= 'collection_id (:id collection)]
             ['= 'archived (boolean archived?)]]})
@@ -600,9 +600,9 @@
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
-    {:select ['id 'collection_id 'name [(h2x/literal "transform") 'model] 'description 'entity_id]
-     :from   [['transform 'transform]]
-     :where  ['and
+    {'select ['id 'collection_id 'name [(h2x/literal "transform") 'model] 'description 'entity_id]
+     'from   [['transform 'transform]]
+     'where  ['and
               (poison-when-pinned-clause pinned-state)
               ['= 'collection_id (:id collection)]
               (if (seq enabled-types)
@@ -628,7 +628,7 @@
         (assoc :collection_namespace "snippets"))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
-  (-> {:select    (cond->
+  (-> {'select    (cond->
                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                     :dashboard_id
                     :last_used_at
@@ -649,8 +649,8 @@
                     [:mr.status :moderated_status]]
                     (#{:question :model} card-type)
                     (conj :c.database_id))
-       :from      [['report_card 'c]]
-       :left-join [['revision 'r] ['and
+       'from      [['report_card 'c]]
+       'left-join [['revision 'r] ['and
                                    ['= 'r.model_id 'c.id]
                                    ['= 'r.most_recent true]
                                    ['= 'r.model (h2x/literal "Card")]]
@@ -659,7 +659,7 @@
                                              ['= 'mr.most_recent true]
                                              ['= 'mr.moderated_item_type (h2x/literal "card")]]
                    ['core_user 'u] ['= 'u.id 'r.user_id]]
-       :where     ['and
+       'where     ['and
                    (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
@@ -745,7 +745,7 @@
   (post-process-card-like (assoc options :hydrate-based-on-upload true) rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
-  (-> {:select    ['d.id 'd.name 'd.description 'd.entity_id 'd.collection_position
+  (-> {'select    ['d.id 'd.name 'd.description 'd.entity_id 'd.collection_position
                    ['last_viewed_at 'last_used_at]
                    'd.collection_id
                    'd.archived_directly
@@ -757,8 +757,8 @@
                    ['u.last_name 'last_edit_last_name]
                    ['r.timestamp 'last_edit_timestamp]
                    ['mr.status 'moderated_status]]
-       :from      [['report_dashboard 'd]]
-       :left-join [['moderation_review 'mr] ['and
+       'from      [['report_dashboard 'd]]
+       'left-join [['moderation_review 'mr] ['and
                                              ['= 'mr.moderated_item_id 'd.id]
                                              ['= 'mr.most_recent true]
                                              ['= 'mr.moderated_item_type (h2x/literal "dashboard")]]
@@ -767,7 +767,7 @@
                                    ['= 'r.most_recent true]
                                    ['= 'r.model (h2x/literal "Dashboard")]]
                    ['core_user 'u] ['= 'u.id 'r.user_id]]
-       :where     ['and
+       'where     ['and
                    (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
@@ -878,7 +878,7 @@
                                                                user-info
                                                                {:perms/view-data :unrestricted})]
                                                    published-clause]))]
-    {:select ['t.id
+    {'select ['t.id
               ['t.id 'table_id]
               ['t.display_name 'name]
               't.description
@@ -886,8 +886,8 @@
               ['t.db_id 'database_id]
               [['!= 't.archived_at nil] 'archived]
               [(h2x/literal "table") 'model]]
-     :from   [['metabase_table 't]]
-     :where  ['and
+     'from   [['metabase_table 't]]
+     'where  ['and
               ['= 't.is_published true]
               (poison-when-pinned-clause pinned-state)
               (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
@@ -915,9 +915,9 @@
                  :metric  #{}
                  :card    #{}}
                 (when (seq descendant-collection-ids)
-                  (t2/reducible-query {:select-distinct ['collection_id 'type]
-                                       :from            ['report_card]
-                                       :where           ['and
+                  (t2/reducible-query {'select-distinct ['collection_id 'type]
+                                       'from            ['report_card]
+                                       'where           ['and
                                                          (when-not show-dashboard-questions?
                                                            [:= :dashboard_id nil])
                                                          ['= 'archived false]
@@ -927,9 +927,9 @@
         collections-containing-tables
         (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct ['collection_id]
-                            :from 'metabase_table
-                            :where ['and
+                 (t2/query {'select-distinct ['collection_id]
+                            'from 'metabase_table
+                            'where ['and
                                     ['= 'is_published true]
                                     ['= 'archived_at nil]
                                     ['in 'collection_id descendant-collection-ids]]}))
@@ -940,9 +940,9 @@
         collections-containing-transforms
         (if (seq (transforms.gating/enabled-source-types))
           (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct ['collection_id]
-                            :from 'transform
-                            :where ['and
+                 (t2/query {'select-distinct ['collection_id]
+                            'from 'transform
+                            'where ['and
                                     ['in 'collection_id descendant-collection-ids]
                                     ['in 'source_type (transforms.gating/enabled-source-types)]]}))
                (map :collection_id)
@@ -951,9 +951,9 @@
 
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
-               (t2/query {:select-distinct ['collection_id]
-                          :from 'report_dashboard
-                          :where ['and
+               (t2/query {'select-distinct ['collection_id]
+                          'from 'report_dashboard
+                          'where ['and
                                   ['= 'archived false]
                                   ['in 'collection_id descendant-collection-ids]]}))
              (map :collection_id)
@@ -1190,7 +1190,7 @@
   [rows rows-query offset]
   (or (some-> rows first :total_count)
       (when (pos? (or offset 0))
-        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+        (some-> (mdb/query (assoc rows-query 'limit 1)) first :total_count))
       0))
 
 (defn- collection-children*
@@ -1212,10 +1212,10 @@
                        :permission-level          (if archived? :write :read)
                        :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
-        rows-query    (cond-> {:with     [['visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               :select   ['* [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
-                               :from     [[^:allow-subquery {:union-all queries} 'dummy_alias]]
-                               :order-by sql-order}
+        rows-query    (cond-> {'with     [['visible_collection_ids (collection/visible-collection-query viz-config)]]
+                               'select   ['* [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
+                               'from     [[^:allow-subquery {'union-all queries} 'dummy_alias]]
+                               'order-by sql-order}
                         search-clause
                         (sql.helpers/where search-clause))
         limit         (request/limit)
@@ -1230,8 +1230,8 @@
                         (assoc rows-query
                                ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
                                ;; :total_count
-                               :limit  (if (zero? limit) 1 limit)
-                               :offset offset))
+                               'limit  (if (zero? limit) 1 limit)
+                               'offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
                         (mdb/query limit-query))
         res           {:total  (total-count rows rows-query offset)
@@ -1296,8 +1296,8 @@
                         :include-trash-collection? archived?}
             row        (first
                         (mdb/query
-                         {:with   [['visible_collection_ids (collection/visible-collection-query viz-config)]]
-                          :select (vec
+                         {'with   [['visible_collection_ids (collection/visible-collection-query viz-config)]]
+                          'select (vec
                                    (for [model candidates]
                                      [[:exists (collection-children-query model collection options)] model]))}))]
         {:available_models
@@ -1351,10 +1351,10 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id]
   (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where ['and
+  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {'where ['and
                                                                             ['= 'collection_id collection-id]
                                                                             ['= 'dashboard_id nil]]
-                                                                    :order-by [['id 'desc]]})
+                                                                    'order-by [['id 'desc]]})
                                             :in_dashboards)]
     (filter
      (fn [card]

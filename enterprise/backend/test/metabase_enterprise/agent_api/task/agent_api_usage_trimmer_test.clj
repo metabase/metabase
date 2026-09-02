@@ -23,7 +23,7 @@
       (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 30]
         (#'agent-api-usage-trimmer/trim-old-agent-api-usage-data!)
         (is (= #{recent}
-               (t2/select-fn-set :id :model/AgentApiCallLog {:where ['in 'id [recent boundary old]]}))
+               (t2/select-fn-set :id :model/AgentApiCallLog {'where ['in 'id [recent boundary old]]}))
             "call rows older than the cutoff are deleted, recent kept")))))
 
 (deftest skips-deletion-when-retention-is-infinite-test
@@ -34,4 +34,4 @@
       (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 0]
         (#'agent-api-usage-trimmer/trim-old-agent-api-usage-data!)
         (is (= #{recent old}
-               (t2/select-fn-set :id :model/AgentApiCallLog {:where ['in 'id [recent old]]})))))))
+               (t2/select-fn-set :id :model/AgentApiCallLog {'where ['in 'id [recent old]]})))))))

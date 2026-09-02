@@ -360,7 +360,7 @@
   ;; dbdef-infos require only dbdef to be generated, while fk-field-infos get additional information querying app db.
   (when-some [dbdef-infos (not-empty (extract-dbdef-info driver dbdef))]
     (let [tables (t2/select :model/Table 'db_id (:id db))
-          fields (t2/select :model/Field {:where ['in 'table_id (map :id tables)]})
+          fields (t2/select :model/Field {'where ['in 'table_id (map :id tables)]})
           table-id->table (m/index-by :id tables)
           table-name->field-name->field (-> (group-by (comp :name table-id->table :table_id) fields)
                                             (update-vals (partial m/index-by :name)))

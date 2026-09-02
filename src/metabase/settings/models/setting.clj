@@ -1745,14 +1745,14 @@
       (let [{encrypting true, plaintext false} (group-by (comp boolean encrypts?) (vals @registered-settings))]
         (t2/with-transaction [_conn]
           (doseq [{v :value k :key}
-                  (t2/select :setting {:for 'update :where ['and
+                  (t2/select :setting {'for 'update 'where ['and
                                                             ['in 'key (map setting-name plaintext)]
                                                             ;; these are *definitely* decrypted already, let's not bother looking
                                                             ['not ['in 'value ["true" "false"]]]]})
                   :when (encryption/decryptable-string? v)]
             (t2/update! :setting :key k {:value (encryption/decrypt v)}))
           (doseq [{v :value k :key}
-                  (t2/select :setting {:for 'update :where ['and
+                  (t2/select :setting {'for 'update 'where ['and
                                                             ['in 'key (map setting-name encrypting)]
                                                             ['!= 'value nil]]})
                   :when (not (encryption/decryptable-string? v))]

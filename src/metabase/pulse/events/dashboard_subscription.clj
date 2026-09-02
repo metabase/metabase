@@ -17,15 +17,15 @@
   [_ {dashboard :object}]
   (let [dashboard-id (u/the-id dashboard)
         affected     (app-db/query
-                      {:select-distinct [['p.id 'pulse-id] ['pc.card_id 'card-id]]
-                       :from            [['pulse 'p]]
-                       :left-join       [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
-                       :where           ['= 'p.dashboard_id dashboard-id]})]
+                      {'select-distinct [['p.id 'pulse-id] ['pc.card_id 'card-id]]
+                       'from            [['pulse 'p]]
+                       'left-join       [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
+                       'where           ['= 'p.dashboard_id dashboard-id]})]
     (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
       (let [correct-card-ids     (->> (app-db/query
-                                       {:select-distinct ['dc.card_id]
-                                        :from            [['report_dashboardcard 'dc]]
-                                        :where           ['and
+                                       {'select-distinct ['dc.card_id]
+                                        'from            [['report_dashboardcard 'dc]]
+                                        'where           ['and
                                                           ['= 'dc.dashboard_id dashboard-id]
                                                           ['not= 'dc.card_id nil]]})
                                       (map :card_id)

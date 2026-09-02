@@ -42,7 +42,7 @@
           (testing "adding user to group is audited"
             (perms/add-user-to-group! user-id group-id)
             (is (> (t2/count :model/AuditLog) initial-audit-count))
-            (let [audit-entry (t2/select-one :model/AuditLog 'topic "group-membership-create" {:order-by [['id 'desc]]})]
+            (let [audit-entry (t2/select-one :model/AuditLog 'topic "group-membership-create" {'order-by [['id 'desc]]})]
               (is (some? audit-entry))
               (is (= "PermissionsGroupMembership" (:model audit-entry)))
               (is (= user-id (get-in audit-entry [:details :user_id])))
@@ -51,7 +51,7 @@
             (let [before-remove-count (t2/count :model/AuditLog)]
               (perms/remove-user-from-group! user-id group-id)
               (is (> (t2/count :model/AuditLog) before-remove-count))
-              (let [audit-entry (t2/select-one :model/AuditLog 'topic "group-membership-delete" {:order-by [['id 'desc]]})]
+              (let [audit-entry (t2/select-one :model/AuditLog 'topic "group-membership-delete" {'order-by [['id 'desc]]})]
                 (is (some? audit-entry))
                 (is (= "PermissionsGroupMembership" (:model audit-entry)))
                 (is (= user-id (get-in audit-entry [:details :user_id])))
@@ -71,7 +71,7 @@
           (is (= (inc before-count)
                  (t2/count :model/AuditLog 'topic "group-membership-delete")))
           (let [audit-entry (t2/select-one :model/AuditLog 'topic "group-membership-delete"
-                                           {:order-by [['id 'desc]]})]
+                                           {'order-by [['id 'desc]]})]
             (is (= "PermissionsGroupMembership" (:model audit-entry)))
             (is (= user-id (get-in audit-entry [:details :user_id])))
             (is (= group-id (get-in audit-entry [:details :group_id])))))))))

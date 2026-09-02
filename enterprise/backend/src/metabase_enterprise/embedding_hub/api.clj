@@ -11,13 +11,13 @@
    [toucan2.core :as t2]))
 
 (defn- has-user-added-database? []
-  (or (t2/exists? :model/Database {:where ['and
+  (or (t2/exists? :model/Database {'where ['and
                                            ['= 'is_sample false]
                                            ['= 'is_audit false]]})
       ;; check for CSV uploads to sample db
       ;; as the sample db is excluded from the above query
       (when-let [sample-db-id (t2/select-one-pk :model/Database 'is_sample true)]
-        (t2/exists? :model/Table {:where ['and
+        (t2/exists? :model/Table {'where ['and
                                           ['= 'active true]
                                           ['= 'is_upload true]
                                           ['= 'db_id sample-db-id]]}))))
@@ -26,7 +26,7 @@
   (let [example-dashboard-id (appearance/example-dashboard-id)
         audit-collection-ids (filter some? [(when-let [audit-coll (audit/default-audit-collection)] (:id audit-coll))
                                             (when-let [custom-coll (audit/default-custom-reports-collection)] (:id custom-coll))])]
-    (t2/exists? :model/Dashboard {:where (cond-> [:and
+    (t2/exists? :model/Dashboard {'where (cond-> [:and
                                                   [:= :archived false]]
                                            example-dashboard-id (conj [:not= :id example-dashboard-id])
                                            (seq audit-collection-ids) (conj [:or
@@ -42,15 +42,15 @@
       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- has-user-created-models? []
-  (t2/exists? :model/Card {:where ['and
+  (t2/exists? :model/Card {'where ['and
                                    ['= 'type "model"]
                                    ['= 'archived false]
                                    ['or
                                     ['and
                                      ['!= 'collection_id (:id (audit/default-audit-collection))]
-                                     ['not ['exists ^:allow-subquery {:select [1]
-                                                                      :from   [[(t2/table-name :model/Collection) 'sample_coll]]
-                                                                      :where  ['and
+                                     ['not ['exists ^:allow-subquery {'select [1]
+                                                                      'from   [[(t2/table-name :model/Collection) 'sample_coll]]
+                                                                      'where  ['and
                                                                                ['= 'sample_coll.is_sample true]
                                                                                ['= 'sample_coll.id 'report_card.collection_id]]}]]]
                                     ['is 'collection_id nil]]]}))
@@ -59,15 +59,15 @@
   (t2/exists? :model/Tenant 'is_active true))
 
 (defn- has-shared-tenant-collections? []
-  (t2/exists? :model/Collection {:where ['and
+  (t2/exists? :model/Collection {'where ['and
                                          ['= 'namespace "shared-tenant-collection"]
                                          ['= 'archived false]]}))
 
 (defn- shared-collection-has-dashboards? []
-  (when-let [shared-coll-id (t2/select-one-pk :model/Collection {:where ['and
+  (when-let [shared-coll-id (t2/select-one-pk :model/Collection {'where ['and
                                                                          ['= 'namespace "shared-tenant-collection"]
                                                                          ['= 'archived false]]})]
-    (t2/exists? :model/Dashboard {:where ['and
+    (t2/exists? :model/Dashboard {'where ['and
                                           ['= 'collection_id shared-coll-id]
                                           ['= 'archived false]]})))
 

@@ -1000,7 +1000,7 @@
           @rasta-result
           @lucky-result)
         (let [rows    (t2/select :model/MetabotFeedback 'message_id message-id
-                                 {:order-by [['user_id 'asc]]})
+                                 {'order-by [['user_id 'asc]]})
               by-user (into {} (map (juxt :user_id identity)) rows)]
           (is (= 2 (count rows)) "both submissions produce distinct rows")
           (is (true?  (:positive (get by-user rasta-id))))
@@ -1023,9 +1023,9 @@
           result   (#'slackbot/handle-feedback-modal-submission payload)]
       (is (nil? result) "handler returns nil and does not schedule async work")
       (is (zero? (t2/count :model/MetabotFeedback 'user_id rasta-id
-                           {:where ['in 'message_id
-                                    ^:allow-subquery {:select ['id] :from ['metabot_message]
-                                                      :where ['= 'external_id "nothing-to-match"]}]}))
+                           {'where ['in 'message_id
+                                    ^:allow-subquery {'select ['id] 'from ['metabot_message]
+                                                      'where ['= 'external_id "nothing-to-match"]}]}))
           "no feedback row written for unresolvable submissions"))))
 
 (deftest handle-feedback-modal-submission-lurker-test

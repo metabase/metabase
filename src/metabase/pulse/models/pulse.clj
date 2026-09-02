@@ -256,17 +256,17 @@
   [pulse-ids]
   (t2/select
    :model/Card
-   {:select    ['c.id 'c.name 'c.description 'c.collection_id 'c.display 'pc.include_csv 'pc.include_xls 'pc.format_rows 'pc.pivot_results
+   {'select    ['c.id 'c.name 'c.description 'c.collection_id 'c.display 'pc.include_csv 'pc.include_xls 'pc.format_rows 'pc.pivot_results
                 'pc.dashboard_card_id 'dc.dashboard_id [nil 'parameter_mappings] ['p.id 'pulse_id]] ;; :dc.parameter_mappings - how do you select this?
-    :from      [['pulse 'p]]
-    :join      [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
+    'from      [['pulse 'p]]
+    'join      [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
                 ['report_card 'c] ['= 'c.id 'pc.card_id]]
-    :left-join [['report_dashboardcard 'dc] ['= 'pc.dashboard_card_id 'dc.id]]
-    :where     ['and
+    'left-join [['report_dashboardcard 'dc] ['= 'pc.dashboard_card_id 'dc.id]]
+    'where     ['and
                 ['in 'p.id pulse-ids]
                 (when-not *allow-hydrate-archived-cards*
                   [:= :c.archived false])]
-    :order-by [['pc.position 'asc]]}))
+    'order-by [['pc.position 'asc]]}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -346,18 +346,18 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
    (assert boolean? archived?)
-   (let [query (merge {:select-distinct ['p.* [['lower 'p.name] 'lower-name]]
-                       :from            [['pulse 'p]]
-                       :where           ['and
+   (let [query (merge {'select-distinct ['p.* [['lower 'p.name] 'lower-name]]
+                       'from            [['pulse 'p]]
+                       'where           ['and
                                          ['not= 'p.alert_condition nil]
                                          ['= 'p.archived archived?]
                                          (when user-id
                                            [:or
                                             [:= :p.creator_id user-id]
                                             [:= :pcr.user_id user-id]])]
-                       :order-by        [['lower-name 'asc]]}
+                       'order-by        [['lower-name 'asc]]}
                       (when user-id
-                        {:left-join [['pulse_channel 'pchan] ['= 'p.id 'pchan.pulse_id]
+                        {'left-join [['pulse_channel 'pchan] ['= 'p.id 'pchan.pulse_id]
                                      ['pulse_channel_recipient 'pcr] ['= 'pchan.id 'pcr.pulse_channel_id]]}))]
      (for [alert (hydrate-notifications (query-as :model/Pulse query))
            :let  [alert (notification->alert alert)]
@@ -372,14 +372,14 @@
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query {:select-distinct ['p.* [['lower 'p.name] 'lower-name]]
-               :from            [['pulse 'p]]
-               :left-join       (concat
+  (let [query {'select-distinct ['p.* [['lower 'p.name] 'lower-name]]
+               'from            [['pulse 'p]]
+               'left-join       (concat
                                  [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
                                  (when user-id
                                    [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
-               :where           ['and
+               'where           ['and
                                  ['= 'p.alert_condition nil]
                                  ['= 'p.archived archived?]
                                  ;; Only return dashboard subscriptions for non-archived dashboards
@@ -396,7 +396,7 @@
                                     [:or
                                      [:= :p.creator_id user-id]
                                      [:= :pcr.user_id user-id]]])]
-               :order-by        [['lower-name 'asc]]}]
+               'order-by        [['lower-name 'asc]]}]
     (for [pulse (query-as :model/Pulse query)]
       (-> pulse
           (dissoc :lower-name)
@@ -413,12 +413,12 @@
   (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
        (query-as :model/Pulse
-                 {:select ['p.*]
-                  :from   [['pulse 'p]]
-                  :join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
+                 {'select ['p.*]
+                  'from   [['pulse 'p]]
+                  'join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]
                            ['pulse_channel 'pchan] ['= 'pchan.pulse_id 'p.id]
                            ['pulse_channel_recipient 'pcr] ['= 'pchan.id 'pcr.pulse_channel_id]]
-                  :where  ['and
+                  'where  ['and
                            ['not= 'p.alert_condition nil]
                            ['= 'pc.card_id card-id]
                            ['= 'pcr.user_id user-id]
@@ -435,10 +435,10 @@
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
          (query-as :model/Pulse
-                   {:select ['p.*]
-                    :from   [['pulse 'p]]
-                    :join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
-                    :where  ['and
+                   {'select ['p.*]
+                    'from   [['pulse 'p]]
+                    'join   [['pulse_card 'pc] ['= 'p.id 'pc.pulse_id]]
+                    'where  ['and
                              ['not= 'p.alert_condition nil]
                              ['in 'pc.card_id card-ids]
                              ['= 'p.archived archived?]]}))))
@@ -564,7 +564,7 @@
   [notification-or-id]
   (t2/select [:model/PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
              'pulse_id (u/the-id notification-or-id)
-             {:order-by [['position 'asc]]}))
+             {'order-by [['position 'asc]]}))
 
 (mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id new-card-refs :- [:sequential CardRef]]

@@ -128,6 +128,6 @@
           ;; Can't look up by ip (it's nil when PII is off), so check by count
           (let [count-after (t2/count :model/AgentApiCallLog)]
             (when (is (= (inc count-before) count-after) "a row was still recorded")
-              (let [row (t2/select-one :model/AgentApiCallLog {:order-by [['id 'desc]]})]
+              (let [row (t2/select-one :model/AgentApiCallLog {'order-by [['id 'desc]]})]
                 (is (nil? (:ip_address row)) "ip_address is nil when PII is off")
                 (is (nil? (:error_message row)) "error_message is nil when PII is off")))))))))

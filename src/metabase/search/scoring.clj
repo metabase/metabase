@@ -13,17 +13,17 @@
 (defn truthy
   "Prefer it when a (potentially nullable) boolean is true."
   [column]
-  [:coalesce [:cast column :integer] [:inline 0]])
+  [:coalesce [:cast column :integer] ['inline 0]])
 
 (defn equal
   "Prefer it when it matches a specific (non-null) value"
   [column value]
-  [:coalesce [:case [:= column value] [:inline 1] :else [:inline 0]] [:inline 0]])
+  [:coalesce [:case [:= column value] ['inline 1] :else ['inline 0]] ['inline 0]])
 
 (defn prefix
   "Prefer it when the given value is a completion of a specific (non-null) value"
   [column value]
-  [:coalesce [:case [:like column (h2x/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
+  [:coalesce [:case [:like column (h2x/like-prefix value)] ['inline 1] :else ['inline 0]] ['inline 0]])
 
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
@@ -51,14 +51,14 @@
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
   [:least
-   [:inline 1]
+   ['inline 1]
    [:/
-    [:coalesce column [:inline 0]]
+    [:coalesce column ['inline 0]]
     ;; protect against div / 0
     [:greatest
-     [:inline 1]
+     ['inline 1]
      (if (number? ceiling)
-       [:inline (double ceiling)]
+       ['inline (double ceiling)]
        [:cast ceiling :float])]]])
 
 (defn inverse-duration
@@ -66,7 +66,7 @@
   ([from-column to-column ceiling-in-days]
    (inverse-duration (mdb/db-type) from-column to-column ceiling-in-days))
   ([db-type from-column to-column ceiling-in-days]
-   (let [ceiling [:inline ceiling-in-days]]
+   (let [ceiling ['inline ceiling-in-days]]
      [:/
       [:greatest
        [:- ceiling
@@ -74,11 +74,11 @@
          ;; Use seconds for granularity in the fraction.
          (if (= :mysql db-type)
            [:coalesce
-            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
+            [[:timestampdiff ['raw "SECOND"] from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
            [[::h2x/extract :epoch [:- to-column from-column]]])
-         [:inline (double seconds-in-a-day)]]]
-       [:inline 0]]
+         ['inline (double seconds-in-a-day)]]]
+       ['inline 0]]
       ceiling])))
 
 (defn- cast-to-text
@@ -92,15 +92,15 @@
   [{:keys [current-user-id]}]
   (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
     ^:allow-subquery
-    {:select [[['case
+    {'select [[['case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
                 ['= 'search_index.model "transform"]
                 one-day-ago
                 'else
                 ['max 'recent_views.timestamp]]
                'last_viewed_at]]
-     :from   ['recent_views]
-     :where  ['and
+     'from   ['recent_views]
+     'where  ['and
               ['= 'recent_views.user_id current-user-id]
               ['= (cast-to-text :recent_views.model_id) 'search_index.model_id]
               ['= 'recent_views.model
@@ -118,8 +118,8 @@
    (into [:or]
          (for [t (sort collection/library-collection-types)]
            [:= :root_collection_type t]))
-   [:inline 1]
-   :else [:inline 0]])
+   ['inline 1]
+   :else ['inline 0]])
 
 (defn data-layer-score-expr
   "Score expression: per-tier weight when `:data_layer` is `final`/`internal`/`hidden`, else 0.
@@ -127,10 +127,10 @@
   [search-ctx]
   (let [tier-weight #(or (search.config/scorer-param search-ctx :data-layer %) 0)]
     [:case
-     [:= :data_layer "final"]    [:inline (tier-weight :final)]
-     [:= :data_layer "internal"] [:inline (tier-weight :internal)]
-     [:= :data_layer "hidden"]   [:inline (tier-weight :hidden)]
-     :else                                 [:inline 0]]))
+     [:= :data_layer "final"]    ['inline (tier-weight :final)]
+     [:= :data_layer "internal"] ['inline (tier-weight :internal)]
+     [:= :data_layer "hidden"]   ['inline (tier-weight :hidden)]
+     :else                                 ['inline 0]]))
 
 (defn model-rank-expr
   "Score an item based on its :model type."
@@ -140,11 +140,11 @@
         cases        (map-indexed (fn [i sm]
                                     [[:= :search_index.model sm]
                                      (or (search.config/scorer-param search-ctx :model sm)
-                                         [:inline (/ (- n i) n)])])
+                                         ['inline (/ (- n i) n)])])
                                   search-order)]
     (-> (into [:case] cat (concat cases))
         ;; if you're not listed, get a very poor score
-        (into [:else [:inline 0.01]]))))
+        (into [:else ['inline 0.01]]))))
 
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
@@ -162,8 +162,8 @@
                                  [:in :search_index.model (mapv name sms)]
                                  [:= :search_index.model m])
                                [:!= nil (keyword (str m "_bookmark." m "_id"))]]
-                              [:inline 1]])]
-    (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
+                              ['inline 1]])]
+    (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else ['inline 0]]))))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
@@ -188,12 +188,12 @@
     (reduce (fn [expr col] [:+ expr col])
             (first column-names)
             (rest column-names))
-    [:inline 1]))
+    ['inline 1]))
 
 (defn weighted-score
   "Multiply a score by its weight."
   [search-ctx [column-alias expr]]
-  [:* [:inline (search.config/weight search-ctx column-alias)] expr])
+  [:* ['inline (search.config/weight search-ctx column-alias)] expr])
 
 (defn select-items
   "Select expressions for each scorer, plus a :total_score that is the weighted sum of the `scorers`."

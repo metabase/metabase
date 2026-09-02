@@ -50,10 +50,10 @@
    (list-timelines false))
   ([archived :- ms/BooleanValue]
    (t2/select :model/Timeline
-              {:where    ['and
+              {'where    ['and
                           ['= 'archived archived]
                           (collection/visible-collection-filter-clause)]
-               :order-by [['%lower.name 'asc]]})))
+               'order-by [['%lower.name 'asc]]})))
 
 (mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
   "Fetch a single timeline by ID. Checks read permissions but does not hydrate."

@@ -106,7 +106,7 @@
     (group-by :exploration_thread_id
               (t2/select :model/ExplorationBlock
                          'exploration_thread_id [:in thread-ids]
-                         {:order-by [['position 'asc] ['id 'asc]]}))))
+                         {'order-by [['position 'asc] ['id 'asc]]}))))
 
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
@@ -281,19 +281,19 @@
   [thread-id]
   (t2/with-transaction [_conn]
     (when (pos? (t2/query-one
-                 {:update 'exploration_thread
-                  :set    {:started_at            (t/offset-date-time)
+                 {'update 'exploration_thread
+                  'set    {:started_at            (t/offset-date-time)
                            :query_plan_started_at nil
                            :query_plan_transcript nil
                            :analysis_started_at   nil
                            :completed_at          nil
                            :canceled_at           nil}
-                  :where  ['and
+                  'where  ['and
                            ['= 'id thread-id]
                            ['not= 'completed_at nil]
-                           ['not-exists ^:allow-subquery {:select [1]
-                                                          :from   ['exploration_query]
-                                                          :where  ['and
+                           ['not-exists ^:allow-subquery {'select [1]
+                                                          'from   ['exploration_query]
+                                                          'where  ['and
                                                                    ['= 'exploration_thread_id thread-id]
                                                                    ['= 'status "running"]]}]]}))
       (t2/delete! :model/ExplorationQuery 'exploration_thread_id thread-id)
@@ -740,10 +740,10 @@
                               (:metrics block))
           timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
                                           'exploration_thread_id src-thread-id
-                                          {:order-by [['position 'asc] ['id 'asc]]})
+                                          {'order-by [['position 'asc] ['id 'asc]]})
           next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
                                                    'exploration_id id
-                                                   {:order-by [['position 'desc] ['id 'desc]]})
+                                                   {'order-by [['position 'desc] ['id 'desc]]})
                                  0))]
       (t2/with-transaction [_]
         (let [thread (first (t2/insert-returning-instances!
@@ -800,37 +800,37 @@
   `current_user_last_touched_at` is non-null on every row. `limit`/`offset` are appended only when
   paged."
   [user-id limit offset]
-  (let [my-touches         ^:allow-subquery {:union-all
-                                             [^:allow-subquery {:select [['model_id 'eid] ['timestamp 'ts]]
-                                                                :from   ['revision]
-                                                                :where  ['and ['= 'model "Exploration"] ['= 'user_id user-id]]}
+  (let [my-touches         ^:allow-subquery {'union-all
+                                             [^:allow-subquery {'select [['model_id 'eid] ['timestamp 'ts]]
+                                                                'from   ['revision]
+                                                                'where  ['and ['= 'model "Exploration"] ['= 'user_id user-id]]}
                                               ^:allow-subquery
-                                              {:select [['d.exploration_id 'eid] ['dr.timestamp 'ts]]
-                                               :from   [['revision 'dr]]
-                                               :join   [['document 'd] ['= 'd.id 'dr.model_id]]
-                                               :where  ['and
+                                              {'select [['d.exploration_id 'eid] ['dr.timestamp 'ts]]
+                                               'from   [['revision 'dr]]
+                                               'join   [['document 'd] ['= 'd.id 'dr.model_id]]
+                                               'where  ['and
                                                         ['= 'dr.model "Document"]
                                                         ['= 'dr.user_id user-id]
                                                         ['not= 'd.exploration_id nil]]}
                                               ^:allow-subquery
-                                              {:select [['id 'eid] ['created_at 'ts]]
-                                               :from   ['exploration]
-                                               :where  ['= 'creator_id user-id]}]}
+                                              {'select [['id 'eid] ['created_at 'ts]]
+                                               'from   ['exploration]
+                                               'where  ['= 'creator_id user-id]}]}
         ;; MAX rather than GREATEST — the latter's NULL semantics differ across app DBs. And
         ;; `my-touches` is a derived table here rather than a sibling CTE: a second `:with` binding
         ;; that selects from the first silently returns no rows under our HoneySQL/H2 stack.
-        agg                ^:allow-subquery {:select   ['eid [['max 'ts] 'max_ts]]
-                                             :from     [[my-touches 'my_touches]]
-                                             :group-by ['eid]}]
-    (cond-> {:select   ['exploration.*
+        agg                ^:allow-subquery {'select   ['eid [['max 'ts] 'max_ts]]
+                                             'from     [[my-touches 'my_touches]]
+                                             'group-by ['eid]}]
+    (cond-> {'select   ['exploration.*
                         ['agg.max_ts 'current_user_last_touched_at]
                         [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
-             :from     ['exploration]
-             :join     [[agg 'agg] ['= 'agg.eid 'exploration.id]]
-             :where    ['and
+             'from     ['exploration]
+             'join     [[agg 'agg] ['= 'agg.eid 'exploration.id]]
+             'where    ['and
                         ['= 'exploration.archived false]
                         (collection/visible-collection-filter-clause :exploration.collection_id)]
-             :order-by [['current_user_last_touched_at 'desc] ['exploration.id 'desc]]}
+             'order-by [['current_user_last_touched_at 'desc] ['exploration.id 'desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
 
@@ -970,17 +970,17 @@
       ;; so the SKIP LOCKED semantics are preserved.
       (let [pending-ids (map :id
                              (t2/query
-                              (cond-> {:select ['id]
-                                       :from   ['exploration_query]
-                                       :where  ['and
+                              (cond-> {'select ['id]
+                                       'from   ['exploration_query]
+                                       'where  ['and
                                                 ['= 'exploration_thread_id thread-id]
                                                 ['= 'status "pending"]]}
                                 (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))))]
         (when (seq pending-ids)
           (t2/query
-           {:update (t2/table-name :model/ExplorationQuery)
-            :set    {:status "canceled"}
-            :where  ['in 'id pending-ids]})))))
+           {'update (t2/table-name :model/ExplorationQuery)
+            'set    {:status "canceled"}
+            'where  ['in 'id pending-ids]})))))
   (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] 'id thread-id))
 
 (defn- get-exploration-query-or-404
@@ -1070,12 +1070,12 @@
   (let [distinct-ids (distinct eq-ids)]
     (= (count distinct-ids)
        (t2/count :model/ExplorationQuery
-                 {:where ['and
+                 {'where ['and
                           ['in 'id distinct-ids]
                           ['in 'exploration_thread_id
-                           ^:allow-subquery {:select ['id]
-                                             :from   ['exploration_thread]
-                                             :where  ['= 'exploration_id exploration-id]}]]}))))
+                           ^:allow-subquery {'select ['id]
+                                             'from   ['exploration_thread]
+                                             'where  ['= 'exploration_id exploration-id]}]]}))))
 
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."

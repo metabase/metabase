@@ -57,11 +57,11 @@
                       :attributes {:cat 50}}
       ;; Fetch the card and manually compute & save the metadata
       (let [card (t2/select-one :model/Card
-                                {:select ['c.id 'c.dataset_query 'c.entity_id 'c.card_schema]
-                                 :from   [['sandboxes 's]]
-                                 :join   [['permissions_group 'pg] ['= 's.group_id 'pg.id]
+                                {'select ['c.id 'c.dataset_query 'c.entity_id 'c.card_schema]
+                                 'from   [['sandboxes 's]]
+                                 'join   [['permissions_group 'pg] ['= 's.group_id 'pg.id]
                                           ['report_card 'c] ['= 'c.id 's.card_id]]
-                                 :where  ['= 'pg.id (u/the-id &group)]})
+                                 'where  ['= 'pg.id (u/the-id &group)]})
             {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata (:dataset_query card))]
         (if metadata
           (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})

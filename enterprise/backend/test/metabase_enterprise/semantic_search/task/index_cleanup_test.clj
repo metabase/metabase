@@ -287,9 +287,9 @@
             ;; Update metadata for active index to have recent indexer_last_poll time
             (let [active-index-metadata (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
               (jdbc/execute! pgvector
-                             (-> {:update (keyword metadata-table-name)
-                                  :set {:indexer_last_poll recent-time}
-                                  :where ['= 'id (-> active-index-metadata :metadata-row :id)]}
+                             (-> {'update (keyword metadata-table-name)
+                                  'set {:indexer_last_poll recent-time}
+                                  'where ['= 'id (-> active-index-metadata :metadata-row :id)]}
                                  (sql/format :quoted true))))
             (let [gate-table-name (:gate-table-name index-metadata)]
               (jdbc/execute! pgvector

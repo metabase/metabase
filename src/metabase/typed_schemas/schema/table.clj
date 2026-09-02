@@ -56,21 +56,21 @@
   rules; only their id filters differ."
   [database-ids table-ids]
   (->> (t2/select :model/Table
-                  {:where    (cond-> [:and [:= :active true]]
+                  {'where    (cond-> [:and [:= :active true]]
                                database-ids (conj (schema.common/scope-filter-clause database-ids :db_id))
                                table-ids (conj (schema.common/scope-filter-clause table-ids :id)))
-                   :order-by [['name 'asc] ['id 'asc]]})
+                   'order-by [['name 'asc] ['id 'asc]]})
        (filter-readable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
   [{:keys [data-collection-ids]}]
   (->> (t2/select :model/Table
-                  {:where    ['and
+                  {'where    ['and
                               ['= 'active true]
                               ['= 'is_published true]
                               (schema.common/scope-filter-clause data-collection-ids :collection_id)]
-                   :order-by [['name 'asc] ['id 'asc]]})
+                   'order-by [['name 'asc] ['id 'asc]]})
        (filter-readable-tables)))
 
 (defn segment-schema

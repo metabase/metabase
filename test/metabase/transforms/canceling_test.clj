@@ -92,7 +92,7 @@
           (let [audit (t2/select-one :model/AuditLog
                                      'topic "transform-run-canceled"
                                      'model_id run-id
-                                     {:order-by [['id 'desc]]})]
+                                     {'order-by [['id 'desc]]})]
             (is (some? audit))
             (is (= "canceled" (get-in audit [:details :status])))
             (is (= "timeout"  (get-in audit [:details :outcome]))))))

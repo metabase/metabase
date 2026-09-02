@@ -75,9 +75,9 @@
   (is (= #{:unrestricted}
          (t2/select-fn-set :value
                            :model/DataPermissions
-                           {:select [['p.perm_value 'value]]
-                            :from [['data_permissions 'p]]
-                            :where ['and
+                           {'select [['p.perm_value 'value]]
+                            'from [['data_permissions 'p]]
+                            'where ['and
                                     ['= 'p.group_id group-id]
                                     ['= 'p.perm_type (u/qualified-name :perms/view-data)]
                                     ['= 'p.db_id db-id]]}))))

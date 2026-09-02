@@ -85,42 +85,42 @@
         start      (some-> (:start date-range) u.date/parse)
         end        (some-> (:end date-range) u.date/parse)
         dt-col     (if (some #(instance? LocalDate %) [start end])
-                     [:cast dt-col :date]
+                     ['cast dt-col 'date]
                      dt-col)]
     (cond
       (= start end)
-      [:= dt-col start]
+      ['= dt-col start]
 
       (nil? start)
-      [:< dt-col end]
+      ['< dt-col end]
 
       (nil? end)
-      [:>= dt-col start]
+      ['>= dt-col start]
 
       :else
-      [:and [:>= dt-col start] [:< dt-col end]])))
+      ['and ['>= dt-col start] ['< dt-col end]])))
 
 (defmulti ^:private where-clause*
   {:arglists '([filter-type column v])}
   (fn [filter-type _column _v] filter-type))
 
-(defmethod where-clause* ::single-value [_ k v] [:= k v])
+(defmethod where-clause* ::single-value [_ k v] ['= k v])
 
 (defmethod where-clause* ::date-range [_ k v] (date-range-filter-clause k v))
 
-(defmethod where-clause* ::list [_ k v] [:in k v])
+(defmethod where-clause* ::list [_ k v] ['in k v])
 
 (defmethod where-clause* ::collection-hierarchy [_ k v]
   ;; Filter by collection and all descendants
   ;; Match items directly in the collection OR in descendant collections
   ;; Tables in collections are an EE feature (library), so exclude them in OSS
-  (let [collection-filter [:or
-                           [:= k v]
-                           [:like :collection.location (str "%" (collection/location-path v) "%")]]]
+  (let [collection-filter ['or
+                           ['= k v]
+                           ['like 'collection.location (str "%" (collection/location-path v) "%")]]]
     (if (premium-features/has-feature? :library)
       collection-filter
-      [:and
-       [:not= :search_index.model "table"]
+      ['and
+       ['not= 'search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause
@@ -130,17 +130,17 @@
     "all" nil
 
     "only-mine"
-    [:or
-     [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
-                                                                    'personal_owner_id [:= current-user-id]
+    ['or
+     ['= 'collection.personal_owner_id current-user-id]
+     ['like 'collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
+                                                                    'personal_owner_id ['= current-user-id]
                                                                     'location          "/"))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
                         (assoc search-ctx :filter-items-in-personal-collection %)
                         collection-id-col)]
-      [:or (with-filter "only-mine") (with-filter "exclude")])
+      ['or (with-filter "only-mine") (with-filter "exclude")])
 
     ;; "only" / "exclude": use a single EXISTS / NOT EXISTS against `collection` so the WHERE size
     ;; is constant regardless of how many personal collections live on the instance. The previous
@@ -148,30 +148,30 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                     :from   [['collection 'pc]]
-                                     :where  ['and
+          ['exists ^'allow-subquery {'select [[['inline 1]]]
+                                     'from   [['collection 'pc]]
+                                     'where  ['and
                                               ['not= 'pc.personal_owner_id nil]
                                               ['= 'pc.location "/"]
                                               ['like 'collection.location
                                                ['concat (h2x/literal "/") 'pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
-        [:or
+        ['or
          ;; top level personal collections
-         [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+         ['and ['not= 'collection.personal_owner_id nil] ['= 'collection.location "/"]]
          ;; their sub-collections
          descendant-of-personal-collection]
 
         "exclude"
-        [:or
+        ['or
          ;; not in a collection
-         [:= collection-id-col nil]
-         [:and
+         ['= collection-id-col nil]
+         ['and
           ;; neither in a top-level personal collection
-          [:= :collection.personal_owner_id nil]
+          ['= 'collection.personal_owner_id nil]
           ;; nor within one of their sub-collections
-          [:not descendant-of-personal-collection]]]))))
+          ['not descendant-of-personal-collection]]]))))
 
 (defn transform-source-type-where-clause
   "Build a clause that limits transforms to enabled source types.
@@ -179,11 +179,11 @@
   ([search-context source-type-col]
    (let [enabled-types (:enabled-transform-source-types search-context)]
      (if (seq enabled-types)
-       [:in source-type-col enabled-types]
-       [:= [:inline 0] [:inline 1]])))
+       ['in source-type-col enabled-types]
+       ['= ['inline 0] ['inline 1]])))
   ([search-context model-col source-type-col]
-   [:or
-    [:!= model-col "transform"]
+   ['or
+    ['!= model-col "transform"]
     (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn filter-clauses
@@ -195,24 +195,24 @@
    identity
    (concat
     [[:models (if (seq (:models search-context))
-                [:in :search_index.model (:models search-context)]
+                ['in 'search_index.model ('models search-context)]
                 ;; Ideally, we would not get this far, and bail out earlier.
-                [:= 1 2])]]
+                ['= 1 2])]]
     (when-let [ids (:ids search-context)]
-      [[:ids [:and
-              [:in :search_index.model_id (map str ids)]
+      [[:ids ['and
+              ['in 'search_index.model_id (map str ids)]
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
-              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
-    [[:dashboard-questions [:and
-                            [:or
+              ['in 'search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
+    [[:dashboard-questions ['and
+                            ['or
                              ;; leverage the fact that only card-related models populate this attribute
-                             [:= nil :search_index.dashboard_id]
-                             (when (:include-dashboard-questions? search-context)
-                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]
+                             ['= nil 'search_index.dashboard_id]
+                             (when ('include-dashboard-questions? search-context)
+                               ['not= ['inline 0] ['coalesce 'search_index.dashboardcard_count ['inline 0]]])]
                             ;; documents with an exploration id are similar to a Dashboard Question - they aren't
                             ;; searchable outside of their owning Exploration.
-                            [:= nil :search_index.exploration_id]]]]
+                            ['= nil 'search_index.exploration_id]]]]
     (for [{t :type :keys [context-key required-feature supported-value? field]}
           (vals (dissoc search.config/filters :id :native-query))
           :let [v (get search-context context-key)]]

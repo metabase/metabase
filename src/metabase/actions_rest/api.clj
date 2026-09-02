@@ -45,7 +45,7 @@
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
-                   (t2/select :model/Card {:where
+                   (t2/select :model/Card {'where
                                            ['and
                                             ['= 'type "model"]
                                             ['= 'archived false]

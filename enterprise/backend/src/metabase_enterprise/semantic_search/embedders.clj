@@ -78,9 +78,9 @@
   (let [where   (into [:or]
                       (for [[m mid] pairs]
                         [:and [:= :model m] [:= :model_id mid]]))
-        sql-vec (sql/format {:select   ['model 'model_id 'name 'embedding]
-                             :from     [(keyword table-name)]
-                             :where    where}
+        sql-vec (sql/format {'select   ['model 'model_id 'name 'embedding]
+                             'from     [(keyword table-name)]
+                             'where    where}
                             {:quoted true})]
     (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 

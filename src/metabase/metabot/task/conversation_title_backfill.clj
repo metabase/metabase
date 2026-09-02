@@ -67,10 +67,10 @@
 (defn- titleless-conversation-ids
   [after-id]
   (t2/select-fn-vec :id :model/MetabotConversation
-                    {:where    (cond-> [:and [:= :title nil]]
+                    {'where    (cond-> [:and [:= :title nil]]
                                  after-id (conj [:> :id after-id]))
-                     :order-by [['id 'asc]]
-                     :limit    conversation-page-size}))
+                     'order-by [['id 'asc]]
+                     'limit    conversation-page-size}))
 
 (defn- title-source
   [conversation-id]

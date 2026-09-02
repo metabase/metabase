@@ -89,7 +89,7 @@
         ;; in the database or schema, so they show correctly in the UI.
         tables (when (or (keyword? db-perm) (keyword? schema-perm))
                  (t2/select [:model/Table :id :db_id :schema]
-                            {:where ['and
+                            {'where ['and
                                      ['= 'db_id db-id]
                                      (when (keyword? schema-perm)
                                        [:= :schema schema])]}))
@@ -120,10 +120,10 @@
   :feature :sandboxes
   [graph & {:keys [group-ids group-id db-id audit?]}]
   (let [sandboxes (t2/select :model/Sandbox
-                             {:select ['s.group_id 's.table_id 't.db_id 't.schema]
-                              :from [['sandboxes 's]]
-                              :join [['metabase_table 't] ['= 's.table_id 't.id]]
-                              :where ['and
+                             {'select ['s.group_id 's.table_id 't.db_id 't.schema]
+                              'from [['sandboxes 's]]
+                              'join [['metabase_table 't] ['= 's.table_id 't.id]]
+                              'where ['and
                                       (when group-id [:= :s.group_id group-id])
                                       (when group-ids [:in :s.group_id group-ids])
                                       (when db-id [:= :t.db_id db-id])
@@ -156,11 +156,11 @@
   "Every Card a sandbox is built out of: the Cards sandboxes name directly, plus every Card those read at any depth."
   []
   (let [cards (t2/select :model/Card
-                         {:select ['c.id 'c.dataset_query 'c.database_id 'c.card_schema]
-                          :from   [[(t2/table-name :model/Card) 'c]]
-                          :where  ['exists ^:allow-subquery {:select [[[:inline 1]]]
-                                                             :from   [[(t2/table-name :model/Sandbox) 's]]
-                                                             :where  ['= 's.card_id 'c.id]}]})]
+                         {'select ['c.id 'c.dataset_query 'c.database_id 'c.card_schema]
+                          'from   [[(t2/table-name :model/Card) 'c]]
+                          'where  ['exists ^:allow-subquery {'select [[[:inline 1]]]
+                                                             'from   [[(t2/table-name :model/Sandbox) 's]]
+                                                             'where  ['= 's.card_id 'c.id]}]})]
     (into (into #{} (map :id) cards)
           (mapcat (fn [{:keys [dataset_query database_id]}]
                     (when (seq dataset_query)

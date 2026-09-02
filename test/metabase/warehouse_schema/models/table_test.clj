@@ -175,7 +175,7 @@
   [db-id user-info permission-mapping table-id-field]
   (let [{:keys [clause with]} (mi/visible-filter-clause :model/Table table-id-field user-info permission-mapping)]
     (t2/select-pks-set [:model/Table]
-                       (cond-> {:where ['and ['= 'db_id db-id] clause]}
+                       (cond-> {'where ['and ['= 'db_id db-id] clause]}
                          with (assoc :with with)))))
 
 (defn- superuser-info
@@ -745,8 +745,8 @@
     (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
       ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
       (mt/with-temp [:model/Database {db-id :id} {}]
-        (t2/query-one {:insert-into 'metabase_table
-                       :values      [{:name       "raw-insert-probe"
+        (t2/query-one {'insert-into 'metabase_table
+                       'values      [{:name       "raw-insert-probe"
                                       :db_id      db-id
                                       :active     true
                                       :created_at '%now

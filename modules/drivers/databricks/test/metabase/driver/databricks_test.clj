@@ -486,7 +486,7 @@
                                  [:composite :schema :name]
                                  [:in [[:composite catalog+schema "venues"]
                                        [:composite multi-catalog+schema "test"]]]
-                                 {:order-by ['schema]})
+                                 {'order-by ['schema]})
                   t1-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t1-id))
                   t2-id-field (m/find-first (comp #(= % "id") :name) (lib.metadata/fields mp t2-id))
                   fk-query (-> (lib/query mp (lib.metadata/table mp t1-id))

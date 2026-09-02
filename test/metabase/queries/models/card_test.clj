@@ -589,7 +589,7 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (t2/select :model/ParameterCard 'card_id source-card-id {:order-by [['parameterized_object_id 'asc]]})))
+                (t2/select :model/ParameterCard 'card_id source-card-id {'order-by [['parameterized_object_id 'asc]]})))
         (t2/delete! :model/Card 'id source-card-id)
         (is (= []
                (t2/select :model/ParameterCard 'card_id source-card-id)))))))
@@ -636,7 +636,7 @@
                 :parameter_id              "param_2"
                 :parameterized_object_type :dashboard
                 :parameterized_object_id   (:id dashboard)}]
-              (t2/select :model/ParameterCard 'card_id source-card-id {:order-by [['parameter_id 'asc]]})))
+              (t2/select :model/ParameterCard 'card_id source-card-id {'order-by [['parameter_id 'asc]]})))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
         (t2/update! :model/Card source-card-id
@@ -834,7 +834,7 @@
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
-             (-> (t2/select-one (t2/table-name :model/Card) {:where ['= 'id card-id]})
+             (-> (t2/select-one (t2/table-name :model/Card) {'where ['= 'id card-id]})
                  :visualization_settings
                  json/decode+kw))))))
 
@@ -1764,7 +1764,7 @@
       (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Card" {:where ['in 'id [plain-card doc-card summary-card]]}))]
+                            (serdes/extract-all "Card" {'where ['in 'id [plain-card doc-card summary-card]]}))]
         (is (contains? extracted (eid plain-card))
             "an ordinary card is still exported")
         (is (contains? extracted (eid doc-card))

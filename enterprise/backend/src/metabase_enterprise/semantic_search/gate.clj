@@ -124,17 +124,17 @@
                                          seq)]
       (let [{:keys [gate-table-name]} index-metadata
             gate-col   (fn [column] (semantic.util/conflict-target-column gate-table-name column))
-            upsert-q   {:insert-into   (keyword gate-table-name)
+            upsert-q   {'insert-into   (keyword gate-table-name)
                         ;; sort to ensure locks are acquired predictably
-                        :values        (sort-by :id gate-document-batch)
-                        :on-conflict   ['id]
-                        :do-update-set {:fields {:updated_at    'excluded.updated_at
+                        'values        (sort-by :id gate-document-batch)
+                        'on-conflict   ['id]
+                        'do-update-set {:fields {:updated_at    'excluded.updated_at
                                                  :model         'excluded.model
                                                  :model_id      'excluded.model_id
                                                  :document      'excluded.document
                                                  :document_hash 'excluded.document_hash
                                                  :gated_at      ['clock_timestamp]}
-                                        :where  ['and
+                                        'where  ['and
                                                  ;; in the case of an updated_at collision, simulate old behaviour, later transactions on the gate win.
                                                  ['<= (gate-col "updated_at") 'excluded.updated_at]
                                                  ;; content diff
@@ -216,17 +216,17 @@
                                   ;; IMPORTANT: preserve the java.sql.Timestamp to retain the required precision.
                                   ;; otherwise pagination behaviour is incorrect and the indexer can stall.
                                   (or (:last-seen watermark) {:gated_at epoch-timestamp}))
-        poll-q                  {:union-all
-                                 [{:select [[nil 'id]
+        poll-q                  {'union-all
+                                 [{'select [[nil 'id]
                                             [nil 'document_hash]
                                             [['clock_timestamp] 'gated_at]]} ; return pgs clock value, to use as the :poll-time
-                                  {:select ['q.id 'q.document_hash 'q.gated_at]
-                                   :from
+                                  {'select ['q.id 'q.document_hash 'q.gated_at]
+                                   'from
                                    ;; subquery is important otherwise :limit is honey-ed into the outer union
-                                   [[{:select   ['id, 'document_hash, 'gated_at]
-                                      :from     [(keyword (:gate-table-name index-metadata))]
+                                   [[{'select   ['id, 'document_hash, 'gated_at]
+                                      'from     [(keyword (:gate-table-name index-metadata))]
                                       ;; the earliest timestamp where we might expect to find new documents
-                                      :where    (if (:id gate-min) ; :id here means we are polling from an exact watermark
+                                      'where    (if (:id gate-min) ; :id here means we are polling from an exact watermark
                                                   ;; we can do a proper paging scan, and can assume no later data will arrive out-of-order.
                                                   [:>= [:composite :gated_at :id] [:composite (:gated_at gate-min) (:id gate-min)]]
                                                   ;; if outside the confidence time we have to assume we will receive out of order writes
@@ -234,8 +234,8 @@
                                                   ;; this means the indexer can stall here if the :limit is exceeded until
                                                   ;; the confidence time moves or our last seen moves to be within the threshold.
                                                   [:>= :gated_at (:gated_at gate-min)])
-                                      :order-by [['gated_at] ['id]]
-                                      :limit    limit}
+                                      'order-by [['gated_at] ['id]]
+                                      'limit    limit}
                                      'q]]}]}
         poll-sql                (sql/format poll-q :quoted true)
         rs                      (jdbc/execute! pgvector poll-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
@@ -270,12 +270,12 @@
   Note: Issues an UPDATE, so assumes the metadata row exists (it should if you are polling!)."
   [pgvector index-metadata index watermark]
   (let [{:keys [last-poll last-seen]} watermark
-        update-q           {:update [(keyword (:metadata-table-name index-metadata))]
-                            :set    {:indexer_last_poll      last-poll
+        update-q           {'update [(keyword (:metadata-table-name index-metadata))]
+                            'set    {:indexer_last_poll      last-poll
                                      :indexer_last_seen_id   (:id last-seen)
                                      :indexer_last_seen      (:gated_at last-seen)
                                      :indexer_last_seen_hash (:document_hash last-seen)}
-                            :where  ['= 'table_name (:table-name index)]}
+                            'where  ['= 'table_name (:table-name index)]}
         update-count       (::jdbc/update-count (jdbc/execute! pgvector (sql/format update-q :quoted true)))]
     (when (= 0 update-count)
       (log/debugf "Watermark was flushed but a record was not updated, this might mean the metadata row is missing. Index %s" (:table-name index)))

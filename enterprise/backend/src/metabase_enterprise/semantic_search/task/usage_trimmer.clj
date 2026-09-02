@@ -23,7 +23,7 @@
   (when (semantic.u/semantic-search-available?)
     (log/info "Attempting to delete old semantic search usage data.")
     (let [t (Timestamp/valueOf (.minusMonths (java.time.LocalDateTime/now) storage-months))]
-      (t2/delete! :model/SemanticSearchTokenTracking {:where ['< 'created_at t]}))
+      (t2/delete! :model/SemanticSearchTokenTracking {'where ['< 'created_at t]}))
     (log/info "Semantic search old data cleanup successful.")))
 
 (task/defjob ^{DisallowConcurrentExecution true

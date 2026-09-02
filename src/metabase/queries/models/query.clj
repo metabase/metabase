@@ -120,12 +120,12 @@
     (let [hash+exprs (vec (for [group groups]
                             [(:query-hash (first group))
                              (rolling-average-update-expr (map :execution-time-ms group))]))]
-      (t2/query {:update (t2/table-name :model/Query)
-                 :set    {:average_execution_time (into [:case]
+      (t2/query {'update (t2/table-name :model/Query)
+                 'set    {:average_execution_time (into [:case]
                                                         (mapcat (fn [[query-hash expr]]
                                                                   [[:= :query_hash query-hash] expr]))
                                                         hash+exprs)}
-                 :where  ['in 'query_hash (mapv first hash+exprs)]}))))
+                 'where  ['in 'query_hash (mapv first hash+exprs)]}))))
 
 (defn- insert-query-entries!
   "Insert new Query rows for `groups` (each a sequence of entries sharing a query hash) with a single INSERT."
@@ -150,9 +150,9 @@
                   (if (contains? #{true 1} missing_query)
                     :needs-query-backfill
                     :up-to-date)]))
-          (t2/reducible-query {:select ['query_hash [['= 'query nil] 'missing_query]]
-                               :from   [(t2/table-name :model/Query)]
-                               :where  ['in 'query_hash query-hashes]}))))
+          (t2/reducible-query {'select ['query_hash [['= 'query nil] 'missing_query]]
+                               'from   [(t2/table-name :model/Query)]
+                               'where  ['in 'query_hash query-hashes]}))))
 
 (defn save-queries-and-update-average-execution-times!
   "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,

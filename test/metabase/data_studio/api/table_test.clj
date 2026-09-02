@@ -193,12 +193,12 @@
          :model/Field {f7 :id} {:table_id t5}
          :model/FieldValues {v7 :id} {:field_id f7, :values ["T5-2"]}]
         (let [url "data-studio/table/discard-values"
-              remaining-field-values-q {:select   ['fv.id]
-                                        :from     [[(t2/table-name :model/FieldValues) 'fv]
+              remaining-field-values-q {'select   ['fv.id]
+                                        'from     [[(t2/table-name :model/FieldValues) 'fv]
                                                    [(t2/table-name :model/Field) 'f]]
-                                        :where    ['and ['= 'fv.field_id 'f.id]
+                                        'where    ['and ['= 'fv.field_id 'f.id]
                                                    ['in 'f.table_id [t1 t2 t3 t4 t5]]]
-                                        :order-by [['fv.id 'asc]]}
+                                        'order-by [['fv.id 'asc]]}
               get-field-values #(mapv :id (t2/query remaining-field-values-q))]
           (testing "Non-admin toucans should not be allowed to discard values"
             (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 url {:table_ids [t1]})))
@@ -215,7 +215,7 @@
   (testing "table-selectors->filter function generates correct WHERE clauses"
     (let [selectors->table-ids (fn [selectors]
                                  (let [where (#'api.table/table-selectors->filter selectors)]
-                                   (t2/select-pks-set :model/Table {:where where})))]
+                                   (t2/select-pks-set :model/Table {'where where})))]
       (mt/with-temp [:model/Database {db-1 :id}      {}
                      :model/Database {db-2 :id}      {}
                      :model/Table    {table-1 :id}   {:db_id db-1}

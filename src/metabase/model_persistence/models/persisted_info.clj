@@ -161,12 +161,12 @@
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
   (let [cards (t2/select :model/Card
-                         {:where ['and
+                         {'where ['and
                                   ['= 'database_id database-id]
                                   ['= 'type "model"]
-                                  ['not ['exists ^:allow-subquery {:select [1]
-                                                                   :from ['persisted_info]
-                                                                   :where ['= 'persisted_info.card_id 'report_card.id]}]]]})]
+                                  ['not ['exists ^:allow-subquery {'select [1]
+                                                                   'from ['persisted_info]
+                                                                   'where ['= 'persisted_info.card_id 'report_card.id]}]]]})]
     (t2/insert! :model/PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!
@@ -190,11 +190,11 @@
    Will ignore explicitly set `off` models."
   [database-id]
   (t2/query-one
-   {:update ['persisted_info]
-    :where ['and
+   {'update ['persisted_info]
+    'where ['and
             ['= 'database_id database-id]
             ['= 'state "deletable"]]
-    :set {:active false,
+    'set {:active false,
           :state (default-persistent-info-state),
           :state_change_at '%now}})
   (ready-unpersisted-models! database-id))

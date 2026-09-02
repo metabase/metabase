@@ -119,7 +119,7 @@
         ;; compare it to the value in the DB. This is done be seeing whether a row exists
         ;; WHERE value > <local-value>
         (u/prog1 (t2/select-one-fn :value :model/Setting
-                                   {:where ['and
+                                   {'where ['and
                                             ['= 'key settings-last-updated-key]
                                             ['> 'value last-known-update]]})
           (log/trace "last known Settings update: " (pr-str last-known-update))

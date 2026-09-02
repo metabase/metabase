@@ -138,8 +138,8 @@
   (t2/with-transaction [_conn]
     (let [model-type (:model-type model-spec)
           existing   (t2/select-one :model/RemoteSyncObject
-                                    {:where ['and ['= 'model_type model-type] ['= 'model_id model-id]]
-                                     :for   'update})]
+                                    {'where ['and ['= 'model_type model-type] ['= 'model_id model-id]]
+                                     'for   'update})]
       (cond
         ;; No row to lock, so a concurrent un-sync that hasn't inserted yet is invisible here (a phantom the
         ;; row lock can't cover). Re-check eligibility so a stale tracked-status event does not start tracking

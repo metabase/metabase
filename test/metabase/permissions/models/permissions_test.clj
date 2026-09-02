@@ -183,7 +183,7 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
-              (t2/select-fn-set :object :model/Permissions {:where ['and
+              (t2/select-fn-set :object :model/Permissions {'where ['and
                                                                     ['like 'object "/collection/%"]
                                                                     ['= 'group_id group-id]]}))]
       (is (= nil
@@ -217,7 +217,7 @@
   (mt/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object :model/Permissions
-                                {:where ['and ['= 'group_id group-id]
+                                {'where ['and ['= 'group_id group-id]
                                          ['like 'object "/application/%"]]}))]
       (is (= nil (perms)))
       (doseq [[perm-type perm-path] [[:subscription "/application/subscription/"]

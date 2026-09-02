@@ -107,4 +107,4 @@
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
   [metabot-id]
-  (t2/delete! :model/MetabotPrompt {:where ['= 'metabot_id metabot-id]}))
+  (t2/delete! :model/MetabotPrompt {'where ['= 'metabot_id metabot-id]}))

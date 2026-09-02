@@ -87,7 +87,7 @@
    k :- :string]
   (when-let [ukv
              (t2/select-one :model/UserKeyValue
-                            {:where
+                            {'where
                              ['and
                               ['= 'user_id user-id]
                               ['= 'namespace namespace]
@@ -106,7 +106,7 @@
   [user-id :- :int
    namespace :- :string]
   (when-let [kvs (seq (t2/select :model/UserKeyValue
-                                 {:where
+                                 {'where
                                   ['and
                                    ['= 'user_id user-id]
                                    ['= 'namespace namespace]

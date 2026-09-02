@@ -43,13 +43,13 @@
   [pgvector gate-table-name repair-table-name]
   (let [column        semantic.util/column-keyword
         anti-join-sql (sql/format
-                       {:select ['model 'model_id]
-                        :from   [(keyword gate-table-name)]
-                        :where  ['not
+                       {'select ['model 'model_id]
+                        'from   [(keyword gate-table-name)]
+                        'where  ['not
                                  ['exists
-                                  {:select [1]
-                                   :from   [(keyword repair-table-name)]
-                                   :where  ['and
+                                  {'select [1]
+                                   'from   [(keyword repair-table-name)]
+                                   'where  ['and
                                             ['= (column repair-table-name "model")
                                              (column gate-table-name "model")]
                                             ['= (column repair-table-name "model_id")
@@ -86,14 +86,14 @@
   (try
     (let [{:keys [indexer_last_seen indexer_last_seen_id]} metadata-row
           count-sql (sql/format
-                     {:select [['%count.* 'n]]
-                      :from   [[(keyword index-table-name) 'i]]
-                      :where  ['and
+                     {'select [['%count.* 'n]]
+                      'from   [[(keyword index-table-name) 'i]]
+                      'where  ['and
                                ['not
                                 ['exists
-                                 {:select [1]
-                                  :from   [[(keyword repair-table-name) 'r]]
-                                  :where  ['and
+                                 {'select [1]
+                                  'from   [[(keyword repair-table-name) 'r]]
+                                  'where  ['and
                                            ['= 'r.model 'i.model]
                                            ['= 'r.model_id 'i.model_id]]}]]
                                ;; no live gate row (document_hash NULL or row gone) and no pending tombstone the
@@ -103,9 +103,9 @@
                                ;; conservative in both cases, no false spike.
                                ['not
                                 ['exists
-                                 {:select [1]
-                                  :from   [[(keyword gate-table-name) 'g]]
-                                  :where  ['and
+                                 {'select [1]
+                                  'from   [[(keyword gate-table-name) 'g]]
+                                  'where  ['and
                                            ['= 'g.model 'i.model]
                                            ['= 'g.model_id 'i.model_id]
                                            ['or
@@ -120,13 +120,13 @@
                                ;; so it is pending work rather than garbage.
                                ['not
                                 ['exists
-                                 {:select [1]
-                                  :from   [[(keyword dlq-table-name) 'd]]
-                                  :join   [[(keyword gate-table-name) 'dg]
+                                 {'select [1]
+                                  'from   [[(keyword dlq-table-name) 'd]]
+                                  'join   [[(keyword gate-table-name) 'dg]
                                            ['and
                                             ['= 'dg.id 'd.gate_id]
                                             ['= 'dg.gated_at 'd.error_gated_at]]]
-                                  :where  ['and
+                                  'where  ['and
                                            ['= 'dg.model 'i.model]
                                            ['= 'dg.model_id 'i.model_id]]}]]]}
                      :quoted true)]

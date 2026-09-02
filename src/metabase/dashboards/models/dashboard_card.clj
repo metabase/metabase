@@ -143,9 +143,9 @@
                                 (as-> (t2/select
                                        [:model/Card :id :name :description :display :dataset_query :type :database_id
                                         :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
-                                       {:left-join [['dashboardcard_series 'series] ['= 'report_card.id 'series.card_id]]
-                                        :where     ['in 'series.dashboardcard_id dashcard-ids]
-                                        :order-by  [['series.position 'asc]]}) series
+                                       {'left-join [['dashboardcard_series 'series] ['= 'report_card.id 'series.card_id]]
+                                        'where     ['in 'series.dashboardcard_id dashcard-ids]
+                                        'order-by  [['series.position 'asc]]}) series
                                   (group-by :dashboardcard_id series)
                                   (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
       (map (fn [dashcard]
@@ -171,13 +171,13 @@
 
   This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
-  (mdb/query {:select    ['newcard.*]
-              :from      [['report_dashboardcard 'dashcard]]
-              :left-join [['dashboardcard_series 'dashcardseries]
+  (mdb/query {'select    ['newcard.*]
+              'from      [['report_dashboardcard 'dashcard]]
+              'left-join [['dashboardcard_series 'dashcardseries]
                           ['= 'dashcard.id 'dashcardseries.dashboardcard_id]
                           ['report_card 'newcard]
                           ['= 'dashcardseries.card_id 'newcard.id]]
-              :where     ['and
+              'where     ['and
                           ['= 'newcard.archived false]
                           ['= 'dashcard.id (:id dashcard)]]}))
 
@@ -367,9 +367,9 @@
 (defn link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
-  ^:allow-subquery {:select (select-clause-for-link-card-model model)
-                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
-                    :where  (if (coll? id-or-ids)
+  ^:allow-subquery {'select (select-clause-for-link-card-model model)
+                    'from   (t2/table-name (serdes/link-card-model->toucan-model model))
+                    'where  (if (coll? id-or-ids)
                               [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
                               [:= :id (ensure-integer-link-card-id id-or-ids)])})
 
@@ -377,8 +377,8 @@
   [link-card-model->ids]
   (if (= 1 (count link-card-model->ids))
     (apply link-card-info-query-for-model (first link-card-model->ids))
-    {:select   ['*]
-     :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
+    {'select   ['*]
+     'from     [[^:allow-subquery {'union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  'alias_is_required_by_sql_but_not_needed_here]]}))
 
 (mi/define-batched-hydration-method dashcard-linkcard-info

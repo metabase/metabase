@@ -40,7 +40,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
-      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
+      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {'values [10 20 30 40]})
       ;; sync to make sure the field values are filled
       (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
@@ -56,7 +56,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
-      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
+      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {'values [10 20 30 40]})
       (sync/sync-table! (t2/select-one :model/Table 'id (mt/id :venues)))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
@@ -69,7 +69,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
-      (t2/update! :model/FieldValues (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full) {:values [1 2 3]})
+      (t2/update! :model/FieldValues (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full) {'values [1 2 3]})
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
@@ -86,28 +86,28 @@
         (t2/update! :model/FieldValues
                     (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
                     {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                     :values       [1 2 3]})
+                     'values       [1 2 3]})
         (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
                (sync-database-counts! "update-field-values" (data/db))))
         (is (= [1 2 3] (venues-price-field-values)))
         (testing "Fetching field values causes an on-demand update and marks Field Values as active"
-          (is (partial= {:values [[1] [2] [3] [4]]}
+          (is (partial= {'values [[1] [2] [3] [4]]}
                         (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))
           (is (t/after? (t2/select-one-fn :last_used_at :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
                         (t/minus (t/offset-date-time) (t/hours 2))))
           (testing "Field is syncing after usage"
             (t2/update! :model/FieldValues
                         (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
-                        {:values [1 2 3]})
+                        {'values [1 2 3]})
             (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                    (sync-database-counts! "update-field-values" (data/db))))
-            (is (partial= {:values [[1] [2] [3] [4]]}
+            (is (partial= {'values [[1] [2] [3] [4]]}
                           (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
         (testing "If only advanced fields have been used recently, still sync"
           (t2/update! :model/FieldValues
                       (t2/select-one-pk :model/FieldValues 'field_id (mt/id :venues :price) 'type :full)
                       {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                       :values       [1 2 3]})
+                       'values       [1 2 3]})
           (t2/insert! :model/FieldValues {:field_id     (mt/id :venues :price)
                                           :type         :advanced
                                           :hash_key     "random-key"
@@ -359,13 +359,13 @@
         (with-redefs [sync.field-values/fetch-distinct-for-table
                       (fn [_table fields]
                         (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
-                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                        {:results (into {} (map (fn [f] [(:id f) {'values []}])) fields)
                          :queries 1
                          :failed-fields #{}})
                       sync.field-values/fetch-distinct-per-field
                       (fn [fields]
                         (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
-                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                        {:results (into {} (map (fn [f] [(:id f) {'values []}])) fields)
                          :queries (count fields)
                          :failed-fields #{}})]
           (#'sync.field-values/sync-fields-for-table! table [nested-a nested-b plain-c] {})
@@ -408,7 +408,7 @@
                                                'table_id (mt/id :people)
                                                'active true
                                                'visibility_type "normal"
-                                               {:order-by [['name 'asc]]}))
+                                               {'order-by [['name 'asc]]}))
               eligible-count   (count (filter field-values/field-should-have-field-values? fields))
               counts           (sync.field-values/sync-fields-grouped-by-table! fields)]
           (is (= eligible-count (:probed counts))

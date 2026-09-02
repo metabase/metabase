@@ -302,7 +302,7 @@
                             [:model/TransformTransformTag :transform_id :tag_id :position]
                             'transform_id
                             [:in transform-ids]
-                            {:order-by [['position 'asc]]})
+                            {'order-by [['position 'asc]]})
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]
                                    (update acc transform_id (fnil conj []) tag_id))
@@ -367,7 +367,7 @@
             ;; Get current associations
             current-associations (t2/select [:model/TransformTransformTag :tag_id :position]
                                             'transform_id transform-id
-                                            {:order-by [['position 'asc]]})
+                                            {'order-by [['position 'asc]]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
@@ -414,7 +414,7 @@
           tag-mappings  (group-by :transform_id
                                   (t2/select :model/TransformTransformTag
                                              'transform_id [:in transform-ids]
-                                             {:order-by [['position 'asc]]}))]
+                                             {'order-by [['position 'asc]]}))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
@@ -428,7 +428,7 @@
                                   (filter table-index/applicable?
                                           (t2/select :model/TableIndex
                                                      'transform_id [:in transform-ids]
-                                                     {:order-by [['index_name 'asc]]})))]
+                                                     {'order-by [['index_name 'asc]]})))]
       (for [transform transforms]
         (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
 

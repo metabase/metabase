@@ -1622,10 +1622,10 @@
                                                                :description "A new description"}))
                 original-tabs      (t2/select [:model/DashboardTab :id :position :name]
                                               'dashboard_id dashboard-id
-                                              {:order-by [['position 'asc]]})
+                                              {'order-by [['position 'asc]]})
                 new-tabs           (t2/select [:model/DashboardTab :id :position :name]
                                               'dashboard_id new-dash-id
-                                              {:order-by [['position 'asc]]})
+                                              {'order-by [['position 'asc]]})
                 new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
             (testing "Cards are located correctly between tabs"
               (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
@@ -2574,7 +2574,7 @@
           (testing "Both updated card ids should be reflected after making the dashcard changes."
             (is (partial= [{:card_id model-id-2}
                            {:card_id model-id-2}]
-                          (t2/select :model/DashboardCard 'dashboard_id dashboard-id {:order-by ['id]})))))))))
+                          (t2/select :model/DashboardCard 'dashboard_id dashboard-id {'order-by ['id]})))))))))
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]

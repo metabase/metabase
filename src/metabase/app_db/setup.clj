@@ -341,6 +341,14 @@
   (when conditions
     (into {} (map keyword-condition) conditions)))
 
+(defn- keyword-keys
+  "The keys of `m` spelled as keywords. App-DB code writes HoneySQL clause keys and row-map columns as symbols;
+  Toucan 2 merges clauses and reads rows by keyword."
+  [m]
+  (if (and (map? m) (some symbol? (keys m)))
+    (update-keys m (fn [k] (if (symbol? k) (keyword (namespace k) (name k)) k)))
+    m))
+
 (methodical/defmethod t2.pipeline/build :around :default
   "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
   dialect to do special query building magic. When building a Honey SQL form, make sure `:dialect` is bound to the
@@ -350,13 +358,23 @@
                                          :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
     (next-method query-type
                  model
-                 (update parsed-args :kv-args keyword-conditions)
-                 ;; the map passed to `update!` (and re-used by the select that `before-update` runs) is a conditions
-                 ;; map rather than a query
-                 (if (and (or (isa? query-type :toucan.query-type/update.*)
-                              (isa? query-type :toucan.query-type/select.instances.from-update))
-                          (map? resolved-query))
+                 (-> parsed-args
+                     (update :kv-args keyword-conditions)
+                     (update :changes keyword-keys)
+                     (update :rows #(some->> % (mapv keyword-keys))))
+                 (cond
+                   ;; the map passed to `update!` (and re-used by the select that `before-update` runs) is a conditions
+                   ;; map rather than a query
+                   (and (or (isa? query-type :toucan.query-type/update.*)
+                            (isa? query-type :toucan.query-type/select.instances.from-update))
+                        (map? resolved-query))
                    (keyword-conditions resolved-query)
+
+                   ;; a HoneySQL map: only the top-level clause keys matter to Toucan 2
+                   (map? resolved-query)
+                   (with-meta (keyword-keys resolved-query) (meta resolved-query))
+
+                   :else
                    resolved-query))))
 
 (methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*

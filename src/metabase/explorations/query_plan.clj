@@ -180,10 +180,10 @@
   has no unique index to fall back on, so two planners would each create the thread's pages — and a
   page's id is its identity, so the duplicate strands every comment and star anchored to the loser."
   [thread-id]
-  (t2/query {:select ['id]
-             :from   ['exploration_thread]
-             :where  ['= 'id thread-id]
-             :for    ['update]}))
+  (t2/query {'select ['id]
+             'from   ['exploration_thread]
+             'where  ['= 'id thread-id]
+             'for    ['update]}))
 
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes, reconcile each to its persisted
@@ -291,9 +291,9 @@
 (defn- creator-id-for-thread
   [thread-id]
   (t2/select-one-fn :creator_id :model/Exploration
-                    {:join  ['exploration_thread
+                    {'join  ['exploration_thread
                              ['= 'exploration_thread.exploration_id 'exploration.id]]
-                     :where ['= 'exploration_thread.id thread-id]}))
+                     'where ['= 'exploration_thread.id thread-id]}))
 
 (defn- build-planner-ctx
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
@@ -301,7 +301,7 @@
   [thread-id]
   (let [thread-blocks  (t2/select :model/ExplorationBlock
                                   'exploration_thread_id thread-id
-                                  {:order-by [['position 'asc] ['id 'asc]]})
+                                  {'order-by [['position 'asc] ['id 'asc]]})
         metric-dim-ctx (qp.context/metric-and-dim-context thread-blocks)
         ;; [block-id metric-id] -> metric-context, so materialization resolves a plan
         ;; item against the same block the planner emitted it under (a metric can live

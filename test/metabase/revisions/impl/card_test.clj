@@ -222,7 +222,7 @@
           (let [revision     (t2/select-one :model/Revision
                                             'model "Card"
                                             'model_id card-id
-                                            {:order-by [['id 'desc]]})
+                                            {'order-by [['id 'desc]]})
                 ;; The after-select should have added `:card_schema`
                 revision-obj (:object revision)]
             (is (= queries/starting-card-schema-version (:card_schema revision-obj)))))

@@ -135,7 +135,7 @@
                     (is (= :failed
                            (t2/select-one-fn :status :model/TransformRun
                                              'transform_id (:id transform)
-                                             {:order-by [['id 'desc]]})))))))))))))
+                                             {'order-by [['id 'desc]]})))))))))))))
 
 (deftest ^:synchronized declared-index-creation-is-idempotent-test
   (testing "re-applying a target's indexes is a no-op (CREATE INDEX IF NOT EXISTS), not an error"

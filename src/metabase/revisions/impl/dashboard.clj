@@ -69,7 +69,7 @@
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
                             (t2/select-pks-set :model/Card
-                                               {:where ['and
+                                               {'where ['and
                                                         ['in 'id card-ids]
                                                         ;; skip when archived
                                                         ['= 'archived false]
@@ -87,7 +87,7 @@
   (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
         active-card-ids (when (seq card-ids)
                           (t2/select-pks-set :model/Card
-                                             {:where ['and
+                                             {'where ['and
                                                       ['in 'id card-ids]
                                                       ['= 'archived false]]}))
         invalid-card-ids (set/difference card-ids active-card-ids)]

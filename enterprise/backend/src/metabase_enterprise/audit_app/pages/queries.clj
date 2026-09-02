@@ -51,10 +51,10 @@
                                     "..."]
                       dash-count   [:coalesce :dash_card.count [:inline 0]]]
                   (->
-                   {:with      [cards/query-runs
+                   {'with      [cards/query-runs
                                 cards/latest-qe
                                 cards/dashboards-count]
-                    :select    [['card.id 'card_id]
+                    'select    [['card.id 'card_id]
                                 ['card.name 'card_name]
                                 [error-substr 'error_substr]
                                 ['card.collection_id 'collection_id]
@@ -72,15 +72,15 @@
                                 ['card.updated_at 'updated_at]
                                 ;; Keep this last: the streaming xform strips it positionally and hoists it to the root.
                                 [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
-                    :from      [['report_card 'card]]
-                    :left-join [['collection 'coll]                ['= 'card.collection_id 'coll.id]
+                    'from      [['report_card 'card]]
+                    'left-join [['collection 'coll]                ['= 'card.collection_id 'coll.id]
                                 ['metabase_database 'db]           ['= 'card.database_id 'db.id]
                                 ['metabase_table 't]               ['= 'card.table_id 't.id]
                                 ['core_user 'u]                    ['= 'card.creator_id 'u.id]
                                 'latest_qe                         ['= 'card.id 'latest_qe.card_id]
                                 'query_runs                        ['= 'card.id 'query_runs.card_id]
                                 'dash_card                         ['= 'card.id 'dash_card.card_id]]
-                    :where     ['and
+                    'where     ['and
                                 ['= 'card.archived false]
                                 ['<> 'latest_qe.error nil]
                                 ['not= 'card.database_id audit/audit-db-id]]}

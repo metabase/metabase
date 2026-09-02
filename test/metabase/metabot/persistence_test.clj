@@ -386,7 +386,7 @@
               [user-msg
                asst-msg]   (t2/select :model/MetabotMessage
                                       'conversation_id conversation-id
-                                      {:order-by [['created_at 'asc] ['id 'asc]]})]
+                                      {'order-by [['created_at 'asc] ['id 'asc]]})]
           (is (= user-id (:user_id conversation)))
           (is (= team-id (:slack_team_id conversation)))
           (is (= channel-id (:slack_channel_id conversation)))
@@ -435,7 +435,7 @@
                 (metabot-persistence/start-turn!
                  conversation-id "internal" {:role "user" :content "hi"})
                 rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
-                                {:order-by [['created_at 'asc] ['id 'asc]]})]
+                                {'order-by [['created_at 'asc] ['id 'asc]]})]
             (is (pos-int? assistant-msg-id))
             (is (string? assistant-external-id))
             (is (= 2 (count rows)))
@@ -524,7 +524,7 @@
                b-pk
                [{:type :text :text "reply-B"}])
               (let [rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
-                                    {:order-by [['created_at 'asc] ['id 'asc]]})]
+                                    {'order-by [['created_at 'asc] ['id 'asc]]})]
                 (is (= [:user :assistant :user :assistant] (mapv :role rows)))
                 (is (= ["A" "partial-A" "B" "reply-B"]
                        (mapv #(-> % :data first :text) rows)))))))))))
@@ -539,7 +539,7 @@
            conversation-id "internal" {:role "user" :content "hi"}))
         (let [[u a] (t2/select :model/MetabotMessage
                                'conversation_id conversation-id
-                               {:order-by [['id 'asc]]})]
+                               {'order-by [['id 'asc]]})]
           (is (= :user      (:role u)))
           (is (= :assistant (:role a)))
           (is (< (:id u) (:id a)) "user row is inserted first; smaller :id")
@@ -845,7 +845,7 @@
              conversation-id "internal" {:role "user" :content "replacement"}
              :delete-message-ids [u-pk a-pk])
             (let [rows (t2/select :model/MetabotMessage 'conversation_id conversation-id
-                                  {:order-by [['created_at 'asc] ['id 'asc]]})
+                                  {'order-by [['created_at 'asc] ['id 'asc]]})
                   live (remove :deleted_at rows)]
               (is (= [:user :assistant] (mapv :role live)))
               (is (= "replacement" (-> live first :data first :text)))
@@ -1483,7 +1483,7 @@
           (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
                                            'conversation_id conversation-id
                                            'role "user"
-                                           {:order-by [['created_at 'desc] ['id 'desc]]})]
+                                           {'order-by [['created_at 'desc] ['id 'desc]]})]
             (metabot-persistence/retry-turn! conversation-id "internal" user-ext
                                              :delete-message-ids [two-pk])
             (is (= {:todos [{:id "a"}]} (cstate))

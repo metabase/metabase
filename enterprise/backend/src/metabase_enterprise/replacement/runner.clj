@@ -54,7 +54,7 @@
                                    :transform :model/Transform
                                    :segment   :model/Segment
                                    :measure   :model/Measure)
-                                 {:where ['in 'id ids]})))))]
+                                 {'where ['in 'id ids]})))))]
     (let [cards      (id->instances :card)
           tables     (id->instances :table)
           dashboards (id->instances :dashboard)

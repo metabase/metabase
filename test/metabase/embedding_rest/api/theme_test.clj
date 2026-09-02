@@ -183,7 +183,7 @@
         (is (false? (embedding.settings/default-embedding-themes-seeded)))
         (is (nil? (mt/user-http-request :crowberto :post 204 "embed-theme/seed-defaults" example-seed-body)))
         (is (= ["Light" "Dark"]
-               (map :name (t2/select :model/EmbeddingTheme {:order-by [['created_at 'asc]]}))))
+               (map :name (t2/select :model/EmbeddingTheme {'order-by [['created_at 'asc]]}))))
         (is (true? (embedding.settings/default-embedding-themes-seeded)))))
     (testing "subsequent calls are a no-op once the setting is flipped — even if themes were deleted"
       (mt/with-empty-h2-app-db!

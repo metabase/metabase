@@ -567,7 +567,7 @@
       (is (=? [{:status :failed
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
               (t2/select [:model/TaskHistory :status :task_details] 'task "notification-send"
-                         {:order-by [['started_at 'asc]]}))))))
+                         {'order-by [['started_at 'asc]]}))))))
 
 (deftest orphaned-notification-deactivates-on-send-test
   (testing "A notification whose card no longer exists should deactivate itself instead of crashing forever"

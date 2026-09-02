@@ -12,9 +12,9 @@
 (defn- query-view
   "Query v_ai_usage_log for rows by usage_log_id."
   [usage-log-ids]
-  (t2/query {:select ['*]
-             :from   ['v_ai_usage_log]
-             :where  ['in 'usage_log_id usage-log-ids]}))
+  (t2/query {'select ['*]
+             'from   ['v_ai_usage_log]
+             'where  ['in 'usage_log_id usage-log-ids]}))
 
 (defn- find-row [rows usage-log-id]
   (some #(when (= (:usage_log_id %) usage-log-id) %) rows))

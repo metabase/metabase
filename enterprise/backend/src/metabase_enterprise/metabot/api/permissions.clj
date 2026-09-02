@@ -92,7 +92,7 @@
   [advanced?]
   (try
     (t2/with-transaction [_conn]
-      (t2/delete! :model/MetabotPermissions {:where (metabot-perms/hidden-groups-clause advanced?)})
+      (t2/delete! :model/MetabotPermissions {'where (metabot-perms/hidden-groups-clause advanced?)})
       (metabot-settings/metabot-advanced-permissions! advanced?))
     (catch Throwable e
       (setting/restore-cache!)

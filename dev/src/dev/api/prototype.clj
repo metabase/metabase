@@ -47,19 +47,19 @@
                       (let [obj-v (get obj (name query-k))]
                         (= query-v (str obj-v))))
                     query-args))
-          (map row->json (t2/query {:select   ['id 'content]
-                                    :from     [(prototype-table)]
-                                    :where    ['= 'type type]
-                                    :order-by [['id 'asc]]}))))
+          (map row->json (t2/query {'select   ['id 'content]
+                                    'from     [(prototype-table)]
+                                    'where    ['= 'type type]
+                                    'order-by [['id 'asc]]}))))
 
 (api.macros/defendpoint :get "/:type/:id"
   "Returns an existing record"
   [{:keys [type id]} :- [:map
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]]
-  (-> (api/check-404 (t2/query-one {:select ['id 'content]
-                                    :from   [(prototype-table)]
-                                    :where  ['= 'id id]}))
+  (-> (api/check-404 (t2/query-one {'select ['id 'content]
+                                    'from   [(prototype-table)]
+                                    'where  ['= 'id id]}))
       (api/check-404)
       (row->json)))
 

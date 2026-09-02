@@ -28,8 +28,8 @@
   (:import
    (java.time LocalDate)))
 
-(def ^:private true-clause [:= [:inline 1] [:inline 1]])
-(def ^:private false-clause [:= [:inline 0] [:inline 1]])
+(def ^:private true-clause ['= ['inline 1] ['inline 1]])
+(def ^:private false-clause ['= ['inline 0] ['inline 1]])
 
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
@@ -48,7 +48,7 @@
 
 (defmethod archived-clause :default
   [model archived?]
-  [:= (search.config/column-with-model-alias model :archived) archived?])
+  ['= (search.config/column-with-model-alias model 'archived) archived?])
 
 ;; Databases, transforms, and indexed-entities can't be archived
 (doseq [model ["database" "transform" "indexed-entity"]]
@@ -63,9 +63,9 @@
   [model archived?]
   (if archived?
     false-clause ; No tables should appear in archive searches
-    [:and
-     [:= (search.config/column-with-model-alias model :active) true]
-     [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
+    ['and
+     ['= (search.config/column-with-model-alias model 'active) true]
+     ['= (search.config/column-with-model-alias model 'visibility_type) nil]]))
 
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
@@ -73,7 +73,7 @@
    search-native-query  :- [:maybe :boolean]]
   (when-let [query (:search-string search-context)]
     (into
-     [:or]
+     ['or]
      (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
                                    (search-columns-fn model search-native-query))
                                  (map #(search.config/column-with-model-alias model %)))
@@ -82,23 +82,23 @@
                                  (map search.util/wildcard-match))]
        (cond
          (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
-         [:= 0 1]
+         ['= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
-         [:and
-          [:= (search.config/column-with-model-alias model :query_type) "native"]
-          [:like [:lower column] wildcarded-token]]
+         ['and
+          ['= (search.config/column-with-model-alias model 'query_type) "native"]
+          ['like ['lower column] wildcarded-token]]
 
          (and (#{"action"} model)
               (= column (search.config/column-with-model-alias model :dataset_query)))
-         [:like [:lower :query_action.dataset_query] wildcarded-token]
+         ['like ['lower 'query_action.dataset_query] wildcarded-token]
 
          (and (= model "document")
               (= column (search.config/column-with-model-alias "document" :document)))
-         [:like [:lower [:left column [:inline max-document-search-length]]] wildcarded-token]
+         ['like ['lower ['left column ['inline max-document-search-length]]] wildcarded-token]
 
          :else
-         [:like [:lower column] wildcarded-token])))))
+         ['like ['lower column] wildcarded-token])))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
@@ -119,8 +119,8 @@
 (defn- default-created-by-filter-clause
   [model creator-ids]
   (if (= 1 (count creator-ids))
-    [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
-    [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
+    ['= (search.config/column-with-model-alias model 'creator_id) (first creator-ids)]
+    ['in (search.config/column-with-model-alias model 'creator_id) creator-ids]))
 
 (doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure" "exploration"]]
   (defmethod build-optional-filter-query [:created-by model]
@@ -180,9 +180,9 @@
   [model item-type query]
   (let [or-clauses (cond-> []
                      (premium-features/has-feature? :content-verification)
-                     (conj [:= :cur_mr.status "verified"])
+                     (conj ['= 'cur_mr.status "verified"])
                      (premium-features/has-feature? :official-collections)
-                     (conj [:= :cur_coll.authority_level "official"]))]
+                     (conj ['= 'cur_coll.authority_level "official"]))]
     (-> query
         (cond-> (premium-features/has-feature? :content-verification)
           (sql.helpers/left-join ['moderation_review 'cur_mr]
@@ -193,7 +193,7 @@
         (cond-> (premium-features/has-feature? :official-collections)
           (sql.helpers/left-join ['collection 'cur_coll]
                                  ['= 'cur_coll.id (search.config/column-with-model-alias model :collection_id)]))
-        (sql.helpers/where (if (seq or-clauses) (into [:or] or-clauses) false-clause)))))
+        (sql.helpers/where (if (seq or-clauses) (into ['or] or-clauses) false-clause)))))
 
 (doseq [[model item-type] [["card" "card"] ["dataset" "card"] ["metric" "card"] ["dashboard" "dashboard"]]]
   (defmethod build-optional-filter-query [:curated model]
@@ -208,12 +208,12 @@
   ;; published tables count only at the `final` layer. Unlike curated? (feature-ungated, since the precomputed
   ;; column is only written while a feature is active), this live in-place filter gates the published branch
   ;; on the current :library feature, matching the card-like in-place filters above.
-  (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
+  (let [authoritative   ['= (search.config/column-with-model-alias model 'data_authority) "authoritative"]
         published-final (when (premium-features/has-feature? :library)
-                          [:and
-                           [:= (search.config/column-with-model-alias model :is_published) true]
-                           [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
-    (sql.helpers/where query (cond-> [:or authoritative]
+                          ['and
+                           ['= (search.config/column-with-model-alias model 'is_published) true]
+                           ['= (search.config/column-with-model-alias model 'data_layer) "final"]])]
+    (sql.helpers/where query (cond-> ['or authoritative]
                                published-final (conj published-final)))))
 
 ;; Created at filters
@@ -227,20 +227,20 @@
         start      (some-> (:start date-range) u.date/parse)
         end        (some-> (:end date-range) u.date/parse)
         dt-col     (if (some #(instance? LocalDate %) [start end])
-                     [:cast dt-col :date]
+                     ['cast dt-col 'date]
                      dt-col)]
     (cond
       (= start end)
-      [:= dt-col start]
+      ['= dt-col start]
 
       (nil? start)
-      [:< dt-col end]
+      ['< dt-col end]
 
       (nil? end)
-      [:> dt-col start]
+      ['> dt-col start]
 
       :else
-      [:and [:>= dt-col start] [:< dt-col end]])))
+      ['and ['>= dt-col start] ['< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
                "transform" "measure" "exploration"]]

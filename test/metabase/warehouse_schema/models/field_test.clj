@@ -26,9 +26,9 @@
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp [:model/Field field]
-        (t2/query-one {:update 'metabase_field
-                       :set    {column (u/qualified-name unknown-type)}
-                       :where  ['= 'id (u/the-id field)]})
+        (t2/query-one {'update 'metabase_field
+                       'set    {column (u/qualified-name unknown-type)}
+                       'where  ['= 'id (u/the-id field)]})
         (is (= fallback-type
                (t2/select-one-fn column :model/Field 'id (u/the-id field))))))
     (testing (format "Should throw an Exception if you attempt to save a Field with an invalid %s" column)

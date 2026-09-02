@@ -154,7 +154,7 @@
   [_model k groups]
   (mi/instances-with-hydrated-data
    groups k
-   #(group-by :group_id (t2/select :model/User {:select    ['u.id
+   #(group-by :group_id (t2/select :model/User {'select    ['u.id
                                                             ;; user_id is for legacy reasons, we should remove it
                                                             ['u.id 'user_id]
                                                             'u.first_name
@@ -166,12 +166,12 @@
                                                             ['pgm.id 'membership_id]
                                                             (when (premium-features/enable-advanced-permissions?)
                                                               [:pgm.is_group_manager :is_group_manager])]
-                                                :from      [['core_user 'u]]
-                                                :left-join [['permissions_group_membership 'pgm] ['= 'u.id 'pgm.user_id]]
-                                                :where     ['and
+                                                'from      [['core_user 'u]]
+                                                'left-join [['permissions_group_membership 'pgm] ['= 'u.id 'pgm.user_id]]
+                                                'where     ['and
                                                             ['= 'u.is_active true]
                                                             ['in 'pgm.group_id (map :id groups)]]
-                                                :order-by  [[['lower 'u.first_name] 'asc]
+                                                'order-by  [[['lower 'u.first_name] 'asc]
                                                             [['lower 'u.last_name] 'asc]]}))
    :id
    {:default []}))
@@ -184,7 +184,7 @@
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select :model/PermissionsGroup {:where ['= 'magic_group_type nil]}))
+  (t2/select :model/PermissionsGroup {'where ['= 'magic_group_type nil]}))
 
 (defn is-tenant-group?
   "Returns a boolean representing whether this group is a tenant group."
@@ -215,11 +215,11 @@
   groups.)"
   []
   (let [results (mdb/query
-                 {:select    [['pgm.group_id 'group_id] [['count 'pgm.id] 'members]]
-                  :from      [['permissions_group_membership 'pgm]]
-                  :left-join [['core_user 'user] ['= 'pgm.user_id 'user.id]]
-                  :where     ['= 'user.is_active true]
-                  :group-by  ['pgm.group_id]})]
+                 {'select    [['pgm.group_id 'group_id] [['count 'pgm.id] 'members]]
+                  'from      [['permissions_group_membership 'pgm]]
+                  'left-join [['core_user 'user] ['= 'pgm.user_id 'user.id]]
+                  'where     ['= 'user.is_active true]
+                  'group-by  ['pgm.group_id]})]
     (zipmap
      (map :group_id results)
      (map :members results))))

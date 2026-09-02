@@ -382,7 +382,7 @@
           (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
         (testing "404 is returned when fetching the Admin or All Users group"
           (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
-                                             {:where ['in 'id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+                                             {'where ['in 'id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
             (doseq [entity-id entity-ids]
               (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))))
 
@@ -433,6 +433,6 @@
       (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
     (testing "404 is returned when trying to delete the Admin or All Users group as they are not visible to SCIM"
       (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
-                                         {:where ['in 'id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+                                         {'where ['in 'id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
         (doseq [entity-id entity-ids]
           (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))

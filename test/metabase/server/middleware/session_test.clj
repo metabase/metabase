@@ -294,16 +294,16 @@
           (is (= (mt/user->id :lucky)
                  (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
         (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
-          (t2/query {:update 'api_key
-                     :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
-                     :where  ['= 'id api-key-id]})
+          (t2/query {'update 'api_key
+                     'set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
+                     'where  ['= 'id api-key-id]})
           (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
               "strict decrypt rejects the unencrypted hash")
           ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
           ;; strict decrypt on the corrupted plaintext value
-          (t2/query {:update 'api_key
-                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
-                     :where  ['= 'id api-key-id]}))))))
+          (t2/query {'update 'api_key
+                     'set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
+                     'where  ['= 'id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
@@ -533,7 +533,7 @@
                                   :key_hashed test-session-key-hashed
                                   :user_id    (mt/user->id :lucky)})
       ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (t2/query-one {:update (t2/table-name :model/Session), :set {:created_at (t/instant 1000)}, :where ['= 'id test-session-id]})
+      (t2/query-one {'update (t2/table-name :model/Session), 'set {:created_at (t/instant 1000)}, 'where ['= 'id test-session-id]})
       (is (= nil
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally

@@ -63,17 +63,17 @@
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
                               (sql/format
-                               {:select ['schemaname 'tablename]
-                                :from   ['pg_tables]
-                                :where  (if schema
+                               {'select ['schemaname 'tablename]
+                                'from   ['pg_tables]
+                                'where  (if schema
                                           [:and
-                                           [:= :schemaname [:inline schema]]
-                                           [:<> :tablename ^:allow-raw-sql [:inline "migration"]]]
+                                           [:= :schemaname ['inline schema]]
+                                           [:<> :tablename ['inline "migration"]]]
                                           ;; dedicated mode only ever creates tables in the default
                                           ;; schema, so the reset has no business outside it
                                           [:and
-                                           [:= :schemaname ^:allow-raw-sql [:raw "current_schema()"]]
-                                           [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]])})
+                                           [:= :schemaname ['raw "current_schema()"]]
+                                           [:<> :tablename  ['inline "migration"]]])})
                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     ;; the sentinel scan reads every table in scope, not just ours: an app db is recognized by tables we
     ;; would never drop
@@ -90,7 +90,7 @@
               (nil? schema) (filter (partial semantic-search-table? index-metadata)))]
       (jdbc/execute! tx
                      (sql/format
-                      {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
+                      {:drop-table [[['raw (str (semantic.util/quote-ident schemaname) "."
                                                 (semantic.util/quote-ident tablename))]]]})))))
 
 (defn- quoted-table-name
@@ -114,22 +114,22 @@
                                (quoted-table-name table-name))])
     (doseq [{:keys [id provider model_name vector_dimensions]}
             (jdbc/execute! tx
-                           (sql/format {:select ['id 'provider 'model_name 'vector_dimensions]
-                                        :from   [table]})
+                           (sql/format {'select ['id 'provider 'model_name 'vector_dimensions]
+                                        'from   [table]})
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (let [space-id (:embedding-space-id
                       (embeddings.provider/legacy-resolved-model
                        {:provider provider :model-name model_name :vector-dimensions vector_dimensions}))]
         (jdbc/execute! tx
-                       (sql/format {:update table
-                                    :set    {:embedding_space_id space-id}
-                                    :where  ['= 'id id]}))))
+                       (sql/format {'update table
+                                    'set    {:embedding_space_id space-id}
+                                    'where  ['= 'id id]}))))
     (jdbc/execute! tx [(format "ALTER TABLE %s ALTER COLUMN embedding_space_id SET NOT NULL"
                                (quoted-table-name table-name))])
     (jdbc/execute! tx
-                   (sql/format {:update (keyword control-table-name)
-                                :set    {:version (:version index-metadata)}
-                                :where  ['= 'id 0]}
+                   (sql/format {'update (keyword control-table-name)
+                                'set    {:version (:version index-metadata)}
+                                'where  ['= 'id 0]}
                                :quoted true))))
 
 (defn migrate-schema!
@@ -163,25 +163,25 @@
   (let [metadata-table  (keyword (:metadata-table-name index-metadata))
         schema          (:schema index-metadata)
         execute!        (fn [q] (jdbc/execute! tx (sql/format q)))
-        candidate-names (->> (execute! {:select-distinct ['table_name]
-                                        :from            [metadata-table]
-                                        :where           [['< 'index_version target-version]]})
+        candidate-names (->> (execute! {'select-distinct ['table_name]
+                                        'from            [metadata-table]
+                                        'where           [['< 'index_version target-version]]})
                              (mapcat vals))
         ;; stored table_name values are schema-qualified in app-db mode; pg_tables lists bare names
         existing-bare   (when (seq candidate-names)
-                          (->> (execute! {:select ['tablename]
-                                          :from   ['pg_tables]
-                                          :where  (cond-> [:and [:in :tablename (mapv semantic.util/table-name-part candidate-names)]]
-                                                    schema (conj [:= :schemaname [:inline schema]]))})
+                          (->> (execute! {'select ['tablename]
+                                          'from   ['pg_tables]
+                                          'where  (cond-> [:and [:in :tablename (mapv semantic.util/table-name-part candidate-names)]]
+                                                    schema (conj [:= :schemaname ['inline schema]]))})
                                (mapcat vals)
                                set))
         table-names     (filter (comp existing-bare semantic.util/table-name-part) candidate-names)]
     (when (seq table-names)
       (doseq [table-name table-names]
         (alter-fn execute! table-name))
-      (execute! {:update metadata-table
-                 :set    {:index_version target-version}
-                 :where  [['in 'table_name (vec table-names)]]}))))
+      (execute! {'update metadata-table
+                 'set    {:index_version target-version}
+                 'where  [['in 'table_name (vec table-names)]]}))))
 
 (defn- add-personal-owner-id-column!
   "Migration 2: Add `personal_owner_id` column to index tables for SQL-level personal collection filtering."
@@ -239,22 +239,22 @@
              model-id-col       (semantic.util/column-keyword table-name "model_id")
              root-coll-type-col (semantic.util/column-keyword table-name "root_collection_type")
              gate-id            (semantic.util/column-keyword gate-table "id")
-             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") ^:allow-raw-sql [:inline "root_collection_type"]]
-             composite-gate-id  [:|| model-col ^:allow-raw-sql [:inline "_"] model-id-col]]
+             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") ['inline "root_collection_type"]]
+             composite-gate-id  [:|| model-col ['inline "_"] model-id-col]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
-         (execute! {:update kw-tbl
-                    :from   [kw-gate]
-                    :set    {:root_collection_type gate-doc-root}
-                    :where  ['and
+         (execute! {'update kw-tbl
+                    'from   [kw-gate]
+                    'set    {:root_collection_type gate-doc-root}
+                    'where  ['and
                              ['= gate-id composite-gate-id]
                              ['= root-coll-type-col nil]
                              ['!= gate-doc-root nil]]})
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
-           (execute! {:update kw-tbl
-                      :set    {:root_collection_type ^:allow-raw-sql [:inline root-type]}
-                      :where  ['and
+           (execute! {'update kw-tbl
+                      'set    {:root_collection_type ['inline root-type]}
+                      'where  ['and
                                ['= 'root_collection_type nil]
                                ['in 'collection_id (mapv key entries)]]})))))))
 
@@ -277,10 +277,10 @@
            (and is_published (= :final data_layer)) (update :published conj id))))
      {:authoritative [] :published []}
      (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                          {:where ['and
+                          {'where ['and
                                    ['= 'active true]
                                    ['or ['= 'is_published true]
-                                    ['= 'data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
+                                    ['= 'data_authority ['inline "authoritative"]]]]}))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -299,7 +299,7 @@
         []
         (into [] (map (comp str :id))
               (t2/reducible-select [:model/Dashboard :id]
-                                   {:where ['and ['= 'archived false]
+                                   {'where ['and ['= 'archived false]
                                             ['in 'collection_id (vec official-coll-ids)]]}))))
     (catch Exception e
       (when-not config/is-test?
@@ -312,16 +312,16 @@
   A fresh index migrated up before its first population has nothing to backfill (ingestion computes
   `curated` directly at the current version), so the appdb sweep is skipped for it."
   [execute! kw-tbl]
-  (empty? (execute! {:select ['id] :from [kw-tbl] :limit 1})))
+  (empty? (execute! {'select ['id] 'from [kw-tbl] 'limit 1})))
 
 (defn- update-model-rows-in-batches!
   "Apply `set-map` to the index table's `model` rows for `model-ids`, chunked so a large id list never
   becomes one oversized statement. `model-ids` are already strings."
   [execute! kw-tbl model model-ids set-map]
   (doseq [chunk (partition-all 5000 model-ids)]
-    (execute! {:update kw-tbl
-               :set    set-map
-               :where  ['and ['= 'model ^:allow-raw-sql [:inline model]] ['in 'model_id (vec chunk)]]})))
+    (execute! {'update kw-tbl
+               'set    set-map
+               'where  ['and ['= 'model ['inline model]] ['in 'model_id (vec chunk)]]})))
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
@@ -339,7 +339,7 @@
   immediately. Changing the rule needs a new migration to recompute this."
   [tx index-metadata]
   (let [curated-expr (collections.curation/curated-honeysql
-                      (fn [signal] (if (= signal :is_published) [:inline false] signal)))
+                      (fn [signal] (if (= signal :is_published) ['inline false] signal)))
         ;; resolved lazily so the appdb sweeps only run once a non-empty index table is found
         tables       (delay (candidate-table-ids))
         dashboards   (delay (official-collection-dashboard-ids))]
@@ -352,12 +352,12 @@
          (when-not (index-empty? execute! kw-tbl)
            (let [{:keys [authoritative published]} @tables]
              ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
-             (execute! {:update kw-tbl
-                        :set   {:curated curated-expr}
-                        :where ['and ['= 'curated nil] ['!= 'model ^:allow-raw-sql [:inline "table"]]]})
+             (execute! {'update kw-tbl
+                        'set   {:curated curated-expr}
+                        'where ['and ['= 'curated nil] ['!= 'model ['inline "table"]]]})
              ;; Tables: curated only from the appdb sweep. Authoritative rows also get data_authority.
              (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
-                                            {:data_authority ^:allow-raw-sql [:inline "authoritative"] :curated true})
+                                            {:data_authority ['inline "authoritative"] :curated true})
              (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
              ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
              ;; official dashboards (curated alone would leave them scoring as non-official until reindex).

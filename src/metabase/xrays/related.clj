@@ -185,7 +185,7 @@
   (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id :model/Revision
                                                         'model     "Dashboard"
                                                         'user_id   api/*current-user-id*
-                                                        {:order-by [['timestamp 'desc]]}))]
+                                                        {'order-by [['timestamp 'desc]]}))]
     (->> (t2/select :model/Dashboard 'id [:in dashboard-ids])
          filter-visible
          (take max-serendipity-matches))))

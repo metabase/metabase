@@ -143,10 +143,10 @@
                           user-clause)]
     (t2/select-fn-set
      :notification_id (t2/table-name :model/NotificationHandler)
-     {:join      [[(t2/table-name :model/NotificationRecipient) 'nr]
+     {'join      [[(t2/table-name :model/NotificationRecipient) 'nr]
                   ['= 'nr.notification_handler_id 'notification_handler.id]]
-      :left-join [['core_user 'cu] ['= 'cu.id 'nr.user_id]]
-      :where     where-clause})))
+      'left-join [['core_user 'cu] ['= 'cu.id 'nr.user_id]]
+      'where     where-clause})))
 
 (defn- query-where-clause
   "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and creator
@@ -175,21 +175,21 @@
   `ROW_NUMBER() OVER (PARTITION BY notification_id ORDER BY started_at DESC)`."
   []
   ^:allow-subquery
-  {:select ['id 'notification_id 'status 'started_at 'ended_at]
-   :from   [[^:allow-subquery {:select ['id 'notification_id 'status 'started_at 'ended_at
+  {'select ['id 'notification_id 'status 'started_at 'ended_at]
+   'from   [[^:allow-subquery {'select ['id 'notification_id 'status 'started_at 'ended_at
                                         [['over [['row_number]
                                                  ^:allow-subquery
-                                                 {:partition-by ['notification_id]
-                                                  :order-by     [['started_at 'desc]]}]]
+                                                 {'partition-by ['notification_id]
+                                                  'order-by     [['started_at 'desc]]}]]
                                          'rn]]
-                               :from   ['task_run]
-                               :where  ['and
+                               'from   ['task_run]
+                               'where  ['and
                                         ['= 'run_type run-type-alert]
                                         ['is-not 'notification_id nil]
                                         ['in 'status terminal-statuses]
                                         ['> 'started_at (lookback-cutoff)]]}
              'sub]]
-   :where  ['= 'sub.rn 1]})
+   'where  ['= 'sub.rn 1]})
 
 (defn- latest-send-tick-per-notification
   "Honey.sql subquery: one row per notification summarising the LATEST tick that had channel-send
@@ -205,44 +205,44 @@
   []
   (let [lookback (lookback-cutoff)]
     ^:allow-subquery
-    {:select ['lr.notification_id
+    {'select ['lr.notification_id
               ['lr.run_id          'id]
               ['lr.tick_started_at 'started_at]
               ;; Boolean CASE, read back in Clojure — same pattern as
               ;; `metabase.search.in-place.legacy/bookmark-col`. `has-failure?` runs it through
               ;; `bit->boolean` to absorb the MySQL/MariaDB bit-vs-boolean JDBC quirk.
               [['case
-                ['exists ^:allow-subquery {:select [[1]]
-                                           :from   [['task_history 'tf]]
-                                           :where  ['and
+                ['exists ^:allow-subquery {'select [[1]]
+                                           'from   [['task_history 'tf]]
+                                           'where  ['and
                                                     ['= 'tf.run_id 'lr.run_id]
                                                     ['= 'tf.task task-channel-send]
                                                     ['= 'tf.status "failed"]]}]
                 true
                 'else false]
                'has_failure]]
-     :from   [[^:allow-subquery {:select ['tr2.notification_id
+     'from   [[^:allow-subquery {'select ['tr2.notification_id
                                           ['tr2.id         'run_id]
                                           ['tr2.started_at 'tick_started_at]
                                           [['over [['row_number]
                                                    ^:allow-subquery
-                                                   {:partition-by ['tr2.notification_id]
-                                                    :order-by     [['tr2.started_at 'desc]]}]]
+                                                   {'partition-by ['tr2.notification_id]
+                                                    'order-by     [['tr2.started_at 'desc]]}]]
                                            'rn]]
-                                 :from   [['task_run 'tr2]]
-                                 :where  ['and
+                                 'from   [['task_run 'tr2]]
+                                 'where  ['and
                                           ['= 'tr2.run_type run-type-alert]
                                           ['is-not 'tr2.notification_id nil]
                                           ['in 'tr2.status terminal-statuses]
                                           ['> 'tr2.started_at lookback]
                                           ;; only keep runs that actually had channel-send rows
-                                          ['exists ^:allow-subquery {:select [[1]]
-                                                                     :from   [['task_history 'tx]]
-                                                                     :where  ['and
+                                          ['exists ^:allow-subquery {'select [[1]]
+                                                                     'from   [['task_history 'tx]]
+                                                                     'where  ['and
                                                                               ['= 'tx.run_id 'tr2.id]
                                                                               ['= 'tx.task task-channel-send]]}]]}
                'lr]]
-     :where ['= 'lr.rn 1]}))
+     'where ['= 'lr.rn 1]}))
 
 (def ^:private sort-column->order-by
   "Maps the public `sort_column` enum to the SQL expression used in `ORDER BY`. Uses raw
@@ -265,9 +265,9 @@
   (let [channels (if (sequential? channels) channels [channels])]
     [:exists ^:allow-subquery
      ^:allow-subquery
-     {:select [[1]]
-      :from   [(t2/table-name :model/NotificationHandler)]
-      :where  ['and
+     {'select [[1]]
+      'from   [(t2/table-name :model/NotificationHandler)]
+      'where  ['and
                ['= 'notification_handler.notification_id 'notification.id]
                ['in 'notification_handler.channel_type channels]]}]))
 
@@ -318,7 +318,7 @@
   [{:keys [skip-run-joins?] :as filters}]
   (reduce
    sql.helpers/where
-   (cond-> {:select (cond-> [:notification.id
+   (cond-> {'select (cond-> [:notification.id
                              :notification.active
                              :notification.creator_id
                              :notification.created_at
@@ -335,10 +335,10 @@
                              [:ls.id                                            :ls_id]
                              [:ls.started_at                                    :ls_started_at]
                              [:ls.has_failure                                   :ls_has_failure]]))
-            :from   ['notification]
+            'from   ['notification]
             ;; A `notification/card` row with no payload_id is orphaned — it has no card, so
             ;; every card-derived column is null and it can't be managed here. Exclude it.
-            :where  ['and
+            'where  ['and
                      ['= 'notification.payload_type "notification/card"]
                      ['is-not 'notification.payload_id nil]]}
 
@@ -430,23 +430,23 @@
   [task-name run-ids]
   (when (seq run-ids)
     (->> (t2/select :model/TaskHistory
-                    {:select ['run_id 'task_details]
-                     :from   [[^:allow-subquery {:select ['run_id 'task_details
+                    {'select ['run_id 'task_details]
+                     'from   [[^:allow-subquery {'select ['run_id 'task_details
                                                           [['over [['row_number]
                                                                    ^:allow-subquery
-                                                                   {:partition-by ['run_id]
-                                                                    :order-by     [[['case
+                                                                   {'partition-by ['run_id]
+                                                                    'order-by     [[['case
                                                                                      ['= 'task task-notification-send] 0
                                                                                      'else                             1] 'asc]
                                                                                    ['ended_at 'desc]]}]]
                                                            'rn]]
-                                                 :from   ['task_history]
-                                                 :where  (cond-> [:and
+                                                 'from   ['task_history]
+                                                 'where  (cond-> [:and
                                                                   [:in :run_id run-ids]
                                                                   [:in :status ["failed" "abandoned"]]]
                                                            task-name (conj [:= :task task-name]))}
                                'sub]]
-                     :where  ['= 'sub.rn 1]})
+                     'where  ['= 'sub.rn 1]})
          (into {} (map (juxt :run_id (comp :message :task_details)))))))
 
 (defn- has-failure?
@@ -595,13 +595,13 @@
   `::run-summary` maps. Attributed directly via `task_run.notification_id`."
   [notification-id & {:keys [result-limit] :or {result-limit 10}}]
   (let [runs       (t2/select [:model/TaskRun :id :status :started_at]
-                              {:where    ['and
+                              {'where    ['and
                                           ['= 'run_type run-type-alert]
                                           ['= 'notification_id notification-id]
                                           ['in 'status terminal-statuses]
                                           ['> 'started_at (lookback-cutoff)]]
-                               :order-by [['started_at 'desc] ['id 'desc]]
-                               :limit    result-limit})
+                               'order-by [['started_at 'desc] ['id 'desc]]
+                               'limit    result-limit})
         failed-ids (into #{} (keep (fn [{:keys [id status]}]
                                      (when (#{:failed :abandoned} status) id))
                                    runs))
@@ -629,21 +629,21 @@
                         :error    (some :error channel-entries)
                         :channels channel-entries}))))
         (t2/reducible-select :model/TaskHistory
-                             {:select   ['th.run_id 'th.task_details 'th.status
+                             {'select   ['th.run_id 'th.task_details 'th.status
                                          ['tr.started_at 'run_started_at]]
-                              :from     [['task_history 'th]]
-                              :join     [['task_run 'tr] ['= 'tr.id 'th.run_id]]
-                              :where    ['and
+                              'from     [['task_history 'th]]
+                              'join     [['task_run 'tr] ['= 'tr.id 'th.run_id]]
+                              'where    ['and
                                          ['= 'tr.run_type        run-type-alert]
                                          ['= 'tr.notification_id notification-id]
                                          ['= 'th.task            task-channel-send]
                                          ['> 'tr.started_at      (lookback-cutoff)]]
                               ;; tr.id tie-breaks runs sharing a started_at so partition-by run_id
                               ;; keeps each run's rows adjacent.
-                              :order-by [['tr.started_at 'desc] ['tr.id 'desc]]
+                              'order-by [['tr.started_at 'desc] ['tr.id 'desc]]
                               ;; safety cap; the (take result-limit) over partition-by run_id
                               ;; normally closes the cursor first.
-                              :limit    500})))
+                              'limit    500})))
 
 (defn- get-notification-detail
   "Fetch a single card-type notification with `:last_check`, `:last_send`, `:check_history`, and

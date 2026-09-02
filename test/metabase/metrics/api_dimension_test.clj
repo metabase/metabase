@@ -628,11 +628,11 @@
       ;; Force the previous release's card_schema (23) and clear the dimensions the insert hook
       ;; seeded, so the row looks like a metric created before curated dimensions shipped.
       ;; Done with a raw UPDATE to bypass before-update, so nothing bumps the schema back up.
-      (t2/query-one {:update 'report_card
-                     :set    {:card_schema        23
+      (t2/query-one {'update 'report_card
+                     'set    {:card_schema        23
                               :dimensions         nil
                               :dimension_mappings nil}
-                     :where  ['= 'id (:id metric)]})
+                     'where  ['= 'id (:id metric)]})
       (f (:id metric)))))
 
 (deftest pre-curation-metric-modernized-to-full-dimension-set-on-read-test

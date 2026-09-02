@@ -764,7 +764,7 @@
   (when-let [table (output-table transform)]
     (not-empty (t2/select-fn-vec :name [:model/Field :name :position]
                                  'table_id (:id table) 'active true
-                                 {:order-by [['position 'asc]]}))))
+                                 {'order-by [['position 'asc]]}))))
 
 (defn validate-merge-unique-key!
   "Throws if any of `unique-key` is not present in `columns`. Returns `unique-key`."
@@ -799,7 +799,7 @@
           fetch-batch (fn [batch]
                         (t2/select-fn->fn (juxt :db_id :schema :name) :id
                                           [:model/Table :id :db_id :schema :name]
-                                          {:where (into [:or] (map ref->clause batch))}))]
+                                          {'where (into [:or] (map ref->clause batch))}))]
       (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
 (defn- source-table-ref->key

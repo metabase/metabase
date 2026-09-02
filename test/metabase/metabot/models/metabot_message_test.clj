@@ -17,9 +17,9 @@
       (testing "the in-memory data_version reflects the converted format"
         (is (= 2 (:data_version row))))
       (testing "the stored row is untouched"
-        (is (= 1 (:data_version (t2/query-one {:select ['data_version]
-                                               :from   ['metabot_message]
-                                               :where  ['= 'id (:id msg)]}))))))))
+        (is (= 1 (:data_version (t2/query-one {'select ['data_version]
+                                               'from   ['metabot_message]
+                                               'where  ['= 'id (:id msg)]}))))))))
 
 (deftest after-select-passes-v2-data-through-test
   (mt/with-temp [:model/MetabotConversation conv {}

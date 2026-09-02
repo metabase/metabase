@@ -302,7 +302,7 @@
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
                   (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
-              (t2/reducible-select [table :id [column :value]] {:where ['!= column nil]}))))))
+              (t2/reducible-select [table :id [column :value]] {'where ['!= column nil]}))))))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.

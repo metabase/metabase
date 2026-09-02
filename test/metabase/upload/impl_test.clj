@@ -282,7 +282,7 @@
 (defn last-audit-event [topic]
   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
                  'topic topic
-                 {:order-by [['id 'desc]]}))
+                 {'order-by [['id 'desc]]}))
 
 (defn create-from-csv-and-sync-with-defaults!
   "Creates a table from a CSV file and syncs using [[upload/create-from-csv-and-sync!]]. Returns the synced Table."

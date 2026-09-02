@@ -199,9 +199,9 @@
 (def ^:private confirmed-totp-exists
   ;; enrollment state is the auth_identity.confirmed_at COLUMN (queryable), not the encrypted
   ;; credentials JSON
-  [:exists ^:allow-subquery {:select [1]
-                             :from   ['auth_identity]
-                             :where  ['and
+  [:exists ^:allow-subquery {'select [1]
+                             'from   ['auth_identity]
+                             'where  ['and
                                       ['= 'auth_identity.user_id 'core_user.id]
                                       ['= 'auth_identity.provider "totp"]
                                       ['not= 'auth_identity.confirmed_at nil]]}])
@@ -230,7 +230,7 @@
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
    :enrolled_count     (t2/count :model/AuthIdentity 'provider "totp" 'confirmed_at [:not= nil])
-   :unenrolled_count   (t2/count :model/User {:where unenrolled-user-where})})
+   :unenrolled_count   (t2/count :model/User {'where unenrolled-user-where})})
 
 ;;; -------------------------------------------------- Admin user lists --------------------------------------------------
 
@@ -241,9 +241,9 @@
   ;; a correlated scalar subselect rather than a join: the unique (user_id, provider) constraint
   ;; guarantees at most one row, and joining would force qualifying every selected column, since
   ;; auth_identity also has id/created_at/updated_at
-  [[^:allow-subquery {:select ['auth_identity.confirmed_at]
-                      :from   ['auth_identity]
-                      :where  ['and
+  [[^:allow-subquery {'select ['auth_identity.confirmed_at]
+                      'from   ['auth_identity]
+                      'where  ['and
                                ['= 'auth_identity.user_id 'core_user.id]
                                ['= 'auth_identity.provider "totp"]]}
     :enrolled_at]])
@@ -268,16 +268,16 @@
         where  (cond-> [:and where]
                  search (conj search))]
     {:data   (t2/select :model/User
-                        (cond-> {:select   (into list-columns extra-select)
-                                 :where    where
-                                 :order-by [['%lower.first_name 'asc]
+                        (cond-> {'select   (into list-columns extra-select)
+                                 'where    where
+                                 'order-by [['%lower.first_name 'asc]
                                             ['%lower.last_name  'asc]
                                             ['id 'asc]]}
                           ;; (request/limit) is nil on an unpaged request, and `:limit nil` would
                           ;; emit `LIMIT NULL`
                           (request/paged?) (assoc :limit  (request/limit)
                                                   :offset (request/offset))))
-     :total  (t2/count :model/User {:where where})
+     :total  (t2/count :model/User {'where where})
      :limit  (request/limit)
      :offset (request/offset)}))
 

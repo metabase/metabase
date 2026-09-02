@@ -29,7 +29,7 @@
   "Restrict an `information_schema.tables` WHERE (an aliased-`:t` `[:and ...]` vector) to the module schema.
   A no-op without a schema (dedicated mode)."
   [where schema]
-  (cond-> where schema (conj [:= :t.table_schema [:inline schema]])))
+  (cond-> where schema (conj [:= :t.table_schema ['inline schema]])))
 
 (defn- requalify-table-names
   "Prefix bare `information_schema` table names with the module schema so they match how the metadata table
@@ -70,19 +70,19 @@
                                (subs table-name (count prefix) (- (count table-name) (count suffix)))))
         ;; information_schema reports bare names; stored metadata names are qualified when we have a schema
         stored-name (if schema
-                      [:|| [:inline (str schema ".")] :t.table_name]
+                      [:|| ['inline (str schema ".")] :t.table_name]
                       :t.table_name)
         orphaned-tables-sql
-        (-> {:select ['t.table_name]
-             :from [['information_schema.tables 't]]
-             :left-join [[(keyword metadata-table-name) 'meta]
+        (-> {'select ['t.table_name]
+             'from [['information_schema.tables 't]]
+             'left-join [[(keyword metadata-table-name) 'meta]
                          ['= 'meta.table_name stored-name]]
-             :where ['and
-                     ['like 't.table_name ^:allow-raw-sql [:inline like-pattern]]
+             'where ['and
+                     ['like 't.table_name ['inline like-pattern]]
                      ['= 'meta.table_name nil]
-                     ['= 't.table_type [:inline "BASE TABLE"]]
+                     ['= 't.table_type ['inline "BASE TABLE"]]
                      ['= 't.table_schema (if schema
-                                           [:inline schema]
+                                           ['inline schema]
                                            [:current_schema])]]}
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
@@ -110,9 +110,9 @@
   pattern must never match application tables — and the returned names are schema-qualified."
   [pgvector {:keys [schema]}]
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
-        repair-tables-sql (-> {:select ['t.table_name]
-                               :from [['information_schema.tables 't]]
-                               :where (scope-where-to-schema [:and [:like :t.table_name ^:allow-raw-sql [:inline "repair_%"]]] schema)}
+        repair-tables-sql (-> {'select ['t.table_name]
+                               'from [['information_schema.tables 't]]
+                               'where (scope-where-to-schema [:and [:like :t.table_name ['inline "repair_%"]]] schema)}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
@@ -147,11 +147,11 @@
    within the retention period defined in settings."
   [pgvector {:keys [metadata-table-name control-table-name]}]
   (let [retention-cutoff     (t/minus (t/offset-date-time) (t/hours (semantic.settings/stale-index-retention-hours)))
-        stale-index-sql (-> {:select ['meta.table_name]
-                             :from [[(keyword control-table-name) 'control]]
-                             :join [[(keyword metadata-table-name) 'meta]
+        stale-index-sql (-> {'select ['meta.table_name]
+                             'from [[(keyword control-table-name) 'control]]
+                             'join [[(keyword metadata-table-name) 'meta]
                                     ['!= 'meta.id 'control.active_id]]
-                             :where ['and
+                             'where ['and
                                      ['< 'meta.index_created_at retention-cutoff]
                                      ;; If indexer_last_seen is set, we can use it as a proxy for when the index was
                                      ;; last used.
@@ -174,9 +174,9 @@
   "Get the metadata row for the currently active index."
   [pgvector {:keys [metadata-table-name control-table-name]}]
   (jdbc/execute-one! pgvector
-                     (-> {:select ['m.*]
-                          :from [[(keyword control-table-name) 'c]]
-                          :join [[(keyword metadata-table-name) 'm] ['= 'm.id 'c.active_id]]}
+                     (-> {'select ['m.*]
+                          'from [[(keyword control-table-name) 'c]]
+                          'join [[(keyword metadata-table-name) 'm] ['= 'm.id 'c.active_id]]}
                          (sql/format :quoted true))
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -194,8 +194,8 @@
         (let [{:keys [gate-table-name]} index-metadata
               retention-cutoff (t/minus (t/offset-date-time)
                                         (t/hours retention-hours))
-              tombstone-cleanup-sql (-> {:delete-from [(keyword gate-table-name)]
-                                         :where ['and
+              tombstone-cleanup-sql (-> {'delete-from [(keyword gate-table-name)]
+                                         'where ['and
                                                  ['= 'document nil]
                                                  ['= 'document_hash nil]
                                                  ['< 'gated_at retention-cutoff]]}

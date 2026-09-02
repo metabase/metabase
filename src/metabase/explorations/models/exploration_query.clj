@@ -57,9 +57,9 @@
                 (t2/select [:model/ExplorationQueryResult
                             :exploration_query_result.exploration_query_id
                             [:stored_result.row_count :row_count]]
-                           {:join  ['stored_result
+                           {'join  ['stored_result
                                     ['= 'stored_result.id 'exploration_query_result.stored_result_id]]
-                            :where ['in 'exploration_query_result.exploration_query_id
+                            'where ['in 'exploration_query_result.exploration_query_id
                                     (map :id queries)]}))
    :id))
 

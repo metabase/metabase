@@ -27,7 +27,7 @@
   ([s]
    (like-pattern s identity))
   ([s wrap]
-   ;; `::literal` rather than [:inline "!"]: with a driver bound, inline strings compile via driver-specific
+   ;; `::literal` rather than ['inline "!"]: with a driver bound, inline strings compile via driver-specific
    ;; `inline-value` (MySQL emits `_utf8mb4 X'21'`, whose collation can clash with LIKE's other operands)
    ['escape (wrap (escape-like-pattern s)) ['metabase.util.honey-sql-2/literal "!"]]))
 
@@ -41,7 +41,7 @@
   [s]
   (like-pattern (u/lower-case-en s) #(str % "%")))
 
-;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
+;;; `['inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;
 ;;;    [:/ 4 (/ 1 3)] => 4 / 1 / 3
@@ -114,7 +114,7 @@
   "(hsql/format (sql/call :percentile-cont :a 0.9)) => \"percentile_cont(0.9) within group (order by a)\""
   [_tag [expr p]]
   (let [p                      (if (number? p)
-                                 [:inline p]
+                                 ['inline p]
                                  p)
         [expr-sql & expr-args] (sql/format-expr expr)
         [p-sql & p-args]       (sql/format-expr p)]
@@ -394,7 +394,7 @@
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr ['raw (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
@@ -437,7 +437,7 @@
       (cond-> (into [operator]
                     (map (fn [arg]
                            (if (number? arg)
-                             [:inline arg]
+                             ['inline arg]
                              arg)))
                     args)
         arg-db-type (with-database-type-info arg-db-type)))))
@@ -488,7 +488,7 @@
   [db-type]
   (case db-type
     :h2       (with-database-type-info :%now "timestamp")
-    :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
+    :mysql    (with-database-type-info [:now ['inline 6]] "timestamp")
     :postgres (with-database-type-info :%now "timestamptz")))
 
 (defn- format-postgres-interval
@@ -574,7 +574,7 @@
     (-> [:dateadd
          (literal unit)
          (if (number? amount)
-           [:inline (long amount)]
+           ['inline (long amount)]
            (cast-unless-type-in "integer" #{"long" "integer"} amount))
          expr]
         (with-database-type-info (database-type expr)))))
@@ -628,7 +628,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
+  [:timestampdiff ['raw "MICROSECOND"] start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

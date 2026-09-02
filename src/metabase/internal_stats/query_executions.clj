@@ -51,7 +51,7 @@
   []
   (let [qe          (t2/select-one query-execution-statistics)
         one-day-ago (t/minus (t/offset-date-time) (t/days 1))
-        qe-24h      (t2/select-one query-execution-statistics {:where ['> 'started_at one-day-ago]})]
+        qe-24h      (t2/select-one query-execution-statistics {'where ['> 'started_at one-day-ago]})]
     {:query-executions     qe
      :query-executions-24h qe-24h}))
 
@@ -60,6 +60,6 @@
   []
   (let [yesterday-utc (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
     (-> (t2/select-one query-execution-statistics
-                       {:where ['= ['cast 'started_at 'date] ['cast yesterday-utc 'date]]})
+                       {'where ['= ['cast 'started_at 'date] ['cast yesterday-utc 'date]]})
         (dissoc :row_count)
         (update-keys #(keyword (str "query_executions_" (name %)))))))

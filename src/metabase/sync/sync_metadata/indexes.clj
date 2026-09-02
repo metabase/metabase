@@ -58,10 +58,10 @@
    (completing
     (fn [accum index-batch]
       (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) index-batch)
-            query (t2/reducible-query {:select [['f.id]]
-                                       :from [[(t2/table-name :model/Field) 'f]]
-                                       :inner-join [[(t2/table-name :model/Table) 't] ['= 'f.table_id 't.id]]
-                                       :where ['and ['in ['composite ['coalesce 't.schema "__null__"] 't.name 'f.name] normal-indexes]
+            query (t2/reducible-query {'select [['f.id]]
+                                       'from [[(t2/table-name :model/Field) 'f]]
+                                       'inner-join [[(t2/table-name :model/Table) 't] ['= 'f.table_id 't.id]]
+                                       'where ['and ['in ['composite ['coalesce 't.schema "__null__"] 't.name 'f.name] normal-indexes]
                                                ['= 't.db_id database-id]
                                                ['= 'parent_id nil]]})]
         (into accum (keep :id) query))))
@@ -85,9 +85,9 @@
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
           existing-indexed-field-ids (t2/select-pks-set :model/Field
-                                                        'table_id [:in                                                                    ^:allow-subquery {:select [['t.id]]
-                                                                                                                                                            :from [[(t2/table-name :model/Table) 't]]
-                                                                                                                                                            :where ['= 't.db_id database-id]}]
+                                                        'table_id [:in                                                                    ^:allow-subquery {'select [['t.id]]
+                                                                                                                                                            'from [[(t2/table-name :model/Table) 't]]
+                                                                                                                                                            'where ['= 't.db_id database-id]}]
                                                         'parent_id nil
                                                         'database_indexed true)
           [removing adding]           (data/diff existing-indexed-field-ids indexed-field-ids)

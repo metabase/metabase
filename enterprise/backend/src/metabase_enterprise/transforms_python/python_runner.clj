@@ -291,7 +291,7 @@
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
              'parent_id nil
              'nfc_path nil
-             {:order-by [['database_position 'asc]]}))
+             {'order-by [['database_position 'asc]]}))
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."

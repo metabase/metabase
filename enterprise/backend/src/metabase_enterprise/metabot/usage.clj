@@ -111,16 +111,16 @@
                      base-where)]
     (case limit-type
       :tokens
-      (quot (or (:sum (t2/query-one {:select [[['sum 'total_tokens] 'sum]]
-                                     :from   ['ai_usage_log]
-                                     :where  full-where}))
+      (quot (or (:sum (t2/query-one {'select [[['sum 'total_tokens] 'sum]]
+                                     'from   ['ai_usage_log]
+                                     'where  full-where}))
                 0)
             1000000)
 
       :messages
-      (:cnt (t2/query-one {:select [[['count '*] 'cnt]]
-                           :from   ['ai_usage_log]
-                           :where  full-where})))))
+      (:cnt (t2/query-one {'select [[['count '*] 'cnt]]
+                           'from   ['ai_usage_log]
+                           'where  full-where})))))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."

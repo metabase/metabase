@@ -414,11 +414,11 @@
                                                        :database-enable-actions)))
         id->database-enable-actions (into {}
                                           (map (juxt :id get-database-enable-actions))
-                                          (t2/query {:select ['action.id 'db.settings]
-                                                     :from   'action
-                                                     :join   [['report_card 'card] ['= 'card.id 'action.model_id]
+                                          (t2/query {'select ['action.id 'db.settings]
+                                                     'from   'action
+                                                     'join   [['report_card 'card] ['= 'card.id 'action.model_id]
                                                               ['metabase_database 'db] ['= 'db.id 'card.database_id]]
-                                                     :where  ['in 'action.id action-ids]}))]
+                                                     'where  ['in 'action.id action-ids]}))]
     (map (fn [action]
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))

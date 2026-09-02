@@ -332,9 +332,9 @@
                    :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
       (let [dangling {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]}}}]
         ;; Inject the dangling ref via raw SQL so model hooks don't rewrite it on write.
-        (t2/query-one {:update (t2/table-name :model/DashboardCard)
-                       :set    {:visualization_settings (json/encode dangling)}
-                       :where  ['= 'id (:id dc)]})
+        (t2/query-one {'update (t2/table-name :model/DashboardCard)
+                       'set    {:visualization_settings (json/encode dangling)}
+                       'where  ['= 'id (:id dc)]})
         (testing "the read does not throw and the unresolved ref is left untouched"
           (let [loaded (t2/select-one :model/DashboardCard 'id (:id dc))]
             (is (= [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]
@@ -347,9 +347,9 @@
                    :model/Card          src  {}
                    :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
       (let [viz {:visualization {:columnValuesMapping {:COLUMN_1 [{:sourceId (str "card:" (:entity_id src))}]}}}]
-        (t2/query-one {:update (t2/table-name :model/DashboardCard)
-                       :set    {:visualization_settings (json/encode viz)}
-                       :where  ['= 'id (:id dc)]})
+        (t2/query-one {'update (t2/table-name :model/DashboardCard)
+                       'set    {:visualization_settings (json/encode viz)}
+                       'where  ['= 'id (:id dc)]})
         (let [loaded (t2/select-one :model/DashboardCard 'id (:id dc))]
           (is (= [{:sourceId (str "card:" (:id src))}]
                  (get-in loaded [:visualization_settings :visualization :columnValuesMapping :COLUMN_1]))))))))

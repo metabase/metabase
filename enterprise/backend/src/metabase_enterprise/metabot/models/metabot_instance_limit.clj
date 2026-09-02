@@ -30,4 +30,4 @@
 (defn all-tenant-limits
   "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
   []
-  (t2/select :model/MetabotInstanceLimit 'tenant_id [:not= nil] {:order-by [['tenant_id 'asc]]}))
+  (t2/select :model/MetabotInstanceLimit 'tenant_id [:not= nil] {'order-by [['tenant_id 'asc]]}))

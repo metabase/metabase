@@ -843,7 +843,7 @@
                       :base_type     :type/Date
                       :database_position 2}]
                     (t2/select :model/Field 'table_id ingestion-time-partitioned-table-id
-                               'database_partitioned true {:order-by [['name 'desc]]}))))
+                               'database_partitioned true {'order-by [['name 'desc]]}))))
           (testing "and query this table should return the column pseudocolumn as well"
             (is (malli=
                  [:tuple :boolean ms/TemporalString ms/TemporalString]

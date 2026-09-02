@@ -36,8 +36,8 @@
                                  [:and [:not= :expires_at nil] [:< :expires_at now]]]
                           timeout-oldest
                           (conj [:< [:coalesce :last_active_at :created_at] timeout-oldest]))
-        hsql            {:delete-from [(t2/table-name :model/Session)]
-                         :where       where-clause}]
+        hsql            {'delete-from [(t2/table-name :model/Session)]
+                         'where       where-clause}]
     (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/query-one hsql))))
 

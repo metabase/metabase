@@ -84,7 +84,7 @@
 
 (defn- delete-query-executions-for-day! [bucket-date]
   (t2/delete! :model/QueryExecution
-              {:where ['and
+              {'where ['and
                        ['>= 'started_at (t/offset-date-time bucket-date (t/local-time 0) (t/zone-offset "Z"))]
                        ['< 'started_at (t/offset-date-time (t/plus bucket-date (t/days 1)) (t/local-time 0) (t/zone-offset "Z"))]]}))
 

@@ -563,15 +563,15 @@
 
 (defn get-metadata-rows [pgvector index-metadata]
   (jdbc/execute! pgvector
-                 (-> {:select ['*]
-                      :from   [(keyword (:metadata-table-name index-metadata))]}
+                 (-> {'select ['*]
+                      'from   [(keyword (:metadata-table-name index-metadata))]}
                      (sql/format :quoted true))
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn get-control-rows [pgvector index-metadata]
   (jdbc/execute! pgvector
-                 (-> {:select ['*]
-                      :from   [(keyword (:control-table-name index-metadata))]}
+                 (-> {'select ['*]
+                      'from   [(keyword (:control-table-name index-metadata))]}
                      (sql/format :quoted true))
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 

@@ -99,7 +99,7 @@
               (is (= #{:blocked}
                      (t2/select-fn-set :perm_value
                                        :model/DataPermissions
-                                       {:where ['and
+                                       {'where ['and
                                                 ['= 'db_id (mt/id)]
                                                 ['= 'group_id group-id]
                                                 ['= 'perm_type (u/qualified-name :perms/view-data)]]}))))))))))

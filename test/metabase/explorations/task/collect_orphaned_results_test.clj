@@ -31,9 +31,9 @@
                                      :row_count         1
                                      :data_access_token {}})]
     (when-not fresh?
-      (t2/query-one {:update 'stored_result
-                     :set    {:created_at (t/minus (t/offset-date-time) (t/hours 6))}
-                     :where  ['= 'id id]}))
+      (t2/query-one {'update 'stored_result
+                     'set    {:created_at (t/minus (t/offset-date-time) (t/hours 6))}
+                     'where  ['= 'id id]}))
     id))
 
 (defn- exploration-with-query!

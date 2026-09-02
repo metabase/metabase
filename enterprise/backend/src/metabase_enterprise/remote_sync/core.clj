@@ -109,7 +109,7 @@
   the next export deletes them from the remote. Rows still in 'create' (never pushed) are dropped outright
   — the remote never received them, so there is nothing to delete there."
   [collection-ids]
-  (let [rows (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-where collection-ids)})
+  (let [rows (t2/select [:model/RemoteSyncObject :id :status] {'where (contents-rso-where collection-ids)})
         {created true tracked false} (group-by #(= "create" (:status %)) rows)]
     (when (seq created)
       (t2/delete! :model/RemoteSyncObject 'id [:in (map :id created)]))
@@ -127,7 +127,7 @@
   so the entity must be re-serialized for the remote to be guaranteed to match local."
   [collection-ids]
   (when-let [ids (seq (t2/select-pks-set :model/RemoteSyncObject
-                                         {:where ['and
+                                         {'where ['and
                                                   ['= 'status "removed"]
                                                   (contents-rso-where collection-ids)]}))]
     (t2/update! :model/RemoteSyncObject :id [:in ids]
@@ -152,7 +152,7 @@
                  where    (if archived-key
                             [:and [:in :collection_id collection-ids] [:= archived-key false]]
                             [:in :collection_id collection-ids])
-                 entities (t2/select model-key {:where where})]
+                 entities (t2/select model-key {'where where})]
           entity entities
           :when  (not (contains? tracked (:id entity)))]
     (t2/insert! :model/RemoteSyncObject
@@ -357,12 +357,12 @@
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)
-          (t2/query {:update (t2/table-name :model/Collection)
-                     :set {:is_remote_synced true}
-                     :where ['and
+          (t2/query {'update (t2/table-name :model/Collection)
+                     'set {:is_remote_synced true}
+                     'where ['and
                              ['= 'is_remote_synced false]
                              (subtree-where sync-on)]})
-          (when-let [ids (seq (t2/select-pks-set :model/Collection {:where (subtree-where sync-on)}))]
+          (when-let [ids (seq (t2/select-pks-set :model/Collection {'where (subtree-where sync-on)}))]
             ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
             (restore-removed-rsos! ids)
             ;; ...and contents that were dropped outright (never-pushed 'create' rows) must be re-tracked, so
@@ -371,13 +371,13 @@
         (when (seq sync-off)
           (let [affected-collection-ids
                 (t2/select-pks-set :model/Collection
-                                   {:where ['and
+                                   {'where ['and
                                             ['= 'is_remote_synced true]
                                             (subtree-where sync-off)]})]
             (when (seq affected-collection-ids)
-              (t2/query {:update (t2/table-name :model/Collection)
-                         :set {:is_remote_synced false}
-                         :where ['in 'id affected-collection-ids]})
+              (t2/query {'update (t2/table-name :model/Collection)
+                         'set {:is_remote_synced false}
+                         'where ['in 'id affected-collection-ids]})
               (record-removed-rsos! affected-collection-ids))))
         (when-let [failures (not-empty (unsynced-dependency-failures sync-on))]
           (throw (ex-info (tru "Uses content that is not remote synced.")

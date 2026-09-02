@@ -455,8 +455,8 @@
   To revert 1 action, you should have n=2."
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
-  (let [ids (t2/select-pks-vec :model/Revision 'model (name model) 'model_id model-id {:order-by [['id 'desc]]
-                                                                                       :limit    n})]
+  (let [ids (t2/select-pks-vec :model/Revision 'model (name model) 'model_id model-id {'order-by [['id 'desc]]
+                                                                                       'limit    n})]
     (assert (= n (count ids)), "There are less revisions than required to revert")
     (mt/with-test-user :crowberto
       (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)}))))
@@ -484,12 +484,12 @@
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}
                  {:id tab-3-id :name "Tab 3" :position 2}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [['position 'asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [['position 'asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-basic-test-2
   (testing "revert renaming tabs"
@@ -510,12 +510,12 @@
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-1-id :name "Tab 1 with new name" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [['position 'asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [['position 'asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-basic-test-3
   (testing "revert deleting tabs"
@@ -536,12 +536,12 @@
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [['position 'asc]]})))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))
         ;; revert
         (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
         (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
-                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {:order-by [['position 'asc]]})))))))
+                (t2/select :model/DashboardTab 'dashboard_id dashboard-id {'order-by [['position 'asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-advanced-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]

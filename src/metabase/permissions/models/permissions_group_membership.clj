@@ -64,8 +64,8 @@
   [user-id]
   (when (zero?
          (t2/count :model/PermissionsGroupMembership
-                   {:join   [['core_user 'user] ['= 'user.id 'user_id]]
-                    :where  ['and
+                   {'join   [['core_user 'user] ['= 'user.id 'user_id]]
+                    'where  ['and
                              ['= 'group_id (u/the-id (perms-group/admin))]
                              ['= 'user.is_active true]
                              ['not= 'user.id user-id]]}))
@@ -126,17 +126,17 @@
                                            [:tuple pos-int? pos-int?]
                                            :boolean]]
   (when (seq user-id-group-id->is-group-manager?)
-    {:insert-into [['permissions_group_membership ['group_id 'user_id 'is_group_manager]]
+    {'insert-into [['permissions_group_membership ['group_id 'user_id 'is_group_manager]]
                    ^:allow-subquery
-                   {:select ['g.id 'u.id [(into [:case]
+                   {'select ['g.id 'u.id [(into [:case]
                                                 (mapcat (fn [[[user-id group-id] is-group-manager?]]
                                                           [[[:and
                                                              [:= :u.id user-id]
                                                              [:= :g.id group-id]]]
                                                            is-group-manager?])
                                                         user-id-group-id->is-group-manager?))]]
-                    :from [['permissions_group 'g]]
-                    :join [['core_user 'u] (into [:or]
+                    'from [['permissions_group 'g]]
+                    'join [['core_user 'u] (into [:or]
                                                  (for [[[user-id group-id] _] user-id-group-id->is-group-manager?]
                                                    [:and
                                                     [:= :u.id user-id]

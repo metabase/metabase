@@ -546,18 +546,18 @@
                                           #{})]
           (testing "a string group name is bound as a parameter"
             (#'providers.jwt/group-names->ids ["developers"])
-            (let [[query & params] (sql/format {:select ['id]
-                                                :from   ['permissions_group]
-                                                :where  ['in 'name @captured]})]
+            (let [[query & params] (sql/format {'select ['id]
+                                                'from   ['permissions_group]
+                                                'where  ['in 'name @captured]})]
               (is (str/includes? query "IN (?)"))
               (is (= ["developers"] params))))
           (testing "non-string group names are ignored"
             (reset! captured nil)
-            (#'providers.jwt/group-names->ids ["developers" {:select 'x}])
+            (#'providers.jwt/group-names->ids ["developers" {'select 'x}])
             (is (= #{"developers"} @captured))
-            (let [[query & params] (sql/format {:select ['id]
-                                                :from   ['permissions_group]
-                                                :where  ['in 'name @captured]})]
+            (let [[query & params] (sql/format {'select ['id]
+                                                'from   ['permissions_group]
+                                                'where  ['in 'name @captured]})]
               (is (str/includes? query "IN (?)"))
               (is (= ["developers"] params))
               (is (not (str/includes? query "select"))))))))))

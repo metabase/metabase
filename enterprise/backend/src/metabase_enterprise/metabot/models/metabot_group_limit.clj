@@ -13,7 +13,7 @@
 (defn all-group-limits
   "Returns all group-level limits, ordered by group_id."
   []
-  (t2/select :model/MetabotGroupLimit {:order-by [['group_id 'asc]]}))
+  (t2/select :model/MetabotGroupLimit {'order-by [['group_id 'asc]]}))
 
 (defn group-limit
   "Returns the limit for a specific group, or nil if none is set."
@@ -25,13 +25,13 @@
    Returns nil if the user has any groups with a null (unlimited) limit"
   [user-id]
   (:max_usage
-   (t2/query-one {:select    [[['case
+   (t2/query-one {'select    [[['case
                                 ['= [['count '*]] [['count 'gl.max_usage]]]
                                 [['max 'gl.max_usage]]]
                                'max_usage]]
-                  :from      [['permissions_group_membership 'pgm]]
-                  :left-join [['metabot_group_limit 'gl] ['= 'pgm.group_id 'gl.group_id]]
-                  :where     ['= 'pgm.user_id user-id]})))
+                  'from      [['permissions_group_membership 'pgm]]
+                  'left-join [['metabot_group_limit 'gl] ['= 'pgm.group_id 'gl.group_id]]
+                  'where     ['= 'pgm.user_id user-id]})))
 
 (defn set-group-limit!
   "Sets or removes the limit for a specific group. Pass nil to remove (unlimited).

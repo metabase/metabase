@@ -151,7 +151,7 @@
                  {:model       "FakedCard"
                   :model_id    card-id
                   :most_recent false}]
-                (t2/select :model/Revision 'model "FakedCard" 'model_id card-id {:order-by [['timestamp 'desc] ['id 'desc]]})))))))
+                (t2/select :model/Revision 'model "FakedCard" 'model_id card-id {'order-by [['timestamp 'desc] ['id 'desc]]})))))))
 
 (deftest update-revision-does-not-update-timestamp-test
   ;; Realistically this only happens on mysql and mariadb for some reasons

@@ -206,11 +206,11 @@
   for deactivated tables. All caches must select from this same row set so they can never answer the same permission
   question differently — change the row set here, not in one of the queries. `db-ids` of nil means every database."
   [user-id db-ids]
-  ^:allow-subquery {:from [[(t2/table-name :model/PermissionsGroupMembership) 'pgm]]
-                    :join [[(t2/table-name :model/PermissionsGroup) 'pg] ['= 'pg.id 'pgm.group_id]
+  ^:allow-subquery {'from [[(t2/table-name :model/PermissionsGroupMembership) 'pgm]]
+                    'join [[(t2/table-name :model/PermissionsGroup) 'pg] ['= 'pg.id 'pgm.group_id]
                            [(t2/table-name :model/DataPermissions) 'p] ['= 'p.group_id 'pg.id]]
-                    :left-join [[(t2/table-name :model/Table) 'mt] ['= 'mt.id 'p.table_id]]
-                    :where ['and
+                    'left-join [[(t2/table-name :model/Table) 'mt] ['= 'mt.id 'p.table_id]]
+                    'where ['and
                             ['= 'pgm.user_id user-id]
                             (when (seq db-ids)
                               [:in :p.db_id db-ids])
@@ -393,12 +393,12 @@
                            :every-table (value perm-type every_mn every_mx)
                            :any-table   (value perm-type any_mn any_mx)})))
             {}
-            (t2/query {:select   ['i.perm_type 'i.db_id
+            (t2/query {'select   ['i.perm_type 'i.db_id
                                   [['min 'i.gmin] 'any_mn]   [['max 'i.gmax] 'any_mx]
                                   [['min 'i.gmax] 'every_mn] [['max 'i.gmax] 'every_mx]
                                   [['min 'i.dbmin] 'db_mn]   [['max 'i.dbmax] 'db_mx]]
-                       :from     [[per-group 'i]]
-                       :group-by ['i.perm_type 'i.db_id]}))))
+                       'from     [[per-group 'i]]
+                       'group-by ['i.perm_type 'i.db_id]}))))
 
 (defn- load-database-perms!
   "Load `db-ids` into [[*db-permission-cache*]] and return the resulting per-user map."
@@ -739,8 +739,8 @@
                         (update :where conj [:or
                                              [:= :p.table_id nil]
                                              [:= :p.schema_name schema-name]]))
-        {:keys [mn mx]} (first (t2/query {:select [[['min 'i.gmax] 'mn] [['max 'i.gmax] 'mx]]
-                                          :from   [[per-group 'i]]}))]
+        {:keys [mn mx]} (first (t2/query {'select [[['min 'i.gmax] 'mn] [['max 'i.gmax] 'mx]]
+                                          'from   [[per-group 'i]]}))]
     (when mn [mn mx])))
 
 (mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value
@@ -910,9 +910,9 @@
                     {perm-type (permissions.schema/data-permissions perm-type)})))
   (let [perm-values (t2/select-fn-set :value
                                       :model/DataPermissions
-                                      {:select [['p.perm_value 'value]]
-                                       :from [['data_permissions 'p]]
-                                       :where ['and
+                                      {'select [['p.perm_value 'value]]
+                                       'from [['data_permissions 'p]]
+                                       'where ['and
                                                ['in 'p.group_id group-ids]
                                                ['= 'p.perm_type (u/qualified-name perm-type)]
                                                ['= 'p.db_id database-id]
@@ -952,15 +952,15 @@
   (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
     (let [data-perms    (t2/select :model/DataPermissions
-                                   {:select [['p.perm_type 'perm-type]
+                                   {'select [['p.perm_type 'perm-type]
                                              ['p.group_id 'group-id]
                                              ['p.perm_value 'value]
                                              ['p.db_id 'db-id]
                                              ['p.table_id 'table-id]]
-                                    :from [['permissions_group_membership 'pgm]]
-                                    :join [['permissions_group 'pg] ['= 'pg.id 'pgm.group_id]
+                                    'from [['permissions_group_membership 'pgm]]
+                                    'join [['permissions_group 'pg] ['= 'pg.id 'pgm.group_id]
                                            ['data_permissions 'p]   ['= 'p.group_id 'pg.id]]
-                                    :where ['and
+                                    'where ['and
                                             ['= 'pgm.user_id user-id]
                                             (when db-id [:= :db_id db-id])
                                             (when perm-type [:= :perm_type (u/qualified-name perm-type)])]})
@@ -1220,7 +1220,7 @@
       ;; If we're setting any table permissions to a value that is different from the database-level permission,
       ;; we need to replace it with individual permission rows for every table in the database instead.
       (let [other-new-perms (->> (t2/select [:model/Table :id :schema]
-                                            {:where
+                                            {'where
                                              ['and
                                               ['= 'db_id db-id]
                                               ;; We can't filter out *everything* here because
@@ -1250,9 +1250,9 @@
   [group-id db-id perm-type table-ids values new-perms]
   (let [existing-table-values (into #{}
                                     (map (comp keyword :perm_value))
-                                    (t2/query {:select-distinct ['perm_value]
-                                               :from [(t2/table-name :model/DataPermissions)]
-                                               :where ['and
+                                    (t2/query {'select-distinct ['perm_value]
+                                               'from [(t2/table-name :model/DataPermissions)]
+                                               'where ['and
                                                        ['= 'group_id group-id]
                                                        ['= 'db_id db-id]
                                                        ['= 'perm_type (u/qualified-name perm-type)]
@@ -1267,7 +1267,7 @@
       ;; Otherwise, just replace the rows for the individual table perm
       ;; only :id is consumed downstream (see [[set-table-permissions-internal!]]), so don't fetch full rows
       (let [table-perms-to-delete (t2/select [:model/DataPermissions :id]
-                                             {:where ['and
+                                             {'where ['and
                                                       ['= 'perm_type (u/qualified-name perm-type)]
                                                       ['= 'group_id group-id]
                                                       ['in 'table_id table-ids]]})]
@@ -1303,7 +1303,7 @@
       ;; call coalesces to that same DB-level row.
       (apply merge-perm-changes
              (if-let [existing-db-perm (t2/select-one :model/DataPermissions
-                                                      {:where
+                                                      {'where
                                                        ['and
                                                         ['= 'perm_type (u/qualified-name perm-type)]
                                                         ['= 'group_id  group-id]
@@ -1402,8 +1402,8 @@
         (let [au-id    (t2/select-one-pk :model/PermissionsGroup
                                          'magic_group_type "all-internal-users")
               au-perms (t2/select :model/DataPermissions
-                                  {:select-distinct ['db_id 'perm_type 'perm_value]
-                                   :where ['= 'group_id au-id]})
+                                  {'select-distinct ['db_id 'perm_type 'perm_value]
+                                   'where ['= 'group_id au-id]})
               au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
                                  (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
                                {}
@@ -1446,14 +1446,14 @@
           ;; Batch-fetch distinct (group, perm-type, value) triples — we only need the set of unique values per
           ;; group to find the most restrictive level;
           all-perms    (when-not is-audit
-                         (t2/query {:select-distinct ['group_id 'perm_type 'perm_value]
-                                    :from   [[(t2/table-name :model/DataPermissions)]]
-                                    :where  ['and
+                         (t2/query {'select-distinct ['group_id 'perm_type 'perm_value]
+                                    'from   [[(t2/table-name :model/DataPermissions)]]
+                                    'where  ['and
                                              ['in 'group_id group-ids]
                                              ['in 'perm_type ["perms/create-queries" "perms/download-results"]]
-                                             ['not ['exists ^:allow-subquery {:select [1]
-                                                                              :from   [[(t2/table-name :model/Database) 'audit_db]]
-                                                                              :where  ['and
+                                             ['not ['exists ^:allow-subquery {'select [1]
+                                                                              'from   [[(t2/table-name :model/Database) 'audit_db]]
+                                                                              'where  ['and
                                                                                        ['= 'audit_db.is_audit true]
                                                                                        ['= 'audit_db.id 'data_permissions.db_id]]}]]]}))
           ;; Group by (group_id, perm_type) → set of values
@@ -1523,7 +1523,7 @@
   [db-id group-ids perm-types]
   (let [qn          (mapv u/qualified-name perm-types)
         db-level    (t2/select :model/DataPermissions
-                               {:where ['and ['= 'db_id db-id] ['= 'table_id nil]
+                               {'where ['and ['= 'db_id db-id] ['= 'table_id nil]
                                         ['in 'group_id group-ids] ['in 'perm_type qn]]})
         ;; `schema-vals-idx` only needs the set of distinct perm-values per
         ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
@@ -1531,8 +1531,8 @@
         ;; instead of growing with the table count, which can be millions of
         ;; rows on databases with very many tables (see #76077).
         table-level (t2/select :model/DataPermissions
-                               {:select-distinct ['group_id 'perm_type 'schema_name 'perm_value]
-                                :where ['and ['= 'db_id db-id] ['not= 'table_id nil]
+                               {'select-distinct ['group_id 'perm_type 'schema_name 'perm_value]
+                                'where ['and ['= 'db_id db-id] ['not= 'table_id nil]
                                         ['in 'group_id group-ids] ['in 'perm_type qn]]})]
     {:db-id            db-id
      :db-level-idx     (into {} (map (juxt (juxt :group_id :perm_type) identity)) db-level)

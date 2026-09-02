@@ -23,11 +23,11 @@
 
 (defn- view-count-percentile-query
   [index-table p-value]
-  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
-    {:select   ['search_index.model [expr 'vcp]]
-     :from     [[(keyword index-table) 'search_index]]
-     :group-by ['search_index.model]
-     :having   ['is-not expr nil]}))
+  (let [expr ['raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
+    {'select   ['search_index.model [expr 'vcp]]
+     'from     [[(keyword index-table) 'search_index]]
+     'group-by ['search_index.model]
+     'having   ['is-not expr nil]}))
 
 (defn- view-count-percentiles*
   [index-table p-value]
@@ -79,19 +79,19 @@
   [distance]
   ;; TODO (Chris 2026-06-22) -- a non-linear curve might rank better than this straight-line map. Keeping it
   ;; linear for now so the score stays as transparent as possible.
-  [:- [:inline 1] [:/ distance [:inline cosine-distance-ceiling]]])
+  [:- ['inline 1] [:/ distance ['inline cosine-distance-ceiling]]])
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [index-table {:keys [search-string] :as search-ctx}]
   (if (search.scoring/no-scoring-required? search-ctx)
-    {:model [:inline 1]}
+    {:model ['inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf        rrf-rank-exp
      ;; Keyword-only hits have no vector distance; score them 0 directly rather than feeding the ceiling
      ;; distance through the linear map.
-     :semantic-distance [:coalesce (semantic-distance-score-expr :semantic_distance) [:inline 0]]
+     :semantic-distance [:coalesce (semantic-distance-score-expr :semantic_distance) ['inline 0]]
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
      :recency    (search.scoring/inverse-duration
@@ -106,12 +106,12 @@
                    ;; normalize both sides in the database, in case it behaves differently to our helper
                    (search.scoring/equal (search.scoring/normalize-text-expr :postgres :name)
                                          (search.scoring/normalize-text-expr :postgres search-string))
-                   [:inline 0])
+                   ['inline 0])
      :prefix     (if search-string
                    ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
                    (search.scoring/prefix (search.scoring/normalize-text-expr :postgres :name)
                                           (search.scoring/normalize-text search-string))
-                   [:inline 0])
+                   ['inline 0])
      :library    (search.scoring/library-score-expr)
      :data-layer (search.scoring/data-layer-score-expr search-ctx)}))
 
@@ -159,22 +159,22 @@
 (defn- search-doc->select
   [{:keys [id model]}]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline (str id)]] [^:allow-raw-sql [:inline model]]]})
+  {'select [[['inline (str id)]] [['inline model]]]})
 
 (defn- search-index-query
   [search-results]
-  {:with     [[['search_index ^:allow-subquery {:columns ['model_id 'model]}]
+  {'with     [[['search_index ^:allow-subquery {'columns ['model_id 'model]}]
                ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
                ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
                ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
                ^:allow-subquery
-               {:union (map search-doc->select search-results)}]]
-   :select   [[['cast 'search_index.model_id (if (= :mysql (mdb/db-type))
+               {'union (map search-doc->select search-results)}]]
+   'select   [[['cast 'search_index.model_id (if (= :mysql (mdb/db-type))
                                                :unsigned
                                                :int)]
                'id]
               ['search_index.model 'model]]
-   :from     ['search_index]})
+   'from     ['search_index]})
 
 (defn- update-with-appdb-score
   [weights scorers grouped-appdb-results search-result]

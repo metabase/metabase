@@ -145,7 +145,7 @@
    dashboards k
    #(group-by :dashboard_id (t2/select :model/DashboardTab
                                        'dashboard_id [:in (map :id dashboards)]
-                                       {:order-by [['dashboard_id 'asc] ['position 'asc] ['id 'asc]]}))
+                                       {'order-by [['dashboard_id 'asc] ['position 'asc] ['id 'asc]]}))
    :id
    {:default []}))
 
@@ -155,11 +155,11 @@
    dashboards k
    #(group-by :dashboard_id
               (t2/select :model/DashboardCard
-                         {:select    ['dashcard.* ['collection.authority_level 'collection_authority_level]]
-                          :from      [['report_dashboardcard 'dashcard]]
-                          :left-join [['report_card 'card] ['= 'dashcard.card_id 'card.id]
+                         {'select    ['dashcard.* ['collection.authority_level 'collection_authority_level]]
+                          'from      [['report_dashboardcard 'dashcard]]
+                          'left-join [['report_card 'card] ['= 'dashcard.card_id 'card.id]
                                       ['collection 'collection] ['= 'collection.id 'card.collection_id]]
-                          :where     ['and
+                          'where     ['and
                                       ['in 'dashcard.dashboard_id (map :id dashboards)]
                                       ['or
                                        ;; show it if:
@@ -170,7 +170,7 @@
                                         ['not= 'card.dashboard_id nil]
                                         ['= 'card.archived_directly false]]
                                        ['= 'card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-                          :order-by  [['dashcard.dashboard_id] ['dashcard.created_at 'asc]]}))
+                          'order-by  [['dashcard.dashboard_id] ['dashcard.created_at 'asc]]}))
    :id
    {:default []}))
 
@@ -181,10 +181,10 @@
   (when (seq dashboards)
     (let [coll-id->level (into {}
                                (map (juxt :id :authority_level))
-                               (app-db/query {:select    ['dashboard.id 'collection.authority_level]
-                                              :from      [['report_dashboard 'dashboard]]
-                                              :left-join [['collection 'collection] ['= 'collection.id 'dashboard.collection_id]]
-                                              :where     ['in 'dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+                               (app-db/query {'select    ['dashboard.id 'collection.authority_level]
+                                              'from      [['report_dashboard 'dashboard]]
+                                              'left-join [['collection 'collection] ['= 'collection.id 'dashboard.collection_id]]
+                                              'where     ['in 'dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
@@ -585,12 +585,12 @@
 
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]
-  ^:allow-subquery {:select ['report_dashboard.id
+  ^:allow-subquery {'select ['report_dashboard.id
                              [(h2x/literal "Dashboard") 'model]
                              ['report_dashboard.name 'name]
                              ['last_viewed_at 'last_used_at]]
-                    :from 'report_dashboard
-                    :left-join ['pulse ['and
+                    'from 'report_dashboard
+                    'left-join ['pulse ['and
                                         ['= 'pulse.archived false]
                                         ['= 'pulse.dashboard_id 'report_dashboard.id]]
                                 'collection ['= 'collection.id 'report_dashboard.collection_id]
@@ -599,7 +599,7 @@
                                                     ['= 'moderation_review.moderated_item_type (h2x/literal "dashboard")]
                                                     ['= 'moderation_review.most_recent true]
                                                     ['= 'moderation_review.status (h2x/literal "verified")]]]
-                    :where ['and
+                    'where ['and
                             ['= 'pulse.id nil]
                             ['= 'moderation_review.id nil]
                             ['= 'report_dashboard.archived false]

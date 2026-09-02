@@ -111,8 +111,8 @@
                                        {:table-ids (set table-ids)}
                                        {:db-ids #{database-id}}))
       (->> (t2/select :model/Table
-                      {:select table-select-columns
-                       :where  where})
+                      {'select table-select-columns
+                       'where  where})
            (filter mi/can-read?)))))
 
 (defn- readable-table-ids
@@ -128,17 +128,17 @@
   [table-ids]
   (when (seq table-ids)
     (t2/select :model/Field
-               {:where    ['and
+               {'where    ['and
                            ['in 'table_id table-ids]
                            ['= 'active true]]
-                :order-by schema.table/field-order-rule})))
+                'order-by schema.table/field-order-rule})))
 
 (defn- fetch-fields-by-ids
   "Fetch active fields by ID."
   [field-ids]
   (when (seq field-ids)
     (t2/select :model/Field
-               {:where ['and
+               {'where ['and
                         ['in 'id field-ids]
                         ['= 'active true]]})))
 

@@ -60,13 +60,13 @@
                                                                 [:and where [:= :id output-table-id]])))]]
                             [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
-            (t2/reducible-query {:select [[output-table-id 'table_id]]
-                                 :from   [[(t2/table-name :model/Dimension) 'dim]]
-                                 :join   [[(t2/table-name :model/Field) 'source_field]
+            (t2/reducible-query {'select [[output-table-id 'table_id]]
+                                 'from   [[(t2/table-name :model/Dimension) 'dim]]
+                                 'join   [[(t2/table-name :model/Field) 'source_field]
                                           ['= 'dim.field_id 'source_field.id]
                                           [(t2/table-name :model/Field) 'target_field]
                                           ['= 'dim.human_readable_field_id 'target_field.id]]
-                                 :where  ['and
+                                 'where  ['and
                                           ['= 'dim.type "external"]
                                           ['in input-table-id tables]
                                           not-in-tables]})))))
@@ -86,7 +86,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
-  ^:allow-subquery {:select ['id] :from [(t2/table-name :model/Table)] :where where})
+  ^:allow-subquery {'select ['id] 'from [(t2/table-name :model/Table)] 'where where})
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.
@@ -178,7 +178,7 @@
                              [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
                              where)
         ;; Get table IDs before update for event publishing
-        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+        table-ids-to-update (t2/select-pks-set :model/Table {'where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in table-ids-to-update]
@@ -203,7 +203,7 @@
                           [:or where [:in :id downstream-ids]]
                           where)
         ;; Get table IDs before update for event publishing
-        table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
+        table-ids-to-update (t2/select-pks-set :model/Table {'where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in table-ids-to-update]

@@ -161,10 +161,10 @@
   persisted info records pointing to cards that are no longer models, archived cards/models, and all records where the corresponding
   card or database has been permanently deleted."
   []
-  (let [hsql {:select    ['p.*]
-              :from      [['persisted_info 'p]]
-              :left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
-              :where     ['or
+  (let [hsql {'select    ['p.*]
+              'from      [['persisted_info 'p]]
+              'left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
+              'where     ['or
                           ['and
                            ['in 'state (persisted-info/prunable-states)]
                            ;; Buffer deletions for an hour if the
@@ -183,10 +183,10 @@
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (let [hsql {:select    ['p.* 'c.type 'c.archived 'c.name]
-              :from      [['persisted_info 'p]]
-              :left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
-              :where     ['and
+  (let [hsql {'select    ['p.* 'c.type 'c.archived 'c.name]
+              'from      [['persisted_info 'p]]
+              'left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
+              'where     ['and
                           ['= 'p.database_id database-id]
                           ['in 'p.state (persisted-info/refreshable-states)]
                           ['= 'c.archived false]

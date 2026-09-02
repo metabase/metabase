@@ -62,7 +62,7 @@
               (t2/hydrate
                (t2/select :model/ExplorationThreadTimeline
                           'exploration_thread_id [:in (map :id threads)]
-                          {:order-by [['position 'asc] ['id 'asc]]})
+                          {'order-by [['position 'asc] ['id 'asc]]})
                :timeline))
    :id
    {:default []}))
@@ -75,7 +75,7 @@
               (t2/hydrate
                (t2/select :model/ExplorationQuery
                           'exploration_thread_id [:in (map :id threads)]
-                          {:order-by [['position 'asc] ['id 'asc]]})
+                          {'order-by [['position 'asc] ['id 'asc]]})
                :interestingness_score
                :contextual_interestingness_score
                :row_count

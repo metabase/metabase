@@ -86,7 +86,7 @@
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
+  {'left-join [(t2/table-name (t2.model/resolve-model dest-entity))
                ['= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
 (defmulti compile

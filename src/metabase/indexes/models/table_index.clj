@@ -81,7 +81,7 @@
   [transform-id]
   (t2/select :model/TableIndex
              'transform_id transform-id
-             {:order-by [['id 'asc]]}))
+             {'order-by [['id 'asc]]}))
 
 (defn select-applicable-for-transform
   "Rows whose structured definitions should be applied to `transform-id`'s target table."
@@ -89,7 +89,7 @@
   (t2/select :model/TableIndex
              'transform_id transform-id
              'status [:not= :delete-pending]
-             {:order-by [['index_name 'asc]]}))
+             {'order-by [['index_name 'asc]]}))
 
 (defn select-for-verification
   "Rows the current execution can update while verifying indexes.
@@ -104,11 +104,11 @@
                 'transform_id transform-id
                 'id [:in index-request-ids]
                 'status :running
-                {:order-by [['id 'asc]]}))
+                {'order-by [['id 'asc]]}))
    (t2/select :model/TableIndex
               'transform_id transform-id
               'status :delete-pending
-              {:order-by [['id 'asc]]})))
+              {'order-by [['id 'asc]]})))
 
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."

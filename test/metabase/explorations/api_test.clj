@@ -81,14 +81,14 @@
                                             'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update 'report_card
-                   :set    {:archived true}
-                   :where  ['in 'id metric-ids]})
+        (t2/query {'update 'report_card
+                   'set    {:archived true}
+                   'where  ['in 'id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update 'report_card
-                     :set    {:archived false}
-                     :where  ['in 'id metric-ids]})))
+          (t2/query {'update 'report_card
+                     'set    {:archived false}
+                     'where  ['in 'id metric-ids]})))
       (thunk))))
 
 (defmacro with-sample-metrics-archived
@@ -169,7 +169,7 @@
                                      :explore_filters explore-filters})
         new-thread-id (->> (t2/select :model/ExplorationThread
                                       'exploration_id expl-id
-                                      {:order-by [['position 'desc] ['id 'desc]]})
+                                      {'order-by [['position 'desc] ['id 'desc]]})
                            first :id)]
     (query-plan/generate-query-plan! new-thread-id)
     (let [hydrated (mt/user-http-request user :get 200 (format "exploration/%d" expl-id))]
@@ -425,7 +425,7 @@
             resp   (mt/user-http-request u :post 200 "exploration" body)
             tid    (-> resp :threads first :id)
             blocks (t2/select :model/ExplorationBlock
-                              'exploration_thread_id tid {:order-by [['position 'asc]]})]
+                              'exploration_thread_id tid {'order-by [['position 'asc]]})]
         (is (= "Blocked create" (:name resp)))
         (is (= 2 (count blocks)) "one row per block, no dedup")
         (is (= [0 1] (map :position blocks)))
@@ -1148,11 +1148,11 @@
         ;; and the gate needs a query it can resolve source tables from to compare the lens.
         dataset-query (t2/select-one-fn :dataset_query :model/Card 'id card-id)
         creator-id    (t2/select-one-fn :creator_id :model/Exploration
-                                        {:select ['e.creator_id]
-                                         :from   [['exploration 'e]]
-                                         :join   [['exploration_thread 't] ['= 't.exploration_id 'e.id]
+                                        {'select ['e.creator_id]
+                                         'from   [['exploration 'e]]
+                                         'join   [['exploration_thread 't] ['= 't.exploration_id 'e.id]
                                                   ['exploration_query 'q]  ['= 'q.exploration_thread_id 't.id]]
-                                         :where  ['= 'q.id query-id]})
+                                         'where  ['= 'q.id query-id]})
         sr-id         (first (t2/insert-returning-pks!
                               :model/StoredResult
                               {:result_data       bytes
@@ -1481,7 +1481,7 @@
                                                     :display_value "2"}]}))
         (let [new-thread-id (->> (t2/select :model/ExplorationThread
                                             'exploration_id expl-id
-                                            {:order-by [['position 'desc] ['id 'desc]]})
+                                            {'order-by [['position 'desc] ['id 'desc]]})
                                  first :id)]
           (is (= [new-thread-id] @enqueued)
               "explore-further must enqueue planning for the new thread via start-thread!"))))))
@@ -2573,9 +2573,9 @@
                                            {:page_id         (:page-id src)
                                             :explore_filters [new-f]})
               new-block (->> (t2/select :model/ExplorationBlock
-                                        {:join  [['exploration_thread 't]
+                                        {'join  [['exploration_thread 't]
                                                  ['= 't.id 'exploration_block.exploration_thread_id]]
-                                         :where ['and
+                                         'where ['and
                                                  ['= 't.exploration_id (:exploration-id src)]
                                                  ['not= 'exploration_block.exploration_thread_id (:thread-id src)]]})
                              first)
@@ -2614,7 +2614,7 @@
                                                   :display_value "2"}]})
         (let [new-thread (t2/select-one :model/ExplorationThread
                                         'exploration_id (:exploration-id src)
-                                        {:order-by [['position 'desc] ['id 'desc]]})]
+                                        {'order-by [['position 'desc] ['id 'desc]]})]
           (is (= "Price: 2" (:name new-thread))
               "nested follow-up omits the metric prefix"))))))
 
@@ -2651,7 +2651,7 @@
                                                     :display_value "2"}]})
           (let [new-thread (t2/select-one :model/ExplorationThread
                                           'exploration_id (:exploration-id src)
-                                          {:order-by [['position 'desc] ['id 'desc]]})]
+                                          {'order-by [['position 'desc] ['id 'desc]]})]
             (is (= "Number of venues → Category: gadget, Price: 2" (:name new-thread))
                 "top-level follow-up names all filters as Metric → Column: Value")))))))
 

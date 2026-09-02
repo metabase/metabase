@@ -162,13 +162,13 @@
     :caveats :points_of_interest :nfc_path :json_unfolding :settings})
 
 (defn- ensure-field-user-settings-exist-for-fk-target-field [field]
-  (let [q {:select ['id]
-           :from ['metabase_field]
-           :where ['and
+  (let [q {'select ['id]
+           'from ['metabase_field]
+           'where ['and
                    ['= 'fk_target_field_id (:id field)]
-                   ['not ['exists ^:allow-subquery {:select [1]
-                                                    :from   ['metabase_field_user_settings]
-                                                    :where  ['= 'metabase_field_user_settings.field_id 'metabase_field.id]}]]]}
+                   ['not ['exists ^:allow-subquery {'select [1]
+                                                    'from   ['metabase_field_user_settings]
+                                                    'where  ['= 'metabase_field_user_settings.field_id 'metabase_field.id]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})

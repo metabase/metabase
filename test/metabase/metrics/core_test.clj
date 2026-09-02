@@ -102,13 +102,13 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (t2/query-one {:update 'report_card
-                     :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
-                     :where  ['= 'id (:id metric)]})
+      (t2/query-one {'update 'report_card
+                     'set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                     'where  ['= 'id (:id metric)]})
       (metrics/sync-dimensions! :metadata/metric (:id metric))
-      (let [stored     (t2/query-one {:select ['dimensions 'dimension_mappings]
-                                      :from   ['report_card]
-                                      :where  ['= 'id (:id metric)]})
+      (let [stored     (t2/query-one {'select ['dimensions 'dimension_mappings]
+                                      'from   ['report_card]
+                                      'where  ['= 'id (:id metric)]})
             first-ids (mapv :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))
             next-ids  (mapv :id (:dimensions (t2/select-one :model/Card 'id (:id metric))))]
         (is (some? (:dimensions stored)))

@@ -369,7 +369,7 @@
   ([] (visible-collection-ids {}))
   ([visibility-config]
    (cond-> (t2/select-pks-set :model/Collection
-                              {:where (collection/visible-collection-filter-clause :id visibility-config)})
+                              {'where (collection/visible-collection-filter-clause :id visibility-config)})
      (collection/should-display-root-collection? visibility-config) (conj "root"))))
 
 (deftest visible-collection-ids-test
@@ -1174,7 +1174,7 @@
    (zipmap (map :name collections)
            collections)
    (t2/select-fn-set :object :model/Permissions
-                     {:where ['and
+                     {'where ['and
                               ['like 'object "/collection/%"]
                               ['= 'group_id (u/the-id perms-group)]]})))
 
@@ -1316,7 +1316,7 @@
                                       (-> (t2/select-one :model/Collection id-or-ids)
                                           (t2/hydrate :is_personal)
                                           :is_personal)
-                                      (as-> (t2/select :model/Collection 'id [:in id-or-ids] {:order-by [:id]}) collections
+                                      (as-> (t2/select :model/Collection 'id [:in id-or-ids] {'order-by [:id]}) collections
                                         (t2/hydrate collections :is_personal)
                                         (map :is_personal collections))))]
             (testing "simple hydration and batched hydration should return correctly"
@@ -2957,17 +2957,17 @@
         (testing "trash collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
-                                 {:where ['and ['= 'id (:id trash-collection)] hsql-clause]})]
+                                 {'where ['and ['= 'id (:id trash-collection)] hsql-clause]})]
             (is (empty? query))))
         (testing "analytics collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
-                                 {:where ['and ['= 'id (:id analytics-collection)] hsql-clause]})]
+                                 {'where ['and ['= 'id (:id analytics-collection)] hsql-clause]})]
             (is (empty? query))))
         (testing "sample collection would be excluded by filter"
           (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
                 query (t2/select :model/Collection
-                                 {:where ['and ['= 'id (:id sample-collection)] hsql-clause]})]
+                                 {'where ['and ['= 'id (:id sample-collection)] hsql-clause]})]
             (is (empty? query))))))))
 
 (deftest serdes-descendants-skip-archived-test

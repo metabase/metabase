@@ -48,7 +48,7 @@
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
    (let [current-group-ids  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                              {:where
+                                              {'where
                                                ['and
                                                 ['= 'user_id  (u/the-id user-or-id)]
                                                 ['not-in 'group_id (excluded-group-ids)]]})
@@ -59,7 +59,7 @@
    (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
                               (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                                {:where
+                                                {'where
                                                  ['and
                                                   ['= 'user_id (u/the-id user-or-id)]
                                                   ['in 'group_id mapped-group-ids]

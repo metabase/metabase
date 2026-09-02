@@ -69,13 +69,13 @@
   "Check that `target-field-id` is a valid field in the same database as `source-field-id`. Throws a 400 if
    the target field does not exist or belongs to a different database. Uses a single query."
   [source-field-id target-field-id param-name]
-  (let [result (first (t2/query {:select [['source_t.db_id 'source_db_id]
+  (let [result (first (t2/query {'select [['source_t.db_id 'source_db_id]
                                           ['target_t.db_id 'target_db_id]]
-                                 :from   [[(t2/table-name :model/Field) 'sf]]
-                                 :join   [[(t2/table-name :model/Table) 'source_t] ['= 'sf.table_id 'source_t.id]
+                                 'from   [[(t2/table-name :model/Field) 'sf]]
+                                 'join   [[(t2/table-name :model/Table) 'source_t] ['= 'sf.table_id 'source_t.id]
                                           [(t2/table-name :model/Field) 'tf] ['= 'tf.id target-field-id]
                                           [(t2/table-name :model/Table) 'target_t] ['= 'tf.table_id 'target_t.id]]
-                                 :where  ['= 'sf.id source-field-id]}))]
+                                 'where  ['= 'sf.id source-field-id]}))]
     (api/checkp result param-name "Invalid target field")
     (api/checkp (= (:source_db_id result) (:target_db_id result))
                 param-name "Target field must belong to the same database")))

@@ -141,9 +141,9 @@
         ln->ids     (when (seq lower-names)
                       (u/group-by
                        :lower_name :id
-                       (t2/query {:select ['id [['lower 'name] 'lower_name]]
-                                  :from   [(t2/table-name :model/Field)]
-                                  :where  ['and
+                       (t2/query {'select ['id [['lower 'name] 'lower_name]]
+                                  'from   [(t2/table-name :model/Field)]
+                                  'where  ['and
                                            ['= 'table_id table-id]
                                            ['in ['lower 'name] lower-names]
                                            ['in 'has_field_values ["list" "auto-list"]]

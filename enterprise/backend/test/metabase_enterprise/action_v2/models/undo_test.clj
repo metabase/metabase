@@ -231,9 +231,9 @@
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))))))))
 
 (defn- count-batches [& [where]]
-  (val (ffirst (t2/query {:select [[['count ['distinct 'batch_num]] 'cnt]]
-                          :from   [(t2/table-name :model/Undo)]
-                          :where  (or where true)}))))
+  (val (ffirst (t2/query {'select [[['count ['distinct 'batch_num]] 'cnt]]
+                          'from   [(t2/table-name :model/Undo)]
+                          'where  (or where true)}))))
 
 (deftest prune-snapshots-test
   (mt/with-empty-h2-app-db!

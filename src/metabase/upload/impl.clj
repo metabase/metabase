@@ -473,9 +473,9 @@
     ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
     ;;                                        ^^^^^
     ;; ERROR: argument of AND must be type boolean, not type integer
-    (t2/query {:update (t2/table-name :model/Field)
-               :set    {:display_name case-statement}
-               :where  ['and
+    (t2/query {'update (t2/table-name :model/Field)
+               'set    {:display_name case-statement}
+               'where  ['and
                         ['= 'table_id table-id]
                         ['in ['lower 'name] (keys field->display-name)]]})))
 

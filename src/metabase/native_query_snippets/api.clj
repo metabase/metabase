@@ -22,7 +22,7 @@
   ([archived :- ms/BooleanValue]
    (let [snippets (t2/select :model/NativeQuerySnippet
                              'archived archived
-                             {:order-by [['%lower.name 'asc]]})]
+                             {'order-by [['%lower.name 'asc]]})]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

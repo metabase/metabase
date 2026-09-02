@@ -74,9 +74,9 @@
             It must not sit in the clear next to them."
       (encryption-test/with-secret-key "chart-stats-encryption-test-key"
         (let [id  (query-result-row! stats-with-warehouse-values)
-              raw (:chart_stats (t2/query-one {:select ['chart_stats]
-                                               :from   ['exploration_query_result]
-                                               :where  ['= 'id id]}))]
+              raw (:chart_stats (t2/query-one {'select ['chart_stats]
+                                               'from   ['exploration_query_result]
+                                               'where  ['= 'id id]}))]
           (testing "the stored bytes do not contain the warehouse value"
             (is (string? raw))
             (is (not (str/includes? raw "ACME Corp"))
@@ -94,9 +94,9 @@
         (let [id (query-result-row! stats-with-warehouse-values)]
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id)))
-          (t2/query-one {:update 'exploration_query_result
-                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
-                         :where  ['= 'id id]})
+          (t2/query-one {'update 'exploration_query_result
+                         'set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         'where  ['= 'id id]})
           (is (thrown? clojure.lang.ExceptionInfo
                        (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))))
 
@@ -107,8 +107,8 @@
     (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
-          (t2/query-one {:update 'exploration_query_result
-                         :set    {:chart_stats (pr-str stats-with-warehouse-values)}
-                         :where  ['= 'id id]})
+          (t2/query-one {'update 'exploration_query_result
+                         'set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                         'where  ['= 'id id]})
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult 'id id))))))))

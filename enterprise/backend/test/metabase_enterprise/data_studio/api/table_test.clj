@@ -52,7 +52,7 @@
                         {:display_name "Venues"
                          :collection_id collection-id
                          :is_published true}]
-                       (t2/select :model/Table 'id [:in [(mt/id :users) (mt/id :venues)]] {:order-by ['display_name]}))))
+                       (t2/select :model/Table 'id [:in [(mt/id :users) (mt/id :venues)]] {'order-by ['display_name]}))))
              (testing "audit log entries are created for publish"
                (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
                        (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
@@ -110,9 +110,9 @@
          ;; the same pipeline that fires :hook/search-index; a raw UPDATE would leave it unchanged
          (let [baseline   (t/offset-date-time 2020)
                ;; raw update, precisely to keep the timestamped hook from overwriting the backdate
-               backdate!  #(t2/query {:update (t2/table-name :model/Table)
-                                      :set    {:updated_at baseline}
-                                      :where  ['= 'id (mt/id :venues)]})
+               backdate!  #(t2/query {'update (t2/table-name :model/Table)
+                                      'set    {:updated_at baseline}
+                                      'where  ['= 'id (mt/id :venues)]})
                updated-at #(t2/select-one-fn :updated_at :model/Table (mt/id :venues))]
            (backdate!)
            (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"

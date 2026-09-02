@@ -122,10 +122,10 @@
                        {:queue/outbox-chunked ["a" "b" "c" "d" "e"]}})]
         (outbox/insert-outbox-rows!))
       (is (= 3 (outbox-count "outbox-chunked")) "5 messages, max-batch 2 -> 3 rows (2,2,1)")
-      (let [payloads (->> (t2/query {:select   ['payload]
-                                     :from     ['queue_message_outbox]
-                                     :where    ['= 'queue_name "outbox-chunked"]
-                                     :order-by [['id 'asc]]})
+      (let [payloads (->> (t2/query {'select   ['payload]
+                                     'from     ['queue_message_outbox]
+                                     'where    ['= 'queue_name "outbox-chunked"]
+                                     'order-by [['id 'asc]]})
                           (map (comp payload/decode :payload)))]
         (is (= [["a" "b"] ["c" "d"] ["e"]] payloads))))))
 
@@ -137,9 +137,9 @@
                        {:queue/outbox-dedup ["a" "a" "b" "a"]}})]
         (outbox/insert-outbox-rows!))
       (is (= 1 (outbox-count "outbox-dedup")))
-      (let [msgs (->> (t2/query {:select ['payload]
-                                 :from   ['queue_message_outbox]
-                                 :where  ['= 'queue_name "outbox-dedup"]})
+      (let [msgs (->> (t2/query {'select ['payload]
+                                 'from   ['queue_message_outbox]
+                                 'where  ['= 'queue_name "outbox-dedup"]})
                       (mapcat (comp payload/decode :payload)))]
         (is (= ["a" "b"] (vec msgs)))))))
 

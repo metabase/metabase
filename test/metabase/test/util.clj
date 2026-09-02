@@ -746,9 +746,9 @@
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model (t2.model/resolve-model model)
-        original-column->value (t2/query-one {:select (keys column->temp-value)
-                                              :from [(t2/table-name model)]
-                                              :where ['= 'id (u/the-id object-or-id)]})
+        original-column->value (t2/query-one {'select (keys column->temp-value)
+                                              'from [(t2/table-name model)]
+                                              'where ['= 'id (u/the-id object-or-id)]})
         _ (assert original-column->value
                   (format "%s %d not found." (name model) (u/the-id object-or-id)))
         column->temp-value (maybe-merge-original-values model original-column->value column->temp-value)]
@@ -757,9 +757,9 @@
       (f)
       (finally
         (t2/query-one
-         {:update (t2/table-name model)
-          :set original-column->value
-          :where ['= 'id (u/the-id object-or-id)]})))))
+         {'update (t2/table-name model)
+          'set original-column->value
+          'where ['= 'id (u/the-id object-or-id)]})))))
 
 ;;; TODO -- we can make this parallel test safe pretty easily by doing stuff inside a transaction
 ;;; unless [[metabase.test/test-helpers-set-global-values!]] is in effect
@@ -965,7 +965,7 @@
         model->old-max-id (into {} (for [[model pk] models
                                          :let [conditions (with-max-model-id-additional-conditions model)]]
                                      [model (:max-id (t2/select-one [model [[:max pk] :max-id]]
-                                                                    {:where (or conditions true)}))]))]
+                                                                    {'where (or conditions true)}))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
@@ -977,8 +977,8 @@
                       additional-conditions (with-model-cleanup-additional-conditions model)
                       where-clause [:and max-id-condition additional-conditions]]]
           (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where where-clause}))
+           {'delete-from (t2/table-name model)
+            'where where-clause}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (reindex-search-index!)))))
 
@@ -1702,8 +1702,8 @@
   ([topic] (latest-audit-log-entry topic nil))
   ([topic model-id]
    (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                  {:order-by [['id 'desc]]
-                   :where ['and (when topic [:= :topic (name topic)])
+                  {'order-by [['id 'desc]]
+                   'where ['and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
 
 (defn all-entries-for
@@ -1713,8 +1713,8 @@
   (assert (int? model-id) "Must provide an integer id for the model")
   (assert (isa? model :metabase/model))
   (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
-             {:order-by [['id 'desc]]
-              :where ['and
+             {'order-by [['id 'desc]]
+              'where ['and
                       ['= 'model (name model)]
                       ['= 'model_id model-id]
                       (when topic [:= :topic (name topic)])]}))

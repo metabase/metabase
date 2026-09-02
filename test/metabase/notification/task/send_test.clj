@@ -22,7 +22,7 @@
   (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
                     :model/TaskHistory
                     'task (name task-name)
-                    {:order-by [['started_at 'desc]]}))
+                    {'order-by [['started_at 'desc]]}))
 
 (deftest e2e-test
   (notification.tu/with-notification-testing-setup!

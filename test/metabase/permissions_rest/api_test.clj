@@ -283,7 +283,7 @@
             (let [audit-entry (t2/select-one :model/AuditLog
                                              'topic "group-create"
                                              'model_id group-id
-                                             {:order-by [['id 'desc]]})]
+                                             {'order-by [['id 'desc]]})]
               (is (some? audit-entry))
               (is (= "PermissionsGroup" (:model audit-entry)))
               (is (= group-id (:model_id audit-entry)))
@@ -299,7 +299,7 @@
         (let [audit-entry (t2/select-one :model/AuditLog
                                          'topic "group-delete"
                                          'model_id group-id
-                                         {:order-by [['id 'desc]]})]
+                                         {'order-by [['id 'desc]]})]
           (is (some? audit-entry))
           (is (= "PermissionsGroup" (:model audit-entry)))
           (is (= group-id (:model_id audit-entry)))
@@ -315,7 +315,7 @@
           (let [audit-entry (t2/select-one :model/AuditLog
                                            'topic "group-update"
                                            'model_id group-id
-                                           {:order-by [['id 'desc]]})]
+                                           {'order-by [['id 'desc]]})]
             (is (some? audit-entry))
             (is (= "PermissionsGroup" (:model audit-entry)))
             (is (= group-id (:model_id audit-entry)))

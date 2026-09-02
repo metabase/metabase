@@ -155,17 +155,17 @@
   (t2/with-transaction [_conn]
     (let [now    (Instant/now)
           now-ts (Timestamp/from now)
-          rows (t2/query {:select   ['id 'queue_name 'payload 'publish_attempts]
-                          :from     ['queue_message_outbox]
-                          :where    ['and
+          rows (t2/query {'select   ['id 'queue_name 'payload 'publish_attempts]
+                          'from     ['queue_message_outbox]
+                          'where    ['and
                                      ['> 'id after-id]
                                      ['or
                                       ['and ['= 'next_attempt_at nil]
                                        ['< 'created_at (Timestamp/from (.minusMillis now recovery-age-ms))]]
                                       ['<= 'next_attempt_at now-ts]]]
-                          :order-by [['id 'asc]]
-                          :limit    recovery-page-size
-                          :for      (for-update-clause)})
+                          'order-by [['id 'asc]]
+                          'limit    recovery-page-size
+                          'for      (for-update-clause)})
           {:keys [recover-ids bumps backend-down?]}
           (reduce (fn [acc {:keys [id queue_name payload] :as row}]
                     (try

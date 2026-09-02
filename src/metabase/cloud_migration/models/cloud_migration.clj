@@ -293,7 +293,7 @@
   (t2/insert-returning-instance! :model/CloudMigration (get-store-migration))
 
   ;; get migration
-  @(def mig (t2/select-one :model/CloudMigration {:order-by [['created_at 'desc]]}))
+  @(def mig (t2/select-one :model/CloudMigration {'order-by [['created_at 'desc]]}))
 
   ;; migrate
   (migrate! mig)

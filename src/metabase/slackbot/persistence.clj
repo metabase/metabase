@@ -58,7 +58,7 @@
              'conversation_id conversation-id
              'role "assistant"
              'deleted_at nil
-             {:order-by [['created_at 'asc] ['id 'asc]]}))
+             {'order-by [['created_at 'asc] ['id 'asc]]}))
 
 (defn response-owner-user-id
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.

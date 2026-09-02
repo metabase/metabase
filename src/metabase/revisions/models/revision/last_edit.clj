@@ -52,10 +52,10 @@
                                (select-keys card-updated-info [:id :email :first_name :last_name :timestamp])))
                       {}
                       (t2/reducible-query
-                       {:select    ['r.model_id 'u.id 'u.email 'u.first_name 'u.last_name 'r.timestamp]
-                        :from      [['revision 'r]]
-                        :left-join [['core_user 'u] ['= 'u.id 'r.user_id]]
-                        :where     ['and
+                       {'select    ['r.model_id 'u.id 'u.email 'u.first_name 'u.last_name 'r.timestamp]
+                        'from      [['revision 'r]]
+                        'left-join [['core_user 'u] ['= 'u.id 'r.user_id]]
+                        'where     ['and
                                     ['= 'r.most_recent true]
                                     ['= 'r.model (model->db-model model)]
                                     ['in 'r.model_id ids]]}))]
@@ -87,11 +87,11 @@
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
   [{:keys [card-ids dashboard-ids]}]
   (when (seq (concat card-ids dashboard-ids))
-    (let [latest-changes (t2/query {:select    ['u.id 'u.email 'u.first_name 'u.last_name
+    (let [latest-changes (t2/query {'select    ['u.id 'u.email 'u.first_name 'u.last_name
                                                 'r.model 'r.model_id 'r.timestamp]
-                                    :from      [['revision 'r]]
-                                    :left-join [['core_user 'u] ['= 'u.id 'r.user_id]]
-                                    :where     ['and ['= 'r.most_recent true]
+                                    'from      [['revision 'r]]
+                                    'left-join [['core_user 'u] ['= 'u.id 'r.user_id]]
+                                    'where     ['and ['= 'r.most_recent true]
                                                 (into [:or]
                                                       (keep (fn [[model-name ids]]
                                                               (when (seq ids)

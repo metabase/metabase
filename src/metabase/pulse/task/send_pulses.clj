@@ -110,11 +110,11 @@
   (tracing/with-span :tasks "task.pulse.clear-orphan-channels" {:pulse/id pulse-id}
     (when-let [ids-to-delete (seq
                               (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
-                                                       {:where ['and
+                                                       {'where ['and
                                                                 ['= 'pulse_id pulse-id]
-                                                                ['not ['exists ^:allow-subquery {:select [1]
-                                                                                                 :from   ['pulse_channel_recipient]
-                                                                                                 :where  ['= 'pulse_channel_recipient.pulse_channel_id
+                                                                ['not ['exists ^:allow-subquery {'select [1]
+                                                                                                 'from   ['pulse_channel_recipient]
+                                                                                                 'where  ['= 'pulse_channel_recipient.pulse_channel_id
                                                                                                           'pulse_channel.id]}]]]})
                                     :when  (case (:channel_type channel)
                                              :email
@@ -182,11 +182,11 @@
 (defn- active-dashsub-pcs
   []
   (t2/select :model/PulseChannel
-             {:select    ['pc.*]
-              :from      [['pulse_channel 'pc]]
-              :left-join [['pulse 'p] ['= 'pc.pulse_id 'p.id]
+             {'select    ['pc.*]
+              'from      [['pulse_channel 'pc]]
+              'left-join [['pulse 'p] ['= 'pc.pulse_id 'p.id]
                           ['report_dashboard 'd] ['= 'p.dashboard_id 'd.id]]
-              :where     ['and
+              'where     ['and
                           ['= 'pc.enabled true]
                           ;; only do this for dashboard subscriptions, alert has been
                           ;; migrated to notifications

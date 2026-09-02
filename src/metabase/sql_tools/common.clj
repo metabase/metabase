@@ -39,7 +39,7 @@
     ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
     ;; query naming a table that does not exist.
     (set (t2/select-pks-set :model/Table
-                            {:where ['and
+                            {'where ['and
                                      ['= 'db_id database-id]
                                      ;; `lower()` cannot use an index on the name column, but it still beats fetching every
                                      ;; row for the Database.

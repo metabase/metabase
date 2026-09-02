@@ -860,7 +860,7 @@
             ;; (untargeted) export takes, where the Collection descendants filter never runs.
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Document" {:where ['in 'id [plain-id summary-id]]}))]
+                            (serdes/extract-all "Document" {'where ['in 'id [plain-id summary-id]]}))]
         (is (contains? extracted (eid plain-id))
             "an ordinary document is still exported")
         (is (not (contains? extracted (eid summary-id)))

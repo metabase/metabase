@@ -78,7 +78,7 @@
                               'moderated_item_id id
                               'moderated_item_type item-type
                               'most_recent true
-                              {:order-by [['id 'desc]]})]
+                              {'order-by [['id 'desc]]})]
     (= (:status review) "verified")))
 
 (def ^:private max-glossary-items
@@ -99,8 +99,8 @@
       (log/warnf "Glossary size is larger than limit for context injection (%d > %d)."
                  glossary-size max-glossary-items)))
   (not-empty (t2/select-fn->fn :term :definition :model/Glossary
-                               {:order-by [[glossary-order-column 'desc]]
-                                :limit max-glossary-items})))
+                               {'order-by [[glossary-order-column 'desc]]
+                                'limit max-glossary-items})))
 
 (defn get-current-user
   "Get information about the current user."

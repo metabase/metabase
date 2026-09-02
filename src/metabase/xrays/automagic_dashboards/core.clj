@@ -940,7 +940,7 @@
                [[:and
                  [:>= :ts.count 2]
                  [:= :ts.count_non_pks 1]] :list-like?]]
-              {:inner-join [[^:allow-subquery {:select   ['f.table_id
+              {'inner-join [[^:allow-subquery {'select   ['f.table_id
                                                           ['%count.* "count"]
                                                           [['count ['case ['or ['not= 'semantic_type "type/PK"]
                                                                            ['= 'f.semantic_type nil]]
@@ -949,13 +949,13 @@
                                                           [['count ['case ['in 'f.semantic_type ["type/PK" "type/FK"]]
                                                                     [:inline 1] 'else [:inline nil]]]
                                                            'count_pks_and_fks]]
-                                               :from     [['metabase_field 'f]]
-                                               :where    ['= 'f.active true]
-                                               :group-by ['f.table_id]} 'ts]
+                                               'from     [['metabase_field 'f]]
+                                               'where    ['= 'f.active true]
+                                               'group-by ['f.table_id]} 'ts]
                             ['and ['= 'ts.table_id 'id]
                              ['> 'ts.count 0]
                              ['!= 'ts.count 'ts.count_pks_and_fks]]]
-               :where (into [:and] clauses)})
+               'where (into [:and] clauses)})
    (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables

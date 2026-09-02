@@ -204,7 +204,7 @@
                         (t2/select-one :model/TaskHistory
                                        'db_id (u/the-id db)
                                        'task "persist-refresh"
-                                       {:order-by [['id 'desc]]})))))
+                                       {'order-by [['id 'desc]]})))))
       (testing "Handles errors and continues"
         (let [call-count (atom 0)
               test-refresher (reify task.persist-refresh/Refresher
@@ -222,7 +222,7 @@
                         (t2/select-one :model/TaskHistory
                                        'db_id (u/the-id db)
                                        'task "persist-refresh"
-                                       {:order-by [['id 'desc]]}))))))
+                                       {'order-by [['id 'desc]]}))))))
     (testing "Deletes any in a deletable state"
       (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
                      :model/Card     model3 {:type :model :database_id (u/the-id db)}
@@ -266,7 +266,7 @@
                          :task_details {:success 3 :error 0, :skipped 0}}
                         (t2/select-one :model/TaskHistory
                                        'task "unpersist-tables"
-                                       {:order-by [['id 'desc]]}))))))))
+                                       {'order-by [['id 'desc]]}))))))))
 (deftest save-task-history-test
   (mt/with-model-cleanup [:model/TaskHistory]
     (testing "if tasks succeed, task_details should be saved and status is sucecss"

@@ -26,9 +26,9 @@
         (is (seq seeded) "seeding created recipients with details")
         (is (every? encryption/decryptable-string? seeded) "seeded through the current build: encrypted at rest")
         (testing "an old build's seed re-writes the rows plaintext; the heal re-encrypts them"
-          (t2/query {:update 'notification_recipient
-                     :set    {:details "{\"pattern\":\"plain\"}"}
-                     :where  ['!= 'details nil]})
+          (t2/query {'update 'notification_recipient
+                     'set    {:details "{\"pattern\":\"plain\"}"}
+                     'where  ['!= 'details nil]})
           (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
           (mdb/encrypt-plaintext-columns!)
           (let [healed (recipient-details)]

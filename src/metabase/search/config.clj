@@ -299,13 +299,13 @@
   [model]
   (-> model model-to-db-model :alias))
 
-(mu/defn column-with-model-alias :- keyword?
-  "Given a column and a model name, Return a keyword representing the column with the model alias prepended.
+(mu/defn column-with-model-alias :- symbol?
+  "Given a column and a model name, Return a symbol representing the column with the model alias prepended.
 
-  (column-with-model-alias \"card\" :id) => :card.id)"
+  (column-with-model-alias \"card\" 'id) => 'card.id)"
   [model-string :- ms/KeywordOrString
-   column       :- ms/KeywordOrString]
-  (keyword (str (name (model->alias model-string)) "." (name column))))
+   column       :- [:or :keyword :string :symbol]]
+  (symbol (str (name (model->alias model-string)) "." (name column))))
 
 (def SearchableModel
   "Schema for searchable models"

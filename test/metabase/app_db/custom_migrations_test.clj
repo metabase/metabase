@@ -203,9 +203,9 @@
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_card]
-                                    :where  ['= 'id card-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_card]
+                                    'where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
@@ -213,18 +213,18 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_card]
-                                    :where  ['= 'id card-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_card]
+                                    'where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_card]
-                                    :where  ['= 'id card-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_card]
+                                    'where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode
                      mi/normalize-visualization-settings
@@ -271,9 +271,9 @@
                                                    :database_id            database-id
                                                    :collection_id          nil})]
         (migrate!)
-        (let [migrated-result-metadata (:result_metadata (t2/query-one {:select ['result_metadata]
-                                                                        :from   ['report_card]
-                                                                        :where  ['= 'id card-id]}))]
+        (let [migrated-result-metadata (:result_metadata (t2/query-one {'select ['result_metadata]
+                                                                        'from   ['report_card]
+                                                                        'where  ['= 'id card-id]}))]
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
                    (json/decode migrated-result-metadata))))
@@ -348,18 +348,18 @@
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_card]
-                                    :where  ['= 'id card-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_card]
+                                    'where  ['= 'id card-id]})
                      :visualization_settings
                      json/decode))))
         (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (migrate! :down 46)
           (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
             (is (= visualization-settings
-                   (-> (t2/query-one {:select ['visualization_settings]
-                                      :from   ['report_card]
-                                      :where  ['= 'id card-id]})
+                   (-> (t2/query-one {'select ['visualization_settings]
+                                      'from   ['report_card]
+                                      'where  ['= 'id card-id]})
                        :visualization_settings
                        json/decode)))))))))
 
@@ -655,9 +655,9 @@
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))
@@ -666,9 +666,9 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))
@@ -676,9 +676,9 @@
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")
@@ -731,9 +731,9 @@
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))
@@ -741,9 +741,9 @@
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
                               ["column_settings" (json/encode ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get "visualization_settings")))))))))
@@ -802,9 +802,9 @@
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
@@ -812,18 +812,18 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode
                      mi/normalize-visualization-settings
@@ -894,17 +894,17 @@
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))
         (migrate! :down 46)
         (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
           (is (= visualization-settings
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      json/decode))))))))
 
@@ -943,9 +943,9 @@
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
@@ -954,9 +954,9 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
@@ -964,9 +964,9 @@
           (is (= (-> visualization-settings
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])
@@ -1036,9 +1036,9 @@
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))
@@ -1046,9 +1046,9 @@
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
                               ["column_settings" (json/encode ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {:select ['object]
-                                    :from   ['revision]
-                                    :where  ['= 'id revision-id]})
+                 (-> (t2/query-one {'select ['object]
+                                    'from   ['revision]
+                                    'where  ['= 'id revision-id]})
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))))))
@@ -1099,16 +1099,16 @@
                   (when encrypted?
                     (testing "make sure the settings is encrypted before the migration"
                       (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {:select ['settings]
-                                                            :from ['metabase_database]
-                                                            :where [['= 'id success-id]]})))))))
+                                  (:settings (t2/query-one {'select ['settings]
+                                                            'from ['metabase_database]
+                                                            'where [['= 'id success-id]]})))))))
                   (migrate!)
                   (when encrypted?
                     (testing "make sure the settings is encrypted after the migration"
                       (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {:select ['settings]
-                                                            :from ['metabase_database]
-                                                            :where [['= 'id success-id]]})))))))
+                                  (:settings (t2/query-one {'select ['settings]
+                                                            'from ['metabase_database]
+                                                            'where [['= 'id success-id]]})))))))
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
@@ -1773,9 +1773,9 @@
       ;; create a db because db.details should be encrypted
       (let [db-id     (:id (new-instance-with-default :metabase_database {:details (encryption/maybe-encrypt "{}")}))
             db-detail (fn []
-                        (:details (t2/query-one {:select ['details]
-                                                 :from   ['metabase_database]
-                                                 :where  ['= 'id db-id]})))]
+                        (:details (t2/query-one {'select ['details]
+                                                 'from   ['metabase_database]
+                                                 'where  ['= 'id db-id]})))]
         (testing "sanity check that db details is encrypted"
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
         (testing "after migrate up, db details should still be encrypted"
@@ -1929,9 +1929,9 @@
                                                         area-bar-combo-cards-test-data))]
         (migrate!)
         (testing "Area Bar Combo Stacked Viz settings migration"
-          (let [cards (->> (t2/query {:select ['name 'display 'visualization_settings]
-                                      :from   ['report_card]
-                                      :where  ['in 'id card-ids]})
+          (let [cards (->> (t2/query {'select ['name 'display 'visualization_settings]
+                                      'from   ['report_card]
+                                      'where  ['in 'id card-ids]})
                            (map (fn [card] (update card :visualization_settings json/decode+kw))))]
             (doseq [{:keys [name] :as card} cards]
               (testing (format "Migrating a card where: %s" name)
@@ -1958,7 +1958,7 @@
                         {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
                         {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads")}]
               _ (t2/insert! :setting settings)
-              get-settings #(t2/query {:select ['key 'value], :from 'setting, :where ['in 'key (map :key settings)]})
+              get-settings #(t2/query {'select ['key 'value], 'from 'setting, 'where ['in 'key (map :key settings)]})
               settings-before (get-settings)]
           (testing "make sure the settings are encrypted before the migrations"
             (is (not-empty settings-before))
@@ -1989,7 +1989,7 @@
                              {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
                              {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}]
               _             (t2/insert! :setting settings)
-              get-settings  #(t2/query {:select ['key 'value], :from 'setting, :where ['in 'key (map :key settings)]})]
+              get-settings  #(t2/query {'select ['key 'value], 'from 'setting, 'where ['in 'key (map :key settings)]})]
           (migrate!)
           (testing "make sure the settings are removed after the migrations"
             (is (empty? (get-settings))))
@@ -2006,7 +2006,7 @@
               settings      [;; no uploads-enabled
                              {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
               _             (t2/insert! :setting settings)
-              get-settings  #(t2/query {:select ['key 'value], :from 'setting, :where ['in 'key (map :key settings)]})]
+              get-settings  #(t2/query {'select ['key 'value], 'from 'setting, 'where ['in 'key (map :key settings)]})]
           (migrate!)
           (testing "make sure the settings are removed after the migrations"
             (is (empty? (get-settings))))
@@ -2105,17 +2105,17 @@
         (migrate!)
         (testing "After the migration, column_settings are migrated to name-based keys"
           (is (= viz-settings-with-name-keys
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_card]
-                                    :where  ['= 'id card-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_card]
+                                    'where  ['= 'id card-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))
         (migrate! :down 49)
         (testing "After reversing the migration, column_settings are restored to field ref-based keys"
           (is (= viz-settings-with-field-ref-keys
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_card]
-                                    :where  ['= 'id card-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_card]
+                                    'where  ['= 'id card-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))))))
 
@@ -2158,17 +2158,17 @@
         (migrate!)
         (testing "After the migration, column_settings are migrated to name-based keys"
           (is (= viz-settings-with-name-keys
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))
         (migrate! :down 49)
         (testing "After reversing the migration, column_settings are restored to field ref-based keys"
           (is (= viz-settings-with-field-ref-keys
-                 (-> (t2/query-one {:select ['visualization_settings]
-                                    :from   ['report_dashboardcard]
-                                    :where  ['= 'id dashcard-id]})
+                 (-> (t2/query-one {'select ['visualization_settings]
+                                    'from   ['report_dashboardcard]
+                                    'where  ['= 'id dashcard-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))))))
 
@@ -2203,7 +2203,7 @@
                                                     :created_at :%now
                                                     :updated_at :%now
                                                     :details    "{}"})
-      (t2/query {:delete-from 'metabase_database})
+      (t2/query {'delete-from 'metabase_database})
       (migrate!)
       (is (false? (sample-content-created?)))
       (is (empty? (t2/query "SELECT * FROM metabase_database"))
@@ -2397,15 +2397,15 @@
                                  :parameter_id string?
                                  :target ["dimension" ["field" 275 {:base-type "type/Text"}]]}])
             query-parameter-mappings (fn []
-                                       (->> (t2/query {:select   ['parameter_mappings]
-                                                       :from     ['report_dashboardcard]
-                                                       :where    ['in 'id [single-stage-dashcard-id ; stage 0
+                                       (->> (t2/query {'select   ['parameter_mappings]
+                                                       'from     ['report_dashboardcard]
+                                                       'where    ['in 'id [single-stage-dashcard-id ; stage 0
                                                                            native-dashcard-id       ; stage 0
                                                                            multi-stage-dashcard1-id ; stage 2
                                                                            multi-stage-dashcard2-id ; no params
                                                                            multi-stage-dashcard3-id ; stage 2
                                                                            multi-stage-model-dashcard-id]] ; stage 0
-                                                       :order-by ['id]})
+                                                       'order-by ['id]})
                                             (map #(-> % :parameter_mappings json/decode+kw))))]
         (migrate!)
         (testing "After the migration, dimension parameter_mappings have stage numbers"
@@ -2515,12 +2515,12 @@
                                                       [multi-stage-question-id dashboard-id multi-stage-model-id])
             no-vs-dashcard-id        (create-dashcard multi-stage-question-id {})
             query-viz-settings (fn []
-                                 (->> (t2/query {:select   ['visualization_settings]
-                                                 :from     ['report_dashboardcard]
-                                                 :where    ['in 'id [single-stage-dashcard-id
+                                 (->> (t2/query {'select   ['visualization_settings]
+                                                 'from     ['report_dashboardcard]
+                                                 'where    ['in 'id [single-stage-dashcard-id
                                                                      multi-stage-dashcard-id
                                                                      no-vs-dashcard-id]]
-                                                 :order-by ['id]})
+                                                 'order-by ['id]})
                                       (map #(-> % :visualization_settings json/decode+kw))))]
         (migrate!)
         (testing "After the migration, dimension parameterMappings have stage numbers"
@@ -2766,7 +2766,7 @@
                                                           :channel_type  "email"
                                                           :schedule_type "daily"
                                                           :details       pc-details}))
-            raw-pc       #(:details (t2/query-one {:select ['details] :from ['pulse_channel] :where ['= 'id pc-id]}))]
+            raw-pc       #(:details (t2/query-one {'select ['details] 'from ['pulse_channel] 'where ['= 'id pc-id]}))]
         (testing "plaintext before migration (written with no encryption key)"
           (is (not (encryption/possibly-encrypted-string? (raw-pc)))))
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
@@ -2794,12 +2794,12 @@
                                                               :created_at :%now
                                                               :updated_at :%now})
               raw           (fn [table column id]
-                              (:value (t2/query-one {:select [[column 'value]] :from [table] :where ['= 'id id]})))
+                              (:value (t2/query-one {'select [[column 'value]] 'from [table] 'where ['= 'id id]})))
               ;; convert the blob inside the reduction, while its connection is still open
               raw-secret    (fn [id]
                               (first (into []
                                            (map (fn [{:keys [value]}] (#'custom-migrations/secret-value->bytes value)))
-                                           (t2/reducible-query {:select ['value] :from ['secret] :where ['= 'id id]}))))]
+                                           (t2/reducible-query {'select ['value] 'from ['secret] 'where ['= 'id id]}))))]
           (is (not (encryption/possibly-encrypted-string? (raw :metabase_database :details plain-db-id))))
           (migrate!)
           (testing "plaintext string values are encrypted and decrypt to the original"
@@ -2823,7 +2823,7 @@
   (testing "v58.2026-08-28T00:00:00 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
       (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
-        (let [ins!       (fn [k v] (t2/query {:insert-into 'setting :values [{:key k :value v}]}))
+        (let [ins!       (fn [k v] (t2/query {'insert-into 'setting 'values [{:key k :value v}]}))
               raw        (fn [k] (t2/select-one-fn :value :setting 'key k))
               enc-str    (encryption/maybe-encrypt "https://already.example")
               ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
@@ -2874,7 +2874,7 @@
   (testing "v58.2026-08-30T00:00:00 : plaintext rows of listed settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-setter-none-settings-key-1234"
       (impl/test-migrations "v58.2026-08-30T00:00:00" [migrate!]
-        (let [insert-setting! (fn [k v] (t2/query {:insert-into 'setting :values [{:key k :value v}]}))
+        (let [insert-setting! (fn [k v] (t2/query {'insert-into 'setting 'values [{:key k :value v}]}))
               raw-setting     (fn [k] (t2/select-one-fn :value :setting 'key k))
               encrypted-value (encryption/maybe-encrypt "https://otel.example")]
           ;; a plaintext row from before the setting was encrypted
@@ -3147,9 +3147,9 @@
                                    :updated_at         :%now})]
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
-          (let [provisional (first (t2/query {:select ['active 'transform_target 'data_source 'data_authority 'display_name]
-                                              :from   ['metabase_table]
-                                              :where  ['and
+          (let [provisional (first (t2/query {'select ['active 'transform_target 'data_source 'data_authority 'display_name]
+                                              'from   ['metabase_table]
+                                              'where  ['and
                                                        ['= 'db_id db-id]
                                                        ['= 'name "new_target_table"]
                                                        ['= 'schema "public"]]}))]

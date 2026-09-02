@@ -166,7 +166,7 @@
                           fn-deps)
         search-terms (set (search-term-columns (:search-terms spec)))]
     (u/remove-nils
-     {:select    (search.spec/qualify-columns :this
+     {'select    (search.spec/qualify-columns :this
                                               (concat
                                                (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
                                                                 term])
@@ -176,9 +176,9 @@
                                                                      (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
-      :from      [[(t2/table-name (:model spec)) 'this]]
-      :where     (:where spec [:= [:inline 1] [:inline 1]])
-      :left-join (when (:joins spec)
+      'from      [[(t2/table-name (:model spec)) 'this]]
+      'where     (:where spec [:= [:inline 1] [:inline 1]])
+      'left-join (when (:joins spec)
                    (into []
                          cat
                          (for [[join-alias [join-model join-condition]] (:joins spec)]

@@ -99,20 +99,20 @@
 (defn- raw-public-uuid
   "Read the `public_uuid` column straight from the DB (raw ciphertext), bypassing the model's decrypting transform."
   [model id]
-  (:public_uuid (t2/query-one {:select ['public_uuid] :from [(t2/table-name model)] :where ['= 'id id]})))
+  (:public_uuid (t2/query-one {'select ['public_uuid] 'from [(t2/table-name model)] 'where ['= 'id id]})))
 
 (defn- raw-public-uuid-prefix
   [model id]
-  (:public_uuid_prefix (t2/query-one {:select ['public_uuid_prefix] :from [(t2/table-name model)] :where ['= 'id id]})))
+  (:public_uuid_prefix (t2/query-one {'select ['public_uuid_prefix] 'from [(t2/table-name model)] 'where ['= 'id id]})))
 
 (defn- set-raw-public-uuid!
   "Forge a public link via raw SQL: write a plaintext `public_uuid` (and a matching prefix so the lookup would find it),
   bypassing the model's encrypting transform."
   [model id value]
-  (t2/query {:update (t2/table-name model)
-             :set    {:public_uuid        value
+  (t2/query {'update (t2/table-name model)
+             'set    {:public_uuid        value
                       :public_uuid_prefix (public-sharing/public-uuid-prefix value)}
-             :where  ['= 'id id]}))
+             'where  ['= 'id id]}))
 
 (defn- assert-public-uuid-lifecycle!
   "For an already-created UNSHARED `model` row `id` (no public_uuid), exercise share / unrelated-update-while-disabled /

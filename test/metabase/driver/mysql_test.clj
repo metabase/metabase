@@ -454,7 +454,7 @@
                                :base_type :type/Integer}
                               {:name      "t"
                                :base_type :type/Text}]}]
-                   (->> (t2/hydrate (t2/select :model/Table 'db_id (:id database) {:order-by ['name]}) :fields)
+                   (->> (t2/hydrate (t2/select :model/Table 'db_id (:id database) {'order-by ['name]}) :fields)
                         (map table-fingerprint))))))))))
 
 (defn- create-enums-table! [db]

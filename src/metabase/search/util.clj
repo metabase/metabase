@@ -78,8 +78,8 @@
                               :es    :spanish
                               :sv    :swedish
                               :tr    :turkish}
-             available-languages (->> (t2/query {:select ['cfgname]
-                                                 :from   ['pg_ts_config]})
+             available-languages (->> (t2/query {'select ['cfgname]
+                                                 'from   ['pg_ts_config]})
                                       (map :cfgname)
                                       (map keyword)
                                       set)]
@@ -163,4 +163,4 @@
    (weighted-tsvector weight text (tsv-language)))
   ([weight text lang]
    ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
-   [:setweight [:to_tsvector ^:allow-raw-sql [:inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] ^:allow-raw-sql [:inline weight]]))
+   [:setweight [:to_tsvector ['inline lang] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] ['inline weight]]))

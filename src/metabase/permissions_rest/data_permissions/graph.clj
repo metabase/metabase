@@ -131,7 +131,7 @@
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
-                                                            {:where ['and
+                                                            {'where ['and
                                                                      (when-not audit? [:not= :id audit/audit-db-id])
                                                                      ['= 'router_database_id nil]]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
@@ -152,7 +152,7 @@
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
         db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
-                                                                   {:where ['and
+                                                                   {'where ['and
                                                                             (when-not audit? [:not= :id audit/audit-db-id])
                                                                             ['= 'router_database_id nil]]}))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
@@ -220,25 +220,25 @@
               (update :type keyword)
               (update :value keyword))))
    (t2/reducible-query
-    {:select   [['perm_type 'type]
+    {'select   [['perm_type 'type]
                 ['group_id 'group-id]
                 ['perm_value 'value]
                 ['db_id 'db-id]
                 ['schema_name 'schema]
                 ['table_id 'table-id]]
-     :from     [(t2/table-name :model/DataPermissions)]
-     :where    ['and
+     'from     [(t2/table-name :model/DataPermissions)]
+     'where    ['and
                 (when perm-type [:= :perm_type (u/qualified-name perm-type)])
                 (when db-id [:= :db_id db-id])
                 (when group-id [:= :group_id group-id])
                 (when group-ids [:in :group_id group-ids])
                 (when-not audit? [:not= :db_id audit/audit-db-id])
-                ['not ['exists ^:allow-subquery {:select [1]
-                                                 :from   [[(t2/table-name :model/Database) 'router_db]]
-                                                 :where  ['and
+                ['not ['exists ^:allow-subquery {'select [1]
+                                                 'from   [[(t2/table-name :model/Database) 'router_db]]
+                                                 'where  ['and
                                                           ['not= 'router_db.router_database_id nil]
                                                           ['= 'router_db.id 'db_id]]}]]]
-     :order-by ['group_id 'db_id]})))
+     'order-by ['group_id 'db_id]})))
 
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a

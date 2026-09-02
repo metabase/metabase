@@ -407,7 +407,7 @@
         (println (format "Granting database-level permissions to %d groups (too many tables (%d) for table-level grants)..."
                          num-groups num-tables))
         (let [db-ids (t2/select-fn-vec :db_id [:model/Table :db_id]
-                                       {:group-by ['db_id]})]
+                                       {'group-by ['db_id]})]
           (doseq [[idx group-id] (map-indexed vector group-ids)]
             (doseq [db-id db-ids]
               (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)

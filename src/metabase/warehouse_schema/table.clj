@@ -237,20 +237,20 @@
   [ids {:keys [include-database?]}]
   (when (seq ids)
     (let [cards (t2/select :model/Card
-                           {:select    ['c.id 'c.dataset_query 'c.result_metadata 'c.name
+                           {'select    ['c.id 'c.dataset_query 'c.result_metadata 'c.name
                                         'c.description 'c.collection_id 'c.database_id 'c.type
                                         'c.source_card_id 'c.created_at 'c.entity_id 'c.card_schema
                                         ['r.status 'moderated_status]]
-                            :from      [['report_card 'c]]
-                            :left-join [[^:allow-subquery {:select   ['moderated_item_id 'status]
-                                                           :from     ['moderation_review]
-                                                           :where    ['and
+                            'from      [['report_card 'c]]
+                            'left-join [[^:allow-subquery {'select   ['moderated_item_id 'status]
+                                                           'from     ['moderation_review]
+                                                           'where    ['and
                                                                       ['= 'moderated_item_type "card"]
                                                                       ['= 'most_recent true]]
-                                                           :order-by [['id 'desc]]
-                                                           :limit    1} 'r]
+                                                           'order-by [['id 'desc]]
+                                                           'limit    1} 'r]
                                         ['= 'r.moderated_item_id 'c.id]]
-                            :where      ['in 'c.id ids]})
+                            'where      ['in 'c.id ids]})
           dbs (if (seq cards)
                 (t2/select-pk->fn identity :model/Database 'id [:in (into #{} (map :database_id) cards)])
                 {})

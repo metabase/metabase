@@ -2789,9 +2789,9 @@
                                :display       :table)]
           ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
           ;; model hooks. This simulates a card whose query became malformed after migrations.
-          (t2/query {:update 'report_card
-                     :set    {:dataset_query (json/encode {:broken true})}
-                     :where  ['= 'id (:id card)]})
+          (t2/query {'update 'report_card
+                     'set    {:dataset_query (json/encode {:broken true})}
+                     'where  ['= 'id (:id card)]})
           (let [serialized (into [] (serdes.extract/extract {}))
                 card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
             (is (not (contains? card-ser :table_id))    "table_id always skipped for cards — re-derived on import")

@@ -27,8 +27,8 @@
   []
   ; settings field is used for theme card previews.
   ; we can optimize this by only selecting the preview colors needed.
-  (t2/select :model/EmbeddingTheme {:order-by [['created_at 'asc]]
-                                    :select ['id 'entity_id 'name 'settings 'created_at 'updated_at]}))
+  (t2/select :model/EmbeddingTheme {'order-by [['created_at 'asc]]
+                                    'select ['id 'entity_id 'name 'settings 'created_at 'updated_at]}))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."

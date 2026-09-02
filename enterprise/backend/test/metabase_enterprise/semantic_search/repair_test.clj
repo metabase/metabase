@@ -25,9 +25,9 @@
   "Query all documents in the gate table, returning them as maps"
   [pgvector gate-table-name]
   (jdbc/execute! pgvector
-                 (-> {:select ['id 'model 'model_id 'document 'document_hash 'updated_at 'gated_at]
-                      :from   [(keyword gate-table-name)]
-                      :order-by ['gated_at 'id]}
+                 (-> {'select ['id 'model 'model_id 'document 'document_hash 'updated_at 'gated_at]
+                      'from   [(keyword gate-table-name)]
+                      'order-by ['gated_at 'id]}
                      (sql/format :quoted true))
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -57,7 +57,7 @@
   "Clear all entries from the gate table to ensure clean test state"
   [pgvector gate-table-name]
   (jdbc/execute! pgvector
-                 (-> {:delete-from [(keyword gate-table-name)]}
+                 (-> {'delete-from [(keyword gate-table-name)]}
                      (sql/format :quoted true))))
 
 (deftest repair-index-integration-test

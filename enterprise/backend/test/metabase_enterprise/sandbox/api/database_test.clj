@@ -20,11 +20,11 @@
   metabase-enterprise.sandbox.api.table-test/native-query-metadata-test."
   [group]
   (let [card (t2/select-one :model/Card
-                            {:select ['c.id 'c.dataset_query 'c.entity_id 'c.card_schema]
-                             :from   [['sandboxes 's]]
-                             :join   [['permissions_group 'pg] ['= 's.group_id 'pg.id]
+                            {'select ['c.id 'c.dataset_query 'c.entity_id 'c.card_schema]
+                             'from   [['sandboxes 's]]
+                             'join   [['permissions_group 'pg] ['= 's.group_id 'pg.id]
                                       ['report_card 'c] ['= 'c.id 's.card_id]]
-                             :where  ['= 'pg.id (u/the-id group)]})
+                             'where  ['= 'pg.id (u/the-id group)]})
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
                                             (:dataset_query card))]
     (if metadata

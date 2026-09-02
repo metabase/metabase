@@ -24,14 +24,14 @@
                                             'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update 'report_card
-                   :set    {:archived true}
-                   :where  ['in 'id metric-ids]})
+        (t2/query {'update 'report_card
+                   'set    {:archived true}
+                   'where  ['in 'id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update 'report_card
-                     :set    {:archived false}
-                     :where  ['in 'id metric-ids]})))
+          (t2/query {'update 'report_card
+                     'set    {:archived false}
+                     'where  ['in 'id metric-ids]})))
       (thunk))))
 
 (defmacro with-sample-metrics-archived
@@ -433,7 +433,7 @@
   []
   (t2/select :model/QueryExecution
              'executor_id (mt/user->id :rasta)
-             {:order-by [['started_at 'desc]]}))
+             {'order-by [['started_at 'desc]]}))
 
 (deftest dataset-leaf-records-query-execution-test
   (testing "POST /api/metric/dataset (leaf path) writes a QueryExecution row with :context :metric"

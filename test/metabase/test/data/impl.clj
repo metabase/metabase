@@ -285,7 +285,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (let [old-fields (t2/select :model/Field 'table_id old-table-id, 'active true, {:order-by [['id 'asc]]})]
+  (let [old-fields (t2/select :model/Field 'table_id old-table-id, 'active true, {'order-by [['id 'asc]]})]
     (t2/insert! :model/Field
                 (for [field old-fields]
                   (-> field
@@ -328,7 +328,7 @@
                         (update :human_readable_values not-empty)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (t2/select :model/Table 'db_id old-db-id, 'active true, {:order-by [['id 'asc]]})
+  (let [old-tables    (t2/select :model/Table 'db_id old-db-id, 'active true, {'order-by [['id 'asc]]})
         new-table-ids (sort ; sorting by PK recovers the insertion order, because insert-returning-pks! doesn't guarantee this
                        (t2/insert-returning-pks! :model/Table
                                                  (for [table old-tables]
@@ -340,15 +340,15 @@
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
-          (mdb/query {:select    [['source-field.name 'source-field]
+          (mdb/query {'select    [['source-field.name 'source-field]
                                   ['source-table.name 'source-table]
                                   ['target-field.name 'target-field]
                                   ['target-table.name 'target-table]]
-                      :from      [['metabase_field 'source-field]]
-                      :left-join [['metabase_table 'source-table] ['= 'source-field.table_id 'source-table.id]
+                      'from      [['metabase_field 'source-field]]
+                      'left-join [['metabase_table 'source-table] ['= 'source-field.table_id 'source-table.id]
                                   ['metabase_field 'target-field] ['= 'source-field.fk_target_field_id 'target-field.id]
                                   ['metabase_table 'target-table] ['= 'target-field.table_id 'target-table.id]]
-                      :where     ['and
+                      'where     ['and
                                   ['= 'source-table.db_id old-db-id]
                                   ['= 'target-table.db_id old-db-id]
                                   'source-field.active

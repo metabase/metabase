@@ -37,7 +37,7 @@
         (#'metabot-conversation-trimmer/trim-old-conversations!)
         (is (= #{recent-id}
                (t2/select-fn-set :id :model/MetabotConversation
-                                 {:where ['in 'id [recent-id old-id]]})))))))
+                                 {'where ['in 'id [recent-id old-id]]})))))))
 
 (deftest trims-conversations-older-than-custom-retention-test
   (testing "with retention set to 30 days, conversations older than 30 days are deleted"
@@ -51,7 +51,7 @@
           (#'metabot-conversation-trimmer/trim-old-conversations!)
           (is (= #{recent-id}
                  (t2/select-fn-set :id :model/MetabotConversation
-                                   {:where ['in 'id [recent-id boundary-id old-id]]}))))))))
+                                   {'where ['in 'id [recent-id boundary-id old-id]]}))))))))
 
 (deftest skips-deletion-when-retention-is-infinite-test
   (testing "when retention is set to 0 (infinite), nothing is deleted"
@@ -64,7 +64,7 @@
           (#'metabot-conversation-trimmer/trim-old-conversations!)
           (is (= #{recent-id old-id}
                  (t2/select-fn-set :id :model/MetabotConversation
-                                   {:where ['in 'id [recent-id old-id]]}))))))))
+                                   {'where ['in 'id [recent-id old-id]]}))))))))
 
 (deftest cascades-to-messages-test
   (testing "deleting an old conversation cascades to its messages via ON DELETE CASCADE"
@@ -90,4 +90,4 @@
         (#'metabot-conversation-trimmer/trim-old-conversations!)
         (is (empty? (t2/select-fn-set :id :model/MetabotConversation 'id old-id)))
         (is (empty? (t2/select-fn-set :id :model/MetabotMessage
-                                      {:where ['in 'id [old-msg fresh-msg]]})))))))
+                                      {'where ['in 'id [old-msg fresh-msg]]})))))))

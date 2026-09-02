@@ -193,13 +193,13 @@
                                 :perms/create-queries :query-builder}]
         (testing "default (active-only? false) includes inactive tables"
           (let [{:keys [with clause]} (sql/visible-table-filter-with-cte :id user-info permission-mapping)
-                results (t2/query {:with with :select ['id] :from [['metabase_table]] :where clause})]
+                results (t2/query {'with with 'select ['id] 'from [['metabase_table]] 'where clause})]
             (is (some #(= (:id %) (:id active-table)) results))
             (is (some #(= (:id %) (:id inactive-table)) results))))
         (testing "active-only? true excludes inactive tables"
           (let [{:keys [with clause]} (sql/visible-table-filter-with-cte :id user-info permission-mapping
                                                                          {:active-only? true})
-                results (t2/query {:with with :select ['id] :from [['metabase_table]] :where clause})]
+                results (t2/query {'with with 'select ['id] 'from [['metabase_table]] 'where clause})]
             (is (some #(= (:id %) (:id active-table)) results))
             (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))
 

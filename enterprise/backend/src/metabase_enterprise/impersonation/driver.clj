@@ -33,7 +33,7 @@
         perm-values                (when (seq non-impersonated-group-ids)
                                      (t2/select-fn-set :perm_value
                                                        :model/DataPermissions
-                                                       {:where
+                                                       {'where
                                                         ['and
                                                          ['= 'db_id (u/the-id db-or-id)]
                                                          ['= 'table_id nil]

@@ -91,10 +91,10 @@
   unique hashes. Per-execution totals come from multiplying by `:n`."
   [bucket-date]
   (t2/select [:model/QueryExecution :hash [:%count.* :n]]
-             {:where    ['and
+             {'where    ['and
                          ['>= 'started_at (utc-day-start bucket-date)]
                          ['<  'started_at (utc-day-end bucket-date)]]
-              :group-by ['hash]}))
+              'group-by ['hash]}))
 
 (defn- add-skip [stats reason n]
   (update-in stats [:skipped-rows reason] (fnil + 0) n))

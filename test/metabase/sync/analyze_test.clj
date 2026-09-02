@@ -158,7 +158,7 @@
   (t2/select-one-fn :last_analyzed :model/Field
                     'last_analyzed [:not= nil]
                     'table_id      (u/the-id table)
-                    {:order-by [['last_analyzed 'desc]]}))
+                    {'order-by [['last_analyzed 'desc]]}))
 
 (defn- set-table-visibility-type-via-api!
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side

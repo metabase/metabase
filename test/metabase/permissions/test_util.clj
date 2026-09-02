@@ -47,7 +47,7 @@
   (let [select-condition (if-not group-ids
                            true
                            [:in :group_id group-ids])
-        original-perms (t2/select :model/DataPermissions {:where select-condition})]
+        original-perms (t2/select :model/DataPermissions {'where select-condition})]
     (try
       ;; TODO -- should this disabled the cache [[data-perms/*use-perms-cache?*]] ??
       (thunk)
@@ -61,7 +61,7 @@
                                                 (or (nil? (:table_id p))
                                                     (contains? existing-table-ids (:table_id p)))))
                                    original-perms)]
-          (t2/delete! :model/DataPermissions {:where select-condition})
+          (t2/delete! :model/DataPermissions {'where select-condition})
           (t2/insert! :model/DataPermissions still-valid-perms))))))
 
 (defmacro with-restored-data-perms!

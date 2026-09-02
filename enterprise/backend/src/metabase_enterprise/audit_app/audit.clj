@@ -76,7 +76,7 @@
                                  :creator_id       nil
                                  :auto_run_queries true})
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-    (t2/delete! :model/Permissions {:where ['like 'object (str "%/db/" id "/%")]})))
+    (t2/delete! :model/Permissions {'where ['like 'object (str "%/db/" id "/%")]})))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -91,16 +91,16 @@
   ;; some older migrations have both upper and lowercased table names
   ;; just grab the ids separately since there aren't many and this kind of check in an update
   ;; has different syntax on different appdbs
-  (let [table-ids-to-update (t2/query {:select ['table.id]
-                                       :from [[(t2/table-name :model/Table) 'table]]
-                                       :where ['and ['= 'table.db_id audit-db-id]
+  (let [table-ids-to-update (t2/query {'select ['table.id]
+                                       'from [[(t2/table-name :model/Table) 'table]]
+                                       'where ['and ['= 'table.db_id audit-db-id]
                                                ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                                                ['not= 'table.name "DATABASECHANGELOG"]
                                                ['not= 'table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
                                                ['not ['like 'table.name "QRTZ_%"]]
-                                               ['not ['exists ^:allow-subquery {:select [1]
-                                                                                :from [[(t2/table-name :model/Table) 'self_table]]
-                                                                                :where ['and
+                                               ['not ['exists ^:allow-subquery {'select [1]
+                                                                                'from [[(t2/table-name :model/Table) 'self_table]]
+                                                                                'where ['and
                                                                                         ['= 'self_table.db_id 'table.db_id]
                                                                                         ['or
                                                                                          ['= 'self_table.schema ['lower 'table.schema]]
@@ -111,18 +111,18 @@
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
                   {:schema "public" :name [:lower :name]})))
-  (let [field-ids-to-update (t2/query {:select ['field.id]
-                                       :from [[(t2/table-name :model/Field) 'field]]
-                                       :inner-join [[(t2/table-name :model/Table) 'table]
+  (let [field-ids-to-update (t2/query {'select ['field.id]
+                                       'from [[(t2/table-name :model/Field) 'field]]
+                                       'inner-join [[(t2/table-name :model/Table) 'table]
                                                     ['= 'table.id 'field.table_id]]
-                                       :where ['and ['= 'table.db_id audit-db-id]
+                                       'where ['and ['= 'table.db_id audit-db-id]
                                                ['not= 'table.name "DATABASECHANGELOG"]
                                                ['not ['like 'table.name "QRTZ_%"]]
-                                               ['not ['exists ^:allow-subquery {:select [1]
-                                                                                :from [[(t2/table-name :model/Field) 'self_field]]
-                                                                                :inner-join [[(t2/table-name :model/Table) 'self_table]
+                                               ['not ['exists ^:allow-subquery {'select [1]
+                                                                                'from [[(t2/table-name :model/Field) 'self_field]]
+                                                                                'inner-join [[(t2/table-name :model/Table) 'self_table]
                                                                                              ['= 'self_table.id 'self_field.table_id]]
-                                                                                :where ['and
+                                                                                'where ['and
                                                                                         ['= 'self_table.db_id 'table.db_id]
                                                                                         ['or
                                                                                          ['= 'self_table.schema ['lower 'table.schema]]
@@ -166,9 +166,9 @@
         (t2/update! :model/Field
                     {:table_id
                      ['in
-                      ^:allow-subquery {:select ['id]
-                                        :from   [(t2/table-name :model/Table)]
-                                        :where  ['= 'db_id audit-db-id]}]}
+                      ^:allow-subquery {'select ['id]
+                                        'from   [(t2/table-name :model/Table)]
+                                        'where  ['= 'db_id audit-db-id]}]}
                     {:name [:upper :name]})
         (fix-h2-card-metadata! audit-db-id))
 
@@ -444,7 +444,7 @@
   ;; order by id in the query so every selection below (including the `referenced?` tiebreak) is deterministic;
   ;; group-by preserves this order within each group
   (let [groups (->> (t2/select [:model/Table :id :name :schema :active] 'db_id audit-db-id
-                               {:order-by [['id 'asc]]})
+                               {'order-by [['id 'asc]]})
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
@@ -453,9 +453,9 @@
       (t2/with-transaction [_conn]
         (let [referenced-ids    (into #{}
                                       (map :table_id)
-                                      (t2/query {:select-distinct ['table_id]
-                                                 :from            [(t2/table-name :model/Card)]
-                                                 :where           ['in 'table_id (map :id rows)]}))
+                                      (t2/query {'select-distinct ['table_id]
+                                                 'from            [(t2/table-name :model/Card)]
+                                                 'where           ['in 'table_id (map :id rows)]}))
               survivor          (or (first (filter (comp referenced-ids :id) rows))
                                     (first (filter :active rows))
                                     (first rows))

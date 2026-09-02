@@ -42,7 +42,7 @@
                        (let [full-filter (conj base-filter
                                                [:= src-type (name entity-type)]
                                                [:in src-id entity-keys])
-                             deps (t2/select :model/Dependency {:where full-filter})]
+                             deps (t2/select :model/Dependency {'where full-filter})]
                          (u/group-by (juxt src-type src-id)
                                      (juxt dst-type dst-id)
                                      conj #{}

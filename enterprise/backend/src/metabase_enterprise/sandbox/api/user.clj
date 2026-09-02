@@ -51,7 +51,7 @@
         (t2/select-fn-reducible (comp (partial apply merge)
                                       (juxt :jwt_attributes :login_attributes))
                                 [:model/User :login_attributes :jwt_attributes]
-                                {:where ['or
+                                {'where ['or
                                          ['and
                                           ['not= 'jwt_attributes nil]
                                           ['not= 'jwt_attributes "{}"]]

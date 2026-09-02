@@ -238,7 +238,7 @@
                      cutoff)
            ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
            (t/after? (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
-                                       {:where ['= 'field_id (:field_id field-values)]})
+                                       {'where ['= 'field_id (:field_id field-values)]})
                      cutoff))))))
 
 (defn field-should-have-field-values?

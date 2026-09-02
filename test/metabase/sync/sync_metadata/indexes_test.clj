@@ -68,13 +68,13 @@
       (mt/with-temp-test-data ds-to-index-def
         (testing "Base: Id is indexed"
           (is (some? (t2/select-one :model/Field
-                                    {:where ['and
+                                    {'where ['and
                                              ['in 'table_id (t2/select-fn-vec :id :model/Table 'db_id (mt/id))]
                                              ['= 'display_name "ID"]
                                              ['= 'database_indexed true]]}))))
         (testing "Base: Other columns have no index"
           (let [other-fields (t2/select :model/Field
-                                        {:where ['and
+                                        {'where ['and
                                                  ['in 'table_id (t2/select-fn-vec :id :model/Table 'db_id (mt/id))]
                                                  ['!= 'display_name "ID"]]})]
             (is (every? (comp (complement true?) :database_indexed) other-fields))
@@ -87,7 +87,7 @@
             (#'sync.indexes/sync-all-indexes! (mt/db)))
           (is (every? :database_indexed
                       (t2/select :model/Field
-                                 {:where ['in 'table_id (t2/select-fn-vec :id :model/Table 'db_id (mt/id))]}))))
+                                 {'where ['in 'table_id (t2/select-fn-vec :id :model/Table 'db_id (mt/id))]}))))
         (testing "Index removal is picked up correctly"
           (doseq [field ["first" "second" "third"]
                   :let [sql (format "DROP INDEX %s;" (sql.u/quote-name
@@ -97,6 +97,6 @@
             (#'sync.indexes/sync-all-indexes! (mt/db)))
           (is (every? (complement :database_indexed)
                       (t2/select :model/Field
-                                 {:where ['and
+                                 {'where ['and
                                           ['in 'table_id (t2/select-fn-vec :id :model/Table 'db_id (mt/id))]
                                           ['!= 'display_name "ID"]]}))))))))

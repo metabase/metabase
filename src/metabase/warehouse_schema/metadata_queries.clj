@@ -52,7 +52,7 @@
   [field-id :- pos-int?]
   (let [{orig :values, remapped :human_readable_values}
         (t2/select-one [:model/FieldValues :values :human_readable_values]
-                       {:where ['and
+                       {'where ['and
                                 ['= 'type "full"]
                                 ['= 'field_id field-id]
                                 ['not= 'human_readable_values nil]

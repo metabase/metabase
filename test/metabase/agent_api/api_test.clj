@@ -1449,7 +1449,7 @@
                             {:dashcards [{:action "add_heading" :text "Section 1"}
                                          {:action "add" :card_id card-id}
                                          {:action "add_text" :text "Narrative under the chart."}]})
-      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id {:order-by [['row 'asc]]})
+      (let [dashcards (t2/select :model/DashboardCard 'dashboard_id dash-id {'order-by [['row 'asc]]})
             heading   (first dashcards)
             chart     (second dashcards)]
         (is (= 3 (count dashcards)))
@@ -1822,7 +1822,7 @@
                               {:database_id (mt/id)
                                :sql         "SELECT 1 AS audit_probe"})
         (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
-                                                                 {:order-by [['started_at 'desc]]}))
+                                                                 {'order-by [['started_at 'desc]]}))
                               :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
                               :timeout-ms  5000
                               :interval-ms 50})]

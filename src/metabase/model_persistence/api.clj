@@ -31,7 +31,7 @@
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
   (let [site-uuid-str    (system/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)
-        query            (cond-> {:select    ['p.id 'p.database_id 'p.definition
+        query            (cond-> {'select    ['p.id 'p.database_id 'p.definition
                                               'p.active 'p.state 'p.error
                                               'p.refresh_begin 'p.refresh_end
                                               'p.table_name 'p.creator_id
@@ -41,14 +41,14 @@
                                               ['db.name 'database_name]
                                               ['col.id 'collection_id] ['col.name 'collection_name]
                                               ['col.authority_level 'collection_authority_level]]
-                                  :from      [['persisted_info 'p]]
-                                  :left-join [['metabase_database 'db] ['= 'db.id 'p.database_id]
+                                  'from      [['persisted_info 'p]]
+                                  'left-join [['metabase_database 'db] ['= 'db.id 'p.database_id]
                                               ['report_card 'c]        ['= 'c.id 'p.card_id]
                                               ['collection 'col]       ['= 'c.collection_id 'col.id]]
-                                  :where     ['and
+                                  'where     ['and
                                               ['= 'c.type "model"]
                                               ['= 'c.archived false]]
-                                  :order-by  [['p.refresh_begin 'desc]]}
+                                  'order-by  [['p.refresh_begin 'desc]]}
                            persisted-info-id (sql.helpers/where ['= 'p.id persisted-info-id])
                            (seq db-ids)      (sql.helpers/where ['in 'p.database_id db-ids])
                            card-id           (sql.helpers/where ['= 'p.card_id card-id])
@@ -80,9 +80,9 @@
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (t2/count :model/PersistedInfo {:from [['persisted_info 'p]]
-                                               :join [['report_card 'c] ['= 'c.id 'p.card_id]]
-                                               :where ['and
+               (t2/count :model/PersistedInfo {'from [['persisted_info 'p]]
+                                               'join [['report_card 'c] ['= 'c.id 'p.card_id]]
+                                               'where ['and
                                                        ['in 'p.database_id writable-db-ids]
                                                        ['= 'c.type "model"]
                                                        ['not 'c.archived]]})

@@ -351,7 +351,7 @@
 (defn- max-usage-log-id
   "Return the current max id in ai_usage_log, or 0 if empty."
   []
-  (or (:max (t2/query-one {:select [['%max.id 'max]] :from ['ai_usage_log]})) 0))
+  (or (:max (t2/query-one {'select [['%max.id 'max]] 'from ['ai_usage_log]})) 0))
 
 (defn- cleanup-usage-logs-after! [min-id]
   (t2/delete! :model/AiUsageLog 'id [:> min-id]))

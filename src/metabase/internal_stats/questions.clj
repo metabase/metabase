@@ -17,26 +17,26 @@
   (condp = (db/db-type)
     :mysql [:json_contains_path
             :dataset_query
-            ^:allow-raw-sql [:inline "one"]
-            ^:allow-raw-sql [:inline "$.native.\"template-tags\".*"]]
+            ['inline "one"]
+            ['inline "$.native.\"template-tags\".*"]]
     :postgres [:jsonb_path_exists
                [:cast :dataset_query :jsonb]
-               ^:allow-raw-sql [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+               ['inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
 
 (defn- contains-embedding-param
   [param]
   (condp = (db/db-type)
     :mysql [:!= [:json_search
                  :embedding_params
-                 ^:allow-raw-sql [:inline "one"]
+                 ['inline "one"]
                  param]
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               ^:allow-raw-sql [:inline "$.* ? (@ == $val)"]
-               [:jsonb_build_object ^:allow-raw-sql [:inline "val"] param]]))
+               ['inline "$.* ? (@ == $val)"]
+               [:jsonb_build_object ['inline "val"] param]]))
 
-(def ^:private embedding-on [:= :enable_embedding [:inline true]])
+(def ^:private embedding-on [:= :enable_embedding ['inline true]])
 
 (defn question-statistics-all-time
   "Get metrics based on questions "
@@ -50,7 +50,7 @@
                              :gui]
                             [(u/count-case [:!= :dashboard_id nil])
                              :is_dashboard_question]
-                            [(u/count-case [:= :enable_embedding [:inline true]])
+                            [(u/count-case [:= :enable_embedding ['inline true]])
                              :total_embedded]
                             [(u/count-case (and-not-nil :public_uuid))
                              :total_public]]
@@ -73,4 +73,4 @@
                                       [(u/count-case [:and (contains-embedding-param "disabled")
                                                       embedding-on])
                                        :with_disabled_params]))
-                   {:where (mi/exclude-internal-content-hsql :model/Card)})))
+                   {'where (mi/exclude-internal-content-hsql :model/Card)})))

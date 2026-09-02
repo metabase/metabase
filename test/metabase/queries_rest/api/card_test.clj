@@ -3061,7 +3061,7 @@
               (t2/select :model/ModerationReview
                          'moderated_item_type "card"
                          'moderated_item_id (u/the-id card)
-                         {:order-by [['id 'desc]]}))
+                         {'order-by [['id 'desc]]}))
             (update-card [card diff]
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
       (testing "Changing core attributes un-verifies the card"

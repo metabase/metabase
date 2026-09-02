@@ -129,7 +129,7 @@
      (when-let [auth-identity (t2/select-one :model/AuthIdentity
                                              'user_id user-id
                                              'provider provider-name
-                                             {:for 'update})]
+                                             {'for 'update})]
        (when (and (confirmed? auth-identity)
                   (not (jti-used? (:credentials auth-identity) jti)))
          (or (totp-attempt! auth-identity code jti)
@@ -145,7 +145,7 @@
     (when-let [auth-identity (t2/select-one :model/AuthIdentity
                                             'user_id user-id
                                             'provider provider-name
-                                            {:for 'update})]
+                                            {'for 'update})]
       (when (confirmed? auth-identity)
         (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]
           (t2/update! :model/AuthIdentity (:id auth-identity)

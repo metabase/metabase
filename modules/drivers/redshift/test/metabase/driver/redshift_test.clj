@@ -245,7 +245,7 @@
                         {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
                        (map
                         mt/derecordize
-                        (t2/select [:model/Field :name :database_type :base_type] 'table_id table-id {:order-by ['name]}))))))))))))
+                        (t2/select [:model/Field :name :database_type :base_type] 'table_id table-id {'order-by ['name]}))))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
@@ -275,7 +275,7 @@
                 (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
                         {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
                         {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
-                       (t2/select [:model/Field :name :database_type :base_type] 'table_id table-id {:order-by ['name]})))))))))))
+                       (t2/select [:model/Field :name :database_type :base_type] 'table_id table-id {'order-by ['name]})))))))))))
 
 (deftest describe-database-privileges-test
   (mt/test-driver :redshift
@@ -626,7 +626,7 @@
             (let [fields (t2/select [:model/Field :name :base_type :semantic_type]
                                     'table_id (mt/id :sync_test_table)
                                     'active true
-                                    {:order-by ['database_position]})]
+                                    {'order-by ['database_position]})]
               (is (= 3 (count fields)) "Should have 3 fields (id + 2 defined)")
               (is (= "id" (:name (first fields))) "First field should be auto-generated PK")
               (is (= :type/PK (:semantic_type (first fields))) "PK should have :type/PK semantic type")

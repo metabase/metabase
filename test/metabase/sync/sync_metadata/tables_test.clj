@@ -362,7 +362,7 @@
         (is (= ["beta" "apple" "mango" "zebra"]
                (map :name (t2/select [:model/Table :name]
                                      'db_id (u/the-id db)
-                                     {:order-by [['id 'asc]]}))))))))
+                                     {'order-by [['id 'asc]]}))))))))
 
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"

@@ -36,22 +36,22 @@
   [transform]
   (t2/select :model/TransformRun
              'transform_id (:id transform)
-             {:order-by [['start_time 'desc] ['end_time 'desc]]}))
+             {'order-by [['start_time 'desc] ['end_time 'desc]]}))
 
 (defn- latest-run-cte
   ([] (latest-run-cte nil))
   ([where]
    [[:latest_runs
-     (->       ^:allow-subquery {:select ['*
-                                          [['over [['row_number] ^:allow-subquery {:partition-by 'transform_id, :order-by [['start_time 'desc]]}]] 'rn]]
-                                 :from   ['transform_run]}
+     (->       ^:allow-subquery {'select ['*
+                                          [['over [['row_number] ^:allow-subquery {'partition-by 'transform_id, 'order-by [['start_time 'desc]]}]] 'rn]]
+                                 'from   ['transform_run]}
                (m/assoc-some :where where))]]))
 
 (defn- latest-runs-query [transform-ids]
-  {:with   (latest-run-cte [:in :transform_id transform-ids])
-   :select ['*]
-   :from   ['latest_runs]
-   :where  ['= 'rn [:inline 1]]})
+  {'with   (latest-run-cte [:in :transform_id transform-ids])
+   'select ['*]
+   'from   ['latest_runs]
+   'where  ['= 'rn [:inline 1]]})
 
 (defn latest-runs
   "Return the latest runs for `transform-ids`."
@@ -211,8 +211,8 @@
                                   'time [:< cutoff]))
           locked (when (seq times)
                    (t2/select :model/TransformRun
-                              {:where ['and ['= 'is_active true] ['in 'id (keys times)]]
-                               :for   'update}))]
+                              {'where ['and ['= 'is_active true] ['in 'id (keys times)]]
+                               'for   'update}))]
       (when (seq locked)
         (t2/update! :model/TransformRun
                     :id        [:in (mapv :id locked)]
@@ -241,11 +241,11 @@
     (into {}
           (map (juxt :transform_id :last_success))
           (t2/select :model/TransformRun
-                     {:select   ['transform_id [['max 'end_time] 'last_success]]
-                      :where    ['and
+                     {'select   ['transform_id [['max 'end_time] 'last_success]]
+                      'where    ['and
                                  ['in 'transform_id transform-ids]
                                  ['= 'status "succeeded"]]
-                      :group-by ['transform_id]}))))
+                      'group-by ['transform_id]}))))
 
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
@@ -271,9 +271,9 @@
                      (conj [:in :transform_id transform-ids])
 
                      (seq transform-tag-ids)
-                     (conj [:in :transform_id                             ^:allow-subquery {:select ['transform_id]
-                                                                                            :from   ['transform_transform_tag]
-                                                                                            :where  ['in 'tag_id transform-tag-ids]}])
+                     (conj [:in :transform_id                             ^:allow-subquery {'select ['transform_id]
+                                                                                            'from   ['transform_transform_tag]
+                                                                                            'where  ['in 'tag_id transform-tag-ids]}])
 
                      (seq statuses)
                      (conj [:in :status (set statuses)])
@@ -325,14 +325,14 @@
    (by minimum position) assigned to the transform for a transform run."
   []
   ^:allow-subquery
-  {:select [[(translate-tag-name-clause :tt.name :tt.built_in_type) 'tag_name]]
-   :from   [['transform_transform_tag 'ttt]]
-   :join   [['transform_tag 'tt] ['= 'ttt.tag_id 'tt.id]]
-   :where  ['and
+  {'select [[(translate-tag-name-clause :tt.name :tt.built_in_type) 'tag_name]]
+   'from   [['transform_transform_tag 'ttt]]
+   'join   [['transform_tag 'tt] ['= 'ttt.tag_id 'tt.id]]
+   'where  ['and
             ['= 'ttt.transform_id 'transform_run.transform_id]
-            ['= 'ttt.position ^:allow-subquery {:select [[['min 'ttt2.position]]]
-                                                :from   [['transform_transform_tag 'ttt2]]
-                                                :where  ['= 'ttt2.transform_id 'transform_run.transform_id]}]]})
+            ['= 'ttt.position ^:allow-subquery {'select [[['min 'ttt2.position]]]
+                                                'from   [['transform_transform_tag 'ttt2]]
+                                                'where  ['= 'ttt2.transform_id 'transform_run.transform_id]}]]})
 
 (defn- paged-runs-order-by-clause
   "Builds a HoneySQL `:order-by` clause for transform runs, translating display values for sortable columns."

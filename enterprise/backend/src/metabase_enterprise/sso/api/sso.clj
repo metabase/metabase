@@ -103,10 +103,10 @@
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
         {:keys [email sso_source]}
-        (t2/query-one {:select ['u.email 'u.sso_source]
-                       :from   [['core_user 'u]]
-                       :join   [['core_session 'session] ['= 'u.id 'session.user_id]]
-                       :where  ['= 'key_hashed metabase-session-key-hashed]})]
+        (t2/query-one {'select ['u.email 'u.sso_source]
+                       'from   [['core_user 'u]]
+                       'join   [['core_session 'session] ['= 'u.id 'session.user_id]]
+                       'where  ['= 'key_hashed metabase-session-key-hashed]})]
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
     (when-not (sso-settings/saml-slo-enabled)

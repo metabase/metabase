@@ -269,9 +269,9 @@
                   control-table-name]}
           index-metadata
           ;; Returns nil if no active index is set (active_id is null).
-          active-row-sql      (-> {:select ['m.*]
-                                   :from   [[(keyword control-table-name)  'c]]
-                                   :join   [[(keyword metadata-table-name) 'm] ['= 'm.id 'c.active_id]]}
+          active-row-sql      (-> {'select ['m.*]
+                                   'from   [[(keyword control-table-name)  'c]]
+                                   'join   [[(keyword metadata-table-name) 'm] ['= 'm.id 'c.active_id]]}
                                   (sql/format :quoted true))
           active-row          (jdbc/execute-one! pgvector active-row-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (when active-row
@@ -286,8 +286,8 @@
   (assert (nat-int? index-id) "expected an integer id (hint do not pass the index map!)")
   (let [{:keys [control-table-name]} index-metadata
         ;; only one row, no traditional WHERE for now
-        activation-sql (-> {:update (keyword control-table-name)
-                            :set    {:active_id         index-id
+        activation-sql (-> {'update (keyword control-table-name)
+                            'set    {:active_id         index-id
                                      :active_updated_at ['now]}}
                            (sql/format :quoted true))]
     (jdbc/execute! pgvector activation-sql)
@@ -316,15 +316,15 @@
                 embedding-space-id]}
         embedding-model
 
-        model-rows-sql (-> {:select ['m.* [['coalesce ['= 'c.active_id 'm.id] false] 'is_active]]
-                            :from   [[(keyword control-table-name) 'c]
+        model-rows-sql (-> {'select ['m.* [['coalesce ['= 'c.active_id 'm.id] false] 'is_active]]
+                            'from   [[(keyword control-table-name) 'c]
                                      [(keyword metadata-table-name) 'm]]
-                            :where  ['and
+                            'where  ['and
                                      ['= 'provider provider]
                                      ['= 'model_name model-name]
                                      ['= 'vector_dimensions vector-dimensions]
                                      ['= 'embedding_space_id embedding-space-id]]
-                            :order-by [['index_created_at 'desc]]}
+                            'order-by [['index_created_at 'desc]]}
                            (sql/format :quoted true))
         model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
 

@@ -618,9 +618,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (mdb/query {:select ['value]
-                  :from   ['setting]
-                  :where  ['= 'key (name setting-key)]})
+  (-> (mdb/query {'select ['value]
+                  'from   ['setting]
+                  'where  ['= 'key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test

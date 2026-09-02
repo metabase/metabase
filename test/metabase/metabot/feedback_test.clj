@@ -198,7 +198,7 @@
               (metabot.feedback/persist-feedback!
                (payload {:message-id external-id :positive false :issue-type "ui-bug" :freeform "not for me"})))
             (let [rows (t2/select :model/MetabotFeedback 'message_id assistant-msg-id
-                                  {:order-by [['user_id 'asc]]})
+                                  {'order-by [['user_id 'asc]]})
                   by-user (into {} (map (juxt :user_id identity)) rows)]
               (is (= 2 (count rows)) "both submissions are persisted as distinct rows")
               (is (true?  (:positive (get by-user owner-id))))

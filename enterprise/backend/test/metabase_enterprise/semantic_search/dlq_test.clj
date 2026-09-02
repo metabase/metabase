@@ -78,18 +78,18 @@
           (is (= 2 (semantic.dlq/add-entries! pgvector index-metadata index-id entries)))
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 results    (jdbc/execute! pgvector
-                                          (sql/format {:select ['*] :from [table-name] :order-by ['gate_id]} :quoted true)
+                                          (sql/format {'select ['*] 'from [table-name] 'order-by ['gate_id]} :quoted true)
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 2 (count results)))
             (is (= "gate1" (:gate_id (first results))))
             (is (= 0 (:retry_count (first results)))))
           (let [table-name  (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 all-results (jdbc/execute! pgvector
-                                           (sql/format {:select [['gate_id 'id] ['error_gated_at 'gated_at]] :from [table-name]} :quoted true)
+                                           (sql/format {'select [['gate_id 'id] ['error_gated_at 'gated_at]] 'from [table-name]} :quoted true)
                                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 2 (semantic.dlq/delete-entries! pgvector index-metadata index-id all-results)))
             (let [remaining (jdbc/execute! pgvector
-                                           (sql/format {:select ['*] :from [table-name]} :quoted true))]
+                                           (sql/format {'select ['*] 'from [table-name]} :quoted true))]
               (is (empty? remaining)))))))))
 
 (deftest dlq-entry-upsert-test
@@ -115,7 +115,7 @@
             (is (= 1 (semantic.dlq/add-entries! pgvector index-metadata index-id updated-entry))))
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 results    (jdbc/execute! pgvector
-                                          (sql/format {:select ['*] :from [table-name] :order-by ['gate_id]} :quoted true)
+                                          (sql/format {'select ['*] 'from [table-name] 'order-by ['gate_id]} :quoted true)
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 1 (count results)))
             (is (= "gate1" (:gate_id (first results))))
@@ -147,7 +147,7 @@
               "the conflict-update path must work against a schema-qualified table")
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 [row]      (jdbc/execute! pgvector
-                                          (sql/format {:select ['*] :from [table-name]} :quoted true)
+                                          (sql/format {'select ['*] 'from [table-name]} :quoted true)
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 2 (:retry_count row)))
             (is (= t2 (:error_gated_at row)))))

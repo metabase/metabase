@@ -280,7 +280,7 @@
               ;; the audit event publishes after the task's ended_at is set, so poll for the row
               (let [entry (dh/with-retry {:max-retries 10
                                           :delay-ms 200}
-                            (u/prog1 (t2/select-one :model/AuditLog 'topic "remote-sync-import" {:order-by [['id 'desc]]})
+                            (u/prog1 (t2/select-one :model/AuditLog 'topic "remote-sync-import" {'order-by [['id 'desc]]})
                               (when (<= (t2/count :model/AuditLog 'topic "remote-sync-import") before)
                                 (throw (ex-info "Audit log entry not written yet" {})))))]
                 (testing "attributed to the user who triggered it"

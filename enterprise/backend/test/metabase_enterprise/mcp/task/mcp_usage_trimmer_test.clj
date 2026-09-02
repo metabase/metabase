@@ -25,10 +25,10 @@
       (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 30]
         (#'mcp-usage-trimmer/trim-old-mcp-usage-data!)
         (is (= #{s-recent}
-               (t2/select-fn-set :id :model/McpSessionLog {:where ['in 'id [s-recent s-old]]}))
+               (t2/select-fn-set :id :model/McpSessionLog {'where ['in 'id [s-recent s-old]]}))
             "old session rows are deleted, recent kept")
         (is (= #{tc-recent}
-               (t2/select-fn-set :id :model/McpToolCallLog {:where ['in 'id [tc-recent tc-boundary tc-old]]}))
+               (t2/select-fn-set :id :model/McpToolCallLog {'where ['in 'id [tc-recent tc-boundary tc-old]]}))
             "tool-call rows older than the cutoff are deleted, recent kept")))))
 
 (deftest skips-deletion-when-retention-is-infinite-test
@@ -40,6 +40,6 @@
       (mt/with-temp-env-var-value! [mb-ai-usage-max-retention-days 0]
         (#'mcp-usage-trimmer/trim-old-mcp-usage-data!)
         (is (= #{s-recent s-old}
-               (t2/select-fn-set :id :model/McpSessionLog {:where ['in 'id [s-recent s-old]]})))
+               (t2/select-fn-set :id :model/McpSessionLog {'where ['in 'id [s-recent s-old]]})))
         (is (= #{tc-old}
-               (t2/select-fn-set :id :model/McpToolCallLog {:where ['in 'id [tc-old]]})))))))
+               (t2/select-fn-set :id :model/McpToolCallLog {'where ['in 'id [tc-old]]})))))))

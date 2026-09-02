@@ -576,7 +576,7 @@
   [conversation-id]
   (t2/select [:model/MetabotMessage :id :external_id :role :deleted_at :deleted_by_user_id]
              'conversation_id conversation-id
-             {:order-by [['created_at 'asc] ['id 'asc]]}))
+             {'order-by [['created_at 'asc] ['id 'asc]]}))
 
 (deftest agent-streaming-start-event-carries-user-message-id-test
   (testing "the start event's messageMetadata.userMessageId is the persisted user row's external_id"

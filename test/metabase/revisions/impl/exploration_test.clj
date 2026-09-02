@@ -47,7 +47,7 @@
                            {:object  (t2/select-one :model/Exploration 'id expl-id)
                             :user-id (mt/user->id :rasta)})
     (let [revs (t2/select :model/Revision 'model "Exploration" 'model_id expl-id
-                          {:order-by [['id 'asc]]})]
+                          {'order-by [['id 'asc]]})]
       (is (= 2 (count revs)))
       (testing "the original creation revision is no longer most-recent"
         (is (false? (-> revs first :most_recent))))
@@ -74,7 +74,7 @@
                             :user-id (mt/user->id :crowberto)})
     (let [first-rev-id (t2/select-one-pk :model/Revision
                                          'model "Exploration" 'model_id expl-id
-                                         {:order-by [['id 'asc]]})]
+                                         {'order-by [['id 'asc]]})]
       (t2/update! :model/Exploration expl-id {:name "renamed" :description "later"})
       (events/publish-event! :event/exploration-update
                              {:object  (t2/select-one :model/Exploration 'id expl-id)
@@ -86,7 +86,7 @@
       (let [reverted (t2/select-one :model/Exploration 'id expl-id)
             last-rev (t2/select-one :model/Revision
                                     'model "Exploration" 'model_id expl-id
-                                    {:order-by [['id 'desc]]})]
+                                    {'order-by [['id 'desc]]})]
         (testing "exploration row reverted to first revision's snapshot"
           (is (= "original" (:name reverted)))
           (is (= "first"    (:description reverted))))

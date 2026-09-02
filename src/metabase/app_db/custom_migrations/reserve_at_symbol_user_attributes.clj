@@ -40,7 +40,7 @@
 
 (defn- migrate-sandboxes!
   [old-attr new-attr]
-  (let [sandboxes (t2/select :sandboxes {:where ['like 'attribute_remappings (str "%" old-attr "%")]})]
+  (let [sandboxes (t2/select :sandboxes {'where ['like 'attribute_remappings (str "%" old-attr "%")]})]
     (doseq [{:keys [id attribute_remappings]} sandboxes]
       (let [attribute-remappings (parse-json attribute_remappings)
             new-attribute-remappings (set/rename-keys attribute-remappings {old-attr new-attr})]
@@ -79,7 +79,7 @@
          ;; we can't just check for *begins* with here, because we need to include cases that *might* be clobbered by renames.
          (filter #(re-matches #"^(_+)?@.+" %)))
         (t2/select-fn-reducible :login_attributes [:core_user :login_attributes]
-                                {:where ['and
+                                {'where ['and
                                          ['not= 'login_attributes nil]
                                          ['not= 'login_attributes "{}"]
                                          ;; contains a `"@`, a string starting with a `@` (it could be in a value

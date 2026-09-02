@@ -68,8 +68,8 @@
   [current-user-id comment-ids]
   (when (seq comment-ids)
     (let [reactions   (-> (t2/select :model/CommentReaction
-                                     {:where    ['in 'comment_id comment-ids]
-                                      :order-by [['comment_id 'asc] ['created_at 'asc] ['emoji 'asc]]})
+                                     {'where    ['in 'comment_id comment-ids]
+                                      'order-by [['comment_id 'asc] ['created_at 'asc] ['emoji 'asc]]})
                           (t2/hydrate :user))
 
           ;; first user comes first if they reacted

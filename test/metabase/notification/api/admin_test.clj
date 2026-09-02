@@ -1000,7 +1000,7 @@
 
 (deftest detail-404-for-missing-id-test
   (testing "GET /:id returns 404 for a non-existent notification id"
-    (let [max-id (or (t2/select-one-fn :id :model/Notification {:order-by [['id 'desc]]}) 0)]
+    (let [max-id (or (t2/select-one-fn :id :model/Notification {'order-by [['id 'desc]]}) 0)]
       (mt/user-http-request :crowberto :get 404
                             (str "notification/admin/" (+ max-id 100000))))))
 

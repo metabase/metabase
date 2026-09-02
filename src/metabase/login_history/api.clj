@@ -15,7 +15,7 @@
   (login-history/human-friendly-infos
    (t2/select [:model/LoginHistory :timestamp :session_id :device_description :ip_address]
               'user_id (u/the-id user-or-id)
-              {:order-by [['timestamp 'desc]]})))
+              {'order-by [['timestamp 'desc]]})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

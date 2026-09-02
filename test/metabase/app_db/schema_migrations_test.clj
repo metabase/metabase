@@ -225,12 +225,12 @@
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
-               (t2/select-fn-set :name :model/Dimension {:order-by [['id 'asc]]})))
+               (t2/select-fn-set :name :model/Dimension {'order-by [['id 'asc]]})))
         (migrate!)
         (testing "Keep the newest Dimensions"
           (is (= #{"F1 D2"
                    "F2 D1"}
-                 (t2/select-fn-set :name :model/Dimension {:order-by [['id 'asc]]}))))))))
+                 (t2/select-fn-set :name :model/Dimension {'order-by [['id 'asc]]}))))))))
 
 (deftest ^:mb/old-migrations-test able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
@@ -287,8 +287,8 @@
                                                                                     :created_at :%now
                                                                                     :updated_at :%now
                                                                                     :active     true}))
-            _        (t2/query-one {:insert-into 'sandboxes
-                                    :values      [{:group_id             1
+            _        (t2/query-one {'insert-into 'sandboxes
+                                    'values      [{:group_id             1
                                                    :table_id             table-id
                                                    :attribute_remappings "{\"foo\", 1}"}
                                                   {:group_id             2
@@ -302,11 +302,11 @@
         ;; Two rows are present in `sandboxes`
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}
                 {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}]
-               (mdb.query/query {:select ['*] :from ['sandboxes]})))
+               (mdb.query/query {'select ['*] 'from ['sandboxes]})))
         (migrate!)
         ;; Only the sandbox with a corresponding `Permissions` row is present
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
-               (mdb.query/query {:select ['*] :from ['sandboxes]})))))))
+               (mdb.query/query {'select ['*] 'from ['sandboxes]})))))))
 
 ;;;
 ;;; 47 tests
@@ -370,8 +370,8 @@
 (deftest ^:mb/old-migrations-test migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
     (impl/test-migrations ["v47.00-009" "v47.00-012"] [migrate!]
-      (t2/query-one {:insert-into 'core_user
-                     :values      [{:first_name    "Cam"
+      (t2/query-one {'insert-into 'core_user
+                     'values      [{:first_name    "Cam"
                                     :last_name     "Era"
                                     :email         "cam@era.com"
                                     :date_joined   '%now
@@ -388,15 +388,15 @@
       (migrate!)
       (is (= [{:first_name "Cam", :sso_source nil}
               {:first_name "Google Cam", :sso_source "google"}]
-             (mdb.query/query {:select   ['first_name 'sso_source]
-                               :from     ['core_user]
-                               :order-by [['id 'asc]]}))))))
+             (mdb.query/query {'select   ['first_name 'sso_source]
+                               'from     ['core_user]
+                               'order-by [['id 'asc]]}))))))
 
 (deftest ^:mb/old-migrations-test migrate-ldap-auth-test
   (testing "Migration v47.00-013 and v47.00-014: migrate ldap_auth into sso_source"
     (impl/test-migrations ["v47.00-013" "v47.00-014"] [migrate!]
-      (t2/query-one {:insert-into 'core_user
-                     :values      [{:first_name    "Cam"
+      (t2/query-one {'insert-into 'core_user
+                     'values      [{:first_name    "Cam"
                                     :last_name     "Era"
                                     :email         "cam@era.com"
                                     :date_joined   '%now
@@ -413,9 +413,9 @@
       (migrate!)
       (is (= [{:first_name "Cam", :sso_source nil}
               {:first_name "LDAP Cam", :sso_source "ldap"}]
-             (mdb.query/query {:select   ['first_name 'sso_source]
-                               :from     ['core_user]
-                               :order-by [['id 'asc]]}))))))
+             (mdb.query/query {'select   ['first_name 'sso_source]
+                               'from     ['core_user]
+                               'order-by [['id 'asc]]}))))))
 
 (deftest ^:mb/old-migrations-test migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
@@ -446,7 +446,7 @@
         (migrate!)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                :model/DashboardCard 'id [:in dashcard-ids]
-                                               {:order-by [['id 'asc]]})]
+                                               {'order-by [['id 'asc]]})]
           (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
                   {:row 7  :col 16 :size_x 8  :size_y 8}
                   {:row 2  :col 7  :size_x 6  :size_y 3}
@@ -468,7 +468,7 @@
           (migrate! :down 46)
           (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                    :model/DashboardCard 'id [:in dashcard-ids]
-                                                   {:order-by [['id 'asc]]})]
+                                                   {'order-by [['id 'asc]]})]
             (is (= cases rollbacked-to-18))
             (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
             (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
@@ -1198,7 +1198,7 @@
 
 (defn- clear-permissions!
   []
-  (t2/delete! (t2/table-name :model/Permissions) {:where ['not= 'object "/"]})
+  (t2/delete! (t2/table-name :model/Permissions) {'where ['not= 'object "/"]})
   (t2/delete! (t2/table-name :model/DataPermissions))
   (t2/delete! :connection_impersonations)
   (t2/delete! :sandboxes))
@@ -1891,7 +1891,7 @@
   (testing "Cache config migration old id is removed from databasechangelog"
     (impl/test-migrations ["v50.2024-06-28T12:35:50"] [migrate!]
       (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
-            last-order (:orderexecuted (t2/select-one clog {:order-by [['orderexecuted 'desc]]}))]
+            last-order (:orderexecuted (t2/select-one clog {'order-by [['orderexecuted 'desc]]}))]
         (t2/insert! clog [{:id            "v50.2024-04-12T12:33:09"
                            :author        "piranha"
                            :filename      "001_update_migrations.yaml"
@@ -2391,13 +2391,13 @@
               _          (t2/insert-returning-pk! (t2/table-name :model/Permissions)
                                                   {:object (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-3)
                                                    :group_id group-id})
-              _          (t2/query-one {:insert-into 'sandboxes
-                                        :values      [{:group_id             group-id
+              _          (t2/query-one {'insert-into 'sandboxes
+                                        'values      [{:group_id             group-id
                                                        :table_id             table-id-1
                                                        :attribute_remappings "{\"foo\", 1}"
                                                        :permission_id        perm-id-1}]})
-              _          (t2/query-one {:insert-into 'sandboxes
-                                        :values      [{:group_id             group-id
+              _          (t2/query-one {'insert-into 'sandboxes
+                                        'values      [{:group_id             group-id
                                                        :table_id             table-id-2
                                                        :attribute_remappings "{\"foo\", 1}"
                                                        :permission_id        perm-id-2}]})
@@ -2689,8 +2689,8 @@
   (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
       ;; Insert users with password auth before migration
-      (t2/query-one {:insert-into 'core_user
-                     :values      [{:first_name    "Password"
+      (t2/query-one {'insert-into 'core_user
+                     'values      [{:first_name    "Password"
                                     :last_name     "User"
                                     :email         "password@example.com"
                                     :date_joined   '%now
@@ -2704,11 +2704,11 @@
                                     :password_salt nil}]})
       (migrate!)
       ;; Verify password user has auth_identity
-      (let [results (mdb.query/query {:select ['u.first_name 'a.provider]
-                                      :from   [['core_user 'u]]
-                                      :left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
-                                      :where  ['in 'u.email ["password@example.com" "nopass@example.com"]]
-                                      :order-by [['u.id 'asc]]})]
+      (let [results (mdb.query/query {'select ['u.first_name 'a.provider]
+                                      'from   [['core_user 'u]]
+                                      'left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
+                                      'where  ['in 'u.email ["password@example.com" "nopass@example.com"]]
+                                      'order-by [['u.id 'asc]]})]
         (is (= [{:first_name "Password" :provider "password"}
                 {:first_name "NoPassword" :provider nil}]
                results))))))
@@ -2717,8 +2717,8 @@
   (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:12"] [migrate!]
       ;; Insert users with LDAP auth before migration (using sso_source='ldap' from current schema)
-      (t2/query-one {:insert-into 'core_user
-                     :values      [{:first_name    "LDAP"
+      (t2/query-one {'insert-into 'core_user
+                     'values      [{:first_name    "LDAP"
                                     :last_name     "User"
                                     :email         "ldap@example.com"
                                     :date_joined   '%now
@@ -2731,11 +2731,11 @@
                                     :sso_source    nil}]})
       (migrate!)
       ;; Verify LDAP user has auth_identity
-      (let [results (mdb.query/query {:select ['u.first_name 'a.provider]
-                                      :from   [['core_user 'u]]
-                                      :left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
-                                      :where  ['in 'u.email ["ldap@example.com" "noldap@example.com"]]
-                                      :order-by [['u.id 'asc]]})]
+      (let [results (mdb.query/query {'select ['u.first_name 'a.provider]
+                                      'from   [['core_user 'u]]
+                                      'left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
+                                      'where  ['in 'u.email ["ldap@example.com" "noldap@example.com"]]
+                                      'order-by [['u.id 'asc]]})]
         (is (= [{:first_name "LDAP" :provider "ldap"}
                 {:first_name "NoLDAP" :provider nil}]
                results))))))
@@ -2744,8 +2744,8 @@
   (testing "Migration v58.2025-11-04T23:10:05: Migrate Google SSO authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:13"] [migrate!]
       ;; Insert users with Google SSO before migration
-      (t2/query-one {:insert-into 'core_user
-                     :values      [{:first_name    "Google"
+      (t2/query-one {'insert-into 'core_user
+                     'values      [{:first_name    "Google"
                                     :last_name     "User"
                                     :email         "google@example.com"
                                     :date_joined   '%now
@@ -2757,11 +2757,11 @@
                                     :sso_source    nil}]})
       (migrate!)
       ;; Verify Google user has auth_identity
-      (let [results (mdb.query/query {:select ['u.first_name 'a.provider]
-                                      :from   [['core_user 'u]]
-                                      :left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
-                                      :where  ['in 'u.email ["google@example.com" "nosso@example.com"]]
-                                      :order-by [['u.id 'asc]]})]
+      (let [results (mdb.query/query {'select ['u.first_name 'a.provider]
+                                      'from   [['core_user 'u]]
+                                      'left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
+                                      'where  ['in 'u.email ["google@example.com" "nosso@example.com"]]
+                                      'order-by [['u.id 'asc]]})]
         (is (= [{:first_name "Google" :provider "google"}
                 {:first_name "NoSSO" :provider nil}]
                results))))))
@@ -2770,8 +2770,8 @@
   (testing "Migration v58.2025-11-04T23:10:06: Migrate SAML and JWT authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:14"] [migrate!]
       ;; Insert users with SAML and JWT before migration
-      (t2/query-one {:insert-into 'core_user
-                     :values      [{:first_name    "SAML"
+      (t2/query-one {'insert-into 'core_user
+                     'values      [{:first_name    "SAML"
                                     :last_name     "User"
                                     :email         "saml@example.com"
                                     :date_joined   '%now
@@ -2783,11 +2783,11 @@
                                     :sso_source    "jwt"}]})
       (migrate!)
       ;; Verify SAML and JWT users have auth_identity
-      (let [results (mdb.query/query {:select ['u.first_name 'a.provider]
-                                      :from   [['core_user 'u]]
-                                      :left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
-                                      :where  ['in 'u.email ["saml@example.com" "jwt@example.com"]]
-                                      :order-by [['u.id 'asc]]})]
+      (let [results (mdb.query/query {'select ['u.first_name 'a.provider]
+                                      'from   [['core_user 'u]]
+                                      'left-join [['auth_identity 'a] ['= 'u.id 'a.user_id]]
+                                      'where  ['in 'u.email ["saml@example.com" "jwt@example.com"]]
+                                      'order-by [['u.id 'asc]]})]
         (is (= [{:first_name "SAML" :provider "saml"}
                 {:first_name "JWT" :provider "jwt"}]
                results))))))

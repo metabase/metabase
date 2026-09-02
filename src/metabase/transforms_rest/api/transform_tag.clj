@@ -63,7 +63,7 @@
    _query-params]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (t2/select :model/TransformTag {:order-by [['name 'asc]]}) :can_run))
+  (t2/hydrate (t2/select :model/TransformTag {'order-by [['name 'asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-tag` routes."

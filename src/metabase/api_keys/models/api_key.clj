@@ -35,13 +35,13 @@
   (when (seq api-keys)
     (let [api-key-id->permissions-groups
           (group-by :api-key-id
-                    (t2/query {:select [['pg.name 'group-name]
+                    (t2/query {'select [['pg.name 'group-name]
                                         ['pg.id 'group-id]
                                         ['api_key.id 'api-key-id]]
-                               :from   [['permissions_group 'pg]]
-                               :join   [['permissions_group_membership 'pgm] ['= 'pgm.group_id 'pg.id]
+                               'from   [['permissions_group 'pg]]
+                               'join   [['permissions_group_membership 'pgm] ['= 'pgm.group_id 'pg.id]
                                         'api_key ['= 'api_key.user_id 'pgm.user_id]]
-                               :where  ['in 'api_key.id (map u/the-id api-keys)]}))
+                               'where  ['in 'api_key.id (map u/the-id api-keys)]}))
           api-key-id->group
           (fn [api-key-id]
             (let [{name :group-name

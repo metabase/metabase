@@ -116,7 +116,7 @@
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
-               (assoc :fields (for [field (t2/select :model/Field, 'table_id (:id table), {:order-by ['name]})]
+               (assoc :fields (for [field (t2/select :model/Field, 'table_id (:id table), {'order-by ['name]})]
                                 (into {} (-> field
                                              (update :fingerprint map?)
                                              (update :fingerprint_version (complement zero?))
@@ -255,7 +255,7 @@
             (testing "Returns results from sync-database step"
               (is (= ["metadata" "analyze" "field-values"]
                      (map :name results)))))
-          (let [[movie studio] (mapv table-details (t2/select :model/Table 'db_id (u/the-id db) {:order-by ['name]}))
+          (let [[movie studio] (mapv table-details (t2/select :model/Table 'db_id (u/the-id db) {'order-by ['name]}))
                 ;; a full sync runs the analyze step, which scores dimension_interestingness
                 ;; (a double in [0.0, 1.0]) for every field — including non-fingerprinted/PK
                 ;; fields, which hard-zero to 0.0
@@ -283,7 +283,7 @@
                                                :description ""}]
           (sync/sync-table! studio)
           (sync/sync-table! movie)
-          (let [[movie studio] (mapv table-details (t2/select :model/Table 'db_id (u/the-id db) {:order-by ['name]}))]
+          (let [[movie studio] (mapv table-details (t2/select :model/Table 'db_id (u/the-id db) {'order-by ['name]}))]
             (testing "Tables and Fields are synced"
               (is (= (expected-movie-table) movie))
               (is (= (expected-studio-table) studio)))))))))

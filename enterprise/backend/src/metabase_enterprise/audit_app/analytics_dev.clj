@@ -280,7 +280,7 @@
 (defn- first-admin-user
   "Get the first admin user (by ID)."
   []
-  (t2/select-one [:model/User :id :email] 'is_superuser true {:order-by [['id 'asc]]}))
+  (t2/select-one [:model/User :id :email] 'is_superuser true {'order-by [['id 'asc]]}))
 
 (defn find-analytics-collection
   "Get the analytics collection"

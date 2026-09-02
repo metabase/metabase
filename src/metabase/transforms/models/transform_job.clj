@@ -66,7 +66,7 @@
           tag-mappings    (group-by :job_id
                                     (t2/select [:model/TransformJobTransformTag :job_id :tag_id :position]
                                                'job_id [:in job-ids]
-                                               {:order-by [['position 'asc]]}))
+                                               {'order-by [['position 'asc]]}))
           ;; Sort each job's tags by position
           sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
       (for [job jobs]
@@ -124,7 +124,7 @@
             ;; Get current associations
             current-associations (t2/select [:model/TransformJobTransformTag :tag_id :position]
                                             'job_id job-id
-                                            {:order-by [['position 'asc]]})
+                                            {'order-by [['position 'asc]]})
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
@@ -204,7 +204,7 @@
           tag-mappings (group-by :job_id
                                  (t2/select :model/TransformJobTransformTag
                                             'job_id [:in job-ids]
-                                            {:order-by [['position 'asc]]}))]
+                                            {'order-by [['position 'asc]]}))]
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 

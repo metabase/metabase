@@ -41,7 +41,7 @@
   [engine version index-name]
   ;; Clear out any expired records
   (t2/delete! :model/SearchIndexMetadata
-              {:where ['and
+              {'where ['and
                        ['= 'lang_code (i18n/site-locale-string)]
                        ['= 'status "pending"]
                        ['< 'created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
@@ -83,15 +83,15 @@
   It is up to the relevant engine to delete the actual indexes themselves."
   [our-version]
   ;; If there are no recent versions, then there is nothing to delete.
-  (when-let [most-recent (seq (map :version (t2/query {:select   ['version]
-                                                       :from     [(t2/table-name :model/SearchIndexMetadata)]
-                                                       :group-by ['version]
+  (when-let [most-recent (seq (map :version (t2/query {'select   ['version]
+                                                       'from     [(t2/table-name :model/SearchIndexMetadata)]
+                                                       'group-by ['version]
                                                        ;; use pk as a tie-breaker
-                                                       :order-by [[['max 'updated_at] 'desc]
+                                                       'order-by [[['max 'updated_at] 'desc]
                                                                   [['max 'id] 'desc]]
-                                                       :limit    3})))]
-    (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
-                   :where       ['or
+                                                       'limit    3})))]
+    (t2/query-one {'delete-from [(t2/table-name :model/SearchIndexMetadata)]
+                   'where       ['or
                                  ['not-in 'version most-recent]
                                  ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  ['and

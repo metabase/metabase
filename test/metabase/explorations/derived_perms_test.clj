@@ -373,10 +373,10 @@
 
 (defn- page-id-for-thread [thread-id]
   (t2/select-one-fn :id :model/ExplorationPage
-                    {:select ['p.id]
-                     :from   [['exploration_page 'p]]
-                     :join   [['exploration_block 'b] ['= 'b.id 'p.exploration_block_id]]
-                     :where  ['= 'b.exploration_thread_id thread-id]}))
+                    {'select ['p.id]
+                     'from   [['exploration_page 'p]]
+                     'join   [['exploration_block 'b] ['= 'b.id 'p.exploration_block_id]]
+                     'where  ['= 'b.exploration_thread_id thread-id]}))
 
 (defn- comment-contexts [exploration-id user-kw]
   (->> (mt/user-http-request user-kw :get 200 "comment/"

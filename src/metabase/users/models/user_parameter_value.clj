@@ -41,7 +41,7 @@
       (t2/with-transaction [_conn]
         (doseq [batch (partition-all 1000 parameters)]
           (t2/delete! :model/UserParameterValue
-                      {:where (into [:or] (for [p batch]
+                      {'where (into [:or] (for [p batch]
                                             [:and
                                              [:= :user_id (:user_id p)]
                                              [:= :dashboard_id (:dashboard_id p)]

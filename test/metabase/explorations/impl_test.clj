@@ -27,10 +27,10 @@
                                           'database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update 'report_card :set {:archived true} :where ['in 'id metric-ids]})
+        (t2/query {'update 'report_card 'set {:archived true} 'where ['in 'id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update 'report_card :set {:archived false} :where ['in 'id metric-ids]})))
+          (t2/query {'update 'report_card 'set {:archived false} 'where ['in 'id metric-ids]})))
       (thunk))))
 
 (defn- insert-n-metrics!

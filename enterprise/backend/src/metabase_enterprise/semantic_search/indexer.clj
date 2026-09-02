@@ -57,9 +57,9 @@
 
   Returns true if a stall marker was actually cleared, false if none existed."
   [pgvector index-metadata index]
-  (let [dml {:update [(keyword (:metadata-table-name index-metadata))]
-             :set    {:indexer_stalled_at nil}
-             :where  ['and ['= 'table_name (:table-name index)] ['!= nil 'indexer_stalled_at]]}
+  (let [dml {'update [(keyword (:metadata-table-name index-metadata))]
+             'set    {:indexer_stalled_at nil}
+             'where  ['and ['= 'table_name (:table-name index)] ['!= nil 'indexer_stalled_at]]}
         sql (sql/format dml :quoted true)
         {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)
         cleared (pos? update-count)]
@@ -78,9 +78,9 @@
   stall time). Returns the timestamp that was set, or nil if already stalled."
   [pgvector index-metadata index]
   (let [now (Timestamp/from (.instant clock))
-        dml {:update [(keyword (:metadata-table-name index-metadata))]
-             :set    {:indexer_stalled_at now}
-             :where  ['and
+        dml {'update [(keyword (:metadata-table-name index-metadata))]
+             'set    {:indexer_stalled_at now}
+             'where  ['and
                       ['= 'table_name (:table-name index)]
                       ;; do not overwrite existing (earlier) timestamps
                       ['= nil 'indexer_stalled_at]]}
@@ -130,9 +130,9 @@
           {:keys [update-candidates]} poll-result
           _                     (observe-poll-to-poll-interval poll-result (:watermark @indexing-state))
           novel-candidates      (remove-redundant-candidates update-candidates)
-          documents-query       {:select ['id 'gated_at 'model 'model_id 'document]
-                                 :from   [(keyword (:gate-table-name index-metadata))]
-                                 :where  ['in 'id (sort (map :id novel-candidates))]}
+          documents-query       {'select ['id 'gated_at 'model 'model_id 'document]
+                                 'from   [(keyword (:gate-table-name index-metadata))]
+                                 'where  ['in 'id (sort (map :id novel-candidates))]}
           documents-sql         (sql/format documents-query :quoted true)
           lookup-start          (u/start-timer)
           gate-docs             (when (seq novel-candidates) (jdbc/execute! pgvector documents-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))

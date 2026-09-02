@@ -114,8 +114,8 @@
                       [:and base-where [:in :id (vec metric-ids)]]
                       base-where)]
     (->> (t2/select [:model/Card :id]
-                    {:where    where
-                     :order-by [[['case
+                    {'where    where
+                     'order-by [[['case
                                   ['in 'collection_id (or (seq library-ids) [-1])] 0
                                   'else 1] 'asc]
                                 ['name 'asc]]})

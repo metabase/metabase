@@ -226,8 +226,8 @@
                    group_id
                    distinct)
          :total  (-> (t2/query
-                      (merge {:select [[['count ['distinct 'core_user.id]] 'count]]
-                              :from   'core_user}
+                      (merge {'select [[['count ['distinct 'core_user.id]] 'count]]
+                              'from   'core_user}
                              (users/filter-clauses-without-paging clauses)))
                      first
                      :count)
@@ -314,7 +314,7 @@
   [user]
   (let [collection-filter (collection/visible-collection-filter-clause)
         entity-exists? (fn [model & additional-clauses] (t2/exists? model
-                                                                    {:where (into [:and
+                                                                    {'where (into [:and
                                                                                    [:= :archived false]
                                                                                    collection-filter
                                                                                    (mi/exclude-internal-content-hsql model)]
@@ -330,7 +330,7 @@
   [{:keys [id] :as user}]
   (let [ts (or
             (:timestamp (t2/select-one [:model/LoginHistory :timestamp] 'user_id id
-                                       {:order-by [['timestamp 'asc]]}))
+                                       {'order-by [['timestamp 'asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
@@ -351,7 +351,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
+             (t2/exists? :model/Collection {'where (collection/visible-collection-filter-clause
                                                     :id
                                                     {:include-trash-collection? false
                                                      :include-archived-items :exclude

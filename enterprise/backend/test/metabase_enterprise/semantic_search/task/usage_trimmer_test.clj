@@ -31,7 +31,7 @@
                                                       :total_tokens 1000})
       (is (=? [{:model_name "model now"}
                {:model_name "model long-ago"}]
-              (t2/select :model/SemanticSearchTokenTracking {:order-by [['total_tokens 'asc]]})))
+              (t2/select :model/SemanticSearchTokenTracking {'order-by [['total_tokens 'asc]]})))
       (@#'semantic.task.trimmer/trim-old-token-data!)
       (is (=? [{:model_name "model now"}]
-              (t2/select :model/SemanticSearchTokenTracking {:order-by [['total_tokens 'asc]]}))))))
+              (t2/select :model/SemanticSearchTokenTracking {'order-by [['total_tokens 'asc]]}))))))

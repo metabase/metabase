@@ -72,7 +72,7 @@
   (letfn [(thunk []
             (t2/select-one :model/QueryExecution
                            'hash (qp.util/query-hash query)
-                           {:order-by [['started_at 'desc]]}))]
+                           {'order-by [['started_at 'desc]]}))]
     (loop [retries 3]
       (or (thunk)
           (when (pos? retries)

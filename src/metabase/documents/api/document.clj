@@ -160,7 +160,7 @@
                                                                 (pos-int? (-> % :attrs :id)))
                                                        (-> % :attrs :id)))
         to-clone (when (seq card-ids)
-                   (t2/select :model/Card {:where ['and ['in 'id card-ids]
+                   (t2/select :model/Card {'where ['and ['in 'id card-ids]
                                                    ['or ['<> 'document_id id]
                                                     ['= 'document_id nil]]]}))]
     (m.document/with-content-gate-cache
@@ -240,7 +240,7 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  {:items (as-> (t2/select :model/Document {:where ['and
+  {:items (as-> (t2/select :model/Document {'where ['and
                                                     (collection/visible-collection-filter-clause)
                                                     ['= 'archived false]
                                                     ;; Documents attached to an exploration are
