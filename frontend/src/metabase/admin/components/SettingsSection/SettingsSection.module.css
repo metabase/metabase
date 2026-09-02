@@ -18,15 +18,15 @@
 .CollapsibleAccordion .CollapsibleItem[data-active] {
   background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
-  padding: var(--mantine-spacing-lg) var(--mantine-spacing-xl);
+  border-radius: var(--mantine-radius-sm);
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-xxl);
 }
 
 .CollapsibleHeader {
   position: relative;
 
   /* keep text clear of the absolutely-positioned chevron */
-  padding-right: var(--mantine-spacing-xl);
+  padding-right: var(--mantine-spacing-xxl);
 }
 
 .CollapsibleAccordion .CollapsibleControl,
@@ -78,7 +78,7 @@
 }
 
 .CollapsibleAccordion .CollapsibleContent {
-  padding: var(--mantine-spacing-lg) 0 0;
+  padding: var(--mantine-spacing-xl) 0 0;
   border-top: 0;
 }
 
