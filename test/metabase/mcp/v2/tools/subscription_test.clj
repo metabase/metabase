@@ -341,18 +341,40 @@
 (deftest create-with-parameters-test
   (testing "GHY-4156: parameters make a filtered subscription — only {id, value} is stored, and the
             dashboard's own definition of that parameter is merged in at send time"
-    (mt/with-model-cleanup [:model/Pulse]
-      (mt/with-temp [:model/Card {card-id :id} {}
-                     :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
-                                                                   :type "string/=" :slug "category"}]}
-                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (let [result (tool-result (call-tool! :crowberto nil
-                                              (wire {:method       "create"
-                                                     :dashboard_id dash-id
-                                                     :schedule     {:schedule_type "hourly"}
-                                                     :parameters   [{:id "cat" :value "Gadget"}]})))]
-          (is (= [{:id "cat" :value "Gadget"}]
-                 (t2/select-one-fn :parameters :model/Pulse :id (:id result)))))))))
+    (mt/with-premium-features #{:dashboard-subscription-filters}
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Card {card-id :id} {}
+                       :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
+                                                                     :type "string/=" :slug "category"}]}
+                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+          (let [result (tool-result (call-tool! :crowberto nil
+                                                (wire {:method       "create"
+                                                       :dashboard_id dash-id
+                                                       :schedule     {:schedule_type "hourly"}
+                                                       :parameters   [{:id "cat" :value "Gadget"}]})))]
+            (is (= [{:id "cat" :value "Gadget"}]
+                   (t2/select-one-fn :parameters :model/Pulse :id (:id result))))))))))
+
+(deftest parameters-need-the-subscription-filters-feature-test
+  (testing "without the dashboard-subscription-filters feature the send-time merge is the OSS no-op, so the
+            values would be stored and then ignored — refuse rather than report a filter that never applies"
+    (mt/with-premium-features #{}
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Card {card-id :id} {}
+                       :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
+                                                                     :type "string/=" :slug "category"}]}
+                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+          (is (re-find #"dashboard-subscription-filters"
+                       (tool-error (call-tool! :crowberto nil
+                                               (wire {:method       "create"
+                                                      :dashboard_id dash-id
+                                                      :schedule     {:schedule_type "hourly"}
+                                                      :parameters   [{:id "cat" :value "Gadget"}]})))))
+          (testing "a subscription with no parameters is unaffected"
+            (is (some? (tool-result (call-tool! :crowberto nil
+                                                (wire {:method       "create"
+                                                       :dashboard_id dash-id
+                                                       :schedule     {:schedule_type "hourly"}})))))))))))
 
 (deftest unknown-parameter-id-is-a-teaching-error-test
   (testing "GHY-4156: a parameter id the dashboard doesn't have would be stored and then silently
