@@ -367,7 +367,7 @@ describe("CollectionBrowser", () => {
     // RTK re-runs a rejected query when something subscribes to it again, and
     // coming back to the virtual root does exactly that. The rows are all known
     // already, so the list must stay put instead of blinking out for the refetch.
-    it("should not show a loader when the user navigates into a collection and back to the virtual root", async () => {
+    it("should not show a loader when the root is forbidden and the user comes back to the virtual root", async () => {
       const secondRootCall = defer<{ status: number; body: string }>();
       let rootCalls = 0;
 
