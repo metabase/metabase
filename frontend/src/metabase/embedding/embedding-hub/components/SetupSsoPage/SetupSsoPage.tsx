@@ -55,13 +55,13 @@ export const SetupSsoPage = () => {
   return (
     <Stack mx="auto" gap="sm" maw={680}>
       <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
-        <Group gap="xs">
+        <Group gap="xxs">
           <Icon name="chevronleft" size={12} />
           <Text size="sm" c="text-secondary">{t`Back to the setup guide`}</Text>
         </Group>
       </Link>
 
-      <Title order={1} c="text-primary" mb="xl">
+      <Title order={1} c="text-primary" mb="xxl">
         {t`Configure SSO`}
       </Title>
 

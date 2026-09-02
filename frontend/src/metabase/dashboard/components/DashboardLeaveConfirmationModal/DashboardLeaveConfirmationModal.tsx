@@ -58,10 +58,10 @@ export const DashboardLeaveConfirmationModal = () => {
       }}
     >
       <Box>
-        <Text lh="1.5rem" mb={"lg"}>
+        <Text lh="1.5rem" mb={"xl"}>
           {content.message}
         </Text>
-        <Flex justify="flex-end" gap="md">
+        <Flex justify="flex-end" gap="lg">
           <Button onClick={close}>{t`Cancel`}</Button>
           <Button
             color={content.actionBtn.color}

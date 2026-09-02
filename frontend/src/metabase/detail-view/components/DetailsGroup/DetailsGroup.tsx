@@ -33,7 +33,7 @@ export const DetailsGroup = ({
   const tc = useTranslateContent();
 
   return (
-    <Stack data-testid="object-details" gap="lg">
+    <Stack data-testid="object-details" gap="xl">
       {columns.map((column, index) => {
         const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
@@ -43,7 +43,7 @@ export const DetailsGroup = ({
           <Group
             align="flex-start"
             data-testid="object-details-row"
-            gap="xl"
+            gap="xxl"
             key={index}
             wrap="nowrap"
           >
