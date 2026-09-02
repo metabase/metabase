@@ -38,15 +38,6 @@ beforeAll(() => {
   return loadVisualizationComponents(["table"]);
 });
 
-// The css-module stub exports {}, so variant classes are invisible to assertions.
-// Every css import resolves to that one stub, so this factory replaces it for all of them.
-jest.mock(
-  "metabase/data-grid/components/HeaderCell/HeaderCell.module.css",
-  () => ({
-    outline: "outline-header-variant",
-  }),
-);
-
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
@@ -91,8 +82,9 @@ const expectReadOnlyHeader = async () => {
   const header = await screen.findByRole("columnheader", { name: "Total" });
   // dnd-kit gives headers that accept dragging a button role.
   expect(within(header).queryByRole("button")).not.toBeInTheDocument();
-  expect(within(header).getByTestId("header-cell")).toHaveClass(
-    "outline-header-variant",
+  expect(within(header).getByTestId("header-cell")).toHaveAttribute(
+    "data-variant",
+    "outline",
   );
 };
 
@@ -131,8 +123,9 @@ describe("VisualizationResult", () => {
         "aria-roledescription",
         "sortable",
       );
-      expect(within(header).getByTestId("header-cell")).not.toHaveClass(
-        "outline-header-variant",
+      expect(within(header).getByTestId("header-cell")).toHaveAttribute(
+        "data-variant",
+        "light",
       );
     });
   });
