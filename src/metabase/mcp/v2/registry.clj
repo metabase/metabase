@@ -151,6 +151,16 @@
         (map :scope)
         (vals @tools*)))
 
+(defn registered-opt-in-scopes
+  "Every registered tool's `:extra-scopes`.
+
+  A handler gates optional behavior using these, so they are advertised in `scopes_supported` for a token to
+  request. But they should be kept out of the default DCR grant."
+  []
+  (into #{}
+        (mapcat :extra-scopes)
+        (vals @tools*)))
+
 ;;; ------------------------------------------------ Manifest ------------------------------------------------------
 
 (def ^:private default-annotations

@@ -286,12 +286,12 @@
            mcp.paths/v2-surface-scopes))))
 
 (deftest ^:parallel challenge-scopes-are-grantable-test
-  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and DCR snapshots
-            `all-agent-scopes` into each newly registered client, which is what the OAuth server validates a
+  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and DCR snapshots the
+            default grant into each newly registered client, which is what the OAuth server validates a
             requested scope against. A challenge naming scopes that set does not contain is not merely
             over-broad — a fresh client asks for exactly what it was told, is answered \"Invalid scope\", and the
             connect fails outright. The surface becomes unreachable over OAuth."
-    (let [grantable (set ((requiring-resolve 'metabase.oauth-server.core/all-agent-scopes)))]
+    (let [grantable (set ((requiring-resolve 'metabase.oauth-server.core/default-grant-scopes)))]
       (doseq [scope @#'v2.api/default-ask-scopes]
         (testing scope
           (is (contains? grantable scope)

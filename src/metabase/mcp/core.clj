@@ -7,9 +7,28 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]))
+   [metabase.mcp.settings :as mcp.settings]
+   ;; Only for `registered-opt-in-scopes`. Deliberately NOT `mcp.v2.resources`: that reaches
+   ;; `metabot.scope`/`premium-features`, which must stay off the security middleware's load path.
+   [metabase.mcp.v2.registry :as v2.registry]))
 
 (set! *warn-on-reflection* true)
+
+(defn mcp-canonical-path
+  "The advertised MCP URL path, relative to site-url (see [[metabase.mcp.paths/canonical-path]])."
+  []
+  mcp.paths/canonical-path)
+
+(defn mcp-v2-path
+  "The path serving the v2 tool surface during the migration (see [[metabase.mcp.paths/v2-path]])."
+  []
+  mcp.paths/v2-path)
+
+(defn mcp-endpoint-paths
+  "Every path serving MCP, canonical plus back-compat aliases
+   (see [[metabase.mcp.paths/endpoint-paths]])."
+  []
+  mcp.paths/endpoint-paths)
 
 (defn cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
@@ -65,3 +84,24 @@
       (into mcp.paths/v2-surface-scopes)
       ;; v1 resource scopes (retire with the v1 surface)
       (into (mcp.resources/resource-scopes))))
+
+(defn v2-scopes
+  "The scopes the v2 MCP surface itself gates on. Excludes the agent-API endpoint scopes
+   [[all-scopes]] also gathers — those belong to a different resource, and advertising them for v2 is
+   what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
+
+   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]] rather than from the
+   registries: `metabase.server.middleware.security` requires this namespace, so reaching
+   `mcp.v2.resources` from here would put `metabot.scope` (and `premium-features`) on the security
+   middleware's load path — the cycle `mcp.paths` exists to prevent. Deriving from the registry is also
+   load-order dependent, reporting only the tools whose namespaces happen to be loaded.
+   `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
+  []
+  mcp.paths/v2-surface-scopes)
+
+(defn opt-in-scopes
+  "MCP scopes advertised for a token to request explicitly but excluded from the default DCR
+   grant (see [[metabase.mcp.v2.registry/registered-opt-in-scopes]]). The OAuth server folds these
+   into `scopes_supported` on top of [[all-scopes]]."
+  []
+  (v2.registry/registered-opt-in-scopes))

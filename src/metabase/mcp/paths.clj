@@ -18,6 +18,11 @@
    and that is the string an RFC 8707 `resource` indicator is matched against."
   "/api/metabase-mcp")
 
+(def v2-path
+  "Where the v2 tool surface serves during the migration. The other entries in [[endpoint-paths]] still
+   reach v1, so this is the one path whose OAuth metadata may advertise the v2-only scope set."
+  "/api/metabase-mcp/v2")
+
 (def endpoint-paths
   "Every path that serves MCP, including aliases kept for back-compat with existing client configs:
    `/api/mcp` predates the canonical name, and `/api/metabase-mcp/v2` is where the v2 tool surface
@@ -31,7 +36,7 @@
    in the challenge."
   #{canonical-path
     "/api/mcp"
-    "/api/metabase-mcp/v2"})
+    v2-path})
 
 (def v2-surface-scopes
   "Every OAuth scope the v2 MCP surface accepts, as an ordered vector — unlike [[endpoint-paths]] above, which

@@ -223,12 +223,15 @@
                 ;; clients, so we apply sensible defaults here:
                 ;; - application_type defaults to "native" (not the RFC default "web") so
                 ;;   CLI tools and desktop apps can use HTTP loopback redirects.
-                ;; - scope defaults to all provider-supported scopes when not specified.
+                ;; - scope defaults to every scope any surface advertises. That is a ceiling on
+                ;;   what the client may later request, not a grant (see
+                ;;   [[metabase.oauth-server.core/default-grant-scopes]]), and clients derive what
+                ;;   to request from discovery metadata rather than from this value.
                 (let [body       (cond-> body
                                    (not (contains? body :application_type))
                                    (assoc :application_type "native")
                                    (not (contains? body :scope))
-                                   (assoc :scope (str/join " " (oauth-server/all-agent-scopes)))
+                                   (assoc :scope (str/join " " (oauth-server/default-grant-scopes)))
                                    ;; Remove client_credentials grant type — tokens issued without a
                                    ;; user context are unusable for MCP (validate-bearer-token requires
                                    ;; a valid user-id).
@@ -294,6 +297,12 @@
     (or (when-let [provider (oauth-server/get-provider)]
           (try
             (let [parsed       (oidc/parse-authorization-request provider query-params)
+                  ;; Narrow before signing: the signature then binds the narrowed scope through the
+                  ;; consent form round-trip, so the decision endpoint grants exactly what was shown.
+                  parsed       (if-let [narrowed (oauth-server/narrow-scope-to-resource
+                                                  (:resource parsed) (:scope parsed))]
+                                 (assoc parsed :scope narrowed)
+                                 (dissoc parsed :scope))
                   client       (proto/get-client (:client-store provider) (:client_id parsed))
                   csrf-token   (generate-csrf-token)
                   oauth-params (select-keys parsed oauth-param-keys)
