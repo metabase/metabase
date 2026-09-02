@@ -339,29 +339,10 @@ jobs:
     timeout-minutes: 50
     strategy:
       fail-fast: false
+      # One matrix entry per runner: `runner-count` reads the count back from `strategy.job-total`,
+      # so keep this list purely runners. Each runner splits its share across `jvms-per-runner` JVMs.
       matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -372,7 +353,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks
+    name: Databricks Driver Tests ${{ matrix.runner-index }}
     steps:
     - uses: actions/checkout@v6
     - name: Test Databricks driver
@@ -380,8 +361,15 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-databricks-multi-catalog-ee:
@@ -391,29 +379,10 @@ jobs:
     timeout-minutes: 50
     strategy:
       fail-fast: false
+      # One matrix entry per runner: `runner-count` reads the count back from `strategy.job-total`,
+      # so keep this list purely runners. Each runner splits its share across `jvms-per-runner` JVMs.
       matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -425,7 +394,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks (Multi-Catalog)
+    name: Databricks (Multi-Catalog) Driver Tests ${{ matrix.runner-index }}
     steps:
     - uses: actions/checkout@v6
     - name: Test Databricks driver with multi-catalog
@@ -433,8 +402,15 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-h2:
