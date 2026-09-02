@@ -15,6 +15,7 @@ export interface TimelineCardProps {
   timeline: Timeline;
   isDefault?: boolean;
   visibleEventIds: number[];
+  partiallyVisibleEventIds?: number[];
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
@@ -22,12 +23,15 @@ export interface TimelineCardProps {
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
   onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onShowTimeline: (timeline: Timeline) => void;
+  onHideTimeline: (timeline: Timeline) => void;
 }
 
 const TimelineCardInner = ({
   timeline,
   isDefault,
   visibleEventIds = [],
+  partiallyVisibleEventIds = [],
   selectedEventIds = [],
   onEditEvent,
   onMoveEvent,
@@ -35,6 +39,8 @@ const TimelineCardInner = ({
   onToggleEventSelected,
   onShowTimelineEvents,
   onHideTimelineEvents,
+  onShowTimeline,
+  onHideTimeline,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some((e) => selectedEventIds.includes(e.id));
@@ -54,6 +60,11 @@ const TimelineCardInner = ({
     [events, visibleEventIds],
   );
 
+  const anyEventPartiallyVisible = useMemo(
+    () => events.some((event) => partiallyVisibleEventIds.includes(event.id)),
+    [events, partiallyVisibleEventIds],
+  );
+
   const handleHeaderClick = useCallback(() => {
     setIsExpanded((isExpanded) => !isExpanded);
   }, []);
@@ -64,15 +75,13 @@ const TimelineCardInner = ({
 
   const handleChangeVisibility = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      if (timeline.events) {
-        if (e.target.checked) {
-          onShowTimelineEvents(timeline.events);
-        } else {
-          onHideTimelineEvents(timeline.events);
-        }
+      if (e.target.checked) {
+        onShowTimeline(timeline);
+      } else {
+        onHideTimeline(timeline);
       }
     },
-    [timeline, onShowTimelineEvents, onHideTimelineEvents],
+    [timeline, onShowTimeline, onHideTimeline],
   );
 
   useEffect(() => {
@@ -96,7 +105,9 @@ const TimelineCardInner = ({
       >
         <Checkbox
           checked={anyEventVisible}
-          indeterminate={anyEventVisible && !allEventsVisible}
+          indeterminate={
+            (anyEventVisible && !allEventsVisible) || anyEventPartiallyVisible
+          }
           onClick={handleCheckboxClick}
           onChange={handleChangeVisibility}
         />
@@ -129,6 +140,7 @@ const TimelineCardInner = ({
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
               isVisible={visibleEventIds.includes(event.id)}
+              isPartiallyVisible={partiallyVisibleEventIds.includes(event.id)}
               onEdit={onEditEvent}
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}

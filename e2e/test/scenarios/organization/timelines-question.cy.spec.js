@@ -352,15 +352,15 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByLabelText("Event name").type("RC2");
         cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.button("Create").click();
-        waitForTimelinesAfterCreatingAnEvent("RC2");
+        H.waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
         H.timelineEventChip("RC2").should("be.visible");
 
         // should then hide the newly created event
-        timelineEventVisibility("RC2").should("be.checked");
+        H.timelineEventVisibility("RC2").should("be.checked");
         toggleEventVisibility("RC2");
-        timelineEventVisibility("RC2").should("not.be.checked");
+        H.timelineEventVisibility("RC2").should("not.be.checked");
 
         H.timelineEventChip("RC2").should("not.exist");
 
@@ -431,7 +431,7 @@ describe("scenarios > organization > timelines > question", () => {
 
           cy.button("Create").click();
         });
-        waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
+        H.waitForTimelinesAfterCreatingAnEvent("Event at the end of range");
 
         H.modal().should("not.exist"); // wait for modal to close
 
@@ -642,8 +642,8 @@ describe("scenarios > organization > timelines > question", () => {
         "true",
       );
       cy.findByTestId("sidebar-content").within(() => {
-        timelineEventCard("Alpha").should("be.visible");
-        timelineEventCard("Delta").should("be.visible");
+        H.timelineEventCard("Alpha").should("be.visible");
+        H.timelineEventCard("Delta").should("be.visible");
       });
 
       cy.log("the unrelated timeline is filtered out of the focused list");
@@ -690,8 +690,8 @@ describe("scenarios > organization > timelines > question", () => {
       H.timelineEventChip("2 events").should("be.visible").click();
 
       cy.findByTestId("sidebar-content").within(() => {
-        timelineEventCard("Alpha").should("be.visible");
-        timelineEventCard("Beta").should("be.visible");
+        H.timelineEventCard("Alpha").should("be.visible");
+        H.timelineEventCard("Beta").should("be.visible");
       });
       cy.findByTestId("sidebar-content")
         .findByText("Other")
@@ -831,20 +831,6 @@ describe("scenarios > organization > timelines > question", () => {
   });
 });
 
-function timelineEventCard(eventName) {
-  return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
-}
-
 function toggleEventVisibility(eventName) {
-  return timelineEventVisibility(eventName).click();
-}
-
-function timelineEventVisibility(eventName) {
-  return timelineEventCard(eventName).findByRole("checkbox");
-}
-
-function waitForTimelinesAfterCreatingAnEvent(eventName) {
-  return timelineEventCard(eventName)
-    .findByText(/^Bobby Tables added this on/)
-    .should("be.visible");
+  return H.timelineEventVisibility(eventName).click();
 }

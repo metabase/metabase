@@ -71,6 +71,8 @@ const getProps = (opts?: Partial<TimelinePanelProps>): TimelinePanelProps => ({
   onArchiveEvent: jest.fn(),
   onShowTimelineEvents: jest.fn(),
   onHideTimelineEvents: jest.fn(),
+  onShowTimeline: jest.fn(),
+  onHideTimeline: jest.fn(),
 
   ...opts,
 });
