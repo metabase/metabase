@@ -623,3 +623,37 @@
               (is (re-find #"silently ignore it" error))))
           (testing "and without any constraint the multi-field target still returns its values"
             (is (seq (:values (params-result {:target "dashboard" :id dash-id :parameter_id "_MULTI_"}))))))))))
+
+(deftest unparseable-date-constraint-test
+  (testing "GHY-4141: a constraint on a temporal field whose value isn't a date string chain filtering can parse is
+            rejected, not silently dropped. `chain-filter/add-filter` takes a date branch for a string value on a
+            temporal field and catches a parse failure into `nil`, dropping that filter — so the fetch returns
+            unnarrowed values the agent believes were filtered. This is the same silent-drop class as the unmapped
+            and unreachable cases, reached through the value rather than the field."
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp
+        [:model/Dashboard {dash-id :id}
+         {:parameters [{:name "Venue" :slug "venue" :id "_VENUE_" :type "category"}
+                       {:name "Date" :slug "date" :id "_DATE_" :type "date/all-options"}]}
+         :model/Card {checkins-card :id} {:database_id   (mt/id)
+                                          :table_id      (mt/id :checkins)
+                                          :dataset_query (table-query (mt/id :checkins))}
+         :model/DashboardCard _ {:card_id            checkins-card
+                                 :dashboard_id       dash-id
+                                 :parameter_mappings [{:parameter_id "_VENUE_" :card_id checkins-card
+                                                       :target [:dimension (mt/$ids checkins $venue_id)]}
+                                                      {:parameter_id "_DATE_" :card_id checkins-card
+                                                       :target [:dimension (mt/$ids checkins $date)]}]}]
+        (mt/with-test-user :rasta
+          (let [base {:target "dashboard" :id dash-id :parameter_id "_VENUE_"}]
+            (testing "an unparseable date value is rejected"
+              (let [error (params-error (assoc base :constraints {:_DATE_ "sometime last spring"}))]
+                (is (re-find #"_DATE_" error))
+                (is (re-find #"date" error))))
+            (testing "a parseable date range is still accepted, and genuinely narrows"
+              (let [unnarrowed (:values (params-result base))
+                    narrowed   (:values (params-result (assoc base :constraints
+                                                              {:_DATE_ "2015-01-01~2015-01-31"})))]
+                (is (seq narrowed) "the constrained fetch still returns values")
+                (is (< (count narrowed) (count unnarrowed))
+                    "and fewer than the unconstrained fetch — the accepted constraint was applied")))))))))
