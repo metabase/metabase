@@ -186,12 +186,15 @@ function assertValidSettingWidgets(
   definitions: [string, PluginSettingDefinition][],
 ): void {
   for (const [settingId, { widget }] of definitions) {
-    if (
-      typeof widget === "string" &&
-      !ALLOWED_WIDGET_NAMES.some((name) => name === widget)
-    ) {
+    if (typeof widget === "string") {
+      if (!ALLOWED_WIDGET_NAMES.some((name) => name === widget)) {
+        throw new Error(
+          t`Setting "${settingId}" has unsupported widget ${widget}. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
+        );
+      }
+    } else if (widget && !isComponentWidget(widget)) {
       throw new Error(
-        t`Setting "${settingId}" has unsupported widget ${widget}. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
+        t`Setting "${settingId}" has an unsupported widget. Use a component or one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,
       );
     }
   }

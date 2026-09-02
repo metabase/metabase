@@ -387,6 +387,17 @@ describe("sanitizePluginSettings", () => {
       ).toThrow();
     });
 
+    it("throws for a widget that is neither a name nor a component", () => {
+      const { context } = setupMount();
+
+      expect(() =>
+        sanitizePluginSettings(
+          { bad: definePluginSetting({ widget: 42 }) },
+          context,
+        ),
+      ).toThrow(/unsupported widget/);
+    });
+
     it("accepts every allowed built-in widget name", () => {
       const { context } = setupMount();
       const allowedNames = [
