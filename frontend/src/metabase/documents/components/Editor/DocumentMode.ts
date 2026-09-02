@@ -37,5 +37,4 @@ const DocumentMode: QueryClickActionsMode = {
 
 export const documentClickActionMode: ClickActionsMode = new Mode(
   () => DocumentMode,
-  { hasColumnShortcutActions: true },
 );
