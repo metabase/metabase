@@ -299,7 +299,7 @@
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
       ;; to be consistent we use revision.timestamp to do the filtering
-      (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
+      (sql.helpers/where (date-range-filter-clause 'revision.timestamp last-edited-at)))))
 
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
 (defmethod build-optional-filter-query [:last-edited-at "action"]
