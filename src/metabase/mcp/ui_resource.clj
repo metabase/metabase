@@ -134,6 +134,11 @@
   "Human-readable labels for required-extension keywords in tool-call error messages."
   {:mcp-app-ui "MCP Apps UI"})
 
+(def known-extensions
+  "Every client extension a tool may gate on. A tool requiring anything outside this set could never be
+   listed or called, since [[supported-extensions]] can only ever report these."
+  #{:mcp-app-ui})
+
 (defn supported-extensions
   "The extension keywords the calling client advertised, from a tool-dispatch options map."
   [{:keys [supports-mcp-ui?]}]

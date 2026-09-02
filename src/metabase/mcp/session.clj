@@ -449,8 +449,10 @@
   "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
   [mcp-session-id user-id handle-id]
-  (some-> mcp-session-id
-          (find-handle-row user-id handle-id)
+  ;; Threading the ROW, not the session id: the lookup is user-scoped and needs only `user-id`, and
+  ;; `mcp-session-id` is used solely to log a cross-session resolution. Short-circuiting on a nil session id
+  ;; would refuse a handle its owner is entitled to.
+  (some-> (find-handle-row mcp-session-id user-id handle-id)
           (select-keys [:encoded_query :prompt])))
 
 (defn read-handle
