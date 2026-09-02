@@ -855,6 +855,7 @@ export const CardEmbedComponent = memo(
                       isEditing={false}
                       isDashboard={false}
                       isDocument={true}
+                      customVizLoadingView={<CardEmbedLoadingState />}
                       showTitle={false}
                       error={datasetError?.message}
                       errorIcon={datasetError?.icon}

@@ -39,6 +39,8 @@
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id))
 
+(events/derive! :event/user-create :metabase/event)
+
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
   [m]
@@ -204,7 +206,10 @@
       (perms/allow-changing-all-users-group-members
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
-          (perms/add-user-to-groups! user-id (map u/the-id groups))))))))
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
+    ;; Published last, once the group memberships above exist, since creating the User's Personal Collection touches
+    ;; permissions.
+    (events/publish-event! :event/user-create {:object <>})))
 
 ;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
 (events/derive! :event/user-credentials-revoked :metabase/event)
@@ -444,7 +449,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+(defn- wildcard-query [query] (h2x/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"

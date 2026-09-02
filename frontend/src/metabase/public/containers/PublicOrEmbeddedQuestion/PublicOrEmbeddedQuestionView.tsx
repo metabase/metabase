@@ -131,6 +131,7 @@ export function PublicOrEmbeddedQuestionView({
             // `isDashboard` is used by Visualization to change some visual behaviors
             // including the "No results" message
             isDashboard
+            isStandaloneQuestion
             metadata={metadata}
             onChangeCardAndRun={() => {}}
             tableFooterExtraButtons={

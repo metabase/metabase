@@ -177,6 +177,23 @@ const setup = ({
 };
 
 describe("DashCardMenu", () => {
+  it("supports opening and closing the menu with the keyboard", async () => {
+    setup();
+
+    const menuButton = screen.getByRole("button", { name: "More options" });
+    menuButton.focus();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menuButton).toHaveFocus();
+  });
+
   it("should display a link to the notebook editor", async () => {
     const { router } = setup();
 
