@@ -317,7 +317,25 @@
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
-         "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id.")))
+         "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id."))
+      ;; Two more types a collection-scoped search never covers, each dropped by a different part of
+      ;; the engine rather than by the spec's collection attr: transform (no collection recorded in
+      ;; the index, so `search-context->applicable-models` drops the model) and, without the Library
+      ;; feature, table (excluded by the ::collection-hierarchy where-clause). Named explicitly each
+      ;; is a teaching error above; with `type` omitted they must be narrowed and disclosed, not
+      ;; dropped in silence.
+      (when type-omitted?
+        (when (contains? effective-types "transform")
+          (swap! narrowed conj
+                 {:excluded #{"transform"}
+                  :label    "collection_id"
+                  :because  "isn't recorded with a collection in the search index"}))
+        (when (and (contains? effective-types "table")
+                   (not (premium-features/has-feature? :library)))
+          (swap! narrowed conj
+                 {:excluded #{"table"}
+                  :label    "collection_id"
+                  :because  "isn't filtered by collection without the Library feature"}))))
     (when (true? archived)
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?

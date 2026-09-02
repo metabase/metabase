@@ -191,12 +191,16 @@
         (is (re-find #"created_by narrowed the search to" (first disclosures)))
         (is (re-find #"collection, database, segment, table, transform don't index a creator" (first disclosures)))))
     (testing "collection_id with no type: narrows to collection-dwelling types and discloses it, does not throw"
-      (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
-        (is (not (contains? (set types) "database")))
-        (is (not (contains? (set types) "measure")))
-        (is (not (contains? (set types) "segment")))
-        (is (= 1 (count disclosures)))
-        (is (re-find #"collection_id narrowed the search to" (first disclosures)))))
+      ;; Features pinned: without :library the table exclusion is disclosed too, so the count
+      ;; would otherwise depend on the token the suite happens to run under.
+      (mt/with-premium-features #{:library}
+        (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
+          (is (not (contains? (set types) "database")))
+          (is (not (contains? (set types) "measure")))
+          (is (not (contains? (set types) "segment")))
+          (is (= 2 (count disclosures))
+              "the collectionless types, plus transform (no collection in the index)")
+          (is (every? #(re-find #"collection_id narrowed the search to" %) disclosures)))))
     (testing "archived: true with no type: narrows to archivable types and discloses it, does not throw"
       (let [{:keys [types disclosures]} (validate-filters! {:archived true})]
         (is (not (contains? (set types) "table")))
@@ -221,6 +225,36 @@
     (testing "the explicit-type teaching error is a 400"
       (is (= 400 (:status-code (ex-data (try (validate-filters! {:created_by "me" :type ["database"]})
                                              (catch clojure.lang.ExceptionInfo e e)))))))))
+
+(deftest omitted-type-discloses-oss-table-collection-exclusion-test
+  (testing "GHY-4137/P7: the engine's collection filter drops `table` outright when the Library
+            feature is absent (search/filter.clj's ::collection-hierarchy clause). With an explicit
+            type: [\"table\"] that is already a teaching error, but with type omitted the exclusion
+            was silent — precisely the undisclosed narrowing this namespace promises never to rely
+            on. It must be narrowed and disclosed like any other unsupported combination."
+    (mt/with-premium-features #{}
+      (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
+        (is (not (contains? (set types) "table"))
+            "table is narrowed out, not left in for the engine to drop quietly")
+        (is (some #(re-find #"Library feature" %) disclosures)
+            "and the caller is told why")
+        (is (not (contains? (set types) "transform"))
+            "transform has no collection in the index, so the engine drops it from a
+             collection-scoped search too — same silent narrowing, same disclosure")
+        (is (some #(re-find #"transform isn't recorded with a collection" %) disclosures))
+        (is (contains? (set types) "question")
+            "sanity: collection-dwelling types are untouched, so this isn't an empty-set pass")))
+    (testing "with the Library feature, tables stay in scope and nothing is disclosed about them"
+      (mt/with-premium-features #{:library}
+        (let [{:keys [types disclosures]} (validate-filters! {:collection_id "someEntityId01234567_"})]
+          (is (contains? (set types) "table"))
+          (is (not (some #(re-find #"Library feature" %) disclosures)))
+          (is (not (contains? (set types) "transform"))
+              "the Library feature says nothing about transforms — they stay narrowed"))))
+    (testing "\"root\" is inert — it scopes nothing, so it must not trip the table narrowing"
+      (mt/with-premium-features #{}
+        (is (= {:types nil :disclosures []}
+               (validate-filters! {:collection_id "root" :type ["table"]})))))))
 
 (deftest multi-filter-disclosures-name-the-final-type-set-test
   (testing "GHY-4137/P5: when two filters each narrow an omitted type, every disclosure must name
