@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# figma-open — open a Figma file (or a specific page) in the Figma desktop app
+#
+# Usage:
+#   figma-open <url-or-file-key>              open the file
+#   figma-open <url-or-file-key> <node-id>    open at a node/page id (e.g. 12-3 or 12:3)
+#   figma-open <url-or-file-key> --list       list pages with their ids
+#   figma-open <url-or-file-key> "Page name"  open a page by name
+#
+# Page lookup by name/--list needs a Figma personal access token:
+#   export FIGMA_TOKEN=figd_...   or put it in ~/.config/figma/token
+set -euo pipefail
+
+arg="${1:-}"
+[[ -n "$arg" ]] || { awk 'NR==1 && /^#!/ {next} /^#/ {sub(/^# ?/,""); print; next} {exit}' "$0"; exit 1; }
+
+token="${FIGMA_TOKEN:-}"
+[[ -f "$HOME/.config/figma/token" ]] && token="$(<"$HOME/.config/figma/token")"
+
+# Extract the file key from any Figma URL form, or use the arg as a bare key.
+key="$arg"
+case "$arg" in
+  *figma.com*|figma://*)
+    key="$(printf '%s' "$arg" | sed -E 's#https?://([a-z]+\.)?figma\.com##; s#^([a-z0-9-]+\.)?figma\.com##; s#^figma://##; s#^/?(file|design|proto|board)/##; s#^/##; s#/.*##; s#\?.*##')"
+    ;;
+esac
+
+req="${2:-}"
+
+# If no page arg was given but the URL carries a node-id, use it.
+url_node="$(printf '%s' "$arg" | sed -nE 's/.*[?&]node-id=([0-9]+([-:][0-9]+)*).*/\1/p')"
+
+open_fig() { # $1 = optional node id
+  if [[ -n "${1:-}" ]]; then
+    open "figma://file/${key}?node-id=${1//:/-}"
+  else
+    open "figma://file/${key}"
+  fi
+}
+
+# No page requested — open the file (or the node the URL points at).
+[[ -z "$req" ]] && { open_fig "${url_node:-}"; exit 0; }
+
+# Explicit node id (page ids work: pages are top-level nodes).
+if [[ "$req" =~ ^[0-9]+[:-][0-9]+$ ]]; then
+  open_fig "$req"
+  exit 0
+fi
+
+# Everything else needs the REST API.
+[[ -n "$token" ]] || { echo "error: page lookup needs FIGMA_TOKEN (env or ~/.config/figma/token)" >&2; exit 1; }
+
+pages_json="$(curl -sf -H "X-Figma-Token: ${token}" "https://api.figma.com/v1/files/${key}?depth=1")" \
+  || { echo "error: could not fetch file ${key} (bad key, no access, or bad token)" >&2; exit 1; }
+
+if [[ "$req" == "--list" || "$req" == "-l" ]]; then
+  printf '%s\n' "$pages_json" | jq -r '.document.children[] | "\(.id // .guid)\t\(.name)"' | column -t -s $'\t'
+  exit 0
+fi
+
+# Page by name (case-insensitive, exact match first, then substring).
+node_id="$(printf '%s' "$pages_json" | jq -r --arg n "$req" \
+  'first(.document.children[] | select((.name // "") | ascii_downcase == ($n | ascii_downcase)) | .id // .guid) //
+   first(.document.children[] | select((.name // "") | ascii_downcase | contains($n | ascii_downcase)) | .id // .guid) //
+   empty')"
+
+[[ -n "$node_id" ]] || { echo "error: no page matching \"$req\" in file ${key}" >&2; exit 1; }
+open_fig "$node_id"
