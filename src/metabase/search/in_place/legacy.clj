@@ -526,11 +526,11 @@
     [[(t2/table-name db-model) alias]]))
 
 (mu/defn- base-query-for-model :- [:map {:closed true}
-                                   [:select :any]
-                                   [:from :any]
-                                   [:where {:optional true} :any]
-                                   [:join {:optional true} :any]
-                                   [:left-join {:optional true} :any]]
+                                   ['select :any]
+                                   ['from :any]
+                                   ['where {:optional true} :any]
+                                   ['join {:optional true} :any]
+                                   ['left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]

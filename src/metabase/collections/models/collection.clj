@@ -1215,9 +1215,9 @@
    additional-honeysql-where-clauses))
 
 (mu/defn effective-children-query :- [:map
-                                      [:select :any]
-                                      [:from   :any]
-                                      [:where  :any]]
+                                      ['select :any]
+                                      ['from   :any]
+                                      ['where  :any]]
   "Return a query for the descendant Collections of a `collection`
   that should be presented to the current user as the children of this Collection.
   This takes into account descendants that get filtered out when the current user can't see them. For
