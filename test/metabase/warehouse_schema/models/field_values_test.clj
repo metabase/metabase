@@ -339,6 +339,24 @@
         (is (future-cancelled? stalled-future))
         (is (not (contains? @registry ::stalled)))))))
 
+(deftest detached-fetch!-caps-registry-test
+  (testing "past the registry cap the work runs on the calling thread instead of growing the
+            registry, so nothing outside this namespace has to bound it (GHY-2937)"
+    (let [registry @#'field-values/in-flight-fetches
+          cap      @#'field-values/max-in-flight-fetches
+          filler   (into {} (for [i (range cap)]
+                              [[::filler i] {:promise    (promise)
+                                             :future-ref (atom nil)
+                                             :timer      (u/start-timer)}]))]
+      (try
+        (swap! registry merge filler)
+        (testing "the fetch still runs"
+          (is (= ::ran (field-values/detached-fetch! ::over-cap (constantly ::ran)))))
+        (testing "but it is not registered"
+          (is (not (contains? @registry ::over-cap))))
+        (finally
+          (swap! registry #(apply dissoc % (keys filler))))))))
+
 (deftest detached-fetch!-rethrows-test
   (testing "an exception thrown by the fetch reaches the caller"
     (is (thrown-with-msg? Exception #"oops"
