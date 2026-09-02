@@ -814,46 +814,46 @@
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
-        [:and
+        ['and
          (when collection-type
            (if (= collection-type "remote-synced")
-             [:= :is_remote_synced true]
-             [:= :type collection-type]))
+             [:= 'is_remote_synced true]
+             [:= 'type collection-type]))
          (when-not include-library?
-           [:or [:= nil :type]
-            [:not [:in :type [collection/library-collection-type
+           ['or [:= nil 'type]
+            ['not ['in 'type [collection/library-collection-type
                               collection/library-metrics-collection-type
                               collection/library-data-collection-type]]]])
          (if archived?
-           [:or
-            [:= :archived true]
-            [:= :id (collection/trash-collection-id)]]
-           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
+           ['or
+            [:= 'archived true]
+            [:= 'id (collection/trash-collection-id)]]
+           ['and [:= 'archived false] ['not= 'id (collection/trash-collection-id)]])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
         ;; never show tenant-specific root collections as children of another collection
-        [:or
-         [:= :type nil]
-         [:not= :type collection/tenant-specific-root-collection-type]]
+        ['or
+         [:= 'type nil]
+         ['not= 'type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
-       :select [:id
-                [:id :collection_id]
-                :archived
-                :name
-                :description
-                :entity_id
-                :personal_owner_id
-                :location
-                :archived_directly
+       'select ['id
+                ['id 'collection_id]
+                'archived
+                'name
+                'description
+                'entity_id
+                'personal_owner_id
+                'location
+                'archived_directly
                 :namespace
                 ;; selected as `type` for compatibility with collection fns that expect it
-                :type
-                [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
+                'type
+                [['case [:= 'is_remote_synced nil] ['inline false] 'else 'is_remote_synced] 'is_remote_synced]
                 ;; selected as `collection_type` for fast sorting on "when it's a collection, type"
-                [:type :collection_type]
-                [(h2x/literal "collection") :model]
-                :authority_level])
+                ['type 'collection_type]
+                [(h2x/literal "collection") 'model]
+                'authority_level])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))))
 
