@@ -45,14 +45,16 @@ export const Default = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    const canvas = within(canvasElement);
+    try {
+      const canvas = within(canvasElement);
 
-    // To force the tooltip to show up
-    await userEvent.hover(
-      (await canvas.findByText("December 16, 2025 - December 19, 2025"))
-        .parentElement!,
-    );
-
-    asyncCallback();
+      // To force the tooltip to show up
+      await userEvent.hover(
+        (await canvas.findByText("December 16, 2025 - December 19, 2025"))
+          .parentElement!,
+      );
+    } finally {
+      asyncCallback();
+    }
   },
 };

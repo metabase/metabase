@@ -61,7 +61,7 @@
 (t2/deftransforms :model/User
   {:login_attributes transform-attributes
    :jwt_attributes   transform-attributes
-   :settings         mi/transform-encrypted-json
+   :settings         (mi/transform-encrypted-json "core_user.settings")
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
 
@@ -434,7 +434,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+(defn- wildcard-query [query] (h2x/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"

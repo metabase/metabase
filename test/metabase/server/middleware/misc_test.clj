@@ -10,17 +10,16 @@
 
 (defn- maybe-set-site-url
   [request]
+  ;; `site-url` is only ever derived from a request now made by an authenticated superuser; mark the request as such
+  ;; the way the upstream auth middleware would, so these tests exercise the derivation path.
   ((mw.misc/maybe-set-site-url (fn [request respond _] (respond request)))
-   request
+   (assoc request :is-superuser? true)
    identity
    (fn [e] (throw e))))
 
 (defmacro ^:private with-fresh-instance!
-  "Header-derivation of `site-url` only fires before any real user exists. Model that pre-setup state so
-  the derivation tests below exercise the path they mean to."
   [& body]
-  `(mt/with-temporary-setting-values [~'has-user-setup false]
-     ~@body))
+  `(do ~@body))
 
 (defn- mock-request
   [uri origin-header x-forwarded-host-header host-header]
@@ -59,42 +58,26 @@
             (maybe-set-site-url request)
             (is (= "https://mb1.example.com" (system/site-url)))))))))
 
-(deftest maybe-set-site-url-requires-fresh-instance-test
-  (testing "an unauthenticated request cannot repoint `site-url` once the instance has real users"
-    (mt/with-temporary-setting-values [has-user-setup true
-                                       site-url        nil]
-      (let [request (mock-request "/" "https://evil-host.example.com" nil nil)]
-        (maybe-set-site-url request)
+(deftest maybe-set-site-url-requires-superuser-test
+  ;; `maybe-set-site-url` is Ring middleware: it sets `site-url` as a side effect, then calls the handler it wraps. We
+  ;; pass `req` in and wrap a throwaway handler whose own args we ignore -- the test asserts the side effect via
+  ;; `(system/site-url)`, not the response. (Unlike the shared `maybe-set-site-url` helper above, this doesn't inject
+  ;; `:is-superuser?`, so each case sets that flag itself.)
+  (letfn [(run-middleware [req]
+            ((mw.misc/maybe-set-site-url (fn [_req respond _raise] (respond nil)))
+             req identity (fn [e] (throw e))))]
+    (testing "site-url is NOT derived from a non-superuser request, even before the first user exists"
+      (mt/with-temporary-setting-values [site-url nil, has-user-setup false]
+        (run-middleware (assoc (mock-request "/api/setup" nil nil "attacker.example")
+                               :is-superuser? false))
         (is (nil? (system/site-url))
-            "header-derived site-url must not be written on a set-up instance"))))
-  (testing "neither can a request from an authenticated non-superuser"
-    (mt/with-temporary-setting-values [has-user-setup true
-                                       site-url        nil]
-      (let [request (assoc (mock-request "/" "https://evil-host.example.com" nil nil)
-                           :metabase-user-id 1
-                           :is-superuser?    false)]
-        (maybe-set-site-url request)
-        (is (nil? (system/site-url))
-            "header-derived site-url must not be written for a non-admin")))))
-
-(deftest maybe-set-site-url-superuser-on-set-up-instance-test
-  (testing (str "a superuser's own request still seeds `site-url` on a set-up instance, so an instance provisioned "
-                "headlessly (config-from-file `users:`) is not stuck with a nil site-url forever")
-    (mt/with-temporary-setting-values [has-user-setup true
-                                       site-url        nil]
-      (let [request (assoc (mock-request "/" nil nil "mb.example.com")
-                           :metabase-user-id 1
-                           :is-superuser?    true)]
-        (maybe-set-site-url request)
-        (is (= "http://mb.example.com" (system/site-url))))))
-  (testing "a superuser request does not overwrite a `site-url` that is already set"
-    (mt/with-temporary-setting-values [has-user-setup true
-                                       site-url        "https://mb1.example.com"]
-      (let [request (assoc (mock-request "/" "https://mb2.example.com" nil nil)
-                           :metabase-user-id 1
-                           :is-superuser?    true)]
-        (maybe-set-site-url request)
-        (is (= "https://mb1.example.com" (system/site-url)))))))
+            "a pre-setup request does not set site-url")))
+    (testing "site-url IS derived from an authenticated superuser request"
+      (mt/with-temporary-setting-values [site-url nil]
+        (run-middleware (assoc (mock-request "/" nil nil "mb.example.com")
+                               :is-superuser? true))
+        (is (= "http://mb.example.com" (system/site-url))
+            "a superuser request still auto-derives site-url")))))
 
 (deftest add-version-header-test
   (testing "x-metabase-version is only added on API calls"

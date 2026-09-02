@@ -185,6 +185,18 @@
                            :rows [[7 10] [50 10] [40 9] [2 8] [5 7]]}}
                  (qp/process-query query)))))))))
 
+(deftest convert-to-native-returns-collection-test
+  ;; Regression for #80725. The frontend uses this `:collection` to pre-select the source table when
+  ;; converting a MongoDB question to native.
+  (mt/test-driver :mongo
+    (testing "POST /api/dataset/native returns the source collection name for MongoDB queries"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 3))]
+        (is (=? {:query      some?
+                 :collection "venues"}
+                (mt/user-http-request :crowberto :post 200 "dataset/native" query)))))))
+
 ;; ## Tests for individual syncing functions
 
 (deftest ^:parallel describe-database-test

@@ -22,7 +22,7 @@
   (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? false)
 
@@ -41,7 +41,7 @@
   (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? false)
 

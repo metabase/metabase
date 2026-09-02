@@ -90,8 +90,8 @@
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
 (deftest ^:parallel both-header-and-cookie-test
-  (testing "if both header and cookie session-keys exist, then we expect the cookie to take precedence"
-    (is (= "cookie-session"
+  (testing "if both header and cookie session-keys exist, then we expect the header to take precedence"
+    (is (= "foobar"
            (:metabase-session-key
             (wrapped-handler
              (assoc (ring.mock/header (ring.mock/request :get "/anyurl") session-header "foobar")
@@ -109,6 +109,92 @@
               :metabase-session-key "092797dd-a82a-4748-b393-697d7bb9ab65"
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-key :uri]))))))
+
+(defn- with-session-for
+  "Insert a session with `session-key` for `user-kw`, run `thunk`, then clean up."
+  [user-kw session-key thunk]
+  (let [session-id (session/generate-session-id)]
+    (try
+      (t2/insert! :model/Session {:id         session-id
+                                  :key_hashed (session/hash-session-key session-key)
+                                  :user_id    (mt/user->id user-kw)})
+      (thunk)
+      (finally
+        (t2/delete! :model/Session :id session-id)))))
+
+(deftest session-header-takes-precedence-over-cookie-test
+  (init-status/set-complete!)
+  (testing "the X-Metabase-Session header wins over a session cookie that also resolves"
+    (let [cookie-session-key (str (random-uuid))
+          header-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (with-session-for
+            :lucky header-session-key
+            (fn []
+              (let [request (-> (ring.mock/request :get "/anyurl")
+                                (ring.mock/header session-header header-session-key)
+                                (assoc :cookies {session-cookie {:value cookie-session-key}}))
+                    request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+                (is (= (mt/user->id :lucky)
+                       (:metabase-user-id request')))
+                (testing "\nthe request carries the header's session, not the cookie's"
+                  (is (= header-session-key (:metabase-session-key request')))
+                  (is (nil? (:metabase-session-type request'))))))))))))
+
+(deftest stale-cookie-does-not-shadow-session-header-test
+  (init-status/set-complete!)
+  (testing "a session cookie that no longer resolves should not shadow a valid X-Metabase-Session header"
+    (let [header-session-key (str (random-uuid))
+          stale-cookie-key   (str (random-uuid))]
+      (with-session-for
+        :lucky header-session-key
+        (fn []
+          (let [request (-> (ring.mock/request :get "/anyurl")
+                            (ring.mock/header session-header header-session-key)
+                            (assoc :cookies {session-cookie {:value stale-cookie-key}}))
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (= (mt/user->id :lucky)
+                   (:metabase-user-id request')))
+            (is (= header-session-key (:metabase-session-key request')))))))))
+
+(deftest stale-session-header-does-not-fall-back-to-cookie-test
+  (init-status/set-complete!)
+  (testing "a session header that no longer resolves does not borrow the cookie's identity"
+    (let [cookie-session-key (str (random-uuid))
+          stale-header-key   (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (let [request (-> (ring.mock/request :get "/anyurl")
+                            (ring.mock/header session-header stale-header-key)
+                            (assoc :cookies {session-cookie {:value cookie-session-key}}))
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (nil? (:metabase-user-id request')))))))))
+
+(deftest cookie-used-when-no-session-header-test
+  (init-status/set-complete!)
+  (testing "with no header on the request the session cookie still authenticates"
+    (let [cookie-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (let [request (assoc (ring.mock/request :get "/anyurl")
+                               :cookies {session-cookie {:value cookie-session-key}})
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (= (mt/user->id :crowberto)
+                   (:metabase-user-id request')))
+            (is (= :normal (:metabase-session-type request')))))))))
+
+(deftest no-valid-session-key-test
+  (init-status/set-complete!)
+  (testing "when neither the cookie nor the header resolves, the request stays unauthenticated"
+    (let [request (-> (ring.mock/request :get "/anyurl")
+                      (ring.mock/header session-header (str (random-uuid)))
+                      (assoc :cookies {session-cookie {:value (str (random-uuid))}}))
+          request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+      (is (nil? (:metabase-user-id request'))))))
 
 (deftest current-user-info-for-api-key-test
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
@@ -134,33 +220,36 @@
                      (#'mw.session/merge-current-user-info req))))))))))
 
 (deftest api-key-hash-encrypted-at-rest-test
-  (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-    (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
-                                                   :user_id               (mt/user->id :lucky)
-                                                   :creator_id            (mt/user->id :lucky)
-                                                   :updated_by_id         (mt/user->id :lucky)
-                                                   ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
-      (testing "the stored bcrypt hash is encrypted at rest"
-        ;; select from the raw table to bypass the model's decrypting :out transform
-        (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
-          (is (encryption/possibly-encrypted-string? raw)
-              "raw column value should be ciphertext")
-          (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
-              "it should decrypt to the (plaintext) bcrypt hash")))
-      (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
-        (is (= (mt/user->id :lucky)
-               (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
-      (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
-        (t2/query {:update :api_key
-                   :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
-                   :where  [:= :id api-key-id]})
-        (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
-            "strict decrypt rejects the unencrypted hash")
-        ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
-        ;; strict decrypt on the corrupted plaintext value
-        (t2/query {:update :api_key
-                   :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
-                   :where  [:= :id api-key-id]})))))
+  ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "Encrypted API Key"
+                                                     :user_id               (mt/user->id :lucky)
+                                                     :creator_id            (mt/user->id :lucky)
+                                                     :updated_by_id         (mt/user->id :lucky)
+                                                     ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
+        (testing "the stored bcrypt hash is encrypted at rest"
+          ;; select from the raw table to bypass the model's decrypting :out transform
+          (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
+            (is (encryption/possibly-encrypted-string? raw)
+                "raw column value should be ciphertext")
+            (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
+                "it should decrypt to the (plaintext) bcrypt hash")))
+        (testing "a valid key still authenticates (middleware decrypts the raw hash before the bcrypt compare)"
+          (is (= (mt/user->id :lucky)
+                 (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))))
+        (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
+          (t2/query {:update :api_key
+                     :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
+                     :where  [:= :id api-key-id]})
+          (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info {:headers {"x-api-key" "mb_encrypted123"}})))
+              "strict decrypt rejects the unencrypted hash")
+          ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
+          ;; strict decrypt on the corrupted plaintext value
+          (t2/query {:update :api_key
+                     :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
+                     :where  [:= :id api-key-id]}))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"

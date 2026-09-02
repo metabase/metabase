@@ -97,15 +97,56 @@
       (is (empty? (messages))))))
 
 (def ^:private fake-ciphertext
-  "AES+CBC's block size is 16 bytes and the tag length is 32 bytes. This is a string of characters that is the same
-  length as would be expected for something that has been encrypted, but it is not encrypted, just unlucky enough to
-  have the same size"
-  (apply str (repeat 64 "a")))
+  "AES+CBC's block size is 16 bytes and the tag length is 32 bytes, so the shortest possible ciphertext is 64 bytes
+  (IV + one block + tag). This base64 string decodes to 64 bytes: the size of something that has been encrypted, but
+  it is not encrypted, just unlucky enough to have the same size"
+  (str (apply str (repeat 86 "a")) "=="))
 
 (deftest ^:parallel possibly-encrypted-test
   (testing "a value shaped like ciphertext but that cannot be decrypted with the current key throws rather than being returned as-is"
     (is (thrown? Throwable
                  (encryption/maybe-decrypt-accepting-plaintext secret fake-ciphertext)))))
+
+(deftest ^:parallel decryptable-string-test
+  (testing "true only for ciphertext that decrypts with the given key"
+    (let [ciphertext (encryption/encrypt secret "WOW")]
+      (is (true? (encryption/decryptable-string? secret ciphertext)))
+      (testing "false for ciphertext under another key"
+        (is (false? (encryption/decryptable-string? secret-2 ciphertext))))
+      (testing "false with no key, even for genuine ciphertext"
+        (is (false? (encryption/decryptable-string? nil ciphertext))))))
+  (testing "false for anything that is not ciphertext"
+    (is (false? (encryption/decryptable-string? secret "WOW")))
+    (is (false? (encryption/decryptable-string? secret "")))
+    (is (false? (encryption/decryptable-string? secret nil)))
+    (testing "including plaintext shaped like ciphertext, which `possibly-encrypted-string?` cannot tell apart"
+      (is (true? (encryption/possibly-encrypted-string? fake-ciphertext)))
+      (is (false? (encryption/decryptable-string? secret fake-ciphertext))))))
+
+(deftest ^:parallel decryptable-bytes-test
+  (let [plaintext  (codecs/to-bytes "WOW")
+        ciphertext (encryption/encrypt-bytes secret plaintext)
+        fake-bytes (byte-array 64)]
+    (testing "true only for ciphertext that decrypts with the given key"
+      (is (true? (encryption/decryptable-bytes? secret ciphertext)))
+      (is (false? (encryption/decryptable-bytes? secret-2 ciphertext)))
+      (is (false? (encryption/decryptable-bytes? nil ciphertext))))
+    (testing "false for anything that is not ciphertext"
+      (is (false? (encryption/decryptable-bytes? secret plaintext)))
+      (is (false? (encryption/decryptable-bytes? secret (byte-array 0))))
+      (is (false? (encryption/decryptable-bytes? secret nil)))
+      (testing "including bytes shaped like ciphertext"
+        (is (true? (encryption/possibly-encrypted-bytes? fake-bytes)))
+        (is (false? (encryption/decryptable-bytes? secret fake-bytes)))))))
+
+(deftest ^:parallel possibly-encrypted-returns-booleans-test
+  (testing "the shape checks never return nil"
+    (is (false? (encryption/possibly-encrypted-string? nil)))
+    (is (false? (encryption/possibly-encrypted-string? "")))
+    (is (false? (encryption/possibly-encrypted-string? "not base64!")))
+    (is (false? (encryption/possibly-encrypted-bytes? nil)))
+    (is (false? (encryption/possibly-encrypted-bytes? (byte-array 3))))
+    (is (true? (encryption/possibly-encrypted-string? (encryption/encrypt secret "WOW"))))))
 
 (deftest ^:parallel maybe-decrypt-strict-test
   (testing "strict `maybe-decrypt`"

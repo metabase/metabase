@@ -218,7 +218,7 @@
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
-  (throttle-check (forgot-password-throttlers :email) email)
+  (throttle-check (forgot-password-throttlers :email) (u/lower-case-en email))
   (forgot-password-impl email)
   api/generic-204-no-content)
 

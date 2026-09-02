@@ -34615,14 +34615,149 @@
     },
     "/api/slack/bug-report" : {
       "post" : {
-        "description" : "Send diagnostic information to the configured Slack channels.",
+        "description" : "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is\n  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`\n  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "diagnosticInfo" : {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "backendErrors" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "browserInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bugReportDetails" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "frontendErrors" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "type" : "string"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "localizedEntityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "logs" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "queryResults" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "reporter" : {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "email" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name", "email" ],
+                            "type" : "object"
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "userLogs" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
                     "type" : "object"
                   }
                 },

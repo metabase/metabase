@@ -38,9 +38,11 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.session.core :as session]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -123,7 +125,8 @@
         (if embedding-sdk-header?
           {:status 200
            :body {:url (:redirect-url auth-result)
-                  :method "saml"}
+                  :method "saml"
+                  :saml-popup-url (acs-url)}
            :headers {"Content-Type" "application/json"}}
           (response/redirect (:redirect-url auth-result)))
 
@@ -179,6 +182,14 @@
     (when (and token-value (not token-valid?))
       (throw (ex-info (tru "Invalid authentication token")
                       {:status-code 401})))
+
+    (when token-value
+      (when-not (and origin
+                     (mw.security/approved-origin? origin (embed.settings/embedding-app-origins-sdk)))
+        (log/warn "Rejecting SAML embedding login: popup origin is not an approved embedding origin"
+                  {:origin origin})
+        (throw (ex-info (tru "This origin is not an approved embedding origin.")
+                        {:status-code 400}))))
 
     (sso-utils/check-sso-redirect continue-url)
     (try

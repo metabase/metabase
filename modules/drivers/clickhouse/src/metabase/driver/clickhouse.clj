@@ -96,11 +96,11 @@
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (when session-timezone
-         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
-               query-settings  (new QuerySettings)]
-           (.setOption query-settings "session_timezone" session-timezone)
-           (.setDefaultQuerySettings clickhouse-conn query-settings)))
+       (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+             query-settings (new QuerySettings)]
+         (when session-timezone
+           (.serverSetting query-settings "session_timezone" session-timezone))
+         (.setDefaultQuerySettings clickhouse-conn query-settings))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
@@ -366,4 +366,8 @@
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    ;; TODO(rileythomp, 2026-01-29): Remove this once we upgrade past 0.8.4
    ;; This is to work around 68674 where connections are being poisoned with bad roles
-   {"preferredTestQuery" "SELECT 1"}))
+   ;; The checkout test is the only thing that evicts a poisoned connection, so it has to stay on in
+   ;; tests too, where the default turns it off in favor of the background idle test.
+   {"preferredTestQuery"        "SELECT 1"
+    "testConnectionOnCheckout"  true
+    "idleConnectionTestPeriod"  0}))

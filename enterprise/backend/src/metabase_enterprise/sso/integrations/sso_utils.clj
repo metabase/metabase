@@ -58,13 +58,27 @@
           our-host (some-> (system/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url)
                          (relative-uri? redirect)
-                         (= (.getHost redirect) our-host)))
+                         (and our-host (= (.getHost redirect) our-host))))
       redirect-url)
     (catch Exception e
       (log/error e "Invalid redirect URL")
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
+
+(defn group-names->strings
+  "Coerce a group-names value (a single string or a collection) into a sequence of the string names it contains.
+  Non-string entries are ignored."
+  [group-names]
+  (into [] (filter string?) (cond-> group-names (string? group-names) vector)))
+
+(defn group-names->ids
+  "Translate a user's group names to a set of Metabase group IDs using the given group mappings."
+  [group-names group-mappings]
+  (->> (group-names->strings group-names)
+       (map keyword)
+       (mapcat group-mappings)
+       set))
 
 (defn stringify-valid-attributes
   "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings.

@@ -20,5 +20,5 @@
   ;; Netty 4.2.x — latest patched release. grpc-netty-shaded bundles its own
   ;; shaded netty, but these modules are still pulled through arrow-memory-netty
   ;; and must be pinned for security scanning.
-  io.netty/netty-common                  {:mvn/version "4.2.16.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.16.Final"}}}
+  io.netty/netty-common                  {:mvn/version "4.2.17.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.2.17.Final"}}}

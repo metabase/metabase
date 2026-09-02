@@ -80,22 +80,26 @@
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [like       (fn [field pattern]
-                     (case (app-db/db-type)
-                       (:h2 :postgres) [:ilike field pattern]
-                       [::h2x/collate [:like field pattern] "utf8mb4_unicode_ci"]))
-        pattern    (some-> term
-                           (str/replace "\\" "\\\\")
-                           (str/replace "_" "\\_")
-                           (str/replace "%" "\\%")
-                           (str/replace "*" "%")
-                           (cond-> (not (str/ends-with? term "%")) (str "%")))
+  (let [db-type    (app-db/db-type)
+        ;; `*` is the user-facing wildcard; everything else in `term` has already been escaped to match literally
+        glob       (fn [escaped]
+                     (-> escaped
+                         (str/replace "*" "%")
+                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        ci-pattern (fn [pattern]
+                     (case db-type
+                       (:h2 :postgres) pattern
+                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        like       (fn [field wrap]
+                     [(case db-type (:h2 :postgres) :ilike :like)
+                      field
+                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
         where      (cond-> [:and [:= :active true]]
                      (not (str/blank? term)) (conj [:or
-                                                    (like :name pattern)
-                                                    (like :display_name pattern)
+                                                    (like :name identity)
+                                                    (like :display_name identity)
                                                     ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name (str "% " pattern))])
+                                                    (like :display_name #(str "% " %))])
                      visibility-type         (conj [:= :visibility_type visibility-type])
                      data-layer              (conj [:= :data_layer      (name data-layer)])
                      data-source             (conj [:= :data_source     (name data-source)])
@@ -447,14 +451,14 @@
   `::mc/default` keeps the extra parts, and the check below refuses them."
   [:and
    [:map
-    ["file"
+    [:file
      [:map
       [:filename :string]
       [:tempfile (ms/InstanceOfClass java.io.File)]]]
-    ["collection_id" {:optional true} :string]
-    [::mc/default [:map-of :string :any]]]
+    [:collection_id {:optional true} :string]
+    [::mc/default [:map-of :keyword :any]]]
    (mu/with-api-error-message
-    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
     (deferred-tru "unexpected multipart part"))])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -468,12 +472,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params CsvUploadParts]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/append}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -487,12 +489,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params CsvUploadParts]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/replace}))
 
 (defn- sync-schema-async!

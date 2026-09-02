@@ -285,6 +285,15 @@
     (is (= nil
            (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))
 
+(deftest forgot-password-throttle-is-case-insensitive-test
+  (testing "POST /api/session/forgot_password - the per-email throttle treats casing variants as one address"
+    (let [forgot (fn [email] (:status (mt/client-full-response :post "session/forgot_password" {:email email})))]
+      (dotimes [_ 3]
+        (is (= 204 (forgot "user@metabase.com"))))
+      (testing "a different casing of the same address shares the now-exhausted bucket"
+        (is (= 400 (forgot "User@metabase.com")))
+        (is (= 400 (forgot "USER@METABASE.COM")))))))
+
 (deftest forgot-password-google-sso-enabled-test
   (testing "POST /api/session/forgot_password - Google SSO user cannot reset when Google SSO enabled"
     (with-redefs [api.session/forgot-password-impl

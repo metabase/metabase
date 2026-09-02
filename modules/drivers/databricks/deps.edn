@@ -4,5 +4,5 @@
  :deps
  {com.databricks/databricks-jdbc-thin {:mvn/version "3.0.7"}
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
-  org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.84"}
-  org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.84"}}}
+  org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.85"}
+  org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.85.2"}}}
