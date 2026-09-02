@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-diagnostics.imbalanced-test
+(ns ^:synchronized metabase-enterprise.content-diagnostics.imbalanced-test
   "Integration + serve-layer tests for the imbalanced family. The three finding types
   (`empty`/`sparse`/`crowded`) are produced by independent checkers, unit-tested in
   `checkers/imbalanced/{empty,sparse,crowded}_test`. This suite covers what spans them: cross-type
@@ -9,10 +9,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.scan :as scan]
+   [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :each cd.tu/with-authorized-reader!)
 
 (defn- scope-prefix
   "Unique per-test entity-name prefix, passed as `:query` so assertions only see rows the test seeded -

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-diagnostics.slow-test
+(ns ^:synchronized metabase-enterprise.content-diagnostics.slow-test
   "The `slow` checker flags card/transform leaves (over a duration threshold) and dashboard/document
   containers that embed a slow card, stamping the measured magnitude in the top-level `duration_ms`
   column and freezing `threshold_ms` (leaf only) in `details` at scan time. The `/slow` endpoint serves
@@ -9,11 +9,14 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.checkers.slow :as checkers.slow]
    [metabase-enterprise.content-diagnostics.scan :as scan]
+   [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :each cd.tu/with-authorized-reader!)
 
 (defn- scope-prefix
   "Unique per-test entity-name prefix, passed as `:query` so assertions only see rows the test seeded -
