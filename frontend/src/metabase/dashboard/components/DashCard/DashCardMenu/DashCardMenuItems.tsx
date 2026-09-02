@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { canDownloadResults } from "metabase/common/utils/dataset";
-import { editQuestion } from "metabase/dashboard/actions";
+import { editQuestion, openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type {
@@ -17,21 +17,24 @@ import type { DashCardId, Dataset } from "metabase-types/api";
 import { canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
+  dashcardId: DashCardId;
   question: Question;
   result: Dataset;
   isDownloadingData: boolean;
   onDownload: () => void;
   onEditVisualization?: () => void;
-  dashcardId?: DashCardId;
   canEdit?: boolean;
+  withTimelineEvents?: boolean;
 };
 export const DashCardMenuItems = ({
+  dashcardId,
   question,
   result,
   isDownloadingData,
   onDownload,
   onEditVisualization,
   canEdit,
+  withTimelineEvents = false,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
@@ -93,6 +96,15 @@ export const DashCardMenuItems = ({
       }
     }
 
+    if (withTimelineEvents) {
+      items.push({
+        key: "MB_TIMELINE_EVENTS",
+        iconName: "calendar",
+        label: t`Events`,
+        onClick: () => dispatch(openEventsSidebar({ dashcardId })),
+      });
+    }
+
     if (withDownloads && canDownloadResults(result)) {
       items.push({
         key: "MB_DOWNLOAD_RESULTS",
@@ -130,6 +142,9 @@ export const DashCardMenuItems = ({
     result,
     withDownloads,
     withEditLink,
+    withTimelineEvents,
+    dashcardId,
+    dispatch,
     onEditVisualization,
     canEdit,
   ]);

@@ -4,8 +4,10 @@ import { useDispatch, useSelector } from "metabase/redux";
 import {
   TimelineSidebar as SharedTimelineSidebar,
   type TimelineSidebarProps as SharedTimelineSidebarProps,
-} from "metabase/timelines/questions/components/TimelineSidebar";
+} from "metabase/timelines/panel/components/TimelineSidebar";
+import type { Timeline } from "metabase-types/api";
 
+import { hideTimeline, showTimeline } from "../../../../actions/timelines";
 import { onOpenTimelines } from "../../../../store/actions";
 import {
   getTimeseriesDataInterval,
@@ -14,7 +16,11 @@ import {
 
 export type TimelineSidebarProps = Omit<
   SharedTimelineSidebarProps,
-  "focusedTimelineEventIds" | "dataInterval" | "onShowAllEvents"
+  | "focusedTimelineEventIds"
+  | "dataInterval"
+  | "onShowAllEvents"
+  | "onShowTimeline"
+  | "onHideTimeline"
 >;
 
 export const TimelineSidebar = ({
@@ -38,6 +44,18 @@ export const TimelineSidebar = ({
     dispatch(onOpenTimelines());
   }, [dispatch]);
 
+  // Selecting a whole timeline is recorded as such in the question's
+  // visualization settings, rather than as its events one by one.
+  const handleShowTimeline = useCallback(
+    (timeline: Timeline) => dispatch(showTimeline(timeline)),
+    [dispatch],
+  );
+
+  const handleHideTimeline = useCallback(
+    (timeline: Timeline) => dispatch(hideTimeline(timeline)),
+    [dispatch],
+  );
+
   return (
     <SharedTimelineSidebar
       collectionId={collectionId}
@@ -51,6 +69,8 @@ export const TimelineSidebar = ({
       onHideTimelineEvents={onHideTimelineEvents}
       onSelectTimelineEvents={onSelectTimelineEvents}
       onDeselectTimelineEvents={onDeselectTimelineEvents}
+      onShowTimeline={handleShowTimeline}
+      onHideTimeline={handleHideTimeline}
       onShowAllEvents={handleShowAllEvents}
       onOpenModal={onOpenModal}
       onClose={onClose}

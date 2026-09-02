@@ -89,6 +89,8 @@ export type DashboardContextOwnProps = {
    * instead of being filtered out. Used by the SDK for internal navigation.
    */
   enableEntityNavigation?: boolean;
+  /** Whether charts may show timeline events and offer the Events menus */
+  withTimelineEvents?: boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -163,6 +165,7 @@ const DashboardContextProviderInner = forwardRef(
       getClickActionMode = undefined,
       withFooter = true,
       enableEntityNavigation = true, // true in core app, SDK passes it down as false
+      withTimelineEvents = false,
 
       // redux selectors
       dashboard,
@@ -450,6 +453,7 @@ const DashboardContextProviderInner = forwardRef(
           getClickActionMode,
           withFooter,
           enableEntityNavigation,
+          withTimelineEvents,
 
           // redux selectors
           selectedTabId,
