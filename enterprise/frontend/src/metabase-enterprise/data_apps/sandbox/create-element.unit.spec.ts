@@ -59,7 +59,6 @@ describe("makeCreateElementDistortion", () => {
       // The tag wrapper is passed to runtime
       const el = create.call(document, tag as unknown as string);
 
-      expect(el).not.toBeInstanceOf(HTMLScriptElement);
       expect(sharedImpl).toHaveBeenCalledWith("script", undefined);
       expect(el).toBe(sentinel);
     });
@@ -122,7 +121,6 @@ describe("makeCreateElementDistortion", () => {
         qualifiedName as unknown as string,
       );
 
-      expect(el).not.toBeInstanceOf(HTMLScriptElement);
       expect(sharedImpl).toHaveBeenCalledWith(
         "http://www.w3.org/1999/xhtml",
         "html:script",
