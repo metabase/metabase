@@ -99,7 +99,6 @@
   get-raw-value
   get-value-of-type
   has-advanced-setting-access?
-  migrate-encrypted-settings!
   obfuscate-value
   read-setting
   registered-settings

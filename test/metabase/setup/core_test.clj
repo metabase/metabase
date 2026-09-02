@@ -5,12 +5,14 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.settings.models.setting :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -35,6 +37,7 @@
   (testing "The has-user-setup getter should cache truthy results since it can never become falsey"
     ;; make sure some test users are created.
     (mt/initialize-if-needed! :test-users)
+    (setting.cache/restore-cache!)
     (t2/with-call-count [call-count]
       ;; call has-user-setup several times.
       (dotimes [_ 5]
@@ -56,6 +59,7 @@
           (is (<= (call-count)
                   10)))))) ;; in dev/test we check settings for an override
   (testing "Switch back to the 'normal' app DB; value should still be cached for it"
+    (setting.cache/restore-cache!)
     (t2/with-call-count [call-count]
       (is (true?
            (setup/has-user-setup)))
@@ -137,8 +141,8 @@
                   (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                   (is (= :done (mdb/setup-db! :create-sample-content? false))))))))))
     (testing "Database created with encryption configured is encrypted"
-      (encryption-test/with-secret-key "key2"
-        (mt/with-temp-empty-app-db [_conn driver/*driver*]
+      (mt/with-temp-empty-app-db [_conn driver/*driver*]
+        (encryption-test/with-secret-key "key2"
           (mdb/setup-db! :create-sample-content? true)
           (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
@@ -176,8 +180,8 @@
 
 (deftest sentinel-state-never-triggers-encryption-test
   (testing "a restart must never encrypt a pre-existing plaintext row, whatever state the sentinel is in"
-    (encryption-test/with-secret-key "sentinel-state-key-1"
-      (mt/with-temp-empty-app-db [_conn :h2]
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (encryption-test/with-secret-key "sentinel-state-key-1"
         (mdb/setup-db! :create-sample-content? true)
         (let [db-id      (t2/select-one-fn :id :metabase_database)
               plaintext  "{\"host\":\"example.com\"}"
@@ -208,8 +212,8 @@
 
 (deftest fresh-install-with-encryption-key-test
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"
-    (encryption-test/with-secret-key "fresh-install-test-key-1234"
-      (mt/with-temp-empty-app-db [_conn :h2]
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (encryption-test/with-secret-key "fresh-install-test-key-1234"
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns
@@ -226,4 +230,8 @@
                   :let [definition (get @setting/registered-settings (keyword k))]
                   :when (and definition (not= :no (:encryption definition)))]
             (testing k
-              (is (encryption/decryptable-string? v)))))))))
+              (is (encryption/decryptable-string? v)))))
+        (testing "every setting's value_with_aad, under its own setting's AAD"
+          (doseq [{k :key v :value_with_aad} (t2/select :setting {:where [:!= :value_with_aad nil]})]
+            (testing k
+              (is (encryption/decryptable-string? v {:aad (mdb.setting/setting-aad k)})))))))))

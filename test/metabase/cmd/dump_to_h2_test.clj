@@ -15,6 +15,7 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.encryption-test :as encryption-test]
@@ -22,6 +23,11 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting dump-to-h2-test-setting
+  "Test setting -- a setting row to check is dumped decrypted or encrypted as asked."
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (deftest dump-deletes-target-db-files-tests
   ;; test fails when the application db is anything but H2 presently
@@ -80,7 +86,7 @@
                   ;; does) so no encrypted column is left plaintext for the strict model reads
                   ;; the update and dump below trigger
                   (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
-                  (t2/insert! :model/Setting {:key "my-site-admin", :value "baz"})
+                  (t2/insert! :model/Setting {:key "dump-to-h2-test-setting", :value "baz"})
                   (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                   (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
@@ -89,7 +95,7 @@
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                          "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
+                                                          "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';")))))
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
                                                       "select details from metabase_database where id=1;")))))))
@@ -98,7 +104,7 @@
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;"))))))))
@@ -107,7 +113,7 @@
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;")))))))))))))))
