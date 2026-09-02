@@ -11,7 +11,7 @@ type ClauseStepProps = {
 
 export function ClauseStep({ label, children }: ClauseStepProps) {
   return (
-    <Flex className={S.root} p="md" align="center">
+    <Flex className={S.root} p="lg" align="center">
       {label && (
         <Box className={S.label} fz="xs">
           {label}

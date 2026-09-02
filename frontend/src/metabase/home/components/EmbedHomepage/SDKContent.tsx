@@ -18,10 +18,10 @@ export const SDKContent = ({
         {t`Embedded analytics SDK for React`}
       </Text>
     </Group>
-    <Text mb="md">
+    <Text mb="lg">
       {t`Embed individual components like charts, dashboards, the query builder, and more with React. Get advanced customization with CSS styling and manage granular access and interactivity per component.`}
     </Text>
-    <Group gap="md">
+    <Group gap="lg">
       <ExternalLink href={sdkQuickstartUrl}>
         <Button variant="outline">{t`Check out the Quickstart`}</Button>
       </ExternalLink>

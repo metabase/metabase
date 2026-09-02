@@ -3,11 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.claude :as claude]
-   [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.google :as google]
-   [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -239,41 +236,14 @@
                 (llm.provider/model-ref->connection-key (llm-metabot-provider)))
   :doc        false)
 
-(defn- llm-provider-streams-reasoning?
-  "Whether a model reference names a model that streams its reasoning back to us.
-
-  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
-  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
-  `--reasoning-parser` as well as on the model, so the name cannot settle it."
-  [model-ref]
-  (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
-    (case type
-      "anthropic" (claude/reasoning-model? model)
-      "deepseek"  (deepseek/reasoning-model? model)
-      "openai"    (openai/reasoning-model? model)
-      "google"    (google/reasoning-model? model)
-      "vllm"      (vllm/reasoning-connection? credentials)
-      false)))
-
 (defsetting llm-metabot-supports-reasoning?
   "Whether the selected Metabot model streams its reasoning."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
+  :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
   :doc        false)
-
-(defn- llm-provider-supports-fast-mode?
-  "Whether a model reference names a model we can serve in Anthropic fast mode.
-
-  Anthropic-only and BYOK-only: fast mode is premium-priced, and proxied connections bill through
-  Metabase Cloud rather than the instance's own API key."
-  [model-ref]
-  (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
-    (boolean (and (= type "anthropic")
-                  (not ai-proxy?)
-                  (claude/fast-mode-model? model)))))
 
 (defsetting llm-metabot-supports-fast-mode?
   "Whether the selected Metabot model can run in fast mode. Settings-manager rather than public:
@@ -283,7 +253,7 @@
   :visibility :settings-manager
   :setter     :none
   :export?    false
-  :getter     #(llm-provider-supports-fast-mode? (llm-metabot-provider))
+  :getter     #(catalog/supports-fast-mode? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-fast-mode

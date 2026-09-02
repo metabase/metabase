@@ -28,12 +28,12 @@ export const JobTriggersSidebar = ({ jobKey }: JobTriggersSidebarProps) => {
   return (
     <Stack
       className={S.sidebar}
-      p="lg"
-      gap="lg"
+      p="xl"
+      gap="xl"
       bg="background_page-primary"
       data-testid="job-triggers-sidebar"
     >
-      <Flex align="flex-start" justify="space-between" gap="md" wrap="nowrap">
+      <Flex align="flex-start" justify="space-between" gap="lg" wrap="nowrap">
         <Text fw="bold" style={{ wordBreak: "break-all" }}>
           {t`Triggers for ${jobKey}`}
         </Text>
@@ -98,7 +98,7 @@ type TriggerAttributeProps = {
 
 function TriggerAttribute({ label, value }: TriggerAttributeProps) {
   return (
-    <Flex gap="md">
+    <Flex gap="lg">
       <Text component="dt" fw="bold" w="8rem" flex="0 0 auto">
         {label}
       </Text>

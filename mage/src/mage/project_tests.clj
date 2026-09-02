@@ -12,7 +12,8 @@
     metabase.core.modules-test])
 
 (def ^:private ratchet-check-namespaces
-  '[metabase.core.kondo-ratchet-test])
+  '[metabase.core.kondo-ratchet-test
+    metabase.core.kondo-ratchet-check-test])
 
 (def ^:private backend-check-namespaces
   (vec (concat module-check-namespaces ratchet-check-namespaces)))

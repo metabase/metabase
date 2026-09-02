@@ -466,12 +466,8 @@
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]
         (when-not (can-query-table? database-id table-id)
-          (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                               (pr-str (t2/select-one-fn :name :model/Table 'id table-id)))
-                          {:status-code        403
-                           :database-id        database-id
-                           :table-id           table-id
-                           :actual-permissions @api/*current-user-permissions-set*})))))))
+          (throw (ex-info (tru "You must have data permissions to add a parameter referencing this Field.")
+                          {:status-code 403})))))))
 
 (mu/defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with

@@ -456,6 +456,8 @@
   (doseq [ns-symb (cond->> (vals models.resolution/model->namespace)
                     (not config/ee-available?)
                     (remove #(str/starts-with? (str %) "metabase-enterprise")))]
+    ;; Copying the application database requires every registered model namespace.
+    #_{:clj-kondo/ignore [:metabase/modules]}
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date. Skip the encryption check: the source may legitimately be unencrypted
   ;; while MB_ENCRYPTION_SECRET_KEY is set for the target (enabling encryption while migrating off H2); rows are copied

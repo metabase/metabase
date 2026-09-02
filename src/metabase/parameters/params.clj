@@ -34,6 +34,19 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn param-type->op
+  "The MBQL filter operator a chain-filter constraint should use for a parameter of `param-type`."
+  [param-type]
+  (if (get-in lib.schema.parameter/types [param-type :operator])
+    (keyword (name param-type))
+    :=))
+
+(defn param-type->default-options
+  "Default chain-filter constraint options based on parameter type."
+  [param-type]
+  (when (#{:string/contains :string/does-not-contain :string/starts-with :string/ends-with} param-type)
+    {:case-sensitive false}))
+
 (defn assert-valid-parameters
   "Receive a Parameterized Object and check if its parameters is valid."
   [{:keys [parameters]}]

@@ -652,7 +652,7 @@
                       (swap! requests conj req)
                       {:status 200
                        :body   "ok"}))]
-      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
         (notification.tu/with-notification-testing-setup!
           (channel.http-test/with-server [url [endpoint]]
             (mt/with-temp

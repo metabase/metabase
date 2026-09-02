@@ -870,7 +870,7 @@ Custom URL for the help link.
 
 Prevent the exception middleware from including stacktraces in responses.
 
-### `MB_HTTP_CHANNEL_HOST_STRATEGY`
+### `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`
 
 - Type: keyword
 - Default: `external-only`
@@ -1441,6 +1441,14 @@ The DeepSeek API Key.
 
 Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
+### `MB_LLM_FAST_MODE`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `llm-fast-mode`
+
+Run Metabot in the provider's fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.
+
 ### `MB_LLM_GOOGLE_API_BASE_URL`
 
 - Type: string
@@ -1730,6 +1738,18 @@ Options for displaying the illustration on the login page.
 - [Configuration file name](./config-file.md): `login-page-illustration-custom`
 
 The custom illustration for the login page.
+
+### `MB_MAP_TILE_SERVER_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for map tile servers.
+  Options:
+  - allow-private (external + private networks but NOT loopback or link-local)
+  - external-only (only globally routable public addresses)
+  - allow-all (no restrictions).
+  Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
 
 ### `MB_MAP_TILE_SERVER_URL`
 

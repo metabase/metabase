@@ -140,8 +140,8 @@
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
 (deftest ^:parallel both-header-and-cookie-test
-  (testing "if both header and cookie session-keys exist, then we expect the cookie to take precedence"
-    (is (= "cookie-session"
+  (testing "if both header and cookie session-keys exist, then we expect the header to take precedence"
+    (is (= "foobar"
            (:metabase-session-key
             (wrapped-handler
              (assoc (ring.mock/header (ring.mock/request :get "/anyurl") session-header "foobar")
@@ -159,6 +159,92 @@
               :metabase-session-key "092797dd-a82a-4748-b393-697d7bb9ab65"
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-key :uri]))))))
+
+(defn- with-session-for
+  "Insert a session with `session-key` for `user-kw`, run `thunk`, then clean up."
+  [user-kw session-key thunk]
+  (let [session-id (session/generate-session-id)]
+    (try
+      (t2/insert! :model/Session {:id         session-id
+                                  :key_hashed (session/hash-session-key session-key)
+                                  :user_id    (mt/user->id user-kw)})
+      (thunk)
+      (finally
+        (t2/delete! :model/Session :id session-id)))))
+
+(deftest session-header-takes-precedence-over-cookie-test
+  (init-status/set-complete!)
+  (testing "the X-Metabase-Session header wins over a session cookie that also resolves"
+    (let [cookie-session-key (str (random-uuid))
+          header-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (with-session-for
+            :lucky header-session-key
+            (fn []
+              (let [request (-> (ring.mock/request :get "/anyurl")
+                                (ring.mock/header session-header header-session-key)
+                                (assoc :cookies {session-cookie {:value cookie-session-key}}))
+                    request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+                (is (= (mt/user->id :lucky)
+                       (:metabase-user-id request')))
+                (testing "\nthe request carries the header's session, not the cookie's"
+                  (is (= header-session-key (:metabase-session-key request')))
+                  (is (nil? (:metabase-session-type request'))))))))))))
+
+(deftest stale-cookie-does-not-shadow-session-header-test
+  (init-status/set-complete!)
+  (testing "a session cookie that no longer resolves should not shadow a valid X-Metabase-Session header"
+    (let [header-session-key (str (random-uuid))
+          stale-cookie-key   (str (random-uuid))]
+      (with-session-for
+        :lucky header-session-key
+        (fn []
+          (let [request (-> (ring.mock/request :get "/anyurl")
+                            (ring.mock/header session-header header-session-key)
+                            (assoc :cookies {session-cookie {:value stale-cookie-key}}))
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (= (mt/user->id :lucky)
+                   (:metabase-user-id request')))
+            (is (= header-session-key (:metabase-session-key request')))))))))
+
+(deftest stale-session-header-does-not-fall-back-to-cookie-test
+  (init-status/set-complete!)
+  (testing "a session header that no longer resolves does not borrow the cookie's identity"
+    (let [cookie-session-key (str (random-uuid))
+          stale-header-key   (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (let [request (-> (ring.mock/request :get "/anyurl")
+                            (ring.mock/header session-header stale-header-key)
+                            (assoc :cookies {session-cookie {:value cookie-session-key}}))
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (nil? (:metabase-user-id request')))))))))
+
+(deftest cookie-used-when-no-session-header-test
+  (init-status/set-complete!)
+  (testing "with no header on the request the session cookie still authenticates"
+    (let [cookie-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto cookie-session-key
+        (fn []
+          (let [request (assoc (ring.mock/request :get "/anyurl")
+                               :cookies {session-cookie {:value cookie-session-key}})
+                request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+            (is (= (mt/user->id :crowberto)
+                   (:metabase-user-id request')))
+            (is (= :normal (:metabase-session-type request')))))))))
+
+(deftest no-valid-session-key-test
+  (init-status/set-complete!)
+  (testing "when neither the cookie nor the header resolves, the request stays unauthenticated"
+    (let [request (-> (ring.mock/request :get "/anyurl")
+                      (ring.mock/header session-header (str (random-uuid)))
+                      (assoc :cookies {session-cookie {:value (str (random-uuid))}}))
+          request' (#'mw.session/merge-current-user-info (wrapped-handler request))]
+      (is (nil? (:metabase-user-id request'))))))
 
 (deftest current-user-info-for-api-key-test
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"

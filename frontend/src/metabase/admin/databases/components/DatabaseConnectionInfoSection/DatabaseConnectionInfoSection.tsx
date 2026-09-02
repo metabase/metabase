@@ -62,7 +62,7 @@ export const DatabaseConnectionInfoSection = ({
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
       data-testid="database-connection-info-section"
     >
-      <Flex align="center" justify="space-between" gap="lg">
+      <Flex align="center" justify="space-between" gap="xl">
         <DatabaseConnectionHealthInfo databaseId={database.id} />
         <Tooltip
           disabled={isDbModifiable(database)}

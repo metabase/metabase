@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Resolve a conflicted .clj-kondo/ratchets.edn and stage the result.
+# This script only reads the index stages; `./bin/mage merge-kondo-ratchets` merges the policies.
+
+set -euo pipefail
+
+bin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+cd -- "$(git rev-parse --show-toplevel)"
+
+ratchets_file=.clj-kondo/ratchets.edn
+
+# One "<mode> <sha> <stage>\t<path>" line per unmerged stage: 1 = base, 2 = ours, 3 = theirs.
+stages=$(git ls-files -u -- "$ratchets_file" | awk '{ print $3 }')
+
+has_stage() {
+  grep -qx -- "$1" <<< "$stages"
+}
+
+if [ -z "$stages" ]; then
+  echo "$ratchets_file is not conflicted" >&2
+  exit 1
+fi
+
+if ! has_stage 2 || ! has_stage 3; then
+  echo "$ratchets_file was deleted on one side and changed on the other; resolve it by hand" >&2
+  exit 1
+fi
+
+tmp_dir=$(mktemp -d)
+trap 'rm -rf -- "$tmp_dir"' EXIT
+
+git show ":2:$ratchets_file" > "$tmp_dir/ours"
+git show ":3:$ratchets_file" > "$tmp_dir/theirs"
+if has_stage 1; then
+  git show ":1:$ratchets_file" > "$tmp_dir/base"
+else
+  # Both sides added the file, so every policy is a one-sided change against an empty base.
+  printf '{}\n' > "$tmp_dir/base"
+fi
+
+"$bin_dir/mage" merge-kondo-ratchets \
+  "$tmp_dir/base" \
+  "$tmp_dir/ours" \
+  "$tmp_dir/theirs" \
+  "$PWD/$ratchets_file"
+git add -- "$ratchets_file"
+echo "staged merged $ratchets_file"

@@ -925,24 +925,25 @@
 
 (deftest create-a-card-with-result-metadata-updates-recents-test
   (testing "POST /api/card adds user-created questions to recents (UXW-3171)"
-    (mt/with-full-data-perms-for-all-users!
-      (mt/with-model-cleanup [:model/Card]
-        (t2/delete! :model/RecentViews 'user_id (mt/user->id :rasta))
-        (let [card    (assoc (card-with-name-and-query) :result_metadata [])
-              card-id (:id (mt/user-http-request :rasta :post 200 "card" card))]
-          (is (= {:user_id  (mt/user->id :rasta)
-                  :model    "card"
-                  :model_id card-id}
-                 (t2/select-one [:model/RecentViews 'user_id 'model 'model_id]
-                                'user_id  (mt/user->id :rasta)
-                                'model_id card-id
-                                'model    "card"))))
-        (testing "Cards saved without result metadata are not treated as viewed"
-          (let [card-id (:id (mt/user-http-request :rasta :post 200 "card" (card-with-name-and-query)))]
-            (is (nil? (t2/select-one :model/RecentViews
-                                     'user_id  (mt/user->id :rasta)
-                                     'model_id card-id
-                                     'model    "card")))))))))
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-model-cleanup [:model/Card]
+          (t2/delete! :model/RecentViews 'user_id (mt/user->id :rasta))
+          (let [card    (assoc (card-with-name-and-query) :result_metadata [])
+                card-id (:id (mt/user-http-request :rasta :post 200 "card" card))]
+            (is (= {:user_id  (mt/user->id :rasta)
+                    :model    "card"
+                    :model_id card-id}
+                   (t2/select-one [:model/RecentViews 'user_id :model :model_id]
+                                  :user_id  (mt/user->id :rasta)
+                                  :model_id card-id
+                                  :model    "card"))))
+          (testing "Cards saved without result metadata are not treated as viewed"
+            (let [card-id (:id (mt/user-http-request :rasta :post 200 "card" (card-with-name-and-query)))]
+              (is (nil? (t2/select-one :model/RecentViews
+                                       :user_id  (mt/user->id :rasta)
+                                       :model_id card-id
+                                       :model    "card"))))))))))
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
@@ -1569,6 +1570,21 @@
                            [:actual-perms   [:sequential perms.u/PathSchema]]
                            [:trace          [:sequential :any]]]
                           (create-card! :rasta 403))))))))))
+
+(deftest create-card-parameter-permissions-generic-error-test
+  (testing "POST /api/card"
+    (testing "the 403 for a parameter field the user cannot query names neither the table nor its ids"
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; the entire response body is the generic message
+          (is (= "You must have data permissions to add a parameter referencing this Field."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :parameters [{:id     "abc123"
+                                                            :type   "category"
+                                                            :name   "x"
+                                                            :slug   "x"
+                                                            :target [:dimension [:field (mt/id :venues :name) nil]]}])))))))))
 
 (deftest ^:parallel create-card-with-type-and-dataset-test
   ;; Use `:rollback-only` like the sibling tests below. Otherwise, the two Cards created through the API
