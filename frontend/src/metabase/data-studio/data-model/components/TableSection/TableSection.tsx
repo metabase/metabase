@@ -228,10 +228,10 @@ const TableSectionBase = ({
   };
 
   return (
-    <Stack data-testid="table-section" gap="md" pb="xl">
+    <Stack data-testid="table-section" gap="lg" pb="xxl">
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="md">
+          <Tabs.List mb="lg">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
@@ -239,7 +239,7 @@ const TableSectionBase = ({
           </Tabs.List>
 
           <Tabs.Panel value="details">
-            <Stack gap="md">
+            <Stack gap="lg">
               <Box className={S.header}>
                 <NameDescriptionInput
                   description={table.description ?? ""}
@@ -305,8 +305,8 @@ const TableSectionBase = ({
           </Tabs.Panel>
 
           <Tabs.Panel value="field">
-            <Stack gap="md">
-              <Group gap="md" justify="flex-start" wrap="nowrap">
+            <Stack gap="lg">
+              <Group gap="lg" justify="flex-start" wrap="nowrap">
                 {isUpdatingSorting && <Loader size="xs" />}
 
                 {!isSorting && hasFields && (

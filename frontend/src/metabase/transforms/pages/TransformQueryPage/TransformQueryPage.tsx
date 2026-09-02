@@ -252,7 +252,7 @@ function TransformQueryPageBody({
         <Box
           w="100%"
           bg="background_page-primary"
-          bdrs="md"
+          bdrs="sm"
           bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{

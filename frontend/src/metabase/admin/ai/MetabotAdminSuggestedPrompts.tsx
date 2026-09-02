@@ -120,7 +120,7 @@ export const MetabotPromptSuggestionPane = ({
             : t`When users open a new Metabot chat, we’ll show them a few suggested prompts based on popular models and metrics in your instance.`
         }
       />
-      <Flex gap="md" align="center">
+      <Flex gap="lg" align="center">
         <Button
           disabled={isRegenerating}
           leftSection={isRegenerating && <Loader size="xs" />}
@@ -164,11 +164,11 @@ export const MetabotPromptSuggestionPane = ({
           }
           emptyBody={
             error ? (
-              <Center my="lg" fw="bold" c="feedback-negative">
+              <Center my="xl" fw="bold" c="feedback-negative">
                 {t`Something went wrong.`}
               </Center>
             ) : data?.total === 0 ? (
-              <Center my="lg" fw="bold" c="text-disabled">
+              <Center my="xl" fw="bold" c="text-disabled">
                 {t`No prompts found.`}
               </Center>
             ) : null

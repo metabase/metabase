@@ -156,7 +156,7 @@ export function MetabotInlineChart({
       </Flex>
       <Box className={S.viz}>
         {chartError ? (
-          <Center h="100%" p="md">
+          <Center h="100%" p="lg">
             <ErrorView error={chartError.message} icon={chartError.icon} />
           </Center>
         ) : !rawSeries ? (

@@ -110,7 +110,7 @@ export const SelectTime = ({
   const applicationName = useSelector(getApplicationName);
   const timezoneTooltipText = t`Your ${applicationName} timezone`;
   return (
-    <Group gap={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
+    <Group gap={isClock12Hour ? "xxs" : "sm"} style={{ rowGap: ".5rem" }}>
       {/* Select the hour */}
       <AutoWidthSelect
         value={value}
@@ -135,7 +135,7 @@ export const SelectTime = ({
         {isClock12Hour && (
           <SegmentedControl<AmPm>
             lh="1rem"
-            radius="sm"
+            radius="xs"
             value={amPm}
             onChange={(value) => {
               setPendingAmPm(value);

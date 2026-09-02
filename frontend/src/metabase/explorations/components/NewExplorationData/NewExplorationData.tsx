@@ -201,9 +201,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       gap="sm"
       bg="background-primary"
       flex={1}
-      px="xl"
-      pt="lg"
-      pb="md"
+      px="xxl"
+      pt="xl"
+      pb="lg"
       h="100%"
       w="100%"
     >
@@ -221,7 +221,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         </Button>
       </Group>
 
-      <Group gap="xs" data-testid="selected-timelines-container">
+      <Group gap="xxs" data-testid="selected-timelines-container">
         {timelines.length > 0 && (
           <SelectedTimelinePills
             timelines={timelines}
@@ -260,14 +260,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         data-testid="selected-data-blocks-container"
         flex={1}
         mih={0}
-        mt="md"
+        mt="lg"
       >
         {blocks.length === 0 ? (
           <Center h="100%" mt="-3rem">
             <ResearchModeIntro />
           </Center>
         ) : (
-          <Stack gap="md" mb="lg">
+          <Stack gap="lg" mb="xl">
             {blocks.map((block) => (
               <MetricBlockItem
                 key={block.id}

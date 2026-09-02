@@ -144,7 +144,7 @@ export function SettingsNav() {
         <Box
           pos="sticky"
           bottom={0}
-          pt="md"
+          pt="lg"
           bg="background_page-primary"
           style={{ marginTop: "auto", zIndex: 1 }}
         >

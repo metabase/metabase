@@ -97,7 +97,7 @@ export function PythonEditorBody({
       />
 
       {isEditMode && (
-        <Stack m="1rem" gap="md" mt="auto">
+        <Stack m="1rem" gap="lg" mt="auto">
           {proposedSource && onRejectProposed && onAcceptProposed && (
             <>
               <Tooltip label={t`Accept proposed changes`} position="left">

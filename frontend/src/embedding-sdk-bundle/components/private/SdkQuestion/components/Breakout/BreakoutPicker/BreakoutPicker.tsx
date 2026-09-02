@@ -30,7 +30,7 @@ export const BreakoutPickerInner = ({
   return (
     <Stack gap={0} w="18.75rem">
       <Button
-        p="md"
+        p="lg"
         fz="lg"
         color="text-secondary"
         variant="subtle"

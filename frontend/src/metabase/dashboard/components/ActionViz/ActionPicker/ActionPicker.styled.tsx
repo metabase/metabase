@@ -22,7 +22,7 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;
-  border-radius: var(--mantine-spacing-xs);
+  border-radius: var(--mantine-spacing-xxs);
   cursor: pointer;
 
   ${({ isSelected }) =>
@@ -37,11 +37,11 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
 `;
 
 export const EmptyState = styled(UnstyledEmptyState)`
-  margin-bottom: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
 `;
 
 export const EmptyModelStateContainer = styled.div`
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   color: var(--mb-color-text-secondary);
   text-align: center;
 `;
