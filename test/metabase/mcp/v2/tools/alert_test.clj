@@ -299,6 +299,28 @@
 
 ;;; ------------------------------------------------- update -------------------------------------------------------
 
+(deftest slack-channel-on-an-email-alert-is-refused-test
+  (testing "slack_channel without channel \"slack\" is a teaching error rather than a silently ignored
+            argument — otherwise the call reports success while nothing reaches Slack"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (with-slack
+          (testing "on create, where the channel defaults to email"
+            (is (re-find #"slack_channel"
+                         (tool-error (call-tool! :crowberto nil
+                                                 (wire {:method "create" :card_id card-id
+                                                        :schedule (daily-schedule 9)
+                                                        :slack_channel "data-team"}))))))
+          (testing "on update of an email alert"
+            (let [alert (create-alert! card-id)]
+              (is (re-find #"slack_channel"
+                           (tool-error (call-tool! :crowberto nil
+                                                   (wire {:method "update" :id (:id alert)
+                                                          :slack_channel "data-team"})))))
+              (is (= [:channel/email]
+                     (mapv :channel_type
+                           (t2/select :model/NotificationHandler :notification_id (:id alert))))))))))))
+
 (deftest update-patches-only-what-it-is-given-test
   (testing "GHY-4155: update is a patch — the fields it doesn't mention survive, including the
             handler and subscription rows the notification update spec would otherwise delete"

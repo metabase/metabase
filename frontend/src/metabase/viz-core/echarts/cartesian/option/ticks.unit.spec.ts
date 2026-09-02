@@ -21,6 +21,7 @@ describe("getTicksOptions", () => {
       column: dateColumn,
       columnIndex: 0,
       columnByCardId: { 1: dateColumn },
+      columns: [dateColumn],
     };
     const first = "2025-03-30";
     const last = "2025-04-01";

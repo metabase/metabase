@@ -10,9 +10,11 @@
    a `target` patched rather than replaced so a rename keeps its schema, and refusing the two shapes
    it cannot author — python sources and incremental targets — instead of silently rewriting them."
   (:require
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
    [metabase.lib-be.core :as lib-be]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -84,17 +86,38 @@
            (v2.queries/resolve-external-query query accepted-shapes)
            query))))))
 
+(defn- check-native-source-gates!
+  "The gates an inline native `definition` passes: the `agent:sql:run` scope and the
+   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two. A stored native transform is raw
+   SQL the transform runner later executes against the warehouse as a CTAS, so accepting one under the
+   content write scope alone would rebuild `execute_sql` (with a write to the warehouse on top) without
+   its scope or its kill switch. Same gate `question_write` puts on its native sources. A
+   `query_handle` needs neither here: minting one already passed them. No-op on the scope half for
+   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+  [token-scopes]
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
+    (throw (ex-info (format (str "Saving a native (SQL) transform requires the %s scope — this token can "
+                                 "write content but not author raw SQL.")
+                            metabot.scope/agent-sql-run)
+                    {:status-code 403 ::common/error-code common/error-code-invalid-request})))
+  (v2.queries/check-execute-sql-enabled! "Saving a native (SQL) transform"))
+
 (defn- resolve-source
   "Resolve the caller's query source to the `source` map the transform stores. Exactly one of
    `definition` and `query_handle` (a handle from an execute tool, re-checked for shape and
    permissions on resolve — native included, so an execute_sql handle saves as a SQL transform) may
-   be present; `nil` when neither is, which on update means \"leave the stored source alone\"."
-  [{:keys [definition query_handle]} session-id]
+   be present; `nil` when neither is, which on update means \"leave the stored source alone\".
+   An inline `definition` that carries native SQL — a legacy `:type :native` or an MBQL 5 native
+   stage, however nested — clears [[check-native-source-gates!]] first."
+  [{:keys [definition query_handle]} session-id token-scopes]
   (when (and definition query_handle)
     (common/throw-teaching-error
      "Pass exactly one query source: `definition` (the transform's source) or `query_handle` (a handle from an execute tool)."))
   (when-let [query (cond
-                     definition   (definition->query definition)
+                     definition   (let [query (definition->query definition)]
+                                    (when (query-guards/native-query? query)
+                                      (check-native-source-gates! token-scopes))
+                                    query)
                      query_handle (-> (v2.queries/resolve-query-handle-for-save!
                                        session-id api/*current-user-id* query_handle)
                                       :query
@@ -193,8 +216,8 @@
   "Run the shared REST create check stack on the resolved source and target, then save the
    transform. An omitted `collection_id` leaves the transform at the root of the transforms tree,
    as REST create does."
-  [{:keys [name description tag_ids] :as args} session-id]
-  (let [source (or (resolve-source args session-id)
+  [{:keys [name description tag_ids] :as args} session-id token-scopes]
+  (let [source (or (resolve-source args session-id token-scopes)
                    (common/throw-teaching-error
                     "Pass the transform's query: `definition` (inline) or `query_handle` (from an execute tool)."))
         body   (u/remove-nils
@@ -238,7 +261,7 @@
   "Write-check the existing transform, patch only the caller-supplied fields, then hand the patch to
    the shared REST update path, which re-runs feature, database, schema, target-conflict, and cycle
    checks against the merged transform."
-  [id {:keys [name description tag_ids] :as args} session-id]
+  [id {:keys [name description tag_ids] :as args} session-id token-scopes]
   (let [transform  (v2.resolve/resolve-and-read-with
                     :model/Transform id
                     (fn [tid] (api/write-check :model/Transform tid)))
@@ -246,7 +269,7 @@
         ;; Refuse before resolving, so a doomed source doesn't pay for the query pipeline first.
         _          (when (or (:definition args) (:query_handle args))
                      (check-source-replaceable! transform))
-        new-source (resolve-source args session-id)
+        new-source (resolve-source args session-id token-scopes)
         ;; The target follows the query being stored — the new one when the source is changing in
         ;; this same call, otherwise the one already there.
         source-db  (-> (or new-source (:source transform)) :query :database)
@@ -355,6 +378,6 @@
   (let [[op a b] (v2.write/dispatch-write transform-write-entry args)
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
-                                      :create (create! a session-id)
-                                      :update (update! a b session-id)))]
+                                      :create (create! a session-id token-scopes)
+                                      :update (update! a b session-id token-scopes)))]
     (common/success-content payload payload)))

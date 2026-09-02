@@ -354,10 +354,10 @@
             keep their full teaching message"
     (mt/with-temp [:model/Card {card-id :id} {:name "Good" :dataset_query (venues-query)}]
       (mt/with-test-user :crowberto
-        (with-redefs [tools.content/fetch-measure-or-segment
-                      (fn [& _]
-                        (throw (ex-info "ERROR: relation \"report_card\" does not exist"
-                                        {:sql "SELECT * FROM report_card"})))]
+        (mt/with-dynamic-fn-redefs [tools.content/fetch-measure-or-segment
+                                    (fn [& _]
+                                      (throw (ex-info "ERROR: relation \"report_card\" does not exist"
+                                                      {:sql "SELECT * FROM report_card"})))]
           (let [[leaky teaching good]
                 (content-results {:items [{:type "measure" :id 1}
                                           {:type "question" :id 999999999}

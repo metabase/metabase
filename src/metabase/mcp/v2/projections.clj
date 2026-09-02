@@ -95,14 +95,21 @@
       :detailed (project-fn detailed-keys)
       :sample   (or sample (zipmap detailed-keys (repeat "x")))})))
 
+(def ^:private projection-formats
+  #{:concise :detailed})
+
 (defn project
-  "Apply `type`'s `fmt` (`:concise` | `:detailed`) projection to `row`. Throws when no
-   projection is registered for `type`."
+  "Apply `type`'s `fmt` (`:concise` | `:detailed`) projection to `row`. Throws when no projection is
+   registered for `type`, or when `fmt` is not a projection format."
   [type fmt row]
   (let [entry (get @registry type)]
     (when-not entry
       (throw (ex-info (str "No projection registered for type: " (name type))
                       {:status-code 500 :type type})))
+    (when-not (contains? projection-formats fmt)
+      (throw (ex-info (str "Unknown projection format: " (pr-str fmt)
+                           ". Valid formats: " (str/join ", " (sort (map str projection-formats))))
+                      {:status-code 500 :type type :fmt fmt})))
     ((get entry fmt) row)))
 
 (defn catalog

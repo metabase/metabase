@@ -318,12 +318,24 @@
                        :href (str "/question/" readable-id)}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"card\" %%}" readable-id)))))
-            (testing "user mentions still resolve — :model/User has no can-read? and a name is not
-                     gated outside sandboxing, so the mention picker's behaviour is preserved"
+            (testing "user mentions resolve under the mention picker's visibility rule: a visible user"
               (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label "Crowberto Corv" :href "/"}]
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"user\" %%}"
-                                                       (mt/user->id :crowberto)))))))
+                                                       (mt/user->id :crowberto))))))
+            (testing "but not a deactivated user, nor anyone but the caller under user-visibility :none —
+                     :model/User has no can-read?, and resolving any id would let a document author
+                     enumerate names and emails the picker would never show them"
+              (mt/with-temp [:model/User {inactive-id :id} {:first_name "Gone" :last_name "Person" :is_active false}]
+                (is (= [{:entityId inactive-id :model "user" :label nil :href "/"}]
+                       (written-smart-link-attrs created!
+                                                 (format "{%% entity id=\"%d\" model=\"user\" %%}" inactive-id))))
+                (mt/with-temporary-setting-values [user-visibility :none]
+                  (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
+                          {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
+                         (written-smart-link-attrs created!
+                                                   (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                                           (mt/user->id :crowberto) (mt/user->id :rasta)))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
