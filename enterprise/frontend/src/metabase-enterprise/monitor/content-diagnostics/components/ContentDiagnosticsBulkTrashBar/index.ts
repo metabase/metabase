@@ -1,0 +1,1 @@
+export { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";

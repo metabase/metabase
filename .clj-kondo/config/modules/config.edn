@@ -847,6 +847,8 @@
            query-processor
            revisions
            search
+           settings
+           staleness
            util
            view-log}
    :model-exports #{:model/Document}
@@ -2470,11 +2472,14 @@
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
+                    :model/Document
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
+                    :model/Transform
+                    :model/TransformRun
                     :model/User}}
 
   tiles
@@ -2544,6 +2549,7 @@
            run-tracking
            search
            settings
+           staleness
            task
            task-history
            tracing
@@ -3158,6 +3164,30 @@
   {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}
+
+  enterprise/content-diagnostics
+  {:team "Gadget"
+   :api  #{metabase-enterprise.content-diagnostics.api
+           metabase-enterprise.content-diagnostics.init}
+   :uses #{api
+           collections
+           documents
+           events
+           models
+           permissions
+           premium-features
+           queries
+           request
+           settings
+           task
+           util
+           enterprise/stale}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/Transform
+                    :model/User}}
 
   enterprise/content-translation
   {:team "UX West"
@@ -3798,7 +3828,10 @@
 
   enterprise/stale
   {:team "UX West"
+   ;; stale.impl/find-candidates is the exported staleness-rule entry point (incl. the instance-wide
+   ;; `:collection-ids :all` arity) reused by Content Diagnostics — one source of truth for the rule.
    :api  #{metabase-enterprise.stale.api
+           metabase-enterprise.stale.impl
            metabase-enterprise.stale.init}
    :uses #{analytics
            api

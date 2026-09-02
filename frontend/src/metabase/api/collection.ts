@@ -149,6 +149,8 @@ export const collectionApi = Api.injectEndpoints({
           listTag("collection"),
           idTag("collection", payload.id),
           idTag("collection", payload.parent_id ?? "root"),
+          // archiving a collection resolves content-diagnostics findings in its subtree
+          listTag("content-diagnostics-finding"),
         ];
 
         // When archiving/restoring a collection, invalidate bookmarks

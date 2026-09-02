@@ -1,4 +1,10 @@
 import type { CollectionId } from "./collection";
+import type {
+  ContentDiagnosticsDuplicatedUserParams,
+  ContentDiagnosticsImbalancedUserParams,
+  ContentDiagnosticsSlowUserParams,
+  ContentDiagnosticsStaleUserParams,
+} from "./content-diagnostics";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
@@ -212,6 +218,36 @@ export type UserKeyValue =
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "stale";
+      value: ContentDiagnosticsStaleUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "slow";
+      value: ContentDiagnosticsSlowUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "duplicated";
+      value: ContentDiagnosticsDuplicatedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "empty";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "sparse";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "crowded";
+      value: ContentDiagnosticsImbalancedUserParams;
     }
   | {
       namespace: "schema_viewer";

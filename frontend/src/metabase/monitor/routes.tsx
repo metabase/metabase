@@ -6,7 +6,7 @@ import {
   lazyModalRouteElement,
   modalRoute,
 } from "metabase/common/components/ModalRoute";
-import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
+import { canAccessDependencyDiagnostics } from "metabase/common/monitor/selectors";
 // From the file rather than the barrel beside it: the barrel also re-exports
 // the page this file loads lazily, so importing the modal through it would hold
 // the page in the initial bundle.
@@ -29,8 +29,9 @@ import * as Urls from "metabase/urls";
 import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
+  CanAccessContentDiagnostics,
+  CanAccessDependencyDiagnostics,
   CanAccessMonitor,
-  CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
 } from "./route-guards";
 
@@ -65,6 +66,20 @@ const dependencyDiagnosticsUpsellPage = () =>
   ).then(({ DependencyDiagnosticsUpsellPage }) => ({
     Component: DependencyDiagnosticsUpsellPage,
   }));
+
+const contentDiagnosticsSectionLayout = () =>
+  import("metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout").then(
+    ({ ContentDiagnosticsSectionLayout }) => ({
+      Component: ContentDiagnosticsSectionLayout,
+    }),
+  );
+
+const contentDiagnosticsUpsellPage = () =>
+  import("metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage").then(
+    ({ ContentDiagnosticsUpsellPage }) => ({
+      Component: ContentDiagnosticsUpsellPage,
+    }),
+  );
 
 const jobInfoApp = () =>
   import(
@@ -103,7 +118,7 @@ export function getMonitorRoutes() {
     <Route element={<CanAccessMonitor />}>
       <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
-        <Route element={<CanAccessMonitorDiagnostics />}>
+        <Route element={<CanAccessDependencyDiagnostics />}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
@@ -115,6 +130,22 @@ export function getMonitorRoutes() {
             <Route path="dependency-diagnostics">
               <Route index lazy={dependencyDiagnosticsUpsellPage} />
               <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
+            </Route>
+          )}
+        </Route>
+
+        <Route element={<CanAccessContentDiagnostics />}>
+          {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
+            <Route
+              path="content-diagnostics"
+              lazy={contentDiagnosticsSectionLayout}
+            >
+              {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
+            </Route>
+          ) : (
+            <Route path="content-diagnostics">
+              <Route index lazy={contentDiagnosticsUpsellPage} />
+              <Route path="*" lazy={contentDiagnosticsUpsellPage} />
             </Route>
           )}
         </Route>
@@ -156,12 +187,13 @@ export function getMonitorRoutes() {
   );
 }
 
-// Diagnostics for analysts/admins; otherwise the Tools pages for users who only
-// hold the monitoring application permission.
+// Dependency diagnostics is first route in Monitor area, but it has tighter permission requirements,
+// so for users who can't access it we fallback to Content diagnostics (which can be accessed by anyone
+// who can access Monitor area)
 function getMonitorIndexPath(state: State) {
-  return canAccessMonitorDiagnostics(state)
+  return canAccessDependencyDiagnostics(state)
     ? Urls.dependencyDiagnostics()
-    : Urls.monitorTasks();
+    : Urls.contentDiagnostics();
 }
 
 /**

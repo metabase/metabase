@@ -146,6 +146,7 @@ describe("MonitorLayout", () => {
 
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
+      ["Content diagnostics", Urls.contentDiagnostics()],
       ["Erroring questions", Urls.monitorErroringQuestions()],
       ["Alerts management", Urls.monitorNotifications()],
       ["Background tasks", Urls.monitorTasks()],
@@ -164,6 +165,11 @@ describe("MonitorLayout", () => {
       label: "Dependency diagnostics",
       route: Urls.dependencyDiagnostics(),
       section: "diagnostics",
+    },
+    {
+      label: "Content diagnostics",
+      route: Urls.contentDiagnostics(),
+      section: "content-diagnostics",
     },
     {
       label: "Erroring questions",
@@ -298,9 +304,9 @@ describe("MonitorLayout", () => {
       screen.queryByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
     ).not.toBeInTheDocument();
 
-    expect(
-      screen.getByRole("link", { name: "Dependency diagnostics" }),
-    ).toBeInTheDocument();
+    ["Dependency diagnostics", "Content diagnostics"].forEach((name) => {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    });
     [
       "Background tasks",
       "Scheduled jobs",
@@ -313,7 +319,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Alerts management and Dependency diagnostics from a monitoring-only user", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -326,10 +332,8 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole("link", { name: "Dependency diagnostics" }),
-    ).not.toBeInTheDocument();
     [
+      "Content diagnostics",
       "Background tasks",
       "Scheduled jobs",
       "Application logs",
@@ -337,9 +341,9 @@ describe("MonitorLayout", () => {
     ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });
-    expect(
-      screen.queryByRole("link", { name: "Alerts management" }),
-    ).not.toBeInTheDocument();
+    ["Alerts management", "Dependency diagnostics"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
   });
 
   it("hides Alerts management for an analyst even with the monitoring permission", async () => {
@@ -422,7 +426,13 @@ describe("MonitorLayout", () => {
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
   it("gates only Erroring questions when audit_app is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: false } });
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: false,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -430,27 +440,60 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Erroring questions")).toBeInTheDocument();
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
   });
 
   it("gates only Dependency diagnostics when dependencies is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: false, audit_app: true } });
+    setup({
+      tokenFeatures: {
+        dependencies: false,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 
-  it("gates neither when both features are available", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: true } });
+  it("gates only Content diagnostics when content_diagnostics is unavailable", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: false,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it("gates none of the token-feature tabs when all features are available", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 

@@ -198,7 +198,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 (api.macros/defendpoint :post "/mark-stale"
-  "Mark the card or dashboard as stale"
+  "Backdate an entity's activity so the staleness checks treat it as stale. Cards and dashboards carry
+  the timestamp directly, a document is stale once it has not been viewed since the cutoff, and a
+  transform is stale once it was created before the cutoff with no later run. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [id model date-str]} :- [:map
@@ -211,11 +213,18 @@
                       (throw (ex-info (str "invalid date: '"
                                            date-str
                                            "' expected format: 'yyyy-MM-dd'")
-                                      {:status 400}))))
+                                      {:status-code 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
-      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
+      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date})
+      "document"  (t2/update! :model/Document :id id {:last_viewed_at date})
+      "transform" (do
+                    (t2/update! :model/Transform :id id {:created_at date})
+                    ;; collapsed to a zero-length run so backdating staleness can't also make the
+                    ;; transform look slow
+                    (t2/update! :model/TransformRun :transform_id id {:start_time date :end_time date}))
+      (throw (ex-info (str "unknown model: '" model "'") {:status-code 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -236,6 +245,22 @@
   No-op on OSS."
   metabase-enterprise.metabot.usage
   [])
+
+(defenterprise run-content-diagnostics-scan!
+  "Runs a content diagnostics scan on EE and returns its topline. No-op on OSS."
+  metabase-enterprise.content-diagnostics.scan
+  [])
+
+(api.macros/defendpoint :post "/content-diagnostics/scan"
+  :- [:maybe [:map
+              [:scan_id       :string]
+              [:finding_count :int]
+              [:duration_ms   :int]]]
+  "Run a content diagnostics scan synchronously and return its topline. Findings only reach the UI
+  through a scan, and the production trigger is a nightly job, so E2E tests need a way to run one on
+  demand. Intended only for E2E tests."
+  []
+  (run-content-diagnostics-scan!))
 
 (defenterprise reset-mfa-throttlers-for-testing!
   "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.

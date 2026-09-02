@@ -107,3 +107,76 @@
                                            :is_active    nil
                                            :end_time     (t/minus now (t/minutes 1))})
           (is (= #{} (freshness/fresh-dep-ids now #{(:id t)}))))))))
+
+(defn- insert-run-started-at!
+  "Insert a transform run with explicit `status` and `start-time` — schedule-freshness anchors on
+  the most recent run's start_time, regardless of status."
+  [transform-id status start-time]
+  (t2/insert! :model/TransformRun {:transform_id transform-id
+                                   :run_method   :cron
+                                   :status       status
+                                   :is_active    nil
+                                   :start_time   start-time
+                                   :end_time     start-time}))
+
+(deftest schedule-fresh-transform-ids-test
+  ;; pinned to the same Wednesday at 10:30 (local) as above: the hourly cron last fired at 10:00,
+  ;; the daily one at midnight. Assertions are membership-based because the fn scans every
+  ;; transform in the (shared) test DB, not a caller-supplied id set.
+  (let [now (t/offset-date-time 2025 6 18 10 30)]
+    (testing "with a daily schedule, freshness follows the most recent run's start_time, any status"
+      (mt/with-temp [:model/TransformTag          tag {:name "sf-daily-tag"}
+                     :model/TransformJob          job {:name "sf-daily-job" :schedule daily-cron}
+                     :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                     :model/Transform             fresh  {:name "sf-fresh"}
+                     :model/TransformTransformTag _       {:transform_id (:id fresh) :tag_id (:id tag) :position 0}
+                     :model/Transform             stale  {:name "sf-stale"}
+                     :model/TransformTransformTag _       {:transform_id (:id stale) :tag_id (:id tag) :position 0}
+                     :model/Transform             failed {:name "sf-failed-recently"}
+                     :model/TransformTransformTag _       {:transform_id (:id failed) :tag_id (:id tag) :position 0}
+                     :model/Transform             never  {:name "sf-never-run"}
+                     :model/TransformTransformTag _       {:transform_id (:id never) :tag_id (:id tag) :position 0}]
+        ;; 08:30 — after today's midnight fire → fresh; two days ago → two midnights since → not
+        (insert-run-started-at! (:id fresh) :succeeded (t/minus now (t/hours 2)))
+        (insert-run-started-at! (:id stale) :succeeded (t/minus now (t/days 2)))
+        ;; a FAILED run still anchors freshness (unlike fresh-dep-ids, which needs a success)
+        (insert-run-started-at! (:id failed) :failed (t/minus now (t/hours 2)))
+        (let [ids (freshness/schedule-fresh-transform-ids now)]
+          (is (contains? ids (:id fresh)))
+          (is (not (contains? ids (:id stale))))
+          (is (contains? ids (:id failed)))
+          (testing "a transform that has never run is never schedule-fresh"
+            (is (not (contains? ids (:id never))))))
+        (testing "the most recent run governs: a late failed run re-freshens a stale transform"
+          (insert-run-started-at! (:id stale) :failed (t/minus now (t/minutes 30)))
+          (is (contains? (freshness/schedule-fresh-transform-ids now) (:id stale))))))
+    (testing "only transforms covered by an active scheduled job can be schedule-fresh"
+      (mt/with-temp [:model/TransformTag          tag        {:name "sf-inactive-tag"}
+                     :model/TransformJob          job        {:name "sf-inactive-job" :schedule daily-cron :active false}
+                     :model/TransformJobTransformTag _        {:job_id (:id job) :tag_id (:id tag) :position 0}
+                     :model/Transform             inactive   {:name "sf-inactively-scheduled"}
+                     :model/TransformTransformTag _           {:transform_id (:id inactive) :tag_id (:id tag) :position 0}
+                     :model/Transform             unscheduled {:name "sf-unscheduled"}]
+        ;; both ran recently enough to be fresh under the daily cadence — but neither has an
+        ;; active schedule, so neither is schedule-fresh (they're plain recency cases instead)
+        (insert-run-started-at! (:id inactive) :succeeded (t/minus now (t/hours 2)))
+        (insert-run-started-at! (:id unscheduled) :succeeded (t/minus now (t/hours 2)))
+        (let [ids (freshness/schedule-fresh-transform-ids now)]
+          (is (not (contains? ids (:id inactive))))
+          (is (not (contains? ids (:id unscheduled)))))))
+    (testing "with multiple schedules, any one firing since the last run breaks freshness"
+      (mt/with-temp [:model/TransformTag          hourly-tag {:name "sf-hourly-tag"}
+                     :model/TransformTag          daily-tag  {:name "sf-daily-tag-2"}
+                     :model/TransformJob          hourly-job {:name "sf-hourly-job" :schedule hourly-cron}
+                     :model/TransformJob          daily-job  {:name "sf-daily-job-2" :schedule daily-cron}
+                     :model/TransformJobTransformTag _        {:job_id (:id hourly-job) :tag_id (:id hourly-tag) :position 0}
+                     :model/TransformJobTransformTag _        {:job_id (:id daily-job) :tag_id (:id daily-tag) :position 0}
+                     :model/Transform             t          {:name "sf-hourly-and-daily"}
+                     :model/TransformTransformTag _           {:transform_id (:id t) :tag_id (:id hourly-tag) :position 0}
+                     :model/TransformTransformTag _           {:transform_id (:id t) :tag_id (:id daily-tag) :position 1}]
+        (testing "a run 2h ago (08:30): the hourly job has fired since (09:00, 10:00)"
+          (insert-run-started-at! (:id t) :succeeded (t/minus now (t/hours 2)))
+          (is (not (contains? (freshness/schedule-fresh-transform-ids now) (:id t)))))
+        (testing "a run 25m ago (10:05): no schedule has fired since"
+          (insert-run-started-at! (:id t) :succeeded (t/minus now (t/minutes 25)))
+          (is (contains? (freshness/schedule-fresh-transform-ids now) (:id t))))))))
