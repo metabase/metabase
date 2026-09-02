@@ -271,42 +271,11 @@ describe("scenarios - setup guide", () => {
         .should("not.exist");
     });
 
-    it("should link to user strategy when tenants are disabled", () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
-      cy.visit("/embedding/get-started");
-
-      H.main()
-        .findByText("Tenants")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/people/user-strategy");
-    });
-
-    it("should link to tenants page when tenants are enabled", () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
-      H.updateSetting("use-tenants", true);
-      cy.visit("/embedding/get-started");
-
-      H.main()
-        .findByText("Tenants")
-        .scrollIntoView()
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/people/tenants");
-    });
-
-    it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
+    it('"Configure data permissions and tenants" card should navigate to permissions onboarding page', () => {
       cy.visit("/embedding/get-started");
 
       cy.findByTestId("embedding-hub-main")
-        .findByText("Configure data permissions and enable tenants")
+        .findByText("Configure data permissions and tenants")
         .click();
 
       cy.url().should("include", "/embedding/get-started/permissions");
@@ -700,7 +669,7 @@ describe("scenarios - setup guide", () => {
 
         cy.log("Configure data permissions step should be done");
         cy.findByTestId("embedding-hub-main")
-          .findByText("Configure data permissions and enable tenants")
+          .findByText("Configure data permissions and tenants")
           .closest("button")
           .scrollIntoView()
           .findByText("Done")

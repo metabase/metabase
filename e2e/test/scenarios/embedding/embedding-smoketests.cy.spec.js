@@ -42,12 +42,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.visit("/embedding/security");
 
       mainPage().within(() => {
-        cy.findByRole("link", { name: "Upgrade" })
-          .should("have.attr", "href")
-          .and(
-            "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedding-methods",
-          );
+        // The hub's banner passes an onClick, so UpsellCta renders a button
+        // rather than an anchor -- the upgrade URL is no longer in the DOM.
+        cy.findByRole("button", { name: "Try Metabase Pro" }).should(
+          "be.visible",
+        );
       });
     });
 
@@ -181,9 +180,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.visit(standalonePath);
         cy.wait("@currentlyEmbeddedObject");
 
-        mainPage()
-          .findAllByText(/No (questions|dashboards) have been embedded yet./)
-          .should("have.length", 2);
+        mainPage().findByTestId("embedded-resources").should("not.exist");
       });
     });
 
