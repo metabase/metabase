@@ -5,34 +5,32 @@
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
-  [t ref metadata]
-  ;; stored refs are legacy MBQL; normalize as legacy to match metadata field_refs
-  (if-let [field (some (fn [f] (when ((comp #{#_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-field-ref ref)}
-                                            :field_ref)
-                                      f)
-                                 f))
-                       metadata)]
+  [t ref query]
+  (if-let [field (lib.equality/find-matching-column ref (lib/returned-columns query))]
     (let [type-slot (case t
-                      :type/PK                   :semantic_type
-                      (:type/Integer :type/Text) :effective_type)]
+                      :type/PK                   :semantic-type
+                      (:type/Integer :type/Text) :effective-type)]
       (when-not (isa? (type-slot field) t)
         (throw (ex-info (tru "Field is not of {0} `{1}`" type-slot t)
                         {:status-code   400
                          :expected-type t
-                         :type          (:effective_type field)
+                         :type          (:effective-type field)
                          :field         (:name field)}))))
     (throw (ex-info (tru "Could not identify field by ref {0}" ref)
                     {:status-code 400
                      :ref         ref
-                     :fields      metadata}))))
+                     :fields      (lib/returned-columns query)}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -44,16 +42,19 @@
    _query-params
    {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
                                                             [:model_id  ms/PositiveInt]
-                                                            [:pk_ref    any?]
-                                                            [:value_ref any?]]]
+                                                            [:pk_ref    ::lib.schema.ref/ref]
+                                                            [:value_ref ::lib.schema.ref/ref]]]
   (let [model    (api/write-check :model/Card model_id)
-        metadata (:result_metadata model)]
-    (when-not (seq metadata)
+        mp       (lib-be/application-database-metadata-provider (:database_id model))
+        query    (lib/query mp (lib.metadata/card mp (:id model)))
+        pk_ref   (lib/normalize ::lib.schema.ref/ref pk_ref)
+        value_ref (lib/normalize ::lib.schema.ref/ref value_ref)]
+    (when-not (seq (:result_metadata model))
       (throw (ex-info (tru "Model has no metadata. Cannot index")
                       {:model-id model_id})))
-    (ensure-type :type/PK pk_ref metadata)
-    (ensure-type :type/Integer pk_ref metadata)
-    (ensure-type :type/Text value_ref metadata)
+    (ensure-type :type/PK pk_ref query)
+    (ensure-type :type/Integer pk_ref query)
+    (ensure-type :type/Text value_ref query)
     ;; todo: do we care if there's already an index on that model?
     (let [model-index (model-index/create {:model-id   model_id
                                            :pk-ref     pk_ref

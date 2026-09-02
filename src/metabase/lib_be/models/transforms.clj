@@ -8,6 +8,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
@@ -112,3 +113,9 @@
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."
   {:in transform-query-in, :out transform-query-out})
+
+(def transform-field-ref
+  "Transform and normalize a field ref to/from json."
+  {:in  mi/json-in
+   :out (comp (mi/catch-normalization-exceptions #(lib/normalize ::lib.schema.ref/ref %))
+              mi/json-out-with-keywordization)})

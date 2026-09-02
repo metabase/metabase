@@ -8,9 +8,6 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   ;; allowed (for now) since sandboxing needs to manipulate legacy metadata
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -189,7 +186,7 @@
   (-> (lib/query metadata-providerable (lib.metadata/table metadata-providerable table-id))
       (assoc :parameters (sandbox->parameters metadata-providerable sandbox))))
 
-(mu/defn- native-query-metadata :- [:maybe [:sequential {:min 1} ::mbql.s/legacy-column-metadata]]
+(mu/defn- native-query-metadata :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/lib-or-legacy-column]]
   [query :- ::lib.schema/query]
   (let [result
         ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
@@ -408,7 +405,7 @@
                    (:source-table stage) (assoc ::sandbox? true)))
                (apply-sandbox-to-stage query path stage sandbox)))))))
 
-(mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
+(mu/defn- expected-cols :- [:sequential ::lib.schema.metadata/lib-or-legacy-column]
   [query :- ::lib.schema/query]
   (mapv lib/lib-metadata-column->legacy-metadata-column
         (lib.metadata.result-metadata/returned-columns query)))
@@ -442,12 +439,12 @@
 ;;;; Post-processing
 
 (mu/defn- merge-metadata :- [:map
-                             [:cols [:sequential ::mbql.s/legacy-column-metadata]]]
+                             [:cols [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
+  [original-metadata :- [:sequential ::lib.schema.metadata/lib-or-legacy-column]
    metadata          :- [:map
-                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
+                         [:cols [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]

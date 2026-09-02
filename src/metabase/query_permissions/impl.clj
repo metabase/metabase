@@ -8,8 +8,6 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [metabase.api.common :as api]
-   ;; legacy usage -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -264,7 +262,7 @@
      (let [metadata-provider (or metadata-provider
                                  (when (qp.store/initialized?)
                                    (qp.store/metadata-provider)))
-           query (mbql.normalize/normalize query)]
+           query (lib/normalize query)]
        ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
        (if-let [source-card-id (some-> query
                                        not-empty
@@ -288,7 +286,7 @@
      ;; that means no one will ever get to see it
      (catch Throwable e
        (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e))
-                        {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
+                        {:query (or (u/ignore-exceptions (lib/normalize query))
                                     query)}
                         e)]
          (if throw-exceptions? (throw e) (log/error (ex-message e))))
