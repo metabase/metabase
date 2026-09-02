@@ -27,6 +27,7 @@ import {
   getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
+import { isTimelineEventInRange } from "metabase/viz-core";
 import type {
   DashCardId,
   TimelineEvent,
@@ -147,3 +148,15 @@ export const getDashboardTimelineEventsAggregate = createSelector(
       ),
     ),
 );
+
+export const getHasVisibleTimelineEvents = (state: State) =>
+  getTimelineEventsDashCardIds(state).some((dashcardId) => {
+    const xAxis = getDashCardTimeseriesXAxis(state, dashcardId);
+    if (xAxis?.domain == null) {
+      return false;
+    }
+    const { domain, interval } = xAxis;
+    return getDashCardVisibleTimelineEvents(state, dashcardId).some((event) =>
+      isTimelineEventInRange(event, domain, interval),
+    );
+  });
