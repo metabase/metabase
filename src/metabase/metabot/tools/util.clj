@@ -15,12 +15,13 @@
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
+   Preserves :status-code and :terminal-error? from ex-data."
   [e]
-  (let [{:keys [agent-error? status-code]} (ex-data e)]
+  (let [{:keys [agent-error? status-code terminal-error?]} (ex-data e)]
     (if agent-error?
       (cond-> {:output (ex-message e)}
-        status-code (assoc :status-code status-code))
+        status-code     (assoc :status-code status-code)
+        terminal-error? (assoc :terminal-error? true))
       (throw e))))
 
 (defn add-table-reference
