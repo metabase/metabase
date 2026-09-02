@@ -379,17 +379,20 @@
 (deftest unknown-parameter-id-is-a-teaching-error-test
   (testing "GHY-4156: a parameter id the dashboard doesn't have would be stored and then silently
             ignored at send time, so it's rejected up front with the ids that do exist"
-    (mt/with-temp [:model/Card {card-id :id} {}
-                   :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
-                                                                 :type "string/=" :slug "category"}]}
-                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (let [err (tool-error (call-tool! :crowberto nil
-                                        (wire {:method       "create"
-                                               :dashboard_id dash-id
-                                               :schedule     {:schedule_type "hourly"}
-                                               :parameters   [{:id "nope" :value "x"}]})))]
-        (is (re-find #"nope" err))
-        (is (re-find #"cat" err))))))
+    ;; `resolve-parameters` refuses any `parameters` at all without this feature, and that check runs
+    ;; first — without it the call fails on the feature, never reaching the unknown-id check this pins.
+    (mt/with-premium-features #{:dashboard-subscription-filters}
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
+                                                                   :type "string/=" :slug "category"}]}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (let [err (tool-error (call-tool! :crowberto nil
+                                          (wire {:method       "create"
+                                                 :dashboard_id dash-id
+                                                 :schedule     {:schedule_type "hourly"}
+                                                 :parameters   [{:id "nope" :value "x"}]})))]
+          (is (re-find #"nope" err))
+          (is (re-find #"cat" err)))))))
 
 ;;; ------------------------------------------------- update -------------------------------------------------------
 
