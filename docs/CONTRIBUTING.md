@@ -37,11 +37,11 @@ The core team runs a pretty well defined product process. It is actively being t
 
 ### A) Identify product needs from the community
 
-We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying _problem_ or _need_ as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and potentially an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/.Proposal)
+We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying _problem_ or _need_ as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and potentially an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Type:New Feature](https://github.com/metabase/metabase/labels/Type%3ANew%20Feature)
 
 ### B) Synthesize these needs into a concrete feature
 
-We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature. If a feature seems like it will need time to be discussed and scoped, it will be tagged [Proposal/Being Discussed](https://github.com/metabase/metabase/labels/.Proposal%2FBeing%20Discussed) to signify that it is still actively under discussion.
+We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature. If a feature seems like it will need time to be discussed and scoped, it is tagged [.Product Input Needed](https://github.com/metabase/metabase/labels/.Product%20Input%20Needed) to signify that it is still actively under discussion.
 
 ### C) Design the feature
 
@@ -49,15 +49,15 @@ Once a feature has been defined, typically it will be taken on by a product desi
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
-Features that are ready for design are tagged [Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted).
+Features that are ready for design are tagged [.Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it is tagged [.Refined](https://github.com/metabase/metabase/labels/.Refined).
 
 ### D) Build the feature
 
-Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
+Once a feature is tagged [.Refined](https://github.com/metabase/metabase/labels/.Refined), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
 
 If you're building something that users will see in Metabase, please refer to the Style Guide (found at `https://storybook.metabase.com`) to learn how and when to use various Metabase UI elements.
 
-Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/.In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature.
+Once one or more people have started to work on a feature, say so on the issue so nobody duplicates the work. Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature.
 
 ### E) Verification and merging
 
@@ -103,7 +103,7 @@ Some features, eg Database drivers, don't have any user facing pixels. These are
 
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help.
 
-Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted) is fair game.
+Generally speaking, an unassigned issue tagged [.Refined](https://github.com/metabase/metabase/labels/.Refined) is fair game, as is any unassigned bug that has been confirmed with [.Reproduced](https://github.com/metabase/metabase/labels/.Reproduced). [Difficulty:Easy](https://github.com/metabase/metabase/labels/Difficulty%3AEasy) is a good filter for a first contribution. Check the issue's comments and linked pull requests before starting — an issue with no assignee may still have someone working on it.
 
 ### #YOLO JUST SUBMIT A PR
 
