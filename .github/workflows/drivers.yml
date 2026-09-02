@@ -1062,14 +1062,6 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      # One matrix entry per runner: `runner-count` reads the count back from `strategy.job-total`,
-      # so keep this list purely runners. Each runner splits its share across `jvms-per-runner` JVMs.
-      #
-      # In CI, Snowflake names its test databases `isolate_<random>...` per process, so each JVM loads
-      # its own copy of the datasets it needs: more JVMs means more dataset loading, not only more
-      # partitions. The after-run hook only drops the databases recorded for its prefix in
-      # `metabase_test_tracking`, and tracking is keyed on dataset hash, so when several JVMs load the
-      # same dataset only the first one's copy is dropped (see metabase.test.data.snowflake).
       matrix:
         runner-index: [0, 1]
     env:
@@ -1110,10 +1102,6 @@ jobs:
         artifact-suffix: runner-${{ matrix.runner-index }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
-  # Split out of the driver-tests job above so that job's matrix is purely one-entry-per-runner.
-  # Left as a single JVM: the upload suite is only two namespaces, and hawk partitions by namespace
-  # and asserts that every partition is non-empty, so it cannot be split four ways. Keeps the same
-  # `junit-name`, which is the ci-conductor suite label, so the suite's quarantine history is preserved.
   be-tests-snowflake-upload-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
