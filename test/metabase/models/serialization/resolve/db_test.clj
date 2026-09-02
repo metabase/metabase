@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -98,6 +99,7 @@
 
 (deftest cached-export-database-fk-test
   (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}]
+    (setting.cache/restore-cache!)
     (serdes/with-cache
       (t2/with-call-count [call-count]
         (is (= "test-db" (serdes/*export-database-fk* db-id)))
