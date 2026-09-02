@@ -34,9 +34,9 @@ export function migrateStoredCustomVizSettings(
     .map((key) => [key, key.slice(prefix.length)] as const)
     .filter(([, legacyKey]) => {
       return (
-        !(legacyKey in definitions) &&
+        !Object.hasOwn(definitions, legacyKey) &&
         !isHostSettingKey(legacyKey) &&
-        legacyKey in storedSettings
+        Object.hasOwn(storedSettings, legacyKey)
       );
     });
 

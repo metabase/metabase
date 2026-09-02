@@ -404,6 +404,7 @@ describe("getStoredSettingsForSeries", () => {
           [`${PREFIX}threshold`]: { widget: "number" },
           [`${PREFIX}card.title`]: { widget: "input" },
           [`${PREFIX}graph.goal_value`]: { widget: "number" },
+          [`${PREFIX}toString`]: { widget: "input" },
         },
       });
     });
@@ -445,6 +446,12 @@ describe("getStoredSettingsForSeries", () => {
       expect(getStoredSettingsForSeries(series)).toEqual({
         "graph.goal_value": 100,
       });
+    });
+
+    it("adopts a plugin id that shadows an Object.prototype member", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ toString: "custom" })),
+      ).toEqual({ [`${PREFIX}toString`]: "custom" });
     });
 
     it("returns the stored settings as is when there is nothing to adopt", () => {
