@@ -7,7 +7,14 @@
      a client that can't render an iframe, rather than failing at call time);
    - `tools/call` ([[call-tool]]) re-checks all three, validates arguments against the tool's
      Malli schema with teaching errors, dispatches to the handler under the already-bound
-     current user, and logs every outcome through the shared usage path."
+     current user, and logs every outcome through the shared usage path.
+
+  The three filters are not three boundaries. Scopes come from the verified token and the
+  disabled-tools CSV from instance settings, but the extension set is reconstructed from the
+  unsigned capability payload the client echoes back in its session id — a client can claim any
+  extension it likes, and never has to `initialize` to do so. Treat `:required-extensions` as a
+  client-declared hint that keeps a tool out of a list where it could not render, and put nothing
+  behind it that the tool's `:scope` does not already protect."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -97,8 +104,16 @@
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
-   - `:required-extensions` - _optional_ - set of client extensions (e.g. `:mcp-apps`) the tool
-     needs; clients lacking one never see the tool listed and cannot call it
+   - `:required-extensions` - _optional_ - set of client extensions (e.g. `:mcp-app-ui`) the tool
+     needs to render. Clients that don't advertise one don't see the tool listed and get a
+     teaching error if they call it anyway — but the advertisement is unauthenticated, so this is
+     a hint that spares incapable clients an unrenderable tool, not an authorization boundary.
+     `:scope` is the boundary; a tool gated only by an extension is a tool with no gate.
+   - `:title` - _optional_ - human-readable display name, published alongside `:name` for clients
+     that show one; without it clients fall back to the raw tool name
+   - `:_meta` - _optional_ - map published verbatim on the tool entry, carrying client-specific
+     hints outside the MCP tool schema (e.g. `{:ui {:visibility [\"app\"]}}` to mark a tool as one
+     the app calls for itself rather than one the model should choose)
 
    Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
   [handler-sym description opts argv & body]
