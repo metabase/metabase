@@ -300,6 +300,22 @@
       (deliver release true)
       (is (true? (deref finished 10000 ::timed-out))))))
 
+(deftest detached-fetch!-always-completes-test
+  (testing "nothing may leave a registry entry undelivered — later callers for that key would park
+            on it forever, holding a request thread each (GHY-2937)"
+    ;; `detached-fetch!` pr-strs the cache key to log a failed fetch, so a key that refuses to print
+    ;; makes the logging itself throw. That is the one path that used to escape between dropping the
+    ;; registry entry and delivering the promise.
+    (let [unprintable (reify Object (toString [_] (throw (ex-info "unprintable" {}))))
+          registry    @#'field-values/in-flight-fetches
+          caller      (future (try
+                                (field-values/detached-fetch! unprintable #(throw (ex-info "boom" {})))
+                                (catch Throwable _ ::threw)))]
+      (is (= ::threw (deref caller 10000 ::timed-out)))
+      (is (not (contains? @registry unprintable)))
+      (testing "and the key is usable again afterwards"
+        (is (= ::ok (field-values/detached-fetch! unprintable (constantly ::ok))))))))
+
 (deftest detached-fetch!-rethrows-test
   (testing "an exception thrown by the fetch reaches the caller"
     (is (thrown-with-msg? Exception #"oops"

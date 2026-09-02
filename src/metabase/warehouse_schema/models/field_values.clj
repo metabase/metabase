@@ -530,6 +530,15 @@
   [[detached-fetch!]]."
   (atom {}))
 
+(defn- complete-fetch!
+  "Drop `cache-key` from the registry and hand `result` to everyone waiting on `p`.
+
+  Dropping the entry before delivering means a caller that wakes up and immediately asks again
+  starts a fresh fetch rather than re-attaching to this finished one."
+  [cache-key p result]
+  (swap! in-flight-fetches dissoc cache-key)
+  (deliver p result))
+
 (defn detached-fetch!
   "Run `thunk` on a background thread and return its result, rethrowing anything it throws.
 
@@ -541,18 +550,26 @@
   (let [p    (promise)
         this (get (swap! in-flight-fetches u/assoc-default cache-key p) cache-key)]
     (when (identical? this p)
-      (future
-        (let [result (try
-                       {:value (thunk)}
-                       (catch Throwable e
-                         ;; log here as well as rethrowing: when every caller has walked away there is
-                         ;; nobody left to deref the promise, so this is the only record of the failure
-                         (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))
-                         {:error e}))]
-          ;; drop the registry entry before delivering, so a caller that wakes up and immediately
-          ;; asks again starts a fresh fetch rather than re-attaching to this finished one
-          (swap! in-flight-fetches dissoc cache-key)
-          (deliver p result))))
+      ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with its
+      ;; promise undelivered is worse than a leak: every later caller for that key parks on it
+      ;; forever, holding a request thread each.
+      (try
+        (future
+          (try
+            (let [result (try
+                           {:value (thunk)}
+                           (catch Throwable e
+                             ;; log as well as rethrowing: when every caller has walked away there is
+                             ;; nobody left to deref the promise, so this is the only record of the failure
+                             (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))
+                             {:error e}))]
+              (complete-fetch! cache-key p result))
+            (catch Throwable e
+              (complete-fetch! cache-key p {:error e}))))
+        ;; submitting can fail on its own — `future`'s pool rejects new work once the JVM starts
+        ;; shutting down, and the registry entry is already in place by then
+        (catch Throwable e
+          (complete-fetch! cache-key p {:error e}))))
     (let [{:keys [value error]} @this]
       (when error
         (throw error))
