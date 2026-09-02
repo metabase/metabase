@@ -939,7 +939,8 @@
                  :table-id                                         (meta/id :venues)
                  :lib/deduplicated-name                            "my_expression"
                  :lib/original-expression-name                     "my_expression"
-                 :lib/original-name                                "NAME"
+                 ;; don't copy `:lib/original-name` from the Field, I was originally going to but this breaks a FE test
+                 :lib/original-name                                "my_expression"
                  :lib/source                                       :source/previous-stage
                  :lib/source-column-alias                          "my_expression"
                  :lib/type                                         :metadata/column

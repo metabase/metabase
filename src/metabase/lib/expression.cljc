@@ -99,7 +99,7 @@
         (merge (let [resolved (resolve-expression query stage-number expression-name)]
                  (when (lib.util/clause-of-type? resolved :field)
                    (select-keys (lib.metadata.calculation/metadata query stage-number resolved)
-                                [:id :table-id :lib/original-name])))
+                                [:id :table-id])))
                {:lib/type                :metadata/column
                 ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or
                 ;; the ID of the expression definition??
