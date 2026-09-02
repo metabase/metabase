@@ -11,6 +11,7 @@
   entity's usage counter, present for card/dashboard/document; not collection or transform)."
   (:require
    [java-time.api :as t]
+   [malli.core :as mc]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -319,6 +320,44 @@
        (check-diagnostics-access)
        (handler request respond raise)))))
 
+(def ^:private declared-query-params
+  "Every query-param name declared by any endpoint in this namespace, as strings to match the raw
+  `:query-params` keys. A `delay` because `ns-routes` reads namespace metadata that each `defendpoint`
+  appends to as it expands, and this `def` is evaluated before those forms. `*ns*` has to be captured out
+  here: inside the `delay` it would resolve at deref time, to whichever namespace the request happens to
+  be served from."
+  (let [nmspace *ns*]
+    (delay
+      (into #{}
+            (for [[_route info] (api.macros/ns-routes nmspace)
+                  k             (some-> (get-in info [:form :params :query :schema]) mc/explicit-keys)]
+              (name k))))))
+
+(def ^:private ^{:arglists '([handler])} +reject-undeclared-query-params
+  "400s a request carrying a query param no endpoint in this namespace declares. `defendpoint` decodes
+  before it validates and its decode transformer ends in `strip-extra-keys-transformer`, so an undeclared
+  key is deleted before any schema sees it -- `?sort-colum=asc` would otherwise answer 200 with unsorted
+  results, indistinguishable from a filter that matched nothing.
+
+  The allowlist is the union over all four endpoints, so a param that is real for one of them but not for
+  the one being called (`/stale?min-duration-ms=1000`) still passes and is still silently stripped. That
+  is an accepted limitation: catching typos is the point, and narrowing it per endpoint would need route
+  matching this middleware does not do.
+
+  `limit`/`offset` are deliberately not seeded into the allowlist. `handle-paging` removes them from
+  `:query-params` only when at least one parses as a long, so a well-formed `?limit=5` never reaches here,
+  while a malformed `?limit=abc` does and now 400s instead of quietly serving an unpaged list."
+  (routes.common/wrap-middleware-for-open-api-spec-generation
+   (fn [handler]
+     (fn [request respond raise]
+       (when-let [extra (not-empty (remove @declared-query-params (keys (:query-params request))))]
+         (throw (ex-info "Invalid query parameters"
+                         {:status-code 400
+                          :errors      (into {}
+                                             (map (fn [k] [(keyword k) "unexpected query parameter"]))
+                                             extra)})))
+       (handler request respond raise)))))
+
 (api.macros/defendpoint :get "/stale"
   :- [:map
       [:data         [:sequential StaleFinding]]
@@ -493,5 +532,6 @@
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."
   ;; Middleware is applied left-to-right, so the last one ends up outermost: `+auth` runs first and an
-  ;; unauthenticated request still gets a 401 rather than the audience gate's 403.
-  (api.macros/ns-handler *ns* +check-diagnostics-access +auth))
+  ;; unauthenticated request still gets a 401 rather than the audience gate's 403. The param check is
+  ;; innermost, so the audience gate's 403 likewise beats its 400.
+  (api.macros/ns-handler *ns* +reject-undeclared-query-params +check-diagnostics-access +auth))
