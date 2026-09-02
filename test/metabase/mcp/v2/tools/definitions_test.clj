@@ -658,9 +658,17 @@
         (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                        :model/User {analyst-id :id} {:is_data_analyst true}]
           (perms/add-user-to-group! analyst-id group-id)
-          ;; venues only — checkins is the table the analyst may not author on
+          ;; Block the database for this group first, then grant venues back. `with-no-data-perms-for-all-users!`
+          ;; only resets the All Users group, so a freshly created group's default on `checkins` is ambient
+          ;; state — and this test is only meaningful while the analyst cannot author there.
+          (perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
           (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
           (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+          (testing "precondition: venues is authorable and checkins is not"
+            (is (true? (perms/user-has-permission-for-table?
+                        analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :venues))))
+            (is (false? (perms/user-has-permission-for-table?
+                         analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :checkins)))))
           (let [segment (tool-result (call-tool! analyst-id nil "segment_write"
                                                  {:method     "create" :table_id (mt/id :venues)
                                                   :name       "definitions-test move segment"
