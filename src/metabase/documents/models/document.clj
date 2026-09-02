@@ -269,13 +269,21 @@
               {}
               to-clone))))
 
+(defn- hydrate-document
+  "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
+  publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
+  both semantically wrong and an extra, avoidable round-trip."
+  [id]
+  (t2/hydrate (t2/select-one :model/Document :id id)
+              :creator :can_write :can_delete :can_restore :is_remote_synced))
+
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists.
   Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
   [id & {:keys [log-view?] :or {log-view? true}}]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+             (hydrate-document id)))
     (when log-view?
       (events/publish-event! :event/document-read
                              {:object-id id
@@ -334,7 +342,7 @@
                                             {:document document
                                              :content_type prose-mirror/prose-mirror-content-type}
                                             cards-to-update-in-ast)))
-                             (u/prog1 (get-document document-id)
+                             (u/prog1 (hydrate-document document-id)
                                (when (collections/remote-synced-collection? (:collection_id <>))
                                  (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
@@ -394,7 +402,7 @@
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings)))
       (collections/check-for-remote-sync-update existing-document))
-    (let [updated-document (get-document document-id)]
+    (let [updated-document (hydrate-document document-id)]
       ;; Publish appropriate events
       (if (:archived document-updates)
         (events/publish-event! :event/document-delete

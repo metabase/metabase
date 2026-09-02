@@ -106,7 +106,7 @@ export const SettingsJWTForm = () => {
           {({ dirty }) => (
             <Form>
               <FormSection title={"Server Settings"}>
-                <Stack gap="lg">
+                <Stack gap="xl">
                   <FormTextInput
                     name="jwt-identity-provider-uri"
                     label={t`JWT Identity Provider URI`}
@@ -131,7 +131,7 @@ export const SettingsJWTForm = () => {
                 title={"User attribute configuration (optional)"}
                 collapsible
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="jwt-attribute-email"
                     label={t`Email attribute`}

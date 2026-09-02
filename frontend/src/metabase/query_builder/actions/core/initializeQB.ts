@@ -6,11 +6,10 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
-import { getMetadata } from "metabase/metadata-store";
+import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -20,7 +19,6 @@ import type {
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import type { Location } from "metabase/router";
 import { navigate } from "metabase/router";
-import { FieldSchema } from "metabase/schema";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
@@ -404,9 +402,7 @@ async function handleQBInit(
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
   if (card.param_fields) {
-    await dispatch(
-      updateMetadata(Object.values(card.param_fields).flat(), [FieldSchema]),
-    );
+    await dispatch(paramFieldsFetched(card.param_fields));
   }
 
   const metadata = getMetadata(getState());

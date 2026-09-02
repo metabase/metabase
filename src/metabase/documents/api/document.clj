@@ -115,7 +115,8 @@
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (api/read-check (m.document/get-document document-id)))
+  ;; `m.document/get-document` already does the 404 and read check internally.
+  (m.document/get-document document-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -127,7 +128,9 @@
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [collection_id] :as body} :- DocumentUpdateOptions]
-  (let [existing-document (api/check-404 (m.document/get-document document-id))]
+  ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
+  ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
+  (let [existing-document (api/check-404 (t2/select-one :model/Document :id document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/write-check existing-document)

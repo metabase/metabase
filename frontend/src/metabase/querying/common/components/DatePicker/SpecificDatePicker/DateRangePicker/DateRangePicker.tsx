@@ -49,7 +49,7 @@ export function DateRangePicker({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Box p="md">
+      <Box p="lg">
         <DateRangePickerBody
           value={dateRange}
           hasTime={hasTime}
