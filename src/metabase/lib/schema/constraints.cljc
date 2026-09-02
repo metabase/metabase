@@ -9,7 +9,9 @@
   override these values."
   [:and
    [:map
-    {:decode/normalize lib.schema.common/normalize-map}
+    {:decode/normalize lib.schema.common/normalize-map
+     :decode/api       lib.schema.common/remove-internal-keys
+     :encode/serialize lib.schema.common/remove-internal-keys}
     [:max-results
      {:optional true
       :description

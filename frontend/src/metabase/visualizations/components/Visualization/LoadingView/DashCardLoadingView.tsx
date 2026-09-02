@@ -32,10 +32,14 @@ export const DashCardLoadingView = ({
     }
   };
 
+  // the scalar skeleton picks its size tier from the measured area, which
+  // must match the area the rendered visualization will get — no padding
+  const isScalar = display === "scalar" || display === "smartscalar";
+
   return (
     <div
       data-testid="loading-indicator"
-      className={cx(CS.px2, CS.pb2, CS.fullHeight)}
+      className={cx(CS.fullHeight, !isScalar && cx(CS.px2, CS.pb2))}
     >
       <ChartSkeleton display={display} />
       <Transition

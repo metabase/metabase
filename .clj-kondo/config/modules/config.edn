@@ -143,6 +143,7 @@
            metabase.activity-feed.init}
    :uses #{api
            app-db
+           batch-processing
            collections
            config
            events
@@ -356,7 +357,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache :model/Setting}}
+   :model-imports #{:model/Field :model/QueryCache}}
 
   appearance
   {:team "UX West"
@@ -578,6 +579,8 @@
            auth-identity
            classloader
            config
+           llm
+           metabot
            models
            query-processor
            search
@@ -589,6 +592,7 @@
   {:team "UX West"
    :api  #{metabase.collections.core
            metabase.collections.curation
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -1372,6 +1376,7 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.metadata-perms
               metabase.metabot.self
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
@@ -1605,6 +1610,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request
@@ -2195,7 +2201,6 @@
            request
            session
            settings
-           setup
            sso
            system
            tracing
@@ -2416,6 +2421,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            tracing
            util}}
 
@@ -2481,6 +2487,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}

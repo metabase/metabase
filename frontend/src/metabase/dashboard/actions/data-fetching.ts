@@ -33,19 +33,17 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { getMetadata, paramFieldsFetched } from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
-import { updateMetadata } from "metabase/redux/metadata";
 import type {
   DashboardLinkTargets,
   Dispatch,
   GetState,
 } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
-import { FieldSchema } from "metabase/schema";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -893,11 +891,7 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(
-          updateMetadata(Object.values(result.param_fields).flat(), [
-            FieldSchema,
-          ]),
-        );
+        await dispatch(paramFieldsFetched(result.param_fields));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};

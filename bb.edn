@@ -276,6 +276,25 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
+  project-tests
+  {:doc "Run project-level backend and migration checks."
+   :examples [["./bin/mage project-tests" "Run backend and migration checks"]
+              ["./bin/mage project-tests backend" "Run backend checks"]
+              ["./bin/mage project-tests migrations" "Run migration checks"]
+              ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests ratchets" "Run ratchet checks"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "migrations"
+                         "modules"
+                         "ratchets"]]]
+   :requires [[mage.project-tests :as project-tests]]
+   :task (task! (if-let [suite (first (:arguments parsed))]
+                  (project-tests/run! suite)
+                  (project-tests/run!)))}
+
   fix-kondo-ratchets
   {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
    :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
@@ -283,6 +302,35 @@
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+
+  merge-kondo-ratchets
+  {:doc "Three-way merge conflicting .clj-kondo/ratchets.edn files."
+   :examples [["./bin/mage merge-kondo-ratchets BASE OURS THEIRS OUTPUT"
+               "Merge three ratchet-file stages into OUTPUT"]]
+   :arg-schema [:tuple
+                [:string {:name "base" :description "Merge base's ratchets file"}]
+                [:string {:name "ours" :description "Git stage 2: the branch being merged or rebased onto"}]
+                [:string {:name "theirs" :description "Git stage 3: the commits being applied to it"}]
+                [:string {:name "output" :description "Path to write the merged ratchets file"}]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task!
+          (let [[base-path ours-path theirs-path output-path] (:arguments parsed)
+                ;; Every stage goes through the reader that validates the checked-in file.
+                read-stage         (fn [path]
+                                     (binding [dev.kondo-ratchet/*ratchets-file* path]
+                                       (dev.kondo-ratchet/read-ratchets)))
+                [base ours theirs] (map read-stage [base-path ours-path theirs-path])
+                merged             (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+            (spit output-path (if (dev.kondo-ratchet/disabled? merged)
+                                (slurp ours-path)
+                                (dev.kondo-ratchet/render merged)))
+            (println (str "merged ratchets into " output-path))))}
+
+  check-kondo-ratchets
+  {:doc "Fail when suppressions exceed a bounded budget or the ratchets file isn't normalized (babashka only, no JVM)."
+   :examples [["./bin/mage check-kondo-ratchets" "Exit 1 when a policy is exceeded, the file is missing, or its formatting is not normalized"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check))}
 
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."

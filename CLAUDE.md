@@ -77,24 +77,43 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
+Run the repository-level module, ratchet, and migration checks with:
+
+```bash
+./bin/mage project-tests
+```
+
 ## Kondo Ignore Ratchets
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
-`.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
-actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
+`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either an exact integer budget or `:unlimited`,
+which has no count ceiling. This count policy is independent of `:comment-exempt`, described below.
+Development enforces the file exactly, while CI rejects only over-budget suppressions and leaves reductions
+and stale exemptions for the shrink workflow to record.
+Prefer fixing the underlying warning over adding an ignore. Every policy key must name a linter: one of the
+pinned clj-kondo version's built-ins, a linter configured under `.clj-kondo/`, or an external diagnostic
+such as `:clojure-lsp/unused-public-var`.
+The test and the fixer refuse unknown names rather than dropping them.
 
-Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
-change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
-To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
+The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
+with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still
+causes an error on `master`.
+
+Budget too high (you removed ignores): once the change lands on `master`, the shrink workflow lowers the
+budgets in the `Tighten ratchets` automation PR, which approves and merges itself once the ratchet check
+passes. A bounded budget that reaches zero is dropped; an `:unlimited` entry stays even with no ignores
+left, and the check and fixer print one warning naming such entries so you can delete them by hand. To
+tighten by hand (babashka, no JVM; a no-op prints `unchanged`):
 
 ```bash
 ./bin/mage fix-kondo-ratchets
 ```
 
-Budget too low (you added an ignore): the task only raises a budget when told to. If the ignore is
-genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase in the
-PR.
+Budget too low (you added an ignore): the task only raises an `:ignore-counts` budget when told to. If the
+ignore is genuinely required, run `./bin/mage fix-kondo-ratchets --seed :the-linter` and defend the increase
+in the PR. Set a linter's `:ignore-counts` value to `:unlimited` only when increasing its ignore count should
+not require a budget change.
 
 The ignore must be the first key in its map; noncanonical forms fail the ratchet instead of being guessed
 at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
@@ -103,6 +122,7 @@ a comment, the fixer drops its exemption.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
 flags, then `./bin/mage fix-kondo-ratchets --seed :the-linter` records the budget — no big-bang cleanup.
+
 To burn debt down, `./bin/mage kondo-redundant-ignores` lists ignores that are no longer needed (slow:
 full kondo run). Kondo's redundancy report can't see hook-linter warnings, so `--fix` re-lints after
 removing, puts any still-working ignore back exactly as it was, and stamps it with a `[kondo-keep]`
@@ -112,6 +132,11 @@ marked sites too, removing any that have become truly redundant along with their
 comments (a marker trailing on a code line is left for a hand fix). `[kondo-keep]` can also be added
 by hand to protect an ignore whose exact form matters — it only counts on the line directly above the
 ignore, or trailing on the ignore's own line.
+
+If `.clj-kondo/ratchets.edn` conflicts during a merge, rebase, or restack, run
+`./bin/merge-kondo-ratchets`. A change on one side wins over an unchanged base. When both sides change
+the same policy, the tool chooses the smaller budget, a numeric budget over `:unlimited`, or a removed
+entry over either. A file deleted on one side and changed on the other is left for you to resolve.
 
 ## Tool Preferences
 

@@ -171,8 +171,7 @@
 
 (defn- drop-one!
   [^java.sql.Statement stmt dataset-name]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "[Snowflake] Deleting old dataset:" dataset-name)
+  (tx/print-progress! :snowflake "deleting %s" dataset-name)
   (try
     (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
     {:name dataset-name, :status :deleted}
