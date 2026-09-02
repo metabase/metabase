@@ -363,6 +363,18 @@
       (binding [api/*current-user-id* nil]
         (m/mapply qp.dashboard/process-query-for-dashcard options)))))
 
+(defn process-tiles-query-for-dashcard
+  "Like [[process-query-for-dashcard]], but renders a map tile for pre-loaded Card `card` on pre-loaded DashboardCard
+  `dashcard` belonging to pre-loaded Dashboard `dashboard`. Runs with the same superuser perms and anonymized current
+  user as [[process-query-for-dashcard]].
+
+  Callers are responsible for 404-checking each entity before threading it here. Returns a Ring response."
+  [dashboard dashcard card parameters zoom x y lat-field lon-field]
+  (request/as-admin
+    (binding [api/*current-user-id* nil]
+      (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
+                                                  parameters zoom x y lat-field lon-field))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -771,10 +783,9 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card      (api/check-404 (t2/select-one :model/Card card-id))]
-    (request/as-admin
-      (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                  parameters zoom x y latField lonField))))
+        card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))]
+    (process-tiles-query-for-dashcard dashboard dashcard card
+                                      parameters zoom x y latField lonField)))
 
 ;;; ------------------------------------------------ Public Documents -------------------------------------------------
 

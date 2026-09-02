@@ -88,10 +88,14 @@ describe("command palette", () => {
     const calls = () =>
       fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
 
+    // wait for the call to be recorded: reading at(-1) too early re-reads the
+    // previous request, whose body is already consumed
+    await waitFor(() => expect(calls()).toHaveLength(1));
     expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
+    await waitFor(() => expect(calls()).toHaveLength(2));
     expect(await calls().at(-1)?.request?.json()).toEqual({
       value: "auto",
     });

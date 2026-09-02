@@ -66,7 +66,7 @@ const RATING_TEXT_COLORS = {
 
 function DataComplexityCardSkeleton() {
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Box my={5} w="70%">
         <Skeleton h={14} />
       </Box>
@@ -104,7 +104,7 @@ function DataComplexityCard({
     .exhaustive();
 
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Stack component={UnstyledButton} onClick={open} flex={1} gap={0}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
@@ -159,7 +159,7 @@ function DataComplexityBreakdown({
   const hasError = catalog.score == null;
 
   return (
-    <Stack gap="lg" mt="md">
+    <Stack gap="xl" mt="lg">
       {hasError && (
         <Alert size="compact" color="warning" icon={<Icon name="warning" />}>
           {t`Some component scores could not be computed.`}
@@ -174,8 +174,8 @@ function DataComplexityBreakdown({
         const group = catalog.components[groupId];
 
         return (
-          <Stack key={groupId} gap="md" w="100%">
-            <Flex align="center" justify="space-between" gap="lg">
+          <Stack key={groupId} gap="lg" w="100%">
+            <Flex align="center" justify="space-between" gap="xl">
               <Text fw={700} lh="1rem">
                 {title}
               </Text>
@@ -337,7 +337,7 @@ export function DataComplexityCards() {
   }
 
   return (
-    <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
+    <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
       {match({ isLoading, queryError, data })
         .with({ isLoading: true }, () =>
           DATA_COMPLEXITY_CATALOG_IDS.map((catalogId) => (
@@ -351,11 +351,11 @@ export function DataComplexityCards() {
             <Card
               withBorder
               shadow="none"
-              p="md"
+              p="lg"
               style={{ gridColumn: "1 / -1" }}
             >
               <Text fw={700}>{t`Data complexity scores`}</Text>
-              <Text mt="xs" size="sm" c="text-secondary">
+              <Text mt="xxs" size="sm" c="text-secondary">
                 {getErrorMessage(
                   queryError,
                   t`Data complexity scores are unavailable right now.`,
@@ -396,7 +396,7 @@ function ScoreDisplayInline({
           ml="auto"
           px={8}
           py={4}
-          bdrs="sm"
+          bdrs="xs"
           bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
           {...rest}
           gap="sm"

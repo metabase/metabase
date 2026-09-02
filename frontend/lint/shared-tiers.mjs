@@ -11,12 +11,7 @@
 
 const SHARED_UTILS_LEVELS = [
   // U0 — foundation: leaf plumbing.
-  [
-    "shared/schema",
-    "shared/urls",
-    "shared/styled-components",
-    "shared/cljs-dev-tools",
-  ],
+  ["shared/urls", "shared/styled-components", "shared/cljs-dev-tools"],
   // U1 — the api client.
   ["shared/api"],
   // U2 — the store slices and hooks.

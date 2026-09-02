@@ -6378,7 +6378,7 @@
         "required" : [ "metrics", "dimension_groups" ]
       },
       "metabase.explorations.api.ExplorationBlockNode" : {
-        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is\n   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or\n   `By <dimension>`). `:position` is the block's 0-indexed authoring slot.",
+        "description" : "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading\n   (the metric name). `:position` is the block's 0-indexed authoring slot.",
         "type" : "object",
         "properties" : {
           "explore_filters" : {
@@ -6500,13 +6500,9 @@
             "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "metric", "dimension" ]
           }
         },
-        "required" : [ "id", "type", "name", "position", "pages" ]
+        "required" : [ "id", "name", "position", "pages" ]
       },
       "metabase.explorations.api.ExplorationDimensionGroup" : {
         "description" : "Schema for a dimension group in the /dimensions response. A group bundles together dimensions that\n   refer to the same underlying source (same field/binning) so the FE can show a single user-facing\n   entry while still tracking the actual per-metric dimensions needed by `start exploration`.",
@@ -37359,14 +37355,6 @@
                                 },
                                 "required" : [ "card_id" ]
                               }
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "type" : {
-                            "oneOf" : [ {
-                              "type" : "string",
-                              "enum" : [ "metric", "dimension" ]
                             }, {
                               "type" : "null"
                             } ]

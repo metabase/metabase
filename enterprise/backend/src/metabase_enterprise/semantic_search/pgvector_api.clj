@@ -204,7 +204,7 @@
     (semantic.index/delete-from-index! pgvector index model ids)))
 
 ;; REPL-only requires in the comment block; metabase.test also crosses the module boundary
-#_{:clj-kondo/ignore [:unresolved-require :metabase/modules]}
+#_{:clj-kondo/ignore [:metabase/modules]}
 (comment
   (init-semantic-search! pgvector index-metadata embedding-model)
   (index-documents! pgvector index-metadata [{:model           "card"

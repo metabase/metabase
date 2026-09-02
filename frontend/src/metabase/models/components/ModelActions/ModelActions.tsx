@@ -14,11 +14,11 @@ interface Props {
 
 function ModelActions({ model, shouldShowActionsUI }: Props) {
   return (
-    <Stack p="3rem 4rem" mih="90dvh" gap="lg">
+    <Stack p="3rem 4rem" mih="90dvh" gap="xl">
       <Title order={2}>
         <Group gap="sm">
           {jt`Actions for ${(
-            <Group key="group" gap="xs">
+            <Group key="group" gap="xxs">
               <Icon name="model" size={24} />
               <Link variant="brand" to={Urls.model({ id: model.id() })}>
                 {model.displayName()}
@@ -27,7 +27,7 @@ function ModelActions({ model, shouldShowActionsUI }: Props) {
           )}`}
         </Group>
       </Title>
-      <Paper p="lg">
+      <Paper p="xl">
         {shouldShowActionsUI ? (
           <ModelActionDetails model={model} />
         ) : (

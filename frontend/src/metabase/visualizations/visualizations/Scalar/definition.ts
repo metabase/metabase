@@ -15,6 +15,8 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   identifier: "scalar",
   iconName: "number",
   canSavePng: false,
+  noHeader: true,
+  noLoadingHeader: true,
 
   minSize: getMinSize("scalar"),
   defaultSize: getDefaultSize("scalar"),

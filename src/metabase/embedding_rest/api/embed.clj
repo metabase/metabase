@@ -441,9 +441,8 @@
         dashcard (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
-    (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard
-       dashboard dashcard card
-       (api.embed.common/tile-parameters-for-dashboard
-        dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
-       zoom x y latField lonField))))
+    (api.embed.common/process-tiles-query-for-dashcard
+     dashboard dashcard card
+     (api.embed.common/tile-parameters-for-dashboard
+      dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
+     zoom x y latField lonField)))

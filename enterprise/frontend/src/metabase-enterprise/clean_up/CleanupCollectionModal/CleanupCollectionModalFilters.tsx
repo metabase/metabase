@@ -24,7 +24,7 @@ export const CleanupCollectionModalFilters = ({
     justify="space-between"
     direction={{ base: "column", md: "row" }}
     align={{ base: "start", md: "center" }}
-    gap={{ base: "md", md: "none" }}
+    gap={{ base: "lg", md: 0 }}
   >
     <Text fw="bold" display="inline-flex" style={{ alignItems: "center" }}>
       {c("{0} is a duration of time (e.g.: 2 months)").jt`Not used in over ${(
