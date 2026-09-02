@@ -17,6 +17,8 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -93,6 +95,58 @@
   would break a card published as a permissions boundary."
   [table-ids]
   (permitted-table-ids :data-accessible-table data-accessible? table-ids))
+
+(defenterprise row-restricted-by-impersonation?
+  "Whether connection impersonation narrows the current user's rows in `db-id`.
+
+  This v63 adapter deliberately bypasses feature availability when the EE implementation is
+  present: a license-check failure must not make a configured restriction disappear."
+  metabase-enterprise.impersonation.util
+  [_db-id]
+  false)
+
+(defenterprise row-restricted-by-routing?
+  "Whether database routing sends the current user from router `db-id` to a destination database.
+
+  Like [[row-restricted-by-impersonation?]], this remains active when the EE implementation is
+  present even if the feature check is temporarily unavailable."
+  metabase-enterprise.database-routing.common
+  [_db-id]
+  false)
+
+(defn- sandboxed-table-ids
+  [table-ids]
+  (if api/*is-superuser?*
+    #{}
+    (into #{} (comp (map :table_id) (filter table-ids)) (perms/sandboxes-for-user))))
+
+(defn- row-restricted-by-db
+  "`{table-id restricted?}` for one database's `tables`. Impersonation and routing are
+  database-wide; sandboxing is per table. Fails closed for the affected database on error."
+  [db-id tables]
+  (let [ids (into #{} (map :id) tables)
+        restrict-all (into {} (map (fn [id] [id true])) ids)]
+    (try
+      (let [sandboxed             (sandboxed-table-ids ids)
+            db-wide-restricted?  (or (row-restricted-by-impersonation? db-id)
+                                     (row-restricted-by-routing? db-id))]
+        (into {} (map (fn [id] [id (or db-wide-restricted? (contains? sandboxed id))])) ids))
+      (catch Exception e
+        (log/debugf e "Restriction probe failed for database %d, defaulting to restricted" db-id)
+        restrict-all))))
+
+(defn row-restricted-table-ids
+  "Returns the subset of `table-ids` whose current user's row access is narrowed by sandboxing,
+  connection impersonation, or database routing. Fails closed: a table whose restriction lens
+  can't be resolved (an attribute needed to compute it is missing) is included."
+  [table-ids]
+  (->> (memoized :row-restricted-table table-ids
+                 (fn [ids]
+                   (let [tables (into [] (keep (table-rows ids)) ids)]
+                     (into {} (mapcat (fn [[db-id db-tables]] (row-restricted-by-db db-id db-tables)))
+                           (group-by :db_id tables))))
+                 true)
+       (into #{} (keep (fn [[id restricted?]] (when restricted? id))))))
 
 (defn sandbox-restricted-fields
   "`{table-id #{allowed-field-id}}` for the column-sandboxed subset of `table-ids`. A table absent from

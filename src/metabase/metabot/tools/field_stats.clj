@@ -26,11 +26,21 @@
            (t2/select-one-fn :fingerprint :model/Field :id id))))
 
 (defn- field-statistics
+  "Fingerprint statistics are global (computed across every row of the table), so they're withheld
+  for a user whose actual row access is narrowed by sandboxing, connection impersonation, or
+  database routing -- and a missing fingerprint is never computed on demand for such a user either,
+  since that would run an unrestricted warehouse sample and persist its result to the shared
+  `Field` row. The restriction check uses the persisted Field's owning table rather than the
+  caller's column metadata, since saved Card result metadata can be stale or user-edited."
   [{:keys [id fingerprint]} limit]
   (if id
     (let [field (t2/select-one :model/Field :id id)
+          table-id (:table_id field)
           fvs (params.field-values/get-or-create-field-values! field)
-          fp (or fingerprint (get-or-create-fingerprint! field))]
+          restricted? (or (not (int? table-id))
+                          (contains? (metabot.perms/row-restricted-table-ids #{table-id}) table-id))
+          fp (when-not restricted?
+               (or fingerprint (get-or-create-fingerprint! field)))]
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))
 
@@ -65,8 +75,15 @@
   - Every table takes the column-level sandbox check. Reading a table says nothing about which of its
     columns a sandbox exposes, so the read check the entity already passed does not cover this."
   [col]
-  (let [table-id (:table-id col)
-        field-id (:id col)]
+  (let [field-id (:id col)
+        ;; A saved Card's result metadata can override :table-id while retaining a real Field ID.
+        ;; Always authorize physical Fields against their persisted owner; only virtual columns may
+        ;; fall back to the table carried by Lib metadata.
+        table-id (if (pos-int? field-id)
+                   (or (get (metabot.perms/field-id->table-id #{field-id}) field-id)
+                       (throw (ex-info (str "No field found with ID " field-id)
+                                       {:agent-error? true :status-code 404})))
+                   (:table-id col))]
     (when (int? table-id)
       (api/check-403
        (contains? (if (= :source/implicitly-joinable (:lib/source col))
@@ -121,4 +138,5 @@
   (case entity-type
     "metric"                      (metric-field-stats entity-id field-id limit)
     ("model" "report" "question") (card-field-stats entity-id field-id limit entity-type)
-    "table"                       (table-field-stats entity-id field-id limit)))
+    "table"                       (table-field-stats entity-id field-id limit)
+    {:output (str "Unknown data source type: " entity-type)}))

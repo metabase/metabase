@@ -20,6 +20,13 @@
        (throw (ex-info (str (tru "No current user found"))
                        {:status-code 403}))))))
 
+(defenterprise row-restricted-by-impersonation?
+  "Whether connection impersonation narrows the current user's rows in `db-or-id`, without
+  depending on current feature availability."
+  :feature :none
+  [db-or-id]
+  (boolean (impersonation.driver/connection-impersonation-role db-or-id)))
+
 ;; TODO: this function should only return true if an impersonation policy is enforced for the user
 (defenterprise impersonated-user?
   "Returns a boolean if the current user is in a group that has a connection impersonation in place for any database.

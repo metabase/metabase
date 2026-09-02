@@ -64,6 +64,13 @@
    api/*is-superuser?*
    db-or-id))
 
+(defenterprise row-restricted-by-routing?
+  "Whether the current user is routed from `db-or-id` to a destination database, without depending
+  on current feature availability."
+  :feature :none
+  [db-or-id]
+  (boolean (router-db-or-id->destination-db-id db-or-id)))
+
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:
 ;;
