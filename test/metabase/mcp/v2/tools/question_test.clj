@@ -48,6 +48,23 @@
   [q tag-name]
   (some #(when (= tag-name (:name %)) %) (get-in q [:stages 0 :template-tags])))
 
+(deftest template-tag-field-id-is-numeric-only-test
+  (testing "a dimension tag's `field_id` takes a numeric field id and nothing else. The docs used to advertise a
+            21-char entity_id too, but `metabase_field.entity_id` was dropped by migration and `:model/Field`
+            is not in the eid-translation map, so a string could only ever fail — as a sanitized \"Internal
+            error\", for an input the published inputSchema said was valid."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                       {:method "create" :name "Tag probe"
+                                        :native {:database_id (mt/id)
+                                                 :sql "SELECT * FROM VENUES WHERE PRICE = {{d}}"
+                                                 :template_tags {"d" {:type "dimension" :widget_type "number/="
+                                                                      :field_id "AbCdEfGhIjKlMnOpQrStU"}}}})
+            text   (-> result :content first :text)]
+        (is (:isError result))
+        (is (not (re-find #"(?i)internal error" text))
+            "the schema rejects it with a teaching error rather than failing deep in the insert")))))
+
 (deftest native-template-tags-test
   (mt/with-current-user (mt/user->id :rasta)
     (testing "a supplied tag not present in the SQL is a teaching error"
