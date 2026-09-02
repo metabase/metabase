@@ -519,6 +519,24 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   ;; content diagnostics scan (enterprise/content-diagnostics): one run/day/instance where the feature is on.
+   ;; Counters throughout, no histogram: at one scan a day an instance contributes a single sample, so its
+   ;; own bucket distribution is degenerate. The distribution worth having is the one across instances, and
+   ;; Prometheus already keeps a series per instance - increase(scan_duration_ms_total[7d]) divided by
+   ;; increase(scan_runs_total[7d]) is that instance's mean scan, which topk() ranks (naming the slow
+   ;; instances, which buckets cannot) and quantile() aggregates into a fleet percentile.
+   (prometheus/counter :metabase-content-diagnostics/scan-duration-ms
+                       {:description "Total milliseconds spent running Content Diagnostics scans, by outcome; over scan-runs it gives the mean scan."
+                        :labels      [:status]})
+   (prometheus/counter :metabase-content-diagnostics/scan-runs
+                       {:description "Number of Content Diagnostics scans, by outcome and, on failure, the stage that was running (none = succeeded, unknown = threw outside any stage)."
+                        :labels      [:status :stage]})
+   (prometheus/counter :metabase-content-diagnostics/scan-stage-ms
+                       {:description "Total milliseconds Content Diagnostics scans spent in each stage (checker.<name>, enrich, insert, invalidate); bumped on stage success only."
+                        :labels      [:stage]})
+   (prometheus/counter :metabase-content-diagnostics/findings-persisted
+                       {:description "Number of findings persisted by a Content Diagnostics scan that completed its insert stage, by finding type."
+                        :labels      [:finding-type]})
    ;; explorations
    (prometheus/gauge :metabase-explorations/pending-queue-depth
                      {:description "Number of exploration_query rows currently in 'pending' status (awaiting execution by the explorations background runner)."})

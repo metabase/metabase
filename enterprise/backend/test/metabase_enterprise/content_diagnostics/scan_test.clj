@@ -11,10 +11,13 @@
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase-enterprise.content-diagnostics.task.scan :as task.scan]
    [metabase-enterprise.content-diagnostics.test-util :as cd.tu]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.test :as mt]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -895,3 +898,96 @@
       (testing "unlicensed → 402"
         (mt/with-premium-features #{}
           (mt/user-http-request :rasta :get 402 "ee/content-diagnostics/stale"))))))
+
+;;; ---------------------------------------------- metrics -----------------------------------------------
+
+(defn- runs
+  "The `scan-runs` count for one (status, stage) pair - `stage` is `none` on the success arm."
+  [system status stage]
+  (mt/metric-value system :metabase-content-diagnostics/scan-runs {:status status :stage stage}))
+
+(defn- duration-ms [system status]
+  (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms {:status status}))
+
+(def ^:private all-stages
+  "Every `stage` label a successful scan emits. Deriving the checker arms from the registry keeps a new
+  checker from silently falling out of the coverage below."
+  (into ["enrich" "insert" "invalidate"]
+        (map #(str "checker." (:name %)))
+        scan/checkers))
+
+(deftest scan-metrics-test
+  ;; one registry boot for every block - boot is expensive; blocks that re-read a metric clear! it first
+  (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       ;; guarantees >= 1 finding, so the insert stage really runs a chunk
+                       :model/Card      _ {:collection_id coll-id :last_used_at (stale-instant)}]
+          (testing "feature absent: the scheduled scan does not run and emits nothing"
+            ;; a metric reading 0 would prove nothing - an untouched label child reads 0 either way
+            (let [emitted (atom [])]
+              (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [& args] (swap! emitted conj args))
+                                          analytics/observe! (fn [& args] (swap! emitted conj args))]
+                (mt/with-premium-features #{}
+                  (#'task.scan/scan-when-enabled!)))
+              (is (= [] @emitted))))
+          (testing "successful scan: counted once, timed, every stage timed, findings counted"
+            (scan/scan!)
+            (is (== 1 (runs system "ok" "none")))
+            (is (pos? (duration-ms system "ok")))
+            (is (== 0 (duration-ms system "error")))
+            (doseq [stage all-stages]
+              (is (pos? (mt/metric-value system :metabase-content-diagnostics/scan-stage-ms {:stage stage}))
+                  stage))
+            (is (<= 1 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
+                                       {:finding-type "stale"})))
+            (doseq [stage (conj all-stages "unknown")]
+              (is (== 0 (runs system "error" stage)) stage)))
+          (testing "a throwing checker: the scan fails, attributed to that checker's stage"
+            (prometheus/clear! :metabase-content-diagnostics/scan-duration-ms)
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
+            (with-redefs [scan/checkers [{:name "slow" :finding-types #{:slow}
+                                          :run  (fn [] (throw (ex-info "boom" {})))}]]
+              ;; the wrapped message keeps the original class, not just its message
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"stage checker\.slow failed: clojure\.lang\.ExceptionInfo: boom"
+                                    (scan/scan!))))
+            (is (== 1 (runs system "error" "checker.slow")))
+            (is (== 0 (runs system "ok" "none")))
+            (is (pos? (duration-ms system "error")))
+            (is (== 0 (duration-ms system "ok"))))
+          (testing "insert failure: attributed to the insert stage; nothing counted as persisted"
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
+            (prometheus/clear! :metabase-content-diagnostics/findings-persisted)
+            (with-redefs [t2/insert! (fn [& _] (throw (ex-info "db down" {})))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stage insert failed" (scan/scan!))))
+            (is (== 1 (runs system "error" "insert")))
+            (is (== 0 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
+                                       {:finding-type "stale"}))))
+          (testing "a throw outside any stage is attributed to unknown"
+            (prometheus/clear! :metabase-content-diagnostics/scan-duration-ms)
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
+            ;; `count-persisted!` calls `covered-finding-types` outside any `run-stage!` - no stage in ex-data
+            (with-redefs [scan/covered-finding-types (fn [] (throw (ex-info "boom" {})))]
+              (is (thrown? clojure.lang.ExceptionInfo (scan/scan!))))
+            (is (== 1 (runs system "error" "unknown")))
+            (is (pos? (duration-ms system "error"))))
+          (testing "an undeclared finding type clamps to unknown"
+            (prometheus/clear! :metabase-content-diagnostics/findings-persisted)
+            (#'scan/count-persisted! [{:finding-type :bogus}])
+            (is (== 1 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
+                                       {:finding-type "unknown"})))
+            (is (== 0 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
+                                       {:finding-type "stale"}))))
+          (testing "with :tasks tracing enabled the scan still succeeds and no span attribute collides"
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
+            (try
+              ;; every `add-span-attrs!` runs for real here, and a duplicate key within one span is
+              ;; fail-loud in dev/test - a collision would surface as a scan failure
+              (tracing/init-enabled-groups! "tasks" "INFO")
+              (is (map? (scan/scan!)))
+              (is (== 1 (runs system "ok" "none")))
+              (is (== 0 (runs system "error" "unknown")))
+              (finally
+                (tracing/shutdown-groups!)))))))))
