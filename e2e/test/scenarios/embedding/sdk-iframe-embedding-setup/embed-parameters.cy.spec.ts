@@ -179,6 +179,8 @@ describe(suiteTitle, () => {
     });
 
     it("can set default parameters for SQL questions", () => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Question with Parameters",
@@ -190,21 +192,30 @@ describe(suiteTitle, () => {
         cy.findByLabelText("ID").should("be.visible");
       });
 
+      cy.log("the preview runs {{id}} unset, so the backend rejects the query");
+      cy.wait("@cardQuery");
+
       H.getSimpleEmbedIframeContent()
         .findByText(/missing required parameters/)
-        .should("exist");
+        .should("be.visible");
 
       getEmbedSidebar().within(() => {
         cy.findByLabelText("ID").type("123");
         cy.press("Tab"); //.blur() doesn't easily work here
       });
 
+      cy.log("the new value re-runs the question in the preview iframe");
+      cy.wait("@cardQuery");
+
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText(/missing required parameters/).should("not.exist");
+        // Anchor on the row first: a mid-rerender iframe body is empty, which
+        // satisfies the "not.exist" check below on its own (EMB-2338).
         cy.findByText("123").should("be.visible");
 
         // value in a subtotal field
         cy.findAllByText("75.41").first().should("be.visible");
+
+        cy.findByText(/missing required parameters/).should("not.exist");
       });
 
       getEmbedSidebar().within(() => {
