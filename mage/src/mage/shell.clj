@@ -39,6 +39,14 @@
 ;; How often we re-ask a signalled process whether it has exited yet.
 (def ^:private exit-poll-interval-ms 50)
 
+;; How long the readers get to drain the pipes once the command itself has exited, over and above whatever
+;; is left of its budget.
+(def ^:private drain-floor-ms (* 2 1000)) ; 2 seconds
+
+(def ^:private drain-failed-message
+  ;; Loud, because half a command's output returned as if it were all of it is worse than a failure.
+  "Command exited, but something it left running is holding its output pipe open.")
+
 (defn- deadline-in
   "A `nanoTime` instant `timeout-ms` from now, to measure against with [[remaining-ms]].
   Wall-clock time is no good for this: an NTP correction or a DST shift would move the deadline."
@@ -51,13 +59,17 @@
   (max 0 (quot (- deadline (System/nanoTime)) ns-per-ms)))
 
 (defn- deref-by-deadline
-  "Deref `dereffable`, throwing if `deadline` passes first. `timeout-ms` is the budget `deadline` was built
-  from, and is what the message reports."
-  [dereffable deadline timeout-ms]
+  "Deref `dereffable`, throwing an ex-info carrying `message` if `deadline` passes first."
+  [dereffable deadline message]
   (let [result (deref dereffable (remaining-ms deadline) ::timed-out)]
     (when (= result ::timed-out)
-      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
+      (throw (ex-info message {:timed-out? true})))
     result))
+
+(defn- close-quietly [^java.io.Closeable closeable]
+  (try
+    (.close closeable)
+    (catch java.io.IOException _ nil)))
 
 (defn- wait-for-exit
   "Wait up to `timeout-ms` for every process in `handles` to exit."
@@ -127,24 +139,38 @@
     ;; Close child stdin so subprocesses that read from it see EOF immediately
     ;; instead of blocking forever on the JVM-owned pipe.
     (.close (.getOutputStream proc))
-    (with-open [out-reader (BufferedReader. (InputStreamReader. (.getInputStream proc)))
-                err-reader (BufferedReader. (InputStreamReader. (.getErrorStream proc)))]
-      ;; One deadline covers all three waits: `timeout-ms` is the command's whole budget, not a budget per wait.
-      (let [deadline  (deadline-in timeout-ms)
-            exit-code (future (.waitFor proc))
-            out       (future (read-lines out-reader opts))
-            err       (future (read-lines err-reader opts))]
-        (try
-          {:exit (deref-by-deadline exit-code deadline timeout-ms)
-           :out  (deref-by-deadline out deadline timeout-ms)
-           :err  (deref-by-deadline err deadline timeout-ms)}
-          ;; A timeout is not the only way out of here. A reader future can fail on the pipe, and the calling
-          ;; thread can be interrupted; either way the command keeps running unless we stop it. Whether the
-          ;; process is still alive is the question that matters, not which exception got us here.
-          (catch Throwable e
-            (when (.isAlive proc)
-              (kill-process! proc))
-            (throw e)))))))
+    (let [out-stream (.getInputStream proc)
+          err-stream (.getErrorStream proc)
+          out-reader (BufferedReader. (InputStreamReader. out-stream))
+          err-reader (BufferedReader. (InputStreamReader. err-stream))
+          ;; One deadline covers the whole command: `timeout-ms` is its total budget, not a budget per wait.
+          deadline   (deadline-in timeout-ms)
+          exit-code  (future (.waitFor proc))
+          out        (future (read-lines out-reader opts))
+          err        (future (read-lines err-reader opts))]
+      (try
+        (let [exit  (deref-by-deadline exit-code deadline (format "Timed out after %d ms." timeout-ms))
+              ;; The command has exited, so everything it wrote is already in the pipe -- but `deadline`
+              ;; may have just run out, and a pipe holds a bounded amount, so the readers can still have
+              ;; work to do. Without a floor here a command that finished a millisecond inside its budget
+              ;; would have its output thrown away and be reported as a timeout.
+              drain (max deadline (deadline-in drain-floor-ms))]
+          {:exit exit
+           :out  (deref-by-deadline out drain drain-failed-message)
+           :err  (deref-by-deadline err drain drain-failed-message)})
+        ;; A timeout is not the only way out of here. A reader future can fail on the pipe, and the calling
+        ;; thread can be interrupted; either way the command keeps running unless we stop it. Whether the
+        ;; process is still alive is the question that matters, not which exception got us here.
+        (catch Throwable e
+          (when (.isAlive proc)
+            (kill-process! proc))
+          (throw e))
+        (finally
+          ;; Close the pipes rather than the readers. `BufferedReader.close` takes the same lock `readLine`
+          ;; holds while blocked, so it waits for EOF -- and a process the command orphaned onto our stdout
+          ;; can withhold EOF for as long as it lives. Closing the stream underneath ends the read at once.
+          (close-quietly out-stream)
+          (close-quietly err-stream))))))
 
 (defn sh
   "Like [[sh*]], but throws an Exception if the command exits with a non-zero status. Options are the same as `sh*` --

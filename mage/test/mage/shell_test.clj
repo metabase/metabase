@@ -60,3 +60,32 @@
         (is (gone? child) "the shell's descendant was left running"))
       (finally
         (.delete pids)))))
+
+;; The orphan outlives the command by design: once its parent exits it is reparented away and is no longer
+;; reachable from our process handle, so the test records its pid and cleans up after itself.
+(def ^:private orphan-sleep-seconds 20)
+
+(def ^:private orphan-timeout-ms 500)
+
+;; Above the drain floor and far below the orphan's lifetime. Anything in between means sh* sat waiting for
+;; the orphan rather than closing the pipe out from under the read.
+(def ^:private orphan-bound-ms (* 8 1000)) ; 8 seconds
+
+(deftest orphan-holding-the-output-pipe-does-not-hold-the-caller-test
+  (let [pid-file (File/createTempFile "mage-shell-orphan" ".pid")
+        started  (System/nanoTime)]
+    (try
+      ;; The command exits immediately but leaves a process holding the stdout pipe, so the pipe never
+      ;; reaches EOF. Closing the BufferedReader would block until the orphan died -- 62 s against a 500 ms
+      ;; budget in the case that prompted this.
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"holding its output pipe open"
+                            (shell/sh* {:quiet? true, :timeout-ms orphan-timeout-ms}
+                                       "sh" "-c"
+                                       (str "sleep " orphan-sleep-seconds " & echo $! > \"$0\"; exit 0")
+                                       (str pid-file))))
+      (is (< (quot (- (System/nanoTime) started) ns-per-ms) orphan-bound-ms)
+          "sh* waited out the orphan instead of closing the pipe")
+      (finally
+        (when-let [pid (parse-long (str/trim (slurp pid-file)))]
+          (shell/sh* {:quiet? true} "kill" "-9" (str pid)))
+        (.delete pid-file)))))
