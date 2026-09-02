@@ -349,6 +349,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
@@ -1619,7 +1620,8 @@
            system
            task
            tracing
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   osi
   {:team "Metabot"
@@ -2236,8 +2238,7 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.core
-           metabase.settings.init}
+   :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
            config

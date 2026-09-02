@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.db :as agent-api.db]
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
@@ -484,55 +485,6 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
-(defn- reject-native-query!
-  "Throw a 400 if `query-map` is a native query anywhere — top-level, nested, or in a join, in either the
-  legacy or the MBQL 5 form. Normalizes the payload to MBQL 5 (best-effort) and checks for a native stage
-  with [[lib/any-native-stage?]], so the check reads keyword `:lib/type`s regardless of how the JSON was
-  decoded; a payload too malformed to normalize is left for the shape and validation checks that follow.
-
-  `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
-  `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
-  query_handle, a continuation token) could carry a native query; allowing it would let a token
-  without the SQL-execution scope run raw SQL, defeating the scope split and bypassing the
-  execute-sql kill switch. Force native execution onto `/v1/execute-sql`, which is correctly scoped."
-  [query-map]
-  (when (some-> (u/ignore-exceptions (lib-be/normalize-query query-map))
-                not-empty
-                lib/any-native-stage?)
-    (throw (ex-info "Native queries are not supported here; use execute_sql instead."
-                    {:status-code 400}))))
-
-(defn- validate-serialized-query!
-  "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
-   Require `:stages` to be a non-empty sequence of maps, and the last-stage `:limit` (if present) an
-   integer; otherwise `serialized-query-limit`, `clamp-total-limit`, and `apply-page-to-query` would
-   throw on the malformed shape and surface a 500 instead of a clean 400.
-   Deep MBQL validation still happens in the QP at execution."
-  [query-map]
-  (let [stages (:stages query-map)]
-    (when-not (and (sequential? stages) (seq stages) (every? map? stages))
-      (throw (ex-info "Invalid query: expected a serialized MBQL query with a non-empty :stages of maps."
-                      {:status-code 400 :query-map query-map})))
-    ;; `contains?` (not `when-let`) so an explicit `false`/`nil` limit is caught, not skipped.
-    (when (contains? (last stages) :limit)
-      (let [limit (:limit (last stages))]
-        (when-not (and (int? limit) (pos? limit))
-          (throw (ex-info "Invalid query: last-stage :limit must be a positive integer."
-                          {:status-code 400 :query-map query-map})))))))
-
-(defn- check-token-query-permissions!
-  "Re-validate query permissions on the continuation-token path.
-
-  The token body is client-supplied and could in principle name a different source table than
-  the one the fresh `/v2/query` call was authorized against (a user's data perms can also
-  change between pages). The QP middleware would catch this at execution time, but running
-  the explicit `api/query-check` first gives a cleaner 403 and avoids spinning up the
-  streaming response just to abort."
-  [query-map]
-  (when-let [table-id (get-in query-map [:stages 0 :source-table])]
-    (when (int? table-id)
-      (api/query-check :model/Table table-id))))
-
 (defn- initial-page-state
   "Normalize the three /v2/query entry points into a single {:query :total-limit :page} shape.
 
@@ -548,16 +500,16 @@
   (cond
     (:continuation_token body)
     (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
-      (reject-native-query! query)
-      (validate-serialized-query! query)
+      (query-guards/reject-native-query! query)
+      (query-guards/validate-serialized-query! query)
       (let [query (normalize-and-validate-query query)]
-        (check-token-query-permissions! query)
+        (query-guards/check-token-query-permissions! query)
         {:query query :total-limit (:limit pagination) :page (:page pagination)}))
 
     (string? (:query body))
     (let [query (decode-base64-json-map (:query body))]
-      (reject-native-query! query)
-      (validate-serialized-query! query)
+      (query-guards/reject-native-query! query)
+      (query-guards/validate-serialized-query! query)
       (let [query (normalize-and-validate-query query)]
         {:query       query
          :total-limit (clamp-total-limit (serialized-query-limit query))
@@ -669,7 +621,7 @@
    _query-params
    {encoded-query :query} :- ::execute-query-request]
   (let [decoded (-> encoded-query u/decode-base64 json/decode)]
-    (reject-native-query! decoded)
+    (query-guards/reject-native-query! decoded)
     (let [query (normalize-and-validate-query decoded)]
       (qp.streaming/streaming-response [rff :api]
         (qp/process-query (prepare-combined-query query) rff)))))
