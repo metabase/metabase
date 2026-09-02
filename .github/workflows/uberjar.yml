@@ -19,8 +19,16 @@ on:
         type: boolean
         default: false
         required: false
+      registry:
+        description: "Registry the containerized uberjar is pushed to. Ignored if containerize is false."
+        type: choice
+        options:
+          - docker
+          - ecr
+        default: docker
+        required: false
       repo:
-        description: "Registry and repository the containerized uberjar is pushed to. Ignored if containerize is false."
+        description: "Repository name the containerized uberjar is pushed to, without the registry host or the Docker Hub owner. Ignored if containerize is false."
         type: string
         default: ''
         required: false
@@ -41,8 +49,13 @@ on:
         type: boolean
         default: false
         required: false
+      registry:
+        description: "Registry the containerized uberjar is pushed to. Ignored if containerize is false."
+        type: string
+        default: docker
+        required: false
       repo:
-        description: "Registry and repository the containerized uberjar is pushed to. Ignored if containerize is false."
+        description: "Repository name the containerized uberjar is pushed to, without the registry host or the Docker Hub owner. Ignored if containerize is false."
         type: string
         default: ''
         required: false
@@ -234,5 +247,6 @@ jobs:
       commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
       edition: ${{ matrix.edition }}
       release: false
+      registry: ${{ inputs.registry }}
       repo: ${{ inputs.repo }}
       tag: ${{ inputs.tag }}

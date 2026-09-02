@@ -31,9 +31,8 @@ jobs:
     secrets: inherit
     with:
       containerize: true
-      # AWS_ACCOUNT_ID is resolved in containerize-jar.yml since secrets aren't available
-      # in `with` context.
-      repo: AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise
+      registry: ecr
+      repo: metabase-enterprise
       tag: ${{ github.event.pull_request.head.sha }}
   deploy:
     needs: [build]
