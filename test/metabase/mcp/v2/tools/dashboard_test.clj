@@ -153,6 +153,24 @@
                (-> dry :dashcards first :card))
             "the dry run and the real save must agree")))))
 
+(deftest patch-dashcard-accepts-json-parameter-mappings-test
+  (testing "`parameter_mappings` is advertised as patchable, and a mapping arrives as raw JSON with string
+            clause heads. Without the same target coercion `wire_parameter` does, every such patch failed
+            validation with \"should be :dimension\" — a documented key that could never be used."
+    (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
+                   :model/Card          card {:name "Revenue"}
+                   :model/DashboardCard dc   {:dashboard_id (:id dash) :card_id (:id card)}]
+      (let [result (call-tool! :crowberto nil "dashboard_write"
+                               (wire {:method "update" :id (:id dash)
+                                      :ops [{:op "patch_dashcard" :dashcard_id (:id dc)
+                                             :patch {:parameter_mappings
+                                                     [{:parameter_id "p1"
+                                                       :card_id (:id card)
+                                                       :target ["dimension" ["field" (mt/id :venues :price) nil]]}]}}]}))]
+        (is (not (:isError result)) (-> result :content first :text))
+        (is (=? [{:parameter_id "p1" :target [:dimension [:field (mt/id :venues :price) nil]]}]
+                (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dc))))))))
+
 (deftest entity-id-is-accepted-test
   (testing "GHY-4147: `id` accepts a 21-character entity_id as well as a numeric id"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
