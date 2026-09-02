@@ -277,12 +277,12 @@
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
   project-tests
-  {:doc "Run project-level backend and migration checks."
-   :examples [["./bin/mage project-tests" "Run backend and migration checks"]
+  {:doc "Run project-level backend, migration, and ratchet checks."
+   :examples [["./bin/mage project-tests" "Run backend, migration, and ratchet checks"]
               ["./bin/mage project-tests backend" "Run backend checks"]
               ["./bin/mage project-tests migrations" "Run migration checks"]
               ["./bin/mage project-tests modules" "Run module checks"]
-              ["./bin/mage project-tests ratchets" "Run the ratchet tooling tests"]]
+              ["./bin/mage project-tests ratchets" "Check the repository's kondo suppression ratchets"]]
    :arg-schema [:or
                 [:tuple]
                 [:tuple [:enum {:name "suite"}

@@ -80,7 +80,7 @@ modules need reordering) are printed as `WARNING:` lines for you to resolve by h
 Run the repository-level checks with:
 
 ```bash
-./bin/mage project-tests          # backend (module + ratchet tooling tests) and migration checks
+./bin/mage project-tests          # backend, migration, and ratchet checks
 ./bin/mage project-tests modules  # or one suite: backend, migrations, modules, ratchets
 ```
 

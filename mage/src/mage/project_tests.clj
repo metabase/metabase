@@ -21,7 +21,7 @@
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."
-  ["migrations" "backend"])
+  ["migrations" "backend" "ratchets"])
 
 ;; `sh` is a [[mage.shell/sh*]]-compatible function so unit tests can inspect commands without running them.
 ;; .github/scripts/check-preresolve-aliases.sh reads the alias strings out of these two functions.
@@ -36,11 +36,15 @@
       ":only"
       (pr-str namespaces)))
 
+(defn- run-ratchet-checks! [sh]
+  (sh {:dir u/project-root-directory}
+      "./bin/mage" "kondo-ratchets"))
+
 (def ^:private suite-labels
   {"backend"    "backend checks"
    "migrations" "migration checks"
    "modules"    "module checks"
-   "ratchets"   "ratchet tooling tests"})
+   "ratchets"   "ratchet checks"})
 
 (defn- run-suite!
   "Run one suite and return its exit code.
@@ -52,7 +56,7 @@
              "backend"    (run-clojure-checks! sh backend-check-namespaces)
              "migrations" (run-migration-checks! sh)
              "modules"    (run-clojure-checks! sh module-check-namespaces)
-             "ratchets"   (run-clojure-checks! sh ratchet-test-namespaces)))
+             "ratchets"   (run-ratchet-checks! sh)))
     (catch Exception e
       (println "Could not run" (suite-labels suite) "--" (ex-message e))
       1)))
