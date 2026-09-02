@@ -58,7 +58,7 @@
           our-host (some-> (system/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url)
                          (relative-uri? redirect)
-                         (= (.getHost redirect) our-host)))
+                         (and our-host (= (.getHost redirect) our-host))))
       redirect-url)
     (catch Exception e
       (log/error e "Invalid redirect URL")

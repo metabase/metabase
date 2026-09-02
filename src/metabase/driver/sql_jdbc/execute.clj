@@ -488,9 +488,12 @@
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
-  (when (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
-                (catch Throwable _ (count params)))
-           (count params))
+  ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
+  ;; ask when there are parameters that could outnumber the placeholders.
+  (when (and (seq params)
+             (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
+                     (catch Throwable _ (count params)))
+                (count params)))
     (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
                     {:driver driver
                      :type   driver-api/qp.error-type.driver

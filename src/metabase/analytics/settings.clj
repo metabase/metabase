@@ -87,6 +87,7 @@
 
 (defsetting instance-creation
   (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     #'-instance-creation

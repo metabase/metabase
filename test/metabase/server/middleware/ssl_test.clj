@@ -61,10 +61,6 @@
         (is (= 200 (:status response))))
       (let [response (handler (-> (ring.mock/request :get "/foo")
                                   (ring.mock/header :Front-End-HTTPS "on")))]
-        (is (= 200 (:status response))))
-
-      (let [response (handler (-> (ring.mock/request :get "/foo")
-                                  (ring.mock/header :Origin "https://foo")))]
         (is (= 200 (:status response)))))))
 
 (deftest test-does-not-redirect-https-sessions
@@ -77,4 +73,22 @@
     (tu/with-temporary-setting-values [site-url "https://localhost"
                                        redirect-all-requests-to-https true]
       (let [response (handler (ring.mock/request :get "https://localhost/foo"))]
+        (is (= 200 (:status response)))))))
+
+(deftest test-redirect-ignores-origin-header
+  (testing "a plaintext request is redirected even when it claims an https Origin"
+    (tu/with-temporary-setting-values [site-url "https://localhost"
+                                       redirect-all-requests-to-https true]
+      (doseq [origin ["https://localhost" "https://somewhere.else"]]
+        (testing origin
+          (let [response (handler (-> (ring.mock/request :get "/foo")
+                                      (ring.mock/header :Origin origin)))]
+            (is (= 301 (:status response)))
+            (is (= "https://localhost/foo" (get-in response [:headers "Location"]))))))))
+  (testing "a request a proxy reports as https is still not redirected"
+    (tu/with-temporary-setting-values [site-url "https://localhost"
+                                       redirect-all-requests-to-https true]
+      (let [response (handler (-> (ring.mock/request :get "/foo")
+                                  (ring.mock/header :X-Forwarded-Proto "https")
+                                  (ring.mock/header :Origin "http://localhost")))]
         (is (= 200 (:status response)))))))

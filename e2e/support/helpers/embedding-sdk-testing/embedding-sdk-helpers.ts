@@ -129,12 +129,8 @@ export function stubWindowOpenForSamlPopup({
   isUserValid?: boolean;
 } = {}) {
   cy.window().then((win) => {
-    const popup = {
-      closed: false,
-      close: () => {
-        popup.closed = true;
-      },
-    };
+    const popup = win;
+    cy.stub(popup, "close");
 
     // stub `window.open(IDP_URI, ...)` for the SAML popup
     cy.stub(win, "open")
@@ -156,10 +152,10 @@ export function stubWindowOpenForSamlPopup({
                   exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
                 },
               },
-              origin: "*",
+              origin: win.location.origin,
+              source: popup,
             }),
           );
-          popup.close();
         }, 100); // simulate async delay
 
         return popup;

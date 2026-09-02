@@ -395,6 +395,11 @@
     ;; these keys.
     [:inherited-temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:lib/original-binning    {:optional true} [:maybe ::lib.schema.binning/binning]]
+    ;; the effective-type before bucketing, and the previous-stage bucketing unit, both propagated across stages so
+    ;; ref generation can restore them. Declared here so `lib.normalize/normalize ::column` decodes the persisted
+    ;; string form of these values (from Card.result_metadata) back to keywords -- see #79648.
+    [:metabase.lib.field/original-effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    [:metabase.lib.field/original-temporal-unit  {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
     ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
     ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
