@@ -437,44 +437,109 @@
           (is (= msg (ex-message e))))
         (is (true? @autocommit-reset-called))))))
 
+(defn- recording-connection
+  "Mock connection recording savepoint, rollback, and commit calls in `calls`."
+  [calls]
+  (let [sp-count (atom 0)
+        auto?    (atom true)]
+    (reify Connection
+      (setAutoCommit [_ v] (reset! auto? v))
+      (getAutoCommit [_] @auto?)
+      (setSavepoint [_]
+        (let [n (swap! sp-count inc)]
+          (swap! calls conj [:set n])
+          (reify Savepoint
+            (getSavepointId [_] n))))
+      (releaseSavepoint [_ savepoint]
+        (swap! calls conj [:release (.getSavepointId ^Savepoint savepoint)]))
+      (rollback [_ savepoint]
+        (swap! calls conj [:rollback (.getSavepointId ^Savepoint savepoint)]))
+      (rollback [_]
+        (swap! calls conj [:rollback-connection]))
+      (commit [_]
+        (swap! calls conj [:commit])))))
+
 (deftest nested-transaction-savepoint-lifecycle-test
-  ;; Track autocommit rather than pinning it to true, so only the outermost scope believes it owns the connection.
-  (let [calls     (atom [])
-        sp-count  (atom 0)
-        auto?     (atom true)
-        mock-conn (reify Connection
-                    (setAutoCommit [_ v] (reset! auto? v))
-                    (getAutoCommit [_] @auto?)
-                    (setSavepoint [_]
-                      (let [n (swap! sp-count inc)]
-                        (swap! calls conj [:set n])
-                        (reify Savepoint
-                          (getSavepointId [_] n))))
-                    (releaseSavepoint [_ savepoint]
-                      (swap! calls conj [:release (.getSavepointId ^Savepoint savepoint)]))
-                    (rollback [_ savepoint]
-                      (swap! calls conj [:rollback (.getSavepointId ^Savepoint savepoint)]))
-                    (rollback [_]
-                      (swap! calls conj [:rollback-connection]))
-                    (commit [_]
-                      (swap! calls conj [:commit])))]
-    (binding [t2.connection/*current-connectable* mock-conn]
+  (let [calls (atom [])]
+    (binding [t2.connection/*current-connectable* (recording-connection calls)]
       (testing "a successful nested transaction releases its savepoint; the outermost commits without releasing"
-        (reset! calls [])
         (t2/with-transaction [_]
           (t2/with-transaction [_]))
         (is (= [[:set 1] [:set 2] [:release 2] [:commit]]
-               @calls)))
-      (testing "a failed nested transaction rolls back to its savepoint without releasing it"
-        (reset! calls [])
-        (reset! sp-count 0)
+               @calls))))
+    (let [calls (atom [])]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (testing "a failed nested transaction rolls back to its savepoint without releasing it"
+          (t2/with-transaction [_]
+            (is (thrown-with-msg?
+                 Exception #"boom"
+                 (t2/with-transaction [_]
+                   (throw (ex-info "boom" {}))))))
+          (is (= [[:set 1] [:set 2] [:rollback 2] [:commit]]
+                 @calls)))))
+    (let [calls (atom [])]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (testing "deeper nesting releases innermost first"
+          (t2/with-transaction [_]
+            (t2/with-transaction [_]
+              (t2/with-transaction [_])))
+          (is (= [[:set 1] [:set 2] [:set 3] [:release 3] [:release 2] [:commit]]
+                 @calls)))))))
+
+(defn- await-step
+  [p]
+  (let [v (deref p 10000 ::timeout)]
+    (is (not= ::timeout v) "sibling thread did not reach the expected step")
+    v))
+
+;; A `future` started inside a transaction inherits its bindings and runs nested scopes on the same connection.
+(deftest concurrent-nested-transaction-savepoint-test
+  (testing "a scope that finishes while a later sibling is still running leaves its savepoint until the sibling finishes"
+    (let [calls  (atom [])
+          t1-in  (promise)
+          t2-in  (promise)
+          t1-out (promise)]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
         (t2/with-transaction [_]
-          (is (thrown-with-msg?
-               Exception #"boom"
-               (t2/with-transaction [_]
-                 (throw (ex-info "boom" {}))))))
-        (is (= [[:set 1] [:set 2] [:rollback 2] [:commit]]
-               @calls))))))
+          (let [t1 (future
+                     (t2/with-transaction [_]
+                       (deliver t1-in true)
+                       (await-step t2-in))
+                     (deliver t1-out true))
+                t2 (future
+                     (await-step t1-in)
+                     (t2/with-transaction [_]
+                       (deliver t2-in true)
+                       (await-step t1-out)))]
+            (await-step t1)
+            (await-step t2))))
+      (is (= [[:set 1] [:set 2] [:set 3] [:release 2] [:commit]]
+             @calls))))
+  (testing "a sibling that rolls back destroys later savepoints, so their scopes no longer try to release them"
+    (let [calls  (atom [])
+          t1-in  (promise)
+          t2-in  (promise)
+          t1-out (promise)]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (t2/with-transaction [_]
+          (let [t1 (future
+                     (try
+                       (t2/with-transaction [_]
+                         (deliver t1-in true)
+                         (await-step t2-in)
+                         (throw (ex-info "boom" {})))
+                       (catch Exception _)
+                       (finally
+                         (deliver t1-out true))))
+                t2 (future
+                     (await-step t1-in)
+                     (t2/with-transaction [_]
+                       (deliver t2-in true)
+                       (await-step t1-out)))]
+            (await-step t1)
+            (await-step t2))))
+      (is (= [[:set 1] [:set 2] [:set 3] [:rollback 2] [:commit]]
+             @calls)))))
 
 (deftest released-savepoint-preserves-rollback-semantics-test
   (let [user-1       (mt/random-email)

@@ -189,6 +189,57 @@
 ;; back to its own, later savepoint does not discard an earlier scope's writes.
 (def ^:private ^:dynamic *rollback-required* nil)
 
+;; Open savepoints in creation order, each with whether its scope has finished. Shared by the tree, including threads
+;; that inherit its bindings. Releasing a savepoint destroys every later one, so a scope may only release once no
+;; later scope is still running; a sibling thread's early release would otherwise leave that scope nothing to release
+;; or roll back to, and on postgres the failed release aborts the transaction.
+(def ^:private ^:dynamic *open-savepoints* nil)
+
+(defn- set-savepoint! [^java.sql.Connection connection]
+  (let [open *open-savepoints*]
+    (locking open
+      (let [savepoint (.setSavepoint connection)]
+        (swap! open conj {:savepoint savepoint, :finished? false})
+        savepoint))))
+
+(defn- rollback-to-savepoint!
+  "Roll back to `savepoint` and forget it and everything after it, which no longer exists."
+  [^java.sql.Connection connection savepoint]
+  (let [open *open-savepoints*]
+    (locking open
+      (try
+        (.rollback connection savepoint)
+        (finally
+          (swap! open (fn [entries]
+                        (into [] (take-while #(not (identical? (:savepoint %) savepoint)) entries)))))))))
+
+(defn- release-finished-savepoints!
+  "Mark `savepoint` finished and release the earliest savepoint with no unfinished successor, which frees the later
+  finished ones with it."
+  [^java.sql.Connection connection savepoint]
+  (let [open *open-savepoints*]
+    (locking open
+      (let [entries (swap! open (fn [entries]
+                                  (mapv #(cond-> % (identical? (:savepoint %) savepoint) (assoc :finished? true))
+                                        entries)))
+            first-releasable (loop [i (count entries)]
+                               (cond
+                                 (zero? i)                               0
+                                 (not (:finished? (nth entries (dec i)))) i
+                                 :else                                   (recur (dec i))))]
+        (when (< first-releasable (count entries))
+          ;; copy rather than keep the subvec view of the discarded entries
+          (reset! open (into [] (subvec entries 0 first-releasable)))
+          (try
+            (.releaseSavepoint connection (:savepoint (nth entries first-releasable)))
+            (catch Throwable e
+              ;; Either the savepoint is already gone -- DDL commits implicitly on H2 and MySQL -- or, on postgres,
+              ;; the transaction is already aborted because a scope swallowed a SQL error. Nothing to undo either
+              ;; way, but the aborted case is worth surfacing: postgres silently turns the outermost commit into a
+              ;; rollback, so this is the only signal that the tree's writes and after-commit callbacks are about to
+              ;; diverge.
+              (log/warnf "Failed to release savepoint: %s" (ex-message e)))))))))
+
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
   nested-transaction tree and thrown away when the outermost transaction ends. Any subsystem can stash
@@ -268,7 +319,7 @@
                                    (log/warnf "Failed to roll back transaction: %s"
                                               (ex-message rollback-e)))))]
     (letfn [(thunk []
-              (let [savepoint      (.setSavepoint connection)
+              (let [savepoint      (set-savepoint! connection)
                     before-count   (some-> *before-commit-callbacks* deref count)
                     after-count    (some-> *after-commit-callbacks* deref count)
                     state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
@@ -280,7 +331,7 @@
                           (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
                           ;; Restore the state even if rollback throws. An outer scope must not see state from this one.
                           (try
-                            (.rollback connection savepoint)
+                            (rollback-to-savepoint! connection savepoint)
                             (catch Throwable rollback-e
                               ;; The writes remain pending. No enclosing scope may commit them.
                               ;; A vanished savepoint still counts as a rollback failure. DDL committing implicitly,
@@ -371,15 +422,7 @@
                         ;; outermost commit destroys it. On postgres each open savepoint is a live subtransaction that
                         ;; every row-visibility check walks, so a long pipeline of nested transactions slows to a
                         ;; crawl. Releasing is not committing: an enclosing rollback still undoes the released work.
-                        (try
-                          (.releaseSavepoint connection savepoint)
-                          (catch Throwable e
-                            ;; Either the savepoint is already gone -- DDL commits implicitly on H2 and MySQL -- or,
-                            ;; on postgres, the transaction is already aborted because the scope swallowed a SQL
-                            ;; error. Nothing to undo either way, but the aborted case is worth surfacing: postgres
-                            ;; silently turns the outermost commit into a rollback, so this is the only signal that
-                            ;; the tree's writes and after-commit callbacks are about to diverge.
-                            (log/warnf "Failed to release savepoint: %s" (ex-message e))))
+                        (release-finished-savepoints! connection savepoint)
                         [result false]))))))]
       ;; Avoid toggling autocommit when the connection is already in a transaction.
       (if (.getAutoCommit connection)
@@ -469,6 +512,7 @@
                     *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
                     *transaction-state*       (if outermost? (atom {}) *transaction-state*)
                     *rollback-required*       (if outermost? (atom false) *rollback-required*)
+                    *open-savepoints*         (if outermost? (atom []) *open-savepoints*)
                     *after-commit-callbacks*  callbacks]
             (do-transaction connection rollback-only f))]
       (when (and outermost? committed?)
