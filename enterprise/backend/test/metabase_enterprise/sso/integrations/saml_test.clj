@@ -293,7 +293,7 @@
   "Pull the `'nonce-<value>'` out of the Content-Security-Policy `script-src` directive."
   [csp-header]
   (some->> csp-header
-           (re-find #"script-src[^;]*'nonce-([^:]+)'")
+           (re-find #"script-src[^;]*'nonce-([^']+)'")
            second))
 
 (defn- extract-script-tag-nonce
