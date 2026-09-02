@@ -21,8 +21,15 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
+    // Accept both sets of embedding terms up front so the wizard never shows
+    // the Agree CTA. Every test here preselects SSO, but the wizard opens in
+    // guest mode while SSO is unconfigured, so an unaccepted guest CTA would
+    // otherwise have to be clicked through first. That flow is covered by
+    // embed-flow-enable-embed-js-*.
     H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("enable-embedding-static", false);
+    H.updateSetting("show-simple-embed-terms", false);
+    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("show-static-embed-terms", false);
     H.mockEmbedJsToDevServer();
   });
 

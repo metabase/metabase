@@ -511,6 +511,7 @@ function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
         c="text-primary"
         className={S.commentBadgeLabel}
         component="span"
+        style={{ lineHeight: "normal" }}
       >
         {label}
       </Text>
