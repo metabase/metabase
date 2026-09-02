@@ -311,15 +311,14 @@
        (eid-translation/->id :model/Card)))
 
 (defn card-for-unsigned-token
-  "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
-  `public-card` function that fetches the Card."
-  [unsigned-token & {:keys [embedding-params constraints]}]
-  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  "Return the info needed for embedding about Card specified in `token`. Callers are responsible for checking that
+  embedding is enabled for the Card with [[check-embedding-enabled-for-card]]."
+  [unsigned-token & {:keys [embedding-params]}]
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
                                       (t2/select-one-fn :embedding_params :model/Card :id card-id))]
-    (-> (apply api.public/public-card card-id constraints)
+    (-> (api.public/public-card card-id)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (enabled-params resolved-embedding-params)
@@ -424,15 +423,14 @@
        (eid-translation/->id :model/Dashboard)))
 
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
-  "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
-  the `public-dashboard` function that fetches the Dashboard."
-  [unsigned-token & {:keys [embedding-params constraints]}]
-  {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
+  "Return the info needed for embedding about Dashboard specified in `token`. Callers are responsible for checking that
+  embedding is enabled for the Dashboard with [[check-embedding-enabled-for-dashboard]]."
+  [unsigned-token & {:keys [embedding-params]}]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (apply api.public/public-dashboard dashboard-id constraints)
+    (-> (api.public/public-dashboard dashboard-id)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)

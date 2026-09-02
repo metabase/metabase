@@ -81,7 +81,7 @@
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (api.embed.common/unsigned-token->card-id unsigned)]
     (api.embed.common/check-embedding-enabled-for-card (api/check-404 (t2/select-one [:model/Card :enable_embedding :archived] :id card-id)))
-    (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (api.embed.common/card-for-unsigned-token unsigned)))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -165,7 +165,7 @@
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)]
     (api.embed.common/check-embedding-enabled-for-dashboard (api/check-404 (t2/select-one [:model/Dashboard :enable_embedding :archived] :id dashboard-id)))
-    (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
+    (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned)
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
 (defn- process-query-for-dashcard-with-signed-token
