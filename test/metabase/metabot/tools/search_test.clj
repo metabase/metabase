@@ -765,6 +765,33 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest transform-visibility-is-superuser-only-test
+  (testing "this pipeline dropped remove-unreadable-transforms and relies instead on the transform
+            search spec's `:visibility :superuser`, which the engine applies when it narrows a
+            context to its applicable models. That protection only holds if this pipeline hands the
+            engine the caller's real superuser status — so pin the narrowing: the engine is asked
+            for transforms when the caller is an admin, and never when they are not. If this goes
+            red, the removed post-filter is load-bearing again.
+            The visibility rule itself is covered by metabase.search.filter-test."
+    (mt/with-premium-features #{:transforms-basic}
+      (let [models-for (fn [user]
+                         (let [captured (atom nil)]
+                           (mt/with-test-user user
+                             (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                         (fn [context]
+                                                           (reset! captured (:models context))
+                                                           [])]
+                               (search/search {:term-queries ["anything"]
+                                               :entity-types ["transform" "dashboard"]})))
+                           @captured))]
+        (testing "an admin's search reaches the engine with transforms in scope"
+          (is (contains? (models-for :crowberto) "transform")))
+        (testing "a non-superuser's search never asks the engine for transforms"
+          (let [models (models-for :rasta)]
+            (is (not (contains? models "transform")))
+            (is (contains? models "dashboard")
+                "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))
+
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}
