@@ -153,6 +153,6 @@
                     (returned-col query)))
             ;; the bug only seems to trigger if we preprocess the query first
             (testing "preprocessed query should have the same returned display name"
-              (is (=? {:display-name "[RENAMED]"
+              (is (=? {:display-name "Products → [RENAMED]" ; in newer versions of Metabase this is just "[RENAMED]"
                        :id           (mt/id :products :id)}
                       (returned-col (qp.preprocess/preprocess query)))))))))))

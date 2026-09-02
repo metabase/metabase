@@ -1740,8 +1740,6 @@
                :table-id                  (meta/id :products)
                :visibility-type           :normal
                :lib/card-id               1
-               :lib/from-model?           true
-               :lib/original-display-name "[RENAMED]"
                :lib/original-join-alias   "Products"
                :lib/original-name         "ID_2"
                :lib/type                  :metadata/column}
