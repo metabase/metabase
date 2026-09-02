@@ -154,6 +154,26 @@ describe("wrapPluginWidget", () => {
     expect(hostValue.min).toBe(1);
   });
 
+  it("mounts without a value", () => {
+    const pluginWidget = jest.fn<
+      WidgetMountHandle<WidgetProps>,
+      Parameters<WidgetMount>
+    >(() => ({ update: jest.fn(), unmount: jest.fn() }));
+
+    wrapPluginWidget(
+      pluginWidget,
+      PLUGIN,
+      PREFIX,
+    )(document.createElement("div"), {
+      id: `${PREFIX}threshold`,
+      value: undefined,
+      onChange: jest.fn(),
+      onChangeSettings: jest.fn(),
+    });
+
+    expect(pluginWidget.mock.calls[0][1].value).toBeUndefined();
+  });
+
   it("delegates unmount", () => {
     const { handle, mountHandle } = setup();
 

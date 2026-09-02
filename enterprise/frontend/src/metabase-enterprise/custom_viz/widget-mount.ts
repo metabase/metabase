@@ -1,7 +1,6 @@
 import type { BaseWidgetProps, WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { clone } from "metabase/utils/clone";
 import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -62,7 +61,7 @@ function toPluginWidgetProps(
   return {
     ...extraProps,
     id,
-    value: clone(value),
+    value: structuredClone(value),
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>
       onChangeSettings(
