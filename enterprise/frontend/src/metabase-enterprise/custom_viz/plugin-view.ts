@@ -1,6 +1,6 @@
 import type { CustomVisualizationProps } from "custom-viz";
 
-import { isCustomVizSettingKey } from "metabase/visualizations/custom-visualizations/setting-keys";
+import { isCustomVizSettingKey } from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 type PluginProps = CustomVisualizationProps<Record<string, unknown>>;

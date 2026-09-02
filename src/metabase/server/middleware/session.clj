@@ -3,13 +3,13 @@
 
   How do authenticated API requests work? There are two main paths to authentication: a session or an API key.
 
-  For session authentication, Metabase first looks for a cookie called `metabase.SESSION`. This is the normal way of
+  For session authentication, Metabase looks for a cookie called `metabase.SESSION`. This is the normal way of
   doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly cookie and thus can't
   be viewed by FE code. If the session is a full-app embedded session, then the cookie is `metabase.EMBEDDED_SESSION`
   instead.
 
-  Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
-  Session ID.
+  If present, the `X-Metabase-Session` header is used for authentication instead of cookies - the `metabase.SESSION` and
+  `metabase.EMBEDDED_SESSION` cookies are ignored in this case.
 
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
@@ -84,12 +84,12 @@
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:embedded-cookie :normal-cookie :header]))
+   [:header :embedded-cookie :normal-cookie]))
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
-  We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
-  for `X-METABASE-SESSION`. If neither is found then no keyword is bound to the request."
+  We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
     (let [request (or (wrap-session-key-with-strategy :best request)
@@ -114,7 +114,7 @@
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
@@ -155,7 +155,7 @@
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -182,7 +182,7 @@
 ;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
 ;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -323,9 +323,8 @@
     [:post "/api/embed-mcp/feedback"]})
 
 (defn- current-user-info-for-mcp-ui-credential
-  "Resolve the short-lived credential rendered into an MCP visualization iframe.
-   It is accepted only for [[mcp-ui-request-surface]], so possession never
-   authenticates arbitrary API routes."
+  "Resolve the short-lived credential from an MCP App tool result.
+   Accept it only for [[mcp-ui-request-surface]]."
   [request]
   (when (and (init-status/complete?)
              (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))

@@ -3,7 +3,7 @@ import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
-import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
 import { type PluginWidgetProps, wrapPluginWidget } from "../widget-mount";

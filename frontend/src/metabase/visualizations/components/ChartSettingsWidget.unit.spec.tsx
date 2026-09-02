@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 
 import { renderWithProviders } from "__support__/ui";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 

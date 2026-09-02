@@ -3,7 +3,7 @@ import type { HoverObject as PluginHoverObject } from "custom-viz";
 import type {
   ComputedVisualizationSettings,
   HoveredObject,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 
 export type { PluginHoverObject };
 

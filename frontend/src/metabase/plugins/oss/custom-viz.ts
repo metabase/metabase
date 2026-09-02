@@ -4,7 +4,7 @@ import type { ToastArgs } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
-import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,

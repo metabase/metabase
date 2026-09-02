@@ -5,6 +5,7 @@ import {
   type MouseEvent,
   type MouseEventHandler,
   type ReactNode,
+  type TouchEventHandler,
   forwardRef,
   useCallback,
 } from "react";
@@ -23,12 +24,23 @@ interface Props {
   onClick?: MouseEventHandler;
   onFocus: FocusEventHandler;
   onMouseEnter: MouseEventHandler;
+  onMouseDown?: MouseEventHandler;
+  onTouchStart?: TouchEventHandler;
 }
 
 // eslint-disable-next-line react/display-name
 export const LegendLabel = forwardRef(
   (
-    { children, className, href, onClick, onFocus, onMouseEnter }: Props,
+    {
+      children,
+      className,
+      href,
+      onClick,
+      onFocus,
+      onMouseEnter,
+      onMouseDown,
+      onTouchStart,
+    }: Props,
     ref: React.Ref<any>,
   ) => {
     const handleLinkClick = useCallback(
@@ -51,6 +63,8 @@ export const LegendLabel = forwardRef(
           onClick={onClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           data-testid="legend-label"
           data-is-clickable={!!onClick}
         >
@@ -69,6 +83,8 @@ export const LegendLabel = forwardRef(
           onClick={handleLinkClick}
           onFocus={onFocus}
           onMouseEnter={onMouseEnter}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
           data-testid="legend-label"
           data-is-clickable={!!onClick}
         >
@@ -85,6 +101,8 @@ export const LegendLabel = forwardRef(
         onClick={handleLinkClick}
         onFocus={onFocus}
         onMouseEnter={onMouseEnter}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
         data-testid="legend-label"
         data-is-clickable={!!onClick}
       >

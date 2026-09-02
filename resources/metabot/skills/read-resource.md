@@ -9,7 +9,7 @@ When using the read_resource tool, you have access to a unified interface for na
 
 The URI pattern determines what is returned — from top-level lists (databases, collections) to a single entity, to its sub-resources (fields, items, sources, derived items).
 
-You can request multiple resources in one call by providing a list of URIs (max 5). Lists are capped at 25 items per response — when truncated, the response includes `truncated="true"` and `total="N"` so you know more exist; drill into specific items via their URIs (each list item carries a `uri="..."` attribute) or refine via `search`.
+You can request multiple resources in one call by providing a list of URIs (max 5). Lists are paginated at 25 items per page. Every `<list>` carries `total`, `page`, `pages`, `showing`, and `truncated` — `truncated` is always present, reading `"true"` when pages remain after this one and `"false"` when this is the last page (which only means the whole list if you've also fetched every earlier page — on page 3 of 3, `"false"` still means you've only seen a third of the list). When more pages remain, a `<truncation-note>` names the next page and gives you the exact URI to fetch it — copy that URI as-is; don't build your own `page=N` query param (a second `?` on a URI that already has one silently breaks the query instead of erroring). Drill into a specific item via its URI (list items carry a `uri="..."` attribute — the exception is a dashboard's virtual items, `virtual_heading`/`virtual_text` and the like, which are not addressable resources and carry a `dashcard_id` instead), or refine via `search`.
 
 # When to Use read_resource vs search
 
@@ -21,9 +21,11 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Use `search` when you don't know what or where** something lives — open-ended discovery by topic.
 
+> **If you have no `search` tool**, substitute whichever discovery tool you do have (e.g. `retrieve_library_entities`) everywhere this skill says `search` — the loop is the same, only the entry point differs. Its results carry the same URIs, so everything below about drilling in with `read_resource` still applies.
+
 **The exploration loop**:
 1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container (look for `is_container="true"` — collections and dashboards), `read_resource` on its URI to enumerate members instead of re-searching.
+2. If a top hit is a container — its element name is `<dashboard>` or `<document>` — `read_resource` on its URI to enumerate members instead of re-searching. (`search` never returns collections; reach those by navigating, e.g. `metabase://collection/{id}/items`.)
 3. Drill into specific items via `read_resource` for fields, sources, or details.
 4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
 
@@ -57,7 +59,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Best Practices:**
 - For a high-cardinality database, prefer schema → tables drill-down over fetching every table at once.
-- Pair with the `database_id` argument on `search` when you want to topic-search within a specific warehouse.
+- In the SQL editor, `search` already scopes to the current database via its own `database_id` argument — no need to filter further. Elsewhere, `search` has no per-database filter; narrow with `entity_types` and topic terms instead.
 
 ## Collection resources
 
@@ -70,15 +72,14 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{id}/subcollections`
 
 **Best Practices:**
-- When a `search` returns a collection result with `is_container="true"`, prefer `read_resource` on its URI over re-searching the same concept.
-- Pair with the `collection_id` argument on `search` (descendant scope) when you want to topic-search inside one part of the instance.
+- Collections are never `search` results — the only way to reach one is by navigating (`metabase://collections`, `metabase://collections?tree=true`, or a parent's `/subcollections`). To see what a collection holds, `read_resource` its `/items` rather than searching for the collection's name.
 
 ## Table resources
 
 - `metabase://table/{id}` — basic table info
 - `metabase://table/{id}/fields` — table with fields
 - `metabase://table/{id}/fields/{field_id}` — specific field with sample values and stats
-- `metabase://table/{id}/derived` — cards (questions/models) and transforms built on this table
+- `metabase://table/{id}/derived` — cards (questions/models) built on this table, plus the transforms that declare it as a source. Only `python` transforms declare their source tables, so a SQL/`query` transform reading this table will **not** appear here.
 
 **Examples:**
 - Want table structure (fields without value information)? → `metabase://table/123/fields`
@@ -123,32 +124,34 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 ## Transform resources
 
-- `metabase://transform/{id}` — transform details and configuration
-- `metabase://transform/{id}/sources` — source database and tables this transform reads from
+- `metabase://transform/{id}` — transform details and configuration, including the source query for a `query` transform. Python transforms report `type="python"` but their script body is **not** included.
+- `metabase://transform/{id}/sources` — the source database, plus source tables for `python` transforms only (see below)
 - `metabase://transform/{id}/target` — target database and table this transform writes to
 
 **Examples:**
-- Want to inspect a transform's SQL or Python source before editing it? → `metabase://transform/42`
+- Want to inspect a `query` transform's SQL/MBQL before editing it? → `metabase://transform/42`
 - "What does this transform read?" → `metabase://transform/42/sources`
 - "Where does this transform write?" → `metabase://transform/42/target`
 
 **Best Practices:**
-- Fetch a transform's details before modifying it so you have the current source query and target configuration.
-- Use the returned source type (`query` or `python`) to decide which write tool to call (`write_transform_sql` or `write_transform_python`).
-- Walk `/sources` and `/target` to understand lineage before recommending downstream changes.
+- Fetch a transform's details before modifying it so you have the current target configuration and — for `query` transforms — the current source query.
+- Check the returned source type (`query` or `python`) first: it decides both how the transform is implemented and how much lineage you can see.
+- **Lineage is asymmetric between the two source types.** A `python` transform declares its inputs explicitly, so `/sources` lists its source tables and those tables' `/derived` lists it back. A `query` transform's inputs live inside its query, which is not walked — so `/sources` returns only its database with no tables, and it never shows up under any table's `/derived`, even when its SQL plainly reads that table.
+- Because of that asymmetry, a table's `/derived` is not proof that nothing reads it. When it matters whether a `query` transform touches a table, fetch the candidate transforms' details and read their source queries rather than trusting `/derived` to be complete.
+- Walk `/sources` and `/target` to understand lineage before recommending downstream changes, keeping the gap above in mind.
 
 ## Dashboard resources
 
 - `metabase://dashboard/{id}` — dashboard details
-- `metabase://dashboard/{id}/items` — everything on the dashboard in layout order: question cards (each rendered as a `metabase://question/{id}` URI you can drill into) plus headings, text cards, and action buttons
+- `metabase://dashboard/{id}/items` — everything on the dashboard in layout order: card-backed dashcards (each with a URI you can drill into, matching the backing card's own type — `metabase://question/{id}`, `metabase://model/{id}`, or `metabase://metric/{id}`) plus headings, text cards, and action buttons
 
 **Examples:**
 - Want to understand what a dashboard contains before recommending it? → `metabase://dashboard/158`
 - User asks "what's on this dashboard?" → `metabase://dashboard/158/items`
 
 **Best Practices:**
-- Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its cards instead of re-searching for the same concept.
-- Every dashcard entry carries a `dashcard_id` — the handle `update_dashboard` `remove`/`move`/`update_text` mutations take. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — with the `tab_id` that `add` mutations accept, and dashcard entries carry their tab's `tab_id`, grouped in tab order.
+- Treat dashboards as containers — when search returns a `<dashboard>` hit, use `/items` to list its cards instead of re-searching for the same concept.
+- Every dashcard entry carries a `dashcard_id`. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — and dashcard entries carry their tab's `tab_id`, grouped in tab order.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
 - Prefer verified dashboards when they match the user's request.
 
@@ -156,5 +159,5 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 - **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
 - **Batch read URIs** (up to 5 at a time) when you need parallel context, e.g. fetching `/sources` for several candidate models at once.
-- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25 — consider scoping (`metabase://database/{id}/...`) or refining via `search` with `database_id`/`collection_id` instead of paging blindly.
-- **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_library_member` flags — when you have a choice, drill into the curated item rather than the raw one.
+- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25. You have two ways forward: page through the remainder by fetching the URI given in the `<truncation-note>` (the `pages` attribute tells you how many there are), or narrow the request — scope it (`metabase://database/{id}/...`) or refine your `search` query (narrower `entity_types` or topic terms). Narrow when you are hunting for one specific item; page when you genuinely need the whole list, and remember `truncated="false"` on a later page doesn't mean you've seen the earlier ones too.
+- **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_curated` flags (plus `data_authority` where configured) — when you have a choice, drill into the curated item rather than the raw one.

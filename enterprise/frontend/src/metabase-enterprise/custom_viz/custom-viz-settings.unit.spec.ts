@@ -7,12 +7,12 @@ import type {
 import type { ComponentType } from "react";
 
 import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
-import type {
-  CustomVizSettingWidgetProps,
-  VisualizationSettingDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import {
+  type CustomVizSettingWidgetProps,
+  type VisualizationSettingDefinition,
+  type VisualizationSettingsDefinitions,
+  getCustomVizSettingKeyPrefix,
+} from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCustomVizPluginRuntime,

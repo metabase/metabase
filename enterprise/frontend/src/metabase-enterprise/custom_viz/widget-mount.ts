@@ -1,7 +1,7 @@
 import type { BaseWidgetProps, WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
-import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 

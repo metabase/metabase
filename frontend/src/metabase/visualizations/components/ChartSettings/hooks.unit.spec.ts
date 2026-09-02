@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 
-import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 

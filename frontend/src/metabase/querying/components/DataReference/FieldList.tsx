@@ -5,9 +5,9 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
+import { getMetadata } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { DelayGroup } from "metabase/ui";
 import {
   getIconForField,

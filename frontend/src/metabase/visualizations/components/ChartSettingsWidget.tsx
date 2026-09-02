@@ -5,7 +5,7 @@ import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";

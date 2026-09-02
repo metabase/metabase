@@ -12,9 +12,9 @@ import {
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
+import { registerVisualization } from "metabase/viz-core";
 import type { DatasetData } from "metabase-types/api";
 import {
   createMockCard,

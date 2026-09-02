@@ -8,6 +8,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -30,18 +31,29 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a MBQL 5 query (has `:lib/type`) to legacy MBQL. Frontend /question#
-  URLs require legacy MBQL format; non-MBQL 5 values pass through unchanged.
-
-  Agent state is JSON-persisted between turns, which preserves namespaced keys but
-  turns enum values such as `:mbql/query`, `:field`, and `:day` into strings.
-  Normalize before converting so rehydrated queries have their canonical enum
-  values restored."
+  "Normalize a MBQL 5 query to legacy MBQL. Frontend /question# URLs require legacy
+  MBQL format; non-MBQL 5 values pass through unchanged. A MBQL 5 query that fails
+  conversion is also returned unchanged rather than raising."
   [query]
   ;; builds the legacy-MBQL /question# hash; the FE also accepts MBQL 5, so this could migrate
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (if (and (map? query) (:lib/type query))
-    (lib/->legacy-MBQL (lib/normalize query))
+  (if (and (map? query)
+           ;; `:stages` alone (no `:lib/type`) also counts: a query round-tripped through
+           ;; the frontend's viewing context (`user_is_viewing` / `chart_configs`) comes
+           ;; back MBQL 5 but stripped of its internal `:lib/*` keys. Guarding on
+           ;; `:lib/type` alone let such a query fall through unconverted, leaking raw
+           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with
+           ;; "Stage 0 does not exist" (BOT-1604 follow-up).
+           (or (:lib/type query) (:stages query)))
+    (try
+      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (catch Exception e
+        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
+        ;; match positional aggregation/expression refs embedded elsewhere in the query
+        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
+        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
+        query))
     query))
 
 (defn- query->url-hash

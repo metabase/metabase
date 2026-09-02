@@ -12,7 +12,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { CustomVizPluginRuntime, Series } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 

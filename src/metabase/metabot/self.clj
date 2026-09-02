@@ -70,6 +70,43 @@
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
+(defn- normalize-known-model
+  "Coerce one adapter's `supported-models` value into `{:display-name ... :context-window ...}`. Most adapters store a
+  map already; DeepSeek stores the display name on its own. Anything else throws, so an adapter that invents a third
+  shape fails loudly instead of quietly documenting a model with no name."
+  [provider model-id value]
+  (cond
+    (map? value)    value
+    (string? value) {:display-name value}
+    :else           (throw (ex-info (str "Unrecognized supported-models entry for " provider)
+                                    {:provider provider :model model-id :value value}))))
+
+(defn known-models
+  "The models `provider`'s adapter is willing to offer, as `{model-id {:display-name ... :context-window ...}}`.
+
+  This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
+  available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
+  no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
+  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  [provider]
+  ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
+  ;; a provider that simply has no models
+  (when-let [models (case provider
+                      "anthropic"  claude/supported-models
+                      "bedrock"    bedrock/supported-models
+                      "deepseek"   deepseek/supported-models
+                      "mistral"    mistral/supported-models
+                      "moonshot"   moonshot/supported-models
+                      "openai"     openai/supported-models
+                      "openrouter" openrouter/supported-models
+                      "zai"        zai/supported-models
+                      ("azure" "google" "metabase" "vllm") nil
+                      (throw (ex-info (str "Unknown LLM provider: " provider)
+                                      {:provider provider})))]
+    (into {}
+          (map (fn [[model-id value]] [model-id (normalize-known-model provider model-id value)]))
+          models)))
+
 (defn- parse-provider-model
   "Resolve a `connection-key/model` string into the adapter, model, and credentials needed to serve it.
   Throws a 400 when the string names a connection that is not configured, so a stale
@@ -468,7 +505,8 @@
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
-                                       :credentials credentials :ai-proxy? ai-proxy?}
+                                       :credentials credentials :ai-proxy? ai-proxy?
+                                       :fast?       (metabot.settings/llm-fast-mode)}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)

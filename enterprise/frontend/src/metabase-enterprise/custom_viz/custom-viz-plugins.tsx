@@ -20,14 +20,17 @@ import type { DispatchFn } from "metabase/redux/hooks";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
-import { registerVisualization, visualizations } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/setting-keys";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import {
+  getCustomVizSettingKeyPrefix,
+  registerVisualization,
+  visualizations,
+} from "metabase/viz-core";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import type {

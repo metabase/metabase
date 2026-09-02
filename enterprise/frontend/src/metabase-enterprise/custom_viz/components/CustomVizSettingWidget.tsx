@@ -1,7 +1,7 @@
 import type { WidgetMount } from "custom-viz";
 
 import { checkNotNull } from "metabase/utils/types";
-import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 
 import { usePluginMount } from "../use-plugin-mount";
 import { getWidgetMountPlugin } from "../widget-mount";

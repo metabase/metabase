@@ -3,18 +3,16 @@ import { useCallback, useMemo } from "react";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
+  type ComputedVisualizationSettings,
+  type SettingsExtra,
+  type Widget,
   extractRemappings,
+  getSettingsWidgetsForSeries,
+  getStoredSettingsForSeries,
   getVisualizationRaw,
   getVisualizationTransformed,
-} from "metabase/visualizations";
-import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getStoredSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type {
-  SettingsExtra,
-  Widget,
-} from "metabase/visualizations/types/definition";
+  updateSettings,
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,
