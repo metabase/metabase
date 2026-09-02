@@ -149,6 +149,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           noHeader
           className={CS.spread}
           mode={clickActionMode}
+          hasColumnReordering
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

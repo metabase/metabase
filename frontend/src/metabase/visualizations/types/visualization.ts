@@ -161,6 +161,11 @@ export type VisualizationPassThroughProps = {
     theme: unknown,
   ) => ReactNode;
   mode?: ClickActionsMode;
+  /**
+   * Lets users drag column headers to reorder the columns.
+   * It also selects the light header, because the outline header is the read-only preview style.
+   */
+  hasColumnReordering?: boolean;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

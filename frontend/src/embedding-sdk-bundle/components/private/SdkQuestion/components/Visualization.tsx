@@ -109,6 +109,7 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
+        hasColumnReordering
         navigateToNewCardInsideQB={navigateToNewCard ?? undefined}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>

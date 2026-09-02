@@ -768,6 +768,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   className={CS.spread}
                   noHeader
                   queryBuilderMode="dataset"
+                  hasColumnReordering
                   onHeaderColumnReorder={handleHeaderColumnReorder}
                   isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                   hasMetadataPopovers={false}

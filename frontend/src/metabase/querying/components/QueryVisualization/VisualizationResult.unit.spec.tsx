@@ -87,17 +87,27 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
   );
 };
 
+const expectReadOnlyHeader = async () => {
+  const header = await screen.findByRole("columnheader", { name: "Total" });
+  // dnd-kit gives headers that accept dragging a button role.
+  expect(within(header).queryByRole("button")).not.toBeInTheDocument();
+  expect(within(header).getByTestId("header-cell")).toHaveClass(
+    "outline-header-variant",
+  );
+};
+
 describe("VisualizationResult", () => {
-  describe("without a mode prop", () => {
+  describe("without hasColumnReordering", () => {
     it("should keep column reordering disabled and the outline header", async () => {
       setup();
 
-      const header = await screen.findByRole("columnheader", { name: "Total" });
-      // dnd-kit gives headers that accept dragging a button role.
-      expect(within(header).queryByRole("button")).not.toBeInTheDocument();
-      expect(within(header).getByTestId("header-cell")).toHaveClass(
-        "outline-header-variant",
-      );
+      await expectReadOnlyHeader();
+    });
+
+    it("should keep column reordering disabled and the outline header with an explicit mode", async () => {
+      setup({ mode: defaultClickActionMode });
+
+      await expectReadOnlyHeader();
     });
 
     it("should still resolve the stock drills on a cell click", async () => {
@@ -112,9 +122,9 @@ describe("VisualizationResult", () => {
     });
   });
 
-  describe("with an explicit mode", () => {
+  describe("with hasColumnReordering", () => {
     it("should enable column reordering and the light header", async () => {
-      setup({ mode: defaultClickActionMode });
+      setup({ hasColumnReordering: true });
 
       const header = await screen.findByRole("columnheader", { name: "Total" });
       expect(within(header).getByRole("button")).toHaveAttribute(
@@ -125,8 +135,10 @@ describe("VisualizationResult", () => {
         "outline-header-variant",
       );
     });
+  });
 
-    it("should hide the add-column shortcut for the stock mode", async () => {
+  describe("with the stock mode", () => {
+    it("should hide the add-column shortcut", async () => {
       setup({ mode: defaultClickActionMode });
 
       await screen.findByRole("columnheader", { name: "Total" });

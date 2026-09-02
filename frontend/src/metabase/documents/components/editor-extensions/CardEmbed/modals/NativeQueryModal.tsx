@@ -417,7 +417,7 @@ export const NativeQueryModal = ({
                   <Visualization
                     rawSeries={rawSeries}
                     metadata={metadata}
-                    defaultMode={defaultClickActionMode}
+                    mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
                     isEditing={false}

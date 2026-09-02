@@ -119,6 +119,7 @@ interface TableProps extends VisualizationProps {
   rowIndexToPkMap?: Record<number, string>;
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
+  hasColumnReordering?: boolean;
   question: Question;
   mode?: ClickActionsMode;
   scrollToColumn?: number;
@@ -171,6 +172,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     question,
     clicked,
     hasMetadataPopovers = true,
+    hasColumnReordering = false,
     mode,
     theme,
     scrollToColumn,
@@ -500,7 +502,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
-      const headerVariant = mode != null || isDashboard ? "light" : "outline";
+      const headerVariant =
+        hasColumnReordering || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
         (value: RowValue, rowIndex: number) =>
           settings["table._cell_background_getter"]?.(
@@ -624,7 +627,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     theme,
     data,
     question,
-    mode,
+    hasColumnReordering,
     renderTableHeader,
     cols,
     getColumnSortDirection,
@@ -872,7 +875,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }
 
   const isColumnReorderingDisabled =
-    (isDashboard || mode == null || isRawTable) && !isSettings;
+    (isDashboard || !hasColumnReordering || isRawTable) && !isSettings;
 
   return (
     <TableInteractiveContextProvider value={tableInteractiveContextValue}>

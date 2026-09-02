@@ -23,7 +23,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "tableHeaderHeight",
   "scrollToColumn",
   "renderTableHeader",
-  "mode",
+  "hasColumnReordering",
   "renderEmptyMessage",
   "zoomedRowIndex",
   // Legend
@@ -146,7 +146,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
       {...vizSpecificProps}
-      defaultMode={defaultClickActionMode}
+      mode={props.mode ?? defaultClickActionMode}
     />
   );
 }

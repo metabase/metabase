@@ -147,11 +147,6 @@ type VisualizationOwnProps = {
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionsMode;
-  /**
-   * Resolves click actions when no `mode` is passed.
-   * It is not forwarded to the chart, so table affordances keyed on `mode` stay off.
-   */
-  defaultMode?: ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -489,7 +484,6 @@ class Visualization extends PureComponent<
   getClickActions(clickedObject?: ClickObject | null) {
     const {
       mode,
-      defaultMode,
       dashcard,
       metadata,
       rawSeries,
@@ -503,7 +497,7 @@ class Visualization extends PureComponent<
 
     return this._getClickActionsCached(
       clickedObject,
-      mode ?? defaultMode,
+      mode,
       computedSettings,
       dashcard,
       metadata,
@@ -650,6 +644,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      hasColumnReordering,
       hasDevWatermark,
       headerIcon,
       highlighted,
@@ -926,6 +921,7 @@ class Visualization extends PureComponent<
                       getExtraDataForClick={getExtraDataForClick}
                       getHref={getHref}
                       gridSize={gridSize}
+                      hasColumnReordering={hasColumnReordering}
                       headerIcon={hasHeader ? null : headerIcon}
                       height={height}
                       hovered={hovered}
