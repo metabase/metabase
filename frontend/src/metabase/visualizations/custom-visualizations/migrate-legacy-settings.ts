@@ -1,6 +1,9 @@
 import { visualizations } from "metabase/visualizations/lib/registry";
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { getCustomVizSettingKeyPrefix } from "./setting-keys";
@@ -18,30 +21,64 @@ const EXTRA_HOST_SETTING_KEYS: ReadonlySet<string> = new Set([
  * Now they live under `custom-viz:<plugin>:<id>` keys.
  */
 export function migrateStoredCustomVizSettings(
-  series: Series | null | undefined,
+  display: VisualizationDisplay | undefined,
   storedSettings: VisualizationSettings,
   getDefinitions: () => VisualizationSettingsDefinitions,
 ): VisualizationSettings {
-  const display = series?.[0]?.card?.display;
-
   if (!isCustomVizDisplay(display)) {
     return storedSettings;
   }
 
-  const prefix = getCustomVizSettingKeyPrefix(display);
   const definitions = getDefinitions();
-  const hostSettingKeys = getHostSettingKeys();
 
-  const legacyKeys = Object.keys(definitions)
+  return adoptLegacyKeys(storedSettings, {
+    prefix: getCustomVizSettingKeyPrefix(display),
+    namespacedKeys: Object.keys(definitions),
+    isHostKey: getIsHostKey(definitions),
+  });
+}
+
+/**
+ * A dashcard override saved under a bare id has to keep overriding the card's
+ * namespaced value once the two are merged, so it is namespaced first. The
+ * card's own keys are the signal: they are known before the plugin registers.
+ */
+export function migrateStoredDashcardCustomVizSettings(
+  display: VisualizationDisplay | undefined,
+  cardSettings: VisualizationSettings,
+  dashcardSettings: VisualizationSettings,
+  getDefinitions: () => VisualizationSettingsDefinitions,
+): VisualizationSettings {
+  if (!isCustomVizDisplay(display)) {
+    return dashcardSettings;
+  }
+
+  return adoptLegacyKeys(dashcardSettings, {
+    prefix: getCustomVizSettingKeyPrefix(display),
+    namespacedKeys: Object.keys(cardSettings),
+    isHostKey: getIsHostKey(getDefinitions()),
+  });
+}
+
+function adoptLegacyKeys(
+  storedSettings: VisualizationSettings,
+  {
+    prefix,
+    namespacedKeys,
+    isHostKey,
+  }: {
+    prefix: string;
+    namespacedKeys: string[];
+    isHostKey: (key: string) => boolean;
+  },
+): VisualizationSettings {
+  const legacyKeys = namespacedKeys
     .filter((key) => key.startsWith(prefix))
     .map((key) => [key, key.slice(prefix.length)] as const)
-    .filter(([, legacyKey]) => {
-      return (
-        Object.hasOwn(storedSettings, legacyKey) &&
-        !Object.hasOwn(definitions, legacyKey) &&
-        !hostSettingKeys.has(legacyKey)
-      );
-    });
+    .filter(
+      ([, legacyKey]) =>
+        Object.hasOwn(storedSettings, legacyKey) && !isHostKey(legacyKey),
+    );
 
   if (legacyKeys.length === 0) {
     return storedSettings;
@@ -58,6 +95,13 @@ export function migrateStoredCustomVizSettings(
   }
 
   return settings;
+}
+
+function getIsHostKey(definitions: VisualizationSettingsDefinitions) {
+  const hostSettingKeys = getHostSettingKeys();
+
+  return (key: string) =>
+    Object.hasOwn(definitions, key) || hostSettingKeys.has(key);
 }
 
 function getHostSettingKeys(): ReadonlySet<string> {

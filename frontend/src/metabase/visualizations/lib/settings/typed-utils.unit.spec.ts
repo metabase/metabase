@@ -221,6 +221,66 @@ describe("extendCardWithDashcardSettings", () => {
       "graph.goal_label": "goal label",
     });
   });
+
+  describe("custom viz settings saved before namespacing", () => {
+    const PREFIX = "custom-viz:demo-viz:";
+
+    it("keeps a dashcard override over the card's namespaced value", () => {
+      const card = createMockCard({
+        display: "custom:demo-viz",
+        visualization_settings: { [`${PREFIX}threshold`]: 42 },
+      });
+
+      const result = extendCardWithDashcardSettings(card, { threshold: 10 });
+
+      expect(result.visualization_settings).toEqual({
+        [`${PREFIX}threshold`]: 10,
+      });
+    });
+
+    it("prefers the dashcard's namespaced value over its stale bare one", () => {
+      const card = createMockCard({
+        display: "custom:demo-viz",
+        visualization_settings: { [`${PREFIX}threshold`]: 42 },
+      });
+
+      const result = extendCardWithDashcardSettings(card, {
+        threshold: 10,
+        [`${PREFIX}threshold`]: 11,
+      });
+
+      expect(result.visualization_settings).toEqual({
+        [`${PREFIX}threshold`]: 11,
+      });
+    });
+
+    it("leaves a host setting the dashcard overrides alone", () => {
+      const card = createMockCard({
+        display: "custom:demo-viz",
+        visualization_settings: { [`${PREFIX}card.title`]: "Plugin" },
+      });
+
+      const result = extendCardWithDashcardSettings(card, {
+        "card.title": "Dashcard",
+      });
+
+      expect(result.visualization_settings).toEqual({
+        [`${PREFIX}card.title`]: "Plugin",
+        "card.title": "Dashcard",
+      });
+    });
+
+    it("leaves a bare key the card doesn't namespace to the stored-settings migration", () => {
+      const card = createMockCard({
+        display: "custom:demo-viz",
+        visualization_settings: {},
+      });
+
+      const result = extendCardWithDashcardSettings(card, { threshold: 10 });
+
+      expect(result.visualization_settings).toEqual({ threshold: 10 });
+    });
+  });
 });
 
 describe("sanitizeDashcardSettings", () => {

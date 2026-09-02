@@ -1,6 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { migrateStoredDashcardCustomVizSettings } from "metabase/visualizations/custom-visualizations/migrate-legacy-settings";
 import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
@@ -13,6 +14,8 @@ import type {
 } from "metabase-types/api";
 
 import { getVisualization } from "../registry";
+
+import { getSettingDefinitionsForDisplay } from "./visualization";
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
@@ -94,11 +97,18 @@ export function extendCardWithDashcardSettings<T extends Card | VirtualCard>(
     return isSettingHiddenOnDashboards(settings[key] ?? {});
   });
 
+  const cardSettings = card.visualization_settings ?? {};
+
   return {
     ...card,
     visualization_settings: mergeSettings(
-      card?.visualization_settings,
-      _.omit(dashcardSettings, settingsToOmit),
+      cardSettings,
+      migrateStoredDashcardCustomVizSettings(
+        card.display,
+        cardSettings,
+        _.omit(dashcardSettings ?? {}, settingsToOmit),
+        () => getSettingDefinitionsForDisplay(card.display),
+      ),
     ),
   };
 }

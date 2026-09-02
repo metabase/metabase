@@ -13,10 +13,11 @@ import type {
   ColumnSettings,
   DimensionReference,
   Series,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { getVisualizationRaw } from "../registry";
+import { getVisualization } from "../registry";
 import {
   getComputedSettings,
   getPersistableDefaultSettings,
@@ -60,13 +61,10 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
-export function getSettingDefinitionsForSeries(
-  series: Series | null | undefined,
+export function getSettingDefinitionsForDisplay(
+  display: VisualizationDisplay | undefined,
 ): VisualizationSettingsDefinitions {
-  if (!series) {
-    return {};
-  }
-  const visualization = getVisualizationRaw(series);
+  const visualization = getVisualization(display ?? null);
   const definitions = {
     ...COMMON_SETTINGS,
     ...visualization?.settings,
@@ -75,6 +73,15 @@ export function getSettingDefinitionsForSeries(
     definitions[id].id = id;
   }
   return definitions;
+}
+
+export function getSettingDefinitionsForSeries(
+  series: Series | null | undefined,
+): VisualizationSettingsDefinitions {
+  if (!series) {
+    return {};
+  }
+  return getSettingDefinitionsForDisplay(series[0]?.card?.display);
 }
 
 function normalizeColumnSettings(
@@ -108,7 +115,7 @@ export function getStoredSettingsForSeries(
   }
 
   return migrateStoredCustomVizSettings(
-    series,
+    series?.[0]?.card?.display,
     storedSettings,
     () => definitions ?? getSettingDefinitionsForSeries(series),
   );
