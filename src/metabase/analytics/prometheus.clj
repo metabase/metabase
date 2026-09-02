@@ -853,6 +853,10 @@
                         :labels [:driver]})
    (prometheus/counter :metabase-api/unhandled-errors
                        {:description "Number of unhandled API errors (500s without explicit status code)."})
+   (prometheus/counter :metabase-api/undeclared-request-keys
+                       {:description
+                        "Requests carrying keys the endpoint schema does not declare, by param type and outcome."
+                        :labels [:param-type :outcome]})
    (prometheus/counter :metabase-frontend/errors
                        {:description "Number of frontend errors reported by the browser."
                         :labels [:type]})
