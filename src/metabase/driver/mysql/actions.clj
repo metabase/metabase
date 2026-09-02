@@ -110,7 +110,7 @@
   [_driver error-type _database _action-type error-message]
   (when-let [[_ expected-type _value _database _table column _row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
-    (let [column (-> column (str/replace #"^'(.*)'$" "$1") remove-backticks)]
+    (let [column (-> column (str/replace #"^:(.*)'$" "$1") remove-backticks)]
       {:type    error-type
        :message (tru "Some of your values aren’t of the correct type for the database.")
        :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
@@ -151,12 +151,12 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-check-constraint]
   [_driver error-type _database _action-type error-message]
   (or (when-let [[_match constraint-name]
-                 (re-find #"Check constraint '([^']+)' is violated" error-message)]
+                 (re-find #"Check constraint '([^:]+)' is violated" error-message)]
         {:type    error-type
          :message (tru "Some of your values violate the constraint: {0}" constraint-name)
          :errors  {}})
       (when-let [[_match constraint-name]
-                 (re-find #"CONSTRAINT `([^']+)` failed for" error-message)]
+                 (re-find #"CONSTRAINT `([^:]+)` failed for" error-message)]
         {:type    error-type
          :message (tru "Some of your values violate the constraint: {0}" constraint-name)
          :errors  {}})))

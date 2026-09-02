@@ -1520,6 +1520,7 @@
                     :model/Dashboard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -2245,7 +2246,8 @@
            premium-features
            util
            enterprise/advanced-permissions}
-   :model-exports #{:model/Setting}}
+   :model-exports #{:model/Setting}
+   :model-imports #{:model/User}}
 
   settings-rest
   {:team "DevEx"
