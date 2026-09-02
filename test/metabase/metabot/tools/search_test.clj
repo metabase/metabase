@@ -765,6 +765,37 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest confined-collection-is-not-overridable-test
+  (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
+            containment boundary, not a default. An explicit collection-id, which the v2 search tool
+            passes from a caller-supplied filter, must not widen or relocate the search outside that
+            collection."
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
+                     :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
+                     :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
+                                                              :collection_id confined-id}]
+        (let [collection-for (fn [search-args]
+                               (let [captured (atom ::unset)]
+                                 (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                             (fn [context]
+                                                               (reset! captured (:collection context))
+                                                               [])]
+                                   (search/search (merge {:term-queries ["anything"]
+                                                          :entity-types ["dashboard"]
+                                                          :profile-id   "nlq"
+                                                          :metabot-id   metabot-eid}
+                                                         search-args)))
+                                 @captured))]
+          (testing "with no collection-id, the metabot's own collection scopes the search"
+            (is (= confined-id (collection-for {}))))
+          (testing "an explicit collection-id elsewhere cannot escape the confinement"
+            (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
+          (testing "an unconfined metabot still honours an explicit collection-id"
+            (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
+              (is (= elsewhere-id (collection-for {:metabot-id    open-eid
+                                                   :collection-id elsewhere-id}))))))))))
+
 (deftest transform-visibility-is-superuser-only-test
   (testing "this pipeline dropped remove-unreadable-transforms and relies instead on the transform
             search spec's `:visibility :superuser`, which the engine applies when it narrows a

@@ -325,11 +325,13 @@
                           (:use_verified_content metabot)
                           false)
         embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        ;; An explicit collection-id (the v2 tool's collection filter) wins; otherwise the metabot's
-        ;; own confined collection applies for embedded/nlq profiles.
-        collection-id   (or collection-id
-                            (when (or embedded-metabot? (= profile-id "nlq"))
-                              (:collection_id metabot)))
+        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
+        ;; collection. That is a containment boundary, not a default, so a caller-supplied
+        ;; collection-id — which the v2 search tool fills from a request filter — can never
+        ;; replace it. Unconfined, the caller's collection-id applies.
+        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
+                          (:collection_id metabot))
+        collection-id   (or confined-id collection-id)
         limit           (or limit 50)
         ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
