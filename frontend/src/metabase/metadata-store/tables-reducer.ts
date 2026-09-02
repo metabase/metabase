@@ -14,15 +14,13 @@ type ReducerAction = { type: string; payload?: any; error?: unknown };
 /**
  * Reducer for the `state.entities.tables` slice.
  *
- * Tables no longer go through the entity framework — CRUD lives in
- * `metabase/api/table`. The slice itself is still consumed by `getMetadata` in
- * `metabase/metadata-store.ts`, so we keep it in sync when:
+ * `getMetadata` reads this slice, so it is kept in sync when:
  *
  * - questions are created/updated/archived (the saved-question virtual table
  *   `card__<id>` representation needs to track them), and
  * - a field is updated elsewhere (so `original_fields` doesn't go stale).
  *
- * It runs after the generic slice reducer in `./index` has merged any
+ * It runs after the generic slice reducer in `./reducer` has merged any
  * `payload.entities.tables` from `metabase/entities/*` actions.
  */
 export function tablesReducer(

@@ -384,13 +384,13 @@ export function SettingsOIDCForm() {
       >
         {({ dirty, values }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="key"
                     label={t`Key`}
@@ -444,7 +444,7 @@ export function SettingsOIDCForm() {
                   descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
                   stackProps={SETTINGS_CARD_STACK_PROPS}
                 >
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <GroupMappingsWidgetView
                       setting={{ key: "group-sync-enabled" }}
                       mappings={
@@ -471,7 +471,7 @@ export function SettingsOIDCForm() {
               )}
 
               <CollapsibleSettingsSection title={t`Optional settings`}>
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="scopes"
                     label={t`Scopes`}
@@ -486,7 +486,7 @@ export function SettingsOIDCForm() {
                 title={t`Attribute mapping`}
                 description={t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="attribute-email"
                     label={t`Email attribute`}
@@ -506,10 +506,10 @@ export function SettingsOIDCForm() {
               </CollapsibleSettingsSection>
 
               <FormErrorMessage />
-              <Flex gap="md" wrap="wrap" justify="space-between">
+              <Flex gap="lg" wrap="wrap" justify="space-between">
                 {isExisting && (
                   <>
-                    <Flex gap="md" wrap="wrap">
+                    <Flex gap="lg" wrap="wrap">
                       <Button variant="outline" onClick={handleToggleEnabled}>
                         {isEnabled ? t`Disable` : t`Enable`}
                       </Button>
@@ -530,7 +530,7 @@ export function SettingsOIDCForm() {
                     />
                   </>
                 )}
-                <Flex gap="md" wrap="wrap" ml={isExisting ? undefined : "auto"}>
+                <Flex gap="lg" wrap="wrap" ml={isExisting ? undefined : "auto"}>
                   <Button
                     variant="outline"
                     loading={isChecking}

@@ -172,7 +172,7 @@ export function SearchNew({
 
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" p="xl">
+      <Flex justify="center" align="center" p="xxl">
         <Loader />
       </Flex>
     );
@@ -180,7 +180,7 @@ export function SearchNew({
 
   if (filteredTables.length === 0) {
     return (
-      <Box p="xl">
+      <Box p="xxl">
         <Text c="text-disabled">{t`No tables found`}</Text>
       </Box>
     );

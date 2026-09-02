@@ -32,8 +32,8 @@ export function AuthenticationSettingsPage({
 
   return (
     <SettingsPageWrapper title={t`Authentication`}>
-      <Flex justify={"space-between"} gap="lg">
-        <Stack gap="lg">
+      <Flex justify={"space-between"} gap="xl">
+        <Stack gap="xl">
           <GoogleAuthCard />
           <LdapAuthCard />
           <ApiKeysAuthCard />

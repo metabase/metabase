@@ -21,9 +21,9 @@ import S from "./SettingsSection.module.css";
 export const SETTINGS_CARD_TITLE_PROPS: TitleProps = { order: 2, size: "h4" };
 export const SETTINGS_CARD_DESCRIPTION_PROPS: TextProps = {
   lh: "sm",
-  mt: "xs",
+  mt: "xxs",
 };
-export const SETTINGS_CARD_STACK_PROPS: StackProps = { gap: "md" };
+export const SETTINGS_CARD_STACK_PROPS: StackProps = { gap: "lg" };
 
 export function SettingsSection({
   title,
@@ -48,7 +48,7 @@ export function SettingsSection({
     <Box id={id} {...boxProps}>
       {children && (
         <Stack
-          gap="lg"
+          gap="xl"
           className={cx(S.SettingsSection, stackClassName)}
           {...restStackProps}
         >
@@ -135,7 +135,7 @@ export function SettingsPageWrapper({
   children: React.ReactNode;
 } & Omit<StackProps, "title">) {
   return (
-    <Stack gap="lg" {...stackProps}>
+    <Stack gap="xl" {...stackProps}>
       {(title || description) && (
         <Stack gap="sm">
           {title && (

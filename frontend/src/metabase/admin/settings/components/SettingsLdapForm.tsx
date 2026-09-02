@@ -93,13 +93,13 @@ export const SettingsLdapForm = () => {
       >
         {({ dirty }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-host"
                     label={t`LDAP host`}
@@ -124,7 +124,7 @@ export const SettingsLdapForm = () => {
                     )}
                     description={null}
                   >
-                    <Group mt={"xs"}>
+                    <Group mt={"xxs"}>
                       <Radio value="none" label={t`None`} />
                       <Radio
                         value="ssl"
@@ -157,7 +157,7 @@ export const SettingsLdapForm = () => {
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-user-base"
                     placeholder="ou=users,dc=example,dc=org"
@@ -182,7 +182,7 @@ export const SettingsLdapForm = () => {
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-attribute-email"
                     label={t`Email attribute`}
@@ -214,7 +214,7 @@ export const SettingsLdapForm = () => {
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <GroupMappingsWidget
                     isFormik
                     setting={{ key: "ldap-group-sync" }}

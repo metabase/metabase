@@ -134,13 +134,13 @@ export const SettingsJWTForm = () => {
       >
         {({ dirty }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="lg">
+                <Stack gap="xl">
                   <FormTextInput
                     name="jwt-identity-provider-uri"
                     label={t`JWT Identity Provider URI`}
@@ -166,7 +166,7 @@ export const SettingsJWTForm = () => {
                 description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}
                 defaultOpened={hasUserAttributes}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="jwt-attribute-email"
                     label={t`Email attribute key`}

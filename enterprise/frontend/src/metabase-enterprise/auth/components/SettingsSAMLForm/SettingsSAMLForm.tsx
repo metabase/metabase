@@ -140,12 +140,12 @@ export function SettingsSAMLForm() {
                   readOnly
                 />
 
-                <Title order={3} size="h5" mt="xl">{t`SAML attributes`}</Title>
-                <Text c="text-secondary" mb="md">
+                <Title order={3} size="h5" mt="xxl">{t`SAML attributes`}</Title>
+                <Text c="text-secondary" mb="lg">
                   {t`In most IdPs, you'll need to put each of these in an input box labeled "Name" in the attribute statements section.`}
                 </Text>
 
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="saml-attribute-email"
                     label={t`User's email attribute`}
@@ -190,7 +190,7 @@ export function SettingsSAMLForm() {
                 descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="saml-identity-provider-uri"
                     label={t`SAML identity provider URL`}
@@ -231,7 +231,7 @@ export function SettingsSAMLForm() {
                 title={t`Sign SSO requests (optional)`}
                 defaultOpened={hasKeystoreSettings}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <FormTextInput
                     name="saml-keystore-path"
                     label={t`SAML keystore path`}
@@ -268,7 +268,7 @@ export function SettingsSAMLForm() {
                 descriptionProps={SETTINGS_CARD_DESCRIPTION_PROPS}
                 stackProps={SETTINGS_CARD_STACK_PROPS}
               >
-                <Stack gap="md">
+                <Stack gap="lg">
                   <GroupMappingsWidget
                     isFormik
                     // map to legacy setting props
