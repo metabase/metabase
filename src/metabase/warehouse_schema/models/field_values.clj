@@ -544,9 +544,12 @@
 
   Callers park on their fetch, so the number in flight is today limited by the request thread pool
   — but that is an accident of how these endpoints are served, not a guarantee this namespace can
-  make. Past this many, [[detached-fetch!]] stops detaching and runs the work on the calling thread,
-  which is what happened before detaching existed."
-  100)
+  make. Past this many, [[detached-fetch!]] refuses the fetch with a 503 rather than letting the
+  registry grow: reaching this means something is wrong, and failing loudly beats absorbing it.
+
+  Sized well clear of the request thread pool (50 by default), so an instance has to have raised
+  `MB_JETTY_MAXTHREADS` well past its default before this can be reached at all."
+  200)
 
 (defn- complete-fetch!
   "Drop `entry` from the registry and hand `result` to everyone waiting on it.
@@ -605,37 +608,34 @@
     (sweep-stalled-fetches!)
     (catch Throwable e
       (log/warn e "Error sweeping stalled FieldValues fetches")))
-  (let [entry {:promise (promise), :future-ref (atom nil), :timer (u/start-timer)}]
-    (if-let [this (claim-fetch! cache-key entry)]
-      (do
-        (when (identical? this entry)
-          ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with
-          ;; its promise undelivered is worse than a leak: every later caller for that key parks on
-          ;; it forever, holding a request thread each.
-          (try
-            (reset! (:future-ref entry)
-                    (future
-                      (try
-                        (complete-fetch! cache-key entry {:value (thunk)})
-                        (catch Throwable e
-                          (complete-fetch! cache-key entry {:error e})
-                          ;; log only once everyone waiting has been served: an appender that throws
-                          ;; here would otherwise strand them. Log at all because when every caller
-                          ;; has walked away there is nobody left to deref the promise, so this is
-                          ;; the only record of the failure.
-                          (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))))))
-            ;; submitting can fail on its own — `future`'s pool rejects new work once the JVM starts
-            ;; shutting down, and the registry entry is already in place by then
-            (catch Throwable e
-              (complete-fetch! cache-key entry {:error e}))))
-        (let [{:keys [value error]} @(:promise this)]
-          (when error
-            (throw error))
-          value))
-      (do
-        (log/warnf "%d FieldValues fetches already in flight; running this one on the calling thread"
-                   max-in-flight-fetches)
-        (thunk)))))
+  (let [entry {:promise (promise), :future-ref (atom nil), :timer (u/start-timer)}
+        this  (or (claim-fetch! cache-key entry)
+                  (throw (ex-info (tru "Too many field values fetches are already running. Please try again shortly.")
+                                  {:status-code   503
+                                   :max-in-flight max-in-flight-fetches})))]
+    (when (identical? this entry)
+      ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with its
+      ;; promise undelivered is worse than a leak: every later caller for that key parks on it
+      ;; forever, holding a request thread each.
+      (try
+        (reset! (:future-ref entry)
+                (future
+                  (try
+                    (complete-fetch! cache-key entry {:value (thunk)})
+                    (catch Throwable e
+                      (complete-fetch! cache-key entry {:error e})
+                      ;; log only once everyone waiting has been served: an appender that throws here
+                      ;; would otherwise strand them. Log at all because when every caller has walked
+                      ;; away there is nobody left to deref the promise, so this is the only record.
+                      (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))))))
+        ;; submitting can fail on its own — `future`'s pool rejects new work once the JVM starts
+        ;; shutting down, and the registry entry is already in place by then
+        (catch Throwable e
+          (complete-fetch! cache-key entry {:error e}))))
+    (let [{:keys [value error]} @(:promise this)]
+      (when error
+        (throw error))
+      value)))
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly

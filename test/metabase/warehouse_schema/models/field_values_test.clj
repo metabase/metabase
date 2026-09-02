@@ -340,19 +340,25 @@
         (is (not (contains? @registry ::stalled)))))))
 
 (deftest detached-fetch!-caps-registry-test
-  (testing "past the registry cap the work runs on the calling thread instead of growing the
-            registry, so nothing outside this namespace has to bound it (GHY-2937)"
+  (testing "past the registry cap the fetch is refused rather than growing the registry, so nothing
+            outside this namespace has to bound it (GHY-2937)"
     (let [registry @#'field-values/in-flight-fetches
           cap      @#'field-values/max-in-flight-fetches
           filler   (into {} (for [i (range cap)]
                               [[::filler i] {:promise    (promise)
                                              :future-ref (atom nil)
-                                             :timer      (u/start-timer)}]))]
+                                             :timer      (u/start-timer)}]))
+          ran      (atom false)]
       (try
         (swap! registry merge filler)
-        (testing "the fetch still runs"
-          (is (= ::ran (field-values/detached-fetch! ::over-cap (constantly ::ran)))))
-        (testing "but it is not registered"
+        (testing "the caller gets a 503"
+          (is (= 503 (try
+                       (field-values/detached-fetch! ::over-cap (fn [] (reset! ran true)))
+                       nil
+                       (catch clojure.lang.ExceptionInfo e
+                         (:status-code (ex-data e)))))))
+        (testing "the work is not run, and nothing is registered for it"
+          (is (false? @ran))
           (is (not (contains? @registry ::over-cap))))
         (finally
           (swap! registry #(apply dissoc % (keys filler))))))))
