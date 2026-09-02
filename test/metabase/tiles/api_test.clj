@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
@@ -210,11 +209,13 @@
 (deftest ^:parallel tiles-query-test
   (testing "mbql"
     (testing "adds the inside filter and only selects the lat/lon fields"
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                       (lib/limit 50000)
-                      (lib/with-fields [(meta/field-metadata :people :id)
-                                        (meta/field-metadata :people :latitude)
-                                        (meta/field-metadata :people :longitude)]))]
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
+                                        (lib.metadata/field mp (mt/id :people :latitude))
+                                        (lib.metadata/field mp (mt/id :people :longitude))]))
+            [_ lat-col lon-col] (lib/returned-columns query)]
         (is (=? {:stages [{}
                           ;; should append a new stage
                           {:fields  [[:field {} "LATITUDE"]
@@ -227,14 +228,13 @@
                                       double?
                                       double?
                                       double?]]}]}
-                (#'api.tiles/tiles-query query 2 3 1
-                                         [:field (meta/id :people :latitude) nil]
-                                         [:field (meta/id :people :longitude) nil])))))))
+                (#'api.tiles/tiles-query query 2 3 1 (lib/ref lat-col) (lib/ref lon-col))))))))
 
 (deftest ^:parallel tiles-query-test-2
   (testing "native"
     (testing "nests the query, selects fields"
-      (let [query (lib/native-query meta/metadata-provider "select name, latitude, longitude from zomato limit 5000;")]
+      (let [query (lib/native-query (mt/metadata-provider)
+                                    "select name, latitude, longitude from zomato limit 5000;")]
         (is (=? {:stages [{:native "select name, latitude, longitude from zomato limit 5000;"}
                           {:fields  [[:field {:base-type :type/Float} "latitude"]
                                      [:field {:base-type :type/Float} "longitude"]]
@@ -247,9 +247,9 @@
                                       double?
                                       double?]]
                            :limit   2000}]}
-                (@#'api.tiles/tiles-query query 2 2 1
-                                          [:field "latitude" {:base-type :type/Float}]
-                                          [:field "longitude" {:base-type :type/Float}])))))))
+                (#'api.tiles/tiles-query query 2 2 1
+                                         (lib/normalize [:field {:base-type :type/Float} "latitude"])
+                                         (lib/normalize [:field {:base-type :type/Float} "longitude"]))))))))
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
@@ -312,16 +312,16 @@
               :latField (encoded-implicit-join-field-ref :latitude)
               :lonField (encoded-implicit-join-field-ref :longitude)))))))
 
-(deftest ^:parallel legacy-ref-schema-strips-extra-keys-test
+(deftest ^:parallel encoded-ref-schema-strips-extra-keys-test
   (testing "the tile latField/lonField schema decodes a JSON field ref, validates it, and strips undeclared properties"
     (let [decoded (api.macros/decode-and-validate-params
-                   :query ::api.tiles/legacy-ref
+                   :query ::api.tiles/encoded-ref
                    (json/encode [:field 1 {:base-type :type/Integer :a 1 :a/b 2}]))]
-      (is (mr/validate ::api.tiles/legacy-ref decoded))
-      (is (= [:field 1 {:base-type :type/Integer}] decoded)))
+      (is (mr/validate ::api.tiles/encoded-ref decoded))
+      (is (=? [:field {:base-type :type/Integer} 1] decoded)))
     (testing "a value that isn't a field ref is rejected with a clean 400 (not a 500 later)"
       (is (= 400 (-> (try (api.macros/decode-and-validate-params
-                           :query ::api.tiles/legacy-ref (json/encode {:not "a-ref"}))
+                           :query ::api.tiles/encoded-ref (json/encode {:not "a-ref"}))
                           (catch clojure.lang.ExceptionInfo e (ex-data e)))
                      :status-code))))))
 
