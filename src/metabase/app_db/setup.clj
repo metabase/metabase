@@ -330,6 +330,17 @@
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
 
+(defn- keyword-condition
+  "A `:k v` condition with its column, and the operator of a `[op & args]` value, spelled as keywords: Toucan 2 looks
+  up column transforms by keyword and only accepts a keyword operator, while app-DB code writes both as symbols."
+  [[k v]]
+  [(if (symbol? k) (keyword (namespace k) (name k)) k)
+   (if (and (vector? v) (symbol? (first v))) (assoc v 0 (keyword (name (first v)))) v)])
+
+(defn- keyword-conditions [conditions]
+  (when conditions
+    (into {} (map keyword-condition) conditions)))
+
 (methodical/defmethod t2.pipeline/build :around :default
   "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
   dialect to do special query building magic. When building a Honey SQL form, make sure `:dialect` is bound to the
@@ -337,7 +348,13 @@
   [query-type model parsed-args resolved-query]
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
-    (next-method query-type model parsed-args resolved-query)))
+    (next-method query-type
+                 model
+                 (update parsed-args :kv-args keyword-conditions)
+                 ;; the map passed to `update!` is a conditions map rather than a query
+                 (if (and (isa? query-type :toucan.query-type/update.*) (map? resolved-query))
+                   (keyword-conditions resolved-query)
+                   resolved-query))))
 
 (methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*
                                                 #_model      :default

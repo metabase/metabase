@@ -99,10 +99,10 @@
     (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false})))
+      (t2/update! :model/User user_id {:is_superuser false})))
   ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
   (when (= group_id (:id (perms-group/data-analyst)))
-    (t2/update! 'User user_id {:is_data_analyst false})))
+    (t2/update! :model/User user_id {:is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the

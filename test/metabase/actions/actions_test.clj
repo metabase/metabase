@@ -612,7 +612,7 @@
             (let [ssh-port (.getPort ssh-server)
                   table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database 'id (mt/id))]
-                (t2/update! 'Database (mt/id)
+                (t2/update! :model/Database (mt/id)
                             ;; enable ssh tunnel
                             {:details (assoc details
                                              :tunnel-enabled true

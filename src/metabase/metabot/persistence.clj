@@ -199,7 +199,7 @@
   "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
   [conversation-id & body]
   `(t2/with-transaction [_conn#]
-     (t2/select-one :model/MetabotConversation 'id ~conversation-id {:for 'update})
+     (t2/select-one :model/MetabotConversation ~'id ~conversation-id {:for ~'update})
      ~@body))
 
 (defn soft-delete-messages!

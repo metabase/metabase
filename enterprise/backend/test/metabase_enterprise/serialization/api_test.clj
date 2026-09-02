@@ -103,7 +103,7 @@
                         :model/Card       ~card  {:collection_id (:id ~coll), :name "frobinate", :type :model
                                                   :query_type    :native
                                                   :dataset_query {:type     :native
-                                                                  :database (t2/select-one-pk :model/Database 'is_audit false)
+                                                                  :database (t2/select-one-pk :model/Database ~'is_audit false)
                                                                   :native   {:query "SELECT 1"}}}]
            ~@body)))))
 

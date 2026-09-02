@@ -189,13 +189,13 @@
 (defn- with-ssh-tunnel*! [tunnel-details f]
   (let [base-details (t2/select-one-fn :details 'Database 'id (mt/id))]
     ;; Set up SSH tunnel
-    (t2/update! 'Database (mt/id) {:details (merge base-details tunnel-details)})
+    (t2/update! :model/Database (mt/id) {:details (merge base-details tunnel-details)})
     ;; Discard any existing connection pool to make sure the new one uses it.
     (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
     ;; Run the test body
     (f)
     ;; Clean up
-    (t2/update! 'Database (mt/id) {:details base-details})
+    (t2/update! :model/Database (mt/id) {:details base-details})
     (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))
 
 (defmacro ^:private with-ssh-tunnel! [tunnel-details & body]

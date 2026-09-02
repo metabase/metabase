@@ -506,4 +506,4 @@
            ~@body
            (finally
              (#'drop-table! table-name#)
-             (t2/delete! :model/SearchIndexMetadata 'version version#)))))))
+             (t2/delete! :model/SearchIndexMetadata ~'version version#)))))))
