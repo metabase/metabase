@@ -1,4 +1,4 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -110,8 +110,8 @@ export function MetabotInlineChart({
     [question, savedCardId, value],
   );
 
-  const [runRequested, setRunRequested] = useState(false);
-  const shouldRunQuery = !readonly || runRequested;
+  const [isRunRequested, { open: requestRun }] = useDisclosure(false);
+  const shouldRunQuery = !readonly || isRunRequested;
   const { data: dataset, error } = useGetAdhocQueryQuery(
     shouldRunQuery ? datasetQuery : skipToken,
   );
@@ -165,7 +165,7 @@ export function MetabotInlineChart({
             <Button
               variant="filled"
               leftSection={<Icon name="play_outlined" aria-hidden />}
-              onClick={() => setRunRequested(true)}
+              onClick={requestRun}
             >
               {t`Run query`}
             </Button>
