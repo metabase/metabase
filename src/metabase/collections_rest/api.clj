@@ -1113,8 +1113,8 @@
                   :snippet    6
                   :collection 7
                   :timeline   8}]
-    (conj select-clause [[:inline (get rankings model 100)]
-                         :model_ranking])))
+    (conj select-clause [['inline (get rankings model 100)]
+                         'model_ranking])))
 
 (comment
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
@@ -1203,7 +1203,7 @@
                                                        (fn [k]
                                                          (when (get query k)
                                                            k))
-                                                       [:select :select-distinct])]]
+                                                       ['select 'select-distinct])]]
                         (-> query
                             (update select-clause-type add-missing-columns all-select-columns)
                             (update select-clause-type add-model-ranking model)))
