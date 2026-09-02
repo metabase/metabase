@@ -7,6 +7,7 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.transport :as mcp.transport]
+   [metabase.mcp.v2.common :as v2.common]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
@@ -662,6 +663,18 @@
       (is (str/includes? (get-in redacted [:result :contents 0 :text]) "uiCredential: \"[redacted]\""))
       (testing "a blob content with no :text passes through untouched"
         (is (nil? (get-in redacted [:result :contents 1 :text]))))))
+  (testing "a tools/call result's private MCP Apps _meta block (refresh_ui_credential's channel) is stripped"
+    (let [redact   @#'mcp.transport/redact-ui-credentials
+          response {:jsonrpc "2.0"
+                    :id      4
+                    :result  {:content [{:type "text" :text "MCP UI credential refreshed."}]
+                              :_meta   {v2.common/mcp-apps-meta-key {:credential "top.secret.credential"
+                                                                     :sessionId  "s"}
+                                        :other "kept"}}}
+          redacted (redact response)]
+      (is (not (str/includes? (pr-str redacted) "top.secret.credential")))
+      (is (= {:other "kept"} (get-in redacted [:result :_meta])))
+      (is (= (:content (:result response)) (get-in redacted [:result :content])))))
   (testing "responses without resource contents pass through untouched"
     (let [redact @#'mcp.transport/redact-ui-credentials]
       (doseq [response [{:jsonrpc "2.0" :id 2 :result {:content [{:type "text" :text "hi"}]}}
