@@ -577,6 +577,40 @@
                                                 :description      "full echo"
                                                 :revision_message "describe it again"})))))))))))
 
+;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
+(deftest clear-description-test
+  (testing "GHY-4153/GHY-4154: `clear` is the only way to unset a property. A null cannot carry that
+            meaning — strict clients fill every unset property with null, so the registry strips nulls
+            at the boundary and `description: null` cannot be told apart from \"didn't touch it\"."
+    (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+      (doseq [[tool model definition] [["segment_write" :model/Segment mbql4-fragment]
+                                       ["measure_write" :model/Measure (count-definition (mt/id :venues))]]]
+        (testing tool
+          (let [created (tool-result (call-tool! :crowberto nil tool
+                                                 {:method      "create" :table_id (mt/id :venues)
+                                                  :name        (str "definitions-test clear " tool)
+                                                  :description "set at creation"
+                                                  :definition  definition}))]
+            (is (= "set at creation" (:description created)))
+            (testing "clear nulls the column"
+              (let [updated (tool-result (call-tool! :crowberto nil tool
+                                                     {:method           "update" :id (:id created)
+                                                      :clear            ["description"]
+                                                      :revision_message "drop the description"}))]
+                (is (nil? (t2/select-one-fn :description model :id (:id created))))
+                ;; the concise projection drops nil-valued keys, so a cleared description is absent
+                ;; from the echo rather than echoed back as null
+                (is (not (contains? updated :description)))))
+            (testing "a property this tool doesn't declare clearable is refused at the schema
+                      boundary — `clear`'s enum admits only the clearable names, so `expand-clear`'s
+                      own \"can't be cleared\" message is unreachable for these two tools"
+              (let [msg (tool-error (call-tool! :crowberto nil tool
+                                                {:method           "update" :id (:id created)
+                                                 :clear            ["name"]
+                                                 :revision_message "x"}))]
+                (is (str/starts-with? msg "Invalid arguments"))
+                (is (str/includes? msg "description"))))))))))
+
 ;;; ----------------------------------------------- Permissions ----------------------------------------------------
 
 ;; not ^:parallel: with-no-data-perms-for-all-users! rewrites global data perms, and rows are
