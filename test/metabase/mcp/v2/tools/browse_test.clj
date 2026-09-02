@@ -176,6 +176,20 @@
         (is (contains? names "browse-levels-child"))
         (is (not (contains? names "browse-levels-grandchild")))))))
 
+(deftest tree-pulls-a-readable-collection-past-an-unreadable-ancestor-test
+  (testing "a collection the caller CAN read, nested under one they cannot, still appears — pulled up to its
+            nearest visible ancestor, the way `collections->tree` renders A > C when B is hidden. Grouping
+            children by their direct parent id would drop it from the tree entirely."
+    (mt/with-temp [:model/Collection top    {:name "browse-vis-top"}
+                   :model/Collection hidden {:name "browse-vis-hidden" :location (collection/children-location top)}
+                   :model/Collection deep   {:name "browse-vis-deep" :location (collection/children-location hidden)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
+      (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
+        (is (not (contains? names "browse-vis-hidden"))
+            "the unreadable collection itself stays out")
+        (is (contains? names "browse-vis-deep")
+            "but its readable child is surfaced under the nearest visible ancestor")))))
+
 (deftest ^:parallel tree-leaf-has-no-marker-test
   (testing "a childless node reports empty children and carries no truncation marker"
     (mt/with-temp [:model/Collection p  {:name "browse-leaf-parent"}
@@ -306,7 +320,11 @@
       (let [{:keys [line]} (browse {:id (:id p) :limit 1})]
         (is (some? line))
         (is (str/includes? line "`type`"))
-        (is (str/includes? line "offset: 1"))))
+        (is (str/includes? line "offset: 1"))
+        (testing "and says how many rows it actually returned — a missing `:returned` renders the count
+                  as the literal \"null\", since java.util.Formatter prints that for a nil %d"
+          (is (str/includes? line "Returned 1 of 2"))
+          (is (not (str/includes? line "null"))))))
     (testing "a complete page carries no steering line"
       (is (nil? (:line (browse {:id (:id p) :limit 50})))))))
 
