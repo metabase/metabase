@@ -575,7 +575,8 @@
              os
              finished-chan
              canceled-chan
-             (AtomicBoolean. false))
+             (AtomicBoolean. false)
+             nil)
             (is (true? (deref task-started? 5000 ::timed-out)))
             (a/>!! canceled-chan ::request-canceled)
             (is (true? (deref interrupted? 5000 ::timed-out)))
@@ -639,7 +640,8 @@
            os
            finished-chan
            canceled-chan
-           completed?)
+           completed?
+           nil)
           (is (true? (.await task-started 5 TimeUnit/SECONDS))
               "Worker thread should start")
           (.set completed? true)

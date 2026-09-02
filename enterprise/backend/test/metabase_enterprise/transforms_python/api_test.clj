@@ -3,12 +3,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-python.api :as transforms-python.api]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
 
@@ -104,6 +108,47 @@
       (is (nil? error))
       (is (str/includes? logs "out1\nerr1\nout2\nerr2"))
       (is (=? {:cols [{:name "x"}] :rows [{:x 42} {:x 43}]} output)))))
+
+(deftest test-run-streaming-body-test
+  (testing "test-run streams the same JSON body it used to return directly"
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
+      (let [request #(mt/user-http-request-full-response
+                      :crowberto :post "ee/transforms-python/test-run"
+                      {:source_tables [(transforms.tu/default-source-table-entry)]
+                       :code          "def transform():\n  pass"})]
+        (testing "success"
+          (with-redefs [python-runner/execute-and-read-output!
+                        (constantly {:status :succeeded
+                                     :cols   [{:name "x", :base_type :type/Integer}]
+                                     :rows   [[42]]
+                                     :logs   [{:message "out1"} {:message "out2"}]})]
+            ;; streaming responses default to 202, so the endpoint has to ask for 200 explicitly
+            (is (=? {:status 200
+                     :body   {:logs   "out1\nout2"
+                              :output {:cols [{:name "x"}], :rows [[42]]}}}
+                    (request)))))
+        (testing "failure"
+          (with-redefs [python-runner/execute-and-read-output!
+                        (constantly {:status  :failed
+                                     :logs    [{:message "boom"}]
+                                     :message "Python execution failure"})]
+            (is (=? {:status 200
+                     :body   {:logs "boom", :error {:message "Python execution failure"}}}
+                    (request)))))))))
+
+(deftest test-run-concurrency-cap-test
+  (testing "test-run is rejected rather than queued once every slot is taken"
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
+      (let [^Semaphore sem @#'transforms-python.api/test-run-semaphore
+            taken          (.drainPermits sem)]
+        (try
+          (is (=? {:status 429}
+                  (mt/user-http-request-full-response
+                   :crowberto :post "ee/transforms-python/test-run"
+                   {:source_tables [(transforms.tu/default-source-table-entry)]
+                    :code          "def transform():\n  pass"})))
+          (finally
+            (.release sem taken)))))))
 
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
