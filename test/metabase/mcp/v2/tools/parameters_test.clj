@@ -675,3 +675,20 @@
                 "African is a real category, so the query alone finds it")
             (is (= [] (:values (params-result (assoc base :query "African" :constraints {:_PRICE_ 4}))))
                 "but no price-4 venue is African, so the chain-filtered search excludes it")))))))
+
+(deftest no-match-for-query-blames-the-query-test
+  (testing "GHY-4141: when a `query` matches nothing the steering line must name the query as the reason. The
+            generic zero-values sentence offers only causes the agent can't act on — empty source, sandboxed away,
+            free-text filter — and reads as \"this parameter is broken\" when the actual recovery is to search for
+            something else. Both targets, since both reach the same line."
+    (with-fixtures [{:keys [dashboard native-card]}]
+      (mt/with-test-user :rasta
+        (doseq [args [{:target "dashboard" :id (:id dashboard) :parameter_id "_CATEGORY_NAME_" :query "zzzznope"}
+                      {:target "question" :id (:id native-card) :parameter_id "_CARD_NAME_" :query "zzzznope"}]]
+          (testing (:target args)
+            (is (= {:values [] :returned 0 :has_more_values false} (params-result args)))
+            (let [line (steering-line args)]
+              (is (re-find #"zzzznope" line)
+                  "the line quotes the search that found nothing")
+              (is (not (re-find #"source may be empty" line))
+                  "and doesn't offer causes that can't explain a failed search"))))))))

@@ -237,9 +237,15 @@
 
 (defn- steering-line
   "The sentence appended when the page isn't the whole story. `total` is what the backend
-   returned; `more?` marks it as a floor — the source held more than the backend's 1000-row cap."
-  [{:keys [returned total more? offset limit]}]
+   returned; `more?` marks it as a floor — the source held more than the backend's 1000-row cap.
+   `query` is the caller's search, when there was one: an empty result means something different
+   with a search in hand, and the recovery it points at is different too."
+  [{:keys [returned total more? offset limit query]}]
   (cond
+    (and (zero? total) query)
+    (format "No values match %s — try a shorter or less specific search, or omit `query` to list every value."
+            (pr-str query))
+
     (zero? total)
     "No values available for this parameter — its source may be empty, filtered to nothing for you, or a free-text filter with no value list."
 
@@ -260,7 +266,7 @@
   "Slice `limit`/`offset` out of the backend's value list and render the response. `has_more_values`
    stays true when the slice dropped values, not only when the backend hit its own cap — a page is
    never reported as the whole set."
-  [{:keys [values has_more_values]} limit offset]
+  [{:keys [values has_more_values]} limit offset query]
   (let [values   (vec values)
         total    (count values)
         page     (if (< offset total)
@@ -270,7 +276,7 @@
                   :returned        (count page)
                   :has_more_values (boolean (or has_more_values (< (+ offset (count page)) total)))}
         line     (steering-line {:returned (count page) :total total :more? (boolean has_more_values)
-                                 :offset offset :limit limit})]
+                                 :offset offset :limit limit :query query})]
     (common/success-content (cond-> (json/encode payload)
                               line (str "\n" line)))))
 
@@ -315,4 +321,5 @@
     ;; has no field to fall back to; an empty value list is the honest answer there too.
     (values-content (or result no-values)
                     (or limit default-limit)
-                    (or offset 0))))
+                    (or offset 0)
+                    query)))
