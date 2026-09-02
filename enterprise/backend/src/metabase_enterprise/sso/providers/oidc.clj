@@ -29,7 +29,13 @@
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
                :scopes        (or (:scopes provider-config) ["openid" "email" "profile"])
-               :redirect-uri  (:redirect-uri request)}
+               :redirect-uri  (:redirect-uri request)
+               ;; per-IdP AuthIdentity namespace: every configured IdP shares the :provider/custom-oidc
+               ;; dispatch keyword, so without this their (iss, sub) identities would collide in one row
+               :identity-provider-name (str "oidc-" (:key provider-config))
+               ;; AuthIdentity rows written before per-IdP provider names all used this shared name;
+               ;; verify-or-link-identity! migrates a user's matching legacy row on their first login
+               :legacy-provider-name "custom-oidc"}
         (get attribute-map "email")
         (assoc :attribute-email (get attribute-map "email"))
 
@@ -37,7 +43,13 @@
         (assoc :attribute-firstname (get attribute-map "first_name"))
 
         (get attribute-map "last_name")
-        (assoc :attribute-lastname (get attribute-map "last_name"))))))
+        (assoc :attribute-lastname (get attribute-map "last_name"))
+
+        (some? (:auto-link-verified-email provider-config))
+        (assoc :auto-link-verified-email (:auto-link-verified-email provider-config))
+
+        (seq (:trusted-email-domains provider-config))
+        (assoc :trusted-email-domains (:trusted-email-domains provider-config))))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
@@ -84,7 +96,8 @@
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
   [provider {:keys [user] :as request}]
-  (when-not user
+  ;; only gate provisioning on successful authentications: a failure must surface its own error
+  (when (and (true? (:success? request)) (not user))
     (sso-utils/check-user-provisioning :oidc))
   (next-method provider request))
 

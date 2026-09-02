@@ -105,6 +105,30 @@ If auto-provisioning is on, when someone logs in via OIDC, Metabase will look up
 
 If auto-provisioning is off, and no matching account exists, the person gets an error, and can't log in.
 
+## Account linking
+
+Metabase links each account to the identity your IdP asserts for it (the `iss` and `sub` claims in the ID token), and checks that link on every login, so an email address alone isn't enough to sign in to an existing account. Each configured provider tracks its links separately, so signing in through one provider never changes an account's link to another.
+
+Here's how Metabase decides whether to let someone in:
+
+- If the ID token says the email is unverified (`email_verified` is `false`), Metabase rejects the login.
+- If the account is already linked to an identity from that issuer, the token's `sub` claim must match. If it doesn't, Metabase rejects the login.
+- If the account isn't linked yet (or is linked to a different issuer), Metabase links it automatically when the IdP says the email is verified (`email_verified` is `true`). Otherwise, Metabase rejects the login until the account can be linked.
+- If the token's identity is already linked to a different Metabase account, Metabase rejects the login.
+
+Accounts linked before Metabase started tracking links per provider get their existing link carried over automatically on their next login when the `sub` claim matches. When it doesn't match, they're treated as unlinked, so they get relinked under the same rules.
+
+If your IdP doesn't send the `email_verified` claim, people with existing accounts that aren't linked yet won't be able to log in after upgrading until you either turn on that claim at the IdP or add your domains to **Trusted email domains** (see below).
+
+New accounts created by [auto-provisioning](#user-provisioning) follow the same rules: Metabase only creates the account when the token could also have linked it (a verified email or a trusted domain), and rejects the login if the token's identity is already linked to an existing account (this can happen when someone's email address changes at the IdP).
+
+To change how Metabase links existing accounts, go to **Admin settings** > **Authentication** > **OIDC** > **Account linking**:
+
+- **Automatically link accounts with a verified email** (on by default): links the identity to the existing account with that email when the token includes `email_verified: true`. Turn this off to never link accounts automatically based on the email claim alone.
+- **Trusted email domains** (empty by default): a comma-separated list of email domains to link even when the token has no `email_verified` claim. Use this if your IdP doesn't send `email_verified` but you manage the accounts on it. Domains are matched exactly (case-insensitive), so `mycompany.com` doesn't cover `sub.mycompany.com`. Use `*` to trust all domains. Only list domains where people can't sign up with an email address on their own.
+
+If you configure providers with the `MB_OIDC_PROVIDERS` environment variable, set `auto-link-verified-email` (boolean) and `trusted-email-domains` (array of strings) in the provider JSON. See [Environment variables](#environment-variables).
+
 ## Environment variables
 
 You can also configure OIDC via environment variables instead of the admin UI. Settings configured via environment variables are read-only in the admin UI.
@@ -113,48 +137,50 @@ You can also configure OIDC via environment variables instead of the admin UI. S
 - [`MB_OIDC_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_oidc_user_provisioning_enabled): toggle auto-provisioning (`true` by default).
 - [`MB_OIDC_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_oidc_providers): JSON string containing the full provider configuration. The value is an array of provider objects. Here's an example:
 
-   ```json
-   [
-     {
-       "key": "keycloak",
-       "login-prompt": "Sign in with Keycloak",
-       "issuer-uri": "http://keycloak:8080/realms/metabase",
-       "client-id": "metabase-client",
-       "client-secret": "metabase-client-secret",
-       "scopes": ["openid", "email", "profile"],
-       "enabled": true,
-       "attribute-map": {
-         "email": "email",
-         "first_name": "given_name",
-         "last_name": "family_name"
-       },
-       "group-sync": {
-         "enabled": true,
-         "group-attribute": "groups",
-         "group-mappings": {
-           "engineering": [5, 6],
-           "data-team": [3]
-         }
-       }
-     }
-   ]
-   ```
+  ```json
+  [
+    {
+      "key": "keycloak",
+      "login-prompt": "Sign in with Keycloak",
+      "issuer-uri": "http://keycloak:8080/realms/metabase",
+      "client-id": "metabase-client",
+      "client-secret": "metabase-client-secret",
+      "scopes": ["openid", "email", "profile"],
+      "enabled": true,
+      "attribute-map": {
+        "email": "email",
+        "first_name": "given_name",
+        "last_name": "family_name"
+      },
+      "group-sync": {
+        "enabled": true,
+        "group-attribute": "groups",
+        "group-mappings": {
+          "engineering": [5, 6],
+          "data-team": [3]
+        }
+      }
+    }
+  ]
+  ```
 
-   | Field                          | Required | Default                          |
-   | ------------------------------ | -------- | -------------------------------- |
-   | **key**                        | Yes      |                                  |
-   | **login-prompt**               | Yes      |                                  |
-   | **issuer-uri**                 | Yes      |                                  |
-   | **client-id**                  | Yes      |                                  |
-   | **client-secret**              | Yes      |                                  |
-   | **enabled**                    | No       | `true`                           |
-   | **scopes**                     | No       | `["openid", "email", "profile"]` |
-   | **attribute-map**              | No       | See attribute map above          |
-   | **group-sync.enabled**         | No       | `false`                          |
-   | **group-sync.group-attribute** | No       | `"groups"`                       |
-   | **group-sync.group-mappings**  | No       | `{}`                             |
+  | Field                          | Required | Default                          |
+  | ------------------------------ | -------- | -------------------------------- |
+  | **key**                        | Yes      |                                  |
+  | **login-prompt**               | Yes      |                                  |
+  | **issuer-uri**                 | Yes      |                                  |
+  | **client-id**                  | Yes      |                                  |
+  | **client-secret**              | Yes      |                                  |
+  | **enabled**                    | No       | `true`                           |
+  | **scopes**                     | No       | `["openid", "email", "profile"]` |
+  | **attribute-map**              | No       | See attribute map above          |
+  | **auto-link-verified-email**   | No       | `true`                           |
+  | **trusted-email-domains**      | No       | `[]`                             |
+  | **group-sync.enabled**         | No       | `false`                          |
+  | **group-sync.group-attribute** | No       | `"groups"`                       |
+  | **group-sync.group-mappings**  | No       | `{}`                             |
 
-   The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
+  The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
 
 See [Environment variables](../configuring-metabase/environment-variables.md).
 

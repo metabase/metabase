@@ -132,3 +132,15 @@
   [user-id :- ms/PositiveInt]
   (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
           [:credentials :token_hash]))
+
+;;; ------------------------------------------------ Metadata ------------------------------------------------
+
+(mu/defn merge-metadata!
+  "Merge `metadata` into `auth-identity`'s existing `:metadata` JSON, optionally updating other `columns` too."
+  ([auth-identity metadata]
+   (merge-metadata! auth-identity metadata nil))
+  ([auth-identity :- [:map [:id ms/PositiveInt]]
+    metadata      :- [:maybe :map]
+    columns       :- [:maybe :map]]
+   (t2/update! :model/AuthIdentity (:id auth-identity)
+               (assoc columns :metadata (merge (:metadata auth-identity) metadata)))))

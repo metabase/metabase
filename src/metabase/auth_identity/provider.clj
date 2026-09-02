@@ -108,9 +108,10 @@
   (fn [provider _auth-identity-data]
     provider))
 
-(methodical/defmethod validate ::provider
+(methodical/defmethod validate :default
   [_provider _auth-identity-data]
-  ;; Default: no validation (SSO providers typically don't need credential validation)
+  ;; No validation by default: it's opt-in, and per-IdP provider names (e.g. "oidc-okta") have no
+  ;; registered provider keyword at all
   nil)
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------
@@ -264,7 +265,9 @@
            :error disabled-account-snippet
            :message disabled-account-message)
     (let [{:keys [user device-info]} request
-          session (auth-session/create-session-with-auth-tracking! user device-info provider)]
+          ;; track against the per-IdP AuthIdentity row when the login carries one (see auth-identity-row)
+          session (auth-session/create-session-with-auth-tracking!
+                   user device-info (or (get-in request [:user-data :identity-provider-name]) provider))]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider
@@ -295,7 +298,7 @@
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
    :error :message :mfa/pending? :mfa/methods :mfa/first-factor
-   :jwt-data :claims
+   :jwt-data :claims :oidc-config
    :tenant-slug :tenant-attributes :user-provisioning-enabled?])
 
 (methodical/defmethod login! :around ::provider
@@ -333,6 +336,20 @@
   []
   [:email :first_name :last_name :sso_source])
 
+(defn identity-provider-name
+  "AuthIdentity provider name for a login: the map's :identity-provider-name (set — in the config and in
+   SSO user-data — by providers whose dispatch keyword covers several IdPs, e.g. per-key custom OIDC) or
+   the provider keyword's name."
+  [provider m]
+  (or (:identity-provider-name m) (name provider)))
+
+(defn- auth-identity-row
+  "AuthIdentity row linking `user-id` to the `:provider-id`/`:provider-metadata` carried in SSO `user-data`."
+  [user-id provider user-data]
+  (cond-> {:user_id user-id :provider (identity-provider-name provider user-data)}
+    (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
+    (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data))))
+
 (mu/defn update-user!
   "Updates a user from user-data in the request"
   [{user-id :id} :- [:map [:id ms/PositiveInt]]
@@ -344,7 +361,9 @@
                  [:is_active {:optional true} :boolean]
                  [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]]
+                 [:provider-id {:optional true} [:maybe :string]]
+                 [:provider-metadata {:optional true} [:maybe :map]]
+                 [:identity-provider-name {:optional true} [:maybe :string]]]
    provider :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
@@ -352,9 +371,8 @@
       (t2/update! :model/User user-id
                   (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                     reactivating? (assoc :is_superuser false))))
-    (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
-      (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
-                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+    (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (identity-provider-name provider user-data))
+      (t2/insert! :model/AuthIdentity (auth-identity-row user-id provider user-data)))
     (t2/select-one [:model/User :id :is_active :last_login] user-id)))
 
 (mu/defn- create-user!
@@ -367,6 +385,8 @@
                  [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:provider-id {:optional true} [:maybe :string]]
+                 [:provider-metadata {:optional true} [:maybe :map]]
+                 [:identity-provider-name {:optional true} [:maybe :string]]
                  [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
   (let [insert-fields (sso-user-fields)]
@@ -382,8 +402,7 @@
       (u/prog1
         (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
                                        (select-keys user-data insert-fields))
-        (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                          (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+        (t2/insert! :model/AuthIdentity (auth-identity-row (:id <>) provider user-data))
         (notification/with-skip-sending-notification true
           (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
                                                                      :sso_source (name provider))}))))))
