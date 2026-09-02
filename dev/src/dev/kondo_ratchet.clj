@@ -1,10 +1,10 @@
 (ns dev.kondo-ratchet
-  "Ratchet on inline kondo ignore forms.
+  "Check inline kondo ignores against the per-linter policies in `.clj-kondo/ratchets.edn`.
 
-  Per-linter policies live in `.clj-kondo/ratchets.edn`, with the linters whose ignores need no comment.
-  A count over its budget fails the check; a budget above its count does not, anywhere.
-  `./bin/mage kondo-ratchets-shrink` lowers budgets and drops stale exemptions, never the reverse, and
-  nothing else writes the file.
+  The policies include suppression budgets and linters exempt from justification comments.
+  Checks fail when a suppression count exceeds its budget, but allow budgets above current counts.
+  `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions; it is the only Mage
+  command that writes the file.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
@@ -553,12 +553,12 @@
   (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
        ";; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
-       ";; A count above a numeric budget fails the check; a budget above its count does not.\n"
+       ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets and drops stale exemptions, and nothing else does:\n"
-       ";; on master the shrink workflow runs it, and a branch is free to leave the numbers high. Raising a\n"
-       ";; budget, adding one (`--seed` for inline, by hand for config), or widening the exemptions is a hand\n"
-       ";; edit to defend in your PR.\n"
+       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions. The workflow runs\n"
+       ";; it on master, so feature branches do not need to record reductions. Raising or adding a budget\n"
+       ";; (`--seed` for inline ignores, a manual edit for config) or widening the exemptions must be explained\n"
+       ";; in the PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn- render-counts
@@ -779,7 +779,7 @@
 
 (defn check-report
   "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
-  budgets, an ignore lacks the justification comment it needs, or `text` is not normalized.
+  budgets, an ignore lacks a required justification comment, or `text` is not normalized.
   Lower counts are allowed because the shrink workflow records them after the change lands."
   [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} occurrences config-actual text]
   (let [over        (over-budget ignore-counts occurrences)
@@ -790,17 +790,17 @@
     (concat
      (when (seq over)
        (cons (str "over budget -- remove an ignore, or seed the budget with"
-                  " `./bin/mage kondo-ratchets-shrink --seed <linter>` and defend it in the PR:")
+                  " `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:")
              (mapcat (fn [[_ {:keys [examples]} :as entry]]
                        (cons (linter-line entry) (map #(str "    " %) examples)))
                      over)))
      (when (seq config-over)
        (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
-                  ", or raise the budget by hand and defend it in the PR:")
+                  ", or raise the budget manually and explain the increase in the PR:")
              (map linter-line config-over)))
      (when (seq uncommented)
-       (cons (str "unjustified ignores -- add a `;;` comment above the form (or trailing on its line)"
-                  " saying why the suppression is warranted:")
+       (cons (str "ignores without required comments -- add a `;;` comment above the form or at the end"
+                  " of the same line, explaining why the suppression is necessary:")
              (map (fn [{:keys [file line linters]}]
                     (format "  %s:%d %s" file line (vec linters)))
                   uncommented)))

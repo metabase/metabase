@@ -9,15 +9,15 @@
 (set! *warn-on-reflection* true)
 
 (defn- occurrences
-  "One justified single-linter ignore form per unit in `linter->count`, all in `f.clj` on successive lines."
+  "Create the specified number of justified, single-linter ignores for each linter in `linter->count`."
   [linter->count]
   (for [[linter n] linter->count
         i          (range n)]
     {:file "f.clj", :line (inc i), :linters [linter], :justified? true}))
 
 (defn- report-lines
-  "[[kondo-ratchet/check-report]] over `ratchets`, filled out the way [[kondo-ratchet/read-ratchets]]
-  fills a partial file in, so a test map behaves like a real read."
+  "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
+  [[kondo-ratchet/read-ratchets]] adds to a partial file."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
@@ -31,7 +31,7 @@
 
 (deftest ^:parallel over-budget-test
   (let [ratchets {:ignore-counts {:a 1}}]
-    (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and defend it in the PR:"
+    (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:"
             "  :a: 1 recorded, 3 actual"
             "    f.clj:1"
             "    f.clj:2"
@@ -55,7 +55,7 @@
                      {:file "g.clj", :line 12, :linters [:a :b],          :justified? false}
                      {:file "g.clj", :line 20, :linters [:a],             :justified? true}
                      {:file "h.clj", :line 3,  :linters [:grandfathered], :justified? false}]]
-    (is (= ["unjustified ignores -- add a `;;` comment above the form (or trailing on its line) saying why the suppression is warranted:"
+    (is (= ["ignores without required comments -- add a `;;` comment above the form or at the end of the same line, explaining why the suppression is necessary:"
             "  f.clj:7 [:a]"
             "  g.clj:12 [:a :b]"]
            (report-lines ratchets occurrences (kondo-ratchet/render ratchets)))
@@ -63,7 +63,7 @@
 
 (deftest ^:parallel config-over-budget-test
   (let [ratchets {:ignore-counts {}, :config-counts {:a 1, :b 2}}]
-    (is (= ["config suppressions over budget -- remove the entry from .clj-kondo/config.edn, or raise the budget by hand and defend it in the PR:"
+    (is (= ["config suppressions over budget -- remove the entry from .clj-kondo/config.edn, or raise the budget manually and explain the increase in the PR:"
             "  :a: 1 recorded, 2 actual"
             "  :new: 0 recorded, 1 actual"]
            (report-lines ratchets [] {:a 2, :b 1, :new 1} (kondo-ratchet/render ratchets)))
@@ -99,7 +99,7 @@
            (check-with! ratchets (occurrences {:free 1, :over 1})))
         "the warning comes first, sorted, and does not fail the check")
     (is (= {:lines   ["WARNING: :unlimited policies with no ignores left: :a-empty, :z-empty -- delete an entry by hand once its linter no longer needs one"
-                      "over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and defend it in the PR:"
+                      "over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:"
                       "  :over: 1 recorded, 2 actual"
                       "    f.clj:1"
                       "    f.clj:2"]
@@ -127,7 +127,7 @@
 (deftest ^:parallel combined-test
   (testing "over-budget and formatting problems are reported together"
     (let [ratchets {:ignore-counts {:over 1, :stale 2}}]
-      (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and defend it in the PR:"
+      (is (= ["over budget -- remove an ignore, or seed the budget with `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:"
               "  :over: 1 recorded, 2 actual"
               "    f.clj:1"
               "    f.clj:2"

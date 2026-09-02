@@ -296,15 +296,15 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Check the kondo suppression budgets in .clj-kondo/ratchets.edn (babashka only, no JVM)."
-   :examples [["./bin/mage kondo-ratchets" "Exit 1 on a suppression over budget, an unjustified ignore, or a file that is missing or not normalized"]]
+  {:doc "Validate .clj-kondo/ratchets.edn and the source tree's kondo suppressions (Babashka only; no JVM)."
+   :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check))}
 
   kondo-ratchets-shrink
-  {:doc "Lower the budgets in .clj-kondo/ratchets.edn to match the source tree. The only thing that writes the file."
-   :examples [["./bin/mage kondo-ratchets-shrink" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
-              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Also set :some-linter's budget to its actual count, for landing a new linter"]]
+  {:doc "Lower the budgets in .clj-kondo/ratchets.edn to match the source tree. This is the only Mage task that writes the file."
+   :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
+              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
@@ -416,13 +416,13 @@
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
   -kondo-ratchets-merge
-  {:doc "Three-way merge conflicting .clj-kondo/ratchets.edn files. Driven by bin/merge-kondo-ratchets."
+  {:doc "Internal three-way merge for conflicting .clj-kondo/ratchets.edn files. Called by bin/merge-kondo-ratchets."
    :examples [["./bin/mage -kondo-ratchets-merge BASE OURS THEIRS OUTPUT"
                "Merge three ratchet-file stages into OUTPUT"]]
    :arg-schema [:tuple
-                [:string {:name "base" :description "Merge base's ratchets file"}]
-                [:string {:name "ours" :description "Git stage 2: the branch being merged or rebased onto"}]
-                [:string {:name "theirs" :description "Git stage 3: the commits being applied to it"}]
+                [:string {:name "base" :description "Ratchets file from the merge base"}]
+                [:string {:name "ours" :description "Git stage 2: ratchets file from the branch receiving the changes"}]
+                [:string {:name "theirs" :description "Git stage 3: ratchets file from the commits being applied"}]
                 [:string {:name "output" :description "Path to write the merged ratchets file"}]]
    :requires [[dev.kondo-ratchet]]
    :task (task!

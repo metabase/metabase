@@ -12,7 +12,7 @@
     metabase.core.modules-test])
 
 (def ^:private ratchet-test-namespaces
-  ;; Unit tests for the ratchet tooling. `./bin/mage kondo-ratchets` checks the real tree.
+  ;; These test the tooling itself. `./bin/mage kondo-ratchets` checks the source tree.
   '[metabase.core.kondo-ratchet-test
     metabase.core.kondo-ratchet-check-test])
 

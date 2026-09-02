@@ -81,7 +81,7 @@ jobs:
         - name: Run migration checks
           if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
           run: ./bin/mage project-tests migrations
-        # Babashka, no JVM, so it runs alongside the backend checks rather than only when they do not.
+        # This Babashka check does not start a JVM, so run it alongside the backend checks.
         - name: Run ratchet checks
           if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
           run: ./bin/mage kondo-ratchets

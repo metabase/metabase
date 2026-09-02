@@ -1,12 +1,12 @@
 ;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts),
 ;; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude
 ;; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
-;; A count above a numeric budget fails the check; a budget above its count does not.
+;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
-;; `./bin/mage kondo-ratchets-shrink` lowers budgets and drops stale exemptions, and nothing else does:
-;; on master the shrink workflow runs it, and a branch is free to leave the numbers high. Raising a
-;; budget, adding one (`--seed` for inline, by hand for config), or widening the exemptions is a hand
-;; edit to defend in your PR.
+;; `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions. The workflow runs
+;; it on master, so feature branches do not need to record reductions. Raising or adding a budget
+;; (`--seed` for inline ignores, a manual edit for config) or widening the exemptions must be explained
+;; in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts  {:aliased-namespace-symbol                                            3
                   :case-symbol-test                                                    1

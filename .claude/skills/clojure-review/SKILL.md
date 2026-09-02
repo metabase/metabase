@@ -111,12 +111,12 @@ liability it usually is.
 ### Miscellaneous
 
 - [ ] Example data is bird-themed when possible
-- [ ] Kondo linter suppressions use proper format (not `#_:clj-kondo/ignore` keyword form), with
-      `:clj-kondo/ignore` as the map's first key
-- [ ] New suppressions are a last resort with the underlying fix ruled out, carry a `;;` comment saying
-      why, and any budget increase is defended in the PR
-- [ ] No *lowered* budgets in `.clj-kondo/ratchets.edn` — removing ignores needs no ratchet diff; master's
-      shrink workflow records the reduction
+- [ ] Kondo suppressions use a reader-discard map, not `#_:clj-kondo/ignore`, with
+      `:clj-kondo/ignore` as the first key
+- [ ] Each new suppression is approved and has a `;;` comment explaining why the warning cannot be fixed
+- [ ] Any ratchet budget increase is explained in the PR
+- [ ] PRs that remove ignores leave ratchet budgets unchanged; the shrink workflow records reductions on
+      `master`
 
 ## Pattern matching table
 

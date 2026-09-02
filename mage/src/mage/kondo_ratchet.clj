@@ -416,7 +416,8 @@
                                               (count covered)
                                               (str/join ", " (sort (distinct (map :type covered))))
                                               keep-marker)))
-                           (println "Now run `./bin/mage kondo-ratchets-shrink` to update the budgets, and `./bin/mage kondo` for the final word.")
+                           (println (str "Now run `./bin/mage kondo-ratchets` to check the suppressions, "
+                                         "then `./bin/mage kondo` to run the final lint."))
                            (when (or (seq exposed) (seq mismatched))
                              (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
                                              {:exit-code 1}))))
@@ -488,10 +489,9 @@
                            (count (distinct (map (juxt :filename :row) findings)))
                            (count by-file)
                            linter))
-          ;; Inserted ignores carry no justification comment of their own, so the justification ratchet
-          ;; fails unless the linter is grandfathered -- but an insert lands under whatever comment was
-          ;; already above the flagged form, which justifies it. Advising an exemption none of the sites
-          ;; need would just be dropped again by the next shrink, so ask the scanner first.
+          ;; An existing comment above the flagged form may justify the inserted ignore. Suggest an
+          ;; exemption only when the scanner still finds uncommented ignores; otherwise the next shrink
+          ;; would remove that exemption as stale.
           (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
             (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
                                                               (kondo-ratchet/scan roots))))

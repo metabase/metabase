@@ -88,46 +88,50 @@ Run the repository-level checks with:
 
 `.clj-kondo/ratchets.edn` records, per linter, how many inline `:clj-kondo/ignore` forms the backend source
 tree may contain, and how many config-level suppressions (`:off` switches and `:exclude` entries in
-`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either an exact integer budget or `:unlimited`,
-which has no count ceiling. This count policy is independent of `:comment-exempt`, described below.
+`.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either a non-negative integer ceiling or
+`:unlimited`, which has no ceiling. This count policy is independent of `:comment-exempt`, described below.
 
-Two commands, and they do not overlap:
+Both ratchet commands run in Babashka without starting a JVM:
 
 ```bash
-./bin/mage kondo-ratchets                       # what CI runs: read-only, babashka, no JVM
-./bin/mage kondo-ratchets-shrink [--seed :lint] # the only thing that writes the file
+./bin/mage kondo-ratchets                       # validate the file without changing it
+./bin/mage kondo-ratchets-shrink [--seed :lint] # lower budgets and remove stale exemptions
 ```
 
-A count over its budget fails the check; a budget above its count does not, anywhere. Reductions and stale
-exemptions are master's business, recorded by the shrink workflow. Prefer fixing the underlying warning
-over adding an ignore. Every policy key must name a linter: one of the pinned clj-kondo version's
-built-ins, a linter configured under `.clj-kondo/`, or an external diagnostic such as
-`:clojure-lsp/unused-public-var`. The check and the shrinker refuse unknown names rather than dropping them.
+`kondo-ratchets` is the command CI runs. It rejects suppression counts above their budgets, ignores without
+required justification comments, unknown linter names, and a missing or incorrectly formatted ratchets
+file. It allows budgets above the current counts.
 
-The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
-with `{:disabled true}`. Both commands recognize this explicit opt-out, while a missing file still causes
-an error on `master`.
+`kondo-ratchets-shrink` lowers budgets to the current counts, removes stale comment exemptions, and
+normalizes the file. It is the only Mage command that writes the file. With `--seed`, it can also add or
+raise an inline-ignore budget.
 
-Budget too high (you removed ignores): nothing to do on a feature branch. Once the change lands on
-`master`, the shrink workflow lowers the budgets in the `Tighten ratchets` automation PR, which approves
-and merges itself once the check passes. You don't need to commit lowered budgets yourself, and it is
-better not to: every PR carrying a `.clj-kondo/ratchets.edn` hunk conflicts with every other one. A bounded
-budget that reaches zero is dropped; an `:unlimited` entry stays even with no ignores left, and both
-commands print one warning naming such entries, to delete by hand on `master`.
+Every policy key must name a linter: one of the pinned clj-kondo version's built-ins, a linter configured
+under `.clj-kondo/`, or an external diagnostic such as `:clojure-lsp/unused-public-var`. Both commands
+reject unknown names rather than dropping them.
 
-Budget too low (you added an ignore): the shrinker only raises an `:ignore-counts` budget when told to. If
-the ignore is genuinely required, run `./bin/mage kondo-ratchets-shrink --seed :the-linter` and defend the
-increase in the PR. Set a linter's `:ignore-counts` value to `:unlimited` only when increasing its ignore
-count should not require a budget change.
+Release branches disable ratchet enforcement by replacing `.clj-kondo/ratchets.edn` with
+`{:disabled true}`. Both commands recognize this explicit opt-out; a missing file remains an error.
 
-The ignore must be the first key in its map; noncanonical forms fail the check instead of being guessed
-at. Ignores of linters outside the file's `:comment-exempt` set need an explanatory `;;` comment directly
-above (or trailing on the same line) — the check reports the ones that do not. The set only shrinks: once a
-linter's last uncommented ignore gains a comment, the exemption is stale and the shrink workflow drops it,
-so that is not yours to chase either.
+When you remove ignores, leave the higher budget unchanged on the feature branch. After the change lands,
+the shrink workflow opens a `Tighten ratchets` PR to record the reduction. Avoiding ratchet-file changes in
+feature PRs also prevents unrelated PRs from conflicting over the file. The shrinker removes a bounded
+budget when its count reaches zero. It preserves an unused `:unlimited` entry and prints a warning so that
+the entry can be reviewed and removed manually on `master`.
+
+When you add a necessary ignore, run `./bin/mage kondo-ratchets-shrink --seed :the-linter` and explain the
+budget increase in the PR. Use `:unlimited` only when future ignores for that linter should not require
+budget changes.
+
+Fix the underlying warning when possible. Adding a suppression is a last resort and requires approval.
+In every suppression map, `:clj-kondo/ignore` must be the first key. Unless every suppressed linter is in
+`:comment-exempt`, add a `;;` comment directly above the suppression or at the end of the same line to
+explain why it is necessary. The check reports missing comments. When a linter's last uncommented ignore
+gains a comment, the shrink workflow removes its stale exemption after the change lands.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
-flags, then `./bin/mage kondo-ratchets-shrink --seed :the-linter` records the budget — no big-bang cleanup.
+flags, then `./bin/mage kondo-ratchets-shrink --seed :the-linter` records the budget. This lets the linter
+land without fixing all its existing findings at once.
 
 To burn debt down, `./bin/mage kondo-redundant-ignores` lists ignores that are no longer needed (slow:
 full kondo run). Kondo's redundancy report can't see hook-linter warnings, so `--fix` re-lints after

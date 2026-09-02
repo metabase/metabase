@@ -125,9 +125,10 @@ breakage keeps happening, *that* is the signal a comment was warranted.
   or `:model/X` reference, or a new module), run `./bin/mage fix-modules-config` to regenerate
   `.clj-kondo/config/modules/config.edn`, then run `./bin/mage project-tests modules`. The fixer is a no-op when
   nothing drifted; see "Module Boundaries" in the project `CLAUDE.md`.
-- Suppressing a kondo warning is a last resort and needs approval — fix the underlying problem instead.
-  Never commit *lowered* budgets in `.clj-kondo/ratchets.edn` either — removing ignores needs no ratchet
-  diff from you; master's shrink workflow records the reduction.
+- Fix kondo warnings instead of suppressing them. Add a suppression only as a last resort, with approval
+  and a `;;` comment explaining why it is necessary.
+- Do not lower budgets in `.clj-kondo/ratchets.edn` after removing ignores. The shrink workflow records
+  reductions on `master`.
 - If `.clj-kondo/ratchets.edn` conflicts during a merge, rebase, or restack, run
   `./bin/merge-kondo-ratchets`. It preserves one-sided changes, chooses the policy that allows fewer
   suppressions when both sides change the same entry, and stops when the conflict needs a human decision.

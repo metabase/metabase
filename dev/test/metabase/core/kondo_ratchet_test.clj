@@ -1,7 +1,6 @@
 (ns metabase.core.kondo-ratchet-test
-  "Unit tests for [[dev.kondo-ratchet]]: the scanner, the policy reader, the renderer, the merge, and the
-  fixer. `./bin/mage kondo-ratchets` checks the real source tree; [[metabase.core.kondo-ratchet-check-test]]
-  covers that.
+  "Unit tests for [[dev.kondo-ratchet]]: scanning, policy reading, rendering, merging, and shrinking.
+  [[metabase.core.kondo-ratchet-check-test]] tests the command that checks the source tree.
   The ignore forms in this file are string fixtures — the scanner masks string literals, so they don't
   count as suppressions."
   (:require
@@ -18,8 +17,8 @@
 ;;;; Budget semantics
 ;;;; ---------------------------------------------------------------------------
 
-;; Reductions are the shrink workflow's business, so nothing on a branch fails over one: a removed ignore
-;; or a justified last exemption leaves the budgets high until master records the lower numbers.
+;; Feature branches may leave budgets or exemptions stale after removing or justifying an ignore. The
+;; shrink workflow records those reductions after the branch merges.
 (deftest ^:parallel reductions-are-tolerated-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
                      {:file "g.clj", :line 1, :linters [:b], :justified? true}]]
@@ -298,7 +297,7 @@
         occurrences [{:file "f.clj", :line 1, :linters [:bounded :free]}]]
     (is (= {}
            (kondo-ratchet/over-budget policies occurrences))
-        "an unlimited policy has no ceiling, and a stale one does not fail either")))
+        "unused numeric budgets and unlimited policies do not fail the check")))
 
 (deftest ^:synchronized fix-when-disabled-test
   (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
