@@ -12,9 +12,14 @@
   restrict the user there — absence is itself a lens, not a wildcard; see
   [[data-access-compatible?]]:
 
-      {:sandbox       [[table-id <digest>] ...]   ; per touched table; absent => not sandboxed there
-       :impersonation [[db-id    <digest>]]        ; absent => not impersonated on that db
-       :routing       [[db-id    <digest>]]}       ; absent => sees the router db (admins / __METABASE_ROUTER__)
+      {:sandbox       {table-id <digest>}   ; per touched table; absent key => not sandboxed there
+       :impersonation {db-id    <digest>}   ; absent => not impersonated on that db
+       :routing       {db-id    <digest>}}  ; absent => sees the router db (admins / __METABASE_ROUTER__)
+
+  Each dimension is keyed by its target id, so a caller can ask about one target directly —
+  `metabase.metabot.metadata-perms` does exactly that with `(contains? (:sandbox token) table-id)`.
+  JSON has no integer map keys, but that is a storage concern and is handled as one: the transform
+  encodes and decodes against [[token]], restoring the ids on the way out.
 
   Each per-dimension contributor is a `defenterprise` owned by its EE module (OSS => nil, so OSS
   tokens are empty and everyone is compatible). They use `:feature :none` so a sandboxed /
@@ -34,9 +39,12 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,17 +98,17 @@
   Each contributor's raw value is [[digest]]ed here, so a raw sandbox attribute / role never reaches
   a caller and never lands in `stored_result.data_access_token`."
   [{:keys [database-id table-ids]}]
-  (let [sandbox (vec (sort-by first
-                              (keep (fn [table-id]
-                                      (when-let [t (sandbox-token-for-table table-id)]
-                                        [table-id (digest t)]))
-                                    table-ids)))
+  (let [sandbox (into {}
+                      (keep (fn [table-id]
+                              (when-let [t (sandbox-token-for-table table-id)]
+                                [table-id (digest t)])))
+                      table-ids)
         imp     (when database-id (impersonation-token-for-db database-id))
         routing (when database-id (routing-token-for-db database-id))]
     (cond-> {}
       (seq sandbox) (assoc :sandbox sandbox)
-      imp           (assoc :impersonation [[database-id (digest imp)]])
-      routing       (assoc :routing [[database-id (digest routing)]]))))
+      imp           (assoc :impersonation {database-id (digest imp)})
+      routing       (assoc :routing {database-id (digest routing)}))))
 
 (defn data-access-compatible?
   "True when a viewer holding `viewer-token` may be served a blob computed under `creator-token`:
@@ -119,11 +127,23 @@
   [creator-token viewer-token]
   (= creator-token viewer-token))
 
+(mr/def ::token
+  "A persisted [[data-access-token]]. Declared so the transform can put the integer target ids back
+  after a JSON round trip: [[data-access-compatible?]] is bare `=`, and `{:10 …}` does not equal
+  `{10 …}`."
+  [:map
+   [:sandbox       {:optional true} [:map-of :int :string]]
+   [:impersonation {:optional true} [:map-of :int :string]]
+   [:routing       {:optional true} [:map-of :int :string]]])
+
+(def ^:private json-transformer
+  (mtx/json-transformer))
+
 (defn- token-in
   "Serialize a token as JSON. `nil` is stored as SQL NULL rather than the string \"null\"."
   [v]
   (when (some? v)
-    (json/encode v)))
+    (json/encode (mc/encode ::token v json-transformer))))
 
 (defn- token-out
   "Read a token back. An unreadable blob decodes to `nil`, which every gate built on
@@ -133,7 +153,7 @@
   [s]
   (when (string? s)
     (try
-      (json/decode+kw s)
+      (mc/decode ::token (json/decode+kw s) json-transformer)
       (catch Throwable e
         (log/error e "Failed to parse a stored data_access_token; the read gate will deny non-admins")
         nil))))

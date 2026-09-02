@@ -5,12 +5,12 @@
    [metabase.permissions.data-access-token :as data-access-token]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
-(def ^:private sandbox-ca {:sandbox [[10 "d-ca"]]})
-(def ^:private sandbox-ny {:sandbox [[10 "d-ny"]]})
-(def ^:private role-ro    {:impersonation [[5 "d-ro"]]})
-(def ^:private role-rw    {:impersonation [[5 "d-rw"]]})
-(def ^:private dest-a     {:routing [[7 "d-100"]]})
-(def ^:private dest-b     {:routing [[7 "d-200"]]})
+(def ^:private sandbox-ca {:sandbox {10 "d-ca"}})
+(def ^:private sandbox-ny {:sandbox {10 "d-ny"}})
+(def ^:private role-ro    {:impersonation {5 "d-ro"}})
+(def ^:private role-rw    {:impersonation {5 "d-rw"}})
+(def ^:private dest-a     {:routing {7 "d-100"}})
+(def ^:private dest-b     {:routing {7 "d-200"}})
 (def ^:private unrestricted {})
 
 (deftest data-access-compatible?-sandbox-test
@@ -66,13 +66,13 @@
 
 (deftest data-access-compatible?-multi-table-sandbox-test
   (let [compatible? data-access-token/data-access-compatible?
-        creator {:sandbox [[10 "d-ca"] [20 "d-west"]]}]
+        creator {:sandbox {10 "d-ca" 20 "d-west"}}]
     (testing "viewer must match on EVERY touched table"
       (is (true?  (compatible? creator creator)))
       ;; matches table 10, unsandboxed on 20 -> blocked (no relaxation for absence)
-      (is (false? (compatible? creator {:sandbox [[10 "d-ca"]]})))
+      (is (false? (compatible? creator {:sandbox {10 "d-ca"}})))
       ;; matches table 10 but a different sandbox on table 20 -> blocked
-      (is (false? (compatible? creator {:sandbox [[10 "d-ca"] [20 "d-east"]]}))))))
+      (is (false? (compatible? creator {:sandbox {10 "d-ca" 20 "d-east"}}))))))
 
 (deftest data-access-compatible?-oss-test
   (testing "two empty (OSS / unrestricted) tokens are always compatible -> no gating"
@@ -112,11 +112,11 @@
            can still reason per table-id and per db-id"
     (let [token (token-for ca-lens)]
       (is (= #{:sandbox :impersonation :routing} (set (keys token))))
-      (is (= [10] (mapv first (:sandbox token))))
+      (is (= #{10} (set (keys (:sandbox token)))))
       (testing "a sandbox entry is a bare digest, same shape as the other dimensions"
-        (is (string? (second (first (:sandbox token))))))
-      (is (= [5] (mapv first (:impersonation token))))
-      (is (= [5] (mapv first (:routing token)))))))
+        (is (string? (get-in token [:sandbox 10]))))
+      (is (= #{5} (set (keys (:impersonation token)))))
+      (is (= #{5} (set (keys (:routing token))))))))
 
 (deftest data-access-token-digest-is-stable-and-discriminating-test
   (testing "a digest is deterministic — the creator's stored token and a later viewer's freshly
@@ -154,11 +154,11 @@
 (defn- transform-out [s]     ((:out data-access-token/data-access-token-transform) s))
 
 (deftest data-access-token-is-json-round-trippable-test
-  (testing "the token is persisted as JSON and read back identically. Nothing in it needs translating
-           on the way out: each dimension is a vector of `[target-id digest]` pairs, so the ids stay
-           integers through the round trip — which matters, because the gate is bare `=`"
+  (testing "the token is persisted as JSON and read back identically. JSON has no integer map keys,
+           so the transform decodes against the token schema to restore them — which matters both
+           because the gate is bare `=` and because callers index the dimensions by target id"
     (doseq [token [(token-for ca-lens) sandbox-ca role-ro dest-a unrestricted
-                   {:sandbox [[10 "d-ca"] [20 "d-west"]]}]]
+                   {:sandbox {10 "d-ca" 20 "d-west"}}]]
       (let [stored (transform-in token)]
         (is (string? stored))
         (is (= token (transform-out stored)) (pr-str token))))))
@@ -170,14 +170,16 @@
     (is (nil? (transform-out nil)))
     (is (= {} (transform-out (transform-in {}))))))
 
-(deftest data-access-token-sandbox-order-is-stable-test
-  (testing "the sandbox pairs are sorted by table-id. The token is built from an unordered set of
-           table-ids in one process and compared against one built in another, and the gate is bare
-           `=` — an order that depended on set iteration would deny at random"
+(deftest data-access-token-dimensions-are-keyed-by-target-test
+  (testing "each dimension is keyed by its target id, so a caller can ask about one target directly.
+           `metabase.metabot.metadata-perms/row-restricted-by-db` does exactly this to decide whether
+           a table's rows are narrowed, and a shape it cannot index would silently report every table
+           unrestricted"
     (let [token (do-with-lens {:sandbox [1 "2026-01-01T00:00Z" {"State" "CA"}]}
                               #(data-access-token/data-access-token
                                 {:database-id 5 :table-ids #{30 10 20}}))]
-      (is (= [10 20 30] (mapv first (:sandbox token)))))))
+      (is (= #{10 20 30} (set (keys (:sandbox token)))))
+      (is (contains? (:sandbox token) 20)))))
 
 (deftest data-access-token-unparseable-reads-as-nil-test
   (testing "an unparseable blob fails closed"
