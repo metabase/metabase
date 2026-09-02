@@ -10,6 +10,7 @@
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -300,51 +301,65 @@
 ;;; ----------------------------------------------- Origin validation ----------------------------------------------
 
 (deftest origin-validation-test
-  (testing (str "GHY-4337: DNS-rebinding protection (an MCP spec requirement) — a page on some other origin can "
-                "reach a locally-bound server, so an `Origin` that is neither the request's own host nor an "
-                "approved MCP app origin is refused")
-    (let [response (mcp-request (jsonrpc-request "initialize")
-                                {"host" "mbtest.poom.dev" "origin" "http://127.0.0.1:6274"})]
-      (is (= 403 (:status response)))
-      (is (= "Origin not allowed" (get-in response [:body :error :message])))
-      (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
-          "a refused origin must not be handed a session")))
-  (testing "the check runs ahead of authentication, so a cross-origin request is refused rather than challenged"
-    (let [response (client/client-full-response :post 403 endpoint
-                                                {:request-options {:headers {"host"   "mbtest.poom.dev"
-                                                                             "origin" "http://evil.example.com"}}}
-                                                (jsonrpc-request "initialize"))]
-      (is (= 403 (:status response)))
-      (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
-  (testing (str "GHY-4337: an origin differs from a host when it differs in ANY of scheme, domain, or port — so "
-                "matching on the domain alone lets every other app on the same hostname through. That is the whole "
-                "local-MCP threat model: a page served by some other tool on 127.0.0.1 driving this server with the "
-                "user's cookies. `localhost` is one domain, not one origin.")
-    (let [response (mcp-request (jsonrpc-request "initialize")
-                                {"host" "localhost:3000" "origin" "http://localhost:9999"})]
-      (is (= 403 (:status response)))
-      (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
-  (testing "the same host and the same explicit port is still same-origin — the port check must not reject the
-            requests it is supposed to serve"
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
-  (testing (str "when only one side carries an explicit port the check falls back to the domain. A reverse proxy "
-                "can rewrite `Host` to add or drop a port that the browser's `Origin` does not carry, and a 403 on "
-                "a legitimate deployment is worse than the residual: an attacker exploiting this has to occupy the "
-                "scheme's DEFAULT port locally, which non-default-port dev servers by definition do not.")
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "localhost:3000" "origin" "http://localhost"}))))
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "localhost" "origin" "http://localhost:3000"})))))
-  (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
-  (testing "same-origin is allowed, including bracketed IPv6 and mixed case"
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "[::1]:3000" "origin" "http://[::1]:3000"}))))
-    (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                     {"host" "Example.com" "origin" "https://example.COM"})))))
-  (testing "an explicitly configured MCP app origin is allowed cross-host, case-insensitively"
-    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
+  ;; The test instance's own origin. Bound explicitly rather than assumed so these cases state what they
+  ;; are comparing against, and do not silently change meaning if the harness's site-url does.
+  (mt/with-temporary-setting-values [site-url "http://127.0.0.1:6274"]
+    (testing (str "GHY-4337: DNS rebinding is the attack this guard names, and comparing two client-supplied "
+                  "headers cannot catch it. A rebound `evil.example` resolves to 127.0.0.1 and the browser sends "
+                  "BOTH `Origin: http://evil.example` and `Host: evil.example` — they match each other, so an "
+                  "Origin/Host check admits the request. `site-url` is the one origin on a request the client "
+                  "cannot influence, so that is what an Origin is checked against.")
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host" "evil.example" "origin" "http://evil.example"})]
+        (is (= 403 (:status response)))
+        (is (= "Origin not allowed" (get-in response [:body :error :message])))
+        (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
+            "a refused origin must not be handed a session")))
+    (testing "the instance's own origin is served, whatever Host the request carries"
+      (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                       {"host" "anything.example" "origin" "http://127.0.0.1:6274"})))))
+    (testing "a page on another port of the same host is a different origin — the local-MCP threat model, where
+              some other tool on 127.0.0.1 drives this server with the user's cookies"
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host" "127.0.0.1:6274" "origin" "http://127.0.0.1:9999"})]
+        (is (= 403 (:status response)))
+        (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
+    (testing "and so is the same host on another scheme, which an Origin/Host check could never see: `Host`
+              carries no scheme at all"
+      (is (= 403 (:status (mcp-request (jsonrpc-request "initialize")
+                                       {"host" "127.0.0.1:6274" "origin" "https://127.0.0.1:6274"})))))
+    (testing "the check runs ahead of authentication, so a cross-origin request is refused rather than challenged"
+      (let [response (client/client-full-response :post 403 endpoint
+                                                  {:request-options {:headers {"host"   "127.0.0.1:6274"
+                                                                               "origin" "http://evil.example.com"}}}
+                                                  (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
+    (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
+      (is (= 200 (:status (mcp-request (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
+    (testing "matching is case-insensitive, and a default port compares equal to the same port written out"
+      (mt/with-temporary-setting-values [site-url "https://Example.com"]
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "example.com" "origin" "https://example.COM"}))))
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "example.com" "origin" "https://example.com:443"})))))))
+  (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
+                "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
+                "behaviour beats 403ing its own browser clients.")
+    (with-redefs [system/site-url (constantly nil)]
+      (testing "same host and port is served"
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
+      (testing "a different port on that host is still refused"
+        (is (= 403 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "localhost:3000" "origin" "http://localhost:9999"})))))
+      (testing "bracketed IPv6 still parses on both sides"
+        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
+                                         {"host" "[::1]:3000" "origin" "http://[::1]:3000"})))))))
+  (testing "an explicitly configured MCP app origin is allowed cross-host, case-insensitively — the allowlist is
+            the other way in, and is unaffected by which origin the instance itself has"
+    (mt/with-temporary-setting-values [site-url                                 "http://127.0.0.1:6274"
+                                       mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
       (let [response (mcp-request (jsonrpc-request "initialize")
                                   {"host" "mbtest.poom.dev" "origin" "HTTPS://example.com"})]
         (is (= 200 (:status response)))

@@ -205,8 +205,10 @@
     is aimed at do not use.
   - Scheme is not compared at all, because `Host` does not carry one. The request's own `:scheme` is not a
     substitute — behind a TLS-terminating proxy it reads `:http` while the browser's `Origin` says `https` (cf.
-    #75110). Closing that would mean matching `Origin` against `site-url`'s origin rather than against `Host`,
-    which is a stronger check but a larger behavioral change than this guard warrants."
+    #75110).
+
+  This is the FALLBACK comparison, used only when `site-url` gives us no instance origin to check against.
+  See [[validate-origin]]: two client-supplied headers cannot establish who the request was really for."
   [origin host]
   (let [[origin-domain origin-port] (normalize-authority origin)
         [host-domain host-port]     (normalize-authority host)]
@@ -229,16 +231,45 @@
                         (mw.security/approved-port? (:port origin-url) (:port approved-origin))))
                  (mw.security/parse-approved-origins (u/lower-case-en approved-origins))))))))
 
+(def ^:private default-ports
+  "Default port per scheme, so `https://h` and `https://h:443` are one origin, as the browser treats them."
+  {"http" "80" "https" "443"})
+
+(defn- canonical-origin
+  "`[protocol domain port]` for `origin-map` (the [[mw.security/try-parse-url]] shape), lowercased, with an
+  absent port replaced by its scheme's default. nil without a scheme: an `Origin` always carries one, and
+  comparing without it would let `http://` satisfy an `https://` instance."
+  [{:keys [protocol domain port]}]
+  (when (and protocol domain)
+    (let [protocol (u/lower-case-en protocol)]
+      [protocol (u/lower-case-en domain) (or port (get default-ports protocol))])))
+
+(defn- same-origin-as-instance?
+  "Is `origin` this instance's own origin, as `site-url` declares it?"
+  [origin instance-origin]
+  (= (canonical-origin (mw.security/try-parse-url (u/lower-case-en (str origin))))
+     (canonical-origin instance-origin)))
+
 (defn- validate-origin
   "Validate the Origin header to prevent DNS rebinding attacks (MCP spec requirement).
-   Returns a 403 response if Origin is present and is neither same-host nor an explicitly configured
-   MCP app origin. Non-browser clients that omit the Origin header are allowed through."
+   Returns a 403 response if Origin is present and is neither this instance's own origin nor an explicitly
+   configured MCP app origin. Non-browser clients that omit the Origin header are allowed through.
+
+   The instance's origin comes from `site-url`, NOT from the request. Comparing `Origin` against `Host` — which
+   is what this did, and what v1 still does — cannot detect the attack it names: under DNS rebinding both
+   headers carry the attacker's own name (`evil.example`), so they match each other and the request is admitted.
+   `site-url` is the one origin on a request the client cannot influence.
+
+   When `site-url` is unset or unparsable there is no instance origin to check against, and the guard falls back
+   to the `Origin`/`Host` comparison. That is weaker, but a misconfigured instance degrading to the previous
+   behaviour beats 403ing its own browser clients."
   [request]
   (when-let [origin (get-in request [:headers "origin"])]
-    (let [host (get-in request [:headers "host"])]
-      (when-not (or (same-origin-host? origin host)
-                    (approved-mcp-origin? origin))
-        (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
+    (when-not (or (approved-mcp-origin? origin)
+                  (if-let [instance-origin (mw.security/site-origin)]
+                    (same-origin-as-instance? origin instance-origin)
+                    (same-origin-host? origin (get-in request [:headers "host"]))))
+      (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed")))))
 
 (defn- require-valid-session
   "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
