@@ -356,12 +356,16 @@
                 (is (= [{:entityId inactive-id :model "user" :label nil :href "/"}]
                        (written-smart-link-attrs created!
                                                  (format "{%% entity id=\"%d\" model=\"user\" %%}" inactive-id))))
-                (mt/with-temporary-setting-values [user-visibility :none]
-                  (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
-                          {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
-                         (written-smart-link-attrs created!
-                                                   (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
-                                                           (mt/user->id :crowberto) (mt/user->id :rasta)))))))))
+                ;; `user-visibility` is gated on :email-restrict-recipients — in OSS the setting reads
+                ;; :all no matter what is stored, so without this the narrowing never happens and the
+                ;; assertion below pins the default instead of the rule.
+                (mt/with-premium-features #{:email-restrict-recipients}
+                  (mt/with-temporary-setting-values [user-visibility :none]
+                    (is (= [{:entityId (mt/user->id :crowberto) :model "user" :label nil :href "/"}
+                            {:entityId (mt/user->id :rasta) :model "user" :label "Rasta Toucan" :href "/"}]
+                           (written-smart-link-attrs created!
+                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{:entityId hidden-id :model "dashboard" :label "CONFIDENTIAL Layoffs"
