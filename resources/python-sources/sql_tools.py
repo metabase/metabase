@@ -1766,8 +1766,6 @@ def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
     parser consumes it (the `expr?::type` try-cast operator). So a JDBC parameter followed by a
     cast (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in every
     other dialect. To work around this we rewrite `?::` to `? ::` outside Databricks (#81373).
-    Databricks is left alone so its native try-cast operator keeps parsing; a bare `?::type`
-    placeholder cast there fails either way, since the operator needs a left operand.
     """
     if dialect == "databricks" or "?::" not in sql:
         return sql
