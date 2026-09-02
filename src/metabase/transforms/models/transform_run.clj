@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-run
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
@@ -29,6 +30,16 @@
 (t2/deftransforms :model/TransformRun
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
+
+;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
+(defmethod mi/can-read? :model/TransformRun
+  ([instance]
+   (or api/*is-superuser?*
+       (boolean (when-let [transform-id (:transform_id instance)]
+                  (mi/can-read? :model/Transform transform-id)))))
+  ([_model pk]
+   (when-let [run (t2/select-one :model/TransformRun :id pk)]
+     (mi/can-read? run))))
 
 (mi/define-simple-hydration-method add-transform-runs
   :transform-runs
