@@ -542,6 +542,9 @@
         (let [result (try
                        {:value (thunk)}
                        (catch Throwable e
+                         ;; log here as well as rethrowing: when every caller has walked away there is
+                         ;; nobody left to deref the promise, so this is the only record of the failure
+                         (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))
                          {:error e}))]
           ;; drop the registry entry before delivering, so a caller that wakes up and immediately
           ;; asks again starts a fresh fetch rather than re-attaching to this finished one
