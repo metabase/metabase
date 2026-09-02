@@ -253,7 +253,9 @@
     {:page 1, :items 10} = items 1-10
     {:page 2, :items 10} = items 11-20"
   [:map
-   {:decode/normalize common/normalize-map}
+   {:decode/normalize common/normalize-map
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:page  pos-int?]
    [:items pos-int?]])
 
@@ -347,8 +349,7 @@
    (common/disallowed-keys
     {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
      :source-query    ":source-query is not allowed in MBQL 5 queries."
-     :type            ":type is not allowed in a query stage in any version of MBQL"
-     :lib/options     "A stage should not have :lib/options"})])
+     :type            ":type is not allowed in a query stage in any version of MBQL"})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type

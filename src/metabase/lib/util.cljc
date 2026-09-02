@@ -255,7 +255,8 @@
         (dissoc :source-table :source-query :source-metadata)
         (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
-               :stages stages))))
+               :stages stages)
+        lib.options/ensure-uuid)))
 
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
