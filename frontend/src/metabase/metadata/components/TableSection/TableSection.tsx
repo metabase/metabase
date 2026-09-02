@@ -7,7 +7,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,

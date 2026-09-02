@@ -206,6 +206,9 @@
          (perms/without-is-superuser-sync-on-add-to-admin-group
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))))
 
+;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
+(events/derive! :event/user-credentials-revoked :metabase/event)
+
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
   (let [changes (t2/changes user)
@@ -220,6 +223,8 @@
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
+    (when (false? active?)
+      (events/publish-event! :event/user-credentials-revoked {:user-id id}))
     (-> user
         (merge (normalize-user-fields (t2/changes user))
                (prepare-archival-timestamp active?))
@@ -439,7 +444,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+(defn- wildcard-query [query] (h2x/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"

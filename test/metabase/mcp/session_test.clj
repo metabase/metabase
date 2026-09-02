@@ -1,9 +1,9 @@
 (ns metabase.mcp.session-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
-   [metabase.events.core :as events]
    [metabase.mcp.session :as mcp.session]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.session.core :as session]
@@ -22,7 +22,7 @@
 (defn- derived-hash
   "Derives the embedding session key from an MCP session id, then hashes it."
   [session-id]
-  (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
+  (session/hash-session-key (@#'mcp.session/derive-embedding-session-key session-id)))
 
 (defn- session-correlator
   [session-id]
@@ -71,7 +71,7 @@
                 "it is minted, not silently created and then 404'd on every later request by the read-path length "
                 "guard. A future payload field is the realistic way this happens; here we force it by making the "
                 "capability encoder emit an over-long segment.")
-    (with-redefs [mcp.session/encode-session-payload (constantly (apply str (repeat 300 "x")))]
+    (mt/with-dynamic-fn-redefs [mcp.session/encode-session-payload (constantly (apply str (repeat 300 "x")))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"exceeds the persisted column width"
                             (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))
           "minting must fail loudly at creation rather than defer the failure to the read path"))))
@@ -118,7 +118,7 @@
     ;; If this regresses, the embedding SDK iframe will get 403s from /api when it sends the
     ;; derived key as X-Metabase-Session, because the middleware rejects non-UUID keys up-front.
     (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)
-          key        (mcp.session/derive-embedding-session-key session-id)
+          key        (@#'mcp.session/derive-embedding-session-key session-id)
           parsed     (parse-uuid key)]
       (is (some? parsed)
           "derive-embedding-session-key must return a UUID-formatted string")
@@ -162,28 +162,87 @@
                (scopes-of #{(str ::scope/unrestricted)}))))
       (testing "a credential minted before the claim existed fails closed rather than reading as unrestricted"
         ;; A rolling deploy can hand this node a credential from an older one for the 300s it stays valid.
-        (with-redefs [mcp.session/encode-token-scopes (constantly {})]
+        (mt/with-dynamic-fn-redefs [mcp.session/encode-token-scopes (constantly {})]
           (is (= #{} (scopes-of #{metabot.scope/agent-sql-run}))))))))
 
-(deftest get-or-create-session-key-test
-  (testing "first call creates a core_session and returns the derived embedding key"
+(deftest v1-credential-is-marked-legacy-test
+  (testing "GHY-4318: v1's frozen surface mints through the 2-arity, with no scope claim. The native-SQL guard has
+            to tell such a credential apart from one that merely arrived without the claim — a rolling deploy can
+            produce the latter, and it must fail closed — so the v1 arity stamps an explicit `:legacy` marker
+            rather than relying on the absence of `:scp`.
+
+            TRIPWIRE: retiring v1 means deleting this arity AND the `:legacy` branch in
+            [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]]. Deleting only the arity leaves the
+            skip in place as dead-looking but live code."
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          key        (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (= (mcp.session/derive-embedding-session-key session-id) key))
-      (is (not= session-id key)
-          "Derived key must not equal the MCP session id that travels on the wire")
+          claims     (mcp.session/resolve-ui-credential
+                      (mcp.session/issue-ui-credential session-id user-id))]
+      (is (true? (:legacy claims)))
+      (is (not (contains? claims :scp))
+          "a legacy credential carries no scope claim at all, so `:legacy` is the only thing marking it")
+      (is (= #{} (:token-scopes claims))
+          "and it still decodes to the empty scope set, never to unrestricted")
+      (testing "a v2 credential carries the claim and is never marked legacy"
+        (let [v2-claims (mcp.session/resolve-ui-credential
+                         (mcp.session/issue-ui-credential session-id user-id
+                                                          #{metabot.scope/agent-query-run}))]
+          (is (nil? (:legacy v2-claims)))
+          (is (contains? v2-claims :scp)))))))
+
+(deftest v1-shim-retires-with-v1-test
+  (testing "GHY-4318: the `:legacy` credential shim exists only to keep v1's iframe working while v1 still
+            serves. It is a fail-open branch, so it must not outlive v1 — and a comment saying so does not
+            enforce anything: the retire-v1 branch already carries this arity's own \"delete me with v1\"
+            comment, undeleted.
+
+            So the deletion is keyed on v1's own disappearance rather than on someone remembering. This is
+            inert while v1 ships and fires the day its namespace goes, naming both halves of the change."
+    (if (io/resource "metabase/mcp/api.clj")
+      (is (= 2 (count (:arglists (meta #'mcp.session/issue-ui-credential))))
+          "v1 still ships, so the 2-arity shim is still load-bearing")
+      (is (= 1 (count (:arglists (meta #'mcp.session/issue-ui-credential))))
+          (str "v1 is retired, so its credential shim must go: delete `issue-ui-credential`'s 2-arity, "
+               "`issue-legacy-ui-credential` itself, the `:legacy` branch in "
+               "`metabase.agent-api.query-guards/check-mcp-ui-native-query!`, and the tripwire assertions "
+               "covering them (here, in query-guards-test, and v2-credentials-are-never-legacy-test). Leaving "
+               "the guard branch keeps a fail-open path alive for any credential shaped `{:legacy true}`.")))))
+
+(deftest get-or-create-embedding-session-test
+  (testing "first call materializes the core_session backing this MCP session and returns the row"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id nil)
+          row        (mcp.session/get-or-create-embedding-session! session-id user-id)]
+      (is (some? (:id row)))
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
           "core_session should now exist")
-      (testing "subsequent calls return the same key and don't create duplicates"
-        (is (= key (mcp.session/get-or-create-session-key! session-id user-id)))
+      (testing "subsequent calls collapse to the same row rather than creating duplicates"
+        (is (= (:id row) (:id (mcp.session/get-or-create-embedding-session! session-id user-id))))
         (is (= 1 (t2/count :core_session :key_hashed (derived-hash session-id))))))))
+
+(deftest embedding-session-key-never-escapes-the-namespace-test
+  (testing "GHY-4333: `derive-embedding-session-key` takes only the MCP session id, which is client-supplied and
+            unsigned, so two users presenting the same id derive the SAME plaintext key — and `core_session`
+            lookups resolve a key by `key_hashed` alone, with no user filter and no ordering. Any public fn
+            handing out that plaintext is therefore an account-takeover primitive: a caller who learns another
+            user's session id gets a working session key for whoever else materialized a row under it.
+
+            `get-or-create-session-key!` was exactly such a fn. It had no production caller anywhere (dead since
+            #79312 replaced it with the signed UI credential), so it was deleted rather than guarded. The
+            derivation is private so the plaintext cannot leave this namespace at all; inside it, the value is
+            only ever hashed. This test is what stops that from being quietly undone."
+    (is (:private (meta #'mcp.session/derive-embedding-session-key))
+        (str "derive-embedding-session-key must stay private: its output authenticates as whichever user's "
+             "colliding core_session row the DB happens to return first. A caller needing the row should use "
+             "get-or-create-embedding-session!, which returns the row and never the key."))
+    (is (not (contains? (ns-publics 'metabase.mcp.session) 'get-or-create-session-key!))
+        "get-or-create-session-key! handed out that plaintext and must not come back")))
 
 (deftest delete-test
   (testing "delete! removes the core_session if one was created"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+          _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id user-id)
       (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))))))
@@ -193,7 +252,7 @@
     (let [user-id    (mt/user->id :crowberto)
           other-id   (mt/user->id :rasta)
           session-id (mcp.session/create! user-id nil)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+          _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id other-id)
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
@@ -210,7 +269,7 @@
   (testing "returns true for the owning user, false for others"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+          _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (true? (mcp.session/owned-by-user? session-id user-id)))
       (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :rasta)))))))
 
@@ -224,8 +283,8 @@
       (testing "both users pass the check while nothing has been materialized"
         (is (true? (mcp.session/owned-by-user? session-id owner-id)))
         (is (true? (mcp.session/owned-by-user? session-id other-id))))
-      (mcp.session/get-or-create-session-key! session-id owner-id)
-      (mcp.session/get-or-create-session-key! session-id other-id)
+      (mcp.session/get-or-create-embedding-session! session-id owner-id)
+      (mcp.session/get-or-create-embedding-session! session-id other-id)
       (is (= 2 (t2/count :core_session :key_hashed (derived-hash session-id)))
           "rows are scoped to (key_hashed, user_id), so each user materializes their own")
       (testing "neither user is locked out by the other's row"
@@ -299,14 +358,63 @@
           _          (mcp.session/delete! session-id user-id)]
       (is (nil? (mcp.session/resolve-query-handle session-id user-id handle))))))
 
+(deftest delete-does-not-reap-another-users-handles-test
+  (testing "GHY-4333: an `Mcp-Session-Id` is client-supplied and unsigned, so two users can each materialize a
+            core_session under one id — `owned-by-user?` tolerates that by design, and
+            `owned-by-user-tolerates-cross-user-rows-test` pins it. Tearing down one user's session therefore has
+            to scope the handle delete to that user: deleting by `mcp_session_id` alone destroys the other user's
+            handles, which the FK cascade would never have touched."
+    (let [owner-id   (mt/user->id :crowberto)
+          other-id   (mt/user->id :rasta)
+          session-id (mcp.session/create! owner-id nil)]
+      (try
+        (let [owner-handle (mcp.session/store-handle! session-id owner-id "owner payload")
+              other-handle (mcp.session/store-handle! session-id other-id "other payload")]
+          (is (= 2 (t2/count :model/McpQueryHandle :mcp_session_id session-id))
+              "both users hold a handle under the same session id — otherwise this test proves nothing")
+          (mcp.session/delete! session-id owner-id)
+          (testing "the caller's own handle is gone"
+            (is (nil? (mcp.session/resolve-query-handle session-id owner-id owner-handle))))
+          (testing "the other user's handle survives, and stays resolvable for them"
+            (is (some? (mcp.session/resolve-query-handle session-id other-id other-handle)))))
+        (finally
+          (mcp.session/delete! session-id owner-id)
+          (mcp.session/delete! session-id other-id))))))
+
+(deftest delete-reaps-unattributed-legacy-handles-test
+  (testing "`core_session_id` is nullable, and released code predating the always-set write left rows with it
+            NULL. Scoping the delete through `core_session` alone strands those forever — `NULL IN (subquery)`
+            never matches and nothing else reaps them.
+
+            They are safe to delete on session id alone, unlike attributed rows: `find-handle-row` inner-joins
+            `core_session`, so a NULL row can never be read back by anyone. It is unreachable data, not another
+            user's working handle, so reaping it cannot destroy anything usable."
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id nil)
+          legacy-id  (str (random-uuid))]
+      (try
+        (t2/insert! :model/McpQueryHandle {:id              legacy-id
+                                           :mcp_session_id  session-id
+                                           :core_session_id nil
+                                           :encoded_query   "legacy payload"})
+        (is (t2/exists? :model/McpQueryHandle :id legacy-id))
+        (is (nil? (mcp.session/resolve-query-handle session-id user-id legacy-id))
+            "the row is unreadable even before deletion — that is what makes it safe to reap unscoped")
+        (mcp.session/delete! session-id user-id)
+        (is (not (t2/exists? :model/McpQueryHandle :id legacy-id))
+            "delete! must reclaim it rather than strand it")
+        (finally
+          (t2/delete! :model/McpQueryHandle :id legacy-id))))))
+
 (deftest session-does-not-fire-login-event-test
-  (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
-    (let [login-events (atom [])
-          user-id      (mt/user->id :crowberto)
-          session-id   (mcp.session/create! user-id nil)]
-      (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic payload]
-                                                          (when (= topic :event/user-login)
-                                                            (swap! login-events conj payload)))]
-        (mcp.session/get-or-create-session-key! session-id user-id))
-      (is (empty? @login-events)
-          "No :event/user-login should be published for MCP embedding sessions"))))
+  (testing "Creating a core_session via get-or-create-embedding-session! does not publish :event/user-login"
+    ;; Observed through the event's one synchronous side effect — `metabase.users.events.last-login` stamps
+    ;; `last_login` on the user — rather than by redefining `events/publish-event!`: it is a methodical
+    ;; multimethod, and `with-dynamic-fn-redefs` permanently swaps its root for a plain-fn proxy, after which
+    ;; any later `methodical/defmethod` on it (e.g. `metabase.api-routes.events`, loaded when the test web
+    ;; server first starts) fails to macroexpand.
+    (mt/with-temp [:model/User {user-id :id} {:last_login nil}]
+      (let [session-id (mcp.session/create! user-id nil)]
+        (mcp.session/get-or-create-embedding-session! session-id user-id)
+        (is (nil? (t2/select-one-fn :last_login :model/User :id user-id))
+            "No :event/user-login should be published for MCP embedding sessions")))))
