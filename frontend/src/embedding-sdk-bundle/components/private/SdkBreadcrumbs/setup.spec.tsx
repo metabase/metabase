@@ -78,7 +78,7 @@ export const BreadcrumbsTestComponent = () => {
           const type = match<string, EntityBreadcrumbType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
-            // A collection item is never the virtual "all collections" root.
+            // A collection item is never the virtual "all-collections" root.
             .otherwise((model) => model as EntityBreadcrumbType);
 
           setView({ type, id: item.id });
