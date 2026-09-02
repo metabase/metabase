@@ -1816,12 +1816,12 @@ describe("sandbox", () => {
     {
       name: "window.onstorage setter",
       payload: "window.onstorage = function () {};",
-      errorPattern: blockedPattern(/API call: Window\.set onstorage/),
+      errorPattern: blockedPattern(/API call: window\.set onstorage/),
     },
     {
       name: "window.onkeydown setter",
       payload: "window.onkeydown = function () {};",
-      errorPattern: blockedPattern(/API call: Window\.set onkeydown/),
+      errorPattern: blockedPattern(/API call: window\.set onkeydown/),
     },
     {
       name: 'setAttribute("onclick", ...)',

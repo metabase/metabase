@@ -111,7 +111,7 @@ if (window.CookieStore) {
 for (const eventType of GLOBAL_BLOCKED_EVENT_TYPES) {
   const handler = `on${eventType}`;
   block(setter(Document.prototype, handler), `Document.set ${handler}`);
-  block(setter(window, handler), `Window.set ${handler}`);
+  block(setter(window, handler), `window.set ${handler}`);
 }
 
 // Referrer — URL of the page that linked here, which can leak internal
