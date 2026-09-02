@@ -1368,29 +1368,28 @@
 
 (deftest card-param-values-native-card-without-parameters-test
   (testing "a native card described only by its template tags, with an empty locked value, still serves values"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
-      (with-new-secret-key!
-        (mt/with-temp
-          [:model/Card card {:enable_embedding true
-                             :embedding_params {:total "locked" :state "enabled"}
-                             :dataset_query
-                             {:database (mt/id)
-                              :type     :native
-                              :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
-                                         :template-tags {"total" {:id           "t1"
-                                                                  :name         "total"
-                                                                  :display-name "Total"
-                                                                  :type         :dimension
-                                                                  :widget-type  :number/>=
-                                                                  :dimension    [:field (mt/id :orders :total) nil]}
-                                                         "state" {:id           "s1"
-                                                                  :name         "state"
-                                                                  :display-name "State"
-                                                                  :type         :dimension
-                                                                  :widget-type  :string/=
-                                                                  :dimension    [:field (mt/id :people :state) nil]}}}}}]
-          (let [token (card-token card {:params {:total []}})]
-            (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token)))))))))))
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp
+        [:model/Card card {:enable_embedding true
+                           :embedding_params {:total "locked" :state "enabled"}
+                           :dataset_query
+                           {:database (mt/id)
+                            :type     :native
+                            :native   {:query         "SELECT * FROM ORDERS WHERE {{total}} AND {{state}}"
+                                       :template-tags {"total" {:id           "t1"
+                                                                :name         "total"
+                                                                :display-name "Total"
+                                                                :type         :dimension
+                                                                :widget-type  :number/>=
+                                                                :dimension    [:field (mt/id :orders :total) nil]}
+                                                       "state" {:id           "s1"
+                                                                :name         "state"
+                                                                :display-name "State"
+                                                                :type         :dimension
+                                                                :widget-type  :string/=
+                                                                :dimension    [:field (mt/id :people :state) nil]}}}}}]
+        (let [token (card-token card {:params {:total []}})]
+          (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
