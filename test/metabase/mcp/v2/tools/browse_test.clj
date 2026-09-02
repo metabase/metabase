@@ -182,7 +182,7 @@
             children by their direct parent id would drop it from the tree entirely."
     (mt/with-temp [:model/Collection top    {:name "browse-vis-top"}
                    :model/Collection hidden {:name "browse-vis-hidden" :location (collection/children-location top)}
-                   :model/Collection deep   {:name "browse-vis-deep" :location (collection/children-location hidden)}]
+                   :model/Collection _deep  {:name "browse-vis-deep" :location (collection/children-location hidden)}]
       (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
       (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
         (is (not (contains? names "browse-vis-hidden"))
