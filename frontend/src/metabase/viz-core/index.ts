@@ -358,6 +358,7 @@ export {
   validateStacking,
 } from "./lib/settings/validation";
 export {
+  adoptLegacyCustomVizSettings,
   getComputedSettingsForSeries,
   getPersistableDefaultSettingsForSeries,
   getStoredSettingsForSeries,

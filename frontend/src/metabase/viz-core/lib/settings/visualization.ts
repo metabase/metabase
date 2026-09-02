@@ -122,6 +122,16 @@ export function getStoredSettingsForSeries(
   );
 }
 
+// Stored settings the way they're read: legacy custom viz keys adopted under their namespaced keys.
+export function adoptLegacyCustomVizSettings(
+  display: VisualizationDisplay | undefined,
+  storedSettings: VisualizationSettings,
+): VisualizationSettings {
+  return migrateStoredCustomVizSettings(display, storedSettings, () =>
+    getSettingDefinitionsForDisplay(display),
+  );
+}
+
 export function getComputedSettingsForSeries(
   series: Series | null | undefined,
   extra: SettingsExtra = {},
