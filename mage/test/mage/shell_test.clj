@@ -102,7 +102,7 @@
       ;; The inner shell records the stray and exits; the outer one sleeps so the timeout has something to
       ;; fire on. The stray ignores SIGTERM, so only the forced group signal ends it.
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Timed out"
-                            (shell/sh* {:quiet? true, :timeout-ms stray-timeout-ms}
+                            (shell/sh* {:quiet? true, :timeout-ms stray-timeout-ms, :kill-strays? true}
                                        "sh" "-c"
                                        (str "sh -c 'trap \"\" TERM; sleep " stray-sleep-seconds
                                             " >/dev/null 2>&1 & echo $! > \"$0\"' \"$0\"; sleep "

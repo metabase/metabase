@@ -162,7 +162,9 @@
         (nrepl-eval nrepl-ns nrepl-code (resolve-port port))
         0)
     (do (when jvm-msg (println jvm-msg))
-        (:exit (apply shell/sh* "clojure" jvm-args)))))
+        ;; The cold JVM does the command's real work and can start processes of its own, so a hang here
+        ;; should not survive the command that caused it.
+        (:exit (apply shell/sh* {:kill-strays? true} "clojure" jvm-args)))))
 
 (defn nrepl-type
   "Returns :bb :cljs or :clj to indicate what type of nrepl server is running on the given port (or the port in .nrepl-port if none given)."

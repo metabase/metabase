@@ -25,7 +25,8 @@
 
 (def ^:private perl-available?
   ;; Perl ships with macOS and is essential on Debian and Ubuntu, but a stripped container may not have it.
-  ;; Probed once, on first use, and everything still works without it -- strays are simply left running.
+  ;; Probed once, and only when a caller asks for `:kill-strays?`. Without perl everything still works;
+  ;; strays are simply left running, as they are without the option.
   (delay
     (try
       (zero? (.waitFor (.start (discarding ["perl" "-e" "exit 0"]))))
@@ -33,9 +34,11 @@
 
 (defn- start-process!
   "Starts `args` as a subprocess, using `dir` as its working directory when provided.
-  When non-nil, `env` must be a map and completely replaces the parent environment."
-  ^Process [args env dir]
-  (let [command (into (if @perl-available? pgroup-wrapper []) (map str) args)
+  When non-nil, `env` must be a map and completely replaces the parent environment.
+  When `own-group?`, the command leads a process group of its own, which is what later lets the strays it
+  leaves behind be signalled."
+  ^Process [args env dir own-group?]
+  (let [command (into (if own-group? pgroup-wrapper []) (map str) args)
         builder (ProcessBuilder. ^java.util.List command)]
     (when dir
       (.directory builder (File. ^String dir)))
@@ -116,16 +119,17 @@
 
 (defn- kill-process!
   "Attempts to stop `proc` and everything it started.
-  Returns after every process it can see has exited, or after two grace periods."
-  [^Process proc]
+  Returns after every process it can see has exited, or after two grace periods.
+  `own-group?` says whether `proc` leads a process group, which is the only way to reach a stray whose own
+  parent has already gone."
+  [^Process proc own-group?]
   (let [root    (.toHandle proc)
         ;; Capture descendants before signalling the root, which can make them unreachable when it exits.
-        handles (cons root (iterator-seq (.iterator (.descendants root))))
-        group?  @perl-available?]
+        handles (cons root (iterator-seq (.iterator (.descendants root))))]
     (run! #(.destroy ^ProcessHandle %) handles)
     ;; A process that outlived its parent is reparented away and drops out of `descendants`, but it keeps
     ;; the process group it was born into, so the group signal still reaches it.
-    (when group?
+    (when own-group?
       (signal-process-group! (.pid proc) "TERM"))
     (wait-for-exit handles kill-grace-period-ms)
     ;; Signal every survivor directly because its parent may already have exited.
@@ -133,7 +137,7 @@
             (when (.isAlive handle)
               (.destroyForcibly handle)))
           handles)
-    (when group?
+    (when own-group?
       (signal-process-group! (.pid proc) "KILL"))
     (wait-for-exit handles kill-grace-period-ms)))
 
@@ -158,8 +162,14 @@
     After the command exits, allows at least two seconds to finish collecting its output.
     Throws rather than return partial output if another process keeps an output pipe open.
 
+  * `:kill-strays?` extends the kill on timeout to processes the command leaves running behind it.
+    A process whose own parent has exited cannot be reached by handle, so the command is started in a
+    process group of its own and that group is signalled too.
+    This costs an extra exec on every call, about 9 ms, and needs perl on PATH, so it is off by default.
+    Turn it on for commands that spawn work of their own, such as a test runner.
+
   When `MAGE_VERBOSE` is present in the environment, prints the command before running it."
-  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
+  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms kill-strays?]} cmd & args])}
   [& args]
   (when (u/env "MAGE_VERBOSE" (constantly nil))
     (println (str "$ " (str/join " " (map (comp pr-str str) (if (map? (first args))
@@ -171,11 +181,13 @@
         opts              (merge
                            {:dir u/project-root-directory}
                            opts)
-        {:keys [env dir]}  opts
+        {:keys [env dir kill-strays?]} opts
         ;; `or` selects the default for a missing key or an explicit nil.
         ;; Destructuring `:or` only covers a missing key.
         timeout-ms        (or (:timeout-ms opts) command-timeout-ms)
-        proc              (start-process! args env dir)]
+        ;; Leading its own group costs an extra exec per call, so only commands that ask for it pay.
+        own-group?        (boolean (and kill-strays? @perl-available?))
+        proc              (start-process! args env dir own-group?)]
     ;; Closing child stdin tells subprocesses that no input is coming, so they do not wait forever.
     (.close (.getOutputStream proc))
     (let [out-stream (.getInputStream proc)
@@ -199,7 +211,7 @@
         ;; Stop it whenever it is still alive, regardless of which exception reached us.
         (catch Throwable e
           (when (.isAlive proc)
-            (kill-process! proc))
+            (kill-process! proc own-group?))
           (throw e))
         (finally
           ;; Close the streams rather than the readers.
@@ -213,7 +225,7 @@
   "Runs [[sh*]] and returns its stdout lines followed by its stderr lines.
   Throws `ExceptionInfo` containing the response and command arguments when the exit status is nonzero.
   Accepts the same options as [[sh*]]."
-  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
+  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms kill-strays?]} cmd & args])}
   [& args]
   (let [{:keys [exit out err], :as response} (apply sh* args)]
     (if (zero? exit)

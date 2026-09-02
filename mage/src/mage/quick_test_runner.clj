@@ -166,7 +166,9 @@
 (defn- run-tests-cli [test-dirs]
   (let [cmd (str "clj -X:dev:ee:ee-dev:test :only '" (pr-str test-dirs) "'")]
     (bling/callout {:label "Running Command Line"} (c/bold cmd))
-    (shell/sh* "clojure" "-X:dev:dev-ee:ee:test" ":only" (pr-str test-dirs))))
+    ;; A test JVM starts containers and processes of its own, and a suite that hangs must not be left
+    ;; running alongside whatever the developer starts next.
+    (shell/sh* {:kill-strays? true} "clojure" "-X:dev:dev-ee:ee:test" ":only" (pr-str test-dirs))))
 
 (defn go
   "Interactively select directories to run tests against."
