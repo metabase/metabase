@@ -23,6 +23,8 @@ export interface TimelineSidebarProps {
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onShowTimeline?: (timeline: Timeline) => void;
+  onHideTimeline?: (timeline: Timeline) => void;
   onShowAllEvents?: () => void;
   onOpenModal?: (modal: QueryModalType, modalContext?: unknown) => void;
   onClose?: () => void;
@@ -41,6 +43,8 @@ export const TimelineSidebar = ({
   onHideTimelineEvents,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onShowTimeline,
+  onHideTimeline,
   onShowAllEvents,
   onClose,
 }: TimelineSidebarProps) => {
@@ -96,13 +100,19 @@ export const TimelineSidebar = ({
   }, []);
 
   const handleShowTimeline = useCallback(
-    (timeline: Timeline) => onShowTimelineEvents(timeline.events ?? []),
-    [onShowTimelineEvents],
+    (timeline: Timeline) =>
+      onShowTimeline
+        ? onShowTimeline(timeline)
+        : onShowTimelineEvents(timeline.events ?? []),
+    [onShowTimeline, onShowTimelineEvents],
   );
 
   const handleHideTimeline = useCallback(
-    (timeline: Timeline) => onHideTimelineEvents(timeline.events ?? []),
-    [onHideTimelineEvents],
+    (timeline: Timeline) =>
+      onHideTimeline
+        ? onHideTimeline(timeline)
+        : onHideTimelineEvents(timeline.events ?? []),
+    [onHideTimeline, onHideTimelineEvents],
   );
 
   return (

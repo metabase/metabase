@@ -5,6 +5,7 @@ import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionId,
+  CreateTimelineRequest,
   IconName,
   Timeline,
   TimelineIcon,
@@ -38,7 +39,7 @@ export const getTimelineIcons = (): {
 
 export const getDefaultTimeline = (
   collection: Collection,
-): Partial<Timeline> => {
+): CreateTimelineRequest => {
   return {
     name: getDefaultTimelineName(collection),
     collection_id: canonicalCollectionId(collection.id),

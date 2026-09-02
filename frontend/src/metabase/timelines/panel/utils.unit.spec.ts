@@ -7,10 +7,10 @@ import {
 
 import {
   filterTimelinesByXAxis,
-  filterVisibleTimelineEvents,
   formatTitle,
   getEventsXDomain,
   getFocusedTimelines,
+  getNonEmptyTimelines,
   transformTimelines,
 } from "./utils";
 
@@ -57,6 +57,16 @@ describe("getFocusedTimelines", () => {
     ]);
     expect(result[0].events?.map((event) => event.id)).toEqual([1]);
     expect(result[1].events?.map((event) => event.id)).toEqual([3]);
+  });
+});
+
+describe("getNonEmptyTimelines", () => {
+  it("drops timelines without events", () => {
+    const empty = createMockTimeline({ id: 3, name: "Empty", events: [] });
+    expect(getNonEmptyTimelines([releases, empty, marketing])).toEqual([
+      releases,
+      marketing,
+    ]);
   });
 });
 
@@ -179,29 +189,25 @@ describe("filterTimelinesByXAxis", () => {
     expect(filterIds({ count: 6, unit: "hour" })).toEqual([1]);
   });
 
+  it("keeps an event later in the last day, like the chart does", () => {
+    const [timeline] = transformTimelines([
+      createMockTimeline({
+        id: 1,
+        events: [
+          createMockTimelineEvent({ id: 1, timestamp: "2024-03-01T00:45:00Z" }),
+          createMockTimelineEvent({ id: 2, timestamp: "2024-03-02T00:45:00Z" }),
+        ],
+      }),
+    ]);
+    const [filtered] = filterTimelinesByXAxis([timeline], {
+      domain: [dayjs("2024-01-01T00:30:00Z"), dayjs("2024-03-01T00:30:00Z")],
+      interval: { count: 1, unit: "day" },
+    });
+    expect(filtered.events?.map((event) => event.id)).toEqual([1]);
+  });
+
   it("returns non-empty timelines untouched without an axis", () => {
     const filtered = filterTimelinesByXAxis(timelines, null);
     expect(filtered.map((timeline) => timeline.id)).toEqual([1, 2]);
-  });
-});
-
-describe("filterVisibleTimelineEvents", () => {
-  it("returns visible events across timelines sorted by timestamp", () => {
-    const timelines = [
-      createMockTimeline({
-        events: [
-          createMockTimelineEvent({ id: 1, timestamp: "2027-06-15T00:00:00Z" }),
-          createMockTimelineEvent({ id: 2, timestamp: "2027-06-01T00:00:00Z" }),
-        ],
-      }),
-      createMockTimeline({
-        events: [
-          createMockTimelineEvent({ id: 3, timestamp: "2027-06-10T00:00:00Z" }),
-        ],
-      }),
-    ];
-    expect(
-      filterVisibleTimelineEvents(timelines, [1, 3]).map((event) => event.id),
-    ).toEqual([3, 1]);
   });
 });

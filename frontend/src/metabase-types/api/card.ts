@@ -28,11 +28,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
-import type {
-  TimelineEventId,
-  TimelineEventsVisibility,
-  TimelineId,
-} from "./timeline";
+import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
@@ -567,9 +563,6 @@ export type VisualizationSettings = {
 
   /** Draw timeline events on time series charts. */
   "timeline_events.enabled"?: boolean;
-
-  /** Timeline and event visibility overrides relative to the collection defaults. */
-  "timeline_events.visibility"?: TimelineEventsVisibility;
 
   [key: string]: any;
 } & EmbedVisualizationSettings;

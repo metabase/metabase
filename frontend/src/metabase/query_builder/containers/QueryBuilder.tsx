@@ -90,7 +90,6 @@ import {
   setTemplateTag,
   setTemplateTagConfig,
   showTimelineEvents,
-  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -313,7 +312,6 @@ const mapDispatchToProps = {
   setTemplateTag,
   setTemplateTagConfig,
   showTimelineEvents,
-  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -338,16 +336,13 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
-  useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
-  const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
-    useListTimelinesQuery({
-      include: "events",
-    });
-  const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
-    useListBookmarksQuery();
+  const { data: bookmarks = [] } = useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();
   const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
+
+  useFavicon({ favicon: props.pageFavicon ?? null });
+  useListTimelinesQuery({ include: "events" });
 
   const {
     question,
@@ -361,7 +356,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    showTimelinesForCollection,
     card,
     isAdmin,
     isLoadingComplete,
@@ -420,8 +414,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const previousLocation = usePrevious(location);
   const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
   const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
-  const hasQuestion = question != null;
-  const collectionId = question?.collectionId();
 
   const openModal = useCallback(
     (
@@ -501,25 +493,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isNativeEditorOpen,
     wasNativeEditorOpen,
     closeNavbar,
-  ]);
-
-  useEffect(() => {
-    // Gate on the timelines actually being loaded (not just bookmarks), and
-    // re-run when they arrive: showTimelinesForCollection reads the fetched
-    // timelines from the store at dispatch time, so running it before the
-    // `/api/timeline` request resolves dispatches an empty set and the chart
-    // never receives its events. This restores the pre-#73674 `allLoaded`
-    // guarantee that was lost when the Timelines.loadList HOC was removed.
-    if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
-      showTimelinesForCollection(collectionId);
-    }
-  }, [
-    areBookmarksLoaded,
-    areTimelinesLoaded,
-    hasQuestion,
-    collectionId,
-    showTimelinesForCollection,
-    fetchedTimelines,
   ]);
 
   useEffect(() => {

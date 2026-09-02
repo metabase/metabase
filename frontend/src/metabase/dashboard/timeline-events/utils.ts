@@ -9,26 +9,28 @@ import {
 import type {
   DashCardDataMap,
   DashboardCard,
+  QuestionDashboardCard,
   RawSeries,
-  VisualizationDisplay,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
-const getDashCardDisplay = (
+export const canDashCardDisplayTimelineEvents = (
   dashcard: DashboardCard,
-): VisualizationDisplay | null | undefined =>
-  isVisualizerDashboardCard(dashcard)
-    ? dashcard.visualization_settings.visualization.display
-    : dashcard.card?.display;
+): dashcard is QuestionDashboardCard =>
+  isQuestionDashCard(dashcard) &&
+  !isVisualizerDashboardCard(dashcard) &&
+  canDisplayTimelineEvents(dashcard.card.display);
 
-export const isTimelineEventsDashCard = (dashcard: DashboardCard) =>
-  canDisplayTimelineEvents(getDashCardDisplay(dashcard));
+export const isDashCardDataLoaded = (
+  dashcard: QuestionDashboardCard,
+  dashcardData: DashCardDataMap[number] | undefined,
+) => dashcardData?.[dashcard.card.id] != null;
 
-export const getDashCardTimeseriesXAxis = (
+export const computeDashCardTimeseriesXAxis = (
   dashcard: DashboardCard,
   dashcardData: DashCardDataMap[number] | undefined,
 ): TimeseriesXAxis | null => {
-  if (!isQuestionDashCard(dashcard) || isVisualizerDashboardCard(dashcard)) {
+  if (!canDashCardDisplayTimelineEvents(dashcard)) {
     return null;
   }
   const cards = [

@@ -1,16 +1,16 @@
 import _ from "underscore";
 
+import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
+import type { AggregatedEventsVisibility } from "metabase/visualizations/types";
 import type {
-  AggregatedEventsVisibility,
-  TimelineEventsVisibilityContext,
-} from "metabase/visualizations/types";
-import type {
+  CollectionId,
   Timeline,
   TimelineEvent,
   TimelineEventId,
   TimelineEventsVisibility,
   TimelineId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 interface ResolveOptions {
@@ -27,8 +27,8 @@ interface VisibilitySets {
 const toSets = (
   visibility: TimelineEventsVisibility | undefined,
 ): VisibilitySets => ({
-  shownTimelineIds: new Set(visibility?.shown_timeline_ids),
-  hiddenEventIds: new Set(visibility?.hidden_event_ids),
+  shownTimelineIds: new Set(visibility?.["timeline.selected_timeline_ids"]),
+  hiddenEventIds: new Set(visibility?.["timeline.excluded_timeline_event_ids"]),
 });
 
 const sortedIds = <T extends number>(ids: Iterable<T>): T[] =>
@@ -37,16 +37,20 @@ const sortedIds = <T extends number>(ids: Iterable<T>): T[] =>
 const fromSets = ({
   shownTimelineIds,
   hiddenEventIds,
-}: VisibilitySets): TimelineEventsVisibility => {
-  const visibility: TimelineEventsVisibility = {};
-  if (shownTimelineIds.size > 0) {
-    visibility.shown_timeline_ids = sortedIds(shownTimelineIds);
-  }
-  if (hiddenEventIds.size > 0) {
-    visibility.hidden_event_ids = sortedIds(hiddenEventIds);
-  }
-  return visibility;
-};
+}: VisibilitySets): TimelineEventsVisibility => ({
+  "timeline.selected_timeline_ids": sortedIds(shownTimelineIds),
+  "timeline.excluded_timeline_event_ids": sortedIds(hiddenEventIds),
+});
+
+export const isSameTimelineEventsVisibility = (
+  a: TimelineEventsVisibility | undefined,
+  b: TimelineEventsVisibility | undefined,
+) => _.isEqual(fromSets(toSets(a)), fromSets(toSets(b)));
+
+export const getRecordedTimelineEventsVisibility = (
+  settings: VisualizationSettings | undefined,
+): TimelineEventsVisibility | undefined =>
+  settings?.["timeline.selected_timeline_ids"] != null ? settings : undefined;
 
 const getActiveEvents = (timeline: Timeline) =>
   (timeline.events ?? []).filter((event) => !event.archived);
@@ -54,8 +58,6 @@ const getActiveEvents = (timeline: Timeline) =>
 const sortByTimestamp = (events: TimelineEvent[]) =>
   _.sortBy(events, (event) => dayjs(event.timestamp).valueOf());
 
-// Events are opt-in on dashboards: nothing is visible until a timeline (or a
-// single event of it) is explicitly shown.
 export const resolveVisibleTimelineEvents = ({
   timelines,
   visibility,
@@ -73,12 +75,6 @@ export const resolveVisibleTimelineEvents = ({
   );
 };
 
-export const isDefaultVisibility = (
-  visibility: TimelineEventsVisibility | undefined,
-): boolean =>
-  !visibility?.shown_timeline_ids?.length &&
-  !visibility?.hidden_event_ids?.length;
-
 const setTimelineVisible = (
   timeline: Timeline,
   isVisible: boolean,
@@ -94,86 +90,122 @@ const setTimelineVisible = (
 
 const setTimelinesVisible = (
   visibility: TimelineEventsVisibility,
-  timelines: Timeline[],
+  timelineIds: TimelineId[],
   isVisible: boolean,
+  timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
-  timelines.forEach((timeline) =>
-    setTimelineVisible(timeline, isVisible, sets),
-  );
+  const ids = new Set(timelineIds);
+  timelines
+    .filter((timeline) => ids.has(timeline.id))
+    .forEach((timeline) => setTimelineVisible(timeline, isVisible, sets));
   return fromSets(sets);
 };
 
 export const showTimelines = (
   visibility: TimelineEventsVisibility,
+  timelineIds: TimelineId[],
   timelines: Timeline[],
-) => setTimelinesVisible(visibility, timelines, true);
+) => setTimelinesVisible(visibility, timelineIds, true, timelines);
 
 export const hideTimelines = (
   visibility: TimelineEventsVisibility,
+  timelineIds: TimelineId[],
   timelines: Timeline[],
-) => setTimelinesVisible(visibility, timelines, false);
+) => setTimelinesVisible(visibility, timelineIds, false, timelines);
 
-const groupEventsByTimeline = (
-  events: TimelineEvent[],
+export const getCollectionTimelinesVisibility = (
   timelines: Timeline[],
-): Array<[Timeline, TimelineEvent[]]> => {
-  const eventsByTimelineId = new Map<TimelineId, TimelineEvent[]>();
+  collectionId: CollectionId | null | undefined,
+) =>
+  showTimelines(
+    {},
+    getCollectionTimelines(timelines, collectionId).map(({ id }) => id),
+    timelines,
+  );
+
+const groupEventsByTimelineId = (
+  events: TimelineEvent[],
+): Map<TimelineId, TimelineEvent[]> => {
+  const groups = new Map<TimelineId, TimelineEvent[]>();
   events.forEach((event) => {
-    const group = eventsByTimelineId.get(event.timeline_id);
+    const group = groups.get(event.timeline_id);
     if (group) {
       group.push(event);
     } else {
-      eventsByTimelineId.set(event.timeline_id, [event]);
+      groups.set(event.timeline_id, [event]);
     }
   });
-  return timelines.flatMap((timeline) => {
-    const group = eventsByTimelineId.get(timeline.id);
-    return group ? [[timeline, group]] : [];
-  });
+  return groups;
 };
+
+const indexTimelinesById = (timelines: Timeline[]) =>
+  new Map(timelines.map((timeline) => [timeline.id, timeline]));
 
 export const showTimelineEvents = (
   visibility: TimelineEventsVisibility,
   events: TimelineEvent[],
-  { timelines }: TimelineEventsVisibilityContext,
+  timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
-  groupEventsByTimeline(events, timelines).forEach(
-    ([timeline, shownEvents]) => {
-      const shownEventIds = new Set(shownEvents.map((event) => event.id));
-      if (!sets.shownTimelineIds.has(timeline.id)) {
+  const timelinesById = indexTimelinesById(timelines);
+  groupEventsByTimelineId(events).forEach((shownEvents, timelineId) => {
+    const shownEventIds = new Set(shownEvents.map((event) => event.id));
+    if (!sets.shownTimelineIds.has(timelineId)) {
+      const timeline = timelinesById.get(timelineId);
+      if (timeline) {
         setTimelineVisible(timeline, true, sets);
         getActiveEvents(timeline)
           .filter((event) => !shownEventIds.has(event.id))
           .forEach((event) => sets.hiddenEventIds.add(event.id));
+      } else {
+        sets.shownTimelineIds.add(timelineId);
       }
-      shownEventIds.forEach((eventId) => sets.hiddenEventIds.delete(eventId));
-    },
-  );
+    }
+    shownEventIds.forEach((eventId) => sets.hiddenEventIds.delete(eventId));
+  });
   return fromSets(sets);
+};
+
+export const showCreatedTimelineEvent = (
+  visibility: TimelineEventsVisibility,
+  event: TimelineEvent,
+  timelines: Timeline[],
+): TimelineEventsVisibility => {
+  const isTimelineShown = visibility[
+    "timeline.selected_timeline_ids"
+  ]?.includes(event.timeline_id);
+  return showTimelineEvents(
+    isTimelineShown
+      ? visibility
+      : showTimelines(visibility, [event.timeline_id], timelines),
+    [event],
+    timelines,
+  );
 };
 
 export const hideTimelineEvents = (
   visibility: TimelineEventsVisibility,
   events: TimelineEvent[],
-  { timelines }: TimelineEventsVisibilityContext,
+  timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
-  groupEventsByTimeline(events, timelines).forEach(
-    ([timeline, hiddenEvents]) => {
-      if (!sets.shownTimelineIds.has(timeline.id)) {
-        return;
-      }
-      hiddenEvents.forEach((event) => sets.hiddenEventIds.add(event.id));
-      const isEveryEventHidden = getActiveEvents(timeline).every((event) =>
+  const timelinesById = indexTimelinesById(timelines);
+  groupEventsByTimelineId(events).forEach((hiddenEvents, timelineId) => {
+    if (!sets.shownTimelineIds.has(timelineId)) {
+      return;
+    }
+    hiddenEvents.forEach((event) => sets.hiddenEventIds.add(event.id));
+    const timeline = timelinesById.get(timelineId);
+    const isEveryEventHidden =
+      timeline !== undefined &&
+      getActiveEvents(timeline).every((event) =>
         sets.hiddenEventIds.has(event.id),
       );
-      if (isEveryEventHidden) {
-        setTimelineVisible(timeline, false, sets);
-      }
-    },
-  );
+    if (isEveryEventHidden) {
+      setTimelineVisible(timeline, false, sets);
+    }
+  });
   return fromSets(sets);
 };
 
@@ -183,11 +215,13 @@ export const aggregateVisibleEventIds = (
   const [firstChartEventIds = [], ...otherCharts] = visibleEventIdsPerChart;
   const otherChartSets = otherCharts.map((eventIds) => new Set(eventIds));
   const visibleEventIds = [...new Set(firstChartEventIds)].filter((eventId) =>
-    otherChartSets.every((set) => set.has(eventId)),
+    otherChartSets.every((eventIdSet) => eventIdSet.has(eventId)),
   );
   const visibleSet = new Set(visibleEventIds);
-  const partiallyVisibleEventIds = [
-    ...new Set(visibleEventIdsPerChart.flat()),
-  ].filter((eventId) => !visibleSet.has(eventId));
-  return { visibleEventIds, partiallyVisibleEventIds };
+  return {
+    visibleEventIds,
+    partiallyVisibleEventIds: [
+      ...new Set(visibleEventIdsPerChart.flat()),
+    ].filter((eventId) => !visibleSet.has(eventId)),
+  };
 };

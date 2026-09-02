@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 
 import {
-  type TimelineEventsVisibilityUpdate,
   deselectTimelineEvents,
   selectTimelineEvents,
   updateDashCardsTimelineEventsVisibility,
@@ -10,9 +9,11 @@ import { useDispatch } from "metabase/redux";
 import {
   hideTimelineEvents,
   hideTimelines,
+  showCreatedTimelineEvent,
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 import type { DashCardId, Timeline, TimelineEvent } from "metabase-types/api";
 
 export const useTimelineEventsHandlers = ({
@@ -33,17 +34,25 @@ export const useTimelineEventsHandlers = ({
   return useMemo(
     () => ({
       onShowTimelineEvents: (events: TimelineEvent[]) =>
-        updateVisibility((visibility, context) =>
-          showTimelineEvents(visibility, events, context),
+        updateVisibility((visibility, timelines) =>
+          showTimelineEvents(visibility, events, timelines),
         ),
       onHideTimelineEvents: (events: TimelineEvent[]) =>
-        updateVisibility((visibility, context) =>
-          hideTimelineEvents(visibility, events, context),
+        updateVisibility((visibility, timelines) =>
+          hideTimelineEvents(visibility, events, timelines),
         ),
       onShowTimeline: (timeline: Timeline) =>
-        updateVisibility((visibility) => showTimelines(visibility, [timeline])),
+        updateVisibility((visibility, timelines) =>
+          showTimelines(visibility, [timeline.id], timelines),
+        ),
       onHideTimeline: (timeline: Timeline) =>
-        updateVisibility((visibility) => hideTimelines(visibility, [timeline])),
+        updateVisibility((visibility, timelines) =>
+          hideTimelines(visibility, [timeline.id], timelines),
+        ),
+      onEventCreated: (event: TimelineEvent) =>
+        updateVisibility((visibility, timelines) =>
+          showCreatedTimelineEvent(visibility, event, timelines),
+        ),
       onSelectEvents: (events: TimelineEvent[]) =>
         dispatch(
           selectTimelineEvents({

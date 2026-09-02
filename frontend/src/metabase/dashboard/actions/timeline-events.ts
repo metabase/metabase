@@ -1,18 +1,16 @@
 import { createAction } from "@reduxjs/toolkit";
-import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import {
-  getDashCardTimelineEventsVisibility,
-  getTimelineEventsVisibilityContext,
-} from "metabase/dashboard/timeline-events/selectors";
+import { getDashCardTimelineEventsVisibility } from "metabase/dashboard/timeline-events/selectors";
 import type {
   Dispatch,
   EventsSidebarProps,
   GetState,
   TimelineEventsSelection,
 } from "metabase/redux/store";
-import type { TimelineEventsVisibilityContext } from "metabase/visualizations/types";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { isSameTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 import type { DashCardId, TimelineEventsVisibility } from "metabase-types/api";
 
 import { setSidebar } from "./ui";
@@ -32,23 +30,18 @@ export const deselectTimelineEvents = createAction(
 export const openEventsSidebar = (props: EventsSidebarProps = {}) =>
   setSidebar({ name: SIDEBAR_NAME.events, props });
 
-export type TimelineEventsVisibilityUpdate = (
-  visibility: TimelineEventsVisibility,
-  context: TimelineEventsVisibilityContext,
-) => TimelineEventsVisibility;
-
 export const updateDashCardsTimelineEventsVisibility =
   (dashcardIds: DashCardId[], update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const context = getTimelineEventsVisibilityContext(state);
+    const timelines = getTransformedTimelines(state);
 
     const changed = dashcardIds.flatMap(
       (dashcardId): [DashCardId, TimelineEventsVisibility][] => {
         const visibility =
           getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
-        const nextVisibility = update(visibility, context);
-        return _.isEqual(visibility, nextVisibility)
+        const nextVisibility = update(visibility, timelines);
+        return isSameTimelineEventsVisibility(visibility, nextVisibility)
           ? []
           : [[dashcardId, nextVisibility]];
       },

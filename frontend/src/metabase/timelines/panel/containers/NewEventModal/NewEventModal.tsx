@@ -14,22 +14,20 @@ import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type {
   Collection,
   CollectionId,
-  CreateTimelineEventRequest,
-  CreateTimelineRequest,
   TimelineEvent,
-  TimelineEventSource,
+  TimelineEventData,
 } from "metabase-types/api";
 
 interface NewEventModalContainerProps {
   cardId?: number;
   collectionId?: CollectionId | null;
-  source?: TimelineEventSource;
+  onEventCreated?: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
 
 function NewEventModalContainer({
   collectionId,
-  source = "question",
+  onEventCreated,
   onClose,
 }: NewEventModalContainerProps) {
   const dispatch = useDispatch();
@@ -41,29 +39,31 @@ function NewEventModalContainer({
   });
 
   const onSubmit = async (
-    values: Partial<TimelineEvent>,
+    values: TimelineEventData,
     collection?: Collection,
   ) => {
-    if (values.timeline_id) {
-      // Unjustified type cast. FIXME
-      await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
+    if (values.timeline_id != null) {
+      const event = await createTimelineEvent({
+        ...values,
+        timeline_id: values.timeline_id,
+      }).unwrap();
+      onEventCreated?.(event);
     } else if (collection) {
       const timeline = await createTimeline(
-        // Unjustified type cast. FIXME
-        getDefaultTimeline(collection) as CreateTimelineRequest,
+        getDefaultTimeline(collection),
       ).unwrap();
-      // Unjustified type cast. FIXME
-      await createTimelineEvent({
+      const event = await createTimelineEvent({
         ...values,
         timeline_id: timeline.id,
-      } as CreateTimelineEventRequest).unwrap();
+      }).unwrap();
+      onEventCreated?.(event);
     }
     dispatch(addUndo({ message: t`Created event` }));
   };
 
   return (
     <NewEventModal
-      source={source}
+      source="question"
       timelines={timelines}
       collection={collection}
       onSubmit={onSubmit}

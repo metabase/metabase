@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/common/components/Sidebar";
@@ -10,6 +11,7 @@ import {
 } from "metabase/dashboard/timeline-events";
 import { useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { getNonEmptyTimelines } from "metabase/timelines/panel/utils";
 import { Box, Text } from "metabase/ui";
 
 import { EventsPanel } from "./EventsPanel";
@@ -17,6 +19,10 @@ import { EventsPanel } from "./EventsPanel";
 export function DashboardWideEventsSidebar() {
   const { closeSidebar } = useDashboardContext();
   const timelines = useSelector(getTransformedTimelines);
+  const displayedTimelines = useMemo(
+    () => getNonEmptyTimelines(timelines),
+    [timelines],
+  );
   const dashcardIds = useSelector(getTimelineEventsDashCardIds);
   const { visibleEventIds, partiallyVisibleEventIds } = useSelector(
     getDashboardTimelineEventsAggregate,
@@ -38,7 +44,7 @@ export function DashboardWideEventsSidebar() {
         <EventsPanel
           title={t`Events`}
           dashcardIds={dashcardIds}
-          timelines={timelines}
+          timelines={displayedTimelines}
           visibleEventIds={visibleEventIds}
           partiallyVisibleEventIds={partiallyVisibleEventIds}
           selectedEventIds={selectedEventIds}

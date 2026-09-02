@@ -4,7 +4,11 @@ import { t } from "ttag";
 import { skipToken, useGetTimelineEventQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/ui";
-import type { CollectionId, TimelineEventId } from "metabase-types/api";
+import type {
+  CollectionId,
+  TimelineEvent,
+  TimelineEventId,
+} from "metabase-types/api";
 
 import EditEventModal from "../../containers/EditEventModal";
 import MoveEventModal from "../../containers/MoveEventModal";
@@ -25,10 +29,12 @@ const getModalLabel = (type: TimelineEventModalState["type"]) =>
 export function TimelineEventModals({
   modal,
   collectionId,
+  onEventCreated,
   onClose,
 }: {
   modal: TimelineEventModalState | null;
   collectionId: CollectionId | null | undefined;
+  onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
 }) {
   // The edit/move containers render nothing until the event arrives, so the
@@ -43,7 +49,11 @@ export function TimelineEventModals({
 
   const content = match(modal)
     .with({ type: "new" }, () => (
-      <NewEventModal collectionId={collectionId} onClose={onClose} />
+      <NewEventModal
+        collectionId={collectionId}
+        onEventCreated={onEventCreated}
+        onClose={onClose}
+      />
     ))
     .with({ type: "edit" }, ({ eventId }) => (
       <EditEventModal eventId={eventId} onClose={onClose} />
