@@ -219,7 +219,7 @@
       (when (some? v)
         (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
         (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
-          (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+          (when-some [c (where-clause* t (symbol (str "search_index." field)) v)]
             [context-key c])))))))
 
 (defn with-filters
