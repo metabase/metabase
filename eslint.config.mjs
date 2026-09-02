@@ -1253,11 +1253,6 @@ const configs = [
       "frontend/src/**/*.{ts,tsx,js,jsx}",
       "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
     ],
-    ignores: [
-      // TODO(no-base-api-access): createMockState composes the whole store, so redux/store/mocks belongs in test support.
-      // It moves there when the store roots are composed explicitly, and this ignore goes with it.
-      "frontend/src/metabase/redux/store/mocks/api.ts",
-    ],
     rules: {
       "metabase/no-base-api-access": [
         "error",

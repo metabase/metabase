@@ -5,6 +5,7 @@ import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
@@ -16,7 +17,6 @@ import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQL
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { getMetadata } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

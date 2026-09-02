@@ -1,5 +1,11 @@
 import { chain } from "icepick";
 
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
@@ -14,12 +20,6 @@ import {
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-  createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
 import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockCard,
