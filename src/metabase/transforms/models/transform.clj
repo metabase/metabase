@@ -142,7 +142,7 @@
    ;; nil round-trips as NULL
    :table_dependencies {:in #(some-> % mi/json-in), :out mi/json-out-with-keywordization}
    :run_trigger        mi/transform-keyword
-   ;; a watermark read straight out of the source table, so it is warehouse data like the rest of `dwh-derived-columns`
+   ;; a watermark read straight out of the source table, so it is warehouse data and encrypted at rest
    :last_checkpoint_value (mi/transform-encrypted {:in identity :out identity})})
 
 (defmethod collection/allowed-namespaces :model/Transform

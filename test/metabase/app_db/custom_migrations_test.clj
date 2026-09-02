@@ -24,7 +24,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
-   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
@@ -3161,37 +3160,26 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
 
-(deftest encrypt-dwh-derived-columns-rollback-test
-  (testing "v64.2026-08-28T00:00:00: rollback hands columns back as plaintext an older version can read.
-            Forward is a no-op on purpose, the encrypting happens in metabase.app-db.task.encryption-backfill."
+(deftest encrypt-dwh-derived-columns-test
+  (testing "v64.2026-08-28T00:00:00: forward encrypts the warehouse-derived columns, rollback hands them back as
+            plaintext an older version can read"
     (impl/test-migrations ["v64.2026-08-28T00:00:00"] [migrate!]
-      (let [db-id     (:id (new-instance-with-default :metabase_database))
-            table-id  (:id (new-instance-with-default :metabase_table {:db_id db-id}))
-            plaintext (json/encode ["category-a" "category-b"])
-            stored    (fn [id] (:values (t2/query-one {:select [:*]
-                                                       :from   [:metabase_fieldvalues]
-                                                       :where  [:= :id id]})))]
-        (encryption-test/with-secret-key "encrypt-dwh-derived-columns-rollback-key"
-          (let [field-id (t2/insert-returning-pk! :metabase_field
-                                                  {:name          "sightings"
-                                                   :table_id      table-id
-                                                   :base_type     "type/Text"
-                                                   :database_type "VARCHAR"
-                                                   :active        true
-                                                   :created_at    :%now
-                                                   :updated_at    :%now})
-                fv-id    (t2/insert-returning-pk! :metabase_fieldvalues
-                                                  {:field_id   field-id
-                                                   :type       "full"
-                                                   :values     (encryption/maybe-encrypt plaintext)
-                                                   :created_at :%now
-                                                   :updated_at :%now})]
+      (let [plaintext (json/encode [{:name "total" :base_type "type/Float"}])
+            stored    (fn [id] (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                                :from   [:report_card]
+                                                                :where  [:= :id id]})))]
+        (encryption-test/with-secret-key "encrypt-dwh-derived-columns-key"
+          (let [user-id (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+                db-id   (:id (new-instance-with-default :metabase_database))
+                card-id (:id (new-instance-with-default :report_card {:creator_id      user-id
+                                                                      :database_id     db-id
+                                                                      :entity_id       (u/generate-nano-id)
+                                                                      :result_metadata plaintext}))]
             (migrate!)
-            (testing "forward leaves the row alone"
-              (is (not= plaintext (stored fv-id))))
+            (testing "forward encrypts it in place"
+              (is (not= plaintext (stored card-id)))
+              (is (= plaintext (encryption/maybe-decrypt (stored card-id)))))
             (when (not= driver/*driver* :mysql) ; rollback flakes on mysql, see metabase#37434
-              (mdb.encryption/save-backfill-progress! {"metabase_fieldvalues/values" "done"})
               (migrate! :down 63)
-              (is (= plaintext (stored fv-id)))
-              (testing "and forgets the sweep, so upgrade -> downgrade -> upgrade re-encrypts"
-                (is (nil? (mdb.encryption/read-backfill-progress)))))))))))
+              (testing "rollback puts it back in the clear"
+                (is (= plaintext (stored card-id)))))))))))

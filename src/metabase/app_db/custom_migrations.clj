@@ -2469,29 +2469,16 @@
                                :from   [:secret]
                                :where  [:!= :value nil]}))))
 
-;; Forward is a no-op: encrypting is done off the boot path by `metabase.app-db.task.encryption-backfill`, so a large
-;; `metabase_fieldvalues` can't hold up startup. Rollback has to stay here though, since a downgraded version needs to
-;; find plaintext the moment it starts.
-;;
-;; Sharing the sweep with `app-db.encryption` rather than freezing a copy here: decrypting is idempotent, and rolling
-;; back past this point should decrypt every column encrypted since, not just the ones known when it was written.
-;;
-;; Intentionally not using define-reversible-migration, to avoid wrapping that rollback in one transaction. Partial
-;; completion is safe either way: `maybe-decrypt-accepting-plaintext` reads plaintext and ciphertext alike.
-(defrecord EncryptDwhDerivedColumns []
-  CustomTaskChange
-  (execute [_ _database])
-  (getConfirmationMessage [_]
-    "Custom migration: EncryptDwhDerivedColumns")
-  (setUp [_])
-  (validate [_ _database]
-    (ValidationErrors.))
-  (setFileOpener [_ _resourceAccessor])
+(def ^:private encrypt-dwh-derived-columns-v64
+  "Warehouse-derived columns that became encrypted at rest in v64. Frozen rather than read from
+  `app-db.encryption`: a column added there in a later version does not exist yet when this changeset replays on an
+  older database."
+  [[:report_card :result_metadata]
+   [:user_parameter_value :value]
+   [:transform :last_checkpoint_value]])
 
-  CustomTaskRollback
+(define-reversible-migration EncryptDwhDerivedColumns
+  (when (encryption/default-encryption-enabled?)
+    (mdb.encryption/rewrite-columns! encrypt-dwh-derived-columns-v64 mdb.encryption/encrypt-value))
   ;; hand these back to the older version as plaintext it can read
-  (rollback [_ _database]
-    (when (should-execute-change?)
-      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt-accepting-plaintext nil nil 500)
-      ;; a finished sweep would otherwise make upgrade -> downgrade -> upgrade skip the re-encryption
-      (mdb.encryption/clear-backfill-progress!))))
+  (mdb.encryption/rewrite-columns! encrypt-dwh-derived-columns-v64 encryption/maybe-decrypt-accepting-plaintext))

@@ -4,7 +4,6 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.string :as string]
@@ -23,42 +22,33 @@
   (cond-> v
     (instance? Blob v) blob->bytes))
 
-(def dwh-derived-columns
-  "Warehouse-derived columns that became encrypted at rest in v64. Raw table names so this keeps working as the
-  models move around.
-
-  `metabase_field.fingerprint` is deliberately absent: it is one row per column of every synced table, and re-writing
-  millions of rows would make `rotate-encryption-key` take hours (see #80081)."
-  [[:report_card :result_metadata]
-   [:metabase_fieldvalues :values]
-   [:metabase_fieldvalues :human_readable_values]
-   [:user_parameter_value :value]
-   [:transform :last_checkpoint_value]])
-
 ;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, `mi/transform-encrypted`, or
 ;; the encrypted-text/EDN transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key
 ;; only requires decrypting the raw value with the current key and re-encrypting the resulting string. We list raw
 ;; table names (not models) so this also works for enterprise models that aren't loaded in every edition.
 (def ^:private encrypted-string-columns
-  (into
-   [[:metabase_database :details]
-    [:metabase_database :settings]
-    [:metabase_database :write_data_details]
-    [:metabase_database :admin_details]
-    [:core_user :settings]
-    [:channel :details]
-    [:api_key :key]
-    [:auth_identity :credentials]
-    [:exploration_query_result :chart_stats]
-    [:exploration_query_result :metric_description]
-    [:exploration_query_result :chart_description]
-    [:report_card :public_uuid]
-    [:report_dashboard :public_uuid]
-    [:action :public_uuid]
-    [:document :public_uuid]
-    [:notification_recipient :details]
-    [:pulse_channel :details]]
-   dwh-derived-columns))
+  [[:metabase_database :details]
+   [:metabase_database :settings]
+   [:metabase_database :write_data_details]
+   [:metabase_database :admin_details]
+   [:core_user :settings]
+   [:channel :details]
+   [:api_key :key]
+   [:auth_identity :credentials]
+   [:exploration_query_result :chart_stats]
+   [:exploration_query_result :metric_description]
+   [:exploration_query_result :chart_description]
+   [:report_card :public_uuid]
+   [:report_dashboard :public_uuid]
+   [:action :public_uuid]
+   [:document :public_uuid]
+   [:notification_recipient :details]
+   [:pulse_channel :details]
+   ;; warehouse-derived, encrypted at rest since v64. `metabase_field.fingerprint` and `metabase_fieldvalues` are
+   ;; deliberately not here: both are far too many rows to rewrite synchronously (see #80081).
+   [:report_card :result_metadata]
+   [:user_parameter_value :value]
+   [:transform :last_checkpoint_value]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
@@ -299,133 +289,6 @@
               (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
         (t2/reducible-select [table :id [column :value]])))
 
-(def ^:private max-update-bytes
-  "Cap on how much column data one UPDATE carries. MariaDB's `max_allowed_packet` defaults to 16MB, the smallest
-  limit in play, so stay comfortably under it."
-  (* 4 1024 1024))
-
-(defn- byte-bounded-chunks
-  "Split `id->value` so no single UPDATE carries more than [[max-update-bytes]] of column data. A page of
-  `metabase_fieldvalues` can be tens of MB, which would otherwise blow past the wire limit."
-  [id->value]
-  (loop [remaining (seq id->value), chunk {}, size 0, chunks []]
-    (if-let [[id v] (first remaining)]
-      (if (and (seq chunk) (> (+ size (count v)) max-update-bytes))
-        (recur remaining {} 0 (conj chunks chunk))
-        (recur (next remaining) (assoc chunk id v) (+ size (count v)) chunks))
-      (cond-> chunks
-        (seq chunk) (conj chunk)))))
-
-(defn- update-page!
-  "Write one chunk of `id -> value` with a single UPDATE, rather than one per row: on a table with millions of fields
-  that is the difference between thousands of round trips and millions."
-  [table column id->value]
-  (t2/query-one {:update table
-                 :set    {column (into [:case]
-                                       (concat (mapcat (fn [[id v]] [[:= :id id] v]) id->value)
-                                               [:else column]))}
-                 :where  [:in :id (keys id->value)]}))
-
-(defn- rewrite-page!
-  "Convert up to `batch-size` rows of `table`.`column` with an id above `after-id`, using `f`. Returns
-  `{:last-id <greatest id seen> :converted <rows written>}`, or nil when nothing was left to do."
-  [table column f after-id batch-size]
-  (let [rows (t2/query {:select   [:id [column :value]]
-                        :from     [table]
-                        ;; most rows have nothing to convert: every pk, retired, sensitive and inactive field has a
-                        ;; null fingerprint, and most FieldValues have no human-readable remapping
-                        :where    [:and [:> :id after-id] [:not= column nil]]
-                        :order-by [[:id :asc]]
-                        :limit    batch-size})]
-    (when (seq rows)
-      (let [changed (into {}
-                          (keep (fn [{:keys [id value]}]
-                                  (let [v (f value)]
-                                    (when (not= v value)
-                                      [id v]))))
-                          rows)]
-        (doseq [chunk (byte-bounded-chunks changed)]
-          (update-page! table column chunk))
-        ;; ordered by id, so the last row is the greatest
-        {:last-id (:id (last rows)) :converted (count changed)}))))
-
-(defn- column-key
-  "Stable string identity for a column, used as the progress map's key. A string so the cursor survives a JSON
-  round-trip unchanged."
-  [[table column]]
-  (str (name table) "/" (name column)))
-
-(def ^:private done "done")
-
-(defn- pending
-  "The first column in [[dwh-derived-columns]] with work left, as `[[table column] after-id]`, or nil when every
-  column is finished. Progress is recorded per column, so nothing depends on the order of the list: reordering it
-  changes nothing, and a column added in a later version is simply absent and starts from the beginning."
-  [progress]
-  (some (fn [pair]
-          (let [at (get progress (column-key pair))]
-            (when-not (= done at)
-              [pair (or at 0)])))
-        dwh-derived-columns))
-
-(defn sweep-complete?
-  "Whether `progress` has covered every entry in [[dwh-derived-columns]]."
-  [progress]
-  (nil? (pending progress)))
-
-(def ^:private backfill-progress-key
-  "Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
-  module can't depend on the settings module without a cycle."
-  "encryption-backfill-progress")
-
-(defn read-backfill-progress
-  "Per-column sweep progress, or nil to start from scratch. Stored as JSON with plain string keys and values, so it
-  survives the round trip unchanged, and read plaintext-tolerantly because key rotation re-encrypts every `setting`
-  row, including this one."
-  []
-  (when-let [raw (t2/select-one-fn :value :setting :key backfill-progress-key)]
-    (try
-      (json/decode (encryption/maybe-decrypt-accepting-plaintext raw))
-      (catch Throwable e
-        ;; unreadable progress just means starting over; the sweep skips rows it already converted
-        (log/warn e "Could not read encryption backfill progress, starting from the beginning")
-        nil))))
-
-(defn save-backfill-progress!
-  "Record how far the sweep got."
-  [progress]
-  (let [value (encryption/maybe-encrypt (json/encode progress))]
-    (when (zero? (t2/update! :setting {:key backfill-progress-key} {:value value}))
-      (t2/insert! :setting {:key backfill-progress-key :value value}))))
-
-(defn clear-backfill-progress!
-  "Forget how far the sweep got, so the next one starts from the beginning."
-  ([] (clear-backfill-progress! nil))
-  ([conn] (t2/delete! :conn conn :setting :key backfill-progress-key)))
-
-(defn rewrite-dwh-derived-columns!
-  "Convert [[dwh-derived-columns]] with `f`, resuming from `progress` and stopping once `deadline-ms` has passed (nil
-  runs to completion). Returns `{:progress <map> :pages <n> :converted <n>}`; ask [[sweep-complete?]] whether it
-  finished."
-  [f progress deadline-ms batch-size]
-  (loop [progress  (or progress {})
-         pages     0
-         converted 0]
-    (if-let [[[table column :as pair] after-id] (pending progress)]
-      (if-let [page (rewrite-page! table column f after-id batch-size)]
-        (let [progress  (assoc progress (column-key pair) (:last-id page))
-              pages     (inc pages)
-              converted (+ converted (long (:converted page)))]
-          (log/debugf "Encryption sweep: %s.%s converted %d row(s), now at id %d"
-                      (name table) (name column) (:converted page) (:last-id page))
-          (if (and deadline-ms (>= (System/currentTimeMillis) deadline-ms))
-            {:progress progress :pages pages :converted converted}
-            (recur progress pages converted)))
-        (do
-          (log/infof "Encryption sweep: finished %s.%s" (name table) (name column))
-          (recur (assoc progress (column-key pair) done) pages converted)))
-      {:progress progress :pages pages :converted converted})))
-
 (defn encrypt-value
   "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op.
   An empty string is left as-is: `maybe-encrypt` returns nil for it, which would null the column.
@@ -437,6 +300,20 @@
     v
     (encryption/maybe-encrypt v)))
 
+(defn rewrite-columns!
+  "Apply `f` to every non-null value in `columns` (`[table column]` pairs), writing back only what it changed. Streams
+  the rows rather than realizing a column at once, and writes per row, so the enclosing transaction is the only thing
+  holding state."
+  [columns f]
+  (doseq [[table column] columns]
+    (run! (fn [{:keys [id value]}]
+            (let [v (f value)]
+              (when (not= v value)
+                (t2/query {:update table :set {column v} :where [:= :id id]}))))
+          (t2/reducible-query {:select [:id [column :value]]
+                               :from   [table]
+                               :where  [:!= column nil]}))))
+
 (defn encrypt-plaintext-columns!
   "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup: the one-shot
   encryption backfill migrations cannot be relied on to have done this -- run without MB_ENCRYPTION_SECRET_KEY (the
@@ -446,14 +323,11 @@
   A value that decrypts with the current key is left byte-identical; whether a value is encrypted is
   decided by [[encryption/decryptable-string?]] (actually decrypting), never by shape. The `^bytes` columns are not
   scanned: every shipped version writes those encrypted, so they cannot regress this way. No-op when
-  MB_ENCRYPTION_SECRET_KEY is not set.
-
-  [[dwh-derived-columns]] are left to `metabase.app-db.task.encryption-backfill`: a `metabase_fieldvalues` page costs
-  seconds, so scanning them here would stall every boot."
+  MB_ENCRYPTION_SECRET_KEY is not set."
   []
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [conn]
-      (doseq [[table column] (remove (set dwh-derived-columns) encrypted-string-columns)]
+      (doseq [[table column] encrypted-string-columns]
         (run! (fn [{:keys [id value]}]
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
@@ -493,9 +367,6 @@
       (replace-encryption-check! conn (when encrypting? encrypt-str-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
-      ;; decryption leaves the columns in the clear, so a finished sweep would wrongly tell the backfill to skip them
-      (when-not encrypting?
-        (clear-backfill-progress! conn))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db

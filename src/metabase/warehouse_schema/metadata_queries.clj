@@ -55,7 +55,6 @@
                        {:where [:and
                                 [:= :type "full"]
                                 [:= :field_id field-id]
-                                [:not= :human_readable_values nil]]})]
-    ;; a legacy map-shaped value comes back from the model as all-nils; treat that as no remapping
-    (when (some some? remapped)
-      (zipmap orig remapped))))
+                                [:not= :human_readable_values nil]
+                                [:not= :human_readable_values "{}"]]})]
+    (some->> (seq remapped) (zipmap orig))))

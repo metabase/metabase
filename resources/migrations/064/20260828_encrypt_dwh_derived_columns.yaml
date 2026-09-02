@@ -2,14 +2,13 @@
 ## MB_ENCRYPTION_SECRET_KEY set never re-run `encrypt-db` on upgrade, so without this their existing rows would stay
 ## in the clear until something rewrote them individually, which for stable content may never happen.
 ##
-## Forward is a no-op: the work happens off the boot path in `metabase.app-db.task.encryption-backfill`. The rollback
-## decrypts them again, so `migrate down` hands an older version data it can still read.
+## The rollback decrypts them again, so `migrate down` hands an older version data it can still read.
 
 databaseChangeLog:
   - changeSet:
       id: v64.2026-08-28T00:00:00
       author: qnkhuat
-      comment: Encrypt field values, result metadata, saved parameter values and transform checkpoints
+      comment: Encrypt card result metadata, saved parameter values and transform checkpoints
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.EncryptDwhDerivedColumns"

@@ -2,6 +2,4 @@
   (:require
    ;; make sure [[metabase.app-db.setup]] is loaded so the `:metabase.app-db.setup/application-db` Honey SQL dialect gets
    ;; defined and so default Honey SQL options and the like are loaded.
-   [metabase.app-db.setup]
-   ;; loaded for its `task/init!` method
-   [metabase.app-db.task.encryption-backfill]))
+   [metabase.app-db.setup]))
