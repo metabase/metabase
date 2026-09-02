@@ -269,15 +269,25 @@
   (testing "a v2 tool handler that throws still records an error row, and the client sees a
            (redacted) error rather than a silent success"
     (mt/with-premium-features #{:audit-app}
-      (let [sid (str "throw-session-" (mt/random-name))]
+      ;; A tool name unique to this run. Driving the real `ping_v2` would make the select read a sibling
+      ;; ^:parallel test's row, and the cleanup would then delete every ping_v2 row in the app DB — the rest
+      ;; of this ns isolates by a unique column value for exactly that reason.
+      (let [sid       (str "throw-session-" (mt/random-name))
+            tool-name (str "throwing-" (mt/random-name))]
         (try
-          (mt/with-dynamic-fn-redefs [v2.api/ping-v2 (fn [_ _] (throw (ex-info "kaboom" {})))]
-            (let [result (v2.registry/call-tool #{"agent:content:read"} sid "ping_v2" {})]
-              (is (:isError result) "the client sees an error result")))
-          (let [row (t2/select-one :model/McpToolCallLog :tool_name "ping_v2")]
+          (v2.registry/register-tool! {:name        tool-name
+                                       :scope       "agent:content:read"
+                                       :description "throws on purpose"
+                                       :args        [:map]
+                                       :handler     (fn [_ _] (throw (ex-info "kaboom" {})))})
+          (let [result (v2.registry/call-tool #{"agent:content:read"} sid tool-name {})]
+            (is (:isError result) "the client sees an error result"))
+          (let [row (t2/select-one :model/McpToolCallLog :tool_name tool-name)]
             (is (some? row) "an error row is recorded even though the handler threw")
             (is (= "error" (:status row))))
-          (finally (cleanup-calls! :tool_name "ping_v2")))))))
+          (finally
+            (swap! @#'v2.registry/tools* dissoc tool-name)
+            (cleanup-calls! :tool_name tool-name)))))))
 
 ;;; --------------------------------------------- Feature gating --------------------------------------------
 
