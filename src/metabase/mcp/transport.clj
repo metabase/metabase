@@ -95,14 +95,21 @@
   (`uiCredential: \"…\"` via [[metabase.mcp.ui-resource/embed-render-fn]]); recording it verbatim
   parks a live bearer authenticator in the trace file (and the superuser-readable ai-tracing API),
   where it outlives its 5-minute window in backups and log shipping. v1 stripped its credential
-  channel before tracing the same way (`mcp.resources/redact-ui-credential`)."
+  channel before tracing the same way (`mcp.resources/redact-ui-credential`).
+
+  A `tools/call` result carries the credential in its private MCP Apps `_meta` block instead
+  (`refresh_ui_credential`); the registry strips that block from its own tool-output trace, and this
+  response-level trace must strip it too or the credential lands in the trace one frame up."
   [response]
   (letfn [(redact-text [s]
             (cond-> s
               (string? s) (str/replace #"uiCredential: \"[^\"]*\"" "uiCredential: \"[redacted]\"")))]
     (cond-> response
       (sequential? (get-in response [:result :contents]))
-      (update-in [:result :contents] (partial mapv #(update % :text redact-text))))))
+      (update-in [:result :contents] (partial mapv #(update % :text redact-text)))
+
+      (map? (:result response))
+      (update :result v2.common/redact-mcp-apps-meta))))
 
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request through the surface's `dispatch-method-fn`.
