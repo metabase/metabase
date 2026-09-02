@@ -142,16 +142,19 @@
   :doc        false)
 
 (defsetting readable-paths
-  "Comma separated allowlist of paths which this Metabase instance is allowed to read for settings."
+  "Comma separated allowlist of paths which this Metabase instance is allowed to read for settings. Use the special value NONE to allow no paths."
   :encryption :no
   :visibility :internal
   :type       :csv
   :export?    true
   :getter     (fn []
-                (or (setting/get-value-of-type :csv :readable-paths)
-                    (if (premium-features/is-hosted?)
-                      ;; empty vector means "allow none"
-                      ["/"]
-                      ;; If not on hosted, allow all
-                      ["/"])))
+                (if (premium-features/is-hosted?)
+                  ;; empty vector means "allow none"
+                  []
+                  (if-let [paths-setting (setting/get-value-of-type :csv :readable-paths)]
+                    (if (= paths-setting ["NONE"])
+                      []
+                      paths-setting)
+                    ;; If not hosted, allow all by default
+                    ["/"])))
   :doc        false)
