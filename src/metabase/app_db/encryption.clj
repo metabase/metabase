@@ -26,29 +26,36 @@
 ;; the encrypted-text/EDN transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key
 ;; only requires decrypting the raw value with the current key and re-encrypting the resulting string. We list raw
 ;; table names (not models) so this also works for enterprise models that aren't loaded in every edition.
-(def ^:private encrypted-string-columns
-  [[:metabase_database :details]
-   [:metabase_database :settings]
-   [:metabase_database :write_data_details]
-   [:metabase_database :admin_details]
-   [:core_user :settings]
-   [:channel :details]
-   [:api_key :key]
-   [:auth_identity :credentials]
-   [:exploration_query_result :chart_stats]
-   [:exploration_query_result :metric_description]
-   [:exploration_query_result :chart_description]
-   [:report_card :public_uuid]
-   [:report_dashboard :public_uuid]
-   [:action :public_uuid]
-   [:document :public_uuid]
-   [:notification_recipient :details]
-   [:pulse_channel :details]
-   ;; warehouse-derived, encrypted at rest since v64. `metabase_field.fingerprint` and `metabase_fieldvalues` are
-   ;; deliberately not here: both are far too many rows to rewrite synchronously (see #80081).
-   [:report_card :result_metadata]
+(def ^:private migration-converted-columns
+  "Columns whose existing rows are converted by `EncryptDwhDerivedColumns` rather than by [[encrypt-plaintext-columns!]].
+  Every path that could leave them plaintext already runs the migration or `encrypt-db`, so scanning them on the boot
+  path would decrypt every card's `result_metadata` on every startup to learn nothing."
+  [[:report_card :result_metadata]
    [:user_parameter_value :value]
    [:transform :last_checkpoint_value]])
+
+(def ^:private encrypted-string-columns
+  (into
+   [[:metabase_database :details]
+    [:metabase_database :settings]
+    [:metabase_database :write_data_details]
+    [:metabase_database :admin_details]
+    [:core_user :settings]
+    [:channel :details]
+    [:api_key :key]
+    [:auth_identity :credentials]
+    [:exploration_query_result :chart_stats]
+    [:exploration_query_result :metric_description]
+    [:exploration_query_result :chart_description]
+    [:report_card :public_uuid]
+    [:report_dashboard :public_uuid]
+    [:action :public_uuid]
+    [:document :public_uuid]
+    [:notification_recipient :details]
+    [:pulse_channel :details]]
+   ;; warehouse-derived, encrypted at rest since v64. `metabase_field.fingerprint` and `metabase_fieldvalues` are
+   ;; deliberately not encrypted at all: both are far too many rows to rewrite synchronously (see #80081).
+   migration-converted-columns))
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
@@ -323,11 +330,14 @@
   A value that decrypts with the current key is left byte-identical; whether a value is encrypted is
   decided by [[encryption/decryptable-string?]] (actually decrypting), never by shape. The `^bytes` columns are not
   scanned: every shipped version writes those encrypted, so they cannot regress this way. No-op when
-  MB_ENCRYPTION_SECRET_KEY is not set."
+  MB_ENCRYPTION_SECRET_KEY is not set.
+
+  [[migration-converted-columns]] are skipped: a custom migration converts those, and re-checking them here would
+  decrypt every card's `result_metadata` on every startup."
   []
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [conn]
-      (doseq [[table column] encrypted-string-columns]
+      (doseq [[table column] (remove (set migration-converted-columns) encrypted-string-columns)]
         (run! (fn [{:keys [id value]}]
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
@@ -347,7 +357,7 @@
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
-        (doseq [[table column] encrypted-string-columns]
+        (doseq [[table column] (remove (set migration-converted-columns) encrypted-string-columns)]
           (reencrypt-encrypted-column! conn table column encrypt-str-fn
                                        (and (= check-status :valid)
                                             (contains? clearable-when-undecryptable [table column])))))
