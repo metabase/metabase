@@ -379,12 +379,12 @@
   "Whole-database values for `db-ids`, or for every database when nil."
   [user-id db-ids]
   (let [per-group (-> (perm-rows-query-base user-id db-ids)
-                      (assoc :select   [:p.perm_type :p.db_id :p.group_id
-                                        [[:min value-rank-case] :gmin]
-                                        [[:max value-rank-case] :gmax]
-                                        [[:min db-row-rank-case] :dbmin]
-                                        [[:max db-row-rank-case] :dbmax]]
-                             :group-by [:p.perm_type :p.db_id :p.group_id]))
+                      (assoc 'select   ['p.perm_type 'p.db_id 'p.group_id
+                                        [['min value-rank-case] 'gmin]
+                                        [['max value-rank-case] 'gmax]
+                                        [['min db-row-rank-case] 'dbmin]
+                                        [['max db-row-rank-case] 'dbmax]]
+                             'group-by ['p.perm_type 'p.db_id 'p.group_id]))
         value     (fn [perm-type mn mx] (when mn (ranks->most-permissive-value perm-type [mn mx])))]
     (reduce (fn [m {:keys [perm_type db_id any_mn any_mx every_mn every_mx db_mn db_mx]}]
               (let [perm-type (keyword perm_type)]
@@ -474,11 +474,11 @@
                            (assoc-in m [(keyword perm_type) db_id :db-level] [mn mx])))
                        {}
                        (t2/query (assoc (perm-rows-query-base user-id db-ids)
-                                        :select [:p.perm_type :p.db_id :p.schema_name
-                                                 [table-level-case :table_level]
-                                                 [[:min value-rank-case] :mn]
-                                                 [[:max value-rank-case] :mx]]
-                                        :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))]
+                                        'select ['p.perm_type 'p.db_id 'p.schema_name
+                                                 [table-level-case 'table_level]
+                                                 [['min value-rank-case] 'mn]
+                                                 [['max value-rank-case] 'mx]]
+                                        'group-by ['p.perm_type 'p.db_id 'p.schema_name table-level-case])))]
     (into {}
           (map (fn [[perm-type db-id->folded]]
                  [perm-type
@@ -541,12 +541,12 @@
                       (ranks->most-permissive-value (keyword perm_type) [mn mx])))
           {}
           (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
-                        (assoc :select [:p.perm_type :p.db_id :p.table_id
-                                        [[:min value-rank-case] :mn]
-                                        [[:max value-rank-case] :mx]]
-                               :group-by [:p.perm_type :p.db_id :p.table_id])
-                        (update :where conj [:not= :p.table_id nil])
-                        (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids]))))))
+                        (assoc 'select ['p.perm_type 'p.db_id 'p.table_id
+                                        [['min value-rank-case] 'mn]
+                                        [['max value-rank-case] 'mx]]
+                               'group-by ['p.perm_type 'p.db_id 'p.table_id])
+                        (update 'where conj ['not= 'p.table_id nil])
+                        (cond-> (seq table-ids) (update 'where conj ['in 'p.table_id table-ids]))))))
 
 (defn- merge-table-perms
   "Merge freshly loaded table permissions into cached ones, unioning the per-database table maps rather than replacing
@@ -733,12 +733,12 @@
   a database-level row applies to every schema, so restricting to one schema needs no expansion step."
   [user-id perm-type database-id schema-name]
   (let [per-group   (-> (perm-rows-query-base user-id [database-id])
-                        (assoc :select   [:p.group_id [[:max value-rank-case] :gmax]]
-                               :group-by [:p.group_id])
-                        (update :where conj [:= :p.perm_type (u/qualified-name perm-type)])
-                        (update :where conj [:or
-                                             [:= :p.table_id nil]
-                                             [:= :p.schema_name schema-name]]))
+                        (assoc 'select   ['p.group_id [['max value-rank-case] 'gmax]]
+                               'group-by ['p.group_id])
+                        (update 'where conj ['= 'p.perm_type (u/qualified-name perm-type)])
+                        (update 'where conj ['or
+                                             ['= 'p.table_id nil]
+                                             ['= 'p.schema_name schema-name]]))
         {:keys [mn mx]} (first (t2/query {'select [[['min 'i.gmax] 'mn] [['max 'i.gmax] 'mx]]
                                           'from   [[per-group 'i]]}))]
     (when mn [mn mx])))

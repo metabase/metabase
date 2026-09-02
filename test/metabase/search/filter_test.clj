@@ -105,16 +105,16 @@
     (testing "In the general case, we simply filter by models, and exclude dashboard cards"
       (is (= {'select ['some 'stuff],
               'from 'somewhere,
-              'where
-              ['and
+              :where
+              [:and
                ['= 1 2]
                ['or ['= nil 'search_index.dashboard_id] nil]
                ['= nil 'search_index.exploration_id]]}
              (search.filter/with-filters {:models []} {'select ['some 'stuff], 'from 'somewhere})))
       (is (= {'select ['some 'stuff],
               'from 'somewhere,
-              'where
-              ['and
+              :where
+              [:and
                ['in 'search_index.model ["a"]]
                ['or ['= nil 'search_index.dashboard_id] nil]
                ['= nil 'search_index.exploration_id]]}
@@ -122,7 +122,7 @@
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {'select ['some 'stuff],
               'from 'somewhere,
-              'where
+              :where
               #{['in 'search_index.last_editor_id [321]]
                 ['in 'search_index.creator_id [123]]
                 ['or ['= 'search_index.collection_id 5] ['like 'collection.location "%/5/%"]]

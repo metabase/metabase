@@ -154,7 +154,7 @@
     (is (= ['= 'card.archived false]
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
-    (is (= ['and
+    (is (= [:and
             ['= 'table.active true]
             ['= 'table.visibility_type nil]
             ['not ['= 'table.db_id audit/audit-db-id]]]
@@ -169,7 +169,7 @@
 
 (deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"
-    (is (= ['and
+    (is (= [:and
             ['or
              ['like ['lower 'card.name] (h2x/like-substring "a")]
              ['like ['lower 'card.name] (h2x/like-substring "string")]
@@ -275,12 +275,12 @@
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
-    (is (= ['and ['= 'card.archived false] ['= 'card.creator_id 1]]
+    (is (= [:and ['= 'card.archived false] ['= 'card.creator_id 1]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
                            {:created-by #{1}})))))
-    (is (= ['and ['= 'card.archived false] ['in 'card.creator_id #{1 2}]]
+    (is (= [:and ['= 'card.archived false] ['in 'card.creator_id #{1 2}]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
@@ -388,7 +388,7 @@
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
-      (is (= ['and
+      (is (= [:and
               ['or ['like ['lower 'model-index-value.name] (h2x/like-substring "foo")]]
               ['= ['inline 1] ['inline 1]]]
              (:where (search.filter/build-filters
@@ -399,7 +399,7 @@
 (deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
-      (is (= ['and
+      (is (= [:and
               ['or ['= 0 1]]
               ['= ['inline 1] ['inline 1]]]
              (:where (search.filter/build-filters
@@ -411,7 +411,7 @@
   (doseq [model ["dataset" "card"]]
     (testing model
       (testing "do not search for native query by default"
-        (is (= ['and
+        (is (= [:and
                 ['or ['like ['lower 'card.name] (h2x/like-substring "foo")] ['like ['lower 'card.description] (h2x/like-substring "foo")]]
                 ['= 'card.archived false]]
                (:where (search.filter/build-filters
@@ -423,7 +423,7 @@
   (doseq [model ["dataset" "card"]]
     (testing model
       (testing "search in both name, description and dataset_query if is enabled"
-        (is (= ['and ['or
+        (is (= [:and ['or
                       ['like ['lower 'card.name] (h2x/like-substring "foo")]
                       ['like ['lower 'card.description] (h2x/like-substring "foo")]
                       ['and
@@ -438,7 +438,7 @@
 (deftest ^:parallel build-filters-search-native-query-3
   (testing "action"
     (testing "do not search for native query by default"
-      (is (= ['and
+      (is (= [:and
               ['or ['like ['lower 'action.name] (h2x/like-substring "foo")] ['like ['lower 'action.description] (h2x/like-substring "foo")]]
               ['= 'action.archived false]]
              (:where (search.filter/build-filters
@@ -449,7 +449,7 @@
 (deftest ^:parallel build-filters-search-native-query-4
   (testing "action"
     (testing "search in both name, description and dataset_query if is enabled"
-      (is (= ['and
+      (is (= [:and
               ['or
                ['like ['lower 'action.name] (h2x/like-substring "foo")]
                ['like ['lower 'action.description] (h2x/like-substring "foo")]
