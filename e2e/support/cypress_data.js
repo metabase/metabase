@@ -228,3 +228,8 @@ export const WRITABLE_DB_CONFIG = {
     },
   },
 };
+
+export const WEBMAIL_CONFIG = {
+  WEB_PORT: 1180,
+  SMTP_PORT: 1125,
+};

@@ -1,12 +1,12 @@
 const { H } = cy;
 import { StaticDashboard } from "@metabase/embedding-sdk-react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { createDashboard, getTextCardDetails } from "e2e/support/helpers";
-import { WEBMAIL_CONFIG } from "e2e/support/helpers/e2e-email-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";

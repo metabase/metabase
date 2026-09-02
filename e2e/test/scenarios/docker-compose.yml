@@ -31,10 +31,10 @@ services:
 
   maildev:
     image: maildev/maildev:2.2.1
+    ## Host ports deliberately differ from the 1080/1025 used for development
     ports:
-      ## Defaults must match e2e/runner/constants/maildev-ports.ts
-      - "${MAILDEV_WEB_PORT:-1080}:1080"
-      - "${MAILDEV_SMTP_PORT:-1025}:1025"
+      - "1180:1080"
+      - "1125:1025"
 
   maildev-ssl:
     ## NOTE: Using this requires a root CA certificate to be added to the Java keystore.

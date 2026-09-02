@@ -7,10 +7,6 @@ import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
-import {
-  MAILDEV_SMTP_PORT,
-  MAILDEV_WEB_PORT,
-} from "../runner/constants/maildev-ports";
 
 import {
   extractFailedTests,
@@ -192,8 +188,6 @@ const defaultConfig = {
     ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
     SNOWPLOW_MICRO_URL: snowplowMicroUrl,
     CLIENT_PORT: process.env["CLIENT_PORT"],
-    MAILDEV_WEB_PORT,
-    MAILDEV_SMTP_PORT,
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,

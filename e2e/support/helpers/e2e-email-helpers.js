@@ -3,25 +3,19 @@ import {
   toggleDashboardSubscriptionsSidebar,
 } from "e2e/support/helpers";
 
+import { WEBMAIL_CONFIG } from "../cypress_data";
+
 const INBOX_TIMEOUT = 5000;
 const INBOX_INTERVAL = 100;
-
-// Configurable via the MAILDEV_WEB_PORT / MAILDEV_SMTP_PORT env vars
-export const WEBMAIL_CONFIG = {
-  WEB_PORT: Cypress.expose("MAILDEV_WEB_PORT"),
-  SMTP_PORT: Cypress.expose("MAILDEV_SMTP_PORT"),
-};
 
 const { WEB_PORT, SMTP_PORT } = WEBMAIL_CONFIG;
 
 /**
  * `bun run test-cypress` starts maildev for you via
- * e2e/test/scenarios/docker-compose.yml, on host ports 1080 (web) and
- * 1025 (SMTP) by default. If those ports are taken on your machine, pick
- * different ones with `MAILDEV_WEB_PORT` / `MAILDEV_SMTP_PORT` — the same
- * env vars drive both the container's host-port mapping and the URLs used
- * in these helpers, e.g.
- * `MAILDEV_WEB_PORT=2080 MAILDEV_SMTP_PORT=2025 bun run test-cypress`
+ * e2e/test/scenarios/docker-compose.yml. To start it manually instead:
+ * `docker run -d -p 1180:1080 -p 1125:1025 maildev/maildev:2.2.1`
+ * or
+ * `npx maildev -s 1125 -w 1180`
  */
 export const setupSMTP = () => {
   cy.log("Set up Webmail SMTP server");

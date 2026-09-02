@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_USER_ID,
@@ -7,7 +7,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { WEBMAIL_CONFIG } from "e2e/support/helpers/e2e-email-helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { admin } = USERS;
