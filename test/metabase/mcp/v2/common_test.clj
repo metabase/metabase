@@ -164,6 +164,37 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for type"
                             (common/select-fields :no-such-type row ["name"]))))))
 
+(deftest list-content-empty-page-test
+  (testing "GHY-4137/P6: a page that returns nothing must say why. `truncation-line` only fires when
+            (offset + limit) < total, so an offset at or past the end produced a bare
+            {\"data\":[],\"returned\":0,\"total\":37} with no steering at all — which reads as
+            \"nothing matches\" when the truth is \"you paged past the end\"."
+    (testing "an offset past the end names the offset and the total"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20}) :content first :text)]
+        (is (re-find #"No results at offset 100" text))
+        (is (re-find #"37 available" text))
+        (is (re-find #"`offset`" text) "it steers back rather than leaving the caller stuck")))
+    (testing "a floored total stays a floor in the empty-page line"
+      (let [text (-> (common/list-content [] 37 {:offset 100 :limit 20 :total-floor? true})
+                     :content first :text)]
+        (is (re-find #"at least 37 available" text))))
+    (testing "an empty FIRST page — every match dropped after counting — says so instead of steering
+              to an offset that would not help"
+      (let [text (-> (common/list-content [] 3 {:offset 0 :limit 20}) :content first :text)]
+        (is (re-find #"Returned 0 of 3" text))
+        (is (not (re-find #"No results at offset" text)))))
+    (testing "a genuinely empty result set gets no line — total 0 already says it"
+      (let [text (-> (common/list-content [] 0 {:offset 0 :limit 20}) :content first :text)]
+        (is (not (re-find #"No results" text)))
+        (is (not (re-find #"Returned" text)))))
+    (testing "an unknown total gets no line — there is nothing to report against"
+      (let [text (-> (common/list-content [] nil {:offset 100 :limit 20}) :content first :text)]
+        (is (not (re-find #"No results" text)))))
+    (testing "a non-empty page is unaffected by the new branch"
+      (let [text (-> (common/list-content [{:id 1} {:id 2}] 5 {:offset 0 :limit 2}) :content first :text)]
+        (is (re-find #"Returned 2 of 5" text))
+        (is (not (re-find #"No results" text)))))))
+
 (deftest list-content-test
   (testing "a full page (returned == total) appends no steering line"
     (let [content (common/list-content [{:id 1} {:id 2}] 2 {:offset 0 :limit 10})

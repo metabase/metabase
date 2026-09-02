@@ -102,6 +102,23 @@
    (cond-> {:data data :returned (count data)}
      (some? total) (assoc :total total))))
 
+(defn- empty-page-line
+  "The steering sentence for a page that returned nothing while `total` says matches exist.
+   [[truncation-line]] only fires on arithmetic truncation, so an offset at or past the end — or a
+   page whose every row was dropped after the count — otherwise carries no line at all, and an
+   empty `data` reads as \"nothing matches\" rather than \"nothing *here*\". Nil when `total` is
+   unknown or genuinely zero: that envelope already says it."
+  [{:keys [offset total total-floor?]}]
+  (when (and total (pos? total))
+    (let [total-str (str (when total-floor? "at least ") total)]
+      (if (pos? (or offset 0))
+        (format "No results at offset %d — %s available; page back with a smaller `offset`."
+                offset total-str)
+        ;; offset 0 with a positive total: the matches were counted, then dropped downstream
+        ;; (a stale index hit, a row gone unreadable). Paging cannot help, so don't suggest it.
+        (format "Returned 0 of %s — the matches found are no longer readable or have been removed."
+                total-str)))))
+
 (defn list-content
   "Build the MCP success content for a list response: the envelope (compact JSON) in the text
    block, with a steering line appended. `data` is already the page; `opts` carries
@@ -109,7 +126,10 @@
    list data never rides `structuredContent` by reflex."
   [data total opts]
   (let [envelope (list-envelope data total)
-        line     (truncation-line (assoc opts :total total :returned (count data)))]
+        opts     (assoc opts :total total :returned (count data))
+        line     (if (empty? data)
+                   (empty-page-line opts)
+                   (truncation-line opts))]
     (success-content (cond-> (json/encode envelope)
                        line (str "\n" line)))))
 
