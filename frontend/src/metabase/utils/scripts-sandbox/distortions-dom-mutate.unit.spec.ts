@@ -4,10 +4,14 @@ import {
   createElementNSDistortion,
   setAttributeDistortion,
   setAttributeNSDistortion,
+  setAttributeNodeDistortion,
+  setAttributeNodeNSDistortion,
+  setNamedItemDistortion,
+  setNamedItemNSDistortion,
 } from "./distortions-dom-mutate";
 
 function asStringArg(value: object): string {
-  // type helper so DOM APIs accept non-string values and coerce them to
+  // type helper to pass non-string values as string in tests
   return value as unknown as string;
 }
 
@@ -112,6 +116,131 @@ describe("scripts-sandbox DOM-mutate distortions", () => {
       expect(() =>
         setAttributeNS.call(el, null, asStringArg(name), "value"),
       ).toThrow(/blocked setAttributeNS for inline event handler/);
+    });
+
+    it("blocks a javascript: URL supplied as a non-string value on a url attribute", () => {
+      const el = document.createElement("a");
+      const value = { toString: () => "javascript:void 0" };
+
+      expect(() =>
+        setAttributeNS.call(el, null, "href", asStringArg(value)),
+      ).toThrow(/blocked setAttributeNS with javascript: URL/);
+    });
+
+    it("applies allowed namespaced attributes", () => {
+      const el = document.createElement("div");
+      setAttributeNS.call(el, null, "data-value", "ok");
+      expect(el).toHaveAttribute("data-value", "ok");
+    });
+  });
+
+  describe("setAttributeNodeDistortion", () => {
+    const setAttributeNode = setAttributeNodeDistortion("plugin 1");
+
+    it("blocks an attribute node with an inline event-handler name", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttribute("onclick");
+      attr.value = "value";
+
+      expect(() => setAttributeNode.call(el, attr)).toThrow(
+        /blocked setAttributeNode for inline event handler/,
+      );
+    });
+
+    it("blocks an attribute node with a javascript: URL on a url attribute", () => {
+      const el = document.createElement("a");
+      const attr = document.createAttribute("href");
+      attr.value = "javascript:void 0";
+
+      expect(() => setAttributeNode.call(el, attr)).toThrow(
+        /blocked setAttributeNode with javascript: URL/,
+      );
+    });
+
+    it("applies allowed attribute nodes", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttribute("data-value");
+      attr.value = "ok";
+
+      setAttributeNode.call(el, attr);
+      expect(el).toHaveAttribute("data-value", "ok");
+    });
+  });
+
+  describe("setAttributeNodeNSDistortion", () => {
+    const setAttributeNodeNS = setAttributeNodeNSDistortion("plugin 1");
+
+    it("blocks an attribute node with an inline event-handler name", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttributeNS(null, "onload");
+
+      expect(() => setAttributeNodeNS.call(el, attr)).toThrow(
+        /blocked setAttributeNodeNS for inline event handler/,
+      );
+    });
+
+    it("applies allowed attribute nodes", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttributeNS(null, "data-value");
+      attr.value = "ok";
+
+      setAttributeNodeNS.call(el, attr);
+      expect(el).toHaveAttribute("data-value", "ok");
+    });
+  });
+
+  describe("setNamedItemDistortion", () => {
+    const setNamedItem = setNamedItemDistortion("plugin 1");
+
+    it("blocks an attribute node with an inline event-handler name", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttribute("onclick");
+      attr.value = "value";
+
+      expect(() => setNamedItem.call(el.attributes, attr)).toThrow(
+        /blocked setNamedItem for inline event handler/,
+      );
+    });
+
+    it("blocks an attribute node with a javascript: URL on a url attribute", () => {
+      const el = document.createElement("a");
+      const attr = document.createAttribute("href");
+      attr.value = "javascript:void 0";
+
+      expect(() => setNamedItem.call(el.attributes, attr)).toThrow(
+        /blocked setNamedItem with javascript: URL/,
+      );
+    });
+
+    it("applies allowed attribute nodes", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttribute("data-value");
+      attr.value = "ok";
+
+      setNamedItem.call(el.attributes, attr);
+      expect(el).toHaveAttribute("data-value", "ok");
+    });
+  });
+
+  describe("setNamedItemNSDistortion", () => {
+    const setNamedItemNS = setNamedItemNSDistortion("plugin 1");
+
+    it("blocks an attribute node with an inline event-handler name", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttributeNS(null, "onload");
+
+      expect(() => setNamedItemNS.call(el.attributes, attr)).toThrow(
+        /blocked setNamedItemNS for inline event handler/,
+      );
+    });
+
+    it("applies allowed attribute nodes", () => {
+      const el = document.createElement("div");
+      const attr = document.createAttributeNS(null, "data-value");
+      attr.value = "ok";
+
+      setNamedItemNS.call(el.attributes, attr);
+      expect(el).toHaveAttribute("data-value", "ok");
     });
   });
 
