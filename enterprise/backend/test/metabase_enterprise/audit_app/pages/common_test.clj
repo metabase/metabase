@@ -56,7 +56,7 @@
 
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
-    (is (= {'where ['or
+    (is (= {:where ['or
                     ['like ['lower 't.name] (h2x/like-substring "birds")]
                     ['like ['lower 'db.name] (h2x/like-substring "birds")]]}
            (#'common/add-search-clause {} "birds" 't.name 'db.name)))))
