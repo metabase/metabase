@@ -11,16 +11,17 @@
   '[dev.modules-config-test
     metabase.core.modules-test])
 
-(def ^:private ratchet-check-namespaces
+(def ^:private ratchet-test-namespaces
+  ;; These test the tooling itself. `./bin/mage kondo-ratchets` checks the source tree.
   '[metabase.core.kondo-ratchet-test
     metabase.core.kondo-ratchet-check-test])
 
 (def ^:private backend-check-namespaces
-  (vec (concat module-check-namespaces ratchet-check-namespaces)))
+  (vec (concat module-check-namespaces ratchet-test-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."
-  ["migrations" "backend"])
+  ["migrations" "backend" "ratchets"])
 
 ;; `sh` is a [[mage.shell/sh*]]-compatible function so unit tests can inspect commands without running them.
 ;; .github/scripts/check-preresolve-aliases.sh reads the alias strings out of these two functions.
@@ -34,6 +35,10 @@
       "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci"
       ":only"
       (pr-str namespaces)))
+
+(defn- run-ratchet-checks! [sh]
+  (sh {:dir u/project-root-directory}
+      "./bin/mage" "kondo-ratchets"))
 
 (def ^:private suite-labels
   {"backend"    "backend checks"
@@ -51,7 +56,7 @@
              "backend"    (run-clojure-checks! sh backend-check-namespaces)
              "migrations" (run-migration-checks! sh)
              "modules"    (run-clojure-checks! sh module-check-namespaces)
-             "ratchets"   (run-clojure-checks! sh ratchet-check-namespaces)))
+             "ratchets"   (run-ratchet-checks! sh)))
     (catch Exception e
       (println "Could not run" (suite-labels suite) "--" (ex-message e))
       1)))
