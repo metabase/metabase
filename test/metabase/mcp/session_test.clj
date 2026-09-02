@@ -203,10 +203,11 @@
       (is (= 2 (count (:arglists (meta #'mcp.session/issue-ui-credential))))
           "v1 still ships, so the 2-arity shim is still load-bearing")
       (is (= 1 (count (:arglists (meta #'mcp.session/issue-ui-credential))))
-          (str "v1 is retired, so its credential shim must go: delete `issue-ui-credential`'s 2-arity, the "
-               "`:legacy` branch in `metabase.agent-api.query-guards/check-mcp-ui-native-query!`, and the two "
-               "tripwire assertions that cover them (here and in query-guards-test). Leaving the guard branch "
-               "keeps a fail-open path alive for any credential shaped `{:legacy true}`.")))))
+          (str "v1 is retired, so its credential shim must go: delete `issue-ui-credential`'s 2-arity, "
+               "`issue-legacy-ui-credential` itself, the `:legacy` branch in "
+               "`metabase.agent-api.query-guards/check-mcp-ui-native-query!`, and the tripwire assertions "
+               "covering them (here, in query-guards-test, and v2-credentials-are-never-legacy-test). Leaving "
+               "the guard branch keeps a fail-open path alive for any credential shaped `{:legacy true}`.")))))
 
 (deftest get-or-create-embedding-session-test
   (testing "first call materializes the core_session backing this MCP session and returns the row"

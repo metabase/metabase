@@ -134,21 +134,38 @@
                                      extra-claims)))]
     (str payload "." (ui-credential-signature payload))))
 
+(defn issue-legacy-ui-credential
+  "v1-compat ONLY. Mint a UI credential with no scope claim, stamped `:legacy`.
+
+  A credential minted here is EXEMPT from the native-SQL scope gate
+  ([[metabase.agent-api.query-guards/check-mcp-ui-native-query!]]) — v1's iframe visualizes `execute_sql`
+  handles that legitimately hold raw SQL, and wiring that gate must not change v1's behavior. The marker is
+  explicit rather than inferred from a missing claim, because absence has to keep meaning *fail closed*: a
+  rolling deploy can hand a node a credential minted before the claim existed, and the gate refuses those.
+
+  It carries the scary name on purpose. `(issue-ui-credential session-id user-id)` reads like a perfectly
+  reasonable call, and a v2 caller reaching for it would silently opt that surface out of the gate — the exact
+  hole the gate was added to close. Nothing on the v2 surface may call this or the 2-arity that forwards here;
+  `v2-credentials-are-never-legacy-test` is what holds that line.
+
+  Delete this fn, its 2-arity forwarder, and the guard's `:legacy` branch, with v1's retirement."
+  [session-id user-id]
+  (sign-ui-credential session-id user-id {:legacy true}))
+
 (defn issue-ui-credential
   "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
   never as a core Metabase session.
 
   `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim so gates further down the
   iframe's request surface can ask what the client was actually granted — the credential itself is stamped
-  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap."
-  ;; v1-compat 2-arity: the frozen v1 surface mints without a scope claim. It stamps `:legacy` rather than
-  ;; leaving the claim merely absent, because absence has to keep meaning "fail closed" — a rolling deploy can
-  ;; hand a node a credential minted before the claim existed, and
-  ;; [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]] refuses those. An explicit marker is what
-  ;; separates "v1 minted this on purpose" from "we don't know what this is".
-  ;; Delete this arity, and that guard's `:legacy` branch, with v1's retirement.
+  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap.
+
+  Passing the caller's real scopes is what subjects the credential to the native-SQL gate. The 2-arity is the
+  v1 surface's, and forwards to [[issue-legacy-ui-credential]] — read that docstring before calling it: it mints
+  a credential EXEMPT from that gate. It stays an arity of this fn only so v1's frozen call site does not have
+  to change; v2 must always pass scopes."
   ([session-id user-id]
-   (sign-ui-credential session-id user-id {:legacy true}))
+   (issue-legacy-ui-credential session-id user-id))
   ([session-id user-id token-scopes]
    (sign-ui-credential session-id user-id (encode-token-scopes token-scopes))))
 

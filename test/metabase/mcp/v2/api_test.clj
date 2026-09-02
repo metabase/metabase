@@ -214,6 +214,31 @@
               (is (= 1 @minted))
               (is (str/includes? text "uiCredential")))))))))
 
+(deftest v2-credentials-are-never-legacy-test
+  (testing "GHY-4318: `issue-legacy-ui-credential` (and the 2-arity that forwards to it) mints a credential
+            EXEMPT from the native-SQL scope gate. That exemption exists only so wiring the gate would not change
+            v1's behavior — v1's iframe visualizes execute_sql handles. A v2 caller reaching for it, now or when
+            the visualize tools land, would silently opt this surface back out of the gate and reopen the hole
+            the gate closes.
+
+            The arity is the trap: `(issue-ui-credential session-id user-id)` reads like a perfectly reasonable
+            call. So this asserts the property on the wire instead of trusting the name — every credential the
+            v2 surface hands out carries a scope claim and is not marked legacy."
+    (mcp.ui-resource/with-fallback-template
+      (let [[session-id _] (initialize!)
+            html   (-> (mcp-request (jsonrpc-request "resources/read" {:uri v2.resources/visualize-query-uri})
+                                    {"mcp-session-id" session-id})
+                       (get-in [:body :result :contents])
+                       first
+                       :text)
+            claims (some-> (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
+                           mcp.session/resolve-ui-credential)]
+        (is (some? claims) "the shell must render a resolvable credential — otherwise this passes vacuously")
+        (is (nil? (:legacy claims))
+            "a v2-minted credential must never carry the v1 exemption marker")
+        (is (contains? claims :scp)
+            "and must carry a scope claim, which is what subjects it to the native-SQL gate")))))
+
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (testing "an unauthenticated request advertises the protected-resource metadata for the path it hit"
@@ -337,7 +362,11 @@
             SQL is `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
             unit-tested. Without the wiring, `agent:query:run` silently becomes `agent:sql:run`."
     (mcp.ui-resource/with-fallback-template
-      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}]
+      ;; Both payloads are hand-rolled legacy MBQL rather than built with Lib, deliberately and
+      ;; symmetrically: what is under test is the shape a client actually PUTs on the wire reaching the
+      ;; guard, so constructing it through Lib would test Lib's output instead of the client's.
+      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+            mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
         (testing "a client without agent:sql:run is refused, and told which scope it needs"
           (do-with-bearer-token!
            #{"agent:query:run"}
@@ -358,7 +387,7 @@
                (is (= 202 (:status (client/client-full-response
                                     :post 202 "dataset"
                                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                                    (mt/mbql-query venues {:limit 1})))))))))
+                                    mbql-query))))))))
         (testing "a client that WAS granted agent:sql:run runs the same native query"
           (do-with-bearer-token!
            #{"agent:query:run" "agent:sql:run"}
