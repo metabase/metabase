@@ -360,6 +360,11 @@
         (testing "the work is not run, and nothing is registered for it"
           (is (false? @ran))
           (is (not (contains? @registry ::over-cap))))
+        (testing "but a caller joining a fetch already in flight is still admitted — it adds no
+                  registry entry, so the cap has no reason to turn it away"
+          (let [joined (future (field-values/detached-fetch! [::filler 0] (constantly ::should-not-run)))]
+            (deliver (:promise (get @registry [::filler 0])) {:value ::from-existing-fetch})
+            (is (= ::from-existing-fetch (deref joined 10000 ::timed-out)))))
         (finally
           (swap! registry #(apply dissoc % (keys filler))))))))
 

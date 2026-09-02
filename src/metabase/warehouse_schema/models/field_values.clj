@@ -584,8 +584,11 @@
 
 (defn- claim-fetch!
   "Register `entry` for `cache-key` and return whichever entry is registered once we are done, or
-  nil when the registry is already full. Checking capacity inside the swap keeps the ceiling exact
-  under concurrent claims."
+  nil when the registry is already full.
+
+  The `contains?` check comes first deliberately: joining a fetch already in flight adds no entry,
+  so a full registry must not turn those callers away. Only a new key can be refused. Checking
+  capacity inside the swap keeps the ceiling exact under concurrent claims."
   [cache-key entry]
   (-> (swap! in-flight-fetches (fn [m]
                                  (if (or (contains? m cache-key)
