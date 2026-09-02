@@ -38,7 +38,7 @@
 (deftest protected-resource-metadata-test
   (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
         (testing path
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str ".well-known/oauth-protected-resource" path))]

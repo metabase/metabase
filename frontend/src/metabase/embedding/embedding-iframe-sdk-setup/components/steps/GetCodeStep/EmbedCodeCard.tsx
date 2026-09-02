@@ -46,7 +46,7 @@ export const EmbedCodeCard = ({ snippet, onCopy }: EmbedCodeCardProps) => {
       <Divider mb="md" />
 
       <Stack gap="sm">
-        <div onCopy={onCopy}>
+        <div onCopy={onCopy} data-testid="embed-code-snippet">
           <CodeEditor
             language="html"
             value={snippet}

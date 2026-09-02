@@ -40,9 +40,19 @@
     (.init mac (SecretKeySpec. (.getBytes secret "UTF-8") "HmacSHA256"))
     (.doFinal mac (.getBytes message "UTF-8"))))
 
-(defn derive-embedding-session-key
+(defn- derive-embedding-session-key
   "Deterministically derive the embedding session key for `mcp-session-id` from the instance-wide signing secret. See ns
   docstring for rationale.
+
+  PRIVATE ON PURPOSE, and the privacy is load-bearing rather than stylistic. The derivation takes only the MCP
+  session id — which is client-supplied and unsigned — so two users presenting the same id derive the SAME key.
+  `core_session` lookups resolve a key by `key_hashed` alone, with no user filter and no ordering
+  ([[metabase.server.middleware.session]]), so whichever colliding row the DB returns first is who that key
+  authenticates as. Any public fn returning this plaintext is therefore an account-takeover primitive: a caller
+  who knows another user's session id gets a working session key for whoever else materialized a row under it.
+
+  Inside this namespace the value is only ever hashed. Keep it that way — a caller that needs the row should use
+  [[get-or-create-embedding-session!]], which returns the row and never the key.
 
   The output is formatted as a UUID string because `metabase.server.middleware.session` rejects non-UUID session keys
   up-front. Specifically we emit a version-8 UUID
@@ -115,23 +125,49 @@
   (cond-> (into #{} (filter string?) scp)
     (true? unr) (conj ::scope/unrestricted)))
 
+(defn- sign-ui-credential
+  "Sign the standard credential claims plus `extra-claims` into a `<payload>.<signature>` string."
+  [session-id user-id extra-claims]
+  (let [payload (base64url-encode
+                 (json/encode (merge {:v 1 :uid user-id :sid session-id
+                                      :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
+                                     extra-claims)))]
+    (str payload "." (ui-credential-signature payload))))
+
+(defn- issue-legacy-ui-credential
+  "v1-compat ONLY. Mint a UI credential with no scope claim, stamped `:legacy`.
+
+  A credential minted here is EXEMPT from the native-SQL scope gate
+  ([[metabase.agent-api.query-guards/check-mcp-ui-native-query!]]) — v1's iframe visualizes `execute_sql`
+  handles that legitimately hold raw SQL, and wiring that gate must not change v1's behavior. The marker is
+  explicit rather than inferred from a missing claim, because absence has to keep meaning *fail closed*: a
+  rolling deploy can hand a node a credential minted before the claim existed, and the gate refuses those.
+
+  It carries the scary name on purpose. `(issue-ui-credential session-id user-id)` reads like a perfectly
+  reasonable call, and a v2 caller reaching for it would silently opt that surface out of the gate — the exact
+  hole the gate was added to close. Nothing on the v2 surface may call this or the 2-arity that forwards here;
+  `v2-credentials-are-never-legacy-test` is what holds that line.
+
+  Delete this fn, its 2-arity forwarder, and the guard's `:legacy` branch, with v1's retirement."
+  [session-id user-id]
+  (sign-ui-credential session-id user-id {:legacy true}))
+
 (defn issue-ui-credential
   "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
   never as a core Metabase session.
 
   `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim so gates further down the
   iframe's request surface can ask what the client was actually granted — the credential itself is stamped
-  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap."
-  ;; v1-compat 2-arity: the frozen v1 surface mints credentials without a scope claim; absent
-  ;; claims decode as the empty scope set (fail closed). Delete this arity with v1's retirement.
+  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap.
+
+  Passing the caller's real scopes is what subjects the credential to the native-SQL gate. The 2-arity is the
+  v1 surface's, and forwards to [[issue-legacy-ui-credential]] — read that docstring before calling it: it mints
+  a credential EXEMPT from that gate. It stays an arity of this fn only so v1's frozen call site does not have
+  to change; v2 must always pass scopes."
   ([session-id user-id]
-   (issue-ui-credential session-id user-id nil))
+   (issue-legacy-ui-credential session-id user-id))
   ([session-id user-id token-scopes]
-   (let [payload (base64url-encode
-                  (json/encode (merge {:v 1 :uid user-id :sid session-id
-                                       :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
-                                      (encode-token-scopes token-scopes))))]
-     (str payload "." (ui-credential-signature payload)))))
+   (sign-ui-credential session-id user-id (encode-token-scopes token-scopes))))
 
 (defn resolve-ui-credential
   "Validate a rendered MCP Apps UI credential and return its claims, or nil. The claims carry `:token-scopes`, the
@@ -306,9 +342,12 @@
       ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
       true)))
 
-(defn- get-or-create-embedding-session!
+(defn get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
-  Idempotent — repeated calls collapse to the same row in the common case."
+  Idempotent — repeated calls collapse to the same row in the common case.
+
+  Returns the row, never the session key — see [[derive-embedding-session-key]] for why the plaintext must not
+  leave this namespace."
   [session-id user-id]
   (let [session-key (derive-embedding-session-key session-id)
         key-hashed  (session/hash-session-key session-key)]
@@ -334,13 +373,6 @@
        {:id              (session/generate-session-id)
         :anti_csrf_token nil
         :created_at      :%now}))))
-
-(defn get-or-create-session-key!
-  "Ensure a `core_session` exists for this MCP session and return its (plaintext) session key, HMAC-derived from the MCP
-  session id."
-  [session-id user-id]
-  (get-or-create-embedding-session! session-id user-id)
-  (derive-embedding-session-key session-id))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if
@@ -430,17 +462,41 @@
   (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn delete!
-  "Delete the `core_session` backing this MCP session (if one was ever created) and any associated query handles. Scoped
-  to `user-id` so that one user cannot delete another user's session.
+  "Delete the `core_session` backing this MCP session (if one was ever created) and this user's query handles on it.
+  Every statement is scoped to `user-id`, so tearing down one user's session cannot touch another's.
 
-  Handles tied to a `core_session` are also reaped by the FK cascade when the session row goes; the explicit
-  handle-delete here covers handles whose `core_session_id` was never set — e.g. handles for regular query payloads
-  that aren't backed by an MCP iframe and so never materialize a `core_session`."
+  That scoping is not belt-and-braces: `Mcp-Session-Id` is client-supplied and unsigned, so two users can hold
+  rows under one id and [[owned-by-user?]] admits both by design. Deleting handles by `mcp_session_id` alone
+  would therefore reap the other user's handles — rows the FK cascade would never have touched, since they hang
+  off *their* `core_session`.
+
+  Handles are deleted before the session row so they can still be scoped through it; the `ON DELETE CASCADE` that
+  follows is then a no-op for this user.
+
+  Rows with a NULL `core_session_id` ARE reaped, on session id alone. `store-handle!` always sets the column now,
+  but it is nullable and released code predating that left rows without it; scoping those through `core_session`
+  strands them forever, since `NULL IN (subquery)` never matches and nothing else sweeps the table. Reaping them
+  unscoped is safe precisely because they are unattributed: [[find-handle-row]] inner-joins `core_session`, so
+  such a row can never be read back by anyone. That makes it unreachable data rather than another user's working
+  handle — the opposite of the attributed rows, which stay scoped."
   [session-id user-id]
   (assert-session-id! session-id)
-  (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
+  (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
+        ;; Deliberate subquery: the handle rows carry no user of their own, so the only thing that attributes one
+        ;; is the `core_session` it hangs off. Resolving these ids in a separate round trip would leave a window
+        ;; where a concurrent teardown drops the session between the two statements.
+        own-sessions ^:allow-subquery {:select [:id]
+                                       :from   [:core_session]
+                                       :where  [:and
+                                                [:= :key_hashed key-hashed]
+                                                [:= :user_id user-id]]}]
+    (t2/query {:delete-from :mcp_query_handle
+               :where       [:and
+                             [:= :mcp_session_id session-id]
+                             [:or
+                              [:= :core_session_id nil]
+                              [:in :core_session_id own-sessions]]]})
     (t2/query {:delete-from :core_session
                :where       [:and
                              [:= :key_hashed key-hashed]
-                             [:= :user_id user-id]]})
-    (t2/delete! :model/McpQueryHandle :mcp_session_id session-id)))
+                             [:= :user_id user-id]]})))

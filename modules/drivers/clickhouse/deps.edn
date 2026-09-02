@@ -6,6 +6,6 @@
   ;; pinned: clickhouse-jdbc pulls httpcore5-h2 5.3.4
   org.apache.httpcomponents.core5/httpcore5-h2 {:mvn/version "5.4.3"}
   ;; pinned: clickhouse-jdbc 0.9.8 pulls httpclient5 5.4.4
-  org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.6.3"}
+  org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.6.4"}
   ;; original org.lz4:lz4-java project is discontinued, this is the maintained fork
   at.yawk.lz4/lz4-java {:mvn/version "1.11.1"}}}

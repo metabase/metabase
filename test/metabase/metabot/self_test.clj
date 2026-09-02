@@ -137,6 +137,28 @@
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
 
+(deftest call-llm-fast-mode-test
+  (llm.tu/with-default-connections
+    (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                   (when (:body opts)
+                                                     (reset! captured {:body    (json/decode+kw (:body opts))
+                                                                       :headers (:headers opts)}))
+                                                   (throw (ex-info "stop" {::skip true :api-error true})))]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test-key"]
+            (doseq [fast? [true false]]
+              (testing (str "llm-fast-mode " fast?)
+                (mt/with-temporary-setting-values [llm-fast-mode fast?]
+                  (try
+                    (run! identity (self/call-llm "anthropic/claude-opus-5" nil [] {} {:tag "agent"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (= (when fast? "fast") (get-in @captured [:body :speed])))
+                  (is (= (when fast? "fast-mode-2026-02-01")
+                         (get-in @captured [:headers "anthropic-beta"]))))))))))))
+
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
     (let [captured (atom nil)]
