@@ -295,33 +295,30 @@
         (testing "Cannot read when readable paths has no allowed values"
           (mt/with-temporary-setting-values
             [system-settings/readable-paths "NONE"]
-            (testing "from value"
+            (is (thrown?
+                 Exception
+                 (secret/value-as-string
+                  :secret-test-driver
+                  {:keystore-path    file-db
+                   :keystore-options "local"}
+                  "keystore"))))
+          (testing "Can read when the readable paths includes the file we want"
+            (mt/with-temporary-setting-values
+              [system-settings/readable-paths (str "/abc," file-db)]
+              (is (=
+                   "apple"
+                   (secret/value-as-string
+                    :secret-test-driver
+                    {:keystore-path    file-db
+                     :keystore-options "local"}
+                    "keystore")))))
+          (testing "Cannot read when the readable paths doesn't include the file we want"
+            (mt/with-temporary-setting-values
+              [system-settings/readable-paths "/abc"]
               (is (thrown?
                    Exception
                    (secret/value-as-string
                     :secret-test-driver
                     {:keystore-path    file-db
                      :keystore-options "local"}
-                    "keystore")))))
-          (testing "Can read when the readable paths includes the file we want"
-            (mt/with-temporary-setting-values
-              [system-settings/readable-paths (str "/abc," file-db)]
-              (testing "from value"
-                (is (=
-                     "apple"
-                     (secret/value-as-string
-                      :secret-test-driver
-                      {:keystore-path    file-db
-                       :keystore-options "local"}
-                      "keystore"))))))
-          (testing "Cannot read when the readable paths doesn't include the file we want"
-            (mt/with-temporary-setting-values
-              [system-settings/readable-paths "/abc"]
-              (testing "from value"
-                (is (thrown?
-                     Exception
-                     (secret/value-as-string
-                      :secret-test-driver
-                      {:keystore-path    file-db
-                       :keystore-options "local"}
-                      "keystore")))))))))))
+                    "keystore"))))))))))
