@@ -115,7 +115,7 @@
           (is (contains? identifiers "active-viz"))
           (is (not (contains? identifiers "disabled-viz")))
           (is (not (contains? identifiers "error-viz"))))))
-    (testing "/list skips a legacy plugin whose identifier contains \":\" (would collide with another plugin's settings prefix)"
+    (testing "/list skips a legacy plugin whose identifier contains \":\""
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
                                                :display_name "Colon Viz"
                                                :status       :active
