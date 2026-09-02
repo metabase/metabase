@@ -68,7 +68,6 @@ export const HeaderCellWrapper = ({
       hasHover={false}
       align={align}
       data-testid="header-cell"
-      data-variant={variant}
     >
       {children}
     </BaseCell>

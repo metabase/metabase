@@ -44,7 +44,7 @@ describe("Mode", () => {
     clickAction.mockClear();
   });
 
-  it("should resolve the query mode from the click-time question", () => {
+  it("should choose the query mode from the clicked question", () => {
     const chooseQueryMode = jest.fn(() => queryMode);
     const mode = new Mode(chooseQueryMode);
     const question = createQuestion();
@@ -55,13 +55,13 @@ describe("Mode", () => {
     );
   });
 
-  it("should resolve no actions without a question", () => {
+  it("should return no actions without a question", () => {
     const mode = new Mode(() => queryMode);
     expect(mode.actionsForClick({})).toEqual([]);
     expect(clickAction).not.toHaveBeenCalled();
   });
 
-  it("should hand the resolved actions to mapActions and return its result", () => {
+  it("should return the actions mapped by mapActions", () => {
     const mapped: ClickAction[] = [];
     const mapActions = jest.fn(() => mapped);
     const mode = new Mode(() => queryMode, { mapActions });
@@ -85,12 +85,12 @@ describe("Mode", () => {
       },
     ];
 
-    it("should not be defined unless opted in, so the add-column shortcut stays off", () => {
+    it("should be undefined unless opted in", () => {
       const mode = new Mode(() => queryMode);
       expect(mode.hasColumnShortcutActions).toBeUndefined();
     });
 
-    it("should pass the click through to the query mode's actions", () => {
+    it("should call the query mode's actions with the click", () => {
       const mode = new Mode(() => queryMode, {
         hasColumnShortcutActions: true,
       });
@@ -98,7 +98,7 @@ describe("Mode", () => {
       expect(clickAction).toHaveBeenCalledWith(props);
     });
 
-    it("should answer true when an action offers something for the click", () => {
+    it("should return true when an action returns something", () => {
       const mode = new Mode(
         () => ({ ...queryMode, clickActions: [clickAction, shortcutAction] }),
         { hasColumnShortcutActions: true },
@@ -106,14 +106,14 @@ describe("Mode", () => {
       expect(mode.hasColumnShortcutActions?.(props)).toBe(true);
     });
 
-    it("should answer false when every action comes back empty", () => {
+    it("should return false when every action returns nothing", () => {
       const mode = new Mode(() => queryMode, {
         hasColumnShortcutActions: true,
       });
       expect(mode.hasColumnShortcutActions?.(props)).toBe(false);
     });
 
-    it("should answer false when the query mode has no actions at all", () => {
+    it("should return false when the query mode has no actions", () => {
       const mode = new Mode(() => ({ ...queryMode, clickActions: [] }), {
         hasColumnShortcutActions: true,
       });

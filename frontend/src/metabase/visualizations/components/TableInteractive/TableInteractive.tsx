@@ -50,6 +50,10 @@ import { getScrollBarSize } from "metabase/utils/dom";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
+import type {
+  ClickActionsMode,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import {
   getColumnExtent,
   getTableCellClickedObject,
@@ -68,7 +72,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { ClickActionsMode, VisualizationProps } from "../../types";
 import {
   getHighlightedTableCellKey,
   getHighlightedTableCells,

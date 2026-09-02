@@ -13,7 +13,6 @@ import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/Dash
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { isQuestionCard } from "metabase/utils/dashboard";
-import type { ClickActionsMode } from "metabase/visualizations/types";
 
 import {
   SdkDashboard,
@@ -57,7 +56,7 @@ export const InteractiveDashboardContent = (
     return { ...globalPlugins, ...props.plugins };
   }, [globalPlugins, props.plugins]);
 
-  const clickActionMode: ClickActionsMode = useMemo(
+  const clickActionMode = useMemo(
     () =>
       getEmbeddingMode({
         queryMode: createEmbeddingSdkMode({ pushNavigation }),

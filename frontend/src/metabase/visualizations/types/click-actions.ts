@@ -219,8 +219,7 @@ export interface ClickActionsMode {
   ): ClickAction[];
 
   /**
-   * Whether any of the mode's click actions apply to the add-column shortcut click.
-   * Modes that leave it undefined hide the shortcut.
+   * Leaving this undefined hides the add-column shortcut.
    */
   hasColumnShortcutActions?(props: ClickActionProps): boolean;
 }

@@ -21,7 +21,6 @@ import type {
   ClickObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationId,
@@ -66,10 +65,8 @@ export function useExplorationClickActionsMode({
     return {
       actionsForClick: (
         clicked: ClickObject,
-        context?: ClickActionModeContext,
+        { settings }: ClickActionModeContext = {},
       ) => {
-        const settings: ComputedVisualizationSettings | undefined =
-          context?.settings;
         const actions: ClickAction[] = [];
 
         if (explorationId == null || pageId == null) {

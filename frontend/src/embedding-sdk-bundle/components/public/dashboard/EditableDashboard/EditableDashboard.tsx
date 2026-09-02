@@ -59,7 +59,7 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
           DASHBOARD_ACTION.REFRESH_INDICATOR,
         ];
 
-  const clickActionMode: SdkDashboardInnerProps["clickActionMode"] = useMemo(
+  const clickActionMode = useMemo(
     () =>
       getEmbeddingMode({
         queryMode: createEmbeddingSdkMode({ pushNavigation }),

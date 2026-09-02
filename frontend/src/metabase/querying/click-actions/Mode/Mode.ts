@@ -23,14 +23,14 @@ type ModeOptions = {
 };
 
 export class Mode implements ClickActionsMode {
-  private readonly _getQueryMode: (question: Question) => QueryClickActionsMode;
-  private readonly _mapActions?: MapClickActions;
+  _getQueryMode: (question: Question) => QueryClickActionsMode;
+  _mapActions?: MapClickActions;
 
   hasColumnShortcutActions?: (props: ClickActionProps) => boolean;
 
   constructor(
     getQueryMode: (question: Question) => QueryClickActionsMode,
-    { mapActions, hasColumnShortcutActions = false }: ModeOptions = {},
+    { mapActions, hasColumnShortcutActions }: ModeOptions = {},
   ) {
     this._getQueryMode = getQueryMode;
     this._mapActions = mapActions;

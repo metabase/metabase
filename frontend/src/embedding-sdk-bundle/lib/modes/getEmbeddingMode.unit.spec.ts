@@ -22,12 +22,12 @@ const queryMode: QueryClickActionsMode = {
 };
 
 describe("getEmbeddingMode", () => {
-  it("should resolve the query mode's actions without a plugin", () => {
+  it("should return the query mode's actions without a plugin", () => {
     const mode = getEmbeddingMode({ queryMode });
     expect(mode.actionsForClick({}, { question })).toEqual([action]);
   });
 
-  it("should hand the actions and the transformed click to the plugin", () => {
+  it("should pass the actions and the transformed click to the plugin", () => {
     const mapQuestionClickActions = jest.fn(() => []);
     const mode = getEmbeddingMode({
       queryMode,
@@ -61,12 +61,12 @@ describe("getEmbeddingMode", () => {
     ]);
   });
 
-  it("should warn and keep the actions when the plugin returns neither", () => {
+  it("should warn and keep the actions when the plugin returns something else", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
     const mode = getEmbeddingMode({
       queryMode,
       plugins: {
-        mapQuestionClickActions: jest.fn().mockReturnValue({ title: "nope" }),
+        mapQuestionClickActions: jest.fn().mockReturnValue({}),
       },
     });
 

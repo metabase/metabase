@@ -18,11 +18,11 @@ export function getEmbeddingMode({
 }): ClickActionsMode {
   return new Mode(() => queryMode, {
     mapActions: (actions, clicked, question) =>
-      mapQuestionClickActions(plugins, actions, clicked, question),
+      applyClickActionsPlugin(plugins, actions, clicked, question),
   });
 }
 
-function mapQuestionClickActions(
+function applyClickActionsPlugin(
   plugins: MetabasePluginsConfig | undefined,
   actions: ClickAction[],
   clicked: ClickObject,
@@ -42,13 +42,14 @@ function mapQuestionClickActions(
   }
 
   if ("onClick" in actionsOrActionObject) {
-    // performDefaultAction runs a lone action carrying `default: true` without opening the popover,
-    // so a single returned object becomes that one action.
+    // If the plugin returns a single object, it means we should call that action right away without showing the popover
+    // `performDefaultAction` checks if it only gets one action, and if it has `default: true`, it's called directly without showing the popover
     return [
       {
+        // makes it run without showing the popover
         default: true,
 
-        // Fallback fields for a bare `{ onClick }` return.
+        // fallback values in case they just return `{ onClick: () => {})`}
         section: "auto",
         type: "custom",
         buttonType: "horizontal",

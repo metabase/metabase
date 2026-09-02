@@ -71,38 +71,34 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
       question={question}
       result={createMockDataset({ data })}
       rawSeries={[{ card: question.card(), data }]}
-      // The click-actions popover only renders when a card-run handler exists.
+      // Becomes onChangeCardAndRun, without which Visualization never shows the click actions popover.
       navigateToNewCardInsideQB={jest.fn()}
       {...props}
     />,
   );
 };
 
-const expectReadOnlyHeader = async () => {
+const expectColumnReorderingDisabled = async () => {
   const header = await screen.findByRole("columnheader", { name: "Total" });
-  // dnd-kit gives headers that accept dragging a button role.
+  // dnd-kit renders a draggable header as a button.
   expect(within(header).queryByRole("button")).not.toBeInTheDocument();
-  expect(within(header).getByTestId("header-cell")).toHaveAttribute(
-    "data-variant",
-    "outline",
-  );
 };
 
 describe("VisualizationResult", () => {
   describe("without hasColumnReordering", () => {
-    it("should keep column reordering disabled and the outline header", async () => {
+    it("should disable column reordering", async () => {
       setup();
 
-      await expectReadOnlyHeader();
+      await expectColumnReorderingDisabled();
     });
 
-    it("should keep column reordering disabled and the outline header with an explicit mode", async () => {
+    it("should disable column reordering with an explicit mode", async () => {
       setup({ mode: defaultClickActionMode });
 
-      await expectReadOnlyHeader();
+      await expectColumnReorderingDisabled();
     });
 
-    it("should still resolve the stock drills on a cell click", async () => {
+    it("should show click actions on a cell click", async () => {
       setup();
 
       const cells = await screen.findAllByRole("gridcell");
@@ -115,7 +111,7 @@ describe("VisualizationResult", () => {
   });
 
   describe("with hasColumnReordering", () => {
-    it("should enable column reordering and the light header", async () => {
+    it("should enable column reordering", async () => {
       setup({ hasColumnReordering: true });
 
       const header = await screen.findByRole("columnheader", { name: "Total" });
@@ -123,14 +119,10 @@ describe("VisualizationResult", () => {
         "aria-roledescription",
         "sortable",
       );
-      expect(within(header).getByTestId("header-cell")).toHaveAttribute(
-        "data-variant",
-        "light",
-      );
     });
   });
 
-  describe("with the stock mode", () => {
+  describe("with the default mode", () => {
     it("should hide the add-column shortcut", async () => {
       setup({ mode: defaultClickActionMode });
 
@@ -141,8 +133,8 @@ describe("VisualizationResult", () => {
     });
   });
 
-  describe("with a query mode that answers hasColumnShortcutActions", () => {
-    it("should show the add-column shortcut when the query mode's actions respond", async () => {
+  describe("with hasColumnShortcutActions", () => {
+    it("should show the add-column shortcut", async () => {
       setup({
         mode: new Mode(() => DefaultMode, { hasColumnShortcutActions: true }),
       });

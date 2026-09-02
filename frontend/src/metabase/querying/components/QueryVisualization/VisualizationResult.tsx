@@ -145,8 +145,8 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onHeaderColumnReorder={props.onHeaderColumnReorder}
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
-      {...vizSpecificProps}
       mode={props.mode ?? defaultClickActionMode}
+      {...vizSpecificProps}
     />
   );
 }
