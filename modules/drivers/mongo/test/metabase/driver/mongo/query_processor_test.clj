@@ -254,7 +254,25 @@
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
               (is (and (not (str/includes? let-lhs "."))
-                       (str/includes? let-lhs "source_categories"))))))))))
+                       (str/includes? let-lhs "source_categories")))))
+          (testing "Nested fields projected from a joined collection return their real values (#81546)"
+            (let [query (lib/query
+                         (mt/metadata-provider)
+                         (mt/mbql-query tips
+                           {:fields   [$_id
+                                       $tips.venue.categories
+                                       &Tips.$tips.venue.categories]
+                            :joins    [{:alias        "Tips"
+                                        :source-table $$tips
+                                        :condition    [:= $_id &Tips.$_id]
+                                        :fields       :none}]
+                            :order-by [[:asc $_id]]
+                            :limit    3}))
+                  rows  (mt/rows (qp/process-query query))]
+              (is (= [[1 ["Gluten-Free" "Café"]       ["Gluten-Free" "Café"]]
+                      [2 ["Homestyle" "Eatery"]       ["Homestyle" "Eatery"]]
+                      [3 ["Cage-Free" "Coffee House"] ["Cage-Free" "Coffee House"]]]
+                     rows)))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
