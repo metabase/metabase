@@ -1373,13 +1373,15 @@
            session
            settings
            system
+           users
            util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
                     :model/Field
-                    :model/NativeQuerySnippet}}
+                    :model/NativeQuerySnippet
+                    :model/User}}
 
   measures
   {:team "Graphy"
