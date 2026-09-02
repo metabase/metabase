@@ -55,8 +55,8 @@ export const permissionApi = Api.injectEndpoints({
       GroupListQuery[],
       | {
           tenancy?: "external" | "internal";
-          // Admin Groups page only: also return stale data-app groups so they can be deleted.
-          include_stale_app_groups?: boolean;
+          // People/Groups admin: also return data-app groups (so members can be assigned).
+          "include-app-groups"?: boolean;
         }
       | undefined
     >({

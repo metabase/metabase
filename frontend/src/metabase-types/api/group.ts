@@ -31,8 +31,10 @@ export type GroupInfo = {
     | "data-analyst"
     | null;
   is_tenant_group?: boolean;
-  // Server-managed data-app group. Only stale ones (their app removed) reach the groups UI.
+  // Server-managed data-app group (shown in the People/Groups admin so members can be assigned).
   is_data_app_group?: boolean;
+  // Set by GET /group only when data-app groups are included: this one's app was removed (a leftover).
+  is_stale_data_app_group?: boolean;
 };
 
 export type Group = GroupInfo & {

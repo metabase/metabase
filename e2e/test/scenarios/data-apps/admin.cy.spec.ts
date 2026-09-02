@@ -51,30 +51,33 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
-  it("keeps a data app's server-managed permission group out of the admin Groups list", () => {
+  it("hides data-app groups from the default groups endpoint but shows active ones on the Groups page", () => {
     // Provisioning a data app draft creates its permission group as a side effect.
-    cy.request("POST", "/api/apps/hidden-app/draft").then(({ body }) => {
+    cy.request("POST", "/api/apps/orders-app/draft").then(({ body }) => {
       expect(
         body.permission_group_id,
         "the draft provisions a permission group",
       ).to.be.a("number");
       const dataAppGroupId = body.permission_group_id;
 
-      // The groups API — the source for the admin Groups list — omits it.
+      // The default endpoint (permission-config screens, group pickers) omits data-app groups.
       cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
         const ids = groups.map((group: { id: number }) => group.id);
         expect(ids).not.to.include(dataAppGroupId);
       });
-    });
 
-    cy.visit("/admin/people/groups");
-    cy.findByTestId("admin-panel").within(() => {
-      cy.findByText("All Users").should("be.visible");
-      cy.findByText("Data App: hidden-app").should("not.exist");
+      // The Groups page opts in and shows the active app group — no "Stale" badge, no row actions.
+      cy.visit("/admin/people/groups");
+      cy.findByLabelText(`group-${dataAppGroupId}-row`).within(() => {
+        cy.findByText("Data App: orders-app").should("be.visible");
+        cy.findByText("Stale").should("not.exist");
+        cy.findByLabelText("group-action-button").should("not.exist");
+        cy.findByLabelText("Remove Group").should("not.exist");
+      });
     });
   });
 
-  it("surfaces a stale data-app group only on the Groups page, where it can be deleted", () => {
+  it("shows a stale data-app group on the Groups page (badged, deletable), hidden by default", () => {
     const STALE_GROUP = "Data App: orphaned";
 
     // A stale group is a leftover no product flow can create (the app is gone but its group survives),
@@ -82,7 +85,7 @@ describe("scenarios > data apps > admin management", () => {
     cy.request("POST", "/api/testing/stale-data-app-group", {
       name: STALE_GROUP,
     }).then(({ body: staleGroup }) => {
-      // It is hidden from the shared groups endpoint every other consumer uses.
+      // Still hidden from the default endpoint (permission-config screens).
       cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
         const ids = groups.map((group: { id: number }) => group.id);
         expect(ids).not.to.include(staleGroup.id);
@@ -108,6 +111,54 @@ describe("scenarios > data apps > admin management", () => {
 
       cy.findByLabelText(`group-${staleGroup.id}-row`).should("not.exist");
     });
+  });
+
+  it("offers an active data-app group in the create-user group picker", () => {
+    // Assigning a user to a data app's group is how you grant them app access, so the picker must list it.
+    cy.request("POST", "/api/apps/orders-app/draft");
+
+    cy.visit("/admin/people");
+    cy.button("Invite someone").click();
+
+    H.modal().within(() => {
+      cy.findByLabelText(/Email/).type("app-member@example.com");
+      cy.findByRole("combobox", { name: "Groups" }).click();
+    });
+
+    // The dropdown renders in a portal outside the modal; each group is an option.
+    cy.findByRole("option", { name: "Data App: orders-app" }).should(
+      "be.visible",
+    );
+  });
+
+  it("offers an active data-app group in the edit-user group picker", () => {
+    cy.request("POST", "/api/apps/orders-app/draft");
+
+    cy.visit("/admin/people");
+    // Open the first user's edit modal via its row actions.
+    cy.findAllByLabelText("group-summary")
+      .first()
+      .closest("tr")
+      .within(() => {
+        cy.icon("ellipsis").click();
+      });
+    H.popover().findByText("Edit user").click();
+
+    H.modal().within(() => {
+      cy.findByRole("combobox", { name: "Groups" }).click();
+    });
+    cy.findByRole("option", { name: "Data App: orders-app" }).should(
+      "be.visible",
+    );
+  });
+
+  it("offers an active data-app group in the People list group dropdown", () => {
+    cy.request("POST", "/api/apps/orders-app/draft");
+
+    cy.visit("/admin/people");
+    // Each user's Groups cell opens a dropdown to toggle membership.
+    cy.findAllByLabelText("group-summary").first().click();
+    H.popover().findByLabelText("Data App: orders-app").should("be.visible");
   });
 
   it("dismisses the promo banner and keeps it hidden across a reload", () => {

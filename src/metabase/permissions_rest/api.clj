@@ -143,6 +143,15 @@
   (let [using-tenants? (setting/get :use-tenants)]
     (map #(maybe-fix-name % using-tenants?) groups)))
 
+(defn- mark-stale-app-groups
+  "Flag each data-app group whose app is gone (stale) so the groups UI can badge it."
+  [groups]
+  (let [active (perms/active-data-app-group-ids)]
+    (map (fn [group]
+           (cond-> group
+             (:is_data_app_group group) (assoc :is_stale_data_app_group (not (contains? active (:id group))))))
+         groups)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -158,12 +167,12 @@
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
   - No `tenancy` parameter: Returns all groups (default behavior)
 
-  Data-app groups are hidden by default. `include_stale_app_groups=true` (used only by the admin Groups
-  page) additionally returns *stale* ones — flagged groups whose app was removed — so they can be deleted."
+  Data-app groups are hidden by default. `include-app-groups=true` (used by the People/Groups admin, to
+  assign members) returns them too, each stale one flagged `is_stale_data_app_group` for the UI to badge."
   [_route_params
-   {:keys [tenancy include_stale_app_groups]} :- [:map
-                                                  [:tenancy {:optional true} [:enum "external" "internal"]]
-                                                  [:include_stale_app_groups {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [tenancy include-app-groups]} :- [:map
+                                            [:tenancy {:optional true} [:enum "external" "internal"]]
+                                            [:include-app-groups {:default false} [:maybe ms/BooleanValue]]]]
   (try
     (perms/check-group-manager)
     (catch clojure.lang.ExceptionInfo _e
@@ -178,12 +187,9 @@
                                       :where  [:and
                                                [:= :user_id api/*current-user-id*]
                                                [:= :is_group_manager true]]}])
-         ;; Data-app groups are a server-managed namespace, hidden from the groups UI everywhere. Only the
-         ;; admin Groups page opts in to also see a stale one (its app removed) so it can be deleted;
-         ;; active app groups stay hidden even then.
-         (if include_stale_app_groups
-           (when-let [active-app-group-ids (not-empty (perms/active-data-app-group-ids))]
-             [:not [:in :id active-app-group-ids]])
+         ;; Data-app groups are a server-managed namespace, hidden by default. The People/Groups admin opts
+         ;; in to show them (to assign members); permission-config screens keep the default and hide them.
+         (when-not include-app-groups
            [:not :is_data_app_group])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
@@ -198,9 +204,10 @@
                 "internal" [:and base-where [:or [:= :is_tenant_group false]
                                              [:= :is_tenant_group nil]]]
                 base-where)]
-    (-> (ordered-groups (request/limit) (request/offset) where)
-        (t2/hydrate :member_count)
-        (maybe-fix-names))))
+    (cond-> (-> (ordered-groups (request/limit) (request/offset) where)
+                (t2/hydrate :member_count)
+                (maybe-fix-names))
+      include-app-groups mark-stale-app-groups)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

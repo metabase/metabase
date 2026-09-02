@@ -92,8 +92,8 @@
         (is (=? [{:table_id nil, :perm_value :blocked}] (perm :perms/view-data)))))))
 
 (deftest data-app-groups-in-the-groups-api-test
-  (testing "GET /api/permissions/group hides data-app groups from every consumer; only the admin Groups
-            page opts in (include_stale_app_groups) to also see a stale one so it can be deleted"
+  (testing "GET /api/permissions/group hides data-app groups by default (permission-config screens);
+            include_app_groups shows them for the People/Groups admin and flags the stale ones"
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (mt/with-temp [:model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"}]
         (let [app     (create-data-app! "some-app")
@@ -101,20 +101,20 @@
               group   (fn [url id] (some #(when (= id (:id %)) %)
                                          (mt/user-http-request :crowberto :get 200 url)))
               default #(group "permissions/group" %)
-              admin   #(group "permissions/group?include_stale_app_groups=true" %)]
-          (testing "a normal group is always listed"
+              admin   #(group "permissions/group?include-app-groups=true" %)]
+          (testing "a normal group is listed in both views"
             (is (some? (default normal-group-id)))
             (is (some? (admin normal-group-id))))
-          (testing "an active data-app group is hidden from both views"
+          (testing "an active data-app group is hidden by default, shown (not stale) with include_app_groups"
             (is (nil? (default app-group-id)))
-            (is (nil? (admin app-group-id))))
-          (testing "when the app is gone but its group remains (stale) the group is"
+            (is (=? {:id app-group-id, :is_data_app_group true, :is_stale_data_app_group false}
+                    (admin app-group-id))))
+          (testing "when the app is gone but its group remains, it is marked stale (still hidden by default)"
             ;; Delete only the data_app row (raw, no cascade), leaving its group behind — the stale case.
             (t2/delete! :data_app :id (:id app))
-            (testing "still hidden from the default view every other consumer uses"
-              (is (nil? (default app-group-id))))
-            (testing "surfaced and flagged only for the admin Groups page"
-              (is (=? {:id app-group-id, :is_data_app_group true} (admin app-group-id))))))))))
+            (is (nil? (default app-group-id)))
+            (is (=? {:id app-group-id, :is_data_app_group true, :is_stale_data_app_group true}
+                    (admin app-group-id)))))))))
 
 (deftest stale-data-app-group-can-be-deleted-test
   (testing "a stale data-app group (flagged, no app) is removable through the standard endpoint, so an

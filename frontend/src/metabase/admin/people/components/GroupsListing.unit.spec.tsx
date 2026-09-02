@@ -67,30 +67,36 @@ describe("GroupsListing", () => {
     expect(screen.getByText("Engineering")).toBeInTheDocument();
   });
 
-  it("badges a stale data-app group and leaves ordinary groups unbadged", async () => {
+  const activeAppGroup = createMockGroup({
+    id: 11,
+    name: "Data App: orders",
+    magic_group_type: null,
+    is_data_app_group: true,
+  });
+  const staleAppGroup = createMockGroup({
+    id: 12,
+    name: "Data App: orphaned",
+    magic_group_type: null,
+    is_data_app_group: true,
+    is_stale_data_app_group: true,
+  });
+
+  it("badges a stale data-app group but not an active one or an ordinary group", async () => {
     setup([
       createMockGroup({ id: 10, name: "Engineering", magic_group_type: null }),
-      createMockGroup({
-        id: 11,
-        name: "Data App: orphaned",
-        magic_group_type: null,
-        is_data_app_group: true,
-      }),
+      activeAppGroup,
+      staleAppGroup,
     ]);
 
     expect(await screen.findByText("Data App: orphaned")).toBeInTheDocument();
     expect(screen.getAllByText("Stale")).toHaveLength(1);
   });
 
-  it("links an ordinary group's name but not a stale data-app group's", async () => {
+  it("links ordinary and active data-app group names, but not a stale one's", async () => {
     setup([
       createMockGroup({ id: 10, name: "Engineering", magic_group_type: null }),
-      createMockGroup({
-        id: 11,
-        name: "Data App: orphaned",
-        magic_group_type: null,
-        is_data_app_group: true,
-      }),
+      activeAppGroup,
+      staleAppGroup,
     ]);
 
     await screen.findByText("Data App: orphaned");
@@ -100,19 +106,15 @@ describe("GroupsListing", () => {
       "/admin/people/groups/10",
     );
     expect(
+      screen.getByRole("link", { name: /Data App: orders/ }),
+    ).toHaveAttribute("href", "/admin/people/groups/11");
+    expect(
       screen.queryByRole("link", { name: /Data App: orphaned/ }),
     ).not.toBeInTheDocument();
   });
 
   it("gives a stale data-app group a direct delete button, not an edit menu", async () => {
-    setup([
-      createMockGroup({
-        id: 11,
-        name: "Data App: orphaned",
-        magic_group_type: null,
-        is_data_app_group: true,
-      }),
-    ]);
+    setup([staleAppGroup]);
 
     await screen.findByText("Data App: orphaned");
 
@@ -123,6 +125,17 @@ describe("GroupsListing", () => {
 
     expect(await screen.findByText("Remove this group?")).toBeInTheDocument();
     expect(screen.queryByText("Edit Name")).not.toBeInTheDocument();
+  });
+
+  it("gives an active data-app group no row actions", async () => {
+    setup([activeAppGroup]);
+
+    await screen.findByText("Data App: orders");
+
+    expect(
+      screen.queryByLabelText("group-action-button"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Remove Group")).not.toBeInTheDocument();
   });
 
   it("keeps Edit Name in an ordinary group's actions menu", async () => {

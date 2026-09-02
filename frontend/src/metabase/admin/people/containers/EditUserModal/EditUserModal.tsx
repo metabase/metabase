@@ -27,6 +27,7 @@ export const EditUserModal = ({
   const { data: user, isLoading, error } = useGetUserQuery(userId ?? skipToken);
   const { data: groups } = useListPermissionsGroupsQuery({
     tenancy: external ? "external" : "internal",
+    "include-app-groups": true,
   });
   const [updateUser] = useUpdateUserMutation();
 

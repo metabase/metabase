@@ -33,7 +33,7 @@ export const GroupsListingApp = ({
   const isUsingTenants = useSetting("use-tenants");
 
   const { data, isLoading, error } = useListPermissionsGroupsQuery({
-    include_stale_app_groups: true,
+    "include-app-groups": true,
   });
   const groups = useMemo(() => {
     const [externalGroups, internalGroups] = _.partition(

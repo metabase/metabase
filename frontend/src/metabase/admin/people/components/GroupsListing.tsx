@@ -250,9 +250,9 @@ function GroupNameCell({ group }: { group: GroupInfo }) {
   const name = getGroupNameLocalized(group);
   const avatar = <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />;
 
-  // A stale data-app group has no detail page to visit — render it as plain,
+  // A stale data-app group (its app removed) has nothing to manage — render it as plain,
   // non-clickable text (no link, no link-blue name); it exists only to be deleted.
-  if (group.is_data_app_group) {
+  if (group.is_stale_data_app_group) {
     return (
       <Flex align="center" gap="md">
         {avatar}
@@ -297,9 +297,10 @@ function GroupActionsCell({
   onEditGroupClicked,
   onDeleteGroupClicked,
 }: GroupActionsCellProps) {
-  // A stale data-app group only offers deletion; the built-in groups (All Users, Administrators,
-  // external users) offer nothing; every other group gets the edit/remove menu.
-  if (group.is_data_app_group) {
+  // A stale data-app group offers only deletion (cleanup). Active data-app groups and the built-in
+  // groups (All Users, Administrators, external users) are server-managed — no row actions (members
+  // are managed from the group's page). Every other group gets the edit/remove menu.
+  if (group.is_stale_data_app_group) {
     return (
       <DeleteGroupButton
         group={group}
@@ -309,11 +310,12 @@ function GroupActionsCell({
     );
   }
 
-  const isBuiltInGroup =
+  const isManaged =
+    group.is_data_app_group ||
     isDefaultGroup(group) ||
     isAdminGroup(group) ||
     PLUGIN_TENANTS.isExternalUsersGroup(group);
-  if (isBuiltInGroup) {
+  if (isManaged) {
     return null;
   }
 
