@@ -191,6 +191,7 @@ export const DashboardApp = () => {
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
+        withTimelineEvents
       >
         <DashboardAppInner location={location} />
       </DashboardContextProvider>

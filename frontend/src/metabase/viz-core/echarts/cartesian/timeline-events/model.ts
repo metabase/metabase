@@ -93,17 +93,23 @@ export const buildTimelineEventClusters = (
   return clusters;
 };
 
+export const isTimelineEventInRange = (
+  event: TimelineEvent,
+  [min, max]: DateRange,
+  interval: TimeSeriesInterval | null,
+) => {
+  const unit: SupportedUnit | undefined = interval?.unit;
+  return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
+};
+
 const getTimelineEventsInsideRange = (
   timelineEvents: TimelineEvent[],
   range: DateRange,
-  unit: SupportedUnit,
-) => {
-  const [min, max] = range;
-
-  return timelineEvents.filter((event) => {
-    return dayjs(event.timestamp).isBetween(min, max, unit, "[]");
-  });
-};
+  interval: TimeSeriesInterval,
+) =>
+  timelineEvents.filter((event) =>
+    isTimelineEventInRange(event, range, interval),
+  );
 
 export const getTimelineEventsModel = (
   chartModel: BaseCartesianChartModel,
@@ -122,7 +128,7 @@ export const getTimelineEventsModel = (
   const visibleTimelineEvents = getTimelineEventsInsideRange(
     timelineEvents,
     dimensionRange,
-    chartModel.xAxisModel.interval.unit,
+    chartModel.xAxisModel.interval,
   );
 
   const hasTimelineEvents = visibleTimelineEvents.length !== 0;

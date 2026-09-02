@@ -1,7 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
-import { omit } from "underscore";
+import _ from "underscore";
 
 import {
   createDashboardPublicLink,
@@ -26,13 +26,11 @@ import {
 } from "metabase/redux/query-builder";
 import type {
   DashboardLinkTargets,
-  DashboardSidebarName,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
-  DashCardId,
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
@@ -47,7 +45,6 @@ import {
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
-  SET_SIDEBAR,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
@@ -61,8 +58,14 @@ import {
   setDashboardAttributes,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
+  setSidebar,
 } from "./actions";
-import { INITIAL_DASHBOARD_STATE } from "./constants";
+import {
+  deselectTimelineEvents,
+  selectTimelineEvents,
+  setDashCardTimelineEventsVisibility,
+} from "./actions/timeline-events";
+import { INITIAL_DASHBOARD_STATE, SIDEBAR_NAME } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
 
 export const dashboardId = createReducer(
@@ -201,22 +204,44 @@ export const sidebar = createReducer(
     builder.addCase(SET_EDITING_DASHBOARD, () => DEFAULT_SIDEBAR);
     builder.addCase(CLOSE_SIDEBAR, () => DEFAULT_SIDEBAR);
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          name: DashboardSidebarName;
-          props?: {
-            dashcardId?: DashCardId;
-            parameterId?: ParameterId;
-          };
-        };
-      }
-    >(SET_SIDEBAR, (_state, { payload: { name, props } }) => ({
+    builder.addCase(setSidebar, (_state, { payload: { name, props } }) => ({
       name,
       props: props || {},
     }));
+  },
+);
+
+export const timelineEvents = createReducer(
+  INITIAL_DASHBOARD_STATE.timelineEvents,
+  (builder) => {
+    builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    builder.addCase(
+      SET_EDITING_DASHBOARD,
+      () => INITIAL_DASHBOARD_STATE.timelineEvents,
+    );
+    builder.addCase(fetchDashboard.fulfilled, (state) => {
+      if (Object.keys(state.overrides).length > 0) {
+        state.overrides = {};
+      }
+    });
+    builder.addCase(CLOSE_SIDEBAR, (state) => {
+      state.selection = null;
+    });
+    builder.addCase(setSidebar, (state, { payload: { name } }) => {
+      if (name !== SIDEBAR_NAME.events) {
+        state.selection = null;
+      }
+    });
+    builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
+      state.overrides = { ...state.overrides, ...action.payload };
+    });
+    builder.addCase(selectTimelineEvents, (state, action) => {
+      state.selection = action.payload;
+    });
+    builder.addCase(deselectTimelineEvents, (state) => {
+      state.selection = null;
+    });
   },
 );
 
@@ -291,7 +316,7 @@ function newDashboard(
     ...before,
     // mimic the StoreDashboard type - this function is only made to update attributes
     // rather than deep values like dashcards or tabs
-    ...omit(after, "dashcards", "tabs"),
+    ..._.omit(after, "dashcards", "tabs"),
     embedding_params: syncParametersAndEmbeddingParams(before, after),
     isDirty,
   };

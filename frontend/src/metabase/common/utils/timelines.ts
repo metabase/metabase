@@ -4,6 +4,8 @@ import _ from "underscore";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   Collection,
+  CollectionId,
+  CreateTimelineRequest,
   IconName,
   Timeline,
   TimelineIcon,
@@ -37,7 +39,7 @@ export const getTimelineIcons = (): {
 
 export const getDefaultTimeline = (
   collection: Collection,
-): Partial<Timeline> => {
+): CreateTimelineRequest => {
   return {
     name: getDefaultTimelineName(collection),
     collection_id: canonicalCollectionId(collection.id),
@@ -45,6 +47,24 @@ export const getDefaultTimeline = (
     default: true,
   };
 };
+
+/**
+ * null, "root" and "tenant" mean the root collection, whose timelines have a
+ * null collection_id, other ids are compared as is
+ */
+export const isCollectionTimeline = (
+  timeline: Timeline,
+  collectionId: CollectionId | null | undefined,
+) =>
+  canonicalCollectionId(collectionId) === null
+    ? timeline.collection_id == null
+    : timeline.collection_id === collectionId;
+
+export const getCollectionTimelines = (
+  timelines: Timeline[],
+  collectionId: CollectionId | null | undefined,
+): Timeline[] =>
+  timelines.filter((timeline) => isCollectionTimeline(timeline, collectionId));
 
 export const getDefaultTimelineName = (collection: Collection) => {
   return t`${collection.name} events`;

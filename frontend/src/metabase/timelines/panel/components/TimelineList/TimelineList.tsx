@@ -5,6 +5,7 @@ import { TimelineCard } from "../TimelineCard/TimelineCard";
 export interface TimelineListProps {
   timelines: Timeline[];
   visibleEventIds: number[];
+  partiallyVisibleEventIds?: number[];
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
@@ -12,11 +13,14 @@ export interface TimelineListProps {
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
   onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onShowTimeline: (timeline: Timeline) => void;
+  onHideTimeline: (timeline: Timeline) => void;
 }
 
 const TimelineList = ({
   timelines,
   visibleEventIds,
+  partiallyVisibleEventIds,
   selectedEventIds = [],
   onEditEvent,
   onMoveEvent,
@@ -24,6 +28,8 @@ const TimelineList = ({
   onToggleEventSelected,
   onShowTimelineEvents,
   onHideTimelineEvents,
+  onShowTimeline,
+  onHideTimeline,
 }: TimelineListProps): JSX.Element => {
   return (
     <div>
@@ -33,6 +39,7 @@ const TimelineList = ({
           timeline={timeline}
           isDefault={timelines.length === 1}
           visibleEventIds={visibleEventIds}
+          partiallyVisibleEventIds={partiallyVisibleEventIds}
           selectedEventIds={selectedEventIds}
           onEditEvent={onEditEvent}
           onMoveEvent={onMoveEvent}
@@ -40,6 +47,8 @@ const TimelineList = ({
           onArchiveEvent={onArchiveEvent}
           onShowTimelineEvents={onShowTimelineEvents}
           onHideTimelineEvents={onHideTimelineEvents}
+          onShowTimeline={onShowTimeline}
+          onHideTimeline={onHideTimeline}
         />
       ))}
     </div>

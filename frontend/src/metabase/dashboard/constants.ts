@@ -14,6 +14,7 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
     sharing: "sharing",
     settings: "settings",
     info: "info",
+    events: "events",
   };
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
@@ -39,6 +40,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   isNavigatingBackToDashboard: false,
   slowCards: {},
   sidebar: { props: {} },
+  timelineEvents: { overrides: {}, selection: null },
   missingActionParameters: null,
   autoApplyFilters: {
     toastId: null,
