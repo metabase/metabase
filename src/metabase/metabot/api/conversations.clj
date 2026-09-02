@@ -13,6 +13,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.queries.core :as queries]
@@ -183,24 +184,22 @@
         limit   (or (request/limit) default-limit)
         offset  (or (request/offset) default-offset)
         where   (list-where-clause user-id profile_id)
-        total   (:count (t2/query-one {:select [[[:count :*] :count]]
-                                       :from   [[:metabot_conversation :c]]
-                                       :where  where}))
+        total   (:count (metabot.db/conversation-count-where where))
         ;; Aggregates are per-row correlated subqueries so pagination stays on the outer
         ;; `metabot_conversation` scan rather than grouping every message the user owns.
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
-        rows    (t2/select :model/MetabotConversation
-                           {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
-                                       [(live-message-count-subquery) :message_count]
-                                       [(last-live-message-at-subquery) :last_message_at]
-                                       [(last-live-message-profile-id-subquery) :profile_id]]
-                            :from     [[:metabot_conversation :c]]
-                            :where    where
-                            :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
-                            :limit    limit
-                            :offset   offset})]
+        rows    (metabot.db/conversations-page
+                 {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
+                             [(live-message-count-subquery) :message_count]
+                             [(last-live-message-at-subquery) :last_message_at]
+                             [(last-live-message-profile-id-subquery) :profile_id]]
+                  :from     [[:metabot_conversation :c]]
+                  :where    where
+                  :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
+                  :limit    limit
+                  :offset   offset})]
     {:data   (mapv #(-> %
                         (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
                                       :forked_from_conversation_id])
@@ -238,7 +237,7 @@
   [{:keys [id]} :- ConversationIdParams
    _query-params
    {:keys [message_id]} :- ForkConversationBody]
-  (let [conversation (api/check-404 (t2/select-one [:model/MetabotConversation :id :user_id] :id id))]
+  (let [conversation (api/check-404 (metabot.db/conversation-id-and-user-id id))]
     (api/check-403 (= (:user_id conversation) api/*current-user-id*))
     (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
       (api/check-400 (some? new-conversation-id)
@@ -284,9 +283,7 @@
                                 (update :visualization_settings #(or % {})))
                             {:id api/*current-user-id*}
                             :delay-event)
-                    (t2/update! (t2/table-name :model/Card) (:id <>)
-                                {:metabot_conversation_id id
-                                 :metabot_chart_id        chart_id})))]
+                    (metabot.db/link-card-to-conversation! (:id <>) id chart_id)))]
     (events/publish-event! :event/card-create
                            {:object created :user-id api/*current-user-id*})
     (assoc created

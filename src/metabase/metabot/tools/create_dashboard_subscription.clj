@@ -3,14 +3,14 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn- make-slack-channel
   "Build a pulse channel for Slack delivery."
@@ -23,9 +23,9 @@
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
   [{:keys [dashboard-id slack-channel schedule]}]
-  (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
+  (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
                           api/read-check
-                          (t2/hydrate [:dashcards :card]))
+                          metabot.db/hydrate-dashcards-with-cards)
         cards (for [{:keys [id card]} (:dashcards dashboard)
                     :when (-> card :id int?)]
                 (-> card

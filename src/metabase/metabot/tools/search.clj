@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
@@ -19,8 +20,7 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -97,7 +97,7 @@
   [results]
   (let [coll-ids     (->> results (keep #(get-in % [:collection :id])) distinct)
         descriptions (when (seq coll-ids)
-                       (t2/select-pk->fn :description :model/Collection :id [:in coll-ids]))]
+                       (metabot.db/collection-descriptions coll-ids))]
     (cond->> results
       (seq descriptions) (mapv (fn [r]
                                  (let [cid (-> r :collection :id)]
@@ -112,10 +112,10 @@
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
         id->db (when (seq db-ids)
-                 (t2/select-pk->fn (juxt :engine :name) :model/Database :id [:in db-ids]))]
+                 (metabot.db/database-engines-and-names db-ids))]
     (cond->> results
       (seq id->db) (mapv (fn [r]
-                           (let [[engine db-name] (get id->db (:database_id r))]
+                           (let [{engine :engine, db-name :name} (get id->db (:database_id r))]
                              (-> r
                                  (m/assoc-some :database_engine engine)
                                  (m/assoc-some :database_name db-name))))))))
@@ -132,7 +132,7 @@
                       (keep :id)
                       distinct)
         id->eid  (when (seq card-ids)
-                   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))]
+                   (metabot.db/card-entity-ids card-ids))]
     (cond->> results
       (seq id->eid) (mapv (fn [r]
                             (if-let [eid (and (carded-types (:type r))
@@ -160,14 +160,13 @@
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->table-id (when (seq metric-ids)
-                            (t2/select-pk->fn :table_id :model/Card :id [:in metric-ids]))
+                            (metabot.db/card-table-ids metric-ids))
         table-ids (->> card-id->table-id vals (remove nil?) distinct)
         table-id->info (when (seq table-ids)
                          (into {}
                                (comp (filter mi/can-read?)
                                      (map (juxt :id (juxt :schema :name))))
-                               (t2/select [:model/Table :id :schema :name :db_id]
-                                          :id [:in table-ids])))
+                               (metabot.db/table-schema-rows table-ids)))
         metric-id->table-info
         (into {}
               (keep (fn [[metric-id table-id]]
@@ -196,7 +195,7 @@
   [results]
   (let [transform-ids (->> results (filter #(= "transform" (:type %))) (map :id) set)
         readable-ids (when (seq transform-ids)
-                       (->> (t2/select :model/Transform :id [:in transform-ids])
+                       (->> (metabot.db/transforms transform-ids)
                             transforms/add-source-readable
                             (filter :source_readable)
                             (map :id)
@@ -215,9 +214,7 @@
   [results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
-                       (->> (t2/select :model/Document
-                                       :id [:in document-ids]
-                                       :archived false)
+                       (->> (metabot.db/unarchived-documents document-ids)
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]
@@ -303,7 +300,7 @@
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (t2/select-one :model/Metabot :entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
+        metabot         (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
@@ -378,7 +375,7 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids]))]
+                    (metabot.db/table-summaries ids))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -397,18 +394,14 @@
         id->card  (when (seq ids)
                     (into {} (map (juxt :id identity))
                           (filter mi/can-read?
-                                  (t2/select [:model/Card :id :name :description :database_id :collection_id
-                                              :card_schema :type]
-                                             :id [:in ids]))))
+                                  (metabot.db/card-search-rows ids))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (into {} (map (juxt :id identity))
-                          (t2/select [:model/Collection :id :name :authority_level] :id [:in coll-ids])))
+                          (metabot.db/collection-summaries coll-ids)))
         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
-                    (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                      :moderated_item_id [:in ids] :moderated_item_type "card"
-                                      :most_recent true :status "verified"))]
+                    (metabot.db/verified-item-ids ids "card"))]
     (for [id ids
           :let [c (id->card id)]
           :when c]
@@ -434,13 +427,13 @@
           fetch   (fn [model ids]
                     (when-let [ids (not-empty (distinct ids))]
                       (filter mi/can-read?
-                              (t2/select [model :id :name :description :table_id :entity_id] :id [:in ids]))))
+                              (metabot.db/measure-or-segment-rows model ids))))
           rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
                           (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
                     (into {} (map (juxt :id identity))
-                          (t2/select [:model/Table :id :name :schema :db_id] :id [:in tbl-ids])))]
+                          (metabot.db/table-schema-rows tbl-ids)))]
       (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}

@@ -14,6 +14,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -405,7 +406,7 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (t2/update! 'User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
+    (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -545,14 +546,14 @@
   "Look up a single setting key in the DB or cache. Returns the raw (possibly empty) string, or nil."
   ^String [setting-name-str]
   (if config/*disable-setting-cache*
-    (t2/select-one-fn :value :model/Setting :key setting-name-str)
+    (settings.db/setting-value setting-name-str)
     (do
       ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
       (setting.cache/restore-cache-if-needed!)
       (let [cache (setting.cache/cache)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
-          (t2/select-one-fn :value :model/Setting :key setting-name-str)
+          (settings.db/setting-value setting-name-str)
           (core/get cache setting-name-str))))))
 
 (def ^:dynamic *deprecated-db-key-warned*
@@ -804,14 +805,12 @@
   (assert (not= setting-name setting.cache/settings-last-updated-key)
           (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (t2/update! :model/Setting :key setting-name {:value new-value}))
+  (settings.db/update-setting-value! setting-name new-value))
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (try (first (t2/insert-returning-instances! :model/Setting
-                                              :key   setting-name
-                                              :value new-value))
+  (try (settings.db/insert-setting! setting-name new-value)
        ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
@@ -881,11 +880,11 @@
             (cond
               (nil? new-value)
               (do
-                (t2/delete! (t2/table-name :model/Setting) :key setting-name)
+                (settings.db/delete-setting-row! setting-name)
                 ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
-                    (t2/delete! (t2/table-name :model/Setting) :key deprecated-key)
+                    (settings.db/delete-setting-row! deprecated-key)
                     (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that

@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -18,8 +19,7 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,7 +29,7 @@
   `model-key` is `:model/Measure` or `:model/Segment`."
   [model-key id]
   (when id
-    (t2/select-one-fn :entity_id model-key :id id)))
+    (metabot.db/entity-id-of model-key id)))
 
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
@@ -74,11 +74,7 @@
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
-  (let [review (t2/select-one [:model/ModerationReview :status]
-                              :moderated_item_id id
-                              :moderated_item_type item-type
-                              :most_recent true
-                              {:order-by [[:id :desc]]})]
+  (let [review (metabot.db/latest-review-status-row id item-type)]
     (= (:status review) "verified")))
 
 (def ^:private max-glossary-items
@@ -92,22 +88,20 @@
 (defn- glossary-for-context
   []
   ;; Rather small glossary sizes are anticipated. Additional count is bearable.
-  (let [glossary-size (t2/count :model/Glossary)]
+  (let [glossary-size (metabot.db/glossary-count)]
     (when (> glossary-size max-glossary-items)
       ;; If we are notified about the following warning we should reconsider current,
       ;; context injection, approach to glossary integration into Metabot.
       (log/warnf "Glossary size is larger than limit for context injection (%d > %d)."
                  glossary-size max-glossary-items)))
-  (not-empty (t2/select-fn->fn :term :definition :model/Glossary
-                               {:order-by [[glossary-order-column :desc]]
-                                :limit max-glossary-items})))
+  (not-empty (metabot.db/glossary-definitions glossary-order-column max-glossary-items)))
 
 (defn get-current-user
   "Get information about the current user."
   [_args]
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
-               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
+               (metabot.db/user-summary api/*current-user-id*))]
     {:structured-output (merge {:id id
                                 :type :user
                                 :name (str first_name " " last_name)
@@ -122,7 +116,7 @@
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
-  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
+  (if-let [dashboard (metabot.db/dashboard-summary dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
          (-> dashboard
@@ -137,7 +131,7 @@
   [id->values id]
   (if-some [field-values (get id->values id)]
     (:values field-values)
-    (let [field (t2/select-one :model/Field :id id)]
+    (let [field (metabot.db/field id)]
       (when (and field
                  (params.field-values/current-user-can-fetch-field-values? field))
         (:values (params.field-values/get-or-create-field-values! field))))))
@@ -838,7 +832,7 @@
   [kind :- [:enum :measure :segment]
    id   :- :int]
   (let [{:keys [model lookup-fn definition-key]} (measure-or-segment-dispatch kind)
-        row (t2/select-one [model :id :table_id] :id id)]
+        row (metabot.db/table-id-row model id)]
     (when-not row
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))
@@ -908,8 +902,7 @@
         (let [options (cond-> arguments
                         (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
               details (if (int? report-id)
-                        (let [card    (t2/hydrate (metabot.tools.u/get-card report-id)
-                                                  :average_query_time)
+                        (let [card    (metabot.db/hydrate-average-query-time (metabot.tools.u/get-card report-id))
                               mp      (lib-be/application-database-metadata-provider (:database_id card))
                               ;; The select-keys below drops :related_tables and :metrics, so don't compute them. On
                               ;; wide-FK source tables the related-tables cost can be substantial (metabase#76493).
