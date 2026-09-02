@@ -151,13 +151,13 @@
 
 (deftest ^:parallel build-archived-filter-test
   (testing "archived filters"
-    (is (= [:= :card.archived false]
+    (is (= ['= 'card.archived false]
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
-    (is (= [:and
-            [:= :table.active true]
-            [:= :table.visibility_type nil]
-            [:not [:= :table.db_id audit/audit-db-id]]]
+    (is (= ['and
+            ['= 'table.active true]
+            ['= 'table.visibility_type nil]
+            ['not ['= 'table.db_id audit/audit-db-id]]]
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))
 
@@ -165,17 +165,17 @@
   (is (contains?
        (set (:where (search.filter/build-filters
                      base-search-query "table"  default-search-ctx)))
-       [:not [:= :table.db_id audit/audit-db-id]])))
+       ['not ['= 'table.db_id audit/audit-db-id]])))
 
 (deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"
-    (is (= [:and
-            [:or
-             [:like [:lower :card.name] (h2x/like-substring "a")]
-             [:like [:lower :card.name] (h2x/like-substring "string")]
-             [:like [:lower :card.description] (h2x/like-substring "a")]
-             [:like [:lower :card.description] (h2x/like-substring "string")]]
-            [:= :card.archived false]]
+    (is (= ['and
+            ['or
+             ['like ['lower 'card.name] (h2x/like-substring "a")]
+             ['like ['lower 'card.name] (h2x/like-substring "string")]
+             ['like ['lower 'card.description] (h2x/like-substring "a")]
+             ['like ['lower 'card.description] (h2x/like-substring "string")]]
+            ['= 'card.archived false]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"})))))))
@@ -185,39 +185,39 @@
     (are [created-at expected-where]
          (= expected-where (#'search.filter/date-range-filter-clause :card.created_at created-at))
       ;; absolute datetime
-      "Q1-2023"                                 [:and [:>= [:cast :card.created_at :date] #t "2023-01-01"]
-                                                 [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
-      "2016-04-18~2016-04-23"                   [:and [:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                 [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
-      "2016-04-18"                              [:and [:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                 [:< [:cast :card.created_at :date]  #t "2016-04-19"]]
-      "2023-05-04~"                             [:> [:cast :card.created_at :date]  #t "2023-05-04"]
-      "~2023-05-04"                             [:< [:cast :card.created_at :date]  #t "2023-05-05"]
-      "2016-04-18T10:30:00~2016-04-23T11:30:00" [:and [:>= :card.created_at #t "2016-04-18T10:30"]
-                                                 [:< :card.created_at #t "2016-04-23T11:31:00"]]
-      "2016-04-23T10:00:00"                     [:and [:>= :card.created_at #t "2016-04-23T10:00"]
-                                                 [:< :card.created_at  #t "2016-04-23T10:01"]]
-      "2016-04-18T10:30:00~"                    [:> :card.created_at #t "2016-04-18T10:30"]
-      "~2016-04-18T10:30:00"                    [:< :card.created_at #t "2016-04-18T10:31"]
+      "Q1-2023"                                 ['and ['>= ['cast 'card.created_at 'date] #t "2023-01-01"]
+                                                 ['< ['cast 'card.created_at 'date]  #t "2023-04-01"]]
+      "2016-04-18~2016-04-23"                   ['and ['>= ['cast 'card.created_at 'date] #t "2016-04-18"]
+                                                 ['< ['cast 'card.created_at 'date]  #t "2016-04-24"]]
+      "2016-04-18"                              ['and ['>= ['cast 'card.created_at 'date] #t "2016-04-18"]
+                                                 ['< ['cast 'card.created_at 'date]  #t "2016-04-19"]]
+      "2023-05-04~"                             ['> ['cast 'card.created_at 'date]  #t "2023-05-04"]
+      "~2023-05-04"                             ['< ['cast 'card.created_at 'date]  #t "2023-05-05"]
+      "2016-04-18T10:30:00~2016-04-23T11:30:00" ['and ['>= 'card.created_at #t "2016-04-18T10:30"]
+                                                 ['< 'card.created_at #t "2016-04-23T11:31:00"]]
+      "2016-04-23T10:00:00"                     ['and ['>= 'card.created_at #t "2016-04-23T10:00"]
+                                                 ['< 'card.created_at  #t "2016-04-23T10:01"]]
+      "2016-04-18T10:30:00~"                    ['> 'card.created_at #t "2016-04-18T10:30"]
+      "~2016-04-18T10:30:00"                    ['< 'card.created_at #t "2016-04-18T10:31"]
       ;; relative datetime
-      "past3days"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                 [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
-      "past3days~"                              [:and [:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                 [:< [:cast :card.created_at :date] #t "2023-05-05"]]
-      "past3hours~"                             [:and [:>= :card.created_at #t "2023-05-04T07:00"]
-                                                 [:< :card.created_at #t "2023-05-04T11:00"]]
-      "next3days"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-05"]
-                                                 [:< [:cast :card.created_at :date]  #t "2023-05-08"]]
-      "thisminute"                              [:and [:>= :card.created_at #t "2023-05-04T10:02"]
-                                                 [:< :card.created_at #t "2023-05-04T10:03"]]
-      "lasthour"                                [:and [:>= :card.created_at #t "2023-05-04T09:00"]
-                                                 [:< :card.created_at #t "2023-05-04T10:00"]]
-      "past1months-from-36months"               [:and [:>= [:cast :card.created_at :date] #t "2020-04-01"]
-                                                 [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
-      "today"                                   [:and [:>= [:cast :card.created_at :date] #t "2023-05-04"]
-                                                 [:< [:cast :card.created_at :date] #t "2023-05-05"]]
-      "yesterday"                               [:and [:>= [:cast :card.created_at :date] #t "2023-05-03"]
-                                                 [:< [:cast :card.created_at :date] #t "2023-05-04"]])))
+      "past3days"                               ['and ['>= ['cast 'card.created_at 'date] #t "2023-05-01"]
+                                                 ['< ['cast 'card.created_at 'date]  #t "2023-05-04"]]
+      "past3days~"                              ['and ['>= ['cast 'card.created_at 'date] #t "2023-05-01"]
+                                                 ['< ['cast 'card.created_at 'date] #t "2023-05-05"]]
+      "past3hours~"                             ['and ['>= 'card.created_at #t "2023-05-04T07:00"]
+                                                 ['< 'card.created_at #t "2023-05-04T11:00"]]
+      "next3days"                               ['and ['>= ['cast 'card.created_at 'date] #t "2023-05-05"]
+                                                 ['< ['cast 'card.created_at 'date]  #t "2023-05-08"]]
+      "thisminute"                              ['and ['>= 'card.created_at #t "2023-05-04T10:02"]
+                                                 ['< 'card.created_at #t "2023-05-04T10:03"]]
+      "lasthour"                                ['and ['>= 'card.created_at #t "2023-05-04T09:00"]
+                                                 ['< 'card.created_at #t "2023-05-04T10:00"]]
+      "past1months-from-36months"               ['and ['>= ['cast 'card.created_at 'date] #t "2020-04-01"]
+                                                 ['< ['cast 'card.created_at 'date]  #t "2020-05-01"]]
+      "today"                                   ['and ['>= ['cast 'card.created_at 'date] #t "2023-05-04"]
+                                                 ['< ['cast 'card.created_at 'date] #t "2023-05-05"]]
+      "yesterday"                               ['and ['>= ['cast 'card.created_at 'date] #t "2023-05-03"]
+                                                 ['< ['cast 'card.created_at 'date] #t "2023-05-04"]])))
 
 ;; both created at and last-edited-at use [[search.filter/date-range-filter-clause]]
 ;; to generate the filter clause so for the full test cases, check [[date-range-filter-clause-test]]
@@ -275,12 +275,12 @@
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
-    (is (= [:and [:= :card.archived false] [:= :card.creator_id 1]]
+    (is (= ['and ['= 'card.archived false] ['= 'card.creator_id 1]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
                            {:created-by #{1}})))))
-    (is (= [:and [:= :card.archived false] [:in :card.creator_id #{1 2}]]
+    (is (= ['and ['= 'card.archived false] ['in 'card.creator_id #{1 2}]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
@@ -356,7 +356,7 @@
                 base-search-query
                 {'where  ['and
                           ['= 'card.archived false]
-                          ['= [:inline 0] [:inline 1]]]})
+                          ['= ['inline 0] ['inline 1]]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -369,7 +369,7 @@
                 base-search-query
                 {'where  ['and
                           ['= 'card.archived false]
-                          ['= [:inline 0] [:inline 1]]]})
+                          ['= ['inline 0] ['inline 1]]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
@@ -388,9 +388,9 @@
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
-      (is (= [:and
-              [:or [:like [:lower :model-index-value.name] (h2x/like-substring "foo")]]
-              [:= [:inline 1] [:inline 1]]]
+      (is (= ['and
+              ['or ['like ['lower 'model-index-value.name] (h2x/like-substring "foo")]]
+              ['= ['inline 1] ['inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
@@ -399,9 +399,9 @@
 (deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
-      (is (= [:and
-              [:or [:= 0 1]]
-              [:= [:inline 1] [:inline 1]]]
+      (is (= ['and
+              ['or ['= 0 1]]
+              ['= ['inline 1] ['inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
@@ -411,9 +411,9 @@
   (doseq [model ["dataset" "card"]]
     (testing model
       (testing "do not search for native query by default"
-        (is (= [:and
-                [:or [:like [:lower :card.name] (h2x/like-substring "foo")] [:like [:lower :card.description] (h2x/like-substring "foo")]]
-                [:= :card.archived false]]
+        (is (= ['and
+                ['or ['like ['lower 'card.name] (h2x/like-substring "foo")] ['like ['lower 'card.description] (h2x/like-substring "foo")]]
+                ['= 'card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
                         model
@@ -423,13 +423,13 @@
   (doseq [model ["dataset" "card"]]
     (testing model
       (testing "search in both name, description and dataset_query if is enabled"
-        (is (= [:and [:or
-                      [:like [:lower :card.name] (h2x/like-substring "foo")]
-                      [:like [:lower :card.description] (h2x/like-substring "foo")]
-                      [:and
-                       [:= :card.query_type "native"]
-                       [:like [:lower :card.dataset_query] (h2x/like-substring "foo")]]]
-                [:= :card.archived false]]
+        (is (= ['and ['or
+                      ['like ['lower 'card.name] (h2x/like-substring "foo")]
+                      ['like ['lower 'card.description] (h2x/like-substring "foo")]
+                      ['and
+                       ['= 'card.query_type "native"]
+                       ['like ['lower 'card.dataset_query] (h2x/like-substring "foo")]]]
+                ['= 'card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
                         model
@@ -438,9 +438,9 @@
 (deftest ^:parallel build-filters-search-native-query-3
   (testing "action"
     (testing "do not search for native query by default"
-      (is (= [:and
-              [:or [:like [:lower :action.name] (h2x/like-substring "foo")] [:like [:lower :action.description] (h2x/like-substring "foo")]]
-              [:= :action.archived false]]
+      (is (= ['and
+              ['or ['like ['lower 'action.name] (h2x/like-substring "foo")] ['like ['lower 'action.description] (h2x/like-substring "foo")]]
+              ['= 'action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query
                       "action"
@@ -449,12 +449,12 @@
 (deftest ^:parallel build-filters-search-native-query-4
   (testing "action"
     (testing "search in both name, description and dataset_query if is enabled"
-      (is (= [:and
-              [:or
-               [:like [:lower :action.name] (h2x/like-substring "foo")]
-               [:like [:lower :action.description] (h2x/like-substring "foo")]
-               [:like [:lower :query_action.dataset_query] (h2x/like-substring "foo")]]
-              [:= :action.archived false]]
+      (is (= ['and
+              ['or
+               ['like ['lower 'action.name] (h2x/like-substring "foo")]
+               ['like ['lower 'action.description] (h2x/like-substring "foo")]
+               ['like ['lower 'query_action.dataset_query] (h2x/like-substring "foo")]]
+              ['= 'action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query
                       "action"
@@ -467,5 +467,5 @@
         (let [result (search.filter/build-filters
                       base-search-query model
                       (merge default-search-ctx {:collection 1}))]
-          (is (some #{[:= [:inline 0] [:inline 1]]}
+          (is (some #{['= ['inline 0] ['inline 1]]}
                     (tree-seq sequential? seq (:where result)))))))))

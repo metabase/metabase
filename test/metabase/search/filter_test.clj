@@ -132,7 +132,7 @@
                 ['in 'search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 ['or
                  ['= nil 'search_index.dashboard_id]
-                 ['not= [:inline 0] ['coalesce 'search_index.dashboardcard_count [:inline 0]]]]
+                 ['not= ['inline 0] ['coalesce 'search_index.dashboardcard_count ['inline 0]]]]
                 ['= nil 'search_index.exploration_id]
                 ['in
                  'search_index.model
@@ -166,14 +166,14 @@
                   {:filter-items-in-personal-collection "exclude"
                    :current-user-id                     1}
                   :search_index.collection_id)]
-      (is (=? [:or any? [:and any? [:not [:exists any?]]]]
+      (is (=? ['or any? ['and any? ['not ['exists any?]]]]
               clause))))
   (testing "the \"only\" branch uses a single EXISTS subquery rather than one :like clause per personal collection"
     (let [clause (search.filter/personal-collections-where-clause
                   {:filter-items-in-personal-collection "only"
                    :current-user-id                     1}
                   :search_index.collection_id)]
-      (is (=? [:or any? [:exists any?]]
+      (is (=? ['or any? ['exists any?]]
               clause)))))
 
 (deftest in-place-curated-table-filter-counts-authoritative-test

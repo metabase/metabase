@@ -176,11 +176,11 @@
                                                                 {:cte-name :visible_collection_ids}
                                                                 user-scope))
         readable-conditions ['or
-                             ['and ['= 'bookmark.type (h2x/literal "card")]       (visible? 'card.collection_id)]
-                             ['and ['= 'bookmark.type (h2x/literal "dashboard")]  (visible? 'dashboard.collection_id)]
-                             ['and ['= 'bookmark.type (h2x/literal "collection")] (visible? 'collection.id)]
-                             ['and ['= 'bookmark.type (h2x/literal "document")]   (visible? 'document.collection_id)]
-                             ['and ['= 'bookmark.type (h2x/literal "exploration")] (visible? 'exploration.collection_id)]]]
+                             ['and ['= 'bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
+                             ['and ['= 'bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
+                             ['and ['= 'bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
+                             ['and ['= 'bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
+                             ['and ['= 'bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
     (->> (mdb/query
           {'with [['visible_collection_ids (collection/visible-collection-query
                                             {:include-archived-items :all

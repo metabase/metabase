@@ -933,15 +933,15 @@
   based on the results of `visible-collection-query` above."
   ([]
    (visible-collection-filter-clause :collection_id))
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
+  ([collection-id-field :- [:or [:tuple [:enum :coalesce 'coalesce] [:or :keyword :symbol] [:or :keyword :symbol]] :keyword :symbol]]
    (visible-collection-filter-clause collection-id-field {}))
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
+  ([collection-id-field :- [:or [:tuple [:enum :coalesce 'coalesce] [:or :keyword :symbol] [:or :keyword :symbol]] :keyword :symbol]
     visibility-config :- CollectionVisibilityConfig]
    (visible-collection-filter-clause collection-id-field
                                      visibility-config
                                      {:current-user-id api/*current-user-id*
                                       :is-superuser?   api/*is-superuser?*}))
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
+  ([collection-id-field :- [:or [:tuple [:enum :coalesce 'coalesce] [:or :keyword :symbol] [:or :keyword :symbol]] :keyword :symbol]
     visibility-config :- CollectionVisibilityConfig
     user-scope :- UserScope]
    (let [{:keys [cte-name] :as visibility-config} (merge default-visibility-config visibility-config)]
