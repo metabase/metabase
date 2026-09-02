@@ -30,6 +30,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification :as notification-api]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -125,8 +126,7 @@
     (into #{}
           (comp (filter #(some-> % :details :value u/lower-case-en (= lower-email)))
                 (map :notification_handler_id))
-          (t2/reducible-select [:model/NotificationRecipient :notification_handler_id :details]
-                               :type :notification-recipient/raw-value))))
+          (notification.db/raw-value-recipients-reducible))))
 
 (defn- notification-ids-with-recipient-email
   "Notification IDs whose recipients (user or raw-value) match `email` exactly. One SQL query
@@ -141,12 +141,7 @@
         where-clause    (if (seq raw-handler-ids)
                           [:or user-clause [:in :notification_handler.id raw-handler-ids]]
                           user-clause)]
-    (t2/select-fn-set
-     :notification_id (t2/table-name :model/NotificationHandler)
-     {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
-                  [:= :nr.notification_handler_id :notification_handler.id]]
-      :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
-      :where     where-clause})))
+    (notification.db/handler-notification-ids-where where-clause)))
 
 (defn- query-where-clause
   "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and creator
@@ -433,25 +428,11 @@
   CASE is a no-op when `task-name` is supplied — all candidate rows share the same `:task`."
   [task-name run-ids]
   (when (seq run-ids)
-    (->> (t2/select :model/TaskHistory
-                    {:select [:run_id :task_details]
-                     :from   [[^:allow-subquery
-                               {:select [:run_id :task_details
-                                         [[:over [[:row_number]
-                                                  ^:allow-subquery
-                                                  {:partition-by [:run_id]
-                                                   :order-by     [[[:case
-                                                                    [:= :task task-notification-send] 0
-                                                                    :else                             1] :asc]
-                                                                  [:ended_at :desc]]}]]
-                                          :rn]]
-                                :from   [:task_history]
-                                :where  (cond-> [:and
-                                                 [:in :run_id run-ids]
-                                                 [:in :status ["failed" "abandoned"]]]
-                                          task-name (conj [:= :task task-name]))}
-                               :sub]]
-                     :where  [:= :sub.rn 1]})
+    (->> (notification.db/latest-failed-task-history-rows task-notification-send
+                                                          (cond-> [:and
+                                                                   [:in :run_id run-ids]
+                                                                   [:in :status ["failed" "abandoned"]]]
+                                                            task-name (conj [:= :task task-name])))
          (into {} (map (juxt :run_id (comp :message :task_details)))))))
 
 (defn- has-failure?
@@ -507,11 +488,10 @@
   "Single SQL query for the page; one extra query for failed-run error messages on that page."
   [{:keys [limit offset] :as filters}]
   (let [base-filters (dissoc filters :limit :offset)
-        page-rows    (t2/select :model/Notification
-                                (assoc (list-query base-filters)
-                                       :limit  limit
-                                       :offset offset))
-        total        (or (:count (t2/query-one (count-query base-filters))) 0)
+        page-rows    (notification.db/notifications (assoc (list-query base-filters)
+                                                           :limit  limit
+                                                           :offset offset))
+        total        (or (:count (notification.db/notification-count-row (count-query base-filters))) 0)
         decorated    (-> page-rows
                          decorate-runs
                          models.notification/hydrate-notification)]
@@ -599,14 +579,11 @@
   "Up to `:result-limit` most-recent terminal alert TaskRuns for `notification-id`, newest first, as
   `::run-summary` maps. Attributed directly via `task_run.notification_id`."
   [notification-id & {:keys [result-limit] :or {result-limit 10}}]
-  (let [runs       (t2/select [:model/TaskRun :id :status :started_at]
-                              {:where    [:and
-                                          [:= :run_type run-type-alert]
-                                          [:= :notification_id notification-id]
-                                          [:in :status terminal-statuses]
-                                          [:> :started_at (lookback-cutoff)]]
-                               :order-by [[:started_at :desc] [:id :desc]]
-                               :limit    result-limit})
+  (let [runs       (notification.db/terminal-alert-runs run-type-alert
+                                                        notification-id
+                                                        terminal-statuses
+                                                        (lookback-cutoff)
+                                                        result-limit)
         failed-ids (into #{} (keep (fn [{:keys [id status]}]
                                      (when (#{:failed :abandoned} status) id))
                                    runs))
@@ -633,31 +610,18 @@
                         :status   (if (some #(= :failing (:status %)) channel-entries) :failing :successful)
                         :error    (some :error channel-entries)
                         :channels channel-entries}))))
-        (t2/reducible-select :model/TaskHistory
-                             {:select   [:th.run_id :th.task_details :th.status
-                                         [:tr.started_at :run_started_at]]
-                              :from     [[:task_history :th]]
-                              :join     [[:task_run :tr] [:= :tr.id :th.run_id]]
-                              :where    [:and
-                                         [:= :tr.run_type        run-type-alert]
-                                         [:= :tr.notification_id notification-id]
-                                         [:= :th.task            task-channel-send]
-                                         [:> :tr.started_at      (lookback-cutoff)]]
-                              ;; tr.id tie-breaks runs sharing a started_at so partition-by run_id
-                              ;; keeps each run's rows adjacent.
-                              :order-by [[:tr.started_at :desc] [:tr.id :desc]]
-                              ;; safety cap; the (take result-limit) over partition-by run_id
-                              ;; normally closes the cursor first.
-                              :limit    500})))
+        (notification.db/channel-send-history-reducible run-type-alert
+                                                        notification-id
+                                                        task-channel-send
+                                                        (lookback-cutoff))))
 
 (defn- get-notification-detail
   "Fetch a single card-type notification with `:last_check`, `:last_send`, `:check_history`, and
   `:send_history`, each attributed to THIS notification via `task_run.notification_id`. Returns nil
   for a missing or non-card notification."
   [id]
-  (when-let [row (t2/select-one :model/Notification
-                                (-> (base-list-query {:skip-run-joins? true})
-                                    (sql.helpers/where [:= :notification.id id])))]
+  (when-let [row (notification.db/notification-one (-> (base-list-query {:skip-run-joins? true})
+                                                       (sql.helpers/where [:= :notification.id id])))]
     (let [decorated     (-> (models.notification/hydrate-notification [row])
                             first
                             splice-creator-active)
@@ -698,15 +662,10 @@
     ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
     ;; archive action, whose update-map never touches creator_id.)
     (t2/with-transaction [_conn]
-      (let [before (-> (t2/select :model/Notification
-                                  :id           [:in ids]
-                                  :payload_type :notification/card)
+      (let [before (-> (notification.db/card-notifications ids)
                        models.notification/hydrate-notification
                        vec)]
-        (t2/update! :model/Notification
-                    :id           [:in ids]
-                    :payload_type :notification/card
-                    update-map)
+        (notification.db/update-card-notifications! ids update-map)
         before))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
@@ -724,7 +683,7 @@
   (api/check-superuser)
   (let [update-map (action->update-map action creator_id)
         before     (bulk-update! update-map notification_ids)
-        after      (->> (t2/select :model/Notification :id [:in (mapv :id before)])
+        after      (->> (notification.db/notifications-by-id (mapv :id before))
                         models.notification/hydrate-notification
                         (m/index-by :id))]
     (doseq [b    before

@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as viz-settings]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor.card :as qp.card]
@@ -18,8 +19,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (defn is-card-empty?
   "Check if the card is empty"
@@ -41,7 +41,7 @@
   "Check if a dashboard has more than 1 tab, and thus needs them to be rendered.
   We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
+  (< 1 (notification.db/dashboard-tab-count (u/the-id dashboard-or-id))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -104,7 +104,7 @@
         ;; the info in viz-settings might be out-of-date
         (some? (:entity link-card))
         (let [{:keys [model id]} (:entity link-card)
-              instance           (t2/select-one
+              instance           (notification.db/link-card-entity
                                   (serdes/link-card-model->toucan-model model)
                                   (dashboard-card/link-card-info-query-for-model model id))]
           (when (mi/can-read? instance)
@@ -199,13 +199,13 @@
      :or   {spill-budget (new-spill-budget)}}]
    (log/with-context {:card_id card_id}
      (try
-       (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
-         (let [dashboard      (t2/select-one :model/Dashboard :id dashboard_id)
+       (when-let [card (notification.db/unarchived-card card_id)]
+         (let [dashboard      (notification.db/dashboard dashboard_id)
                multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
                result-fn      (fn [card-id]
                                 (let [card (if (= card-id (:id card))
                                              card
-                                             (t2/select-one :model/Card :id card-id))
+                                             (notification.db/card card-id))
                                       attached-result? (and attached? (= card-id card_id))]
                                   {:card     card
                                    :dashcard dashcard
@@ -343,7 +343,7 @@
                              only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
-         (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
+         (let [tabs               (notification.db/hydrate-tab-cards (notification.db/dashboard-tabs dashboard-id))
                tabs-with-cards    (->> tabs
                                        (map #(update % :cards keep-dashcards))
                                        (filter #(seq (:cards %))))
@@ -355,7 +355,7 @@
                                 (when should-render-tab?
                                   [(tab->part tab)])
                                 (dashcards->part cards parameters opts)))))))
-         (let [dashcards (keep-dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id))]
+         (let [dashcards (keep-dashcards (notification.db/dashcards-for-dashboard dashboard-id))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
            (dashcards->part dashcards parameters opts)))))))
 
@@ -363,7 +363,7 @@
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?]
-  (let [card   (t2/select-one :model/Card card-id)
+  (let [card   (notification.db/card card-id)
         result (request/with-current-user creator-id
                  (-> (qp.card/process-query-for-card card :api
                                                      ;; TODO rename to :notification?

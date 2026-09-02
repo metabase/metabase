@@ -11,12 +11,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
-   [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 ;; This is similar to the function in [[metabase.warehouses-rest.api]], but we want to allow filtering the DBs in case
 ;; of audit database, we don't want to allow users to modify its queries.
@@ -45,18 +45,18 @@
     (perms/prime-database-perms-cache {:db-ids (set ids)})
     (into [] (comp (filter mi/can-read?)
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
-          (t2/select :model/Database :id [:in ids]))))
+          (queries.db/databases ids))))
 
 (defn- field-ids->table-ids
   [field-ids]
   (if (seq field-ids)
-    (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
+    (queries.db/field-table-ids field-ids)
     #{}))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
    (when (seq initial-snippet-ids)
-     (let [snippets (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids]))]
+     (let [snippets (into [] (filter mi/can-read?) (queries.db/snippets initial-snippet-ids))]
        (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
@@ -69,7 +69,7 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids])))]
+                                (into [] (filter mi/can-read?) (queries.db/snippets nested-snippet-ids)))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
@@ -191,8 +191,8 @@
                    [:set ::lib.schema.id/card]]]]
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
-                      (t2/select :model/Card :id [:in ids]))]
-      (t2/hydrate cards :can_write))))
+                      (queries.db/cards ids))]
+      (queries.db/hydrate-can-write cards))))
 
 (defn- dashcard->click-behaviors [dashcard]
   (let [viz-settings        (:visualization_settings dashcard)
@@ -204,11 +204,9 @@
 (defn- batch-fetch-linked-dashboards
   [dashboard-ids]
   (when (seq dashboard-ids)
-    (let [dashboards (->> (t2/select :model/Dashboard :id [:in dashboard-ids])
+    (let [dashboards (->> (queries.db/dashboards dashboard-ids)
                           (filter mi/can-read?))]
-      (t2/hydrate dashboards
-                  :can_write
-                  :param_fields))))
+      (queries.db/hydrate-can-write-and-param-fields dashboards))))
 
 (defn- batch-fetch-dashboard-links
   [dashcards]
