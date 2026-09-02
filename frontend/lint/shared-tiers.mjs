@@ -27,6 +27,7 @@ const SHARED_UTILS_LEVELS = [
   ["shared/current-user"],
   // U5 — app services over the store, registry and current user.
   [
+    "shared/metadata-store",
     "shared/selectors",
     "shared/content-translation",
     "shared/error-boundary",
