@@ -308,9 +308,17 @@
         ;; Outer sort: pivot-grouping first (so branches stay grouped), then user's explicit order-bys
         ;; (referenced by their aggregation aliases so each pivot-grouping's rows are ordered like a
         ;; multi-query subquery would order them), then canonical breakouts as a final tiebreak.
+        ;; HoneySQL wraps `[<alias>]` (the SELECT-alias shape) around the identifier form; strip that
+        ;; wrapper for ORDER-BY use so HoneySQL emits `"alias" ASC` rather than `("alias") ASC` (which
+        ;; Presto/Trino rejects).
+        alias-ident              (fn [a]
+                                   (if (and (vector? a) (= 1 (count a)))
+                                     (first a)
+                                     a))
         canonical-orig-bo-aliases (mapv (fn [b]
-                                          (alias-of (nth orig-breakout-select
-                                                         (.indexOf ^java.util.List (vec breakout) b))))
+                                          (alias-ident
+                                           (alias-of (nth orig-breakout-select
+                                                          (.indexOf ^java.util.List (vec breakout) b)))))
                                         (canonicalize-breakouts breakout))
         ;; Map aggregation UUID → position, so we can resolve MBQL 5 `[:aggregation opts <uuid-str>]`
         ;; references from the user's :order-by to the corresponding aggregation alias in
@@ -324,7 +332,7 @@
                                                  (let [target (nth ref 2 nil)
                                                        agg-idx (get agg-uuid->idx target)]
                                                    (when-let [entry (and agg-idx (nth orig-agg-select agg-idx nil))]
-                                                     [(alias-of entry) dir])))))
+                                                     [(alias-ident (alias-of entry)) dir])))))
                                        user-order-bys)
         outer-order-by           (when (> (count combos) 1)
                                    (into [[:pivot-grouping :asc]]
