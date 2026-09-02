@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setup :as mdb.setup]
@@ -26,6 +27,19 @@
     (testing "from a connection URL"
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
+
+(deftest unpooled-data-source-test
+  (let [unpooled (mdb.data-source/raw-connection-string->DataSource
+                  (format "jdbc:h2:mem:%s" (mt/random-name)))]
+    (testing "a c3p0 pool is unwrapped back to the data source it was built from"
+      (let [pooled (mdb.connection-pool-setup/connection-pool-data-source :h2 unpooled)]
+        (is (not (identical? unpooled pooled))
+            "sanity check: the pool really is a different object")
+        (is (identical? unpooled (#'mdb.setup/unpooled-data-source pooled))
+            (str "verify-db-connection must probe the unpooled data source, otherwise c3p0 swallows the driver's "
+                 "exception and reports a checkout timeout instead"))))
+    (testing "a data source that isn't pooled is returned as-is"
+      (is (identical? unpooled (#'mdb.setup/unpooled-data-source unpooled))))))
 
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
