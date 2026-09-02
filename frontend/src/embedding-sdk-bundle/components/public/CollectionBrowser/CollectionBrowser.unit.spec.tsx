@@ -291,7 +291,7 @@ describe("CollectionBrowser", () => {
         });
 
         expect(
-          await screen.findByTestId("sdk-error-container"),
+          await screen.findByText("Failed to load collections"),
         ).toBeInTheDocument();
         expect(
           fetchMock.callHistory.calls("path:/api/collection/root/items"),
@@ -308,7 +308,7 @@ describe("CollectionBrowser", () => {
         });
 
         expect(
-          await screen.findByTestId("sdk-error-container"),
+          await screen.findByText("Failed to load collections"),
         ).toBeInTheDocument();
         expect(
           screen.queryByTestId("all-collections-list"),
@@ -328,7 +328,7 @@ describe("CollectionBrowser", () => {
         });
 
         expect(
-          await screen.findByTestId("sdk-error-container"),
+          await screen.findByText("Failed to load collections"),
         ).toBeInTheDocument();
         expect(
           screen.queryByTestId("all-collections-list"),
@@ -352,7 +352,7 @@ describe("CollectionBrowser", () => {
 
         try {
           expect(
-            await screen.findByTestId("sdk-error-container"),
+            await screen.findByText("Failed to load collections"),
           ).toBeInTheDocument();
           expect(
             screen.queryByTestId("loading-indicator"),
