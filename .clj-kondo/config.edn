@@ -455,9 +455,7 @@
     toucan2.core                              t2}}}
 
  :lint-as
- {
-  cljs.cache/defcache                                                                   clojure.core/deftype
-  metabase.mcp.v2.registry/deftool                                                     clojure.core/defn
+ {cljs.cache/defcache                                                                   clojure.core/deftype
   clojure.core.cache/defcache                                                           clojure.core/deftype
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
@@ -497,6 +495,7 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
