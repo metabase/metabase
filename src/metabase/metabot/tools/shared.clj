@@ -50,6 +50,11 @@
   []
   (get-in (current-memory) [:state :charts] {}))
 
+(defn current-dashboards-state
+  "Returns the current generated-dashboards state map from agent memory."
+  []
+  (get-in (current-memory) [:state :dashboards] {}))
+
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.
   Chart configs contain pre-materialized series data from the frontend viewing context."

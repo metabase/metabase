@@ -2,6 +2,7 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CollectionId,
   CreateCardRequest,
   DashboardId,
   DatabaseId,
@@ -332,6 +333,36 @@ export interface SaveMetabotEntityRequest {
   conversation_id: string;
   chart_id: string;
   card: CreateCardRequest;
+}
+
+export interface SaveMetabotDashboardTile {
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+  row: number;
+  col: number;
+  size_x: number;
+  size_y: number;
+  chart_id?: string;
+  card_id?: number;
+}
+
+export interface SaveMetabotDashboardRequest {
+  conversation_id: string;
+  dashboard_id: string;
+  dashboard: {
+    name: string;
+    description: string | null;
+    collection_id: CollectionId | null;
+    tiles: SaveMetabotDashboardTile[];
+  };
+}
+
+export interface SaveMetabotDashboardResponse {
+  id: number;
+  name: string;
+  description?: string | null;
+  collection_id: CollectionId | null;
 }
 
 export interface ForkMetabotConversationRequest {

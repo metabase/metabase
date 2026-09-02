@@ -13,9 +13,11 @@ import {
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import {
+  DASHBOARD_DISPLAY_ACTIONS,
   DASHBOARD_EDITING_ACTIONS,
   DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -39,6 +41,11 @@ import {
   parseSearchQuery,
   stringifyHashOptions,
 } from "metabase/utils/browser";
+import {
+  ADHOC_DASHBOARD_HASH_KEY,
+  getAdhocDashboardId,
+  isAdhocDashboardPath,
+} from "metabase/utils/dashboard";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -77,6 +84,23 @@ function DashboardAppInner({ location }: { location: Location }) {
 export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
+const ADHOC_DASHBOARD_ACTIONS = () => [
+  DASHBOARD_ACTION.SAVE_ADHOC_DASHBOARD,
+  ...DASHBOARD_DISPLAY_ACTIONS,
+];
+
+function getRouteDashboardId(location: Location, slug: string | undefined) {
+  if (!isAdhocDashboardPath(location.pathname)) {
+    return Urls.extractEntityId(slug);
+  }
+  const encodedDefinition = parseHashOptions(location.hash)[
+    ADHOC_DASHBOARD_HASH_KEY
+  ];
+  return typeof encodedDefinition === "string"
+    ? getAdhocDashboardId(encodedDefinition)
+    : null;
+}
+
 export const DashboardApp = () => {
   const location = useLocation();
   const params = useParams();
@@ -89,7 +113,8 @@ export const DashboardApp = () => {
     () => parseSearchQuery(location.search),
     [location.search],
   );
-  const dashboardId = Urls.extractEntityId(params.slug);
+  const dashboardId = getRouteDashboardId(location, params.slug);
+  const isAdhocDashboard = isAdhocDashboardPath(location.pathname);
 
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(location);
@@ -103,6 +128,11 @@ export const DashboardApp = () => {
   };
 
   const onLoadDashboard = async (dashboard: IDashboard) => {
+    // an ad-hoc dashboard's hash IS its definition: no edit/add options to apply,
+    // and rewriting the hash would drop the dashboard itself
+    if (isAdhocDashboard) {
+      return;
+    }
     let options: ReturnType<typeof parseHashOptions> = parseHashOptions(
       window.location.hash,
     );
@@ -190,7 +220,9 @@ export const DashboardApp = () => {
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
-        dashboardActions={DASHBOARD_APP_ACTIONS}
+        dashboardActions={
+          isAdhocDashboard ? ADHOC_DASHBOARD_ACTIONS : DASHBOARD_APP_ACTIONS
+        }
       >
         <DashboardAppInner location={location} />
       </DashboardContextProvider>

@@ -221,3 +221,110 @@
                        :destination {:target_type "collection" :collection_id nil}}))]
         (is (nil? (:data-parts result)))
         (is (re-find #"No generated chart found" (:output result)))))))
+
+(defn- dashboard-memory
+  "A memory atom holding a generated dashboard `d-1` over one chart tile and one query tile."
+  []
+  (let [query (venues-query)]
+    (atom {:state   {:queries    {"q-1" query}
+                     :charts     {"c-1" {:chart_id "c-1"
+                                         :query_id "q-1"
+                                         :queries  [query]
+                                         :visualization_settings {:chart_type :bar}}}
+                     :dashboards {"d-1" {:dashboard_id "d-1"
+                                         :name         "Ops overview"
+                                         :tiles        [{:chart_id "c-1"
+                                                         :title    "Venues by price"
+                                                         :row      0
+                                                         :col      0
+                                                         :size_x   12
+                                                         :size_y   6}
+                                                        {:query_id "q-1"
+                                                         :title    "All venues"
+                                                         :row      0
+                                                         :col      12
+                                                         :size_x   12
+                                                         :size_y   6}]}}}
+           :context {}})))
+
+(defn- save-dashboard! [memory destination]
+  (binding [shared/*memory-atom* memory]
+    (save-entity/save-entity-tool
+     {:chart_id    "d-1"
+      :name        "Ops overview"
+      :description "Key ops charts."
+      :destination destination})))
+
+(deftest save-generated-dashboard-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card :model/Dashboard]
+      (mt/with-temp [:model/Collection coll {:name "Ops"}]
+        (let [result  (save-dashboard! (dashboard-memory)
+                                       {:target_type "collection" :collection_id (:id coll)})
+              dash-id (get-in result [:structured-output :dashboard-id])
+              dash    (t2/select-one :model/Dashboard :id dash-id)
+              cards   (t2/select :model/Card :dashboard_id dash-id {:order-by [[:id :asc]]})]
+          (testing "creates the dashboard in the target collection"
+            (is (some? dash))
+            (is (= "Ops overview" (:name dash)))
+            (is (= "Key ops charts." (:description dash)))
+            (is (= (:id coll) (:collection_id dash))))
+          (testing "creates a dashboard question per tile, keeping each tile's display"
+            (is (= [["Venues by price" :bar] ["All venues" :table]]
+                   (map (juxt :name :display) cards))))
+          (testing "places the tiles side by side following the given order"
+            (is (= [{:row 0 :col 0 :size_x 12 :size_y 6}
+                    {:row 0 :col 12 :size_x 12 :size_y 6}]
+                   (map #(t2/select-one [:model/DashboardCard :row :col :size_x :size_y]
+                                        :dashboard_id dash-id :card_id (:id %))
+                        cards))))
+          (testing "emits an entity_saved data part pointing at the saved dashboard"
+            (let [part (first (:data-parts result))]
+              (is (= "entity_saved" (:data-type part)))
+              (is (= "d-1" (get-in part [:data :chart_id])))
+              (is (= dash-id (get-in part [:data :dashboard_id])))
+              (is (= {:type "collection" :id (:id coll)}
+                     (get-in part [:data :destination]))))))))))
+
+(deftest save-generated-dashboard-with-saved-card-tile-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card :model/Dashboard]
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card existing {:name "Existing" :dataset_query (mt/mbql-query venues)}]
+        (let [memory  (doto (dashboard-memory)
+                        (swap! assoc-in [:state :dashboards "d-1" :tiles]
+                               [{:card_id (:id existing) :title "Existing" :row 0 :col 0 :size_x 12 :size_y 6}
+                                {:chart_id "c-1" :title "Venues by price" :row 0 :col 12 :size_x 12 :size_y 6}]))
+              result  (save-dashboard! memory {:target_type "collection" :collection_id (:id coll)})
+              dash-id (get-in result [:structured-output :dashboard-id])]
+          (testing "a saved-question tile is placed as-is instead of creating a new question"
+            (is (= [(:id existing)]
+                   (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dash-id :card_id (:id existing))))
+            (is (= ["Venues by price"]
+                   (t2/select-fn-vec :name :model/Card :dashboard_id dash-id)))))))))
+
+(deftest save-generated-dashboard-stamps-card-origin-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card :model/Dashboard]
+      (mt/with-temp [:model/Collection coll {}
+                     :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+        (let [memory  (doto (dashboard-memory) (swap! assoc :conversation-id convo-id))
+              result  (save-dashboard! memory {:target_type "collection" :collection_id (:id coll)})
+              dash-id (get-in result [:structured-output :dashboard-id])]
+          (testing "chart-backed tiles record their conversation + chart origin; query tiles do not"
+            (is (= [{:name "Venues by price" :metabot_conversation_id convo-id :metabot_chart_id "c-1"}
+                    {:name "All venues" :metabot_conversation_id nil :metabot_chart_id nil}]
+                   (t2/select [:model/Card :name :metabot_conversation_id :metabot_chart_id]
+                              :dashboard_id dash-id {:order-by [[:id :asc]]})))))))))
+
+(deftest save-generated-dashboard-collection-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard dash {}
+                   :model/Document  doc  {:name "Q3 report" :document document-ast}]
+      (doseq [[label destination] {"dashboard" {:target_type "dashboard" :dashboard_id (:id dash)}
+                                   "document"  {:target_type "document" :document_id (:id doc)}}]
+        (testing (str "a generated dashboard cannot be saved to a " label " destination")
+          (let [result (save-dashboard! (dashboard-memory) destination)]
+            (is (nil? (:data-parts result)))
+            (is (re-find #"only be saved to a collection" (:output result)))
+            (is (not (t2/exists? :model/Dashboard :name "Ops overview")))))))))

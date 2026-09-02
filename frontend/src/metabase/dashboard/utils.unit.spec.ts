@@ -1,6 +1,7 @@
 import {
   canResetFilter,
   createTabSlug,
+  expandAdhocDashboard,
   fetchDataOrError,
   findDashCardForInlineParameter,
   getCurrentTabDashboardCards,
@@ -14,6 +15,9 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { createMockLocation } from "metabase/redux/store/mocks";
+import type { AdhocDashboardDefinition } from "metabase/urls";
+import * as Urls from "metabase/urls";
+import { getDashboardType } from "metabase/utils/dashboard";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
@@ -31,6 +35,7 @@ import {
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -872,6 +877,53 @@ describe("Dashboard utils", () => {
           "5",
         ]);
       });
+    });
+  });
+});
+
+describe("expandAdhocDashboard", () => {
+  const definition: AdhocDashboardDefinition = {
+    name: "Ops overview",
+    description: "Key ops charts.",
+    tiles: [
+      {
+        title: "Venues by price",
+        display: "bar",
+        dataset_query: createMockStructuredDatasetQuery(),
+        row: 0,
+        col: 0,
+        size_x: 12,
+        size_y: 6,
+      },
+    ],
+  };
+  const dashId = Urls.adhocDashboard(definition);
+
+  it("is detected as the adhoc dashboard type", () => {
+    expect(getDashboardType(dashId)).toBe("adhoc");
+    expect(getDashboardType(1)).toBe("normal");
+  });
+
+  it("decodes the url hash into an inline-style dashboard", () => {
+    const dashboard = expandAdhocDashboard(dashId);
+
+    expect(dashboard.id).toBe(dashId);
+    expect(dashboard.name).toBe("Ops overview");
+    expect(dashboard.description).toBe("Key ops charts.");
+
+    const [dashcard] = checkNotNull(dashboard.dashcards);
+    expect(dashcard).toMatchObject({
+      col: 0,
+      row: 0,
+      size_x: 12,
+      size_y: 6,
+      dashboard_id: dashId,
+    });
+    expect(dashcard.id).toBeDefined();
+    expect(dashcard.card).toMatchObject({
+      name: "Venues by price",
+      display: "bar",
+      dataset_query: definition.tiles[0].dataset_query,
     });
   });
 });

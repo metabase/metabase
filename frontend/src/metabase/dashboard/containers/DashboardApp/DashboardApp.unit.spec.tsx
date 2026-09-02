@@ -5,12 +5,15 @@ import { callMockEvent } from "__support__/events";
 import {
   setupActionsEndpoints,
   setupBookmarksEndpoints,
+  setupCardDataset,
   setupCardsEndpoints,
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -21,13 +24,18 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import type { AdhocDashboardDefinition } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -38,6 +46,9 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+
+registerVisualizations();
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -293,5 +304,109 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+});
+
+describe("DashboardApp ad-hoc dashboards", () => {
+  const definition: AdhocDashboardDefinition = {
+    name: "Ops overview",
+    description: "Key ops charts.",
+    tiles: [
+      {
+        title: "Venues by price",
+        display: "bar",
+        dataset_query: createMockStructuredDatasetQuery({ database: 1 }),
+        row: 0,
+        col: 0,
+        size_x: 12,
+        size_y: 6,
+      },
+      {
+        title: "All venues",
+        display: "table",
+        dataset_query: createMockStructuredDatasetQuery({ database: 2 }),
+        row: 0,
+        col: 12,
+        size_x: 12,
+        size_y: 6,
+      },
+    ],
+  };
+
+  const setupAdhoc = (adhocDefinition: AdhocDashboardDefinition) => {
+    setupNotificationChannelsEndpoints({});
+    setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
+    setupCollectionsEndpoints({ collections: [] });
+    setupCollectionByIdEndpoint({ collections: [] });
+    setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+    setupRecentViewsAndSelectionsEndpoints(
+      [],
+      ["selections", "views"],
+      {},
+      false,
+    );
+    setupBookmarksEndpoints([]);
+    setupCardDataset();
+
+    return renderWithProviders(
+      <>
+        <Route path="/dashboard/adhoc" element={<DashboardApp />} />
+        <Route path="/dashboard/:slug" element={<div>saved dashboard</div>} />
+      </>,
+      {
+        initialRoute: Urls.adhocDashboard(adhocDefinition),
+        withRouter: true,
+        storeInitialState: {
+          dashboard: createMockDashboardState(),
+          entities: createMockEntitiesState({
+            databases: [TEST_DATABASE_WITH_ACTIONS],
+          }),
+          settings: mockSettings({ "site-url": "http://localhost:3000" }),
+        },
+      },
+    );
+  };
+
+  it("renders a hash-defined dashboard through the regular dashboard page, read-only", async () => {
+    setupAdhoc(definition);
+
+    expect(await screen.findByText("Ops overview")).toBeInTheDocument();
+    expect(await screen.findByText("Venues by price")).toBeInTheDocument();
+    expect(await screen.findByText("All venues")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Edit dashboard")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("save-adhoc-dashboard-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers to save a Metabot-generated dashboard and opens the saved dashboard", async () => {
+    fetchMock.post(
+      "express:/api/metabot/conversations/:id/saved-dashboard",
+      { id: 9, name: "Ops overview", description: null, collection_id: null },
+      {
+        name: "save-dashboard",
+        matchPartialBody: true,
+        body: { dashboard_id: "dash-1", dashboard: { name: "Ops overview" } },
+      },
+    );
+    setupAdhoc({
+      ...definition,
+      metabot: { conversation_id: "convo-1", dashboard_id: "dash-1" },
+    });
+
+    await userEvent.click(
+      await screen.findByTestId("save-adhoc-dashboard-button"),
+    );
+    const modal = await screen.findByTestId("save-dashboard-modal");
+    expect(within(modal).getByLabelText("Name")).toHaveValue("Ops overview");
+
+    const saveButton = within(modal).getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("save-dashboard")).toBe(true);
+    });
+    expect(await screen.findByText("saved dashboard")).toBeInTheDocument();
   });
 });

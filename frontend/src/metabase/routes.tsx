@@ -387,6 +387,8 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 }),
               },
 
+              { path: "dashboard/adhoc", lazy: dashboardApp },
+
               {
                 path: "dashboard/:slug",
                 lazy: dashboardApp,

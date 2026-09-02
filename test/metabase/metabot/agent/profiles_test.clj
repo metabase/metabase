@@ -155,9 +155,12 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
+      (is (= (disj fallback "create_dashboard") embedding)
+          "embedding_next lacks create_dashboard: the SDK does not render inline dashboards")
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
+      (is (= curated (-> embedding
+                         (disj "search")
+                         (conj "retrieve_library_entities" "create_dashboard"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]

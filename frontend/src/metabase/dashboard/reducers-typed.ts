@@ -32,8 +32,10 @@ import type {
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
+  DashCardDataMap,
   DashCardId,
   Dashboard,
+  Dataset,
   ParameterId,
   ParameterValueOrArray,
   ParameterValuesMap,
@@ -442,7 +444,16 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          return assocIn(state, [dashcard_id, card_id], result);
+          // mutate the draft rather than assocIn: icepick freezes its result in
+          // dev, which stops immer from finalizing the draft children embedded
+          // in it and leaves revoked proxies in the state
+          // Dataset is too deeply recursive for immer's Draft<> to instantiate,
+          // so write through the map's plain type
+          const dashcardData = state as unknown as DashCardDataMap;
+          dashcardData[dashcard_id] ??= {};
+          // error-only results are stored in the dataset slot by contract so
+          // the dashcard can render them; the map's Dataset type predates that
+          dashcardData[dashcard_id][card_id] = result as Dataset;
         }
       })
       .addCase(clearCardData, (state, action) => {

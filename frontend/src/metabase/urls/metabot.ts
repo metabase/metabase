@@ -1,5 +1,6 @@
 import type {
   GeneratedCard,
+  GeneratedDashboard,
   GeneratedEntity,
 } from "metabase/api/ai-streaming/schemas";
 import { serializeCardForUrl } from "metabase/common/utils/card";
@@ -9,6 +10,7 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 
+import { adhocDashboard } from "./dashboards";
 import { serializedQuestion } from "./questions";
 
 export function newMetabotConversation({ prompt }: { prompt: string }) {
@@ -25,12 +27,36 @@ export function generatedCard(card: GeneratedCard) {
   return serializedQuestion(unsavedCard, { includeDisplayIsLocked: true });
 }
 
-export function generatedEntity(entity: GeneratedEntity) {
+export function generatedDashboard(
+  dashboard: GeneratedDashboard,
+  conversationId?: string,
+) {
+  if ("url" in dashboard) {
+    return dashboard.url;
+  }
+  return adhocDashboard({
+    name: dashboard.title,
+    description: dashboard.description,
+    tiles: dashboard.tiles.map(({ query, ...tile }) => ({
+      ...tile,
+      dataset_query: query,
+    })),
+    metabot:
+      conversationId != null
+        ? { conversation_id: conversationId, dashboard_id: dashboard.id }
+        : undefined,
+  });
+}
+
+export function generatedEntity(
+  entity: GeneratedEntity,
+  { conversationId }: { conversationId?: string } = {},
+) {
   switch (entity.type) {
     case "card":
       return generatedCard(entity);
     case "dashboard":
-      return entity.url;
+      return generatedDashboard(entity, conversationId);
   }
 }
 

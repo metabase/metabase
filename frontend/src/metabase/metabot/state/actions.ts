@@ -98,7 +98,7 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setIsPollingForTitle,
-  markChartSaved,
+  markEntitySaved,
 } = metabot.actions;
 
 const TITLE_POLL_INTERVAL_MS = 1500;
@@ -577,7 +577,9 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                const path = Urls.generatedEntity(part.data);
+                const path = Urls.generatedEntity(part.data, {
+                  conversationId,
+                });
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
@@ -590,12 +592,12 @@ export const sendAgentRequest = createAsyncThunk<
                 navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                dispatch(
-                  markChartSaved({
-                    entityId: part.data.chart_id,
-                    cardId: part.data.card_id,
-                  }),
-                );
+                const savedId = part.data.card_id ?? part.data.dashboard_id;
+                if (savedId != null) {
+                  dispatch(
+                    markEntitySaved({ entityId: part.data.chart_id, savedId }),
+                  );
+                }
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {
                   dispatch(

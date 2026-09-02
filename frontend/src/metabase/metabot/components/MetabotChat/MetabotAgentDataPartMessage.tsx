@@ -1,7 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import {
@@ -113,7 +113,11 @@ export const AgentDataPartMessage = ({
       ({ part }) => (
         <Stack gap="lg">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineDashboardLink value={part.data} />
+          <MetabotInlineDashboardLink
+            value={part.data}
+            readonly={readonly}
+            conversationId={conversationId}
+          />
         </Stack>
       ),
     )
@@ -137,10 +141,17 @@ export const AgentDataPartMessage = ({
 const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
   const { destination } = value;
 
-  const { data: card, isLoading: isCardLoading } = useGetCardQuery({
-    id: value.card_id,
-    ignore_error: true,
-  });
+  const { data: card, isLoading: isCardLoading } = useGetCardQuery(
+    value.card_id != null
+      ? { id: value.card_id, ignore_error: true }
+      : skipToken,
+  );
+  const { data: savedDashboard, isLoading: isSavedDashboardLoading } =
+    useGetDashboardQuery(
+      value.dashboard_id != null
+        ? { id: value.dashboard_id, ignore_error: true }
+        : skipToken,
+    );
   const { data: collection, isLoading: isCollectionLoading } =
     useGetCollectionQuery(
       destination.type === "collection"
@@ -174,14 +185,30 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
 
   if (
     isCardLoading ||
+    isSavedDashboardLoading ||
     isCollectionLoading ||
     isDashboardLoading ||
     isDocumentLoading
   ) {
-    return <Skeleton h="1rem" w="18rem" data-testid="entity-saved-loading" />;
+    return (
+      <Skeleton visible w="18rem" data-testid="entity-saved-loading">
+        <Text>&nbsp;</Text>
+      </Skeleton>
+    );
   }
 
-  if (card == null) {
+  const savedEntity = match({ card, savedDashboard })
+    .with({ card: P.nonNullable }, ({ card }) => ({
+      name: card.name,
+      url: Urls.card(card),
+    }))
+    .with({ savedDashboard: P.nonNullable }, ({ savedDashboard }) => ({
+      name: savedDashboard.name,
+      url: Urls.dashboard(savedDashboard),
+    }))
+    .otherwise(() => null);
+
+  if (savedEntity == null) {
     return null;
   }
 
@@ -196,26 +223,33 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
       {container.name}
     </Anchor>
   );
-  const chartName = (
+  const entityName = (
     <Anchor
       key="name"
       component={ForwardRefLink}
-      to={Urls.card(card)}
+      to={savedEntity.url}
       target="_blank"
       fw="bold"
     >
-      {card.name}
+      {savedEntity.name}
     </Anchor>
   );
+
+  let message;
+  if (savedDashboard != null) {
+    message = target
+      ? jt`Dashboard ${entityName} saved to ${target}`
+      : jt`Dashboard ${entityName} saved`;
+  } else {
+    message = target
+      ? jt`Chart ${entityName} saved to ${target}`
+      : jt`Chart ${entityName} saved`;
+  }
 
   return (
     <Flex align="center" gap="sm" c="text-secondary">
       <Icon name="check" size={14} />
-      <Text c="text-secondary">
-        {target
-          ? jt`Chart ${chartName} saved to ${target}`
-          : jt`Chart ${chartName} saved`}
-      </Text>
+      <Text c="text-secondary">{message}</Text>
     </Flex>
   );
 };

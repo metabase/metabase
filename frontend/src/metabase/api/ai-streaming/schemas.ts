@@ -93,12 +93,36 @@ export type GeneratedCard = {
   display?: CardDisplayType;
 };
 
-export type GeneratedDashboard = {
+export type GeneratedDashboardTile = {
+  title: string;
+  display: CardDisplayType;
+  query: DatasetQuery;
+  chart_id?: string;
+  card_id?: number;
+  row: number;
+  col: number;
+  size_x: number;
+  size_y: number;
+};
+
+export type GeneratedXrayDashboard = {
   type: "dashboard";
-  id?: number;
+  id?: string;
   title: string;
   url: string;
 };
+
+export type GeneratedAdhocDashboard = {
+  type: "dashboard";
+  id: string;
+  title: string;
+  description?: string;
+  tiles: GeneratedDashboardTile[];
+};
+
+export type GeneratedDashboard =
+  | GeneratedXrayDashboard
+  | GeneratedAdhocDashboard;
 
 export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
 
@@ -109,7 +133,8 @@ export type SavedEntityDestination =
 
 export type EntitySavedValue = {
   chart_id: string;
-  card_id: number;
+  card_id?: number;
+  dashboard_id?: number;
   destination: SavedEntityDestination;
   tool_call_id?: string;
   title?: string;
