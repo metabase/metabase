@@ -1,10 +1,12 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -691,3 +693,127 @@
                   [:not= :db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
+
+;;;; -------------------------------------------- Library retrieval ----------------------------------------------------
+
+(defn- table-label
+  "A published table's user-facing label: display_name, falling back to the raw name."
+  [table]
+  (or (:display_name table) (:name table)))
+
+(defn- table->index-docs
+  "The `:library-index` projection for a Table: the shared doc derivation over the hydrated entity."
+  [table]
+  (entity-retrieval.spec/library-index-docs table))
+
+(def ^:private max-field-names
+  "Cap on the field names one table contributes to its prompt input and `basis`."
+  500)
+
+(defn- field-path
+  "Return the field name used in the generation prompt: a nested field's dotted path, an ordinary column's
+  own name.
+  The full path keeps `user.id` and `item.id` distinct when both leaves are named `id`.
+
+  Drivers use two `nfc_path` conventions, which this function detects:
+  - Mongo and sql-jdbc write the whole chain including the leaf. sql-jdbc also names the field by that chain
+    joined with ` → `.
+  - BigQuery writes only the ancestors and puts the leaf in `name`.
+
+  Appending the leaf unconditionally mangles the first pair; never appending it collapses distinct BigQuery
+  siblings, since `r.a` and `r.b` would both become `r`."
+  [{field-name :name, :keys [nfc_path]}]
+  ;; TODO (Chris 2026-08-18) -- QUE2-804. No per-row rule can be correct here. BigQuery `a.b.b` and
+  ;; Mongo `a.b` both arrive as {:name "b", :nfc_path ["a" "b"]} and want different answers, so a BigQuery
+  ;; field sharing its parent's name collapses into that parent (pinned in field-path-test). Joining is the
+  ;; safer of the two guesses: appending would mangle every Mongo nested field rather than only same-named
+  ;; BigQuery ones.
+  ;; An unrecognized third convention also falls into the :else branch and is silently misnamed. The column
+  ;; needs one canonical meaning across drivers, after which this is a join.
+  (cond
+    (empty? nfc_path)                        field-name
+    (= field-name (last nfc_path))           (str/join "." nfc_path)
+    (= field-name (str/join " → " nfc_path)) (str/join "." nfc_path)
+    :else                                    (str/join "." (conj (vec nfc_path) field-name))))
+
+(defn- keep-first-names
+  "Reducing function that retains at most [[max-field-names]] lexicographically smallest distinct field
+  paths for one table."
+  [acc field-name]
+  (let [acc (conj acc field-name)]
+    (if (> (count acc) max-field-names)
+      ;; The sorted-set accumulator removes duplicates. Dropping its greatest member on overflow keeps the
+      ;; survivors independent of row order while bounding the accumulator after every reducing step.
+      (disj acc (first (rseq acc)))
+      acc)))
+
+(defn- table-field-names
+  "Batch `:field-names` hydration for the Table `:osi-context` projection: map of
+  [[entity-retrieval.spec/hydration-key]] -> the table's active field paths (see [[field-path]]), sorted,
+  capped at [[max-field-names]].
+  Like every `:osi-context` hydration, the value must be deterministic and bounded. Sorting and
+  [[max-field-names]] satisfy that contract here; no later step limits the stored `osi_ai_context.basis`."
+  [tables]
+  (when-let [ids (not-empty (into [] (keep :id) tables))]
+    (into {}
+          (mapcat (fn [id-chunk]
+                    (update-vals
+                     ;; Exclude sensitive/retired fields — they are hidden from metadata by default, and
+                     ;; these names are handed to an external LLM provider and stored in `basis`. Same
+                     ;; filter sync/classify use.
+                     (u/group-by #(entity-retrieval.spec/hydration-key "table" (:table_id %))
+                                 field-path
+                                 keep-first-names
+                                 (sorted-set)
+                                 ;; Rows fold into capped sets as they arrive, so each table accumulator peaks
+                                 ;; at the cap rather than at that table's field count. Postgres still buffers
+                                 ;; a reducible-select result; streaming-reducible supplies the transaction
+                                 ;; connection and fetch size that make it stream.
+                                 (app-db/streaming-reducible
+                                  (fn [conn]
+                                    (t2/reducible-select :conn conn
+                                                         [:model/Field :table_id :name :nfc_path]
+                                                         :table_id [:in (vec id-chunk)]
+                                                         :active true
+                                                         :visibility_type [:not-in ["sensitive" "retired"]]))))
+                     vec)))
+          ;; Chunked for the app db's bind-parameter limit. Chunking by table id is what keeps the cap
+          ;; per-table: every field of a table lands in the one chunk holding its id, so no table is
+          ;; accumulated twice and no partial entry can clobber a full one.
+          (partition-all entity-retrieval.spec/hydration-query-chunk-size ids))))
+
+(defn- table->llm-input
+  "The `:osi-context` projection for a Table: the map handed to the generation prompt.
+  Prompt-only additions (sampled content, fk summaries) belong here and must never move into `:basis`.
+  Excluding them from the basis keeps volatile inputs from scheduling regeneration on every run."
+  [table]
+  ;; Complete v1 prompt projection. Prompt-only additions stay out of :basis unless they should
+  ;; invalidate previously generated metadata.
+  {:entity-type  "table"
+   :name         (:name table)
+   :display-name (:display_name table)
+   :description  (:description table)
+   :field-names  (:field-names table)})
+
+(def ^:private library-table-membership
+  ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
+  {:where [:and
+           [:in :collection_id :library/collection-ids]
+           [:= :is_published true]
+           [:= :active true]]})
+
+(entity-retrieval.spec/define-source :model/Table
+  {:entity-type "table"
+   :fields      [:id :name :display_name :description :collection_id :is_published :active]
+   :label       #'table-label})
+
+(entity-retrieval.spec/define-projection :library-index :model/Table
+  {:membership library-table-membership
+   :project    #'table->index-docs
+   :hydrate    {:ai-context #'entity-retrieval.spec/ai-context-by-entity}})
+
+(entity-retrieval.spec/define-projection :osi-context :model/Table
+  {:membership library-table-membership
+   :project    #'table->llm-input
+   :hydrate    {:field-names #'table-field-names}
+   :basis      [:name :display_name :description :field-names]})

@@ -16,6 +16,7 @@
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
@@ -1658,6 +1659,58 @@
 
 (search/define-spec "metric"
   (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
+
+;;;; -------------------------------------------- Library retrieval ----------------------------------------------------
+
+(defn- card->index-docs
+  "The `:library-index` projection for a library metric/model Card: the shared doc derivation over the
+  hydrated entity."
+  [card]
+  (entity-retrieval.spec/library-index-docs card))
+
+(defn- card->llm-input
+  "The `:osi-context` projection for a library metric/model Card: the deterministic map handed to the
+  generation prompt."
+  [card]
+  ;; Complete v1 prompt projection. Prompt additions go here; only deterministic invalidators belong
+  ;; in :basis.
+  {:entity-type (name (:type card))
+   :name        (:name card)
+   :description (:description card)})
+
+(def ^:private library-card-membership
+  ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
+  {:where [:and
+           [:in :collection_id :library/collection-ids]
+           [:= :archived false]
+           [:in :type ["metric" "model"]]]})
+
+(defn- card-types
+  "Batch `:card-type` hydration for the Card `:osi-context` projection:
+  [[entity-retrieval.spec/hydration-key]] -> the card's live type as a canonical string (\"metric\"/\"model\").
+  In the `:basis` because `card->llm-input` derives `:entity-type` from the live type: a metric<->model
+  relabel changes the prompt input, so it must register as a basis change and regenerate the row."
+  [cards]
+  (into {}
+        (map (fn [card] [(entity-retrieval.spec/hydration-key card) (name (:type card))]))
+        cards))
+
+(entity-retrieval.spec/define-source :model/Card
+  {;; a Card's entity_type is its live flavor (metric/model), read per row from :type.
+   :entity-type {:column :type}
+   ;; :card_schema is mandatory in any column-scoped Card select (toucan guard).
+   :fields      [:id :name :description :type :collection_id :archived :card_schema]})
+
+(entity-retrieval.spec/define-projection :library-index :model/Card
+  {:membership library-card-membership
+   :project    #'card->index-docs
+   :hydrate    {:ai-context #'entity-retrieval.spec/ai-context-by-entity}})
+
+(entity-retrieval.spec/define-projection :osi-context :model/Card
+  {:membership library-card-membership
+   :project    #'card->llm-input
+   :hydrate    {:card-type #'card-types}
+   :basis      [:name :description :card-type]})
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]

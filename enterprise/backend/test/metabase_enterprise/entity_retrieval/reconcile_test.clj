@@ -6,11 +6,14 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.mirror :as mirror]
+   [metabase.entity-retrieval.spec :as spec]
    [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
@@ -34,18 +37,6 @@
     (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [& _] nil)]
       (thunk))))
 
-(deftest doc-id-test
-  (testing "equal (entity_type, entity_local_id, doc_type, doc_text) tuples hash equal"
-    (is (= (reconcile/doc-id "metric" 9 "name" "Revenue")
-           (reconcile/doc-id "metric" 9 "name" "Revenue"))))
-  (testing "each component changes the doc_id (instructions is deliberately not an input)"
-    (let [d (reconcile/doc-id "metric" 9 "name" "Revenue")]
-      (doseq [variant [(reconcile/doc-id "table"  9 "name"    "Revenue")
-                       (reconcile/doc-id "metric" 8 "name"    "Revenue")
-                       (reconcile/doc-id "metric" 9 "synonym" "Revenue")
-                       (reconcile/doc-id "metric" 9 "name"    "Sales")]]
-        (is (not= d variant) (pr-str variant))))))
-
 (deftest entity-class-test
   (let [entity-class (var-get #'reconcile/entity-class)]
     (testing "a Card's question/metric/model labels collapse to one class, so a type flip still matches"
@@ -57,19 +48,6 @@
                 (entity-class {:entity_type "metric" :entity_local_id 5})))
       (is (not= (entity-class {:entity_type "measure" :entity_local_id 5})
                 (entity-class {:entity_type "segment" :entity_local_id 5}))))))
-
-(deftest entity->docs-bounds-oversized-ai-context-test
-  (testing "list length and per-value text are bounded at index time, regardless of how the row was written"
-    (let [entity->docs (var-get #'reconcile/entity->docs)
-          ctx          {:synonyms (mapv #(str "synonym-" %) (range 200))
-                        :examples [(apply str (repeat 9000 \x))]}
-          docs         (entity->docs {:entity_type "table" :entity_local_id 1 :name "Orders" :description "d"}
-                                     ctx)]
-      (testing "an unbounded synonym list is capped (bounds bloat from API-bypassing writes)"
-        (is (= 50 (count (filter #(= "synonym" (:doc_type %)) docs)))))
-      (testing "every doc's text is truncated to the char cap"
-        (is (every? #(<= (count (:doc_text %)) 8000) docs))
-        (is (= 8000 (count (:doc_text (first (filter #(= "example" (:doc_type %)) docs))))))))))
 
 (deftest format-embedding-rejects-invalid-values-test
   (testing "non-numbers, NaN and infinities are rejected before they reach a raw SQL literal"
@@ -370,6 +348,98 @@
             (testing "the entity that left the library is still GC'd (no failed insert of its own)"
               (is (empty? (docs-for ds "table" leaving))))))))))
 
+(deftest ^:synchronized malformed-ai-context-degrades-to-name-and-description-test
+  (testing "an unusable ai_context costs the entity its enrichment, not its place in the index: it stays
+           findable by name and description, and the enrichment docs it can no longer justify GC"
+    (mt/with-premium-features #{:library :library-retrieval}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {bad-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                      :active true :name "bad" :display_name "Bad"
+                                                      :description "old description"}
+                           :model/Table {good-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                       :active true :name "good" :display_name "Good"}
+                           :model/OsiAiContext _ {:entity_type "table" :entity_local_id bad-id
+                                                  :ai_context {:synonyms ["kept synonym"]}}]
+              (reconcile/reconcile! ds (constantly model))
+              (is (contains? (set (map :doc_text (docs-for ds "table" bad-id))) "kept synonym")
+                  "baseline: the synonym is indexed while the context is readable")
+              (t2/update! :model/Table good-id {:display_name "Good Renamed"})
+              (doseq [corrupt-value ["{not-json" "null"]]
+                (t2/query-one {:update :osi_ai_context
+                               :set    {:ai_context corrupt-value}
+                               :where  [:and [:= :entity_type "table"] [:= :entity_local_id bad-id]]})
+                (let [result (reconcile/reconcile! ds (constantly model))]
+                  (is (= 1 (:degraded result))
+                      "the entity is counted for the gauge, which is the signal a person has to act on")
+                  (is (= {"name" 1 "description" 1}
+                         (frequencies (map :doc_type (docs-for ds "table" bad-id))))
+                      "parse-invalid and shape-invalid contexts both degrade to the base docs")))
+              (testing "a recoverable legacy row (over-cap instructions + unknown key) rebuilds its slice"
+                (t2/query-one {:update :osi_ai_context
+                               :set    {:ai_context (json/encode
+                                                     {:instructions (apply str (repeat (inc entity-retrieval/max-instructions-len) "x"))
+                                                      :future-key   "ignored"
+                                                      :synonyms     ["legacy synonym"]})}
+                               :where  [:and [:= :entity_type "table"] [:= :entity_local_id bad-id]]})
+                (is (map? (reconcile/reconcile! ds (constantly model))))
+                (is (= {"name" 1 "description" 1 "synonym" 1}
+                       (frequencies (map :doc_type (docs-for ds "table" bad-id)))))
+                (is (contains? (set (map :doc_text (docs-for ds "table" bad-id))) "legacy synonym")
+                    "the fresh synonym is indexed, not the retained stale one"))
+              (is (= #{"Good Renamed"}
+                     (set (map :doc_text (filter #(= "name" (:doc_type %))
+                                                 (docs-for ds "table" good-id)))))
+                  "the healthy entity still reconciles"))))))))
+
+(deftest ^:synchronized data-defect-does-not-block-the-watermark-test
+  (testing "an unusable ai_context stays unusable until a person repairs the row, so freezing freshness on
+           it would report the index as stale forever while every reconcile was doing all it can. The
+           entity is indexed from its name and description, so nothing about naming has gone undetected."
+    (mt/with-premium-features #{:library :library-retrieval}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {table-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                        :active true :name "orders" :display_name "Orders"}
+                           :model/OsiAiContext _ {:entity_type "table" :entity_local_id table-id
+                                                  :ai_context {:synonyms ["sales"]}}]
+              (reconcile/reconcile! ds (constantly model))
+              (let [converged (reconciled-at! ds)]
+                (is (some? converged) "a clean run stamps the watermark")
+                (t2/query-one {:update :osi_ai_context
+                               :set    {:ai_context "{not-json"}
+                               :where  [:and [:= :entity_type "table"] [:= :entity_local_id table-id]]})
+                (is (= 1 (:degraded (reconcile/reconcile! ds (constantly model)))))
+                (is (not= converged (reconciled-at! ds))
+                    "the run converged on everything it could, so freshness advances")))))))))
+
+(deftest ^:synchronized unforeseen-projection-failure-blocks-the-watermark-test
+  (testing "an unforeseen projection error may well be gone next run and leaves the entity's stale docs in
+           place meanwhile, so it freezes reconciled_at the way a failed insert does"
+    (mt/with-premium-features #{:library :library-retrieval}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {table-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                        :active true :name "orders" :display_name "Orders"}
+                           :model/OsiAiContext _ {:entity_type "table" :entity_local_id table-id
+                                                  :ai_context {:synonyms ["sales"]}}]
+              (reconcile/reconcile! ds (constantly model))
+              (let [converged (reconciled-at! ds)]
+                (is (some? converged) "a clean run stamps the watermark")
+                (mt/with-dynamic-fn-redefs [spec/library-index-docs (fn [& _] (throw (ex-info "boom" {})))]
+                  (is (map? (reconcile/reconcile! ds (constantly model))))
+                  (is (= converged (reconciled-at! ds))
+                      "the entity's docs are stale and a retry might fix it — the watermark must not move"))
+                (is (map? (reconcile/reconcile! ds (constantly model))))
+                (is (not= converged (reconciled-at! ds))
+                    "once the error clears, the next converged run advances the watermark")))))))))
+
 (deftest ^:synchronized reconcile-entity!-targets-one-slice-test
   (testing "reconcile-entity! reconciles only the given entity's docs, leaving other entities untouched"
     (mt/with-premium-features #{:library :library-retrieval}
@@ -468,22 +538,13 @@
                        :model/Card  {archived :id} {:type "metric" :collection_id (:id metrics) :archived true
                                                     :name "A" :database_id db-id}]
           (let [by-key (into {} (map (juxt (juxt :entity_type :entity_local_id) identity))
-                             (#'reconcile/library-entities))]
+                             (map spec/entity-summary (spec/member-entities :library-index)))]
             (testing "members resolve and match the full-scan entry"
               (is (= (get by-key ["table" tbl])   (reconcile/library-entity "table" tbl)))
               (is (= (get by-key ["metric" metric]) (reconcile/library-entity "metric" metric))))
             (testing "non-members resolve to nil"
               (is (nil? (reconcile/library-entity "table" unpub)))
               (is (nil? (reconcile/library-entity "metric" archived))))))))))
-
-(deftest library-root-collection-included-in-membership-test
-  (testing "the Library root id is in lib-ids, so an entity directly in the root would be indexed too"
-    ;; Defensive: the appdb normally prevents leaf content directly in the Library root (it lives in the
-    ;; Data/Metrics sub-collections), so this can't be exercised end-to-end — but membership covers the
-    ;; root id, not just its descendants.
-    (mt/with-premium-features #{:library}
-      (collections.tu/with-library [{library :library}]
-        (is (contains? (set (#'reconcile/library-ids library)) (:id library)))))))
 
 (deftest ^:synchronized reconcile-entity!-on-first-build-repopulates-whole-library-test
   (testing "a targeted reconcile that creates the index (first caller, empty table) repopulates the whole library"

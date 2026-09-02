@@ -4,6 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -252,3 +253,39 @@
                   :table_display_name :table.display_name
                   :table_schema :table.schema}
    :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
+
+;;;; -------------------------------------------- Library retrieval ----------------------------------------------------
+
+(defn- segment->index-docs
+  "The `:library-index` projection for a Segment: the shared doc derivation over the hydrated entity."
+  [segment]
+  (entity-retrieval.spec/library-index-docs segment))
+
+(defn- segment->llm-input
+  "The `:osi-context` projection for a Segment: the deterministic map handed to the generation prompt."
+  [segment]
+  ;; Complete v1 prompt projection. Future parent/filter context may be added here without becoming a
+  ;; volatile basis invalidator.
+  {:entity-type "segment"
+   :name        (:name segment)
+   :description (:description segment)})
+
+(def ^:private library-segment-membership
+  ;; shared by both projections — :osi-context membership is fixed to :library-index's for v1.
+  ;; A segment is a library member iff its parent table is a current library table.
+  {:where      [:= :archived false]
+   :via-parent {:model :model/Table, :fk :table_id}})
+
+(entity-retrieval.spec/define-source :model/Segment
+  {:entity-type "segment"
+   :fields      [:id :name :description :table_id :archived]})
+
+(entity-retrieval.spec/define-projection :library-index :model/Segment
+  {:membership library-segment-membership
+   :project    #'segment->index-docs
+   :hydrate    {:ai-context #'entity-retrieval.spec/ai-context-by-entity}})
+
+(entity-retrieval.spec/define-projection :osi-context :model/Segment
+  {:membership library-segment-membership
+   :project    #'segment->llm-input
+   :basis      [:name :description]})

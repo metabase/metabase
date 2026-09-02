@@ -17,8 +17,8 @@
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates
   the vectors table so the next reconcile re-embeds everything.
-  That drop-and-rebuild is the entire model-change story — the index is rebuilt from the authoritative
-  appdb (library membership + `osi_ai_context`), so rebuilding is cheap."
+  That drop-and-rebuild is the entire model-change story. The index holds no authoritative data: it is
+  rebuilt from the appdb's library membership and `osi_ai_context`, so dropping it loses no source data."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -88,15 +88,23 @@
   (semantic.util/quote-table (meta-table)))
 
 (def schema-version
-  "Canonical version of the persisted index contract — the metadata and vectors table schemas plus the
-  doc-derivation contract (doc_id scheme, doc_type set, doc_text source, dedup/key rules).
-  It's part of the meta row's [[model-identity]], so bumping it makes [[ensure-tables!]] drop and rebuild
-  the vectors table; the post-upgrade startup reconcile then repopulates from the appdb under the new
-  format. Bump on ANY compatibility-affecting change in [[metabase-enterprise.entity-retrieval.reconcile]]
-  or either table schema: a column/type change, a new or renamed doc_type, a changed doc_text
-  source, or a changed doc_id / dedup / key scheme — anything that makes old rows incomparable to newly
-  derived desired docs. A bump forces a full re-embed of the library on every instance at upgrade, so do
-  it only when the format truly moved, never as a refresh convenience."
+  "Version of the index document format: the metadata and vectors table schemas plus the document
+  derivation contract (`doc_id`, `doc_type`, `doc_text`, deduplication, and key rules).
+
+  Document derivation lives in [[metabase.entity-retrieval.spec]] and the four `:library-index`
+  declarations for Card, Table, Measure, and Segment.
+
+  This participates in [[model-identity]]. Bumping it makes [[ensure-tables!]] rebuild the vectors table,
+  which the startup reconcile then repopulates and re-embeds.
+
+  Bump it for:
+  - a metadata- or vectors-table column or type change;
+  - a new or renamed `doc_type`;
+  - a changed `doc_text` source; or
+  - a changed `doc_id`, deduplication, or key scheme.
+
+  Do not bump it for unrelated declaration edits or as a refresh mechanism.
+  The version is manual so source-only changes do not trigger unnecessary full rebuilds."
   ;; v1 — initial schema; v2 — immutable embedding-space identity.
   2)
 
@@ -145,7 +153,13 @@
       sql-format-quoted))
 
 (defn- model-identity
-  "The part of the meta row that identifies what the vectors table was built for."
+  "The meta-row map identifying what the vectors table was built for.
+
+  Providers retraining or re-exporting behind an unchanged model name are deliberately undetected.
+  This is rare because hosted providers version models by name.
+  No rebuild occurs: stored vectors stay in the old space while queries use the new.
+  Only a manual version bump fixes it.
+  Ollama tags mutate in place, so the benchmark verifies Ollama separately."
   [embedding-model]
   {:provider          (:provider embedding-model)
    :model_name        (:model-name embedding-model)

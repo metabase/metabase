@@ -58,11 +58,39 @@
   pre-cap row) can't bloat the prompt."
   5000)
 
+(def max-item-len
+  "Cap on each `ai_context` synonym/example string — these are short phrases or questions, not prose. They
+  become embedded index docs, so this also keeps a single value under the embedding provider's token limit.
+  One source of truth for the write API's schema and the generation job's LLM response schema."
+  1000)
+
+(def max-list-len
+  "Cap on the `ai_context` synonyms/examples list length — a curated entity needs a handful, not hundreds.
+  Shared by the write API's schema and the generation job's LLM response schema."
+  50)
+
+(def AiContext
+  "Closed OSI `ai_context` schema, bounded by the `:max` constraints using [[max-instructions-len]],
+  [[max-list-len]], and [[max-item-len]].
+  Kept in the dependency-light public module so model writes and the generation loop's stored-row reader
+  validate against exactly the same contract.
+  The index hydration reader deliberately checks only the slice it projects (see
+  [[metabase.entity-retrieval.spec/ai-context-by-entity]]), so a legacy over-cap or forward-compatible row
+  cannot knock an entity out of the index."
+  [:map {:closed true}
+   [:instructions {:optional true} [:maybe [:string {:max max-instructions-len}]]]
+   [:synonyms     {:optional true} [:sequential {:max max-list-len}
+                                    [:string {:max max-item-len}]]]
+   [:examples     {:optional true} [:sequential {:max max-list-len}
+                                    [:string {:max max-item-len}]]]])
+
 (defn ai-context-instructions
   "Map of `[entity-type entity-local-id] -> instructions` for the given entity refs (search-result shape
-  `{:model :id}`, where `:model` is the entity_type), read live from `osi_ai_context`.
-  Refs with no row, or with blank instructions, are omitted; each instruction is truncated to
-  [[max-instructions-len]] so an oversized row can't bloat the agent prompt.
+  `{:model :id}`, where `:model` is the entity_type), read live from human-approved `osi_ai_context` rows.
+  Generated Metabot drafts are excluded until a person approves them through the write API; otherwise
+  untrusted library metadata could become agent instructions without review. Refs with no approved row,
+  or with blank instructions, are omitted; each instruction is truncated to [[max-instructions-len]] so
+  an oversized row can't bloat the agent prompt.
   Reading here (rather than storing in the index) means the agent always sees the current text.
   The lookup matches by entity class, so a card's instructions are found even when its current type (the
   ref's) differs from the type it was curated under (a card-flavor relabel)."
@@ -79,7 +107,8 @@
           by-class (into {} (remove (comp str/blank? val))
                          (t2/select-fn->fn #(entity-class (:entity_type %) (:entity_local_id %))
                                            (comp :instructions :ai_context)
-                                           :model/OsiAiContext {:where clause}))]
+                                           :model/OsiAiContext
+                                           {:where [:and [:= :data_source "human"] clause]}))]
       ;; key the result back by the caller's original [type id] ref
       (into {} (keep (fn [[t id]]
                        (when-let [instr (by-class (entity-class t id))]

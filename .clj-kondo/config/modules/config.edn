@@ -1003,10 +1003,13 @@
 
   entity-retrieval
   {:team "Metabot"
-   :api  #{metabase.entity-retrieval.core
-           metabase.entity-retrieval.mirror}
-   :uses #{premium-features}
-   :model-imports #{:model/OsiAiContext}}
+   :api  #{metabase.entity-retrieval.core metabase.entity-retrieval.mirror metabase.entity-retrieval.spec}
+   :uses #{collections premium-features util}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
 
   events
   {:team "DevEx"
@@ -1358,6 +1361,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api}
    :uses #{api
+           entity-retrieval
            events
            lib
            lib-be
@@ -1863,6 +1867,7 @@
            dashboards
            documents
            embedding
+           entity-retrieval
            events
            graph
            lib
@@ -2162,6 +2167,7 @@
    :api  #{metabase.segments.api
            metabase.segments.schema}
    :uses #{api
+           entity-retrieval
            events
            lib
            lib-be
@@ -2810,6 +2816,7 @@
            audit-app
            collections
            driver
+           entity-retrieval
            lib
            lib-be
            models
@@ -3379,19 +3386,13 @@
    :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics-interface
            app-db
-           collections
            entity-retrieval
            health-inspector
            premium-features
            search
            task
            util
-           enterprise/semantic-search}
-   :model-imports #{:model/Card
-                    :model/Measure
-                    :model/OsiAiContext
-                    :model/Segment
-                    :model/Table}}
+           enterprise/semantic-search}}
 
   enterprise/erd
   {:team "Gadget"
