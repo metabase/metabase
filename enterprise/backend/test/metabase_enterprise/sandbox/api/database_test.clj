@@ -28,7 +28,7 @@
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
                                             (:dataset_query card))]
     (if metadata
-      (t2/update! :model/Card 'id (u/the-id card) {:result_metadata metadata})
+      (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
       (card.metadata/save-metadata-async! metadata-future card))))
 
 (deftest database-metadata-respects-column-sandbox-test

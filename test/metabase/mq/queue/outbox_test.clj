@@ -347,7 +347,7 @@
           (is (= 1 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] 'id id)))
               "a row that is not yet due is not re-attempted before its backoff elapses")
           ;; force the row due and sweep again: re-attempted, attempt count grows, still retained
-          (t2/update! :queue_message_outbox 'id id
+          (t2/update! :queue_message_outbox :id id
                       {:next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
           (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
           (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] 'id id)))

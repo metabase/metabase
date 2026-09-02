@@ -89,8 +89,8 @@
    (succeed-started-run! run-id {}))
   ([run-id properties]
    (u/prog1 (t2/update! :model/TransformRun
-                        'id    run-id
-                        'is_active true
+                        :id    run-id
+                        :is_active true
                         (merge properties
                                {:end_time  :%now
                                 :status    :succeeded
@@ -101,8 +101,8 @@
   "Mark the started active run as failed and inactive."
   [run-id properties]
   (u/prog1 (t2/update! :model/TransformRun
-                       'id    run-id
-                       'is_active true
+                       :id    run-id
+                       :is_active true
                        (merge properties
                               {:end_time  :%now
                                :status    :failed
@@ -115,8 +115,8 @@
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id properties]
    (u/prog1 (t2/update! :model/TransformRun
-                        'id    run-id
-                        'is_active true
+                        :id    run-id
+                        :is_active true
                         (merge properties
                                {:end_time  :%now
                                 :status    :canceled
@@ -140,8 +140,8 @@
    (timeout-run! run-id {}))
   ([run-id properties]
    (u/prog1 (t2/update! :model/TransformRun
-                        'id    run-id
-                        'is_active true
+                        :id    run-id
+                        :is_active true
                         (merge properties
                                {:end_time  :%now
                                 :message   "Timed out"
@@ -215,8 +215,8 @@
                                :for   'update}))]
       (when (seq locked)
         (t2/update! :model/TransformRun
-                    'id        [:in (mapv :id locked)]
-                    'is_active true
+                    :id        [:in (mapv :id locked)]
+                    :is_active true
                     {:status    :canceled
                      :end_time  :%now
                      :is_active nil

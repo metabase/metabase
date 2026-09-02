@@ -99,14 +99,14 @@
         (log/tracef "Unmarking Fields as indexed: %s" (pr-str field-ids)))
       (doseq [field-ids (partition-all *update-partition-size* removing)]
         (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (t2/update! :model/Field 'parent_id nil 'id [:in field-ids] {:database_indexed false}))
+        (t2/update! :model/Field :parent_id nil :id [:in field-ids] {:database_indexed false}))
       ;; Set database_indexed of fields having index.
       (log/infof "Marking %d fields as indexed" adding-count)
       (doseq [field-ids (partition-all 100 adding)]
         (log/tracef "Marking Fields as indexed: %s" (pr-str field-ids)))
       (doseq [field-ids (partition-all *update-partition-size* adding)]
         (log/infof "Executing batch update of at most %d fields" *update-partition-size*)
-        (t2/update! :model/Field 'parent_id nil 'id [:in field-ids] {:database_indexed true}))
+        (t2/update! :model/Field :parent_id nil :id [:in field-ids] {:database_indexed true}))
       (if (or (seq adding) (seq removing))
         {:total-indexes   (count indexed-field-ids)
          :added-indexes   adding-count

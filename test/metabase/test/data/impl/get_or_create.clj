@@ -393,7 +393,7 @@
   [driver dbdef db]
   (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
     (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
-      (t2/update! :model/Field 'id id {:semantic_type :type/FK
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
                                        :fk_target_field_id fk-target-field-id}))))
 
 (defn- load-dataset-data-if-needed!

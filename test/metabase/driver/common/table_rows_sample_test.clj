@@ -137,7 +137,7 @@
     (mt/dataset
       coerced-string-nums-db
       (doseq [id (t2/select-fn-vec :id :model/Field 'table_id (mt/id :string_nums))]
-        (t2/update! :model/Field 'id id {:fingerprint         nil
+        (t2/update! :model/Field :id id {:fingerprint         nil
                                          :fingerprint_version 0}))
       (let [fingerprints                 (atom [])
             fingerprint-query            (atom nil)

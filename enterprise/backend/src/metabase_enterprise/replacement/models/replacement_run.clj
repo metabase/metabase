@@ -36,7 +36,7 @@
   "Mark the active run as started."
   [run-id]
   (t2/update! :model/ReplacementRun
-              'id run-id
+              :id run-id
               {:status    :started
                :is_active true}))
 
@@ -44,16 +44,16 @@
   "Update progress on the active run."
   [run-id progress]
   (t2/update! :model/ReplacementRun
-              'id run-id
-              'is_active true
+              :id run-id
+              :is_active true
               {:progress progress}))
 
 (defn succeed-run!
   "Mark the active run as succeeded."
   [run-id]
   (t2/update! :model/ReplacementRun
-              'id run-id
-              'is_active true
+              :id run-id
+              :is_active true
               {:status    :succeeded
                :progress  1.0
                :is_active nil
@@ -63,8 +63,8 @@
   "Mark the active run as failed."
   [run-id message]
   (t2/update! :model/ReplacementRun
-              'id run-id
-              'is_active true
+              :id run-id
+              :is_active true
               {:status    :failed
                :is_active nil
                :end_time  :%now
@@ -74,8 +74,8 @@
   "Mark the active run as canceled."
   [run-id]
   (t2/update! :model/ReplacementRun
-              'id run-id
-              'is_active true
+              :id run-id
+              :is_active true
               {:status    :canceled
                :is_active nil
                :end_time  :%now
@@ -85,8 +85,8 @@
   "Time out all active runs older than the specified age."
   [age unit]
   (t2/update! :model/ReplacementRun
-              'is_active true
-              'start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
+              :is_active true
+              :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
               {:status    :timeout
                :is_active nil
                :end_time  :%now

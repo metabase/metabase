@@ -2056,7 +2056,7 @@
                        :model/Card linked-card {:name "Linked Card"}
                        :model/Dashboard dashboard {:name "Smart Linked Dashboard"}
                        :model/Table table {:name "linked_table"}]
-      (t2/update! :model/Document 'id (u/the-id document) {:document {:type "doc"
+      (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
                                                                       :content [{:type "cardEmbed"
                                                                                  :attrs {:id (u/the-id card)}}
                                                                                 {:type "smartLink"

@@ -1281,7 +1281,7 @@
         (when (seq updates)
           (t2/with-transaction [_conn]
             (doseq [[id update] updates]
-              (t2/update! :model/DashboardCard 'id id update))))))))
+              (t2/update! :model/DashboardCard :id id update))))))))
 
 (deftype SourceCardDependentsGraph []
   graph/Graph

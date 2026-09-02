@@ -2709,7 +2709,7 @@
                                       :query "flozzlebarger"
                                       :include_dashboard_questions "true")))))
       (testing "sanity check: removing the `dashboard_id` lets us get it"
-        (t2/update! :model/Card 'id card-id {:dashboard_id nil})
+        (t2/update! :model/Card :id card-id {:dashboard_id nil})
         (is (= 1
                (count
                 (mt/user-http-request :rasta :get 200

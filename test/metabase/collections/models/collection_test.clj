@@ -3305,7 +3305,7 @@
 
 (deftest update-sets-remote-sync-test
   (mt/with-temp [:model/Collection {id :id} {}]
-    (t2/update! :model/Collection 'id id {:type "remote-synced"})
+    (t2/update! :model/Collection :id id {:type "remote-synced"})
     (let [collection (t2/select-one :model/Collection id)]
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))

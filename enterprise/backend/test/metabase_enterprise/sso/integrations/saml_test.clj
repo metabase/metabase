@@ -605,14 +605,14 @@
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
              ;; deactivate the user
-             (t2/update! :model/User '%lower.email "newuser@metabase.com" {:is_active false})
+             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can reactivate a user with a new login"
                (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
                  (is (t2/select-one-fn :is_active [:model/User :is_active] 'email "newuser@metabase.com"))))
              ;; deactivate the user again
-             (t2/update! :model/User '%lower.email "newuser@metabase.com" {:is_active false})
+             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
                ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
                ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks

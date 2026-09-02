@@ -487,7 +487,7 @@
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
             (let [new-details (assoc original-details :user "baduser")
                   start (t/instant)]
-              (t2/update! :model/Database 'id (mt/id) {:details new-details})
+              (t2/update! :model/Database :id (mt/id) {:details new-details})
               (mt/with-db (assoc db :details new-details)
                 (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
                 ;; Should be around 1 second

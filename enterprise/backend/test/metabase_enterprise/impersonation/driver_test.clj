@@ -305,7 +305,7 @@
                                        :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
                                        :details details})))]
           (sync/sync-database! database {:scan :schema})
-          (t2/update! :model/Database 'id (u/the-id database)
+          (t2/update! :model/Database :id (u/the-id database)
                       {:details (cond-> (impersonation-details driver source-db)
                                   (driver/database-supports? driver :connection-impersonation-requires-role nil)
                                   (assoc :role (impersonation-default-role driver)))})
@@ -392,7 +392,7 @@
                                                        :write_data_details details}]
                 (mt/with-db database
                   (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                    (t2/update! :model/Database 'id (mt/id)
+                    (t2/update! :model/Database :id (mt/id)
                                 (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                   (sync/sync-database! database {:scan :schema})
                   (impersonation.util-test/with-impersonations!
@@ -790,7 +790,7 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]}))))
         ;; Update the test database with a default role that has full permissions
-        (t2/update! :model/Database 'id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
+        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
@@ -807,7 +807,7 @@
                     (mt/run-mbql-query venues
                       {:aggregation [[:count]]})))))
           (finally
-            (t2/update! :model/Database 'id (mt/id) (update (mt/db) :details dissoc :role))))))))
+            (t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role))))))))
 
 (deftest persistence-disabled-when-impersonated-test
   ;; Test explicitly with postgres since it supports persistence and impersonation

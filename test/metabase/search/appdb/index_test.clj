@@ -782,7 +782,7 @@
               (search-index-metadata/create-pending! :appdb version table-name)
               (search-index-metadata/active-pending! :appdb version)
               (t2/update! :model/SearchIndexMetadata
-                          'index_name  (name table-name)
+                          :index_name  (name table-name)
                           {:created_at  update-time})
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally

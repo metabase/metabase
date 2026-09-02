@@ -92,10 +92,10 @@
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (mt/with-dynamic-fn-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! :model/Database 'is_audit true {:engine "datomic"})
+        (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! :model/Database 'is_audit true {:engine "h2"})))))
+        (t2/update! :model/Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]

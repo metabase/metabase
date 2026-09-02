@@ -86,7 +86,7 @@
           (is (thrown-with-msg?
                java.lang.Exception
                #"Only superusers can change a notification's creator_id."
-               (t2/update! :model/Notification 'id [:in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
+               (t2/update! :model/Notification :id [:in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
       (testing "no current user (system context)"
         (is (thrown-with-msg?
              java.lang.Exception

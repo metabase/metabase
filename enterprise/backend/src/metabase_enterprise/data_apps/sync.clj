@@ -87,7 +87,7 @@
    DB default of true for new rows) is preserved across syncs."
   [slug row]
   (if (t2/exists? :model/DataApp 'name slug)
-    (t2/update! :model/DataApp 'name slug row)
+    (t2/update! :model/DataApp :name slug row)
     (t2/insert! :model/DataApp (assoc row :name slug))))
 
 (defn- app-metadata-changed?
@@ -120,7 +120,7 @@
   [existing slug message]
   (boolean
    (when (and existing (not= (:sync_error existing) message))
-     (t2/update! :model/DataApp 'name slug {:sync_error message})
+     (t2/update! :model/DataApp :name slug {:sync_error message})
      true)))
 
 (defn- sync-app!

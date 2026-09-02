@@ -111,7 +111,7 @@
             (t2/insert! :model/TransformRunCancelation {:run_id r1 :time old})
             (t2/insert! :model/TransformRunCancelation {:run_id r2 :time old}))
           ;; Simulate r2 already finished by a concurrent path before the sweep fires.
-          (t2/update! :model/TransformRun 'id r2 {:is_active nil :status :canceled})
+          (t2/update! :model/TransformRun :id r2 {:is_active nil :status :canceled})
           (@#'canceling/cancel-old-transform-runs! nil)
           (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "timeout"})))
           (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))

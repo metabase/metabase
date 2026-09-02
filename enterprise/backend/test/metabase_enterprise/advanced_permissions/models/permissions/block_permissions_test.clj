@@ -777,7 +777,7 @@
                         (mt/user-http-request :rasta :put (str "/card/" (:id card))
                                               {:result_metadata results-metadata-mismatched}))))
               (testing "Result_metadata of a card can be updated freely using toucan"
-                (is (= 1 (t2/update! :model/Card 'id (:id card)
+                (is (= 1 (t2/update! :model/Card :id (:id card)
                                      {:result_metadata results-metadata-mismatched}))))
               (testing "POST /dataset: query referencing card with mismatched result_metadata fails"
                 (is (=? {:status "failed"

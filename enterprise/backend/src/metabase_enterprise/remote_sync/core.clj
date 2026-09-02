@@ -114,7 +114,7 @@
     (when (seq created)
       (t2/delete! :model/RemoteSyncObject 'id [:in (map :id created)]))
     (when (seq tracked)
-      (t2/update! :model/RemoteSyncObject 'id [:in (map :id tracked)]
+      (t2/update! :model/RemoteSyncObject :id [:in (map :id tracked)]
                   {:status "removed" :status_changed_at (t/offset-date-time)}))))
 
 (defn- restore-removed-rsos!
@@ -130,7 +130,7 @@
                                          {:where ['and
                                                   ['= 'status "removed"]
                                                   (contents-rso-where collection-ids)]}))]
-    (t2/update! :model/RemoteSyncObject 'id [:in ids]
+    (t2/update! :model/RemoteSyncObject :id [:in ids]
                 {:status "update" :status_changed_at (t/offset-date-time)})))
 
 (defn- collection-content-specs

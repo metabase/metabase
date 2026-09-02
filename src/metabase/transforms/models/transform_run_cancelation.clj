@@ -24,7 +24,7 @@
            "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation WHERE run_id = ?)")
       run-id run-id])
     (t2/update! :model/TransformRun
-                'id run-id
+                :id run-id
                 {:status "canceling"})
     (log/infof "Cancelation requested for transform run %s" run-id)
     (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})

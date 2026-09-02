@@ -123,8 +123,8 @@
   (when (not= new-json-unfolding (:json_unfolding old-field))
     (if new-json-unfolding
       (let [update-result (t2/update! :model/Field
-                                      'table_id (:table_id old-field)
-                                      'nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                                      :table_id (:table_id old-field)
+                                      :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
                                       {:active true})]
         (when (zero? update-result)
           ;; Sync the table if no nested fields exist. This means the table hasn't previously
@@ -133,8 +133,8 @@
           (let [table (field/table old-field)]
             (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
       (t2/update! :model/Field
-                  'table_id (:table_id old-field)
-                  'nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                  :table_id (:table_id old-field)
+                  :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
                   {:active false})))
   nil)
 
@@ -189,7 +189,7 @@
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
-      (t2/update! :model/Dimension 'field_id id {:name display-name}))
+      (t2/update! :model/Dimension :field_id id {:name display-name}))
     ;; everything checks out, now update the field
     (api/check-500
      (t2/with-transaction [_conn]

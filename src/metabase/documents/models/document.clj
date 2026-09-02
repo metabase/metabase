@@ -180,7 +180,7 @@
                     :archived (boolean archived)
                     :archived_directly (boolean archived-directly)}]
     (t2/update! :model/Card
-                'document_id document-id
+                :document_id document-id
                 update-map)))
 
 (t2/define-after-update :model/Document

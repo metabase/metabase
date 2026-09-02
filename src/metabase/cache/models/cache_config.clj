@@ -242,7 +242,7 @@
                     (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] 'dashboard_id [:in dashboards])))]
     (if (empty? card-ids)
       -1
-      (t2/update! :model/Card 'id [:in card-ids]
+      (t2/update! :model/Card :id [:in card-ids]
                   {:cache_invalidated_at (t/offset-date-time)}))))
 
 (defn- invalidate-cache-configs [databases dashboards questions]

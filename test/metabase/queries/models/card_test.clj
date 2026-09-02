@@ -144,13 +144,13 @@
                                                           :kind "row/update"}]
                 ;; make sure we have thing exists to start with
                 (is (= 2 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
-                (is (= 1 (t2/update! :model/Card 'id model-id {:dataset_query (apply f query args)})))
+                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))
                 ;; should be gone by now
                 (is (= 0 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction 'action_id [:in [action-id-1 action-id-2]])))
                 ;; call it twice to make we don't get delete error if no actions are found Returns either zero or one
                 ;; depending on the change because the query will possibly have different UUIDs
-                (is (#{0 1} (t2/update! :model/Card 'id model-id {:dataset_query (apply f query args)})))))))))))
+                (is (#{0 1} (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -160,7 +160,7 @@
                                              :dataset_query (mt/mbql-query users)}]
           (mt/with-dynamic-fn-redefs [card/disable-implicit-action-for-model! (fn [& _args]
                                                                                 (throw (ex-info "Should not be called" {})))]
-            (is (= 1 (t2/update! :model/Card 'id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
+            (is (= 1 (t2/update! :model/Card :id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
 
 (deftest disable-implicit-actions-if-needed-test-3
   (mt/with-actions-enabled
@@ -172,7 +172,7 @@
                           {query-id :action-id}    {:type :query}]
           ;; make sure we have thing exists to start with
           (is (= 3 (t2/count :model/Action 'id [:in [implicit-id http-id query-id]])))
-          (t2/update! :model/Card 'id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (not (t2/exists? :model/Action 'id implicit-id)))
           (is (t2/exists? :model/Action 'id http-id))
           (is (t2/exists? :model/Action 'id query-id)))))))
@@ -189,7 +189,7 @@
           ;; make sure we have thing exists to start with
           (is (= 2 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
           ;; change source from users to categories
-          (t2/update! :model/Card 'id model-id {:dataset_query (mt/mbql-query categories)})
+          (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query categories)})
           ;; actions still exists
           (is (= 2 (t2/count :model/Action 'id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction 'action_id [:in [action-id-1 action-id-2]]))))))))
@@ -851,7 +851,7 @@
     (mt/with-temp [:model/Card card {}]
       (is (= config/mb-version-string (:metabase_version card)))
       (with-redefs [config/mb-version-string "blablabla"]
-        (t2/update! :model/Card 'id (:id card) {:description "test"}))
+        (t2/update! :model/Card :id (:id card) {:description "test"}))
       ;; we store version of metabase which created the card
       (is (= config/mb-version-string
              (t2/select-one-fn :metabase_version :model/Card 'id (:id card)))))))
@@ -956,7 +956,7 @@
         (testing "Update query: change table to ORDERS; query and table_id should reflect that"
           (let [orders (lib.metadata/table metadata-provider (mt/id :orders))]
             (is (= 1
-                   (t2/update! :model/Card 'id (u/the-id card)
+                   (t2/update! :model/Card :id (u/the-id card)
                                {:dataset_query (lib/query metadata-provider orders)})))
             (is (=? {:dataset_query {:lib/type     :mbql/query
                                      :database     (mt/id)
@@ -1119,7 +1119,7 @@
                  :model/Card {card-2-id :id} {:name "Dog Man"}
                  :model/Card {card-3-id :id} {:name "Petey"}]
     (testing "only the two cards specified get updated"
-      (t2/update! :model/Card 'id [:in [card-1-id card-2-id]]
+      (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
                   {:name "Flippy"})
       (is (= "Petey" (t2/select-one-fn :name :model/Card 'id card-3-id))))))
 

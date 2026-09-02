@@ -46,7 +46,7 @@
   left untouched so they are retried."
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (when-let [ids (seq (map u/the-id fields))]
-    (t2/update! :model/Field 'id [:in ids] {:fingerprint_version i/*latest-fingerprint-version*})))
+    (t2/update! :model/Field :id [:in ids] {:fingerprint_version i/*latest-fingerprint-version*})))
 
 (mr/def ::FingerprintStats
   [:map

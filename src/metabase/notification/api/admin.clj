@@ -699,8 +699,8 @@
                        models.notification/hydrate-notification
                        vec)]
         (t2/update! :model/Notification
-                    'id           [:in ids]
-                    'payload_type :notification/card
+                    :id           [:in ids]
+                    :payload_type :notification/card
                     update-map)
         before))))
 

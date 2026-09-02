@@ -666,7 +666,7 @@
     (t2/delete! :model/DashboardCard 'dashboard_id dashboard-id)
     (create-dashboard-revision! dashboard-id false)
     (t2/delete! :model/Card will-be-deleted-card)
-    (t2/update! :model/Card 'id will-be-archived-card {:archived true})
+    (t2/update! :model/Card :id will-be-archived-card {:archived true})
     (testing "revert should not include archived or deleted card ids (#34884)"
       (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
       (is (=? #{{:card_id                unchanged-card

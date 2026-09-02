@@ -69,7 +69,7 @@
   (testing "Can find params on update"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "id"}]
       (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet 'id snippet-id)))
-      (t2/update! :model/NativeQuerySnippet 'id snippet-id {:content "{{id}}"})
+      (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "{{id}}"})
       (is (=? {"id" {:type :text,
                      :name "id",
                      :display-name "ID"}}

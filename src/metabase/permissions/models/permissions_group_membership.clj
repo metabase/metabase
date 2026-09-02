@@ -99,10 +99,10 @@
     (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
-      (t2/update! 'User user_id {:is_superuser false})))
+      (t2/update! :User user_id {:is_superuser false})))
   ;; If this is the Data Analysts group, unset the `:is_data_analyst` flag
   (when (= group_id (:id (perms-group/data-analyst)))
-    (t2/update! 'User user_id {:is_data_analyst false})))
+    (t2/update! :User user_id {:is_data_analyst false})))
 
 (defmacro without-is-superuser-sync-on-add-to-admin-group
   "When inserting a superuser, we don't want the group membership insert to trigger a recursive update on the
@@ -225,9 +225,9 @@
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
-          (t2/update! :model/User 'id [:in new-admin-ids] {:is_superuser true}))
+          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
         (when (seq new-data-analyst-ids)
-          (t2/update! :model/User 'id [:in new-data-analyst-ids] {:is_data_analyst true}))
+          (t2/update! :model/User :id [:in new-data-analyst-ids] {:is_data_analyst true}))
         ;; Publish events for each new membership
         (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
           (events/publish-event! :event/group-membership-create

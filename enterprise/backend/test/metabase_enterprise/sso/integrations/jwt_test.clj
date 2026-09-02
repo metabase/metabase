@@ -642,7 +642,7 @@
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response)))
         ;; deactivate the user
-        (t2/update! :model/User 'email "newuser@metabase.com" {:is_active false})
+        (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User 'email "newuser@metabase.com")))
         (let [response (client/client-real-response :get 302 "/auth/sso"
                                                     {:request-options {:redirect-strategy :none}}
@@ -656,7 +656,7 @@
           (is (sso.test-setup/successful-login? response))
           (is (t2/select-one-fn :is_active :model/User 'email "newuser@metabase.com")))
         ;; deactivate the user again
-        (t2/update! :model/User 'email "newuser@metabase.com" {:is_active false})
+        (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User 'email "newuser@metabase.com")))
         ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks

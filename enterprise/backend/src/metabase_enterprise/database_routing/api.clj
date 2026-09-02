@@ -93,7 +93,7 @@
                                                    :details {:db_routing :enabled
                                                              :routing_attribute user-attribute}})
     (if (t2/select-one :model/DatabaseRouter 'database_id db-id)
-      (t2/update! :model/DatabaseRouter 'database_id db-id {:user_attribute user-attribute})
+      (t2/update! :model/DatabaseRouter :database_id db-id {:user_attribute user-attribute})
       (t2/insert! :model/DatabaseRouter {:database_id db-id :user_attribute user-attribute}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

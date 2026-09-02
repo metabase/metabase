@@ -45,7 +45,7 @@
                       :description "default description"
                       :schedule "* 0 0 0 0"
                       :built_in_type type}]
-        (t2/update! :model/TransformJob 'id (:id job)
+        (t2/update! :model/TransformJob :id (:id job)
                     {:name "default2"})
         (is (= "default2"
                (str (:name (t2/select-one :model/TransformJob (:id job))))))
@@ -58,7 +58,7 @@
                       :description "default description"
                       :schedule "* 0 0 0 0"
                       :built_in_type type}]
-        (t2/update! :model/TransformJob 'id (:id job)
+        (t2/update! :model/TransformJob :id (:id job)
                     {:description "default description 2"})
         (is (= "default description 2"
                (str (:description (t2/select-one :model/TransformJob (:id job))))))
@@ -71,7 +71,7 @@
                       :description "default description"
                       :schedule "* 0 0 0 0"
                       :built_in_type type}]
-        (t2/update! :model/TransformJob 'id (:id job)
+        (t2/update! :model/TransformJob :id (:id job)
                     {:schedule "0 0 0 0 0"})
         (is (= (str (:description translations))
                (str (:description (t2/select-one :model/TransformJob (:id job))))))

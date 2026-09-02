@@ -60,7 +60,7 @@
         ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
-      (t2/update! :model/AuthIdentity 'id [:in auth-identity-ids] {:expires_at ended-at}))
+      (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at ended-at}))
     (t2/delete! :model/Session 'user_id support-user-id)))
 
 (t2/define-after-update :model/SupportAccessGrantLog

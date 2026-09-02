@@ -898,7 +898,7 @@
                  (fetch-public-dashboard dash)))))
       (testing "dashboard with tabs should return tabs"
         (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-          (t2/update! :model/Dashboard 'id dashboard-id (shared-obj))
+          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
           (is (= {:name true, :dashcards 2, :tabs 2}
                  (fetch-public-dashboard (t2/select-one :model/Dashboard 'id dashboard-id)))))))))
 

@@ -5185,12 +5185,12 @@
                  :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                          :dashboard_id dashboard-id
                                                          :parameter_mappings []}]
-    (t2/update! :model/Dashboard 'id dashboard-id {:parameters [{:name "TIME Gr"
+    (t2/update! :model/Dashboard :id dashboard-id {:parameters [{:name "TIME Gr"
                                                                  :slug "tgr"
                                                                  :id "30d7efb0"
                                                                  :type :temporal-unit
                                                                  :sectionId "temporal-unit"}]})
-    (t2/update! :model/DashboardCard 'id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
+    (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
                                                                             :type :temporal-unit
                                                                             :card_id card-id
                                                                             :target [:dimension

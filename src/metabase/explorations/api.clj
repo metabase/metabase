@@ -64,7 +64,7 @@
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
   (t2/update! :model/Document
-              'exploration_id exploration-id
+              :exploration_id exploration-id
               {:collection_id new-coll-id}))
 
 (defn- cascade-archived-to-documents!
@@ -76,13 +76,13 @@
   [exploration-id new-archived?]
   (if new-archived?
     (t2/update! :model/Document
-                'exploration_id exploration-id
-                'archived       false
+                :exploration_id exploration-id
+                :archived       false
                 {:archived true :archived_directly false})
     (t2/update! :model/Document
-                'exploration_id      exploration-id
-                'archived            true
-                'archived_directly   false
+                :exploration_id      exploration-id
+                :archived            true
+                :archived_directly   false
                 {:archived false})))
 
 (defn- insert-summary-document!
@@ -955,8 +955,8 @@
       ;; CAS gate on `completed_at IS NULL` makes both already-canceled and already-completed
       ;; threads safe no-ops. When this UPDATE matches 0 rows, the thread is already terminal.
       (t2/update! :model/ExplorationThread
-                  'id           thread-id
-                  'completed_at nil
+                  :id           thread-id
+                  :completed_at nil
                   {:canceled_at now
                    :completed_at now})
       ;; Bulk-flip pending → canceled. SKIP LOCKED on Postgres/MySQL skips the row currently
@@ -1053,7 +1053,7 @@
   (doseq [id page_ids]
     (api/write-check (get-exploration-page-or-404 id)))
   (when (seq page_ids)
-    (t2/update! :model/ExplorationPage 'id [:in page_ids] {:hidden hidden}))
+    (t2/update! :model/ExplorationPage :id [:in page_ids] {:hidden hidden}))
   nil)
 
 (defn- summary-document-or-404

@@ -66,7 +66,7 @@
 (defn- expire-cache-entry!
   "Manually expire a cache entry by setting its updated_at back by 24 hours"
   [cache-entry]
-  (t2/update! :model/QueryCache 'query_hash (:query_hash cache-entry)
+  (t2/update! :model/QueryCache :query_hash (:query_hash cache-entry)
               (update cache-entry :updated_at #(t/minus % (t/days 1)))))
 
 (defn- expire-most-recent-cache-entry!

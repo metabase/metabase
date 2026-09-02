@@ -1148,7 +1148,7 @@
                                                        :row                    2
                                                        :visualization_settings {:text "Card 2 tab-2"}}]
         ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
-        (t2/update! :model/DashboardCard 'dashboard_id dashboard-id 'dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
+        (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
         (thunk)))
     :assert
     {:email

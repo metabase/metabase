@@ -125,7 +125,7 @@
         (testing "Observe: the tables are marked as crufty"
           (is (= #{["employees" :cruft] ["transactions" :cruft]} (->tables-info))))
         ;; make employees visible:
-        (t2/update! :model/Table 'db_id (u/the-id db) 'name "employees" {:visibility_type nil})
+        (t2/update! :model/Table :db_id (u/the-id db) :name "employees" {:visibility_type nil})
         (testing "Observe: employees is visible, but transactions is still crufty"
           (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))
         (sync-metadata/sync-db-metadata! db)
@@ -137,7 +137,7 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables []}}]
       (sync-metadata/sync-db-metadata! db)
-      (t2/update! :model/Table 'db_id (u/the-id db) {:visibility_type original-vis-type})
+      (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type original-vis-type})
       (sync-metadata/sync-db-metadata! db)
       (is (= #{["employees" original-vis-type]
                ["transactions" original-vis-type]}

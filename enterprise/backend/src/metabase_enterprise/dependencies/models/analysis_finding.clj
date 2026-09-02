@@ -73,8 +73,8 @@
   [entity-type entity-ids]
   (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
     (t2/update! :model/AnalysisFinding
-                'analyzed_entity_type entity-type
-                'analyzed_entity_id [:in batch]
+                :analyzed_entity_type entity-type
+                :analyzed_entity_id [:in batch]
                 {:stale true})))
 
 (defn has-stale-entities?

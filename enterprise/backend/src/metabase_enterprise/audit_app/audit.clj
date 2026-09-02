@@ -109,7 +109,7 @@
                                                                                           ['= 'table.schema nil]]]
                                                                                         ['= 'self_table.name ['lower 'table.name]]]}]]]})]
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table 'id [:in (map :id table-ids-to-update)]
+      (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
                   {:schema "public" :name [:lower :name]})))
   (let [field-ids-to-update (t2/query {:select ['field.id]
                                        :from [[(t2/table-name :model/Field) 'field]]
@@ -131,7 +131,7 @@
                                                                                           ['= 'table.schema nil]]]
                                                                                         ['= 'self_field.name ['lower 'field.name]]]}]]]})]
     (when (seq field-ids-to-update)
-      (t2/update! :model/Field 'id [:in (map :id field-ids-to-update)]
+      (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]
                   {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 

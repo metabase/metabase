@@ -40,7 +40,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
-      (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {:values [10 20 30 40]})
+      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
       ;; sync to make sure the field values are filled
       (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
@@ -56,7 +56,7 @@
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
-      (t2/update! :model/FieldValues 'field_id (mt/id :venues :price) {:values [10 20 30 40]})
+      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
       (sync/sync-table! (t2/select-one :model/Table 'id (mt/id :venues)))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))

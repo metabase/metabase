@@ -171,7 +171,7 @@
             (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model)))))
           (testing "editing instructions is a no-op for the index (instructions are read live, not stored)"
             (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
-              (t2/update! :model/OsiAiContext 'entity_type "table" 'entity_local_id table-id
+              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id table-id
                           {:ai_context {:instructions "Group by week."
                                         :synonyms ["sales" "revenue"]
                                         :examples ["orders last month"]}})

@@ -118,7 +118,7 @@
     (try
       (delete-query-executions-for-day! bucket-date)
       (delete-day! bucket-date)
-      (t2/update! :model/Field 'id user-id-field {:fingerprint {:global {:distinct-count 1, :nil% 0.0}}})
+      (t2/update! :model/Field :id user-id-field {:fingerprint {:global {:distinct-count 1, :nil% 0.0}}})
       (insert-query! query-hash valid-query)
       (insert-query-execution! query-hash execution-at)
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-13T13:00Z"))
@@ -141,7 +141,7 @@
         (is (= "2026-04-13"
                (usage-metadata.settings/usage-metadata-last-completed-day))))
       (finally
-        (t2/update! :model/Field 'id user-id-field {:fingerprint original-fp})
+        (t2/update! :model/Field :id user-id-field {:fingerprint original-fp})
         (delete-query! query-hash)
         (delete-query-executions-for-day! bucket-date)
         (delete-day! bucket-date)))))

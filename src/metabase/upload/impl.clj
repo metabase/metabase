@@ -956,7 +956,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (t2/update! :model/Table 'id (:id table) {:active false})
+    (t2/update! :model/Table :id (:id table) {:active false})
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.

@@ -374,7 +374,7 @@
   [token-hash result-hash]
   (t2/with-connection [_conn (app-db/app-db)]
     (let [now     (t/offset-date-time)
-          updated (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
+          updated (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
                               {:token_status_hash result-hash :updated_at now})]
       (when (zero? updated) ;; even though toucan2 returns 0 if we match a row but don't update it
         ;; we should always be updating this row with the timestamp if it's there.
@@ -384,7 +384,7 @@
                                                    :updated_at        now})
           (catch Exception _e
             ;; Another instance inserted first — update instead.
-            (t2/update! :model/PremiumFeaturesCache 'token_hash token-hash
+            (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
                         {:token_status_hash result-hash :updated_at now})))))))
 
 (defn- clear-db-cache!

@@ -28,7 +28,7 @@
          (do ~@body))
        (finally
          (with-bindings {(var perms-group/*allow-modifying-magic-groups*) true}
-           (t2/update! :model/PermissionsGroup 'id (:id original-group#)
+           (t2/update! :model/PermissionsGroup :id (:id original-group#)
                        {:magic_group_type perms-group/data-analyst-magic-group-type
                         :name             (:name original-group#)}))))))
 

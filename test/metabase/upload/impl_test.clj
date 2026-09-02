@@ -325,7 +325,7 @@
    f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
       (let [file        (or file (csv-file-with
@@ -380,7 +380,7 @@
   "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates! [:model/Database]
-    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
@@ -1492,7 +1492,7 @@
       (testing (action-testing-str action)
         (mt/with-discard-model-updates! [:model/Database]
           ;; start with uploads disabled for all databases
-          (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false})
+          (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
           (testing "Updates fail if uploads are disabled for all databases."
             (is (= {:message "Uploads are not enabled."
                     :data    {:status-code 422}}

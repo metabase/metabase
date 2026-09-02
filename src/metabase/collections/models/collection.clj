@@ -177,7 +177,7 @@
   "Marks any remote-synced-collection as non-remote-synced"
   []
   (binding [*clearing-remote-sync* true]
-    (t2/update! :model/Collection 'is_remote_synced true {:is_remote_synced false})))
+    (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
 
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
@@ -2059,7 +2059,7 @@
         published-table-ids     (t2/select-pks-set :model/Table
                                                    'collection_id [:in affected-collection-ids]
                                                    'is_published  true)]
-    (t2/update! :model/Table 'collection_id [:in affected-collection-ids] {:collection_id nil
+    (t2/update! :model/Table :collection_id [:in affected-collection-ids] {:collection_id nil
                                                                            :is_published  false})
     (unpublish-downstream-fk-tables! published-table-ids)
     (doseq [model [:model/Card

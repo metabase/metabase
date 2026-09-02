@@ -447,7 +447,7 @@
                                           {:db_id (u/the-id database-or-id)}))}
         ids (t2/select-fn-vec :id :model/Table where-clause)]
     (reduce (fn [acc ids']
-              (+ acc (t2/update! :model/Table 'id [:in ids'] {:initial_sync_status "complete"})))
+              (+ acc (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"})))
             0
             (partition-all *batch-size* ids))))
 

@@ -334,9 +334,9 @@
             (t2/update! :model/AnalysisFinding
                         {:analyzed_entity_type :card :analyzed_entity_id card-id}
                         {:analyzed_at old-time})
-            (t2/update! :model/Field 'table_id table-id
+            (t2/update! :model/Field :table_id table-id
                         {:updated_at old-time})
-            (t2/update! :model/Table 'id table-id
+            (t2/update! :model/Table :id table-id
                         {:updated_at old-time}))
           ;; Setup complete: Now call the thunk for the actual test run.
           (thunk {:db-id           (:id (mt/db))

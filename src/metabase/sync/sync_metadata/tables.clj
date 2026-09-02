@@ -356,8 +356,8 @@
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
     (t2/update! :model/Table
-                'db_id (:id database)
-                'schema schema
+                :db_id (:id database)
+                :schema schema
                 {:schema new-schema})))
 
 (def ^:private

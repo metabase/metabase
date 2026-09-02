@@ -365,7 +365,7 @@
                                            :from   [['report_card 'c]]
                                            :left-join [['sandboxes 's] ['= 's.card_id 'c.id]]
                                            :where     ['= 's.group_id (:id &group)]}))]
-      (t2/update! :model/Card 'id gtap-card-id {:last_used_at (datetime-months-ago 7)})
+      (t2/update! :model/Card :id gtap-card-id {:last_used_at (datetime-months-ago 7)})
       (is (= {:rows []
               :total 0}
              (stale/find-candidates

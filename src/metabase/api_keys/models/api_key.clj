@@ -138,7 +138,7 @@
     (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
       ;; update the user name associated with this API key if it was created just for this API key.
       (when-let [new-name (:name (t2/changes api-key))]
-        (t2/update! :model/User 'id user-id, 'type 'api-key, {:first_name new-name, :last_name ""}))
+        (t2/update! :model/User :id user-id, :type :api-key, {:first_name new-name, :last_name ""}))
       ;; update user group as well.
       (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
         (assert (= (t2/select-one-fn :type :model/User 'id user-id) :api-key)
@@ -166,7 +166,7 @@
                    (t2/hydrate :group))
       :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
-    (t2/update! :model/User user-id, 'type :api-key, {:is_active false})))
+    (t2/update! :model/User user-id, :type :api-key, {:is_active false})))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -238,7 +238,7 @@
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (t2/update! :model/ApiKey 'id id {:key           (hash-bcrypt new-key)
+      (t2/update! :model/ApiKey :id id {:key           (hash-bcrypt new-key)
                                         :key_prefix    new-prefix
                                         :updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate

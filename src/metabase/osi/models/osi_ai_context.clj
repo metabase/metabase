@@ -173,7 +173,7 @@
   ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
   (t2/update! :model/OsiAiContext
-              'entity_type (:entity_type local) 'entity_local_id (:entity_local_id local)
+              :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)
               ingested)
   (t2/select-one :model/OsiAiContext
                  'entity_type (:entity_type local) 'entity_local_id (:entity_local_id local)))

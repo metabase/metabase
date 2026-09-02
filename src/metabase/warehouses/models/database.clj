@@ -490,7 +490,7 @@
   "This function maintains the invariant that only one database can have uploads_enabled=true."
   [db]
   (when (:uploads_enabled db)
-    (t2/update! :model/Database 'uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
   db)
 
 (defn- assert-router-database-id-not-mutated!

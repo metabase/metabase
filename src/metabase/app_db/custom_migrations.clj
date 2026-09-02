@@ -1113,7 +1113,7 @@
       (doseq [db dbs]
         (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
       ;; use the table, not model/Database because we don't want to trigger the hooks
-      (t2/update! :metabase_database 'id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
@@ -1437,7 +1437,7 @@
 
 (define-migration DecryptCacheSettings
   (let [decrypt! (fn [k]
-                   (t2/update! :setting 'key k {:value (raw-setting-value k)}))]
+                   (t2/update! :setting :key k {:value (raw-setting-value k)}))]
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))

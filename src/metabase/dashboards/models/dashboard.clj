@@ -204,9 +204,9 @@
         ;; DQs that ARE used get unarchived
         internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
     (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (t2/update! :model/Card 'id [:in ids] {:archived true :archived_directly true}))
+      (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (t2/update! :model/Card 'id [:in ids] {:archived false :archived_directly false}))))
+      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
 (defn cascade-card-state-from-dashboard-update!
   "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
@@ -220,16 +220,16 @@
     (when (api/column-will-change? :archived current-dash updates)
       (if (:archived updates)
         (t2/update! :model/Card
-                    'dashboard_id id
-                    'archived false
+                    :dashboard_id id
+                    :archived false
                     {:archived true :archived_directly false})
         (t2/update! :model/Card
-                    'dashboard_id id
-                    'archived true
-                    'archived_directly false
+                    :dashboard_id id
+                    :archived true
+                    :archived_directly false
                     {:archived false})))
     (when (api/column-will-change? :collection_id current-dash updates)
-      (t2/update! :model/Card 'dashboard_id id
+      (t2/update! :model/Card :dashboard_id id
                   {:collection_id (:collection_id updates)}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

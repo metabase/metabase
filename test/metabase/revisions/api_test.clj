@@ -291,7 +291,7 @@
                      :model/Dashboard  dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]
         (create-dashboard-revision! (:id dashboard) true :crowberto)
         ;; update so that the revision is accepted
-        (t2/update! :model/Dashboard 'id (:id dashboard) {:name "Personal dashboard edited"})
+        (t2/update! :model/Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})
         (create-dashboard-revision! (:id dashboard) false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions :model/Dashboard dashboard-id)
@@ -312,10 +312,10 @@
       ;; 0. create the dashboard
       (create-dashboard-revision! dashboard-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Dashboard 'id dashboard-id {:name "New name"})
+      (t2/update! :model/Dashboard :id dashboard-id {:name "New name"})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 2. add description
-      (t2/update! :model/Dashboard 'id dashboard-id {:description "A beautiful dashboard"})
+      (t2/update! :model/Dashboard :id dashboard-id {:description "A beautiful dashboard"})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 3. add 2 cards
       (let [dashcard-ids (t2/insert-returning-pks! :model/DashboardCard [{:dashboard_id dashboard-id
@@ -335,11 +335,11 @@
         (t2/delete! :model/DashboardCard 'id (first dashcard-ids))
         (create-dashboard-revision! dashboard-id false :crowberto)
         ;; 5. arrange cards
-        (t2/update! :model/DashboardCard 'id (second dashcard-ids) {:col 2
+        (t2/update! :model/DashboardCard :id (second dashcard-ids) {:col 2
                                                                     :row 2})
         (create-dashboard-revision! dashboard-id false :crowberto))
       ;; 6. Move to a new collection
-      (t2/update! :model/Dashboard 'id dashboard-id {:collection_id coll-id})
+      (t2/update! :model/Dashboard :id dashboard-id {:collection_id coll-id})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 7. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Dashboard" 'model_id dashboard-id {:order-by [['id 'asc]]})]
@@ -396,20 +396,20 @@
       ;; 0. create the card
       (create-card-revision! card-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Card 'id card-id {:name "New name"})
+      (t2/update! :model/Card :id card-id {:name "New name"})
       (create-card-revision! card-id false :crowberto)
       ;; 2. turn to a model
-      (t2/update! :model/Card 'id card-id {:type :model})
+      (t2/update! :model/Card :id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
       ;; 3. edit query and metadata
-      (t2/update! :model/Card 'id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+      (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
                                            :display       "scalar"})
       (create-card-revision! card-id false :crowberto)
       ;; 4. add description
-      (t2/update! :model/Card 'id card-id {:description "meaningful number"})
+      (t2/update! :model/Card :id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
       ;; 5. change collection
-      (t2/update! :model/Card 'id card-id {:collection_id coll-id})
+      (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 6. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
@@ -443,17 +443,17 @@
       ;; 0. create the card
       (create-card-revision! card-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Card 'id card-id {:name "New name"})
+      (t2/update! :model/Card :id card-id {:name "New name"})
       (create-card-revision! card-id false :crowberto)
       ;; 2. edit query and metadata
-      (t2/update! :model/Card 'id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+      (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
                                            :display       "scalar"})
       (create-card-revision! card-id false :crowberto)
       ;; 3. add description
-      (t2/update! :model/Card 'id card-id {:description "meaningful number"})
+      (t2/update! :model/Card :id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
       ;; 4. change collection
-      (t2/update! :model/Card 'id card-id {:collection_id coll-id})
+      (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 5. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk :model/Revision 'model "Card" 'model_id card-id {:order-by [['id 'asc]]})]
@@ -492,7 +492,7 @@
           ;; 0. create the card
           (create-card-revision! card-id true :crowberto)
           ;; 1. rename
-          (t2/update! :model/Card 'id card-id {:description "meaningful number"
+          (t2/update! :model/Card :id card-id {:description "meaningful number"
                                                :name        "New name"})
           (create-card-revision! card-id false :crowberto)
           ;; 2. revert to an earlier revision
@@ -1046,7 +1046,7 @@
   (testing "Reverting a Card revision restores a previous :type (e.g. model <-> question)"
     (mt/with-temp [:model/Card {card-id :id} {:type :question}]
       (create-card-revision! card-id true :crowberto)
-      (t2/update! :model/Card 'id card-id {:type :model})
+      (t2/update! :model/Card :id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
       ;; order by :id (monotonic), not :timestamp -- see comment above in
       ;; revert-model-restores-metadata-and-viz-settings-test.

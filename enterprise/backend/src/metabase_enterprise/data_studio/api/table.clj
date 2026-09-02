@@ -133,7 +133,7 @@
           table-ids-to-update (when (seq downstream-ids)
                                 (t2/select-pks-set :model/Table 'id [:in downstream-ids] 'is_published true))]
       (when (seq table-ids-to-update)
-        (t2/update! :model/Table 'id [:in table-ids-to-update]
+        (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id nil
                      :is_published  false})
         ;; Publish events for audit log and remote sync tracking
@@ -181,7 +181,7 @@
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table 'id [:in table-ids-to-update]
+      (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id (:id target-collection)
                    :is_published  true})
       ;; Publish events for audit log and remote sync tracking
@@ -206,7 +206,7 @@
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (t2/update! :model/Table 'id [:in table-ids-to-update]
+      (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id nil
                    :is_published  false})
       ;; Publish events for audit log and remote sync tracking

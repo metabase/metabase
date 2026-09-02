@@ -91,8 +91,8 @@
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
     (when (contains? changes :archived)
       (if (:archived changes)
-        (t2/update! :model/PulseChannel 'pulse_id (u/the-id notification) {:enabled false})
-        (t2/update! :model/PulseChannel 'pulse_id (u/the-id notification) {:enabled true})))
+        (t2/update! :model/PulseChannel :pulse_id (u/the-id notification) {:enabled false})
+        (t2/update! :model/PulseChannel :pulse_id (u/the-id notification) {:enabled true})))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))

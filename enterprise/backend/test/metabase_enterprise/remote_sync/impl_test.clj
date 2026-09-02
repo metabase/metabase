@@ -2078,7 +2078,7 @@ serdes/meta:
                     ;; the in-transaction finalize (restore-dirty + set-version)
                     impl/load-snapshot!  (fn [_ _ _ & {:keys [finalize!]}]
                                            (t2/update! :model/RemoteSyncObject
-                                                       'model_id [:in [9991 9992]]
+                                                       :model_id [:in [9991 9992]]
                                                        {:status "synced"})
                                            (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
@@ -2128,7 +2128,7 @@ serdes/meta:
                     ;; entity's row is wiped (the load doesn't re-create it), then the finalize runs.
                     impl/load-snapshot! (fn [_ _ _ & {:keys [finalize!]}]
                                           (t2/delete! :model/RemoteSyncObject 'model_id 8881)
-                                          (t2/update! :model/RemoteSyncObject 'model_id 9992 {:status "synced"})
+                                          (t2/update! :model/RemoteSyncObject :model_id 9992 {:status "synced"})
                                           (when finalize! (finalize!)))]
         (let [result (impl/import! (export-test-snapshot "remote-R") task-id
                                    :merge? true

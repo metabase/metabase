@@ -641,7 +641,7 @@
   [transform-id index ^Throwable t]
   (when transform-id
     (t2/update! :model/TableIndex
-                'transform_id transform-id 'index_name (reconcile/index-name index)
+                :transform_id transform-id :index_name (reconcile/index-name index)
                 {:status :failed :error_message (ex-message t) :last_executed_at :%now})))
 
 (defn- apply-standalone-indexes!
@@ -683,7 +683,7 @@
   (doseq [[status rows] by-outcome]
     (if (= :delete-row status)
       (t2/delete! :model/TableIndex 'id [:in (map :id rows)])
-      (t2/update! :model/TableIndex 'id [:in (map :id rows)]
+      (t2/update! :model/TableIndex :id [:in (map :id rows)]
                   (cond-> {:status           status
                            :last_executed_at :%now}
                     (= status :succeeded)

@@ -242,7 +242,7 @@
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
           (testing "now do some updates and new revision should be reocrded"
-            (t2/update! :model/Dashboard 'id dash-id {:name "New name"})
+            (t2/update! :model/Dashboard :id dash-id {:name "New name"})
             (push-revision)
             (is (= 2 (count (revision/revisions :model/Dashboard dash-id))))))))))
 

@@ -919,7 +919,7 @@
                 ;;  If a password detail succeeds it will delete the secret, this resets it.
                 (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
                   (when (not= (:id updated-secret) secret-id)
-                    (t2/update! :model/Secret 'id (:id updated-secret) {:id secret-id})))
+                    (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)

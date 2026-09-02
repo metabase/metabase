@@ -182,7 +182,7 @@
       ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
       (when (seq recover-ids) (t2/delete! :queue_message_outbox 'id [:in recover-ids]))
       (doseq [{:keys [id next-attempt-at]} bumps]
-        (t2/update! :queue_message_outbox 'id id
+        (t2/update! :queue_message_outbox :id id
                     {:publish_attempts [:+ :publish_attempts [:inline 1]]
                      :next_attempt_at  next-attempt-at}))
       (when backend-down?

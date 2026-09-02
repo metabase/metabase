@@ -278,7 +278,7 @@
                                                                (when-not (empty? cards)
                                                                  (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
                              (when (seq cards-to-update-in-ast)
-                               (t2/update! :model/Document 'id document-id
+                               (t2/update! :model/Document :id document-id
                                            (update-cards-in-ast
                                             {:document document
                                              :content_type prose-mirror/prose-mirror-content-type}
@@ -444,7 +444,7 @@
                        (let [new-document-id (t2/insert-returning-pk! :model/Document document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
-                           (t2/update! :model/Document 'id new-document-id
+                           (t2/update! :model/Document :id new-document-id
                                        (update-cards-in-ast
                                         {:document (:document existing-document)
                                          :content_type (:content_type existing-document)}

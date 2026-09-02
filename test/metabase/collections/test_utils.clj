@@ -35,13 +35,13 @@
      (mt/initialize-if-needed! :db)
      ;; Clear existing library collections
      (t2/update! (t2/table-name :model/Collection)
-                 'type collection/library-collection-type
+                 :type collection/library-collection-type
                  {:type nil})
      (t2/update! (t2/table-name :model/Collection)
-                 'type collection/library-data-collection-type
+                 :type collection/library-data-collection-type
                  {:type nil})
      (t2/update! (t2/table-name :model/Collection)
-                 'type collection/library-metrics-collection-type
+                 :type collection/library-metrics-collection-type
                  {:type nil})
      (try
        ~@body

@@ -214,8 +214,8 @@
                                       {:status 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
-      "card"      (t2/update! :model/Card 'id id {:last_used_at date})
-      "dashboard" (t2/update! :model/Dashboard 'id id {:last_viewed_at date}))))
+      "card"      (t2/update! :model/Card :id id {:last_used_at date})
+      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
