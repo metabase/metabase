@@ -141,8 +141,6 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      # One matrix entry per runner: `runner-count` reads the count back from `strategy.job-total`,
-      # so keep this list purely runners. Each runner splits its share across `jvms-per-runner` JVMs.
       matrix:
         runner-index: [0, 1]
     env:
