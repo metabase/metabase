@@ -144,6 +144,7 @@ export type VisualizationPassThroughProps = {
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
+  isStandaloneQuestion?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;

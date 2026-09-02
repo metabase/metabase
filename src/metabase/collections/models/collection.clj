@@ -657,7 +657,8 @@
   (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
-  "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
+  "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
+  Personal collection should be created on user creation, but creates if missing for backwards compatibility"
   [user-or-id]
   ;; API key users do not get personal collections
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
