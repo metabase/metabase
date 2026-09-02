@@ -519,21 +519,20 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
-   ;; content diagnostics scan (enterprise/content-diagnostics): one run/day/instance where the feature is on
-   (prometheus/histogram :metabase-content-diagnostics/scan-duration-ms
-                         {:description "Duration in milliseconds of one Content Diagnostics scan (all checkers, enrichment, insert, supersession), by outcome."
-                          :labels      [:status]
-                          ;; 100ms -> 24h: the transforms job-run set (100ms -> 6h) plus 12h and 24h. Nothing caps
-                          ;; a run - DisallowConcurrentExecution defers the next fire rather than stopping this one,
-                          ;; and POST /scan bypasses the job - so anything slower than a day lands in +Inf.
-                          :buckets     [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000 43200000 86400000]})
-   ;; total ms, not a histogram: at one scan/day/instance there are too few samples for per-instance stage
-   ;; percentiles to mean anything, and the histogram would cost 153 series/instance against this counter's 9.
+   ;; content diagnostics scan (enterprise/content-diagnostics): one run/day/instance where the feature is on.
+   ;; Counters throughout, no histogram: at one scan a day an instance contributes a single sample, so its
+   ;; own bucket distribution is degenerate. The distribution worth having is the one across instances, and
+   ;; Prometheus already keeps a series per instance - increase(scan_duration_ms_total[7d]) divided by
+   ;; increase(scan_runs_total[7d]) is that instance's mean scan, which topk() ranks (naming the slow
+   ;; instances, which buckets cannot) and quantile() aggregates into a fleet percentile.
+   (prometheus/counter :metabase-content-diagnostics/scan-duration-ms
+                       {:description "Total milliseconds spent running Content Diagnostics scans, by outcome; over scan-runs it gives the mean scan."
+                        :labels      [:status]})
+   (prometheus/counter :metabase-content-diagnostics/scan-runs
+                       {:description "Number of Content Diagnostics scans, by outcome and, on failure, the stage that was running (none = succeeded, unknown = threw outside any stage)."
+                        :labels      [:status :stage]})
    (prometheus/counter :metabase-content-diagnostics/scan-stage-ms
                        {:description "Total milliseconds Content Diagnostics scans spent in each stage (checker.<name>, enrich, insert, invalidate); bumped on stage success only."
-                        :labels      [:stage]})
-   (prometheus/counter :metabase-content-diagnostics/scan-failures
-                       {:description "Number of Content Diagnostics scans that threw, by the stage that was running (unknown = outside any stage)."
                         :labels      [:stage]})
    (prometheus/counter :metabase-content-diagnostics/findings-persisted
                        {:description "Number of findings persisted by a Content Diagnostics scan that completed its insert stage, by finding type."

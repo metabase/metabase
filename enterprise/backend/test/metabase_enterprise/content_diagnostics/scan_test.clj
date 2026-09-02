@@ -901,8 +901,13 @@
 
 ;;; ---------------------------------------------- metrics -----------------------------------------------
 
-(defn- histogram-count [system metric labels]
-  (:count (mt/metric-value system metric labels)))
+(defn- runs
+  "The `scan-runs` count for one (status, stage) pair - `stage` is `none` on the success arm."
+  [system status stage]
+  (mt/metric-value system :metabase-content-diagnostics/scan-runs {:status status :stage stage}))
+
+(defn- duration-ms [system status]
+  (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms {:status status}))
 
 (def ^:private all-stages
   "Every `stage` label a successful scan emits. Deriving the checker arms from the registry keeps a new
@@ -927,47 +932,47 @@
                 (mt/with-premium-features #{}
                   (#'task.scan/scan-when-enabled!)))
               (is (= [] @emitted))))
-          (testing "successful scan: whole-scan + every stage observed once, findings counted"
+          (testing "successful scan: counted once, timed, every stage timed, findings counted"
             (scan/scan!)
-            (is (== 1 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "ok"})))
-            (is (== 0 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "error"})))
+            (is (== 1 (runs system "ok" "none")))
+            (is (pos? (duration-ms system "ok")))
+            (is (== 0 (duration-ms system "error")))
             (doseq [stage all-stages]
               (is (pos? (mt/metric-value system :metabase-content-diagnostics/scan-stage-ms {:stage stage}))
                   stage))
             (is (<= 1 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
                                        {:finding-type "stale"})))
             (doseq [stage (conj all-stages "unknown")]
-              (is (== 0 (mt/metric-value system :metabase-content-diagnostics/scan-failures {:stage stage}))
-                  stage)))
+              (is (== 0 (runs system "error" stage)) stage)))
           (testing "a throwing checker: the scan fails, attributed to that checker's stage"
             (prometheus/clear! :metabase-content-diagnostics/scan-duration-ms)
-            (prometheus/clear! :metabase-content-diagnostics/scan-failures)
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
             (with-redefs [scan/checkers [{:name "slow" :finding-types #{:slow}
                                           :run  (fn [] (throw (ex-info "boom" {})))}]]
               ;; the wrapped message keeps the original class, not just its message
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                     #"stage checker\.slow failed: clojure\.lang\.ExceptionInfo: boom"
                                     (scan/scan!))))
-            (is (== 1 (mt/metric-value system :metabase-content-diagnostics/scan-failures
-                                       {:stage "checker.slow"})))
-            (is (== 1 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "error"})))
-            (is (== 0 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "ok"}))))
+            (is (== 1 (runs system "error" "checker.slow")))
+            (is (== 0 (runs system "ok" "none")))
+            (is (pos? (duration-ms system "error")))
+            (is (== 0 (duration-ms system "ok"))))
           (testing "insert failure: attributed to the insert stage; nothing counted as persisted"
-            (prometheus/clear! :metabase-content-diagnostics/scan-failures)
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
             (prometheus/clear! :metabase-content-diagnostics/findings-persisted)
             (with-redefs [t2/insert! (fn [& _] (throw (ex-info "db down" {})))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stage insert failed" (scan/scan!))))
-            (is (== 1 (mt/metric-value system :metabase-content-diagnostics/scan-failures {:stage "insert"})))
+            (is (== 1 (runs system "error" "insert")))
             (is (== 0 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
                                        {:finding-type "stale"}))))
           (testing "a throw outside any stage is attributed to unknown"
             (prometheus/clear! :metabase-content-diagnostics/scan-duration-ms)
-            (prometheus/clear! :metabase-content-diagnostics/scan-failures)
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
             ;; `count-persisted!` calls `covered-finding-types` outside any `run-stage!` - no stage in ex-data
             (with-redefs [scan/covered-finding-types (fn [] (throw (ex-info "boom" {})))]
               (is (thrown? clojure.lang.ExceptionInfo (scan/scan!))))
-            (is (== 1 (mt/metric-value system :metabase-content-diagnostics/scan-failures {:stage "unknown"})))
-            (is (== 1 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "error"}))))
+            (is (== 1 (runs system "error" "unknown")))
+            (is (pos? (duration-ms system "error"))))
           (testing "an undeclared finding type clamps to unknown"
             (prometheus/clear! :metabase-content-diagnostics/findings-persisted)
             (#'scan/count-persisted! [{:finding-type :bogus}])
@@ -976,13 +981,13 @@
             (is (== 0 (mt/metric-value system :metabase-content-diagnostics/findings-persisted
                                        {:finding-type "stale"}))))
           (testing "with :tasks tracing enabled the scan still succeeds and no span attribute collides"
-            (prometheus/clear! :metabase-content-diagnostics/scan-duration-ms)
+            (prometheus/clear! :metabase-content-diagnostics/scan-runs)
             (try
               ;; every `add-span-attrs!` runs for real here, and a duplicate key within one span is
               ;; fail-loud in dev/test - a collision would surface as a scan failure
               (tracing/init-enabled-groups! "tasks" "INFO")
               (is (map? (scan/scan!)))
-              (is (== 1 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "ok"})))
-              (is (== 0 (histogram-count system :metabase-content-diagnostics/scan-duration-ms {:status "error"})))
+              (is (== 1 (runs system "ok" "none")))
+              (is (== 0 (runs system "error" "unknown")))
               (finally
                 (tracing/shutdown-groups!)))))))))

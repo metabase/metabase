@@ -49,7 +49,7 @@
 
 (defn- run-stage!
   "Run one scan stage `f` inside a `:tasks` span, adding its duration to `scan-stage-ms` on success. A throw
-  is re-thrown wrapped with the stage name so `scan!` can label `scan-failures`; the stage counter is
+  is re-thrown wrapped with the stage name so `scan!` can label `scan-runs`; the stage counter is
   skipped. The try sits outside the span so the exception reaches clj-otel first and the span ends in error."
   [span-suffix stage f]
   (let [timer (u/start-timer)]
@@ -216,8 +216,8 @@
 (defn scan!
   "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. The persisted findings
   are the real result; returns the scan's topline `{:scan_id :finding_count :duration_ms}` for callers
-  that report it (the demo `POST /scan`). Emits `scan-duration-ms` on both outcomes and `scan-failures` on
-  a throw."
+  that report it (the demo `POST /scan`). Emits `scan-duration-ms` and `scan-runs` on both outcomes, the
+  failing stage landing on `scan-runs`."
   []
   (let [timer   (u/start-timer)
         scan-id (str (random-uuid))]
@@ -232,13 +232,14 @@
                          ;; reflection (u/since-ms is un-hinted)
                          :duration_ms   (Math/round (double duration-ms))}]
         (log/infof "Content Diagnostics scan %s: %d findings in %.0f ms" scan-id (count findings) duration-ms)
-        ;; observe! last, so a throw from anything above it is counted once, as an error
-        (analytics/observe! :metabase-content-diagnostics/scan-duration-ms {:status "ok"} duration-ms)
+        ;; last, so a throw from anything above it reaches the catch and is counted once, as an error
+        (analytics/inc! :metabase-content-diagnostics/scan-duration-ms {:status "ok"} duration-ms)
+        (analytics/inc! :metabase-content-diagnostics/scan-runs {:status "ok" :stage "none"})
         topline)
       (catch Throwable t
-        (analytics/observe! :metabase-content-diagnostics/scan-duration-ms {:status "error"} (u/since-ms timer))
-        (analytics/inc! :metabase-content-diagnostics/scan-failures
-                        {:stage (get (ex-data t) :content-diagnostics/stage "unknown")})
+        (analytics/inc! :metabase-content-diagnostics/scan-duration-ms {:status "error"} (u/since-ms timer))
+        (analytics/inc! :metabase-content-diagnostics/scan-runs
+                        {:status "error" :stage (get (ex-data t) :content-diagnostics/stage "unknown")})
         (throw t)))))
 
 (defenterprise run-content-diagnostics-scan!
