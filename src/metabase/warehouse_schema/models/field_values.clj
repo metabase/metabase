@@ -507,17 +507,20 @@
   "Create or update the full FieldValues object for `field`. If the FieldValues object already
   exists, then update values for it; otherwise create a new FieldValues object with the newly
   fetched values. Returns whether the field values were created / updated / deleted as a result
-  of this call.
+  of this call, or `::fv-fetch-failed` if the warehouse scan failed and nothing was changed.
 
   Note that if the full FieldValues are create / updated / deleted, it'll delete all the
   Advanced FieldValues of the same `field`."
   [field & {:keys [field-values]}]
   (if (field-should-have-field-values? field)
-    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))
-          {rows :values} (distinct-values field)
-          ;; rows are 1-tuples — unwrap for storage.
-          raw-values  (seq (map first rows))]
-      (persist-field-values! field existing-fv raw-values))
+    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))]
+      ;; `distinct-values` returns nil when the warehouse scan failed, which is not the same as a
+      ;; field that genuinely has no values: persisting it would read as "empty" and delete the
+      ;; values we already have. Leave whatever is cached in place instead.
+      (if-let [{rows :values} (distinct-values field)]
+        ;; rows are 1-tuples — unwrap for storage.
+        (persist-field-values! field existing-fv (seq (map first rows)))
+        ::fv-fetch-failed))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))

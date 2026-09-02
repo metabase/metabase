@@ -325,6 +325,28 @@
             (is (seq (:values (tu/poll-until 10000
                                              (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))))))
 
+(deftest create-or-update-full-field-values!-fetch-failure-test
+  (mt/dataset test-data
+    (let [field-id (mt/id :categories :name)
+          field    (t2/select-one :model/Field :id field-id)
+          cached   #(t2/select-one :model/FieldValues :field_id field-id :type :full)]
+      (field-values/get-or-create-full-field-values! field)
+      (let [before (cached)]
+        (is (seq (:values before)))
+        (testing "a failed warehouse scan must not be read as \"this field has no values\" and wipe
+                  the FieldValues we already have cached (GHY-2937)"
+          (with-redefs [field-values/distinct-values (constantly nil)]
+            (is (= ::field-values/fv-fetch-failed
+                   (field-values/create-or-update-full-field-values! field))))
+          (is (= (:values before) (:values (cached)))))
+        (testing "a scan that genuinely comes back empty still clears the FieldValues"
+          (with-redefs [field-values/distinct-values (constantly {:values []})]
+            (is (= ::field-values/fv-deleted
+                   (field-values/create-or-update-full-field-values! field))))
+          (is (nil? (cached))))
+        ;; leave the shared test-data dataset as we found it
+        (field-values/get-or-create-full-field-values! field)))))
+
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
