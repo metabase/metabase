@@ -25,8 +25,14 @@
 ;;; ------------------------------------------------ Health check --------------------------------------------------
 
 ;; Lets a client or operator confirm the surface is reachable and its token is accepted without touching any content.
+;; Gated on one scope rather than the whole surface set because the registry validates `:scope` as a single non-blank
+;; string: a set — which [[metabase.mcp.scope/matches?]] would otherwise honor — throws in `register-tool!`, and
+;; `registered-scopes` would collect the set itself rather than its members. So the token-acceptance half of the check
+;; only covers `agent:content:read` tokens; the unscoped JSON-RPC `ping` method covers reachability for the rest.
 (registry/deftool ping-v2
-  "Health-check tool for the MCP surface. Returns a fixed acknowledgement."
+  "Health-check tool for the MCP surface. Returns a fixed acknowledgement. Requires the
+  `agent:content:read` scope: a token granted only other scopes of this surface neither sees nor can
+  call it, and should use the unscoped JSON-RPC `ping` method to confirm reachability instead."
   {:name        "ping_v2"
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}

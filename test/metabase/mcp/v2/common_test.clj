@@ -71,3 +71,17 @@
     (testing "the catalog is generated from the detailed projection shape"
       (is (contains? (set (projections/catalog :collection)) "name"))
       (is (contains? (set (projections/catalog :question)) "parameters.name")))))
+
+(deftest ^:parallel projection-bad-argument-test
+  (testing "an unregistered type throws an ex-info naming the type"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"No projection registered for type: nope"
+                          (projections/project :nope :concise {:id 1}))))
+  (testing "a format outside :concise/:detailed throws the same shape of ex-info rather than a nil-call NPE"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown projection format: :summary"
+                          (projections/project :collection :summary {:id 1})))
+    (is (= {:status-code 500 :type :collection :fmt :summary}
+           (try
+             (projections/project :collection :summary {:id 1})
+             (catch clojure.lang.ExceptionInfo e (ex-data e)))))))

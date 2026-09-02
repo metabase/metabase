@@ -99,6 +99,36 @@
         (is (= "object" (:type schema)))
         (is (false? (:additionalProperties schema)))))))
 
+;; Not ^:parallel: the set-valued-scope probe below calls `register-tool!`, which the deftest linter treats as
+;; destructive even though this call always throws before it can mutate the registry.
+(deftest ping-v2-scope-reach-test
+  (testing "ping_v2 is gated on `agent:content:read` alone, and says so. The registry validates `:scope` as a single
+            non-blank string, so gating the health check on the whole v2 surface scope set — which
+            `metabase.mcp.scope/matches?` would honor — is not expressible: a set-valued `:scope` throws at
+            registration, and `registered-scopes` would collect the set itself rather than its members. A token
+            granted only another surface scope therefore cannot use the tool to confirm its token is accepted; the
+            description points it at the unscoped JSON-RPC `ping` method, which needs no scope."
+    (let [narrow #{"agent:query:run"}]
+      (testing "a token on another surface scope neither sees nor can call it"
+        (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools narrow))))
+        (is (:isError (registry/call-tool narrow nil "ping_v2" {}))))
+      (testing "the published description names the required scope and the unscoped fallback"
+        (let [description (->> (registry/list-tools nil)
+                               (filter #(= "ping_v2" (:name %)))
+                               first
+                               :description)]
+          (is (str/includes? description "agent:content:read"))
+          (is (str/includes? description "ping"))))
+      (testing "a set-valued :scope is rejected at registration — the reason the single scope stands"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"registered without a :scope string"
+                              (registry/register-tool!
+                               {:name        "set_scope_probe"
+                                :scope       #{metabot.scope/agent-content-read metabot.scope/agent-query-run}
+                                :description "probe: never registers"
+                                :args        [:map]
+                                :handler     (fn [_ _] nil)})))))))
+
 (deftest tools-call-test
   (let [[session-id _] (initialize!)]
     (testing "tools/call dispatches through the registry"
