@@ -79,6 +79,14 @@
               (repeatedly (count (lib/aggregations query -1)) lib/count))
       (lib/native-query query "-"))))
 
+(defn keep-param-fields-for-parameters
+  "Keep only the `:param_fields` entries keyed by the ids of the object's own `:parameters`. Entries keyed by anything
+  else — e.g. a native card's template-tag id with no matching parameter — have no widget to power, so they fail
+  closed."
+  [card-or-dashboard]
+  (m/update-existing card-or-dashboard :param_fields
+                     #(select-keys % (into #{} (map :id) (:parameters card-or-dashboard)))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
 
@@ -97,7 +105,8 @@
                        :dataset_query])
          (update :dataset_query (fn [query]
                                   (cond-> query
-                                    (seq query) blank-dataset-query)))))))
+                                    (seq query) blank-dataset-query)))
+         params/remove-param-fields-non-public-columns))))
 
 (defn public-card
   "Return the public Card with the given `card-id` (plus any extra key-value `conditions`), removing all columns that
@@ -109,6 +118,7 @@
                               :id card-id, :archived false, conditions))
         combine-parameters-and-template-tags
         (t2/hydrate :param_fields)
+        keep-param-fields-for-parameters
         remove-card-non-public-columns)))
 
 (defn- card-with-uuid [uuid] (public-card (public-sharing/public-uuid->id :model/Card uuid)))
@@ -278,6 +288,8 @@
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :id dashboard-id, :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
+        keep-param-fields-for-parameters
+        params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
@@ -350,6 +362,18 @@
       ;; dashboard in Metabase proper.)
       (binding [api/*current-user-id* nil]
         (m/mapply qp.dashboard/process-query-for-dashcard options)))))
+
+(defn process-tiles-query-for-dashcard
+  "Like [[process-query-for-dashcard]], but renders a map tile for pre-loaded Card `card` on pre-loaded DashboardCard
+  `dashcard` belonging to pre-loaded Dashboard `dashboard`. Runs with the same superuser perms and anonymized current
+  user as [[process-query-for-dashcard]].
+
+  Callers are responsible for 404-checking each entity before threading it here. Returns a Ring response."
+  [dashboard dashcard card parameters zoom x y lat-field lon-field]
+  (request/as-admin
+    (binding [api/*current-user-id* nil]
+      (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
+                                                  parameters zoom x y lat-field lon-field))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -759,10 +783,9 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card      (api/check-404 (t2/select-one :model/Card card-id))]
-    (request/as-admin
-      (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                  parameters zoom x y latField lonField))))
+        card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))]
+    (process-tiles-query-for-dashcard dashboard dashcard card
+                                      parameters zoom x y latField lonField)))
 
 ;;; ------------------------------------------------ Public Documents -------------------------------------------------
 

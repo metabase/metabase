@@ -15,7 +15,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -31,6 +30,8 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
+
+import { ObjectDetailSidesheet } from "./ObjectDetailSidesheet";
 
 registerVisualizations();
 

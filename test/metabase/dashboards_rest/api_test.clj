@@ -2415,14 +2415,14 @@
       (do-with-add-card-parameter-mapping-permissions-fixtures!
        (fn [{:keys [card-id mappings add-card! dashcards]}]
          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-         (is (=? {:message "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                 (add-card! 403)))
+         (is (= "You must have data permissions to add a parameter referencing this Field."
+                (add-card! 403)))
          (is (= []
                 (dashcards)))
          (testing "Permissions for a different table in the same DB should not count"
            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
-           (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                   (add-card! 403)))
+           (is (= "You must have data permissions to add a parameter referencing this Field."
+                  (add-card! 403)))
            (is (= []
                   (dashcards))))
          (testing "If they have data permissions, it should be ok"
@@ -2535,8 +2535,8 @@
       (do-with-update-cards-parameter-mapping-permissions-fixtures!
        (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
          (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
-           (is (=? {:message  "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
-                   (update-mappings! 403)))
+           (is (= "You must have data permissions to add a parameter referencing this Field."
+                  (update-mappings! 403)))
            (is (= original-mappings
                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Changing another column should be ok even without data permissions."
@@ -3486,7 +3486,11 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
-    (mt/with-temp-vals-in-db :model/FieldValues (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
+    ;; Request the complete FieldValues instead of relying on another test to create it. The row is lazy, and
+    ;; creating it within `with-temp` rolls it back afterward.
+    (mt/with-temp-vals-in-db :model/FieldValues (field-values/get-or-create-full-field-values!
+                                                 (t2/select-one :model/Field :id (mt/id :categories :name)))
+                             {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
@@ -5853,7 +5857,7 @@
                                                 {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4
                                                               :parameter_mappings mapping}]
                                                  :tabs      []}))]
-            (is (=? {:message #"(?i).*data permissions.*PRODUCTS.*"} (put! 403)))
+            (is (= "You must have data permissions to add a parameter referencing this Field." (put! 403)))
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/create-queries :query-builder)
             (is (=? [{:parameter_mappings [{:parameter_id "_ID_"

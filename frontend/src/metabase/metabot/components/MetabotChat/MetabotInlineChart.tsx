@@ -33,10 +33,7 @@ import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import {
-  getDatasetError,
-  getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
+import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
 
@@ -164,7 +161,7 @@ export function MetabotInlineChart({
       </Flex>
       <Box className={S.viz}>
         {!shouldRunQuery ? (
-          <Center h="100%" p="md">
+          <Center h="100%" p="lg">
             <Button
               variant="filled"
               leftSection={<Icon name="play_outlined" aria-hidden />}
@@ -174,7 +171,7 @@ export function MetabotInlineChart({
             </Button>
           </Center>
         ) : chartError ? (
-          <Center h="100%" p="md">
+          <Center h="100%" p="lg">
             <ErrorView error={chartError.message} icon={chartError.icon} />
           </Center>
         ) : !rawSeries ? (

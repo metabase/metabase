@@ -11,8 +11,8 @@ import {
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { SelectButton } from "metabase/common/components/SelectButton";
+import { getMetadata } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Button, Flex, Icon, Radio, Select, Stack } from "metabase/ui";
@@ -587,8 +587,8 @@ function ModelHint() {
   );
 
   return (
-    <Box mt="lg" p="md" className={S.info}>
-      <Flex gap="md" align="center">
+    <Box mt="xl" p="lg" className={S.info}>
+      <Flex gap="lg" align="center">
         <Icon name="info" c="text-primary" className={S.icon} />
         <div>
           {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}

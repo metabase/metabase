@@ -12,13 +12,14 @@ import {
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import { noop } from "underscore";
 
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
-import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import {
@@ -37,7 +38,6 @@ import {
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
   Ellipsified,
@@ -51,19 +51,40 @@ import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getDatasetError } from "metabase/visualizations/lib/errors";
+import {
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getDatasetError,
+  getVisualizationTransformed,
+  isTimeseries,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  StoredResultSort,
+  TimelineEvent,
+} from "metabase-types/api";
+
+import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
 
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
-import { DocumentMode } from "./DocumentMode";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { NativeQueryModal } from "./modals/NativeQueryModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
+
+const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
+  "value_asc",
+  "value_desc",
+  "label_asc",
+  "label_desc",
+];
+
+const isStaticCardSort = (value: unknown): value is StoredResultSort =>
+  typeof value === "string" && STATIC_CARD_SORTS.some((sort) => sort === value);
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -77,6 +98,11 @@ export interface CardEmbedAttributes {
   id?: number;
   name?: string;
   class?: string;
+  stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
+  sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
+  chart_href?: string | null; // Override URL for the embed's title click
+  child_target_id?: string | null; // when set, comments on this embed use this child target instead of `_id`
+  host_data?: Record<string, unknown> | null; // opaque host-specific data
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -104,6 +130,53 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-name"),
       },
+      stored_result_id: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-stored-result-id");
+          if (!raw) {
+            return null;
+          }
+          const parsed = parseInt(raw, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        },
+      },
+      sort: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-sort"),
+      },
+      chart_href: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-chart-href"),
+      },
+      child_target_id: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-child-target-id") || null,
+      },
+      host_data: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-host-data");
+          if (!raw) {
+            return null;
+          }
+          try {
+            const parsed: unknown = JSON.parse(raw);
+            if (
+              parsed != null &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+            ) {
+              // JSON.parse of an object literal is a plain Record; TipTap attrs are untyped JSON.
+              return parsed as Record<string, unknown>;
+            }
+          } catch {
+            return null;
+          }
+          return null;
+        },
+      },
       ...createIdAttribute(),
     };
   },
@@ -125,6 +198,17 @@ export const CardEmbed: Node<{
           "data-type": CardEmbed.name,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
+          "data-stored-result-id":
+            node.attrs.stored_result_id != null
+              ? String(node.attrs.stored_result_id)
+              : null,
+          "data-sort": node.attrs.sort ?? null,
+          "data-chart-href": node.attrs.chart_href ?? null,
+          "data-child-target-id": node.attrs.child_target_id ?? null,
+          "data-host-data":
+            node.attrs.host_data != null
+              ? JSON.stringify(node.attrs.host_data)
+              : null,
         },
         this.options.HTMLAttributes,
       ),
@@ -153,9 +237,15 @@ export const CardEmbedComponent = memo(
     editor,
     getPos,
     deleteNode,
+    // eslint-disable-next-line complexity
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
-    const host = useEditorHost();
+    const storedResultId = node.attrs.stored_result_id;
+    const isStatic = storedResultId != null;
+    const staticSort = isStaticCardSort(node.attrs.sort)
+      ? node.attrs.sort
+      : undefined;
+    const host = useDocumentEditorHost();
     const {
       ref: viewportRef,
       isInViewport,
@@ -167,15 +257,34 @@ export const CardEmbedComponent = memo(
     );
     const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
-      skip: !isInViewport,
+    const hostData = node.attrs.host_data ?? null;
+    const commentChildTargetId = node.attrs.child_target_id ?? _id;
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(
+      commentChildTargetId,
+      {
+        skip: !isInViewport,
+      },
+    );
+    const visualizationMode = host.useVisualizationMode({
+      childTargetId: commentChildTargetId,
+      hostData,
+    });
+    const slots = host.useCardEmbedSlots({
+      childTargetId: commentChildTargetId,
+      hostData,
     });
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
-    const isOpen = childTargetId === _id;
-    const isHovered = hoveredChildTargetId === _id;
+    const selectedEmbedIndex = useSelector(
+      host.selectors.getSelectedEmbedIndex,
+    );
+    const selectedTimelineEventIdsFromState = useSelector(
+      host.selectors.getSelectedTimelineEventIds,
+    );
+    const isOpen = childTargetId === commentChildTargetId;
+    const isHovered = hoveredChildTargetId === commentChildTargetId;
     const commentsPath = host.useCommentUrl({
-      childTargetId: _id,
+      childTargetId: commentChildTargetId,
     });
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -190,9 +299,19 @@ export const CardEmbedComponent = memo(
     } = useDndHelpers({ editor, node, getPos });
 
     const embedIndex = getEmbedIndex(editor, getPos);
+    const selectedTimelineEventIds =
+      embedIndex === selectedEmbedIndex
+        ? selectedTimelineEventIdsFromState
+        : undefined;
 
     const isExternalDocument = externalCardData != null;
-    const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
+    const regularCardData = host.useCardData({
+      id,
+      skip: !shouldLoadData,
+      ...(storedResultId != null
+        ? { storedResultId, storedResultSort: staticSort }
+        : {}),
+    });
     const externalCardDataResult = host.useExternalCardDataLoader(id, {
       skip: !shouldLoadData,
     });
@@ -200,6 +319,12 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    const highlighted = host.useHighlighted(
+      commentChildTargetId,
+      series ?? null,
+      hostData,
+    );
 
     host.useReportPrefetchLoading(_id, isLoading);
 
@@ -349,7 +474,57 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    const shouldShowTimelineEventsMenu = useMemo(() => {
+      if (!series) {
+        return false;
+      }
+      const transformed = getVisualizationTransformed(
+        extractRemappings(series),
+      );
+      const settings = getComputedSettingsForSeries(transformed.series);
+      return isTimeseries(settings);
+    }, [series]);
+
+    const handleEditTimelineEvents = () => {
+      if (embedIndex !== -1) {
+        dispatch(host.actions.openTimelineEventsSidebar({ embedIndex }));
+      }
+    };
+
+    const handleOpenTimelines = useCallback(
+      (eventIds?: number[]) => {
+        if (embedIndex !== -1) {
+          dispatch(
+            host.actions.openTimelineEventsSidebar({
+              embedIndex,
+              focusedEventIds: eventIds,
+            }),
+          );
+        }
+      },
+      [dispatch, embedIndex, host.actions],
+    );
+
+    const handleSelectTimelineEvents = useCallback(
+      (events: TimelineEvent[]) => {
+        dispatch(host.actions.selectTimelineEvents(events));
+      },
+      [dispatch, host.actions],
+    );
+
+    const handleDeselectTimelineEvents = useCallback(() => {
+      dispatch(host.actions.deselectTimelineEvents());
+    }, [dispatch, host.actions]);
+
     const handleTitleClick = () => {
+      const chartHref = node.attrs.chart_href;
+      if (chartHref) {
+        dispatch(host.navigateToCard(chartHref, document));
+        return;
+      }
+      if (!host.capabilities.canOpenCardInQueryBuilder) {
+        return;
+      }
       if (card && metadata) {
         try {
           const isDraftCard = card.id < 0;
@@ -615,6 +790,7 @@ export const CardEmbedComponent = memo(
                             menuView={menuView}
                             setMenuView={setMenuView}
                             canWrite={canWrite}
+                            isStatic={isStatic}
                             dataset={dataset}
                             question={question}
                             isNativeQuestion={isNativeQuestion}
@@ -623,6 +799,10 @@ export const CardEmbedComponent = memo(
                             handleEditVisualizationSettings={
                               handleEditVisualizationSettings
                             }
+                            shouldShowTimelineEventsMenu={
+                              shouldShowTimelineEventsMenu
+                            }
+                            handleEditTimelineEvents={handleEditTimelineEvents}
                             handleAddSupportingText={handleAddSupportingText}
                             setIsModifyModalOpen={setIsModifyModalOpen}
                             handleReplaceQuestion={handleReplaceQuestion}
@@ -634,6 +814,7 @@ export const CardEmbedComponent = memo(
                       </Menu>
                     ) : null)}
                 </Flex>
+                {slots.belowTitle}
               </Box>
             )}
             {series && isInViewport ? (
@@ -643,22 +824,37 @@ export const CardEmbedComponent = memo(
                     <Visualization
                       rawSeries={series}
                       metadata={metadata}
-                      mode={DocumentMode}
+                      mode={visualizationMode}
+                      highlighted={highlighted}
                       onChangeCardAndRun={
-                        isExternalDocument ? undefined : handleChangeCardAndRun
+                        isStatic
+                          ? // A defined mode needs a truthy handler so the click-actions popover mounts
+                            visualizationMode != null
+                            ? noop
+                            : undefined
+                          : isExternalDocument
+                            ? undefined
+                            : handleChangeCardAndRun
                       }
                       onUpdateQuestion={
-                        isExternalDocument ? undefined : handleUpdateQuestion
+                        isStatic || isExternalDocument
+                          ? undefined
+                          : handleUpdateQuestion
                       }
                       onUpdateVisualizationSettings={
                         isExternalDocument
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }
+                      onOpenTimelines={handleOpenTimelines}
+                      onSelectTimelineEvents={handleSelectTimelineEvents}
+                      onDeselectTimelineEvents={handleDeselectTimelineEvents}
+                      selectedTimelineEventIds={selectedTimelineEventIds}
                       getExtraDataForClick={() => ({})}
                       isEditing={false}
                       isDashboard={false}
                       isDocument={true}
+                      customVizLoadingView={<CardEmbedLoadingState />}
                       showTitle={false}
                       error={datasetError?.message}
                       errorIcon={datasetError?.icon}
@@ -717,6 +913,13 @@ export const CardEmbedComponent = memo(
     return (
       prevProps.node.attrs.id === nextProps.node.attrs.id &&
       prevProps.node.attrs.name === nextProps.node.attrs.name &&
+      prevProps.node.attrs.stored_result_id ===
+        nextProps.node.attrs.stored_result_id &&
+      prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
+      prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
+      prevProps.node.attrs.child_target_id ===
+        nextProps.node.attrs.child_target_id &&
+      prevProps.node.attrs.host_data === nextProps.node.attrs.host_data &&
       prevProps.selected === nextProps.selected
     );
   },

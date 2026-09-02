@@ -1,22 +1,18 @@
 import { t } from "ttag";
 
-import { getSankeyChartColumns } from "metabase/visualizations/echarts/graph/sankey/model/dataset";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
+  ChartSettingsError,
+  type ComputedVisualizationSettings,
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import { findSensibleSankeyColumns } from "metabase/visualizations/lib/utils";
-import {
+  findSensibleSankeyColumns,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+  getSankeyChartColumns,
+  metricSetting,
+} from "metabase/viz-core";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 

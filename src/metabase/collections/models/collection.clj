@@ -657,7 +657,8 @@
   (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
-  "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
+  "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
+  Personal collection should be created on user creation, but creates if missing for backwards compatibility"
   [user-or-id]
   ;; API key users do not get personal collections
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
@@ -685,6 +686,11 @@
      (some-> user-id user->personal-collection u/the-id))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
+   ;;
+   ;; TODO (Chris 2026-08-18) -- The claim that Personal Collections cannot be deleted does not hold when a
+   ;; transaction rolls back: the collection disappears while its ID remains cached for the rest of the TTL.
+   ;; Tests evict this cache at the `with-temp` boundary (see [[metabase.test.util]]). Production has no
+   ;; equivalent boundary and would need an after-rollback hook alongside the commit hooks.
    :ttl/threshold (* 60 60 1000)))
 
 (mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
@@ -2171,11 +2177,24 @@
                                {["Dashboard" dash-id] {"Collection" id}}))
         cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:and
                                                                                    [:= :collection_id id]
-                                                                                   (when skip-archived [:not :archived])]})]
+                                                                                   (when skip-archived [:not :archived])
+                                                                                   ;; Cards materialized by an exploration
+                                                                                   ;; Summary ride with that Summary, which is
+                                                                                   ;; excluded just below. Listing them here
+                                                                                   ;; would make them export targets whose
+                                                                                   ;; Document dependency is absent.
+                                                                                   [:or
+                                                                                    [:= :document_id nil]
+                                                                                    [:in :document_id
+                                                                                     ^:allow-subquery {:select [:id]
+                                                                                                       :from   [:document]
+                                                                                                       :where  [:= :exploration_id nil]}]]]})]
                                {["Card" card-id] {"Collection" id}}))
         documents (when config/ee-available?
                     (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
                                                                               [:and [:= :collection_id id]
+                                                                               ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
+                                                                               [:= :exploration_id nil]
                                                                                (when skip-archived [:not :archived])]})]
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and

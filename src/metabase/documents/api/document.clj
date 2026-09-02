@@ -11,6 +11,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -87,6 +88,19 @@
          (:parameters card)))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
+(defn- clone-card!
+  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
+
+  Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the authoring
+  checks (run permission on the query, parameter source-card and parameter field permissions): the query and
+  parameters come from an existing card row the caller passed a read check on rather than from the request, so the
+  user is not authoring anything -- they may be able to view (and run) the source card without having permission to
+  write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
+  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
+  [card creator]
+  (api/create-check :model/Card {:collection_id (:collection_id card)})
+  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
                                   [:content_type :string]]
 
@@ -143,45 +157,78 @@
   - map of old-card-id -> cloned-card-id"
   [{:keys [id collection_id] :as document}]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos? (-> % :attrs :id)))
+                                                                (pos-int? (-> % :attrs :id)))
                                                        (-> % :attrs :id)))
         to-clone (when (seq card-ids)
                    (t2/select :model/Card {:where [:and [:in :id card-ids]
                                                    [:or [:<> :document_id id]
                                                     [:= :document_id nil]]]}))]
-    (reduce (fn [accum card]
-              (api/read-check card)
-              (assoc accum
-                     (:id card)
-                     (:id (create-card! (assoc card :document_id id :collection_id collection_id)
-                                        @api/*current-user*))))
-            {}
-            to-clone)))
+    (m.document/with-content-gate-cache
+      (reduce (fn [accum card]
+                (api/read-check card)
+                (assoc accum
+                       (:id card)
+                       (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
+                                         @api/*current-user*))))
+              {}
+              to-clone))))
+
+(defn- hydrate-document
+  "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
+  publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
+  both semantically wrong and an extra, avoidable round-trip."
+  [id]
+  (t2/hydrate (t2/select-one :model/Document :id id)
+              :creator :can_write :can_delete :can_restore :is_remote_synced))
 
 (defn get-document
-  "Get document by id checking if the current user has permission to access and if the document exists.
+  "Get document by id, checking that it exists and the current user can read it, and recording a view.
   Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
   [id & {:keys [log-view?] :or {log-view? true}}]
-  (u/prog1 (api/check-404
-            (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
+  (u/prog1 (api/check-404 (api/read-check (hydrate-document id)))
     (when log-view?
       (events/publish-event! :event/document-read
                              {:object-id id
                               :user-id api/*current-user-id*}))))
+
+(defn- draft-stored-result-pairings
+  "From the incoming document AST and a draft→new card-id map, collect distinct
+  `[new-card-id stored-result-id]` pairs for draft embeds that carry a `stored_result_id`.
+
+  Only negative keys from `card-id-map` are considered (the draft-created set); clone
+  remappings are irrelevant here."
+  [document content-type draft-card-id-map]
+  (when (and (seq draft-card-id-map) document)
+    (->> (prose-mirror/collect-ast
+          {:document document :content_type content-type}
+          (fn [{:keys [type attrs]}]
+            (when (and (= prose-mirror/card-embed-type type)
+                       (contains? draft-card-id-map (:id attrs))
+                       (:stored_result_id attrs))
+              [(get draft-card-id-map (:id attrs))
+               (:stored_result_id attrs)])))
+         distinct
+         vec)))
 
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
   document with `document-id` and persist it. `position` is a 0-based index among the document's
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
-  The caller is responsible for write-checking the document first. The document is re-read inside
-  the transaction so a concurrent edit cannot be overwritten. Returns the updated document."
-  [document-id card-id position]
+  Optional kwargs:
+  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
+    `:chart_href`, `:child_target_id`, `:host_data`).
+
+  Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
+  write-checking the document first. The document is re-read inside the transaction so a
+  concurrent edit cannot be overwritten. Returns the updated document."
+  [document-id card-id position & {:keys [extra-attrs]}]
   (t2/with-transaction [_conn]
-    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
-      (t2/update! :model/Document document-id
-                  (select-keys (prose-mirror/insert-card-embed document card-id position) [:document]))
+    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))
+          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+          updates  (cond-> (select-keys updated [:document])
+                     (:is_placeholder document) (assoc :is_placeholder false))]
+      (t2/update! :model/Document document-id updates)
       (collections/check-for-remote-sync-update document)))
   (get-document document-id :log-view? false))
 
@@ -193,10 +240,16 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  {:items (t2/hydrate (t2/select :model/Document {:where [:and
-                                                          (collection/visible-collection-filter-clause)
-                                                          [:= :archived false]]})
-                      :creator :can_write :is_remote_synced)})
+  {:items (as-> (t2/select :model/Document {:where [:and
+                                                    (collection/visible-collection-filter-clause)
+                                                    [:= :archived false]
+                                                    ;; Documents attached to an exploration are
+                                                    ;; internal to that exploration — every other listing
+                                                    ;; surface (search, recents, collection items)
+                                                    ;; excludes them too.
+                                                    [:= :exploration_id nil]]}) docs
+            (filter mi/can-read? docs)
+            (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -246,7 +299,8 @@
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
-  (api/read-check (get-document document-id)))
+  ;; `get-document` already does the 404 + read-check internally;
+  (get-document document-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -258,7 +312,10 @@
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
-  (let [existing-document (api/check-404 (get-document document-id))]
+  ;; Use a lightweight fetch for the guard: we only need the raw row for the archived/permission/collection-move
+  ;; checks below. Calling `get-document` here would hydrate display fields we don't use and record a *view* of
+  ;; the document on every save.
+  (let [existing-document (api/check-404 (t2/select-one :model/Document :id document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/write-check existing-document)
@@ -272,18 +329,33 @@
                                                                                         collection_id
                                                                                         (:collection_id existing-document))
                                                                        :collection_position collection_position}))
-        (t2/update! :model/Document document-id
-                    (cond-> document-updates
-                      document (merge (update-cards-in-ast
-                                       {:document document
-                                        :content_type (:content_type existing-document)}
-                                       (merge
-                                        (clone-cards-in-document! (assoc existing-document :document document))
-                                        (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
-                      name (assoc :name name)
-                      (contains? body :collection_id) (assoc :collection_id collection_id)))
+        (let [card-id-map (when document
+                            (merge
+                             (clone-cards-in-document! (assoc existing-document :document document))
+                             (when-not (empty? cards)
+                               (create-cards-for-document! cards document-id collection_id @api/*current-user*))))
+              draft-card-id-map (into {} (filter (comp neg? key) card-id-map))
+              pairings (draft-stored-result-pairings document
+                                                     (:content_type existing-document)
+                                                     draft-card-id-map)]
+          (t2/update! :model/Document document-id
+                      (cond-> document-updates
+                        document (merge (update-cards-in-ast
+                                         {:document document
+                                          :content_type (:content_type existing-document)}
+                                         card-id-map))
+                        name (assoc :name name)
+                        (contains? body :collection_id) (assoc :collection_id collection_id)
+                        ;; First body save clears the auto-created Summary placeholder flag.
+                        (and (:is_placeholder existing-document)
+                             (contains? body :document))
+                        (assoc :is_placeholder false)))
+          (when (seq pairings)
+            (card/carry-pairings-for-document! document-id pairings)))
         (collections/check-for-remote-sync-update existing-document))
-      (let [updated-document (get-document document-id)]
+      ;; `hydrate-document` (not `get-document`): the write already passed `write-check`, and a save is not a view,
+      ;; so we neither re-check read perms nor publish a read event for the returned instance.
+      (let [updated-document (hydrate-document document-id)]
         ;; Publish appropriate events
         (if (:archived document-updates)
           (events/publish-event! :event/document-delete
@@ -333,12 +405,12 @@
               ;; collection the caller cannot read. Read-check each card before copying, mirroring
               ;; `clone-cards-in-document!`.
               (api/read-check card)
-              (let [new-card (create-card! (-> card
-                                               (dissoc :id :entity_id :created_at :updated_at :creator_id
-                                                       :public_uuid :made_public_by_id :cache_invalidated_at)
-                                               (assoc :document_id new-document-id
-                                                      :collection_id new-collection-id))
-                                           @api/*current-user*)]
+              (let [new-card (clone-card! (-> card
+                                              (dissoc :id :entity_id :created_at :updated_at :creator_id
+                                                      :public_uuid :made_public_by_id :cache_invalidated_at)
+                                              (assoc :document_id new-document-id
+                                                     :collection_id new-collection-id))
+                                          @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
                   (t2/update! :model/Card (:id new-card)
                               {:archived          (boolean (:archived card))

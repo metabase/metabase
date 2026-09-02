@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.transforms.jobs-test
+  ;; raw tools.logging is required so tests can redef log/log* and capture log output
   #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.string :as str]

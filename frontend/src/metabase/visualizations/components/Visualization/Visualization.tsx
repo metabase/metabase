@@ -20,63 +20,62 @@ import type { ContentTranslationFunction } from "metabase/content-translation/ty
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
-import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
+import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
-import {
-  extractRemappings,
-  getVisualizationComponent,
-  getVisualizationTransformed,
-  prefetchVisualizationComponent,
-} from "metabase/visualizations";
+import { getVisualizationComponent } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-import {
-  ChartSettingsError,
-  MinRowsError,
-} from "metabase/visualizations/lib/errors";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   type CardSlownessStatus,
   type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
-  type HighlightedObject,
-  type HoveredObject,
   type OnBrush,
   type QueryClickActionsMode,
-  type VisualizationDefinition,
-  type VisualizationGridSize,
   type VisualizationPassThroughProps,
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
+import {
+  ChartSettingsError,
+  type HighlightedObject,
+  type HoveredObject,
+  MinRowsError,
+  type VisualizationDefinition,
+  type VisualizationGridSize,
+  extractRemappings,
+  getCardKey,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+  isSameSeries,
+  prefetchVisualizationComponent,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Card,
   CardId,
   Dashboard,
   DashboardCard,
   IconName,
   RawSeries,
   Series,
+  SeriesCard,
   SingleSeries,
   TimelineEvent,
+  VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
@@ -94,6 +93,7 @@ import {
   VisualizationRoot,
 } from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
+import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
 
 type StateDispatchProps = {
@@ -112,11 +112,18 @@ type ForwardedRefProps = {
 };
 
 type OnChangeCardAndRunOpts = {
-  nextCard: Card;
-  previousCard: Card;
+  nextCard: SeriesCard;
+  previousCard: SeriesCard;
   objectId?: number;
   drillName?: string;
 };
+
+type VisualizationRawSeries = (
+  | SingleSeries
+  | {
+      card: SeriesCard | VirtualCard;
+    }
+)[];
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
@@ -151,15 +158,12 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
+  /** Shown while a custom viz plugin loads. Documents supply their card-embed loading view here. */
+  customVizLoadingView?: ReactNode;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   editSummary?: () => void;
-  rawSeries?: (
-    | SingleSeries
-    | {
-        card: Card;
-      }
-  )[];
+  rawSeries?: VisualizationRawSeries;
   visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
@@ -433,7 +437,7 @@ class Visualization extends PureComponent<
 
   private static getQuestionForCard(
     metadata: Metadata | undefined,
-    card: Card | undefined,
+    card: SeriesCard | undefined,
   ) {
     return !!card && !!metadata ? new Question(card, metadata) : undefined;
   }
@@ -448,12 +452,7 @@ class Visualization extends PureComponent<
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
-    rawSeries: (
-      | SingleSeries
-      | {
-          card: Card;
-        }
-    )[] = [],
+    rawSeries: VisualizationRawSeries = [],
     visualizerRawSeries: RawSeries = [],
     isRawTable = false,
     getExtraDataForClick: (
@@ -475,6 +474,9 @@ class Visualization extends PureComponent<
       rawSeries,
       visualizerRawSeries,
     );
+    if (!isQuestionCard(card)) {
+      return [];
+    }
     const question = Visualization.getQuestionForCard(metadata, card);
     const modeInstance = Visualization.getMode(mode, question);
 
@@ -551,12 +553,7 @@ class Visualization extends PureComponent<
   private static findCardById(
     cardId?: CardId | null,
     dashcard?: DashboardCard,
-    rawSeries: (
-      | SingleSeries
-      | {
-          card: Card;
-        }
-    )[] = [],
+    rawSeries: VisualizationRawSeries = [],
     visualizerRawSeries: RawSeries = [],
   ) {
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
@@ -625,17 +622,21 @@ class Visualization extends PureComponent<
     const { dashcard, rawSeries, visualizerRawSeries, onChangeCardAndRun } =
       this.props;
 
-    onChangeCardAndRun?.({
-      previousCard: Visualization.findCardById(
-        nextCard?.id,
-        dashcard,
-        rawSeries,
-        visualizerRawSeries,
-      ),
-      nextCard,
-      objectId,
-      drillName,
-    });
+    const previousCard = Visualization.findCardById(
+      nextCard?.id,
+      dashcard,
+      rawSeries,
+      visualizerRawSeries,
+    );
+
+    if (isQuestionCard(previousCard)) {
+      onChangeCardAndRun?.({
+        previousCard,
+        nextCard,
+        objectId,
+        drillName,
+      });
+    }
   };
 
   onRender = ({ warnings = [] }: { warnings?: string[] } = {}) => {
@@ -698,6 +699,7 @@ class Visualization extends PureComponent<
       isPreviewing,
       isRawTable,
       isQueryBuilder,
+      isStandaloneQuestion,
       isRunning,
       isSettings,
       isShowingDetailsOnlyColumns,
@@ -851,11 +853,17 @@ class Visualization extends PureComponent<
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isLoadingHeaderEnabled = !(
+      visualization && visualization.noLoadingHeader
+    );
 
     const hasHeader =
       (showTitle &&
         hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
+        ((loading && isLoadingHeaderEnabled) ||
+          error ||
+          noResults ||
+          isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
 
     // We can't navigate a user to a particular card from a visualizer viz,
@@ -976,6 +984,7 @@ class Visualization extends PureComponent<
                       isPreviewing={isPreviewing}
                       isRawTable={isRawTable}
                       isQueryBuilder={!!isQueryBuilder}
+                      isStandaloneQuestion={!!isStandaloneQuestion}
                       isSettings={!!isSettings}
                       isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                       scrollToLastColumn={scrollToLastColumn}
@@ -1078,8 +1087,8 @@ export default _.compose(
         PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
 
       if (customVizLoading) {
-        if (props.isDocument) {
-          return <CardEmbedLoadingState />;
+        if (props.customVizLoadingView) {
+          return <>{props.customVizLoadingView}</>;
         }
 
         if (props.isDashboard) {

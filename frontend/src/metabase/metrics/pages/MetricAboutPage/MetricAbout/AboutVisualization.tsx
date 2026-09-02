@@ -34,7 +34,7 @@ export function AboutVisualization({
   return (
     <Stack gap={0} h="100%" className={S.visualizationPanel}>
       {trendData && (
-        <Box p="xl" pb="sm" data-testid="metric-value-preview">
+        <Box p="xxl" pb="sm" data-testid="metric-value-preview">
           <TrendInfo {...trendData} />
         </Box>
       )}

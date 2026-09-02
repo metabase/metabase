@@ -1,0 +1,81 @@
+name: Cleanup DWH Test Data
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      drivers:
+        description: 'Drivers to sweep (comma-separated)'
+        required: false
+        default: 'snowflake,bigquery-cloud-sdk,redshift'
+        type: string
+      temp-data-hours:
+        description: 'TTL in hours for per-run garbage (minimum 2)'
+        required: false
+        default: '2'
+        type: string
+      fixture-hours:
+        description: 'TTL in hours for datasets runs share (minimum 24)'
+        required: false
+        default: '96'
+        type: string
+
+# `inputs.*` is empty on the scheduled run, so each falls back to the nightly value.
+env:
+  GC_TEMP_HOURS: ${{ inputs.temp-data-hours || 2 }} # for temp data
+  GC_FIXTURE_HOURS: ${{ inputs.fixture-hours || 96 }} # for reusable data
+  GC_DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift' }}
+
+concurrency:
+  group: test-cleanup-dwh-data
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gc:
+    name: Sweep orphaned test data
+    if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      # Snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      # BigQuery
+      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
+      # Redshift
+      MB_REDSHIFT_TEST_USER: metabase_ci
+      MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_DB_ROUTING: dev
+      MB_REDSHIFT_TEST_HOSTS: ${{ secrets.MB_REDSHIFT_TEST_HOSTS }}
+      MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
+      MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare-backend
+      - name: Sweep orphaned test data
+        run: |
+          clojure -X:dev:drivers:drivers-dev:test metabase.test.data.gc/gc-orphans! \
+            :drivers "\"${{ env.GC_DRIVERS }}\"" \
+            :temp-data-hours "${{ env.GC_TEMP_HOURS }}" \
+            :fixture-hours "${{ env.GC_FIXTURE_HOURS }}" \
+            :report-dir '"target/gc-report"'
+
+      # The report is most wanted on the runs that fail, so upload it regardless of the sweep's outcome.
+      - name: Upload sweep report
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: dwh-gc-report-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: target/gc-report
+          if-no-files-found: warn

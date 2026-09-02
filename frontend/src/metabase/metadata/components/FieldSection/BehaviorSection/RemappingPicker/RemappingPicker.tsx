@@ -10,7 +10,7 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -316,14 +316,14 @@ export const RemappingPicker = ({
             />
           )}
 
-          {hasChanged && hasFkMappingValue && <NamingTip mt="md" />}
+          {hasChanged && hasFkMappingValue && <NamingTip mt="lg" />}
         </>
       )}
 
       {value === "custom" && (
         <>
           {isFieldsAccessRestricted && (
-            <Alert size="compact" variant="light" mt="md">
+            <Alert size="compact" variant="light" mt="lg">
               {t`You need unrestricted data access on this table to map custom display values.`}
             </Alert>
           )}
@@ -349,7 +349,7 @@ export const RemappingPicker = ({
                 </Button>
               </Group>
 
-              {hasChanged && <NamingTip mt="md" />}
+              {hasChanged && <NamingTip mt="lg" />}
             </>
           )}
         </>

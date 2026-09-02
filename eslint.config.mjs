@@ -125,6 +125,11 @@ const baseMetabaseRestrictedConfig = {
       message:
         "Please use `testing-library/react` or `@testing-library/user-event`",
     },
+    {
+      name: "reselect",
+      message:
+        "Please import from `@reduxjs/toolkit` instead, which re-exports reselect.",
+    },
   ],
 };
 
@@ -323,6 +328,7 @@ const configs = [
       "metabase/jtag-missing-key": "error",
       "metabase/no-unconditional-metabase-links-render": "error",
       "metabase/no-color-literals": "error",
+      "metabase/valid-theme-tokens": "error",
       "metabase/no-literal-metabase-strings": "error",
       "metabase/no-oss-reinitialize-import": "error",
       "metabase/no-analytics-import-outside-analytics-files": "error",
@@ -332,7 +338,6 @@ const configs = [
         {
           allowed: [
             "underscore",
-            "lodash.orderby",
             "lodash.debounce",
             "chalk",
             "node-fetch",

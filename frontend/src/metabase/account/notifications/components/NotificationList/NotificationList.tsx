@@ -37,7 +37,7 @@ export const NotificationList = ({
 
   return (
     <div data-testid="notifications-list">
-      <Flex align="center" mb="lg">
+      <Flex align="center" mb="xl">
         <Text c="text-primary" fz="md" fw={700} flex="1 1 auto" m={0}>
           {t`You receive or created these`}
         </Text>
