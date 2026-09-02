@@ -10,6 +10,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -262,10 +263,15 @@
                                            [:entity-id-or-query ::entity-id-or-query]]]
   (dashboard-metadata (get-automagic-dashboard entity entity-id-or-query nil)))
 
+(defn- field-id-pred [field-ref]
+  (fn [{:keys [field_ref]}]
+    (= (lib/field-ref-id field-ref)
+       (lib/field-ref-id (lib/normalize ::lib.schema.ref/ref field_ref)))))
+
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
-  [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
-  (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
+  [{{field-ref :pk_ref} :model-index {result-metadata :result_metadata} :model}]
+  (when-let [field-id (:id (first (filter (field-id-pred field-ref) result-metadata)))]
     (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
       (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
       (for [{:keys [table_id id] :as field} fields
