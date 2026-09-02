@@ -85,7 +85,6 @@
                                       {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                                       (meta/id :categories :name)]]
                        :joins       [{:lib/type    :mbql/join
-                                      :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
                                       :conditions  [[:=
                                                      {:lib/uuid string?}
@@ -172,7 +171,6 @@
              :database (meta/id)
              :stages   [{:lib/type :mbql.stage/mbql
                          :joins    [{:lib/type    :mbql/join
-                                     :lib/options {:lib/uuid string?}
                                      :alias       "__join"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
@@ -186,7 +184,6 @@
                                      :stages      [{:lib/type     :mbql.stage/mbql
                                                     :source-table (meta/id :venues)}]}
                                     {:lib/type    :mbql/join
-                                     :lib/options {:lib/uuid string?}
                                      :alias       "__join_2"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
@@ -215,8 +212,7 @@
                                                         [:field {:lib/uuid string?} 2]]]
                                          :lib/type    :mbql/join
                                          :stages      [{:lib/type     :mbql.stage/mbql
-                                                        :source-table 3}]
-                                         :lib/options {:lib/uuid string?}}]
+                                                        :source-table 3}]}]
                          :limit        1
                          :source-table 4}]
              :database 5}
