@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import type { State } from "metabase/redux/store";
+import type { EntitiesState, State } from "metabase/redux/store";
 import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -35,6 +35,13 @@ import type {
 
 import { type FieldEntity, FieldSchema } from "./schema";
 
+/**
+ * The slice these selectors read. Naming it here rather than taking the global
+ * `State` keeps the shape this module depends on explicit, and lets a caller
+ * that holds only the mirror use them.
+ */
+type MetadataState = { entities: EntitiesState };
+
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
 };
@@ -45,13 +52,17 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
-const getNormalizedSchemas = (state: State) => state.entities.schemas;
+const getNormalizedDatabases = (state: MetadataState) =>
+  state.entities.databases;
+const getNormalizedSchemas = (state: MetadataState) => state.entities.schemas;
 
-const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
+const getNormalizedTablesUnfiltered = (state: MetadataState) =>
+  state.entities.tables;
 
-const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
-  !!props?.includeHiddenTables;
+const getIncludeHiddenTables = (
+  _state: MetadataState,
+  props?: TableSelectorOpts,
+) => !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
@@ -65,9 +76,12 @@ const getNormalizedTables = createSelector(
         ),
 );
 
-const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
-const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
-  !!props?.includeSensitiveFields;
+const getNormalizedFieldsUnfiltered = (state: MetadataState) =>
+  state.entities.fields;
+const getIncludeSensitiveFields = (
+  _state: MetadataState,
+  props?: FieldSelectorOpts,
+) => !!props?.includeSensitiveFields;
 
 const getNormalizedFields = createSelector(
   [
@@ -92,17 +106,22 @@ const getNormalizedFields = createSelector(
     ),
 );
 
-const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedMeasures = (state: State) => state.entities.measures ?? {};
-const getNormalizedMetrics = (state: State) => state.entities.metrics ?? {};
-const getNormalizedQuestions = (state: State) => state.entities.questions;
-const getNormalizedSnippets = (state: State) => state.entities.snippets;
+const getNormalizedSegments = (state: MetadataState) => state.entities.segments;
+const getNormalizedMeasures = (state: MetadataState) =>
+  state.entities.measures ?? {};
+const getNormalizedMetrics = (state: MetadataState) =>
+  state.entities.metrics ?? {};
+const getNormalizedQuestions = (state: MetadataState) =>
+  state.entities.questions;
+const getNormalizedSnippets = (state: MetadataState) => state.entities.snippets;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
 
+// Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
+// which reads settings out of the RTK Query cache. It narrows when that does.
 export const getMetadata: (
   state: State,
   props?: MetadataSelectorOpts,
@@ -449,7 +468,7 @@ function hydrateMeasureTable(
  * another, so a component cannot answer this from its own result.
  */
 export function getFieldRemappings(
-  state: State,
+  state: MetadataState,
   fieldId: FieldId,
 ): FieldValue[] {
   return state.entities.fields[fieldId]?.remappings ?? [];
