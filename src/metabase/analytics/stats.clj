@@ -272,9 +272,8 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (app-db/qualify Database :engine)
-      {:left-join [Database [:= (app-db/qualify Database :id)
-                                (app-db/qualify Table :db_id)]]})
+    (db-frequencies Table 'metabase_database.engine
+      {'left-join ['metabase_database ['= 'metabase_database.id 'metabase_table.db_id]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
@@ -316,7 +315,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {'left-join ['pulse ['= 'pulse.id 'pulse_id]], 'where ['not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
+  (let [alert-conditions {'left-join ['pulse ['= 'pulse.id 'pulse_id]], 'where ['not= 'pulse.alert_condition nil]}]
     {:alerts               (t2/count :model/Pulse 'alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count :model/Pulse 'alert_condition [:not= nil], 'alert_first_only true)

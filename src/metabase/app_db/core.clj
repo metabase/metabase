@@ -74,8 +74,6 @@
  [metabase.app-db.query
   compile
   isa
-  join
-  qualify
   query
   select-or-insert!
   streaming-reducible

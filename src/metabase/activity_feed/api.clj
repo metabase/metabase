@@ -1,11 +1,9 @@
 (ns metabase.activity-feed.api
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -30,14 +28,14 @@
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
                   [:visibility_type :visibility_type]
                   [:metabase_database.name :database-name]])
-   (let [model-symb (symbol (str/capitalize model))
-         self-qualify #(app-db/qualify model-symb %)]
-     {'where ['in (self-qualify :id) ids]
+   (let [table        (case model "table" 'metabase_table "card" 'report_card "dashboard" 'report_dashboard)
+         self-qualify #(symbol (str table "." (name %)))]
+     {'where ['in (self-qualify 'id) ids]
       'left-join (case model
-                   "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
-                   "card" [:collection [:= :collection.id (self-qualify :collection_id)]
-                           [:report_dashboard :dashboard] [:= :dashboard.id (self-qualify :dashboard_id)]]
-                   "dashboard" [:collection [:= :collection.id (self-qualify :collection_id)]])})))
+                   "table" ['metabase_database ['= 'metabase_database.id (self-qualify 'db_id)]]
+                   "card" ['collection ['= 'collection.id (self-qualify 'collection_id)]
+                           ['report_dashboard 'dashboard] ['= 'dashboard.id (self-qualify 'dashboard_id)]]
+                   "dashboard" ['collection ['= 'collection.id (self-qualify 'collection_id)]])})))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
@@ -93,10 +91,10 @@
                                                            ['= 't.id 'model_id]]]})
         card-runs                 (->> (t2/select [:model/QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(app-db/qualify :model/QueryExecution :card_id) :model_id]
+                                                   ['query_execution.card_id :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {'group-by [(app-db/qualify :model/QueryExecution :card_id) 'context]
+                                                  {'group-by ['query_execution.card_id 'context]
                                                    'where    ['and
                                                               ['= 'context (h2x/literal :question)]]
                                                    'order-by [['max_ts 'desc]]

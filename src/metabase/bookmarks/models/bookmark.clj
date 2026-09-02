@@ -133,54 +133,54 @@
   [user-id]
   (let [user-scope {:current-user-id user-id
                     :is-superuser?   (perms/is-superuser? user-id)}
-        select-fields [[:bookmark.created_at :created_at]
-                       [:bookmark.type              :type]
-                       [:bookmark.item_id           :item_id]
-                       [:card.name                  (mdb/qualify :model/Card :name)]
-                       [:card.type                  (mdb/qualify :model/Card :card_type)]
-                       [:card.display               (mdb/qualify :model/Card :display)]
-                       [:card.description           (mdb/qualify :model/Card :description)]
-                       [:card.archived              (mdb/qualify :model/Card :archived)]
-                       [:dashboard.name             (mdb/qualify :model/Dashboard :name)]
-                       [:dashboard.description      (mdb/qualify :model/Dashboard :description)]
-                       [:dashboard.archived         (mdb/qualify :model/Dashboard :archived)]
-                       [:collection.name              (mdb/qualify :model/Collection  :name)]
-                       [:collection.authority_level   (mdb/qualify :model/Collection :authority_level)]
-                       [:collection.is_remote_synced  (mdb/qualify :model/Collection :is_remote_synced)]
-                       [:collection.description       (mdb/qualify :model/Collection :description)]
-                       [:collection.archived          (mdb/qualify :model/Collection :archived)]
-                       [:document.name (mdb/qualify :model/Document :name)]
-                       [:document.archived (mdb/qualify :model/Document :archived)]
-                       [:exploration.name        (mdb/qualify :model/Exploration :name)]
-                       [:exploration.description (mdb/qualify :model/Exploration :description)]
-                       [:exploration.archived    (mdb/qualify :model/Exploration :archived)]]
-        left-joins [[:report_card :card] [:= :bookmark.card_id :card.id]
-                    [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
+        select-fields [['bookmark.created_at 'created_at]
+                       ['bookmark.type              'type]
+                       ['bookmark.item_id           'item_id]
+                       ['card.name                  'report_card.name]
+                       ['card.type                  'report_card.card_type]
+                       ['card.display               'report_card.display]
+                       ['card.description           'report_card.description]
+                       ['card.archived              'report_card.archived]
+                       ['dashboard.name             'report_dashboard.name]
+                       ['dashboard.description      'report_dashboard.description]
+                       ['dashboard.archived         'report_dashboard.archived]
+                       ['collection.name              'collection.name]
+                       ['collection.authority_level   'collection.authority_level]
+                       ['collection.is_remote_synced  'collection.is_remote_synced]
+                       ['collection.description       'collection.description]
+                       ['collection.archived          'collection.archived]
+                       ['document.name 'document.name]
+                       ['document.archived 'document.archived]
+                       ['exploration.name        'exploration.name]
+                       ['exploration.description 'exploration.description]
+                       ['exploration.archived    'exploration.archived]]
+        left-joins [['report_card 'card] ['= 'bookmark.card_id 'card.id]
+                    ['report_dashboard 'dashboard]          ['= 'bookmark.dashboard_id 'dashboard.id]
                     ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
-                    [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
+                    [:collection :collection]               ['in :collection.id [(h2x/identifier :field :bookmark :collection_id)
                                                                                  (h2x/identifier :field :dashboard :collection_id)]]
-                    [:bookmark_ordering :bookmark_ordering] [:and
-                                                             [:= :bookmark_ordering.user_id user-id]
-                                                             [:= :bookmark_ordering.type :bookmark.type]
-                                                             [:= :bookmark_ordering.item_id :bookmark.item_id]]
-                    [:document :document] [:= :bookmark.document_id :document.id]
-                    [:exploration :exploration] [:= :bookmark.exploration_id :exploration.id]]
-        where-conditions (into [:and]
-                               (for [table [:card :dashboard :collection :document :exploration]
-                                     :let  [field (keyword (str (name table) "." "archived"))]]
-                                 [:or [:= field false] [:= field nil]]))
+                    ['bookmark_ordering 'bookmark_ordering] ['and
+                                                             ['= 'bookmark_ordering.user_id user-id]
+                                                             ['= 'bookmark_ordering.type 'bookmark.type]
+                                                             ['= 'bookmark_ordering.item_id 'bookmark.item_id]]
+                    ['document 'document] ['= 'bookmark.document_id 'document.id]
+                    ['exploration 'exploration] ['= 'bookmark.exploration_id 'exploration.id]]
+        where-conditions (into ['and]
+                               (for [table ['card 'dashboard 'collection 'document 'exploration]
+                                     :let  [field (symbol (str (name table) "." "archived"))]]
+                                 ['or ['= field false] ['= field nil]]))
         ;; Re-check read permission at read time (SEC-669). The `:visible_collection_ids` CTE governs *permissions*
         ;; only (`:include-archived-items :all`); the `where-conditions` above keep governing archived filtering.
         visible? (fn [collection-id-field]
                    (collection/visible-collection-filter-clause collection-id-field
                                                                 {:cte-name :visible_collection_ids}
                                                                 user-scope))
-        readable-conditions [:or
-                             [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
-                             [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
+        readable-conditions ['or
+                             ['and ['= 'bookmark.type (h2x/literal "card")]       (visible? 'card.collection_id)]
+                             ['and ['= 'bookmark.type (h2x/literal "dashboard")]  (visible? 'dashboard.collection_id)]
+                             ['and ['= 'bookmark.type (h2x/literal "collection")] (visible? 'collection.id)]
+                             ['and ['= 'bookmark.type (h2x/literal "document")]   (visible? 'document.collection_id)]
+                             ['and ['= 'bookmark.type (h2x/literal "exploration")] (visible? 'exploration.collection_id)]]]
     (->> (mdb/query
           {'with [['visible_collection_ids (collection/visible-collection-query
                                             {:include-archived-items :all

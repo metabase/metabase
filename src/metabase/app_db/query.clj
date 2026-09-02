@@ -27,8 +27,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
-   [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.model :as t2.model])
+   [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -70,24 +69,6 @@
   ;;    [:in :semantic_type #{"type/URL" "type/ImageURL"}]
   ([expr type-keyword]
    [:in expr (type-keyword->descendants type-keyword)]))
-
-(defn qualify
-  "Returns a qualified field for [modelable] with [field-name]."
-  ^clojure.lang.Symbol [modelable field-name]
-  (if (vector? field-name)
-    [(qualify modelable (first field-name)) (second field-name)]
-    (let [model (t2.model/resolve-model modelable)]
-      (symbol (str (name (t2.model/table-name model)) \. (name field-name))))))
-
-(defn join
-  "Convenience for generating a HoneySQL `JOIN` clause.
-
-     (t2/select-pks-set FieldValues
-       (mdb/join [FieldValues :field_id] [Field :id])
-       :active true)"
-  [[source-entity fk] [dest-entity pk]]
-  {'left-join [(t2/table-name (t2.model/resolve-model dest-entity))
-               ['= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
