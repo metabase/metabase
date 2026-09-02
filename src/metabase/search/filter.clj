@@ -195,7 +195,7 @@
    identity
    (concat
     [[:models (if (seq (:models search-context))
-                ['in 'search_index.model ('models search-context)]
+                ['in 'search_index.model (:models search-context)]
                 ;; Ideally, we would not get this far, and bail out earlier.
                 ['= 1 2])]]
     (when-let [ids (:ids search-context)]
@@ -208,7 +208,7 @@
                             ['or
                              ;; leverage the fact that only card-related models populate this attribute
                              ['= nil 'search_index.dashboard_id]
-                             (when ('include-dashboard-questions? search-context)
+                             (when (:include-dashboard-questions? search-context)
                                ['not= ['inline 0] ['coalesce 'search_index.dashboardcard_count ['inline 0]]])]
                             ;; documents with an exploration id are similar to a Dashboard Question - they aren't
                             ;; searchable outside of their owning Exploration.
