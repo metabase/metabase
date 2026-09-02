@@ -36,10 +36,10 @@ describe("TimelineSidebar", () => {
         timelines={[timeline]}
         visibleEventIds={[1]}
         selectedEventIds={[]}
-        onShowTimelineEvents={jest.fn()}
-        onHideTimelineEvents={jest.fn()}
-        onShowTimeline={jest.fn()}
-        onHideTimeline={jest.fn()}
+        onUpdateVisibility={jest.fn()}
+        onSelectEvents={jest.fn()}
+        onDeselectEvents={jest.fn()}
+        onClose={jest.fn()}
       />,
     );
 

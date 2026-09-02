@@ -6,9 +6,12 @@ import {
   setupCollectionByIdEndpoint,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  getTimelineCheckbox,
+  getTimelineEventCheckbox,
+} from "__support__/timelines";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { checkNotNull } from "metabase/utils/types";
 import type { TimelineEventsVisibility } from "metabase-types/api";
 import {
   createMockCard,
@@ -17,6 +20,8 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
+
+import { getDraftCards } from "../selectors";
 
 import { EmbedTimelineSidebar } from "./EmbedTimelineSidebar";
 
@@ -67,27 +72,8 @@ const setup = async (visibility?: TimelineEventsVisibility) => {
   return store;
 };
 
-const getEventCheckbox = (eventName: string) =>
-  within(
-    checkNotNull(
-      screen
-        .getAllByLabelText("Timeline event card")
-        .find((card) => within(card).queryByText(eventName) != null),
-    ),
-  ).getByRole("checkbox");
-
-const getTimelineCheckbox = (timelineName: string) =>
-  within(
-    checkNotNull(
-      screen
-        .getAllByLabelText("Timeline card header")
-        .find((header) => within(header).queryByText(timelineName) != null),
-    ),
-  ).getByRole("checkbox");
-
 const getDraftCardSettings = (store: Awaited<ReturnType<typeof setup>>) =>
-  Object.values(store.getState().documents.draftCards)[0]
-    ?.visualization_settings;
+  Object.values(getDraftCards(store.getState()))[0]?.visualization_settings;
 
 describe("EmbedTimelineSidebar", () => {
   it("shows the events the card recorded", async () => {
@@ -96,8 +82,8 @@ describe("EmbedTimelineSidebar", () => {
       "timeline.excluded_timeline_event_ids": [RC2.id],
     });
 
-    expect(getEventCheckbox("RC1")).toBeChecked();
-    expect(getEventCheckbox("RC2")).not.toBeChecked();
+    expect(getTimelineEventCheckbox("RC1")).toBeChecked();
+    expect(getTimelineEventCheckbox("RC2")).not.toBeChecked();
   });
 
   it("hiding an event records the selection on a draft card", async () => {
@@ -106,7 +92,7 @@ describe("EmbedTimelineSidebar", () => {
       "timeline.excluded_timeline_event_ids": [],
     });
 
-    await userEvent.click(getEventCheckbox("RC1"));
+    await userEvent.click(getTimelineEventCheckbox("RC1"));
 
     await waitFor(() => {
       expect(getDraftCardSettings(store)).toEqual({
@@ -118,7 +104,7 @@ describe("EmbedTimelineSidebar", () => {
 
   it("turning a timeline on records it for a card that never recorded events", async () => {
     const store = await setup();
-    expect(getEventCheckbox("RC1")).not.toBeChecked();
+    expect(getTimelineEventCheckbox("RC1")).not.toBeChecked();
 
     await userEvent.click(getTimelineCheckbox("Releases"));
 

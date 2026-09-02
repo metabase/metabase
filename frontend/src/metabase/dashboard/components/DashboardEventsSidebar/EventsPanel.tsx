@@ -1,25 +1,35 @@
+import { useCallback } from "react";
+
+import {
+  deselectTimelineEvents,
+  selectTimelineEvents,
+  updateDashCardsTimelineEventsVisibility,
+} from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboardCollectionId } from "metabase/dashboard/timeline-events";
-import { useSelector } from "metabase/redux";
-import { TimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
-import type { TimeseriesXAxis } from "metabase/viz-core";
-import type { DashCardId, Timeline, TimelineEventId } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import {
+  TimelineSidebar,
+  type TimelineSidebarProps,
+} from "metabase/timelines/panel/components/TimelineSidebar";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { DashCardId, TimelineEvent } from "metabase-types/api";
 
-import { useTimelineEventsHandlers } from "./use-timeline-events-handlers";
-
-export interface EventsPanelProps {
+export type EventsPanelProps = Pick<
+  TimelineSidebarProps,
+  | "timelines"
+  | "visibleEventIds"
+  | "partiallyVisibleEventIds"
+  | "selectedEventIds"
+  | "focusedEventIds"
+  | "xAxis"
+  | "onShowAllEvents"
+> & {
   /** the charts the toggles apply to */
   dashcardIds: DashCardId[];
   /** the chart a selected event is highlighted on; absent = every chart */
   selectionDashcardId?: DashCardId;
-  timelines: Timeline[];
-  visibleEventIds: TimelineEventId[];
-  partiallyVisibleEventIds?: TimelineEventId[];
-  selectedEventIds: TimelineEventId[];
-  focusedEventIds?: TimelineEventId[];
-  xAxis?: TimeseriesXAxis | null;
-  onShowAllEvents?: () => void;
-}
+};
 
 export function EventsPanel({
   dashcardIds,
@@ -32,17 +42,29 @@ export function EventsPanel({
   xAxis,
   onShowAllEvents,
 }: EventsPanelProps) {
+  const dispatch = useDispatch();
   const { closeSidebar } = useDashboardContext();
   const collectionId = useSelector(getDashboardCollectionId);
-  const {
-    onShowTimelineEvents,
-    onHideTimelineEvents,
-    onShowTimeline,
-    onHideTimeline,
-    onSelectEvents,
-    onDeselectEvents,
-    onEventCreated,
-  } = useTimelineEventsHandlers({ dashcardIds, selectionDashcardId });
+
+  const handleUpdateVisibility = useCallback(
+    (update: TimelineEventsVisibilityUpdate) =>
+      dispatch(updateDashCardsTimelineEventsVisibility(dashcardIds, update)),
+    [dispatch, dashcardIds],
+  );
+  const handleSelectEvents = useCallback(
+    (events: TimelineEvent[]) =>
+      dispatch(
+        selectTimelineEvents({
+          dashcardId: selectionDashcardId,
+          eventIds: events.map((event) => event.id),
+        }),
+      ),
+    [dispatch, selectionDashcardId],
+  );
+  const handleDeselectEvents = useCallback(
+    () => dispatch(deselectTimelineEvents()),
+    [dispatch],
+  );
 
   return (
     <TimelineSidebar
@@ -53,13 +75,9 @@ export function EventsPanel({
       selectedEventIds={selectedEventIds}
       focusedEventIds={focusedEventIds}
       xAxis={xAxis}
-      onShowTimelineEvents={onShowTimelineEvents}
-      onHideTimelineEvents={onHideTimelineEvents}
-      onShowTimeline={onShowTimeline}
-      onHideTimeline={onHideTimeline}
-      onSelectEvents={onSelectEvents}
-      onDeselectEvents={onDeselectEvents}
-      onEventCreated={onEventCreated}
+      onUpdateVisibility={handleUpdateVisibility}
+      onSelectEvents={handleSelectEvents}
+      onDeselectEvents={handleDeselectEvents}
       onShowAllEvents={onShowAllEvents}
       onClose={closeSidebar}
     />

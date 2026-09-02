@@ -6,19 +6,13 @@ import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { TimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import { getNonEmptyTimelines } from "metabase/timelines/panel/utils";
 import { Box, Loader, Stack, Text } from "metabase/ui";
 import {
-  hideTimelineEvents,
-  hideTimelines,
   isSameTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
-  showCreatedTimelineEvent,
-  showTimelineEvents,
-  showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
-import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
+import type { CollectionId, TimelineEvent } from "metabase-types/api";
 
 import {
   clearFocusedTimelineEvents,
@@ -55,10 +49,6 @@ export function EmbedTimelineSidebar({
 
   const { isLoading, isError } = useListTimelinesQuery({ include: "events" });
   const timelines = useSelector(getTransformedTimelines);
-  const displayedTimelines = useMemo(
-    () => getNonEmptyTimelines(timelines),
-    [timelines],
-  );
 
   const { card, draftCard, regularDataset } = useCardData({
     id: cardId,
@@ -82,7 +72,7 @@ export function EmbedTimelineSidebar({
     [timelines, visibility],
   );
 
-  const updateVisibility = useCallback(
+  const handleUpdateVisibility = useCallback(
     (update: TimelineEventsVisibilityUpdate) => {
       const nextVisibility = update(visibility ?? {}, timelines);
       if (isSameTimelineEventsVisibility(visibility, nextVisibility)) {
@@ -94,46 +84,6 @@ export function EmbedTimelineSidebar({
       );
     },
     [dispatch, ensureDraftCard, visibility, timelines],
-  );
-
-  const handleShowTimelineEvents = useCallback(
-    (events: TimelineEvent[]) =>
-      updateVisibility((visibility, timelines) =>
-        showTimelineEvents(visibility, events, timelines),
-      ),
-    [updateVisibility],
-  );
-
-  const handleHideTimelineEvents = useCallback(
-    (events: TimelineEvent[]) =>
-      updateVisibility((visibility, timelines) =>
-        hideTimelineEvents(visibility, events, timelines),
-      ),
-    [updateVisibility],
-  );
-
-  const handleShowTimeline = useCallback(
-    (timeline: Timeline) =>
-      updateVisibility((visibility, timelines) =>
-        showTimelines(visibility, [timeline.id], timelines),
-      ),
-    [updateVisibility],
-  );
-
-  const handleHideTimeline = useCallback(
-    (timeline: Timeline) =>
-      updateVisibility((visibility, timelines) =>
-        hideTimelines(visibility, [timeline.id], timelines),
-      ),
-    [updateVisibility],
-  );
-
-  const handleEventCreated = useCallback(
-    (event: TimelineEvent) =>
-      updateVisibility((visibility, timelines) =>
-        showCreatedTimelineEvent(visibility, event, timelines),
-      ),
-    [updateVisibility],
   );
 
   const handleSelectEvents = useCallback(
@@ -180,17 +130,13 @@ export function EmbedTimelineSidebar({
     <Box className={S.container}>
       <TimelineSidebar
         collectionId={collectionId}
-        timelines={displayedTimelines}
+        timelines={timelines}
         visibleEventIds={visibleEventIds}
         selectedEventIds={selectedEventIds}
         focusedEventIds={focusedEventIds}
-        onShowTimelineEvents={handleShowTimelineEvents}
-        onHideTimelineEvents={handleHideTimelineEvents}
-        onShowTimeline={handleShowTimeline}
-        onHideTimeline={handleHideTimeline}
+        onUpdateVisibility={handleUpdateVisibility}
         onSelectEvents={handleSelectEvents}
         onDeselectEvents={handleDeselectEvents}
-        onEventCreated={handleEventCreated}
         onShowAllEvents={handleShowAllEvents}
         onClose={handleClose}
       />

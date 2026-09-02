@@ -128,6 +128,8 @@ export const getMetadataDiff = (state: QueryBuilderStoreState) =>
 
 export const getSelectedTimelineEventIds = (state: QueryBuilderStoreState) =>
   state.qb.selectedTimelineEventIds;
+export const getFocusedTimelineEventIds = (state: QueryBuilderStoreState) =>
+  getUiControls(state).focusedTimelineEventIds;
 
 const getRawQueryResults = (state: QueryBuilderStoreState) =>
   state.qb.queryResults;
@@ -806,7 +808,7 @@ export const getTimeseriesXAxis = createSelector(
     series && settings ? computeTimeseriesXAxis(series, settings) : null,
 );
 
-export const getFilteredTimelines = createSelector(
+const getFilteredTimelines = createSelector(
   [getTransformedTimelines, getTimeseriesXAxis],
   filterTimelinesByXAxis,
 );
