@@ -277,8 +277,8 @@
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
   project-tests
-  {:doc "Run project-level backend, migration, and ratchet checks."
-   :examples [["./bin/mage project-tests" "Run backend, migration, and ratchet checks"]
+  {:doc "Run project-level checks."
+   :examples [["./bin/mage project-tests" "Run every suite"]
               ["./bin/mage project-tests backend" "Run backend checks"]
               ["./bin/mage project-tests migrations" "Run migration checks"]
               ["./bin/mage project-tests modules" "Run module checks"]

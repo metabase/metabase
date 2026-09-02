@@ -77,11 +77,11 @@ It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is runn
 the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
 modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
 
-Run the repository-level checks with:
+Run all repository-level checks, or one named suite:
 
 ```bash
-./bin/mage project-tests          # backend, migration, and ratchet checks
-./bin/mage project-tests modules  # or one suite: backend, migrations, modules, ratchets
+./bin/mage project-tests
+./bin/mage project-tests <backend|migrations|modules|ratchets>
 ```
 
 ## Kondo Ignore Ratchets
