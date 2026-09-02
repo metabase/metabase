@@ -560,14 +560,15 @@
   thread. Deliberately logs no cache keys — printing one is a way this could throw, and a backstop
   that throws is not a backstop."
   []
-  (let [stalled (filter (fn [[_ {:keys [timer]}]] (> (u/since-ms timer) fetch-max-age-ms))
-                        @in-flight-fetches)]
-    (doseq [[cache-key {:keys [future-ref] :as entry}] stalled]
+  (let [swept (atom 0)]
+    (doseq [[cache-key {:keys [timer future-ref] :as entry}] @in-flight-fetches
+            :when (> (u/since-ms timer) fetch-max-age-ms)]
       (some-> @future-ref future-cancel)
       (complete-fetch! cache-key entry
-                       {:error (ex-info (tru "Timed out fetching field values.") {:cache-key cache-key})}))
-    (when (seq stalled)
-      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" (count stalled) fetch-max-age-ms))))
+                       {:error (ex-info (tru "Timed out fetching field values.") {:cache-key cache-key})})
+      (swap! swept inc))
+    (when (pos? @swept)
+      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" @swept fetch-max-age-ms))))
 
 (defn detached-fetch!
   "Run `thunk` on a background thread and return its result, rethrowing anything it throws.
