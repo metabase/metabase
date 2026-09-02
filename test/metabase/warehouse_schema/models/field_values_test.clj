@@ -175,10 +175,10 @@
 
 (deftest distinct-values-test
   (testing "Correctly get distinct field values for text fields"
-    (is (= {'values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
+    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
            (distinct-field-values (mt/id :products :category)))))
   (testing "Correctly get distinct field values for non-text fields"
-    (is (= {'values [[1] [2] [3] [4] [5]]}
+    (is (= {:values [[1] [2] [3] [4] [5]]}
            (distinct-field-values (mt/id :reviews :rating))))))
 
 (deftest clear-field-values-for-field!-test
@@ -235,8 +235,8 @@
                    :model/FieldValues _                 {:field_id field-id-1 :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
                    :model/FieldValues _                 {:field_id field-id-2 :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
       (testing "When we have multiple FieldValues rows in the database, we always return the most recently updated row"
-        (is (=? {field-id-1 {'values ["c" "d"]}
-                 field-id-2 {'values ["e" "f"]}}
+        (is (=? {field-id-1 {:values ["c" "d"]}
+                 field-id-2 {:values ["e" "f"]}}
                 (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
         (testing "and older values are implicitly deleted"
           (is (= 1 (count (t2/select :model/FieldValues 'field_id field-id-1 'type :full)))))))))
@@ -431,7 +431,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {'values [1 2 3]})
+    (t2/update! :model/FieldValues (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? :model/FieldValues 'id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
