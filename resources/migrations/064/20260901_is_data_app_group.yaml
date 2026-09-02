@@ -1,5 +1,4 @@
 ## permissions_group.is_data_app_group marks a data app's server-managed group (mirrors is_tenant_group).
-## The second changeSet backfills groups created before the column, via the data_app.permission_group_id FK.
 
 databaseChangeLog:
   - changeSet:
@@ -21,18 +20,3 @@ databaseChangeLog:
         - dropColumn:
             tableName: permissions_group
             columnName: is_data_app_group
-
-  - changeSet:
-      id: v64.2026-09-01T00:00:01
-      author: timofei
-      comment: Flag data-app permission groups that predate the is_data_app_group column
-      changes:
-        - update:
-            tableName: permissions_group
-            columns:
-              - column:
-                  name: is_data_app_group
-                  valueBoolean: true
-            where: >-
-              id IN (SELECT permission_group_id FROM data_app WHERE permission_group_id IS NOT NULL)
-      rollback: # no-op: dropped with the column when the add-column changeSet rolls back

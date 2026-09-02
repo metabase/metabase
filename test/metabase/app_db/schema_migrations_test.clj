@@ -3271,26 +3271,6 @@
           (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
           (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
 
-(deftest backfill-is-data-app-group-test
-  (testing "v64.2026-09-01: a group a data app already owns is flagged is_data_app_group, so upgraded
-            instances hide and block it like a freshly-created one"
-    (impl/test-migrations ["v64.2026-09-01T00:00:00" "v64.2026-09-01T00:00:01"] [migrate!]
-      (let [new-group!  (fn [group-name] (t2/insert-returning-pk! :permissions_group
-                                                                  {:name group-name :entity_id (u/generate-nano-id)}))
-            app-group   (new-group! "Data App: legacy")
-            other-group (new-group! "Marketing")]
-        (t2/insert! :data_app {:name                "legacy"
-                               :display_name        "Legacy"
-                               :bundle_path         "data_apps/legacy/index.js"
-                               :permission_group_id app-group
-                               :created_at          :%now
-                               :updated_at          :%now})
-        (migrate!)
-        (testing "the group a data app owns is flagged"
-          (is (true? (t2/select-one-fn :is_data_app_group :permissions_group :id app-group))))
-        (testing "an unrelated group is left alone"
-          (is (false? (t2/select-one-fn :is_data_app_group :permissions_group :id other-group))))))))
-
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
     (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
