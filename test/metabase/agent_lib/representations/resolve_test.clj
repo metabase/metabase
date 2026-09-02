@@ -88,7 +88,7 @@
       (is (schema-valid? q)))))
 
 (deftest export-query-round-trip-shape-test
-  (testing "resolved numeric pMBQL exports back to the portable string-keyed representations form"
+  (testing "resolved numeric MBQL 5 exports back to the portable string-keyed representations form"
     (let [parsed  {"lib/type" "mbql/query"
                    "database" "Sample"
                    "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -451,6 +451,9 @@
                                        eid))
     (measure-by-entity-id [_ eid] (when (= eid measure-entity-id) {:id 77 :table_id 10}))
     (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id] (get {900 {:id 900 :database_id 1 :entity_id metric-entity-id}
+                                       902 {:id 902 :database_id 1 :entity_id datetime-metric-entity-id}}
+                                      id))
     (measure-by-id        [_ _] nil)
     (segment-by-id        [_ _] nil)))
 
@@ -553,7 +556,7 @@
 ;;; ============================================================
 
 (deftest try-export-query-structured-test
-  (testing "structured pMBQL exports to a portable repr-form map with portable FKs and string keys"
+  (testing "structured MBQL 5 exports to a portable repr-form map with portable FKs and string keys"
     (let [parsed {"lib/type" "mbql/query"
                   "database" "Sample"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -587,27 +590,35 @@
                              :source-table 99999}]}]
       (is (nil? (repr.resolve/try-export-query mp bogus))))))
 
+(def ^:private source-card-export-query
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type :mbql.stage/mbql
+               :source-card 900}]})
+
+(defn- recording-export-content-store [calls]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ _] nil)
+    (measure-by-entity-id [_ _] nil)
+    (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id]
+      (swap! calls conj id)
+      {:id id :database_id 1 :entity_id metric-entity-id})
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
+
 (deftest export-query-3-arity-threads-content-store-test
-  (testing (str "export-query / try-export-query accept an explicit content-store as their "
-                "third argument. The store is used for Card / Measure / Segment id → "
-                "entity_id lookups (the N1 chokepoint). Pass an erroring store and the "
-                "export-side `:export-fk` lookups should fail through that store, not "
-                "through the default unchecked one. We use a basic 1-stage query (no card "
-                "ref) so we can prove the 3-arity wiring works regardless of whether the "
-                "particular query needs a content-store lookup.")
-    (let [parsed {"lib/type" "mbql/query"
-                  "database" "Sample"
-                  "stages"   [{"lib/type"     "mbql.stage/mbql"
-                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                               "aggregation"  [["count" {}]]}]}
-          q (repr.resolve/resolve-query mp parsed)]
-      (testing "3-arity export-query mirrors 2-arity for queries with no Card / Measure / Segment refs"
-        (is (= (repr.resolve/export-query mp q)
-               (repr.resolve/export-query mp q
-                                          @(requiring-resolve
-                                            'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)))))
-      (testing "3-arity try-export-query likewise"
-        (is (= (repr.resolve/try-export-query mp q)
-               (repr.resolve/try-export-query mp q
-                                              @(requiring-resolve
-                                                'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store))))))))
+  (testing "export-query uses its explicit content store for source-card export"
+    (let [calls    (atom [])
+          store    (recording-export-content-store calls)
+          exported (repr.resolve/export-query mp-with-metric source-card-export-query store)]
+      (is (= metric-entity-id (get-in exported ["stages" 0 "source-card"])))
+      (is (= [900] @calls)))))
+
+(deftest try-export-query-3-arity-threads-content-store-test
+  (testing "try-export-query uses its explicit content store for source-card export"
+    (let [calls    (atom [])
+          store    (recording-export-content-store calls)
+          exported (repr.resolve/try-export-query mp-with-metric source-card-export-query store)]
+      (is (= metric-entity-id (get-in exported ["stages" 0 "source-card"])))
+      (is (= [900] @calls)))))

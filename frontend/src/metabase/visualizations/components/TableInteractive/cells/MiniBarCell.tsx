@@ -35,6 +35,7 @@ export interface MiniBarCellProps<TValue> {
   rowIndex: number;
   columnId: string;
   columnSettings: ColumnSettings;
+  className?: string;
   style?: React.CSSProperties;
   barWidth?: number | string;
   barHeight?: number | string;
@@ -50,6 +51,7 @@ export const MiniBarCell = <TValue,>({
   rowIndex,
   columnId,
   columnSettings,
+  className,
   style,
   barWidth = BAR_WIDTH,
   barHeight = BAR_HEIGHT,
@@ -98,7 +100,7 @@ export const MiniBarCell = <TValue,>({
   return (
     <BaseCell
       data-testid="mini-bar-cell"
-      className={S.root}
+      className={cx(S.root, className)}
       backgroundColor={backgroundColor}
       align={align}
       style={style}

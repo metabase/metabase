@@ -25,6 +25,7 @@
 
 (defsetting password-complexity
   "Current password complexity requirements"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     u.password/active-password-complexity)
@@ -33,7 +34,7 @@
   (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
   :type       :boolean
   :visibility :public
-  :default    nil
+  :default    false
   :audit      :getter
   :doc "The user login session will always expire after the amount of time defined in MAX_SESSION_AGE (by default 2 weeks).
         This overrides the “Remember me” checkbox when logging in.

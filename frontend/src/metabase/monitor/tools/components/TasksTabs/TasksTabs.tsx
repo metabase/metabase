@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
-  type MonitorHeaderTab,
-  MonitorHeaderTabs,
-} from "metabase/monitor/components/MonitorHeaderTabs";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Flex, Stack } from "metabase/ui";
@@ -15,7 +15,7 @@ type TasksTabsProps = {
 };
 
 export const TasksTabs = ({ children }: TasksTabsProps) => {
-  const tabs: MonitorHeaderTab[] = [
+  const tabs: PillTab[] = [
     { label: t`Tasks`, to: Urls.monitorTasksList() },
     { label: t`Runs`, to: Urls.monitorTasksRuns() },
   ];
@@ -25,7 +25,7 @@ export const TasksTabs = ({ children }: TasksTabsProps) => {
       <MonitorMain>
         <Stack gap="lg">
           <MonitorHeaderTitle>{t`Background tasks`}</MonitorHeaderTitle>
-          <MonitorHeaderTabs tabs={tabs} />
+          <PillTabNavigation tabs={tabs} />
         </Stack>
         {children}
       </MonitorMain>

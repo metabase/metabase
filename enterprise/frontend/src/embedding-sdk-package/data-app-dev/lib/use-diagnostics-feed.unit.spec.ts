@@ -15,6 +15,7 @@ const entry = (
   eventId,
   sessionId,
   time: 0,
+  buildId: 1,
   kind: "error",
   summary: `event ${eventId}`,
   detail: null,
@@ -24,6 +25,7 @@ const entry = (
 
 const report = (
   entries: DataAppDiagnosticPayload[],
+  overrides: Partial<DataAppDiagnosticsReport> = {},
 ): DataAppDiagnosticsReport => ({
   entries,
   connection: null,
@@ -31,8 +33,11 @@ const report = (
   clients: 1,
   lastReportAt: 1,
   lastRebuildAt: 1,
+  buildId: 1,
+  staleEntries: 0,
   nextEventId: (entries.at(-1)?.eventId ?? 0) + 1,
   sessionId: "page-1",
+  ...overrides,
 });
 
 const ok = (body: DataAppDiagnosticsReport) =>

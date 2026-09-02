@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   Outlet,
   Route,
-  push,
+  navigate,
   useLocation,
   useNavigate,
   useParams,
@@ -73,13 +73,13 @@ describe("v7 engine (facade over real react-router v7)", () => {
     expect(screen.getByTestId("splat")).toHaveTextContent("undefined");
   });
 
-  // Redux navigation carries no route context, and history@3 resolved a pathname
-  // without a leading slash against the root. Resolving it against the deepest
+  // The module-level `navigate` carries no route context, so a pathname without
+  // a leading slash resolves against the root. Resolving it against the deepest
   // match instead would send `{ pathname: "other" }` to `/things/other`.
-  it("resolves a relative redux push from the root", async () => {
-    const { store } = setup("/things/42");
+  it("resolves a relative navigate() from the root", async () => {
+    setup("/things/42");
 
-    store.dispatch(push({ pathname: "other" }));
+    navigate({ pathname: "other" });
 
     expect(await screen.findByTestId("other")).toBeInTheDocument();
   });

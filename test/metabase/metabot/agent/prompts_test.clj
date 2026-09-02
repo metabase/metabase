@@ -129,7 +129,7 @@
           content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (string? content))
-      (is (str/includes? content "{{#model_id-short-slug}}"))
+      (is (str/includes? content "{{#model_id}}"))
       (is (str/includes? content "{{#5-user-details}}"))
       (is (str/includes? content "{{snippet: Snippet Name}}"))
       (is (str/includes? content "{{snippet: recent orders}}"))
@@ -182,3 +182,31 @@
                                          :current_time    ""
                                          :recent_views    ""}
                                         "Hi")))))
+
+(deftest ^:parallel build-system-message-content-test-8
+  (testing "builds exploration system message"
+    (let [profile {:prompt-template "explorations.selmer"}
+          context {}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (string? content))
+      (is (not (str/includes? content "{% include"))
+          "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))
+
+(deftest ^:parallel build-system-message-content-test-9
+  (testing "renders sql querying template with literal model syntax"
+    (let [profile {:prompt-template "sql-querying-only.selmer"}
+          context {:current_time "2024-01-15 14:30:00"
+                   :sql-dialect "postgresql"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (some? content))
+      (is (string? content))
+      (is (str/includes? content "SELECT * FROM {{#model_id}} AS model_alias"))
+      (is (str/includes? content "SELECT * FROM {{#5}} AS model_alias"))
+      (is (str/includes? content "FROM {{#5}} a"))
+      (is (str/includes? content "LEFT JOIN {{#7}} b ON a.customer_id = b.customer_id"))
+      (is (str/includes? content "queried with {{#id}} syntax"))
+      (is (not (str/includes? content "{%raw%}")))
+      (is (not (str/includes? content "{% safe %}")))
+      (is (not (str/includes? content "verbatim"))))))

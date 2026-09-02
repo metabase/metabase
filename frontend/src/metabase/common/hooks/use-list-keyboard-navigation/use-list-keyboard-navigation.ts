@@ -50,6 +50,11 @@ export const useListKeyboardNavigation = <
           break;
         case "Enter":
           if (cursorIndex != null && !isNaN(cursorIndex)) {
+            // Selecting an item consumes the key. Without this the same Enter
+            // also reaches whatever the list is rendered over, and the search
+            // bar takes it as "show all results" and navigates to /search,
+            // replacing the navigation this selection just started.
+            event.preventDefault();
             onEnter(list[cursorIndex]);
           }
           break;

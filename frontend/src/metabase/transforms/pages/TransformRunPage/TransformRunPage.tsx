@@ -23,7 +23,7 @@ export const TransformRunPage = () => {
     isLoading: isLoadingTransform,
     error: transformError,
   } = useTransformWithPolling(transformId);
-  const { readOnly, isLoadingDatabases, databasesError } =
+  const { readOnly, permissionsReadOnly, isLoadingDatabases, databasesError } =
     useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
@@ -40,7 +40,11 @@ export const TransformRunPage = () => {
     <PageContainer data-testid="transforms-run-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
       <TransformDisconnectedDatabaseBanner transform={transform} />
-      <RunSection transform={transform} readOnly={readOnly} />
+      <RunSection
+        transform={transform}
+        readOnly={readOnly}
+        permissionsReadOnly={permissionsReadOnly}
+      />
     </PageContainer>
   );
 };

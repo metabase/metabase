@@ -18,9 +18,8 @@ import {
 } from "metabase/common/search/constants";
 import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/redux";
-import type { Location, LocationDescriptorObject } from "metabase/router";
-import { push, queryToSearch, useLocation } from "metabase/router";
+import type { Location, To } from "metabase/router";
+import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchBody,
@@ -41,7 +40,7 @@ const getPageFromLocation = (location: Location) => {
 
 export function SearchApp() {
   const location = useLocation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   usePageTitle(t`Search`);
 
@@ -72,14 +71,14 @@ export function SearchApp() {
   } as SearchRequest;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onFilterChange = useCallback(
     (newFilters: URLSearchFilterQueryParams) => {
       onChangeLocation({
-        pathname: "search",
+        pathname: "/search",
         search: queryToSearch({ q: searchText.trim(), ...newFilters }),
       });
     },
@@ -88,7 +87,7 @@ export function SearchApp() {
 
   const advancePage = (howMany = 1) => {
     onChangeLocation({
-      pathname: "search",
+      pathname: "/search",
       search: queryToSearch({
         q: searchText.trim(),
         ...searchFilters,

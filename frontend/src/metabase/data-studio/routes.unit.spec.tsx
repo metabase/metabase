@@ -1,57 +1,82 @@
+import { lazyLoaders } from "__support__/lazy-routes";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Outlet, Route } from "metabase/router";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { createMockUser } from "metabase-types/api/mocks";
 
-import { getDataStudioRoutes } from "./routes";
+import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
 
-/**
- * These specs assert that the legacy redirects sit outside the Data Studio
- * access guard, so the guard is stubbed to always deny.
- */
-jest.mock("./route-guards", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    CanAccessDataStudio: () => <div data-testid="data-studio-access-denied" />,
-    CanAccessDataModel: () => <Outlet />,
-  };
+const Guard = () => null;
+describe("data-studio routes", () => {
+  it("resolves every page", async () => {
+    const loaders = lazyLoaders(getDataStudioRoutes(Guard));
+
+    // Includes the transform, data model, glossary and settings routes, which
+    // this tree nests.
+    expect(loaders).toHaveLength(39);
+
+    for (const load of loaders) {
+      expect((await load()).Component).toBeDefined();
+    }
+  });
 });
 
-const AllowingGuard = () => <Outlet />;
+function setupIndexRedirect({
+  hasSeenGuide,
+  isAdmin = false,
+}: {
+  hasSeenGuide: boolean;
+  isAdmin?: boolean;
+}) {
+  setupUserKeyValueEndpoints({
+    namespace: "data_studio",
+    key: "hasSeenGuide",
+    value: hasSeenGuide,
+  });
 
-function setup(initialRoute: string) {
   renderWithProviders(
     <Route path="/">
-      {getDataStudioRoutes(AllowingGuard)}
-      <Route
-        path="monitor/dependency-diagnostics"
-        element={<div data-testid="diagnostics-index" />}
-      />
-      <Route
-        path="monitor/dependency-diagnostics/unreferenced"
-        element={<div data-testid="diagnostics-unreferenced" />}
-      />
+      <Route path="data-studio">
+        <Route index element={<DataStudioIndexRedirect />} />
+        <Route path="guide" element={<div data-testid="guide-page" />} />
+        <Route path="data" element={<div data-testid="data-index" />} />
+        <Route path="library" element={<div data-testid="library-index" />} />
+        <Route
+          path="transforms"
+          element={<div data-testid="transforms-index" />}
+        />
+      </Route>
     </Route>,
-    { initialRoute, withRouter: true },
+    {
+      withRouter: true,
+      initialRoute: "/data-studio",
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
 }
 
-describe("Data Studio routes", () => {
-  it("redirects the legacy Dependency Diagnostics index outside the Data Studio access guard", async () => {
-    setup("/data-studio/dependency-diagnostics");
+describe("Data Studio index redirect", () => {
+  it("sends first-time visitors to the guide without recording the visit itself", async () => {
+    setupIndexRedirect({ hasSeenGuide: false, isAdmin: true });
 
-    expect(await screen.findByTestId("diagnostics-index")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("data-studio-access-denied"),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId("guide-page")).toBeInTheDocument();
+    expect(screen.queryByTestId("data-index")).not.toBeInTheDocument();
   });
 
-  it("preserves the child path instead of matching the Data Studio catch-all", async () => {
-    setup("/data-studio/dependency-diagnostics/unreferenced");
+  it("sends returning admins to their data index", async () => {
+    setupIndexRedirect({ hasSeenGuide: true, isAdmin: true });
 
-    expect(
-      await screen.findByTestId("diagnostics-unreferenced"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("data-studio-access-denied"),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId("data-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
+
+  it("sends returning non-admins to their computed index", async () => {
+    setupIndexRedirect({ hasSeenGuide: true });
+
+    expect(await screen.findByTestId("library-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
   });
 });

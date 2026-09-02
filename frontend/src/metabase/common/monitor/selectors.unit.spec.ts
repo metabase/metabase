@@ -9,20 +9,20 @@ import {
   canAccessMonitoringTools,
 } from "./selectors";
 
-jest.mock("metabase/selectors/embed", () => ({
-  getIsEmbeddingIframe: jest.fn(() => false),
+jest.mock("metabase/utils/iframe", () => ({
+  isWithinIframe: jest.fn(() => false),
 }));
 
-const { getIsEmbeddingIframe } = jest.requireMock("metabase/selectors/embed");
+const { isWithinIframe } = jest.requireMock("metabase/utils/iframe");
 
 describe("canAccessMonitor", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getIsEmbeddingIframe.mockReturnValue(false);
+    isWithinIframe.mockReturnValue(false);
   });
 
   it("returns false when in embedding iframe", () => {
-    getIsEmbeddingIframe.mockReturnValue(true);
+    isWithinIframe.mockReturnValue(true);
     const state = createMockState({
       currentUser: createMockUser({ is_superuser: true }),
     });
@@ -80,11 +80,11 @@ describe("canAccessMonitor", () => {
 describe("canAccessMonitorDiagnostics", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getIsEmbeddingIframe.mockReturnValue(false);
+    isWithinIframe.mockReturnValue(false);
   });
 
   it("returns false when in embedding iframe", () => {
-    getIsEmbeddingIframe.mockReturnValue(true);
+    isWithinIframe.mockReturnValue(true);
     const state = createMockState({
       currentUser: createMockUser({ is_superuser: true }),
     });
@@ -127,11 +127,11 @@ describe("canAccessMonitorDiagnostics", () => {
 describe("canAccessMonitoringTools", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getIsEmbeddingIframe.mockReturnValue(false);
+    isWithinIframe.mockReturnValue(false);
   });
 
   it("returns false when in embedding iframe", () => {
-    getIsEmbeddingIframe.mockReturnValue(true);
+    isWithinIframe.mockReturnValue(true);
     const state = createMockState({
       currentUser: createMockUser({ is_superuser: true }),
     });
@@ -174,11 +174,11 @@ describe("canAccessMonitoringTools", () => {
 describe("canAccessAlertsManagement", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getIsEmbeddingIframe.mockReturnValue(false);
+    isWithinIframe.mockReturnValue(false);
   });
 
   it("returns false when in embedding iframe", () => {
-    getIsEmbeddingIframe.mockReturnValue(true);
+    isWithinIframe.mockReturnValue(true);
     const state = createMockState({
       currentUser: createMockUser({ is_superuser: true }),
     });
@@ -220,11 +220,11 @@ describe("canAccessAlertsManagement", () => {
 describe("canAccessAiAuditing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getIsEmbeddingIframe.mockReturnValue(false);
+    isWithinIframe.mockReturnValue(false);
   });
 
   it("returns false when in embedding iframe", () => {
-    getIsEmbeddingIframe.mockReturnValue(true);
+    isWithinIframe.mockReturnValue(true);
     const state = createMockState({
       currentUser: createMockUser({ is_superuser: true }),
     });

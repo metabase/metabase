@@ -27,7 +27,7 @@ function setup() {
   setupListNotificationEndpoints({ card_id: card.id }, []);
   fetchMock.delete(`path:/api/card/${card.id}`, 200);
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="/"
       element={<MetricPageShell card={card} urls={metricUrls} />}
@@ -35,12 +35,12 @@ function setup() {
     { withRouter: true, withUndos: true },
   );
 
-  return { history };
+  return { router };
 }
 
 describe("MetricPageShell", () => {
   it("navigates to /trash with a success toast after permanently deleting the metric", async () => {
-    const { history } = setup();
+    const { router } = setup();
 
     await userEvent.click(await screen.findByText("Delete permanently"));
     await userEvent.click(
@@ -48,7 +48,7 @@ describe("MetricPageShell", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/trash");
+      expect(router?.location.pathname).toBe("/trash");
     });
 
     expect(

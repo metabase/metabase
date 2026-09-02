@@ -9,8 +9,7 @@ import {
 } from "metabase/common/metrics/utils/dimension-types";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Button,
   Flex,
@@ -24,8 +23,8 @@ import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
-  Card,
   CardDisplayType,
   Dataset,
   MetricDimension,
@@ -149,7 +148,7 @@ function MetricDimensionCard({
   dimension,
   displayType,
 }: MetricDimensionCardProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
 
   const rawSeries = useMemo(
@@ -158,18 +157,16 @@ function MetricDimensionCard({
   );
 
   const handleClick = useCallback(() => {
-    dispatch(
-      push(
-        Urls.exploreMetricDimension({
-          metricId,
-          dimensionId: dimension.dimensionId,
-          dimensionType: dimension.dimensionType,
-          displayType,
-          label: dimension.label,
-        }),
-      ),
+    navigate(
+      Urls.exploreMetricDimension({
+        metricId,
+        dimensionId: dimension.dimensionId,
+        dimensionType: dimension.dimensionType,
+        displayType,
+        label: dimension.label,
+      }),
     );
-  }, [dispatch, metricId, dimension, displayType]);
+  }, [metricId, dimension, displayType, navigate]);
 
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
@@ -206,14 +203,14 @@ function buildSingleSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
         display: displayType,
         visualization_settings: {
           ...(dimensionName ? { "graph.dimensions": [dimensionName] } : {}),
           ...(metricName ? { "graph.metrics": [metricName] } : {}),
         },
-      } as Card,
+        dataset_query: dataset.json_query ?? STRUCTURED_QUERY_TEMPLATE,
+      },
       data: dataset.data,
     },
   ];

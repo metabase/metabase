@@ -7,7 +7,7 @@ import {
 } from "e2e/support/test-library-data";
 import type { Card, ListMetricDimensionsResponse } from "metabase-types/api";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Orders count",
@@ -20,20 +20,15 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar" as const,
 };
 
+// Renders as a time series through its curated default dimension, which
+// H.setMetricDefaultDimension sets to Created At; metric queries carry no breakout.
 const ORDERS_TIMESERIES_METRIC = {
   name: "Orders over time",
-  description: "Count of orders broken down by month",
+  description: "Count of orders over time",
   type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-    ],
   },
   display: "line" as const,
 };
@@ -102,6 +97,18 @@ describe("scenarios > metrics > metric page", () => {
 
     cy.log("about page with description sidebar");
     H.MetricPage.aboutPage().should("be.visible");
+
+    cy.log("a metric without a default dimension previews a scalar");
+    H.MetricPage.aboutPage().within(() => {
+      cy.findByTestId("visualization-root")
+        .should("be.visible")
+        .and("have.attr", "data-viz-ui-name", "Number");
+      cy.findByTestId("scalar-value").should("have.text", "18,760");
+      cy.findByRole("button", { name: /^Select dimension/ }).should(
+        "not.exist",
+      );
+    });
+
     H.MetricPage.aboutPageDescriptionSidebar().within(() => {
       cy.findByText("Total number of orders").should("be.visible");
       cy.findByText("Source").should("be.visible");
@@ -201,6 +208,7 @@ describe("scenarios > metrics > metric page", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       cy.wait("@createAlert").then(({ response }) => {
@@ -216,11 +224,22 @@ describe("scenarios > metrics > metric page", () => {
 
   it("should display timeseries metric and navigate between tabs", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
+      // Set default dimension so the metric can be previewed as a timeseries chart.
+      H.setMetricDefaultDimension(metric.id, "Created At");
       H.visitMetric(metric.id);
     });
 
     H.MetricPage.aboutPage().should("be.visible");
-    H.echartsContainer().should("be.visible");
+    cy.log("the curated default time dimension charts the metric");
+    H.MetricPage.aboutPage().within(() => {
+      cy.findByTestId("visualization-root")
+        .should("be.visible")
+        .and("have.attr", "data-viz-ui-name", "Line");
+      H.echartsContainer().should("be.visible");
+      cy.findByRole("button", { name: /^Select dimension: Created At/ }).should(
+        "be.visible",
+      );
+    });
 
     H.MetricPage.aboutTab().should("be.visible");
     H.MetricPage.overviewTab().should("be.visible");

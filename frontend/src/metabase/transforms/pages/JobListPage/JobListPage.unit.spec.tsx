@@ -85,7 +85,7 @@ async function setup({
   jobs.forEach((job) => setupDeleteTransformJobEndpoint(job.id));
 
   const path = Urls.transformJobList();
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path={path} element={<JobListPage />} />,
     {
       withRouter: true,
@@ -97,7 +97,7 @@ async function setup({
   );
 
   await screen.findByTestId("tree-table-mock");
-  return { history };
+  return { router };
 }
 
 async function findRow(jobId: number) {
@@ -126,7 +126,7 @@ describe("JobListPage", () => {
   });
 
   it("opens the row action menu without navigating to the detail page", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
       isAdmin: true,
     });
@@ -137,13 +137,11 @@ describe("JobListPage", () => {
     expect(
       await screen.findByRole("menuitem", { name: /Disable/ }),
     ).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
-      Urls.transformJobList(),
-    );
+    expect(router?.location.pathname).toBe(Urls.transformJobList());
   });
 
   it("disables a job from the row action menu without navigating", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
       isAdmin: true,
     });
@@ -165,18 +163,16 @@ describe("JobListPage", () => {
       method: "PUT",
     });
     expect(await call?.request?.json()).toEqual({ active: false });
-    expect(history?.getCurrentLocation().pathname).toBe(
-      Urls.transformJobList(),
-    );
+    expect(router?.location.pathname).toBe(Urls.transformJobList());
   });
 
   it("deletes a job from the row action menu without visiting the detail page", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
       isAdmin: true,
     });
     const visited: string[] = [];
-    history?.listen((location) => visited.push(location.pathname));
+    router?.onLocationChange((location) => visited.push(location.pathname));
 
     const row = await findRow(1);
     await userEvent.click(within(row).getByLabelText("ellipsis icon"));

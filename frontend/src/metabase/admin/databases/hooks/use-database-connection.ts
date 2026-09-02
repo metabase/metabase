@@ -4,8 +4,7 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type { DatabaseId, Engine, EngineKey } from "metabase-types/api";
 
 interface UseDatabaseConnectionProps {
@@ -17,7 +16,7 @@ export const useDatabaseConnection = ({
   databaseId,
   engines,
 }: UseDatabaseConnectionProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
   const preselectedEngine =
     queryParams.get("engine") ?? getDefaultEngineKey(engines || {});
@@ -36,10 +35,8 @@ export const useDatabaseConnection = ({
   };
 
   const handleCancel = () => {
-    dispatch(
-      database?.id
-        ? push(`/admin/databases/${database.id}`)
-        : push(`/admin/databases`),
+    navigate(
+      database?.id ? `/admin/databases/${database.id}` : `/admin/databases`,
     );
   };
 
@@ -48,7 +45,7 @@ export const useDatabaseConnection = ({
       const param = fromEmbeddingSetupGuide
         ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=true`
         : "";
-      dispatch(push(`/admin/databases/${savedDB.id}${param}`));
+      navigate(`/admin/databases/${savedDB.id}${param}`);
     } else {
       handleCancel();
     }

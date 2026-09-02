@@ -35,6 +35,13 @@
 
 (def ^:private title-max-chars 80)
 
+(def ^:private title-max-tokens
+  "Output-token budget for the title call.
+
+  The title itself needs only a handful of tokens, but reasoning models spend this budget on reasoning before emitting
+  the forced tool call."
+  512)
+
 (def ^:private title-json-schema
   {:type       "object"
    :properties {:title {:type        "string"
@@ -115,12 +122,12 @@
              ;; titles must respect the usage limit too, like metabot.self/call-llm
              (not (metabot.usage/check-usage-limits!)))
     (let [response (metabot.self/call-llm-structured
-                    (metabot.settings/llm-metabot-provider)
+                    (metabot.settings/llm-mini-model)
                     [{:role "system" :content title-system-prompt}
                      {:role "user"   :content (str "<session>\n" message "\n</session>")}]
                     title-json-schema
                     nil
-                    128
+                    title-max-tokens
                     {:request-id  (str (random-uuid))
                      :session-id  conversation-id
                      :profile-id  profile-id

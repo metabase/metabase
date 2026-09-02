@@ -67,7 +67,7 @@
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
+    (is (= #{"dashboard" "dataset" "document" "exploration" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
@@ -108,14 +108,16 @@
               :where
               [:and
                [:= 1 2]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= nil :search_index.exploration_id]]}
              (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
       (is (= {:select [:some :stuff],
               :from :somewhere,
               :where
               [:and
                [:in :search_index.model ["a"]]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= nil :search_index.exploration_id]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
@@ -124,13 +126,14 @@
               #{[:in :search_index.last_editor_id [321]]
                 [:in :search_index.creator_id [123]]
                 [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
-                [:not= :search_index.model [:inline "table"]]
+                [:not= :search_index.model "table"]
                 [:= :search_index.archived true]
                 [:= :search_index.curated true]
                 [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 [:or
                  [:= nil :search_index.dashboard_id]
                  [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]
+                [:= nil :search_index.exploration_id]
                 [:in
                  :search_index.model
                  #{"dashboard"
@@ -140,6 +143,7 @@
                    "measure"
                    "transform"
                    "document"
+                   "exploration"
                    "database"
                    "action"
                    "indexed-entity"

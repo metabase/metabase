@@ -16,7 +16,7 @@ import {
 } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { isEmpty } from "metabase/utils/validate";

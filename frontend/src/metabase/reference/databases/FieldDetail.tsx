@@ -1,11 +1,11 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -13,24 +13,23 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { push } from "metabase/router";
+import { updateField } from "metabase/reference/update-actions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { FieldId, User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getField,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
   FieldFormFieldsValues,
+  ReferenceLoadingProps,
   StubbedDatabase,
   StubbedField,
   StubbedTable,
@@ -100,9 +99,6 @@ const mapStateToProps = (
     field: entity,
     table: getTable(state, props),
     database: getDatabase(state, props),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -110,10 +106,9 @@ const mapStateToProps = (
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateField,
   ...actions,
   onSubmit: actions.rUpdateFieldDetail,
-  onChangeLocation: push,
 };
 
 interface FieldDetailProps {
@@ -130,7 +125,7 @@ interface FieldDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: FieldDetailFormFields, props: any) => void;
+  onSubmit: (fields: FieldDetailFormFields, props: any) => Promise<void>;
 }
 
 const FieldDetail = (props: FieldDetailProps) => {
@@ -148,6 +143,8 @@ const FieldDetail = (props: FieldDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -156,8 +153,14 @@ const FieldDetail = (props: FieldDetailProps) => {
     handleReset,
   } = useFormik<FieldDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -192,8 +195,8 @@ const FieldDetail = (props: FieldDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>
@@ -290,7 +293,8 @@ const FieldDetail = (props: FieldDetailProps) => {
 // `metadata` is read here but selected by the container. Naming it keeps that
 // contract type-checked.
 type FieldDetailOwnProps = ReferenceRouteProps &
-  Pick<FieldDetailProps, "metadata">;
+  Pick<FieldDetailProps, "metadata"> &
+  ReferenceLoadingProps;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(

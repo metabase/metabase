@@ -44,6 +44,7 @@ export { publishTables } from "./publishTables";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { seedSecurityAdvisories } from "./seedSecurityAdvisories";
 export type { SecurityAdvisorySpec } from "./seedSecurityAdvisories";
+export { setMetricDefaultDimension } from "./setMetricDefaultDimension";
 export { unpublishTables } from "./unpublishTables";
 export { updateAdvancedPermissionsGraph } from "./updateAdvancedPermissionsGraph";
 export { updateComment } from "./updateComment";

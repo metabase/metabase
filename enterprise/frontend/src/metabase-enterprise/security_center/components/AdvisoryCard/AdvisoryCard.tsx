@@ -1,7 +1,8 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { Markdown } from "metabase/common/components/Markdown";
+import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Badge,
@@ -25,6 +26,8 @@ import type {
 
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
 import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
+
+const DISALLOWED_ELEMENTS = ["img"];
 
 interface AdvisoryCardProps {
   advisory: Advisory;
@@ -73,7 +76,13 @@ export function AdvisoryCard({
 
         <Title order={4}>{advisory.title}</Title>
 
-        <Text c="text-secondary">{advisory.description}</Text>
+        <Markdown
+          c="text-secondary"
+          disallowHeading
+          disallowedElements={DISALLOWED_ELEMENTS}
+        >
+          {advisory.description}
+        </Markdown>
 
         {advisory.affected_versions.length > 0 && (
           <Box>
@@ -82,7 +91,7 @@ export function AdvisoryCard({
               {advisory.affected_versions.map((v) => (
                 <List.Item
                   key={`${v.min}-${v.fixed}`}
-                >{`${v.min} - ${v.fixed}`}</List.Item>
+                >{`>= ${v.min}, < ${v.fixed}`}</List.Item>
               ))}
             </List>
           </Box>
@@ -90,7 +99,13 @@ export function AdvisoryCard({
 
         <Box>
           <Text fw={700} mb="xs">{t`Remediation`}</Text>
-          <Text c="text-secondary">{advisory.remediation}</Text>
+          <Markdown
+            c="text-secondary"
+            disallowHeading
+            disallowedElements={DISALLOWED_ELEMENTS}
+          >
+            {advisory.remediation}
+          </Markdown>
         </Box>
 
         <Group gap="md" mt="sm">

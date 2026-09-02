@@ -5,7 +5,7 @@ import {
 } from "@snowplow/browser-tracker";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import { getSettings } from "metabase/selectors/settings";
+import { getSettings } from "metabase/settings";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
 

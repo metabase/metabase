@@ -6,12 +6,15 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.walk :as lib.walk]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -64,42 +67,19 @@
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
                   query)))
 
-(defn remove-permissions-key
-  "Pre-processing middleware. Removes the `:query-permissions/perms` key from the query. This is where we store important permissions
-  information like perms coming from sandboxing (GTAPs). This is programmatically added by middleware when appropriate,
-  but we definitely don't want users passing it in themselves. So remove it if it's present."
-  [query]
-  (dissoc query :query-permissions/perms))
+(mu/defn remove-internal-keys :- ::lib.schema/query
+  "Pre-processing middleware. Strip internal query-processor keys from the incoming `query` so that they can only ever
+  be set by the query processor itself, not supplied by a client. Skipped while re-running pivot sub-queries, which
+  legitimately carry these keys."
+  [query :- ::lib.schema/query]
+  (cond-> query
+    (not qp.pipeline/*pivot?*) lib/prepare-after-deserialization))
 
-(defn remove-source-card-keys
-  "Pre-processing middleware. Removes any instances of the `:qp/stage-is-from-source-card` key which is added by the
-  fetch-source-query middleware when source cards are resolved in a query. Since we rely on this for permission enforcement,
-  we want to disallow users from passing it in themselves (like `remove-permissions-key` above)."
-  [query]
-  (lib.walk/walk
-   query
-   (fn [_query _path-type _path stage-or-join]
-     (dissoc stage-or-join :qp/stage-is-from-source-card))))
-
-(defn remove-sandboxed-table-keys
-  "Pre-processing middleware. Removes any instances of the `:query-permissions/sandboxed-table` key which is added by the
-  row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission
-  enforcement, we want to disallow users from passing it in themselves (like the functions above)."
-  [query]
-  (lib.walk/walk
-   query
-   (fn [_query _path-type _path stage-or-join]
-     (dissoc stage-or-join :query-permissions/sandboxed-table))))
-
-(defn remove-persisted-info-native-keys
-  "Pre-processing middleware. Removes any `:persisted-info/native` keys from the query. This key is populated later by
-  the fetch-source-query middleware to point at a persisted/cached native query, so any value already present at this
-  stage is stale and is cleared (like the functions above)."
-  [query]
-  (lib.walk/walk
-   query
-   (fn [_query _path-type _path stage-or-join]
-     (dissoc stage-or-join :persisted-info/native))))
+(mu/defn record-referenced-card-ids :- ::lib.schema/query
+  "Pre-processing middleware. Record the source-card IDs referenced by `query` under the
+  `:query-permissions/referenced-card-ids` key."
+  [query :- ::lib.schema/query]
+  (u/assoc-dissoc query :query-permissions/referenced-card-ids (lib/all-source-card-ids-recursive query)))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
@@ -107,11 +87,14 @@
   (if (:lib/type query)
     (recur (lib/->legacy-MBQL query))
     (let [{database-id :database :as outer-query} query]
+      (when (and (= audit/audit-db-id database-id)
+                 (or (qp.util/userland-query? outer-query)
+                     *param-values-query*
+                     *current-user-id*))
+        (check-audit-db-permissions outer-query))
       (when *current-user-id*
         (log/tracef "Checking query permissions. Current user permissions = %s"
                     (pr-str (perms/permissions-for-user *current-user-id*)))
-        (when (= audit/audit-db-id database-id)
-          (check-audit-db-permissions outer-query))
         (check-query-does-not-access-inactive-tables outer-query)
         (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
               source-card-ids (:card-ids required-perms)]
@@ -123,7 +106,13 @@
             ;; check that the user has permission to read this card
             *card-id*
             (do (query-perms/check-card-read-perms database-id *card-id*)
-                (query-perms/check-card-result-metadata-data-perms database-id *card-id*))
+                (query-perms/check-card-result-metadata-data-perms database-id *card-id*)
+                (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+                  (throw (query-perms/perms-exception required-perms)))
+                (doseq [card-id source-card-ids
+                        :when  (not= card-id *card-id*)]
+                  (query-perms/check-card-read-perms database-id card-id)
+                  (query-perms/check-card-result-metadata-data-perms database-id card-id)))
 
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms

@@ -2,8 +2,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { ActionIcon, Divider, Flex, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -17,13 +16,13 @@ type JobTriggersSidebarProps = {
 
 export const JobTriggersSidebar = ({ jobKey }: JobTriggersSidebarProps) => {
   const { data } = useGetTasksInfoQuery();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const job = data?.jobs.find((job) => job.key === jobKey);
   const triggers = job?.triggers ?? [];
 
   const handleClose = () => {
-    dispatch(push(Urls.monitorJobs()));
+    navigate(Urls.monitorJobs());
   };
 
   return (

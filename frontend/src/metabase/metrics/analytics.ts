@@ -56,6 +56,19 @@ export const trackMetricDimensionSetDefault = (
   });
 };
 
+export const trackMetricDimensionRemoveDefault = (
+  metricId: MetricId,
+  dimensionId: DimensionId,
+  result: MetricDimensionResult,
+) => {
+  trackSimpleEvent({
+    event: "metric_dimension_remove_default",
+    target_id: metricId,
+    event_detail: dimensionId,
+    result,
+  });
+};
+
 export const trackMetricDimensionUpdated = (
   metricId: MetricId,
   dimensionId: DimensionId,

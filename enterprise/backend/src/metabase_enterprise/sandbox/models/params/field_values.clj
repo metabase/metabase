@@ -4,7 +4,6 @@
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
@@ -37,14 +36,21 @@
 (defn- field->sandbox-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
 
-  The gtap-attributes is a list with 2 elements:
+  The gtap-attributes is a list with 3 elements:
   1. card-id - for GTAP that use a saved question
   2. the timestamp when the saved question was last updated
   3. a map:
     if query is mbql query:
-      - with key is the user-attribute that applied to the table that `field` is in
+      - with an entry for every user-attribute in the GTAP's `attribute_remappings`
       - value is the user-attribute of current user corresponding to the key
     for native query, this map will be the login-attributes of user
+
+  The query processor applies *every* attribute remapping when it runs the sandboxed query —
+  including remappings whose target is a column of a joined table, or a column referenced by
+  name — so every remapped attribute can change which rows the user sees and must be part of
+  this fingerprint. Narrowing the map to remappings that target the sandboxed table's own
+  columns let two users with different values for a joined-table attribute share one cached
+  FieldValues row (SEC-874).
 
   For example we have an GTAP rules
   {:card_id              1 ;; a mbql query
@@ -57,8 +63,7 @@
   [{table-id :table_id, :as _field}]
   (when-let [sandbox (table-id->sandbox table-id)]
     (let [login-attributes     (api/current-user-attributes)
-          attribute_remappings (:attribute_remappings sandbox)
-          field-ids            (t2/select-fn-set :id :model/Field :table_id table-id)]
+          attribute-remappings (:attribute_remappings sandbox)]
       [(:card_id sandbox)
        (-> sandbox :card :updated_at)
        (if (= :native (get-in sandbox [:card :query_type]))
@@ -67,15 +72,8 @@
          ;; This makes hashing a bit less efficient but it ensures that user get a new hash
          ;; if they change login attributes
          login-attributes
-         (into {} (for [[k v] attribute_remappings
-                        ;; get attribute that map to fields of the same table
-                        :when (contains? field-ids
-                                         (match/match-one v
-                                           ;; new style with {:stage-number }
-                                           [:dimension [:field field-id _] _] field-id
-                                           ;; old style without stage number
-                                           [:dimension [:field field-id _]] field-id))]
-                    {k (get login-attributes k)})))])))
+         (into {} (for [k (keys attribute-remappings)]
+                    [k (get login-attributes k)])))])))
 
 (defenterprise hash-input-for-sandbox
   "Returns a hash-input for FieldValues if the field is sandboxed."
@@ -83,3 +81,28 @@
   [field]
   (when (field-is-sandboxed? field)
     {:sandbox-attributes (field->sandbox-attributes-for-current-user field)}))
+
+(defenterprise sandbox-token-for-table
+  "Sandbox fingerprint for the current user on `table-id` (GTAP card, its version, and resolved
+  user-attribute values), or nil when the user is not *enforced*-sandboxed on that table. Reuses
+  the same enforcement guard (`field-is-sandboxed?`) and attribute-extraction as the FieldValues
+  cache, so superusers and users with full access via another group correctly get no token, and
+  two genuinely-sandboxed users \"share a sandbox\" iff they'd see the same rows. The card's
+  `:updated_at` is stringified to give it a printed form that is stable across processes and
+  versions: the caller digests this value rather than storing it, and a digest is only comparable
+  if the bytes going into it are reproducible.
+
+  The raw attribute values in here never reach storage — [[metabase.permissions.data-access-token]]
+  replaces this whole value with a SHA-256 of it before returning a token.
+
+  When the enforcement guard says the user IS sandboxed but the attribute lookup finds nothing
+  (the guard and the lookup consult different subsystems), we must not return nil — the
+  compatibility gate reads nil as \"unrestricted\", which would fail open. Instead we return a
+  user-scoped indeterminate token that matches no other user's token — fail closed."
+  :feature :none
+  [table-id]
+  (let [field {:table_id table-id}]
+    (when (field-is-sandboxed? field)
+      (if-let [[card-id updated-at attributes] (field->sandbox-attributes-for-current-user field)]
+        [card-id (str updated-at) attributes]
+        [::indeterminate-sandbox api/*current-user-id*]))))

@@ -65,10 +65,12 @@
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
                                          (cond
                                            (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
+                                                (#{"card" "dashboard" "table" "document"} (:model attrs))
+                                                (pos-int? (:entityId attrs)))
                                            [(keyword (:model attrs)) (:entityId attrs)]
 
-                                           (= prose-mirror/card-embed-type type)
+                                           (and (= prose-mirror/card-embed-type type)
+                                                (pos-int? (:id attrs)))
                                            [:card (:id attrs)]
 
                                            :else
@@ -116,7 +118,8 @@
         vis-setting-target-ids (fn [link-type]
                                  (into #{} (keep (fn [dashcard]
                                                    (let [cb (:click_behavior (:visualization_settings dashcard))]
-                                                     (when (= (:linkType cb) link-type)
+                                                     (when (and (= (:linkType cb) link-type)
+                                                                (pos-int? (:targetId cb)))
                                                        (:targetId cb))))
                                                  dashcards)))
         vis-setting-card-ids (vis-setting-target-ids "question")
@@ -126,7 +129,8 @@
                                             (map (fn [dashcard]
                                                    (keep (fn [[_col col-setting]]
                                                            (let [cb (:click_behavior col-setting)]
-                                                             (when (= (:linkType cb) link-type)
+                                                             (when (and (= (:linkType cb) link-type)
+                                                                        (pos-int? (:targetId cb)))
                                                                (:targetId cb))))
                                                          (:column_settings (:visualization_settings dashcard))))
                                                  dashcards)))

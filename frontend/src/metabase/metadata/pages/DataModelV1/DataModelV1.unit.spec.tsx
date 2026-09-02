@@ -215,7 +215,7 @@ async function setup({
     );
   }
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="notAdmin" element={<OtherComponent />} />
       <Route path="admin/datamodel">
@@ -255,7 +255,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { router };
 }
 
 describe("DataModelV1", () => {
@@ -674,7 +674,7 @@ describe("DataModelV1", () => {
 
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           initialRoute: "notAdmin",
           waitForDatabase: false,
           waitForTable: false,
@@ -688,7 +688,7 @@ describe("DataModelV1", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        router?.back();
 
         await waitFor(() => {
           expect(

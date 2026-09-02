@@ -22,12 +22,12 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { createSnowplowTracker } from "metabase/analytics";
 import { type OnBeforeRequestHandler, PLUGIN_API } from "metabase/api/client";
+import { getUserId } from "metabase/current-user";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { getUserId } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";

@@ -17,4 +17,16 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "collection",
   "document",
   "table",
+  "exploration",
 ];
+
+export const TYPE_FILTER_MODELS = [
+  "collection",
+  "dashboard",
+  "dataset",
+  "card",
+  "metric",
+  "document",
+  "exploration",
+  "table",
+] as const satisfies readonly CollectionItemModel[];

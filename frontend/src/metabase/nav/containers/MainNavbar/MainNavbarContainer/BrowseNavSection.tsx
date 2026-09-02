@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
-import { useUserSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getEntityTypes } from "metabase/redux/embedding-data-picker";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { useUserSetting } from "metabase/settings";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackAddDataModalOpened } from "../analytics";
@@ -34,7 +34,7 @@ export const BrowseNavSection = ({
 
   const canAddData = useCanAddData();
   const entityTypes = useSelector(getEntityTypes);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
 
   const showAddDataButton = canAddData && !isEmbeddingIframe;
 

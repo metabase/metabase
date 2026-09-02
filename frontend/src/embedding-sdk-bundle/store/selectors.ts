@@ -1,7 +1,7 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { State } from "metabase/redux/store";
-import { getSetting, getTokenFeature } from "metabase/selectors/settings";
+import { getSetting, getTokenFeature } from "metabase/settings";
 
 export const getIsGuestEmbedRaw = (state: SdkStoreState) =>
   state.sdk?.isGuestEmbed;
@@ -17,6 +17,9 @@ export const getIsLoggedIn = (state: SdkStoreState) =>
   getLoginStatus(state).status === "success";
 
 export const getSessionTokenState = (state: SdkStoreState) => state.sdk.token;
+
+export const getGuestTokenForMount = (state: SdkStoreState, mountId: string) =>
+  state.sdk.token.guestTokensByMount[mountId] ?? null;
 
 export const getPlugins = (state: SdkStoreState) => state.sdk.plugins;
 

@@ -93,6 +93,7 @@
                           [:= :user_id user-id]
                           [:> :timestamp cutoff]
                           [:not [:exists
+                                 ^:allow-subquery
                                  {:select [1]
                                   :from   [[:login_history :lh2]]
                                   :where  [:and

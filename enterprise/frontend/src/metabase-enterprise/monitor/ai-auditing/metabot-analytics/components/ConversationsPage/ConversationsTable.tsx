@@ -10,8 +10,7 @@ import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-c
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Badge,
   Card,
@@ -70,7 +69,7 @@ export function ConversationsTable({
   sortingOptions,
   onSortingOptionsChange,
 }: Props) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const rows: ConversationRow[] = useMemo(
     () =>
@@ -100,9 +99,9 @@ export function ConversationsTable({
   // This only covers keyboard activation (Enter on a keyboard-focused row).
   const handleRowActivate = useCallback(
     (row: Row<ConversationRow>) => {
-      dispatch(push(getRowHref(row)));
+      navigate(getRowHref(row));
     },
-    [dispatch, getRowHref],
+    [getRowHref, navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<ConversationRow>({

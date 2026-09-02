@@ -310,6 +310,22 @@
          {})
         (is (zero? @calls))))))
 
+(deftest build-system-message-uses-profile-system-prompt-context-test
+  (testing "a profile's :system-prompt-context fn contributes extra, feature-specific template vars
+            to the system prompt — the generic agent stays unaware of what they are"
+    (let [profile {:prompt-template       "explorations.selmer"
+                   :model                 "claude-sonnet-4-5-20250929"
+                   ;; stand in for any feature hook; here it fills the template's {{research_plan}}
+                   :system-prompt-context (fn [ctx] {:research_plan (str "PLAN:" (:marker ctx))})}
+          content (:content (messages/build-system-message {:marker "abc123"} profile {}))]
+      (is (str/includes? content "PLAN:abc123")
+          "the hook receives the request context and its returned vars reach the template")))
+  (testing "a profile with no :system-prompt-context contributes nothing (and does not error)"
+    (let [profile {:prompt-template "explorations.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}
+          content (:content (messages/build-system-message {} profile {}))]
+      (is (not (str/includes? content "Current research plan"))))))
+
 (deftest build-message-history-enriches-context-once-test
   (testing "one LLM call formats the user context exactly once (in build-message-history)"
     (let [calls   (atom 0)

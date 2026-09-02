@@ -11,12 +11,11 @@ import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { useLazyLoadGeoJSONQuery } from "metabase/admin/settings/api/geojson";
-import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -137,7 +136,8 @@ export const CustomGeoJSONWidget = () => {
         />
         {!map && (
           <Button
-            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
+            flex="0 0 auto"
+            ml="sm"
             onClick={handleAddMap}
             variant="filled"
           >
@@ -418,16 +418,14 @@ const EditMap = ({
                 onMapChange({ ...map, url: e.target.value })
               }
             />
-            <button
+            <Button
+              ml="sm"
               disabled={!map.url}
-              className={cx(ButtonsS.Button, CS.ml1, {
-                [ButtonsS.ButtonPrimary]: !geoJson,
-                [CS.disabled]: !map.url,
-              })}
+              variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}
             >
               {geoJson ? t`Refresh` : t`Load`}
-            </button>
+            </Button>
           </div>
         </SettingContainer>
         <div className={cx({ disabled: !geoJson })}>
@@ -503,22 +501,17 @@ const EditMap = ({
     </div>
     <div className={cx(CS.py1, CS.flex)}>
       <div className={CS.mlAuto}>
-        <button
-          className={ButtonsS.Button}
-          onClick={onCancel}
-        >{t`Cancel`}</button>
-        <button
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button
+          ml="sm"
+          variant="filled"
           disabled={
             !map.name || !map.url || !map.region_name || !map.region_key
           }
-          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1, {
-            [CS.disabled]:
-              !map.name || !map.url || !map.region_name || !map.region_key,
-          })}
           onClick={onSave}
         >
           {originalMap ? t`Save map` : t`Add map`}
-        </button>
+        </Button>
       </div>
     </div>
   </div>

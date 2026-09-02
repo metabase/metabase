@@ -32,12 +32,10 @@ describe("LandingPageRedirect", () => {
     jest
       .spyOn(PLUGIN_LANDING_PAGE, "getLandingPage")
       .mockReturnValue("/custom");
-    const { history } = setup();
+    const { router } = setup();
 
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/custom"),
-    );
-    expect(history?.getCurrentLocation().state).toEqual({
+    await waitFor(() => expect(router?.location.pathname).toBe("/custom"));
+    expect(router?.location.state).toEqual({
       preserveNavbarState: true,
     });
     expect(screen.getByText("custom page")).toBeInTheDocument();
@@ -45,10 +43,8 @@ describe("LandingPageRedirect", () => {
 
   it("prefixes a landing page that is missing a leading slash", async () => {
     jest.spyOn(PLUGIN_LANDING_PAGE, "getLandingPage").mockReturnValue("custom");
-    const { history } = setup();
+    const { router } = setup();
 
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/custom"),
-    );
+    await waitFor(() => expect(router?.location.pathname).toBe("/custom"));
   });
 });

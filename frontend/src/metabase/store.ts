@@ -1,34 +1,34 @@
 import {
   type Middleware,
   type Reducer,
+  type ReducersMapObject,
   combineReducers,
   configureStore,
 } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
+import { metadataHydrationMiddleware } from "metabase/metadata-store";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { type RouterNavigator, routerMiddleware } from "metabase/router";
 
 // Each app passes its own reducer map, so per-slice types can't be known here.
 type AnySliceReducer = Reducer<any, any>;
 
 export function getStore(
   reducers: Record<string, AnySliceReducer>,
-  navigator?: RouterNavigator | null,
   initialState?: Partial<State> | Record<string, unknown>,
   extraMiddlewares: Middleware[] = [],
 ) {
-  // The slice map is dynamic (each app passes its own), so the combined state
-  // is typed as a plain record rather than one app's State.
-  const reducerMap: Record<string, AnySliceReducer> = {
+  // Public/embed/SDK entries pass a subset of the slices, so this overstates
+  // their state; `app.tsx` only reads slices common to every map.
+  const reducerMap = {
     ...reducers,
     [Api.reducerPath]: Api.reducer,
-  };
+  } as ReducersMapObject<State>;
 
   const middlewares: Middleware[] = [
     Api.middleware,
-    ...(navigator ? [routerMiddleware(navigator)] : []),
+    metadataHydrationMiddleware,
     ...PLUGIN_REDUX_MIDDLEWARES,
     ...extraMiddlewares,
   ];

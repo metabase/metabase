@@ -12,27 +12,24 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { createQuestionCard, updateQuestionCard } from "metabase/redux/cards";
 import {
-  API_UPDATE_QUESTION,
   REVERT_CARD_TO_REVISION,
-  SOFT_RELOAD_CARD,
-  clearQueryResult,
-  onCloseSidebars,
-  resetQB,
-  setParameterValue,
+  questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
-import { getDefaultSize } from "metabase/visualizations";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import {
+  getCardAfterVisualizationClick,
+  getRegisteredDefaultSize,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
@@ -42,6 +39,16 @@ import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
 import { trackNewQuestionSaved } from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
+  API_CREATE_QUESTION,
+  RELOAD_CARD,
+  SET_CARD_AND_RUN,
+  SOFT_RELOAD_CARD,
+  clearQueryResult,
+  onCloseSidebars,
+  resetQB,
+  setParameterValue,
+} from "../../store/actions";
+import {
   getCard,
   getIsResultDirty,
   getIsShowingRawTable,
@@ -50,7 +57,7 @@ import {
   getQuestion,
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
-} from "../../selectors";
+} from "../../store/selectors";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -71,7 +78,6 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   };
 });
 
-export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedQuestion = getQuestion(getState());
@@ -103,7 +109,6 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - clicking in the entity details view
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
-export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard: Card,
   { shouldUpdateUrl = true } = {},
@@ -217,7 +222,6 @@ export const setDatasetQuery =
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
-export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = (
   question: Question,
   options?: OnCreateOptions,
@@ -277,7 +281,6 @@ export const apiCreateQuestion = (
   };
 };
 
-export { API_UPDATE_QUESTION };
 export const apiUpdateQuestion = (
   question: Question,
   { rerunQuery }: { rerunQuery?: boolean } = {},
@@ -317,10 +320,7 @@ export const apiUpdateQuestion = (
     // (some of the old alerts might be removed during update)
     dispatch(invalidateNotificationsApiCache());
 
-    await dispatch({
-      type: API_UPDATE_QUESTION,
-      payload: updatedQuestion.card(),
-    });
+    await dispatch(questionUpdated(updatedQuestion.card()));
 
     if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
@@ -378,7 +378,7 @@ async function reduxCreateQuestion(
   options?: OnCreateOptions,
 ) {
   const display = question.display();
-  const size = getDefaultSize(display);
+  const size = getRegisteredDefaultSize(display);
   // Unjustified type cast. FIXME
   const card = (await dispatch(
     createQuestionCard({

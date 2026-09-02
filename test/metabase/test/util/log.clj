@@ -13,6 +13,7 @@
   ns-log-level
   set-ns-log-level!])
 
+;; non-thread-safe by design; assert-test-is-not-parallel guards it, and do-with-* must mirror `with-log-level`
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-log-level [a-namespace level thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-log-level")

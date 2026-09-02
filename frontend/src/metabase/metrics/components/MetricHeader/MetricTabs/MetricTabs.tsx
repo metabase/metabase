@@ -3,15 +3,15 @@ import { t } from "ttag";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
+import { getMetadata } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
@@ -33,7 +33,7 @@ export function MetricTabs({ card, urls }: MetricTabsProps) {
     () => getTabs(card, metadata, urls, hasDimensions, canSeeDependencies),
     [card, metadata, urls, hasDimensions, canSeeDependencies],
   );
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
@@ -42,8 +42,8 @@ function getTabs(
   urls: MetricUrls,
   hasDimensions: boolean,
   canSeeDependencies: boolean,
-): PaneHeaderTab[] {
-  const tabs: PaneHeaderTab[] = [
+): PillTab[] {
+  const tabs: PillTab[] = [
     {
       label: t`About`,
       to: urls.about(card.id),

@@ -6,16 +6,15 @@ import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmpty
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { getShallowSegments } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
-import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getError, getLoading } from "../../selectors";
 
 const emptyStateData = {
   get title() {
@@ -34,13 +33,17 @@ const emptyStateData = {
 };
 
 interface SegmentListProps {
+  loading?: boolean;
+  loadingError?: unknown;
   style?: CSSProperties;
 }
 
-export function SegmentList({ style }: SegmentListProps) {
+export function SegmentList({
+  style,
+  loading,
+  loadingError,
+}: SegmentListProps) {
   const entities = useSelector(getShallowSegments);
-  const loading = useSelector(getLoading);
-  const loadingError = useSelector(getError);
   const adminLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "data-modeling/segments",

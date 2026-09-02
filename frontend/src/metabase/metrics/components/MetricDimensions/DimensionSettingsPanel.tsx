@@ -5,9 +5,10 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import {
+  trackMetricDimensionRemoveDefault,
   trackMetricDimensionSetDefault,
   trackMetricDimensionUpdated,
 } from "metabase/metrics/analytics";
@@ -69,7 +70,9 @@ export function DimensionSettingsPanel({
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
-  const showSetAsDefaultButton = !isOrphaned(dimension) && !dimension.default;
+  // An orphaned dimension can't be made the default, but one that already is
+  // still needs a way out.
+  const showDefaultButton = !isOrphaned(dimension) || dimension.default;
 
   useEffect(() => {
     setDefaultTemporalUnit(dimension.default_temporal_unit);
@@ -135,6 +138,18 @@ export function DimensionSettingsPanel({
     }
   };
 
+  const handleRemoveDefault = async () => {
+    try {
+      await setDefaultDimension({ metricId, dimension_id: null }).unwrap();
+      trackMetricDimensionRemoveDefault(metricId, dimension.id, "success");
+    } catch {
+      trackMetricDimensionRemoveDefault(metricId, dimension.id, "failure");
+      sendErrorToast(
+        t`Couldn't remove ${dimension.display_name} as the default`,
+      );
+    }
+  };
+
   return (
     <Stack
       className={S.column}
@@ -149,14 +164,14 @@ export function DimensionSettingsPanel({
         wrap="nowrap"
       >
         <Title order={4}>{t`Settings for ${dimension.display_name}`}</Title>
-        {showSetAsDefaultButton && (
+        {showDefaultButton && (
           <Button
             loading={isSettingDefault || isFetching}
-            onClick={handleSetDefault}
+            onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
             size="sm"
             variant="default"
           >
-            {t`Set as default`}
+            {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>
         )}
       </Group>

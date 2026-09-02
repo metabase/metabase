@@ -10,7 +10,7 @@ import {
   METABSE_PROTOCOL_MD_LINK,
   type MetabaseProtocolEntityModel,
   parseMetabaseProtocolMarkdownLink,
-} from "metabase/metabot/utils/links";
+} from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 
 import {

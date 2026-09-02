@@ -94,6 +94,7 @@
 
 (declare check-403 check-404)
 
+;; p/import-vars needs the literal ns symbol; the open-api alias won't resolve inside the macro
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars [metabase.api.open-api root-open-api-object])
 
@@ -613,6 +614,7 @@
    "database"          {:db-model :model/Database           :alias :database}
    "dataset"           {:db-model :model/Card               :alias :card}
    "document"          {:db-model :model/Document           :alias :document}
+   "exploration"       {:db-model :model/Exploration        :alias :exploration}
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}

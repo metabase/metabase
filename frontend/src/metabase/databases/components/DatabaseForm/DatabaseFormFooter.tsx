@@ -3,12 +3,13 @@ import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import type {
   ContinueWithoutDataComponent,
   FormLocation,
 } from "metabase/databases/types";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 

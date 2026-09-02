@@ -1,19 +1,10 @@
-import type { LoginData } from "metabase/redux/auth";
-import {
-  isValidColorScheme,
-  setUserColorSchemeAfterUpdate,
-} from "metabase/utils/color-scheme";
-import MetabaseSettings from "metabase/utils/settings";
 import type {
-  EnterpriseSettings,
+  LoginData,
   MfaMethod,
   PasswordResetTokenStatus,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { handleQueryFulfilled } from "./utils/lifecycle";
-
-export const sessionPropertiesPath = "/api/session/properties";
 
 export interface SessionResponse {
   id: string;
@@ -108,30 +99,6 @@ export const sessionApi = Api.injectEndpoints({
         body,
       }),
     }),
-    getSessionProperties: builder.query<EnterpriseSettings, void>({
-      query: () => ({
-        method: "GET",
-        url: sessionPropertiesPath,
-      }),
-      providesTags: ["session-properties"],
-      // Subscriptions keep the entry fresh and invalidation-safe
-      // Infinity keeps it from aging out if the subscriptions happen to be gone
-      keepUnusedDataFor: Infinity,
-      onQueryStarted: (_, { queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (data) => {
-          // Keep the non-redux settings consumers in sync. `MetabaseSettings`
-          // is read by code that runs outside the store/React (i18n, dom helpers, theming).
-          MetabaseSettings.setAll(data);
-
-          // Sync color-scheme setting to window.MetabaseUserColorScheme
-          if (
-            data["color-scheme"] &&
-            isValidColorScheme(data["color-scheme"])
-          ) {
-            setUserColorSchemeAfterUpdate(data["color-scheme"]);
-          }
-        }),
-    }),
   }),
 });
 
@@ -144,20 +111,4 @@ export const {
   useGetPasswordResetTokenStatusQuery,
   useForgotPasswordMutation,
   useCheckPasswordMutation,
-  useGetSessionPropertiesQuery,
-  useLazyGetSessionPropertiesQuery,
 } = sessionApi;
-
-// aliases for easier use
-export const useGetSettingsQuery = useGetSessionPropertiesQuery;
-export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
-
-/**
- * Force a refetch of the session properties (settings) from non-React code.
- * Dispatch it via `dispatch(refetchSiteSettings())`.
- * In React, prefer `useLazyGetSettingsQuery()`'s trigger instead.
- */
-export const refetchSiteSettings = () =>
-  sessionApi.endpoints.getSessionProperties.initiate(undefined, {
-    forceRefetch: true,
-  });

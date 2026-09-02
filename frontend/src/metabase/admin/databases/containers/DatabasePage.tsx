@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { getEngines } from "metabase/databases/selectors";
-import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -29,7 +28,7 @@ import { trackHelpButtonClick } from "./analytics";
 
 export function DatabasePage() {
   const params = useParams<{ databaseId: string }>();
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
     useDatabaseConnection({ databaseId: params.databaseId, engines });
   const [showSidePanel, { open: openSidePanel, close: closeSidePanel }] =

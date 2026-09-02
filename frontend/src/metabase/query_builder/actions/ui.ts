@@ -1,19 +1,24 @@
-import { settingsApi } from "metabase/api";
-import { getOriginalCard } from "metabase/query_builder/selectors";
-import {
-  CANCEL_QUERY,
-  CANCEL_QUESTION_CHANGES,
-  setUIControls,
-} from "metabase/redux/query-builder";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { currentUserApi, getUser } from "metabase/current-user";
+import { createThunkAction } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import type {
   DatasetEditorTab,
   Dispatch,
   GetState,
   QueryBuilderMode,
 } from "metabase/redux/store";
-import type { Card } from "metabase-types/api";
+import { settingsApi } from "metabase/settings";
+import { checkNotNull } from "metabase/utils/types";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import { trackFirstNonTableChartGenerated } from "../analytics";
+import {
+  CANCEL_QUERY,
+  CANCEL_QUESTION_CHANGES,
+  CLOSE_QB_NEWB_MODAL,
+} from "../store/actions";
+import { getOriginalCard } from "../store/question-selectors";
 
 import { updateUrl } from "./url";
 
@@ -48,8 +53,10 @@ export const setQueryBuilderMode =
     }
   };
 
-export const setDidFirstNonTableChartRender = (card: Card) => {
-  trackFirstNonTableChartGenerated(card);
+export const setDidFirstNonTableChartRender = (
+  display: VisualizationDisplay,
+) => {
+  trackFirstNonTableChartGenerated(display);
   return settingsApi.endpoints.updateSetting.initiate({
     key: "non-table-chart-generated",
     value: true,
@@ -70,3 +77,14 @@ export const cancelQuestionChanges =
       payload: { card: cardBeforeChanges },
     });
   };
+
+export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
+  return async (dispatch, getState) => {
+    const user = checkNotNull(getUser(getState()));
+    await runRtkEndpoint(
+      user.id,
+      dispatch,
+      currentUserApi.endpoints.updateUserModalQbnewb,
+    );
+  };
+});

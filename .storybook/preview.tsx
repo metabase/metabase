@@ -12,7 +12,6 @@ window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
 require("metabase/css/index.module.css");
-require("metabase/utils/dayjs");
 
 // EChartsRenderer is loaded as an on-demand chunk in the app (see
 // EChartsRenderer/lazy.ts). Force it into the Storybook bundle so chart stories
@@ -29,7 +28,10 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 
 import { Global, css, useTheme } from "@emotion/react";
 
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import {
+  getSaveDomImageStyles,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
 
@@ -116,7 +118,7 @@ const globalStyles = css`
     ${rootStyle}
   }
 
-  ${saveDomImageStyles}
+  ${getSaveDomImageStyles(false)}
   ${baseStyle}
 `;
 
@@ -207,7 +209,11 @@ initialize({
 const preview = {
   parameters,
   decorators,
-  loaders: [mswLoader, fontsReady],
+  // Chart components are loaded on demand, so a story that renders through the
+  // registry would otherwise be captured mid-Suspense, showing the skeleton.
+  // Wrapped because a loader is called with the story context, which would
+  // otherwise be taken for the list of displays to load.
+  loaders: [mswLoader, fontsReady, () => loadVisualizationComponents()],
   argTypes,
 };
 

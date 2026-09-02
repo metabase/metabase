@@ -5,7 +5,7 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Icon } from "metabase/ui";
 import { useDeleteDatabaseReplicationMutation } from "metabase-enterprise/api/database-replication";
 import type { Database } from "metabase-types/api";

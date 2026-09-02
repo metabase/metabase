@@ -213,7 +213,7 @@ describe("ConversationsPage", () => {
     });
 
     it("opens the conversation detail page when a row is clicked", async () => {
-      const { history } = setup();
+      const { router } = setup();
 
       await findTable();
 
@@ -222,14 +222,14 @@ describe("ConversationsPage", () => {
       expect(
         await screen.findByTestId("conversation-detail-page"),
       ).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         Urls.monitorAiAuditingConversationDetail(
           BOBBY_CONVERSATION.conversation_id,
         ),
       );
 
-      act(() => history?.goBack());
-      expect(history?.getCurrentLocation().pathname).toBe(CONVERSATIONS_PATH);
+      act(() => router?.back());
+      expect(router?.location.pathname).toBe(CONVERSATIONS_PATH);
     });
   });
 
@@ -292,7 +292,7 @@ describe("ConversationsPage", () => {
     });
 
     it("filters by user", async () => {
-      const { history } = setup();
+      const { router } = setup();
 
       await findTable();
       await selectFilterOption(
@@ -302,9 +302,7 @@ describe("ConversationsPage", () => {
 
       await assertRequestedWithParams({ user_id: String(ROBERT.id) });
       await waitFor(() => {
-        expect(
-          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-        ).toMatchObject({
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
           user: String(ROBERT.id),
         });
       });
@@ -332,7 +330,7 @@ describe("ConversationsPage", () => {
     });
 
     it("filters by tenant when tenants are enabled", async () => {
-      const { history } = setup({ hasTenants: true });
+      const { router } = setup({ hasTenants: true });
 
       expect(
         await screen.findByDisplayValue("All tenants"),
@@ -344,9 +342,7 @@ describe("ConversationsPage", () => {
 
       await assertRequestedWithParams({ tenant_id: String(ROBERT_TENANT.id) });
       await waitFor(() => {
-        expect(
-          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-        ).toMatchObject({
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
           tenant: String(ROBERT_TENANT.id),
         });
       });
@@ -370,12 +366,12 @@ describe("ConversationsPage", () => {
           title: `Conversation ${index}`,
         }),
       );
-      const { history } = setup({ conversations });
+      const { router } = setup({ conversations });
 
       expect(await screen.findByText("Conversation 0")).toBeInTheDocument();
       await userEvent.click(screen.getByTestId("next-page-btn"));
 
-      expect(history?.getCurrentLocation().search).toContain("page=1");
+      expect(router?.location.search).toContain("page=1");
       await assertRequestedWithParams({ offset: "25", limit: "25" });
       expect(await screen.findByText("Conversation 25")).toBeInTheDocument();
       expect(screen.queryByText("Conversation 0")).not.toBeInTheDocument();

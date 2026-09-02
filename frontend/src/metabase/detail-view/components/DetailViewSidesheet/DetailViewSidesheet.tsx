@@ -2,7 +2,9 @@ import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   skipToken,
@@ -37,7 +39,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -51,7 +52,7 @@ import type {
 } from "metabase-types/api";
 
 import { Sidesheet } from "./Sidesheet";
-import { extractData, getActionItems, getModelId } from "./utils";
+import { extractData, getModelId } from "./utils";
 
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;

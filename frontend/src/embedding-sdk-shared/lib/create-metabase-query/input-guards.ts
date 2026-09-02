@@ -1,7 +1,17 @@
-import type { TestStageWithSourceSpec } from "metabase-types/api";
+import type {
+  TestExpressionSpec,
+  TestStageSpec,
+  TestStageWithSourceSpec,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import type { MetricSchema, QuestionSchema, TableSchema } from "./schema";
+import type {
+  MeasureSchema,
+  MetricSchema,
+  QuestionSchema,
+  SegmentSchema,
+  TableSchema,
+} from "./schema";
 
 export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   source: TableSchema;
@@ -9,8 +19,13 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   enabled?: boolean;
 };
 
-export type QuestionQueryInput = {
+export type QuestionQueryInput = Pick<
+  TestStageSpec,
+  "breakouts" | "orderBys" | "limit"
+> & {
   source: QuestionSchema;
+  filters?: readonly TestExpressionSpec[];
+  aggregations?: readonly TestExpressionSpec[];
   enabled?: boolean;
 };
 
@@ -24,6 +39,12 @@ export const isTableReference = (value: unknown): value is TableSchema =>
 
 export const isMetricReference = (value: unknown): value is MetricSchema =>
   isObject(value) && typeof value.id === "number" && value.type === "metric";
+
+export const isSegmentReference = (value: unknown): value is SegmentSchema =>
+  isObject(value) && typeof value.id === "number" && value.type === "segment";
+
+export const isMeasureReference = (value: unknown): value is MeasureSchema =>
+  isObject(value) && typeof value.id === "number" && value.type === "measure";
 
 export const isQuestionInput = (input: unknown): input is QuestionQueryInput =>
   isObject(input) && "source" in input && isQuestionReference(input.source);

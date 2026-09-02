@@ -5,13 +5,15 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
+import { getMetadata } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { DelayGroup } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { IconName } from "metabase-types/api";
+import {
+  getIconForField,
+  getUniqueFieldId,
+} from "metabase-lib/v1/metadata/utils/fields";
+import type { Field, IconName, Table } from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -26,7 +28,7 @@ import S from "./NodeList.module.css";
 const STAGE_INDEX = -1;
 
 interface FieldListProps {
-  table: Table;
+  table: Pick<Table, "id" | "db_id">;
   fields: Field[];
   onFieldClick: (field: Field) => void;
 }
@@ -34,12 +36,7 @@ interface FieldListProps {
 export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
   const metadata = useSelector(getMetadata);
   const queryAndColumns = useMemo(
-    () =>
-      getQueryAndColumns(
-        metadata,
-        table,
-        fields.map((field) => field.getPlainObject()),
-      ),
+    () => getQueryAndColumns(metadata, table, fields),
     [metadata, table, fields],
   );
 
@@ -57,16 +54,13 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
           </NodeListTitleText>
         </NodeListTitle>
         {fields.map((field) => {
-          // field.icon() cannot be annotated to return IconName
-          // because metabase-lib cannot import from metabase.
-          const iconName = field.icon() as IconName;
-          const queryAndColumn = queryAndColumns.get(field.getPlainObject());
+          const queryAndColumn = queryAndColumns.get(field);
           return (
             queryAndColumn && (
               <HoverParent
                 className={S.NodeListItem}
                 as="li"
-                key={field.getUniqueId()}
+                key={getUniqueFieldId(field)}
               >
                 <NodeListItemLink onClick={() => onFieldClick(field)}>
                   <QueryColumnInfoIcon
@@ -75,7 +69,11 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
                     stageIndex={STAGE_INDEX}
                     column={queryAndColumn.column}
                     position="left"
-                    icon={iconName}
+                    // `getIconForField` takes an untyped field and returns a
+                    // literal from its own icon map, so it is always an
+                    // `IconName`; it cannot say so without importing from
+                    // `metabase`, which `metabase-lib` may not do.
+                    icon={getIconForField(field) as IconName}
                   />
                   <NodeListItemName>{field.name}</NodeListItemName>
                 </NodeListItemLink>

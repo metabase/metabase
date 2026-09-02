@@ -3,13 +3,13 @@
 
   How do authenticated API requests work? There are two main paths to authentication: a session or an API key.
 
-  For session authentication, Metabase first looks for a cookie called `metabase.SESSION`. This is the normal way of
+  For session authentication, Metabase looks for a cookie called `metabase.SESSION`. This is the normal way of
   doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly cookie and thus can't
   be viewed by FE code. If the session is a full-app embedded session, then the cookie is `metabase.EMBEDDED_SESSION`
   instead.
 
-  Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
-  Session ID.
+  If present, the `X-Metabase-Session` header is used for authentication instead of cookies - the `metabase.SESSION` and
+  `metabase.EMBEDDED_SESSION` cookies are ignored in this case.
 
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
@@ -34,6 +34,8 @@
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -82,12 +84,12 @@
   (some
    (fn [strategy]
      (wrap-session-key-with-strategy strategy request))
-   [:embedded-cookie :normal-cookie :header]))
+   [:header :embedded-cookie :normal-cookie]))
 
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
-  We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
-  for `X-METABASE-SESSION`. If neither is found then no keyword is bound to the request."
+  We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
     (let [request (or (wrap-session-key-with-strategy :best request)
@@ -103,17 +105,16 @@
 (defn- oldest-allowed-expr
   "Build a database-specific expression for `NOW() - interval`."
   [db-type amount unit]
-  (case db-type
-    :postgres [:- [:raw "current_timestamp"]
-               [:raw (format "INTERVAL '%d %s'" amount (name unit))]]
-    :h2       [:dateadd (h2x/literal (name unit))
-               [:inline (- amount)]
-               :%now]
-    :mysql    [:date_add :%now
-               [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
+  (let [now (h2x/current-datetime-honeysql-form db-type)]
+    (case db-type
+      :postgres [:- now [::h2x/postgres-interval amount unit]]
+      :h2       [:dateadd (h2x/literal (name unit))
+                 [:inline (- amount)]
+                 now]
+      :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds]
      (first
       (t2.pipeline/compile*
@@ -131,11 +132,13 @@
                                     [:or [:= :tenant.id nil] :tenant.is_active]
                                     [:= :tenant.id nil])
                                   [:= :user.is_active true]
-                                  [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
+                                  [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
+                                  [:or [:= :session.expires_at nil]
+                                   [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
-                                                                 :full-app-embed [:raw "?"])]]
+                                                                 :full-app-embed ^:allow-raw-sql [:raw "?"])]]
                                  (when session-timeout-seconds
                                    [[:> [:coalesce :session.last_active_at :session.created_at]
                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
@@ -152,7 +155,7 @@
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -165,7 +168,7 @@
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :api_key.key_prefix [:raw "?"]]]
+                            [:= :api_key.key_prefix ^:allow-raw-sql [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -179,7 +182,7 @@
 ;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
 ;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
 (def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
-  (memoize
+  (mdb/memoize-for-application-db
    (fn [enable-advanced-permissions?]
      (first
       (t2.pipeline/compile*
@@ -190,7 +193,7 @@
                 :from      [[:core_user :user]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :user.id [:raw "?"]]]
+                            [:= :user.id ^:allow-raw-sql [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -202,11 +205,8 @@
                                                  [:is :pgm.is_group_manager true]]))))))))
 
 (defn- valid-session-key?
-  "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
-
-  SECURITY NOTE: Because functions will directly compare the session-key against the core_session.id table for
-  backwards-compatibility reasons, if this is NOT called before those queries against core_session.id, attackers with
-  access to the database can impersonate users by passing the core_session.id as their session cookie"
+  "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
+  against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
@@ -222,7 +222,7 @@
                                          (and (premium-features/enable-tenants?)
                                               (setting/get :use-tenants))
                                          timeout)
-          params  (concat [session-key (session/hash-session-key session-key)]
+          params  (concat [(session/hash-session-key session-key)]
                           (when (seq anti-csrf-token)
                             [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
@@ -238,11 +238,16 @@
   []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
-(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
-  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
-  ;; a useless hash, *then* return `false`.
-  (if api-key
-    (u.password/verify-password passed-api-key "" api-key)
+(defn- matching-api-key?
+  "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
+  path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
+  a value that is not valid ciphertext — e.g. a plaintext hash injected via direct SQL — decrypts to nil and is
+  rejected rather than trusted. With no usable hash we still compute a useless hash so the two cases can't be told apart
+  by timing."
+  [{:keys [api-key] :as _user-data} passed-api-key]
+  (if-let [stored-hash (when api-key
+                         (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
+    (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
@@ -318,9 +323,8 @@
     [:post "/api/embed-mcp/feedback"]})
 
 (defn- current-user-info-for-mcp-ui-credential
-  "Resolve the short-lived credential rendered into an MCP visualization iframe.
-   It is accepted only for [[mcp-ui-request-surface]], so possession never
-   authenticates arbitrary API routes."
+  "Resolve the short-lived credential from an MCP App tool result.
+   Accept it only for [[mcp-ui-request-surface]]."
   [request]
   (when (and (init-status/complete?)
              (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))

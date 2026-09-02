@@ -1,12 +1,13 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import { getEmailDomain } from "metabase/utils/email";
-import { formatTimeWithUnit } from "metabase/utils/formatting/time";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
@@ -18,6 +19,7 @@ import type {
   ChannelSpec,
   ChannelSpecs,
   DashboardSubscription,
+  DashboardSubscriptionData,
   Parameter,
   ScheduleSettings,
   User,
@@ -32,27 +34,31 @@ export const NEW_PULSE_TEMPLATE = {
   parameters: [],
 } satisfies Partial<DashboardSubscription>;
 
-export function channelIsValid(channel: Channel, channelSpec?: ChannelSpec) {
+export const channelTargetIsValid = (
+  channel: Channel,
+  channelSpec?: ChannelSpec,
+) => {
   switch (channel.channel_type) {
     case "email":
-      return (
+      return Boolean(
         channel.recipients &&
         channel.recipients.length > 0 &&
         channel.recipients.every(recipientIsValid) &&
-        fieldsAreValid(channel, channelSpec) &&
-        scheduleIsValid(channel)
+        fieldsAreValid(channel, channelSpec),
       );
     case "slack":
-      return (
-        channel.details?.channel &&
-        fieldsAreValid(channel, channelSpec) &&
-        scheduleIsValid(channel)
+      return Boolean(
+        channel.details?.channel && fieldsAreValid(channel, channelSpec),
       );
     case "http":
-      return channel.channel_id && scheduleIsValid(channel);
+      return Boolean(channel.channel_id);
     default:
       return false;
   }
+};
+
+export function channelIsValid(channel: Channel, channelSpec?: ChannelSpec) {
+  return channelTargetIsValid(channel, channelSpec) && scheduleIsValid(channel);
 }
 
 export function scheduleIsValid(channel: Channel) {
@@ -134,21 +140,18 @@ export function dashboardPulseIsValid(
 export function cleanPulse<T extends DashboardSubscriptionData>(
   pulse: T,
   channelSpecs: Partial<ChannelSpecs>,
+  includingSubscription: boolean = true,
 ): T {
+  const shouldKeepChannel = includingSubscription
+    ? channelIsValid
+    : channelTargetIsValid;
   return {
     ...pulse,
-    channels: cleanPulseChannels(pulse.channels, channelSpecs),
+    channels: pulse.channels.filter((channel) =>
+      shouldKeepChannel(channel, channelSpecs?.[channel.channel_type]),
+    ),
     parameters: cleanPulseParameters(getPulseParameters(pulse)),
   };
-}
-
-function cleanPulseChannels(
-  channels: Channel[],
-  channelSpecs: Partial<ChannelSpecs>,
-) {
-  return channels.filter((channel) =>
-    channelIsValid(channel, channelSpecs?.[channel.channel_type]),
-  );
 }
 
 function cleanPulseParameters(parameters: Parameter[]) {
@@ -177,7 +180,6 @@ export function createChannel(
     recipients: [],
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
-    schedule_hour: 8,
     schedule_frame: "first",
     ...opts,
   };

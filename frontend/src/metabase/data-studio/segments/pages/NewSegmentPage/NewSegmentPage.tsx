@@ -6,11 +6,11 @@ import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/metadata-store";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
@@ -31,7 +31,7 @@ export function NewSegmentPage({
   breadcrumbs,
   getSuccessUrl,
 }: NewSegmentPageProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -95,9 +95,9 @@ export function NewSegmentPage({
 
   useEffect(() => {
     if (savedSegment) {
-      dispatch(push(getSuccessUrl(savedSegment)));
+      navigate(getSuccessUrl(savedSegment));
     }
-  }, [savedSegment, dispatch, getSuccessUrl]);
+  }, [savedSegment, getSuccessUrl, navigate]);
 
   return (
     <PageContainer data-testid="new-segment-page" gap="xl">

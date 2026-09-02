@@ -1,15 +1,14 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { dayjs } from "metabase/dayjs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { useDispatch } from "metabase/redux";
-import { push, queryToSearch, useLocation } from "metabase/router";
+import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import {
   Button,
   Flex,
@@ -146,7 +145,7 @@ const labelUnknownIpAddress = (value: unknown) =>
 
 export function ConversationStatsPage() {
   const location = useLocation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [{ date, user, group, tenant, metric }, { patchUrlState }] =
     useUrlState(location, statsUrlStateConfig);
 
@@ -201,25 +200,23 @@ export function ConversationStatsPage() {
 
   const navigateToConversations = useCallback(
     (filterOverrides: Partial<ConversationsUrlState>) => {
-      dispatch(
-        push({
-          pathname: Urls.monitorAiAuditingConversations(),
-          search: queryToSearch(
-            conversationsUrlStateConfig.serialize({
-              page: 0,
-              sort_column: "created_at",
-              sort_direction: "desc",
-              date,
-              user,
-              group,
-              tenant,
-              ...filterOverrides,
-            }),
-          ),
-        }),
-      );
+      navigate({
+        pathname: Urls.monitorAiAuditingConversations(),
+        search: queryToSearch(
+          conversationsUrlStateConfig.serialize({
+            page: 0,
+            sort_column: "created_at",
+            sort_direction: "desc",
+            date,
+            user,
+            group,
+            tenant,
+            ...filterOverrides,
+          }),
+        ),
+      });
     },
-    [dispatch, date, user, group, tenant],
+    [date, user, group, tenant, navigate],
   );
 
   const handleDayClick = useCallback(

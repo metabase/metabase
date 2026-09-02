@@ -48,6 +48,15 @@
 
 (driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
+(defmethod driver/host-carrying-parameters :sqlserver
+  [_driver]
+  ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+
+(defmethod driver/non-host-parameters :sqlserver
+  [_driver]
+  ["hostNameInCertificate" "iPAddressPreference" "instanceName" "integratedSecurity" "serverCertificate"
+   "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"])
+
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
                               :connection-impersonation-requires-role true
@@ -245,18 +254,27 @@
     [:inline x]
     x))
 
+(def ^:private allowed-dateparts
+  #{:year :quarter :month :dayofyear :day :week :iso_week :weekday
+    :hour :minute :second :millisecond :microsecond :nanosecond})
+
+(defn- datepart-token [unit]
+  (when-not (contains? allowed-dateparts unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (-> [:datepart [:raw (name unit)] expr]
+  (-> [:datepart [:raw (datepart-token unit)] expr]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-add [unit & exprs]
-  (into [:dateadd [:raw (name unit)]]
+  (into [:dateadd [:raw (datepart-token unit)]]
         (map maybe-inline-number)
         exprs))
 
 (defn- date-diff [unit x y]
-  [:datediff_big [:raw (name unit)] x y])
+  [:datediff_big [:raw (datepart-token unit)] x y])
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -541,6 +559,44 @@
 (defmethod sql.qp/datetime-diff [:sqlserver :minute] [_driver _unit x y] (date-diff :minute x y))
 (defmethod sql.qp/datetime-diff [:sqlserver :second] [_driver _unit x y] (date-diff :second x y))
 
+(defn- comparison-lhs-datetimeoffset?
+  "True when [[sql.qp/*parent-honeysql-col-type-info*]] indicates the LHS of the enclosing comparison is a
+  `datetimeoffset` column."
+  [parent-info]
+  (or (= "datetimeoffset" (:database-type parent-info))
+      (isa? (:effective-type parent-info) :type/DateTimeWithZoneOffset)
+      (isa? (:base-type parent-info) :type/DateTimeWithZoneOffset)))
+
+(defn- maybe-attach-report-timezone
+  "Wrap `rhs` in `AT TIME ZONE '<report-tz-windows-name>'` when:
+
+    - the LHS of the enclosing comparison is a `datetimeoffset` column,
+    - a report timezone is configured, and
+    - `rhs` is a naive `datetime`/`datetime2` (nothing to preserve).
+
+  Otherwise return `rhs` unchanged. This restores the report-timezone offset that date bucketing drops.
+  Without it, SQL Server implicitly treats a naive `datetime2` as offset +00:00 when comparing against
+  `datetimeoffset`, shifting the filter window by the report tz offset (#78612)."
+  [rhs]
+  (let [report-windows-tz (some-> (driver-api/requested-timezone-id) zone-id->windows-zone)
+        rhs-naive?        (contains? #{"datetime" "datetime2"}
+                                     (h2x/type-info->db-type (h2x/type-info rhs)))]
+    (cond-> rhs
+      (and report-windows-tz
+           rhs-naive?
+           (comparison-lhs-datetimeoffset? sql.qp/*parent-honeysql-col-type-info*))
+      (h2x/at-time-zone report-windows-tz))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :relative-datetime]
+  [driver clause]
+  (maybe-attach-report-timezone
+   ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :absolute-datetime]
+  [driver clause]
+  (maybe-attach-report-timezone
+   ((get-method sql.qp/->honeysql [:sql :absolute-datetime]) driver clause)))
+
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (h2x/->datetime expr))
@@ -704,6 +760,7 @@
 (defmethod sql.qp/escape-like-pattern :sqlserver
   [_driver like-pattern]
   (-> like-pattern
+      (str/replace "["  "[[]")
       (str/replace "\\" "[\\]")
       (str/replace "%"  "[%]")
       (str/replace "_"  "[_]")))
@@ -1149,7 +1206,7 @@
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = %s) EXEC('CREATE SCHEMA %s;');"
                       (sql.u/quote-literal schema :ansi)
-                      (quote-schema schema))]]]
+                      (sql.u/escape-sql (quote-schema schema) :ansi))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :sqlserver
@@ -1267,10 +1324,6 @@
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")
-
-(defmethod driver/validate-impersonated-query :sqlserver
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
   [_driver conn-spec & {:as _options}]

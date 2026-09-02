@@ -1,5 +1,6 @@
 import type { Api } from "metabase/api/api";
 import type { DocumentsState } from "metabase/redux/store/documents";
+import type { ExplorationsState } from "metabase/redux/store/explorations";
 
 import type { AdminState } from "./admin";
 import type { AnalyticsExportState } from "./analytics-export";
@@ -47,6 +48,7 @@ export interface State {
   "metabase-api": MetabaseApiState;
   documents: DocumentsState;
   metabot: MetabotState;
+  explorations: ExplorationsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

@@ -1,18 +1,23 @@
 // Characterization test for the navigation PRODUCER seam.
 //
-// This pins updateUrl -> dispatch(push/replace, { ..., state }), the QB side that
-// decides which router action to emit and what card state to carry on it. It is a
-// lock-down net for the react-router migration and is complementary to
-// redux/routing-contract.unit.spec.ts, which pins the transport side (how the
-// dispatched push/replace action drives history navigation).
+// This pins updateUrl -> navigate(to, { replace, state }), the QB side that
+// decides whether to add or replace a history entry and what card state to carry
+// on it. Complementary to router/navigate-contract.unit.spec.tsx, which pins the
+// other side: how `navigate` drives the router.
 
 import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  type NavigateOptions,
+  type To,
+  getIsNavigationPending,
+  navigate,
+} from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -24,14 +29,18 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import { SET_CURRENT_STATE } from "../store/actions";
 import { getTableUrlForPristineQuestion } from "../utils";
 
-import { SET_CURRENT_STATE } from "./state";
 import { updateUrl } from "./url";
 
 registerVisualizations();
 
-const CALL_HISTORY_METHOD = "@@router/CALL_HISTORY_METHOD";
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
+  navigate: jest.fn(),
+  getIsNavigationPending: jest.fn(() => false),
+}));
 
 type UpdateUrlOptions = Parameters<typeof updateUrl>[1];
 
@@ -52,15 +61,27 @@ function buildPristineTableQuestion(): Question {
   return checkNotNull(metadata.table(ORDERS_ID)).newQuestion();
 }
 
-function getDispatchedNavigation(dispatch: jest.Mock) {
-  const call = dispatch.mock.calls.find(
-    ([action]) => action?.type === CALL_HISTORY_METHOD,
-  );
+// Re-presents the `navigate(to, options)` call as the descriptor the assertions
+// below were written against: `state` rides in the options, and replacing vs
+// adding a history entry is the `replace` flag rather than a method name.
+function getDispatchedNavigation() {
+  // `navigate` is overloaded, so `jest.mocked` records its calls as the delta
+  // form. `updateUrl` only ever uses the target form.
+  const calls = jest.mocked(navigate).mock.calls as unknown as Array<
+    [To, NavigateOptions | undefined]
+  >;
+  const call = calls.at(-1);
   if (!call) {
     return null;
   }
-  const { method, args } = call[0].payload;
-  return { method, descriptor: args[0] };
+  const [to, options] = call;
+  return {
+    method: options?.replace ? "replace" : "push",
+    descriptor: {
+      ...(typeof to === "string" ? {} : to),
+      state: options?.state,
+    },
+  };
 }
 
 function dispatchedSetCurrentState(dispatch: jest.Mock) {
@@ -101,6 +122,10 @@ async function setup({
 
 describe("QB Actions > updateUrl (navigation producer contract)", () => {
   beforeEach(() => {
+    jest.mocked(navigate).mockClear();
+    // Reset here rather than at the end of the test that sets it, so a failing
+    // expectation cannot leak the pending state into the tests that follow.
+    jest.mocked(getIsNavigationPending).mockReturnValue(false);
     jest.spyOn(console, "warn").mockImplementation(() => {});
     window.history.replaceState({}, "", "/");
   });
@@ -113,12 +138,12 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     const card = createSavedStructuredCard();
     const question = buildSavedQuestion(card);
 
-    const { dispatch } = await setup({
+    await setup({
       question,
       options: { dirty: true, replaceState: false },
     });
 
-    const navigation = getDispatchedNavigation(dispatch);
+    const navigation = getDispatchedNavigation();
     expect(navigation).not.toBeNull();
     expect(navigation?.descriptor.state).toEqual({
       card: question.card(),
@@ -132,38 +157,38 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const card = createSavedStructuredCard();
       const question = buildSavedQuestion(card);
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { dirty: false },
         currentState: { card: question.card(), serializedCard: "" },
       });
 
-      expect(getDispatchedNavigation(dispatch)?.method).toBe("replace");
+      expect(getDispatchedNavigation()?.method).toBe("replace");
     });
 
     it("forces replace when replaceState is explicitly true", async () => {
       const card = createSavedStructuredCard();
       const question = buildSavedQuestion(card);
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { dirty: true, replaceState: true },
       });
 
-      expect(getDispatchedNavigation(dispatch)?.method).toBe("replace");
+      expect(getDispatchedNavigation()?.method).toBe("replace");
     });
 
     it("forces push when replaceState is explicitly false", async () => {
       const card = createSavedStructuredCard();
       const question = buildSavedQuestion(card);
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { dirty: false, replaceState: false },
         currentState: { card: question.card(), serializedCard: "" },
       });
 
-      expect(getDispatchedNavigation(dispatch)?.method).toBe("push");
+      expect(getDispatchedNavigation()?.method).toBe("push");
     });
   });
 
@@ -172,12 +197,11 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     const question = buildSavedQuestion(card);
 
     // First run: observe the descriptor the question produces.
-    const first = await setup({
+    await setup({
       question,
       options: { dirty: false },
     });
-    const descriptor = getDispatchedNavigation(first.dispatch)?.descriptor;
-    expect(descriptor).toBeDefined();
+    const descriptor = checkNotNull(getDispatchedNavigation()).descriptor;
 
     // Align window.location with the descriptor so isSameURL becomes true, and
     // set currentState.card to the same card so isSameCard becomes true.
@@ -189,13 +213,17 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       `${descriptor.pathname}${search}${hash}`,
     );
 
+    // `navigate` is a module mock, so the first run's call would otherwise still
+    // be the latest one.
+    jest.mocked(navigate).mockClear();
+
     const { dispatch } = await setup({
       question,
       options: { dirty: false },
       currentState: { card: question.card(), serializedCard: "" },
     });
 
-    expect(getDispatchedNavigation(dispatch)).toBeNull();
+    expect(getDispatchedNavigation()).toBeNull();
     expect(dispatchedSetCurrentState(dispatch)).toBeUndefined();
   });
 
@@ -204,12 +232,12 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const card = createSavedStructuredCard();
       const question = buildSavedQuestion(card);
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { dirty: true, replaceState: true, preserveNavbarState: true },
       });
 
-      const navigation = getDispatchedNavigation(dispatch);
+      const navigation = getDispatchedNavigation();
       expect(navigation?.method).toBe("replace");
       expect(navigation?.descriptor.state).toEqual({
         card: question.card(),
@@ -223,7 +251,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const card = createSavedStructuredCard();
       const question = buildSavedQuestion(card);
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: {
           dirty: true,
@@ -232,7 +260,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
         },
       });
 
-      const navigation = getDispatchedNavigation(dispatch);
+      const navigation = getDispatchedNavigation();
       expect(navigation?.method).toBe("push");
       expect(navigation?.descriptor.state).not.toHaveProperty(
         "preserveNavbarState",
@@ -240,18 +268,32 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     });
   });
 
+  // Saving a card finishes asynchronously. A `route.lazy` destination keeps the
+  // query builder mounted while its chunk loads, so this can run after the user
+  // has been sent elsewhere, and a navigation here would replace that pending
+  // one. See dashboard-questions.cy.spec.js, which caught it.
+  it("does not navigate while the router has a navigation pending", async () => {
+    jest.mocked(getIsNavigationPending).mockReturnValue(true);
+
+    const card = createSavedStructuredCard();
+    await setup({
+      question: buildSavedQuestion(card),
+      options: { dirty: true },
+    });
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("flows objectId through onto location.state", async () => {
     const card = createSavedStructuredCard();
     const question = buildSavedQuestion(card);
 
-    const { dispatch } = await setup({
+    await setup({
       question,
       options: { dirty: true, replaceState: false, objectId: "42" },
     });
 
-    expect(getDispatchedNavigation(dispatch)?.descriptor.state.objectId).toBe(
-      "42",
-    );
+    expect(getDispatchedNavigation()?.descriptor.state.objectId).toBe("42");
   });
 
   describe("table route preservation", () => {
@@ -264,12 +306,12 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
 
       window.history.replaceState({}, "", "/table/anything");
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { queryBuilderMode: "view" },
       });
 
-      const navigation = getDispatchedNavigation(dispatch);
+      const navigation = getDispatchedNavigation();
       expect(navigation?.descriptor.pathname).toBe(expectedUrl);
       expect(navigation?.descriptor.pathname).toBe(
         getTableUrlForPristineQuestion(question),
@@ -281,12 +323,12 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
 
       window.history.replaceState({}, "", "/question");
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { queryBuilderMode: "view" },
       });
 
-      const pathname = getDispatchedNavigation(dispatch)?.descriptor.pathname;
+      const pathname = getDispatchedNavigation()?.descriptor.pathname;
       expect(pathname).toBe("/question");
       expect(pathname).not.toMatch(/^\/table\//);
     });
@@ -296,14 +338,14 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
 
       window.history.replaceState({}, "", "/table/anything");
 
-      const { dispatch } = await setup({
+      await setup({
         question,
         options: { queryBuilderMode: "view", objectId: "5" },
       });
 
-      expect(
-        getDispatchedNavigation(dispatch)?.descriptor.pathname,
-      ).not.toMatch(/^\/table\//);
+      expect(getDispatchedNavigation()?.descriptor.pathname).not.toMatch(
+        /^\/table\//,
+      );
     });
   });
 });

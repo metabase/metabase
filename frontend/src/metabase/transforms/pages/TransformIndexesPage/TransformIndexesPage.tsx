@@ -97,7 +97,6 @@ function TransformIndexesContent({
   return (
     <>
       <TitleSection
-        label={t`Indexes`}
         actions={
           <IndexPageActions
             readOnly={readOnly}

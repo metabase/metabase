@@ -6,9 +6,9 @@ import {
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

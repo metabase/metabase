@@ -9,11 +9,9 @@ import {
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
+import { useMetadataToasts } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -27,16 +25,16 @@ import { UpdateTargetModal } from "./UpdateTargetModal";
 type TransformSettingsSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  permissionsReadOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
 };
 
 export const TransformSettingsSection = ({
   transform,
   readOnly,
+  permissionsReadOnly,
+  remoteSyncReadOnly,
 }: TransformSettingsSectionProps) => {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-
   return (
     <Stack gap="2.5rem">
       <OwnerSection transform={transform} readOnly={readOnly} />
@@ -47,19 +45,21 @@ export const TransformSettingsSection = ({
         <Group p="lg">
           <TargetInfo transform={transform} />
         </Group>
-        {!readOnly && (
+        {!permissionsReadOnly && (
           <>
             <Divider />
             <Group p="lg">
-              {!isRemoteSyncReadOnly && (
-                <EditTargetButton transform={transform} />
-              )}
+              {!readOnly && <EditTargetButton transform={transform} />}
               <EditMetadataButton transform={transform} />
             </Group>
           </>
         )}
       </TitleSection>
-      <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
+      <UpdateIncrementalSettings
+        transform={transform}
+        readOnly={readOnly}
+        remoteSyncReadOnly={remoteSyncReadOnly}
+      />
     </Stack>
   );
 };

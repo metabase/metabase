@@ -1,12 +1,13 @@
 /* eslint-disable metabase/no-unjustified-type-casts */
-import dayjs, { type Dayjs } from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import type { ColumnMetadata, Metadata } from "metabase-lib";
+import { type Dayjs, dayjs } from "metabase/dayjs";
+import type { Metadata } from "metabase-lib";
 import type {
   ConcreteTableId,
   JsMetricDefinition,
   MeasureId,
+  MetricDimension,
   MetricId,
   SegmentId,
 } from "metabase-types/api";
@@ -441,12 +442,6 @@ export function projectionableDimensions(
   return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
 }
 
-export function pickDefaultDimension(
-  dimensions: readonly ColumnMetadata[],
-): ColumnMetadata | null {
-  return LibMetric.pickDefaultDimension(dimensions) as ColumnMetadata | null;
-}
-
 export function dimensionReference(
   dimension: DimensionMetadata,
 ): ProjectionClause {
@@ -765,6 +760,24 @@ export function isSameSource(
   dimension2: DimensionMetadata,
 ): boolean {
   return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}
+
+export function fromMetricDimension(
+  dimension: MetricDimension,
+): DimensionMetadata {
+  return LibMetric.fromMetricDimension(dimension) as DimensionMetadata;
+}
+
+export function toMetricDimension(
+  dimension: DimensionMetadata,
+): MetricDimension {
+  return LibMetric.toMetricDimension(dimension) as MetricDimension;
+}
+
+export function groupDimensionsBySource(
+  dimensions: DimensionMetadata[],
+): DimensionMetadata[][] {
+  return LibMetric.groupDimensionsBySource(dimensions) as DimensionMetadata[][];
 }
 
 export function isCompatibleType(

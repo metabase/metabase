@@ -14,7 +14,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -153,7 +152,7 @@
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
-   body]
+   body :- ms/Map]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -266,10 +265,13 @@
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as query-spec} :- [:merge
-                                          [:map
-                                           [:database ::lib.schema.id/database]]
-                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
+   {:keys [database], :as query-spec} :- [:map
+                                          ;; open: clients send the spec in camelCase and `lib/test-query` re-parses
+                                          ;; it with its own coercer, which kebab-cases the keys and validates the
+                                          ;; result. Declaring `::lib.schema.test-spec/test-query-spec` here would
+                                          ;; strip every camelCase key before that coercer ever saw it.
+                                          {:closed false}
+                                          [:database ::lib.schema.id/database]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
 
@@ -302,10 +304,13 @@
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as native-query-spec} :- [:merge
-                                                 [:map
-                                                  [:database ::lib.schema.id/database]]
-                                                 [:ref ::lib.schema.test-spec/test-native-query-spec]]]
+   {:keys [database], :as native-query-spec} :- [:map
+                                                 ;; open, for the same reason as `POST /query` above:
+                                                 ;; `lib/test-native-query` re-parses and validates the spec itself,
+                                                 ;; and it is the only thing that understands the camelCase keys
+                                                 ;; (`templateTags`, ...) clients send.
+                                                 {:closed false}
+                                                 [:database ::lib.schema.id/database]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-native-query native-query-spec)))
 

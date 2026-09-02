@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
 import {
   type DimensionFilterValue,
   getDimensionBreakoutLabel,
-  getDimensionIcon,
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
 import { Box, Button, Flex, Icon } from "metabase/ui";

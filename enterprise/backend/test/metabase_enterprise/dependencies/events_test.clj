@@ -260,12 +260,16 @@
      (fn [mp]
        (let [base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                       (lib/aggregate (lib/count)))]
-         (mt/with-temp [:model/Card {card-id :id} {:type               :metric
-                                                   :dataset_query      base
-                                                   :dimension_mappings [{:type         :table
-                                                                         :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                                                         :table-id     (mt/id :categories)
-                                                                         :target       [:field {} (mt/id :categories :name)]}]}]
+         (mt/with-temp [:model/Card {card-id :id} {:type :metric :dataset_query base}]
+           ;; Set the mappings after insert: a freshly-inserted metric with nil `:dimensions` counts as
+           ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
+           ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
+           ;; re-syncs when `:dataset_query` changes.
+           (t2/update! :model/Card card-id
+                       {:dimension_mappings [{:type         :table
+                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                              :table-id     (mt/id :categories)
+                                              :target       [:field {} (mt/id :categories :name)]}]})
            (events/publish-event! :event/metric-dimensions-update {:object {:id card-id}})
            (assert-stale :card card-id)
            (deps.test/synchronously-run-backfill!)
@@ -301,7 +305,7 @@
            (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
                "Entity should not be marked stale when mark-stale! fails")))))))
 
-(deftest ^:sequential native-transform-updates-dependencies-test
+(deftest ^:synchronized native-transform-updates-dependencies-test
   (testing "native transform update events trigger dependency calculations"
     (run-with-dependencies-setup!
      (fn [mp]
@@ -317,7 +321,7 @@
                      :to_entity_id (mt/id :orders)}]
                    (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
 
-(deftest ^:sequential mbql-transform-updates-dependencies-test
+(deftest ^:synchronized mbql-transform-updates-dependencies-test
   (testing "mbql transform update events trigger dependency calculations"
     (run-with-dependencies-setup!
      (fn [mp]
@@ -333,7 +337,7 @@
                      :to_entity_id (mt/id :orders)}]
                    (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
 
-(deftest ^:sequential python-transform-updates-dependencies-test
+(deftest ^:synchronized python-transform-updates-dependencies-test
   (testing "python transform update events trigger dependency calculations"
     (run-with-dependencies-setup!
      (fn [_]
@@ -356,7 +360,7 @@
                      :to_entity_id (mt/id :orders)}]
                    (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
 
-(deftest ^:sequential database-delete-marks-source-transforms-stale-test
+(deftest ^:synchronized database-delete-marks-source-transforms-stale-test
   (testing "deleting a database marks its source transforms' analysis findings stale so they surface on /dependency-diagnostics/broken (GDGT-2447)"
     (run-with-dependencies-setup!
      (fn [_mp]
@@ -399,7 +403,7 @@
                                     :analyzed_entity_type :transform
                                     :analyzed_entity_id transform-id))))))))))
 
-(deftest ^:sequential transform-run-updates-dependencies-test
+(deftest ^:synchronized transform-run-updates-dependencies-test
   (testing "transform run events trigger dependency calculations"
     (run-with-dependencies-setup!
      (fn [_]
@@ -418,7 +422,7 @@
                      :to_entity_id transform-id}]
                    (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))
 
-(deftest ^:sequential python-transform-update-handles-downstream-dependencies-test
+(deftest ^:synchronized python-transform-update-handles-downstream-dependencies-test
   (testing "python transform update events handles downstream dependencies"
     (run-with-dependencies-setup!
      (fn [_]
@@ -468,7 +472,7 @@
                (is (empty?
                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
 
-(deftest ^:sequential query-transform-update-handles-downstream-dependencies-test
+(deftest ^:synchronized query-transform-update-handles-downstream-dependencies-test
   (testing "query transform update events handles downstream dependencies"
     (run-with-dependencies-setup!
      (fn [mp]
@@ -689,7 +693,7 @@
             (is (contains? analyses-map id))
             (is (= expected-version (analyses-map id)))))))))
 
-(deftest ^:sequential card-update-works-with-no-analyses-test
+(deftest ^:synchronized card-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Card updates should mark the card stale and trigger the background job"
@@ -710,7 +714,7 @@
                                        :analyzed_entity_id child-card-id))
                "entities without analysis findings should not be marked: no fake analysis record should be created")))))))
 
-(deftest ^:sequential card-update-updates-analyses-test
+(deftest ^:synchronized card-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Card updates should mark the card stale, then the job re-analyzes and propagates"
@@ -749,7 +753,7 @@
 
 ;;; ------------------------------------------------ Analysis propagation tests ------------------------------------------------
 
-(deftest ^:sequential card-update-triggers-native-cards-test
+(deftest ^:synchronized card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Card update marks the card and its transitive dependents stale, and the entity-check job re-analyzes them"
@@ -776,7 +780,7 @@
                                          :analyzed_entity_type :card
                                          :analyzed_entity_id child-id)))))))))
 
-(deftest ^:sequential card-update-stops-on-transforms-test
+(deftest ^:synchronized card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Card update marks the card and its transitive dependents (including transforms) stale up front"
@@ -813,7 +817,7 @@
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :card :analyzed_entity_id child-card-id))))))))))
 
-(deftest ^:sequential transform-update-works-with-no-analyses-test
+(deftest ^:synchronized transform-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Transform update does not error when no analyses exist yet"
@@ -827,7 +831,7 @@
            ;; Should not throw even when no analysis findings exist
            (is (some? (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*})))))))))
 
-(deftest ^:sequential transform-update-updates-analyses-test
+(deftest ^:synchronized transform-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Transform update marks entity stale, entity-check job re-analyzes it"
@@ -852,7 +856,7 @@
                                            :analyzed_entity_type :transform
                                            :analyzed_entity_id transform-id))))))))))
 
-(deftest ^:sequential transform-update-triggers-native-transforms-test
+(deftest ^:synchronized transform-update-triggers-native-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Native transform updates do not error"
@@ -865,7 +869,7 @@
          ;; Should not throw even for native transforms
          (is (some? (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*}))))))))
 
-(deftest ^:sequential transform-run-works-with-no-analyses-test
+(deftest ^:synchronized transform-run-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Transform run completes without error when no analyses exist"
@@ -883,7 +887,7 @@
                                                        :transform-id transform-id}
                                               :user-id api/*current-user-id*})))))))))
 
-(deftest ^:sequential transform-run-marks-dependents-stale-test
+(deftest ^:synchronized transform-run-marks-dependents-stale-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Transform run marks immediate dependents stale"
@@ -915,7 +919,7 @@
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :transform :analyzed_entity_id transform-id))))))))))
 
-(deftest ^:sequential segment-update-works-with-no-analyses-test
+(deftest ^:synchronized segment-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
@@ -926,7 +930,7 @@
            ;; Should not throw even when no analysis findings exist
            (is (some? (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})))))))))
 
-(deftest ^:sequential segment-update-updates-analyses-test
+(deftest ^:synchronized segment-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Segment update marks entity stale, entity-check job re-analyzes and propagates"
@@ -953,7 +957,7 @@
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :card :analyzed_entity_id card-id))))))))))
 
-(deftest ^:sequential table-metadata-update-triggers-dependent-analysis-test
+(deftest ^:synchronized table-metadata-update-triggers-dependent-analysis-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Table metadata update marks immediate dependents stale"
@@ -977,7 +981,7 @@
                (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                              :analyzed_entity_type :card :analyzed_entity_id other-card-id)))))))))))
 
-(deftest ^:sequential table-metadata-update-works-with-no-analyses-test
+(deftest ^:synchronized table-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Table metadata update does not error when no findings exist yet"
@@ -990,7 +994,7 @@
              (events/publish-event! :event/table-update {:object table :user-id api/*current-user-id*})
              (assert-has-analyses {:card {card-id nil}}))))))))
 
-(deftest ^:sequential field-metadata-update-triggers-dependent-analysis-test
+(deftest ^:synchronized field-metadata-update-triggers-dependent-analysis-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Field metadata update marks dependents of the field's table stale"
@@ -1014,7 +1018,7 @@
                (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                              :analyzed_entity_type :card :analyzed_entity_id other-card-id)))))))))))
 
-(deftest ^:sequential field-metadata-update-works-with-no-analyses-test
+(deftest ^:synchronized field-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
      (testing "Field metadata update does not error when no findings exist yet"

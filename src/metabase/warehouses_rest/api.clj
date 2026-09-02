@@ -17,6 +17,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -190,7 +191,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query ::queries.schema/query]]]
+                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
@@ -223,14 +224,14 @@
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                      :result_metadata :type :source_card_id :card_schema
-                                     [{:select   [:status]
-                                       :from     [:moderation_review]
-                                       :where    [:and
-                                                  [:= :moderated_item_type "card"]
-                                                  [:= :moderated_item_id :report_card.id]
-                                                  [:= :most_recent true]]
-                                       :order-by [[:id :desc]]
-                                       :limit    1}
+                                     [^:allow-subquery {:select   [:status]
+                                                        :from     [:moderation_review]
+                                                        :where    [:and
+                                                                   [:= :moderated_item_type "card"]
+                                                                   [:= :moderated_item_id :report_card.id]
+                                                                   [:= :most_recent true]]
+                                                        :order-by [[:id :desc]]
+                                                        :limit    1}
                                       :moderated_status]]
                           :from     [:report_card]
                           :where    (into [:and
@@ -556,11 +557,11 @@
 
 (defn- card-query
   [db-id model type-str]
-  {:select [[:%count.* model]]
-   :from   [:report_card]
-   :where  [:and
-            [:= :database_id db-id]
-            [:= :type type-str]]})
+  ^:allow-subquery {:select [[:%count.* model]]
+                    :from   [:report_card]
+                    :where  [:and
+                             [:= :database_id db-id]
+                             [:= :type type-str]]})
 
 (defmethod database-usage-query :question
   [_ db-id]
@@ -576,19 +577,19 @@
 
 (defmethod database-usage-query :segment
   [_ db-id]
-  {:select [[:%count.* :segment]]
-   :from   [:segment]
-   :where  [:in :table_id {:select [:id]
-                           :from   [:metabase_table]
-                           :where  [:= :db_id db-id]}]})
+  ^:allow-subquery {:select [[:%count.* :segment]]
+                    :from   [:segment]
+                    :where  [:in :table_id ^:allow-subquery {:select [:id]
+                                                             :from   [:metabase_table]
+                                                             :where  [:= :db_id db-id]}]})
 
 (defmethod database-usage-query :transform
   [_ db-id]
-  {:select [[:%count.* :transform]]
-   :from   [:transform]
-   :where  [:or
-            [:= :source_database_id db-id]
-            [:= :target_db_id db-id]]})
+  ^:allow-subquery {:select [[:%count.* :transform]]
+                    :from   [:transform]
+                    :where  [:or
+                             [:= :source_database_id db-id]
+                             [:= :target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -634,6 +635,7 @@
                 (if skip-fields?
                   [:tables :segments :metrics]
                   [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
+        _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -700,11 +702,11 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id search-string limit]
+(defn- autocomplete-tables [db-id like-pattern limit]
   (t2/select [:model/Table :id :db_id :schema :name]
              {:where    [:and [:= :db_id db-id]
                          [:= :active true]
-                         [:like :%lower.name (u/lower-case-en search-string)]
+                         [:like :%lower.name like-pattern]
                          [:= :visibility_type nil]]
               :order-by [[:%lower.name :asc]]
               :limit    limit}))
@@ -742,11 +744,11 @@
                              [:and
                               [:= :report_card.id (Integer/parseInt search-id)]
                               ;; this is a prefix match to be consistent with substring matches on the entire slug
-                              [:like [:lower :report_card.name] (str search-name "%")]]
+                              [:like [:lower :report_card.name] (h2x/like-prefix search-name)]]
 
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
-                             [:like [:lower :report_card.name] (str "%" search-name "%")])]
+                             [:like [:lower :report_card.name] (h2x/like-substring search-name)])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
                 ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
                 ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
@@ -755,14 +757,14 @@
                            [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
 
-(defn- autocomplete-fields [db-id search-string limit]
+(defn- autocomplete-fields [db-id like-pattern limit]
   ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
   (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
-             :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
+             :%lower.metabase_field/name     [:like like-pattern]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    db-id
              {:order-by   [[[:lower :metabase_field.name] :asc]
@@ -787,11 +789,12 @@
                            (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string]
+  "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
+  lowercased table and field names."
+  [db-id like-pattern]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
-        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
+        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
     (autocomplete-results tables fields limit)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -828,8 +831,8 @@
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
-                substring (autocomplete-suggestions id (str "%" substring "%"))
-                prefix    (autocomplete-suggestions id (str prefix "%")))}
+                substring (autocomplete-suggestions id (h2x/like-substring substring))
+                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
@@ -891,13 +894,15 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model]}]
-  (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
+   {:keys [include_editable_data_model]} :- [:map
+                                             [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+  (let [[db-perm-check field-perm-check] (if include_editable_data_model
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
     (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
@@ -927,7 +932,8 @@
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
-       [:provider_name     {:optional true}  [:maybe :string]]]]
+       [:provider_name     {:optional true}  [:maybe :string]]
+       [:is_stub           {:optional true}  [:maybe :boolean]]]]
   (api/check-superuser)
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -984,7 +990,7 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      [:details :map]]]]]
+                                                      [:details ms/Map]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1083,13 +1089,16 @@
        [:details            {:optional true} [:maybe ms/Map]]
        [:write_data_details {:optional true} [:maybe ms/Map]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
+       [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
        [:description        {:optional true} [:maybe :string]]
        [:caveats            {:optional true} [:maybe :string]]
        [:points_of_interest {:optional true} [:maybe :string]]
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/Map]]]]
+       [:settings           {:optional true} [:maybe ms/Map]]
+       [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
                     {:status-code 400})))
@@ -1326,10 +1335,10 @@
 (defn- delete-all-field-values-for-database! [database-or-id]
   (t2/query-one {:delete-from :metabase_fieldvalues
                  :where      [:in :field_id
-                              {:select     [:f.id]
-                               :from       [[:metabase_field :f]]
-                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                               :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
+                              ^:allow-subquery {:select     [:f.id]
+                                                :from       [[:metabase_field :f]]
+                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;
@@ -1602,7 +1611,8 @@
 (api.macros/defendpoint :get ["/:virtual-db/schema/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
-  [{:keys [schema]}]
+  [{:keys [schema]} :- [:map
+                        [:schema :string]]]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
@@ -1619,7 +1629,8 @@
   "Reports whether the database can currently connect"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
-  (let [{:as database :keys [engine]} (t2/select-one :model/Database :id id)
+  (api/check-superuser)
+  (let [{:as database :keys [engine]} (api/check-404 (t2/select-one :model/Database :id id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
@@ -1637,7 +1648,8 @@
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
-  [{:keys [schema]}]
+  [{:keys [schema]} :- [:map
+                        [:schema :string]]]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model

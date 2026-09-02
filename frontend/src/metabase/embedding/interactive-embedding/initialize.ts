@@ -3,7 +3,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
 import type { Dispatch } from "metabase/redux/store";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 export type FrameSpec = {
@@ -37,7 +37,7 @@ export function initializeInteractiveEmbedding(dispatch: Dispatch) {
     window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          dispatch(push(getLocationWithoutBasename(e.data.metabase.location)));
+          navigate(getLocationWithoutBasename(e.data.metabase.location));
         }
       }
     });

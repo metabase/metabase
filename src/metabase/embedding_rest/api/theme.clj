@@ -18,7 +18,7 @@
    [:id        ms/PositiveInt]
    [:entity_id ms/NonBlankString]
    [:name      ms/NonBlankString]
-   [:settings :map]
+   [:settings ms/Map]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
@@ -42,7 +42,7 @@
    _query-params
    {:keys [name settings]} :- [:map
                                [:name     ms/NonBlankString]
-                               [:settings :map]]]
+                               [:settings ms/Map]]]
   (t2/insert-returning-instance! :model/EmbeddingTheme
                                  {:name name
                                   :settings settings}))
@@ -53,7 +53,7 @@
    _query-params
    {:keys [name settings]} :- [:map
                                [:name {:optional true} [:maybe ms/NonBlankString]]
-                               [:settings {:optional true} [:maybe :map]]]]
+                               [:settings {:optional true} [:maybe ms/Map]]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/update! :model/EmbeddingTheme id
               (cond-> {}
@@ -88,7 +88,7 @@
    {:keys [themes]} :- [:map
                         [:themes [:sequential [:map
                                                [:name     ms/NonBlankString]
-                                               [:settings :map]]]]]]
+                                               [:settings ms/Map]]]]]]
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)

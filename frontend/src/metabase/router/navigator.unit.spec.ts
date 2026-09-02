@@ -1,78 +1,97 @@
-import {
-  createRouterNavigator,
-  setRouterNavigate,
-  toNavigateArgs,
-} from "./navigator";
+import { navigate, setRouterExpected, setRouterNavigate } from "./navigator";
 
-describe("toNavigateArgs", () => {
-  it("maps a descriptor's URL parts onto a v7 target", () => {
-    const [to] = toNavigateArgs({
-      pathname: "/dashboard/1",
-      search: "?filter-date=2024-01-01&tab=2-tab-two",
-    });
-
-    expect(to).toEqual({
-      pathname: "/dashboard/1",
-      search: "?filter-date=2024-01-01&tab=2-tab-two",
-      hash: undefined,
-    });
+// Non-component callers navigate before the router mounts and registers its
+// `navigate`. A navigation made in that window (a guard redirecting from a mount
+// layout effect) must not be lost, but it also must not leak into a later router
+// once this one is gone.
+describe("navigate pre-mount buffering", () => {
+  beforeEach(() => {
+    // `createAppRouter` does this for the app. These tests drive the navigator
+    // directly, so they say it themselves.
+    setRouterExpected(true);
   });
 
-  it("passes a string target through untouched", () => {
-    expect(toNavigateArgs("/dashboard/1?tab=2")).toEqual([
-      "/dashboard/1?tab=2",
-      {},
+  afterEach(() => {
+    setRouterNavigate(null);
+    setRouterExpected(false);
+  });
+
+  it("replays the navigations in order, so the history stack is unchanged", () => {
+    // Collapsing these to the last one would apply the replace to the entry the
+    // user arrived on, and lose `/pushed` from the stack.
+    navigate("/pushed");
+    navigate("/replaced", { replace: true });
+
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
+
+    expect(routerNavigate.mock.calls).toEqual([
+      ["/pushed", undefined],
+      ["/replaced", { replace: true }],
     ]);
   });
 
-  it("carries `state` across as a navigate option", () => {
-    const [, options] = toNavigateArgs(
-      { pathname: "/a", state: { from: "here" } },
-      { replace: true },
-    );
-
-    expect(options).toEqual({ replace: true, state: { from: "here" } });
-  });
-});
-
-// The redux navigator is built at store creation, before the router mounts and
-// registers its `navigate`. A navigation dispatched in that window (a guard
-// redirecting from a mount layout effect) must not be lost, but it also must not
-// leak into a later router once this one is gone.
-describe("createRouterNavigator pre-mount buffering", () => {
-  afterEach(() => {
-    setRouterNavigate(null);
-  });
-
   it("buffers a navigation made before the router mounts and flushes it on register", () => {
-    const navigator = createRouterNavigator();
-    navigator.replace("/target");
+    navigate("/target", { replace: true });
 
-    const navigate = jest.fn();
-    setRouterNavigate(navigate);
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
 
-    expect(navigate).toHaveBeenCalledWith("/target", { replace: true });
+    expect(routerNavigate).toHaveBeenCalledWith("/target", { replace: true });
   });
 
   it("navigates immediately once the router is registered", () => {
-    const navigate = jest.fn();
-    setRouterNavigate(navigate);
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
 
-    createRouterNavigator().push("/now");
+    navigate("/now");
 
-    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(routerNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes a delta straight through", () => {
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
+
+    navigate(-1);
+
+    expect(routerNavigate).toHaveBeenCalledWith(-1);
   });
 
   it("drops a buffered navigation when the router unmounts before it flushes", () => {
-    const navigator = createRouterNavigator();
-    navigator.replace("/stale");
+    navigate("/stale", { replace: true });
 
     // Router unmounts without ever registering; the next one must not inherit it.
     setRouterNavigate(null);
 
-    const navigate = jest.fn();
-    setRouterNavigate(navigate);
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
 
-    expect(navigate).not.toHaveBeenCalled();
+    expect(routerNavigate).not.toHaveBeenCalled();
+  });
+});
+
+// A host that builds no router never registers a `navigate`, so anything the
+// navigator holds for it is held for the life of the page. The SDK is such a
+// host and runs for a long time, so it must hold nothing at all.
+describe("navigate with no router on the way", () => {
+  beforeEach(() => {
+    setRouterExpected(false);
+  });
+
+  afterEach(() => {
+    setRouterNavigate(null);
+  });
+
+  it("retains nothing, however many navigations it is given", () => {
+    for (let i = 0; i < 100; i++) {
+      navigate(`/question/${i}`, { state: { card: "a card" } });
+    }
+
+    // Registering is the only way to observe what was held. Nothing should be.
+    const routerNavigate = jest.fn();
+    setRouterNavigate(routerNavigate);
+
+    expect(routerNavigate).not.toHaveBeenCalled();
   });
 });

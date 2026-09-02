@@ -122,16 +122,14 @@ describe("RootSnippetsCollectionMenu", () => {
 
   describe("view archived snippets option", () => {
     it("navigates to archived snippets page", async () => {
-      const { history } = setup();
+      const { router } = setup();
       await userEvent.click(
         screen.getByRole("button", { name: "Snippet collection options" }),
       );
       await userEvent.click(
         screen.getByRole("menuitem", { name: /View archived snippets/ }),
       );
-      expect(history?.getCurrentLocation()?.pathname).toMatch(
-        /\/snippets\/archived/,
-      );
+      expect(router?.location?.pathname).toMatch(/\/snippets\/archived/);
     });
   });
 });

@@ -40,6 +40,7 @@ import {
 
 const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
+const TOAST_MESSAGE_MAX_LINES = 4;
 
 function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
@@ -143,7 +144,9 @@ function UndoToast({
           {undo.renderChildren ? (
             undo.renderChildren(undo)
           ) : (
-            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+            <Ellipsified showTooltip={false} lines={TOAST_MESSAGE_MAX_LINES}>
+              {renderMessage(undo)}
+            </Ellipsified>
           )}
         </CardContentSide>
         <ControlsCardContent>

@@ -4,15 +4,16 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import { NewModelOption } from "metabase/models/components/NewModelOption";
-import { useSelector } from "metabase/redux";
-import { useLocation } from "metabase/router";
-import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { NewModelOption } from "metabase/models/components/NewModelOption";
+import { useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
+import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

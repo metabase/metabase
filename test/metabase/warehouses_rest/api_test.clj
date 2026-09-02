@@ -51,7 +51,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (java.util.concurrent CountDownLatch)
+   (java.util.concurrent CountDownLatch Executors)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -627,23 +627,23 @@
               (is (= nil (:cache_ttl curr-db))))))))))
 
 (deftest reject-is-stub-in-create-test
-  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
+  (testing "POST /api/database returns a 400 when :is_stub=true is in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (is (re-find #"is_stub"
-                     (mt/user-http-request :crowberto :post 400 "database"
-                                           {:name    (mt/random-name)
-                                            :engine  (u/qualified-name ::test-driver)
-                                            :details {:db "my_db"}
-                                            :is_stub true})))))))
+        (is (= "is_stub may not be set via the API"
+               (mt/user-http-request :crowberto :post 400 "database"
+                                     {:name    (mt/random-name)
+                                      :engine  (u/qualified-name ::test-driver)
+                                      :details {:db "my_db"}
+                                      :is_stub true})))))))
 
 (deftest reject-is-stub-in-update-test
-  (testing "PUT /api/database/:id rejects :is_stub=true in the request body"
+  (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-      (is (re-find #"is_stub"
-                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                         {:is_stub true})))
+      (is (= "is_stub may not be set via the API"
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                   {:is_stub true})))
       (testing "the row is unchanged"
         (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
   (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
@@ -928,6 +928,21 @@
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest fetch-database-metadata-primes-table-perms-cache-test
+  (testing "GET /api/database/:id/metadata primes the table-perms cache before its per-table read checks"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t1"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t2"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t3"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t4"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t5"}
+                   :model/Table    _ {:db_id db-id :schema "public" :name "t6"}]
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+      (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
+        (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
+            "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
 
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
@@ -1736,9 +1751,15 @@
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)
-          blocker-latch (CountDownLatch. 1)]
+          blocker-latch (CountDownLatch. 1)
+          ;; Run on a pool of our own: the shared one is process-wide and holds fire-and-forget tasks left
+          ;; behind by earlier tests, each with the default two-hour timeout. One of those still running
+          ;; ahead of the blocker delays everything below it past the deref timeout, which is what happens
+          ;; on driver CI, where those leftover tasks are real syncs over the network.
+          pool          (Executors/newSingleThreadExecutor)]
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
-        (with-redefs [sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+        (with-redefs [quick-task/executor                      (delay pool)
+                      sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
                       analyze/analyze-db-explicit!             (constantly nil)]
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
@@ -1752,7 +1773,8 @@
             (testing "sync executes after stuck task is evicted"
               (is (true? (deref sync-called? 10000 :sync-never-called))))
             (finally
-              (.countDown blocker-latch))))))))
+              (.countDown blocker-latch)
+              (.shutdownNow pool))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -1779,22 +1801,28 @@
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
     (mt/with-premium-features #{:audit-app}
-      (let [update-field-values-called? (promise)]
-        (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                               (when (= (u/the-id synced-db) (u/the-id db))
-                                                                                 (deliver update-field-values-called? :sync-called)))]
-            (snowplow-test/with-fake-snowplow-collector
-              (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-              (is (= :sync-called
-                     (deref update-field-values-called? long-timeout :sync-never-called)))
-              (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-              (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                  :details :id)))
-              (testing "triggers snowplow event"
-                (is (=?
-                     {"event" "database_manual_scan", "target_id" (u/the-id db)}
-                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+      (let [update-field-values-called? (promise)
+            ;; Isolated pool, for the same reasons as in `sync-schema-executes-when-executor-busy-test`.
+            pool                        (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
+            (with-redefs [quick-task/executor (delay pool)]
+              (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                                   (when (= (u/the-id synced-db) (u/the-id db))
+                                                                                     (deliver update-field-values-called? :sync-called)))]
+                (snowplow-test/with-fake-snowplow-collector
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+                  (is (= :sync-called
+                         (deref update-field-values-called? long-timeout :sync-never-called)))
+                  (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+                  (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                      :details :id)))
+                  (testing "triggers snowplow event"
+                    (is (=?
+                         {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                         (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
@@ -1921,6 +1949,37 @@
                  (#'warehouses.util/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
+
+(deftest no-ssrf-via-database-add-test
+  (testing "endpoints that test connection details cannot be used to probe the internal network (SEC-556)"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (let [private-details {:host "10.224.7.141" :port 5432 :dbname "postgres" :user "postgres"}]
+        (testing "POST /api/database"
+          (let [response (mt/user-http-request :crowberto :post 400 "database"
+                                               {:name "internal" :engine "postgres" :details private-details})]
+            (is (=? {:message "Cannot connect to a private or internal network address."} response))
+            (is (not (t2/exists? :model/Database :name "internal")))))
+        (testing "POST /api/database/validate"
+          (is (=? {:valid false, :message "Cannot connect to a private or internal network address."}
+                  (mt/user-http-request :crowberto :post 200 "database/validate"
+                                        {:details {:engine "postgres" :details private-details}}))))
+        (testing "every blocked address gives the same answer, so nothing can be learned about what is behind it"
+          (is (apply = (for [host ["10.224.7.141" "127.0.0.1" "169.254.169.254" "192.168.55.55"]]
+                         (mt/user-http-request :crowberto :post 200 "database/validate"
+                                               {:details {:engine "postgres"
+                                                          :details (assoc private-details :host host)}})))))
+        (testing "PUT /api/database/:id cannot repoint an existing database at an internal address either"
+          (mt/with-temp [:model/Database db {:engine "postgres"
+                                             :details {:host "db.example.com" :port 5432 :dbname "x"}}]
+            (is (=? {:message "Cannot connect to a private or internal network address."}
+                    (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db))
+                                          {:details private-details})))))
+        (testing "a Database with internal details cannot be written directly (serialization import, config files)"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"private or internal network address"
+                                (t2/insert! :model/Database {:name    "internal"
+                                                             :engine  "postgres"
+                                                             :details private-details}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |

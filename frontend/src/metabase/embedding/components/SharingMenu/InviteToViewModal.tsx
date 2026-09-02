@@ -16,9 +16,10 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { Link } from "metabase/common/components/Link";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { UserForm } from "metabase/common/components/UserForm";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
-import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
+import { isSsoEnabled } from "metabase/selectors/settings";
+import { getSetting, useSetting } from "metabase/settings";
 import {
   Button,
   Center,

@@ -22,7 +22,6 @@ export const Comments = {
 function getDocumentNodeButton({
   targetId,
   childTargetId,
-  hasComments,
   isCardEmbedNode,
 }: {
   targetId: DocumentId;
@@ -30,15 +29,14 @@ function getDocumentNodeButton({
   hasComments?: boolean;
   isCardEmbedNode?: boolean;
 }) {
-  const threadUrl = `/document/${targetId}/comments/${childTargetId}${hasComments ? "" : "?new=true"}`;
-
   if (isCardEmbedNode) {
     return cy.findByRole("button", { name: "Comments" });
-  } else {
-    return getDocumentNodeButtons().filter(
-      (_, element) => element.getAttribute("href") === threadUrl,
-    );
   }
+  const threadPath = `/document/${targetId}/comments/${childTargetId}`;
+  return getDocumentNodeButtons().filter(
+    (_, element) =>
+      (element.getAttribute("href") ?? "").split("?")[0] === threadPath,
+  );
 }
 
 function getDocumentNodeButtons() {

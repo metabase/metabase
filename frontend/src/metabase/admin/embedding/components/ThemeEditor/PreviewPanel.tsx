@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 import { Box, Center, Flex, Loader, Text } from "metabase/ui";
 
 import { EnableEmbeddingPrompt } from "./EnableEmbeddingPrompt";

@@ -1,13 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import type { TimelineEventId } from "metabase-types/api";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { TimelineEventGroup } from "metabase/viz-core";
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventChip } from "./TimelineEventChip";
-import type { PositionedTimelineEventGroup } from "./utils";
 
-const singleGroup: PositionedTimelineEventGroup = {
+interface ChipFixture {
+  group: TimelineEventGroup;
+  x: number;
+}
+
+const singleGroup: ChipFixture = {
   group: {
     date: "2025-01-01T00:00:00Z",
     events: [
@@ -17,7 +22,7 @@ const singleGroup: PositionedTimelineEventGroup = {
   x: 100,
 };
 
-const twoGroup: PositionedTimelineEventGroup = {
+const twoGroup: ChipFixture = {
   group: {
     date: "2025-02-01T00:00:00Z",
     events: [
@@ -28,7 +33,7 @@ const twoGroup: PositionedTimelineEventGroup = {
   x: 200,
 };
 
-const manyGroup: PositionedTimelineEventGroup = {
+const manyGroup: ChipFixture = {
   group: {
     date: "2025-03-01T00:00:00Z",
     events: [
@@ -42,15 +47,19 @@ const manyGroup: PositionedTimelineEventGroup = {
 };
 
 interface SetupOpts {
-  eventsGroup?: PositionedTimelineEventGroup;
+  eventsGroup?: ChipFixture;
   selectedEventIds?: TimelineEventId[];
   withCallbacks?: boolean;
+  hidden?: boolean;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 const setup = ({
   eventsGroup = singleGroup,
   selectedEventIds = [],
   withCallbacks = true,
+  hidden,
+  onSeeAllEvents,
 }: SetupOpts = {}) => {
   const onGroupHover = jest.fn();
   const onOpenTimelines = jest.fn();
@@ -59,9 +68,11 @@ const setup = ({
 
   renderWithProviders(
     <TimelineEventChip
-      eventsGroup={eventsGroup}
+      group={eventsGroup.group}
+      x={eventsGroup.x}
       centerY={120}
       selectedEventIds={selectedEventIds}
+      hidden={hidden}
       onGroupHover={onGroupHover}
       onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
       onSelectTimelineEvents={
@@ -70,6 +81,7 @@ const setup = ({
       onDeselectTimelineEvents={
         withCallbacks ? onDeselectTimelineEvents : undefined
       }
+      onSeeAllEvents={onSeeAllEvents}
     />,
   );
 
@@ -207,5 +219,50 @@ describe("TimelineEventChip", () => {
 
     expect(await screen.findByText("Many 1")).toBeInTheDocument();
     expect(screen.queryByText("See all")).not.toBeInTheDocument();
+  });
+
+  it("shows 'See all' handing the cluster to onSeeAllEvents without making the chip clickable", async () => {
+    const onSeeAllEvents = jest.fn();
+    // No select/open callbacks — the Explorations wiring, where only
+    // "See all" should act (a bare chip click must do nothing).
+    const { onSelectTimelineEvents } = setup({
+      eventsGroup: manyGroup,
+      withCallbacks: false,
+      onSeeAllEvents,
+    });
+
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+    expect(onSelectTimelineEvents).not.toHaveBeenCalled();
+    expect(onSeeAllEvents).not.toHaveBeenCalled();
+
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+    await userEvent.click(await screen.findByText("See all"));
+
+    expect(onSeeAllEvents).toHaveBeenCalledWith(manyGroup.group.events);
+  });
+
+  it("dismisses the popover after 'See all' is clicked", async () => {
+    setup({ eventsGroup: manyGroup, onSeeAllEvents: jest.fn() });
+
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+    expect(
+      await screen.findByTestId("timeline-event-popover"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("See all"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("marks the chip as hidden when hidden", () => {
+    setup({ eventsGroup: singleGroup, hidden: true });
+    expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
+      "data-hidden",
+      "true",
+    );
   });
 });

@@ -1,4 +1,3 @@
-import { sessionPropertiesPath } from "metabase/api";
 import {
   type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
@@ -6,6 +5,7 @@ import {
 } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { sessionPropertiesPath } from "metabase/settings";
 
 type EmbedType = "guest" | "static" | "public";
 

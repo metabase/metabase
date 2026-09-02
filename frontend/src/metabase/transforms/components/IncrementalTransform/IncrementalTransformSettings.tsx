@@ -4,9 +4,8 @@ import { t } from "ttag";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
 import { getLibQuery } from "metabase/transforms/utils";
 import {
@@ -39,6 +38,7 @@ type IncrementalTransformSettingsProps = {
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
   readOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
   extraActions?: React.ReactNode;
   // When the target table already exists, its id powers a column picker for the unique key.
   targetTableId?: TableId;
@@ -50,14 +50,12 @@ export const IncrementalTransformSettings = ({
   onIncrementalChange,
   variant = "embedded",
   readOnly,
+  remoteSyncReadOnly,
   extraActions,
   targetTableId,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
 
   const { hasCheckpointOptions, transformType } =
     useHasCheckpointOptions(source);
@@ -96,11 +94,7 @@ export const IncrementalTransformSettings = ({
 
     const switchContent = (
       <Switch
-        disabled={
-          readOnly ||
-          isRemoteSyncReadOnly ||
-          (!incremental && transformHasIssues)
-        }
+        disabled={readOnly || (!incremental && transformHasIssues)}
         checked={incremental}
         size="sm"
         label={getLabel()}
@@ -111,7 +105,7 @@ export const IncrementalTransformSettings = ({
       />
     );
 
-    if (isRemoteSyncReadOnly) {
+    if (remoteSyncReadOnly) {
       return (
         <Tooltip
           label={t`You can't edit this setting since Remote Sync is currently in read-only mode.`}

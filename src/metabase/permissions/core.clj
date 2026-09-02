@@ -2,6 +2,7 @@
   "`permissions` module API namespace."
   {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
+   [metabase.permissions.data-access-token]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
@@ -29,6 +30,7 @@
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
   metabase.permissions.models.permissions-revision/keep-me
+  metabase.permissions.data-access-token/keep-me
   metabase.permissions.path/keep-me
   metabase.permissions.published-tables/keep-me
   metabase.permissions.user/keep-me
@@ -136,6 +138,7 @@
   log-permissions-changes
   sandboxed-or-impersonated-user?
   sandboxed-user?
+  sandboxed-user-for-db?
   increment-implicit-perms-revision!
   save-perms-revision!]
  [metabase.permissions.validation
@@ -155,6 +158,12 @@
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 
+(p/import-vars
+ [metabase.permissions.data-access-token
+  data-access-token
+  data-access-compatible?
+  data-access-token-transform])
+
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
 (p/import-def metabase.permissions.models.permissions-group/admin                        admin-group)
@@ -164,3 +173,7 @@
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)
 (p/import-def metabase.permissions.models.data-permissions/least-permissive-value        least-permissive-data-perms-value)
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
+
+(p/import-vars [metabase.permissions.models.permissions-group
+                check-tenant-groups-visible!
+                hidden-tenant-group-ids])

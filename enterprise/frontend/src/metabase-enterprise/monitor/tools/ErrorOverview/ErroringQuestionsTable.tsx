@@ -13,8 +13,7 @@ import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
   LoadingOverlay,
@@ -70,7 +69,7 @@ export const ErroringQuestionsTable = ({
   onSortingChange,
   onRowSelectionChange,
 }: ErroringQuestionsTableProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
@@ -83,9 +82,9 @@ export const ErroringQuestionsTable = ({
 
   const handleRowActivate = useCallback(
     (row: Row<ErroringCard>) => {
-      dispatch(push(Urls.card({ id: row.original.id })));
+      navigate(Urls.card({ id: row.original.id }));
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleRowClick = useCallback(

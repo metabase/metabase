@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import {
   Badge,
   Box,
@@ -62,7 +62,6 @@ export function DimensionRow({
           <Checkbox
             aria-label={dimension.display_name}
             checked={checked}
-            size="xs"
             onChange={(event) => onToggle(event.currentTarget.checked)}
           />
           <UnstyledButton className={S.rowButton} onClick={onEdit}>

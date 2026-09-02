@@ -6,13 +6,12 @@ import {
   setupTokenRefreshEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetSettingsQuery } from "metabase/settings";
 import type { TokenStatusFeature } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenStatus,
 } from "metabase-types/api/mocks";
-
-import { useGetSettingsQuery } from "../session";
 
 import { useTokenRefresh, useTokenRefreshUntil } from "./use-token-refresh";
 

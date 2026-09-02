@@ -191,6 +191,8 @@
      metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     ;; only inspects a details map and throws; the `!` is for the throw, not for a mutation
+     metabase.driver/validate-db-details!
      metabase.mcp.usage/record-mcp-session!
      metabase.mcp.usage/record-mcp-session-end!
      metabase.mcp.usage/record-mcp-tool-call!
@@ -403,6 +405,7 @@
     metabase.channel.render.core              channel.render
     metabase.cloud-migration.core             cloud-migration
     metabase.eid-translation.core             eid-translation
+    metabase.llm.test-util                    llm.tu
     metabase.login-history.core               login-history
     metabase.model-persistence.core           model-persistence
     metabase.notification.core                notification
@@ -495,6 +498,7 @@
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.oauth-server.test-util/with-oauth-client                                     clojure.core/fn
   metabase.osi.ai-context.api-test/with-test-entry                                      clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
@@ -504,7 +508,9 @@
   metabase.query-processor.pipeline-queries-test/mbql5-query                            clojure.core/->
   metabase.query-processor.pipeline-queries-test/run-mbql5-query                        clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
+  metabase.query-processor.core/with-reducible-deserialized-results                     clojure.core/let
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
+  metabase.query-processor.result-serialization/with-reducible-deserialized-results     clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
@@ -521,7 +527,6 @@
   metabase.test.data.interface/defdataset                                               clojure.core/def
   metabase.test.data.interface/defdataset-edn                                           clojure.core/def
   metabase.test.embedded-postgres.core/with-system                                      clojure.core/let
-  metabase.test.gentest/defgentest                                                      clojure.test/deftest
   metabase.test/defdataset                                                              clojure.core/def
   metabase.test/let-url                                                                 clojure.core/let
   metabase.test/with-actions                                                            clojure.core/let
@@ -680,7 +685,6 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
-   metabase.test.gentest/iterate                                                                                             hooks.metabase.test.gentest/iterate*
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.generators.jvm/with-random-cards                                                                       hooks.metabase.test.util.generators.jvm/with-random-cards
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
@@ -799,7 +803,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
@@ -859,6 +863,11 @@
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+
+  ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating
+  ;; a cycle; it gets to use tools.logging directly.
+  metabase.classloader.impl
+  {:linters {:discouraged-namespace {clojure.tools.logging {:level :off}}}}
 
   source-namespaces
   {:linters

@@ -19,6 +19,7 @@ import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.cs
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
 import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
+import { getUser } from "metabase/current-user";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import {
   type DashboardContextReturned,
@@ -26,7 +27,6 @@ import {
 } from "metabase/dashboard/context";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type {
   Dashboard,

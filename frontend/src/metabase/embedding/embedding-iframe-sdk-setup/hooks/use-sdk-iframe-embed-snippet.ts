@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useListEmbeddingThemesQuery } from "metabase/api/embedding-theme";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";

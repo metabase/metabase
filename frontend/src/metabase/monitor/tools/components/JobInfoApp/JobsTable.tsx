@@ -4,8 +4,7 @@ import { t } from "ttag";
 
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
   LoadingOverlay,
@@ -28,7 +27,7 @@ type JobsTableProps = {
 };
 
 export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const rows: JobRow[] = useMemo(
     () => jobs.map((job) => ({ ...job, id: job.key })),
@@ -38,9 +37,9 @@ export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
 
   const handleRowActivate = useCallback(
     (row: Row<JobRow>) => {
-      dispatch(push(Urls.monitorJobTriggers(row.original.key)));
+      navigate(Urls.monitorJobTriggers(row.original.key));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<JobRow>({

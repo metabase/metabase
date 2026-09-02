@@ -9,20 +9,26 @@ inputs:
   build-static-viz:
     required: true
     default: false
-  logs-artifact-suffix:
+  artifact-suffix:
     required: false
-    description: Suffix to append to the test logs artifact name to avoid conflicts in matrix jobs
+    description: >-
+      Discriminator appended to this job's artifact names (test logs, granular-rerun failed
+      tests). A job whose matrix runs several concurrent legs MUST set a per-leg-unique value,
+      or the legs collide on one artifact — for the rerun artifact that means a leg restores
+      another leg's failed set. Must be stable across attempts of the same job.
   edition:
     required: false
     default: "ee"
     description: Edition to test (oss or ee)
   quarantine-engine:
     required: false
-  driver-status:
+  granular-rerun:
     required: false
-    default: ""
+    default: "true"
     description: >-
-      Configured status for this driver ("info", "skip", "required", or empty), as reported by `mage driver-decisions`.
+      When "true" (default), a re-run of a failed job runs only the tests that failed on the
+      previous attempt (hawk `:only`). Stress workflows set this to "false": they intentionally
+      run a fixed test set `:times N`, and narrowing to failures would drop that repetition.
 
 outputs:
   test-outcome:
@@ -48,22 +54,118 @@ runs:
       env:
         MB_EDITION: ${{ inputs.edition }}
 
+    # Granular rerun: on a re-run of a failed job, restore the list
+    # of tests that failed on the previous attempt (uploaded below) so the test
+    # step can target only those instead of the whole suite. Best-effort: a
+    # missing/empty artifact leaves no file and the run falls back to the full
+    # suite. First attempts skip this entirely.
+    #
+    # Scoped to the IMMEDIATELY preceding attempt: an attempt that passed, or
+    # that failed with nothing attributable to a var, uploads no artifact, and a
+    # narrow set must not outlive it. Reading `attempt - 1` means "only what the
+    # last attempt actually recorded" — anything else falls back to the full suite.
+    # Workflow expressions have no arithmetic, so the shell computes it.
+    #
+    # run-tests.yml calls app-db.yml, backend.yml, drivers.yml and semantic-search.yml
+    # as part of ONE run, so all four share an artifact namespace. `junit-name` alone is not
+    # unique there — app-db.yml and drivers.yml both derive `be-tests-postgres-ee` — so
+    # `artifact-suffix` carries the rest of the discriminator.
+    - name: Resolve rerun artifact names
+      if: ${{ inputs.granular-rerun == 'true' }}
+      shell: bash
+      env:
+        RERUN_ARTIFACT_BASE: ${{ format('failed-tests-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+      run: |
+        echo "RERUN_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+        echo "RERUN_PREV_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
+
+    # `pattern` (not `name`) because the artifact is legitimately absent whenever the
+    # previous attempt recorded nothing: `name` treats that as an error, `pattern`
+    # downloads nothing and moves on. The value is a literal — no glob metacharacters —
+    # so it matches exactly one artifact, which lands at `target/failed-tests`. A pattern
+    # that ever matched two would nest them under their artifact names instead, leaving
+    # the file absent and falling back to the full suite.
+    - name: Restore previously-failed tests
+      if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        pattern: ${{ env.RERUN_PREV_ARTIFACT }}
+        path: target
+
     - name: Test database driver
-      run: clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      # On a rerun with a non-empty failed-tests file, target only those vars via
+      # hawk `:only` (a var-level selector bypasses `:only-tags`, which is fine —
+      # every listed var already passed that filter on the first attempt).
+      # Otherwise run exactly as before. Quote the file so the whole `[ns/var ...]`
+      # vector reaches clojure -X as a single argument.
+      run: |
+        BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
+        # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
+        # The `profiled` output is what the collection steps below key off, so that the decision is
+        # recorded by the step that acts on it rather than re-derived from the environment.
+        if [ "$PROFILE_TESTS" = "true" ]; then
+          echo "Profiling this run; a flamegraph will be attached to the job."
+          echo "profiled=true" >> "$GITHUB_OUTPUT"
+          BASE="$BASE:profile-tests"
+        fi
+        # An explicit selection wins over the rerun narrowing below: it was asked for by hand, on this
+        # attempt. Names may be separated by commas or spaces; hawk wants them as one vector argument.
+        if [ -n "$ONLY_TESTS" ]; then
+          ONLY="[$(echo "$ONLY_TESTS" | tr ',' ' ')]"
+          echo "Running only: $ONLY"
+          $BASE :only "$ONLY"
+        elif [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+          echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
+          $BASE :only "$(cat target/failed-tests)"
+        else
+          $BASE ${{ inputs.test-args }}
+        fi
       shell: bash
       id: run-test
-      # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
-      # Driver "info" status can affect this logic. See below.
+      # Keep this step continue-on-error because the quarantine gate below controls whether it
+      # ultimately fails.
       continue-on-error: true
 
+    - name: Collect profile
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/collect-profile
+      with:
+        profiled: ${{ steps.run-test.outputs.profiled }}
+        artifact-name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+
     - name: Report failed tests to ci-conductor
-      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      if: ${{ !cancelled() && ( steps.run-test.outcome == 'failure' || github.run_attempt != '1' ) }}
       # This step should NEVER fail the job!
       continue-on-error: true
       uses: ./.github/actions/report-failures-to-ci-conductor
       with:
         test-suite: ${{ inputs.junit-name }}
         adapter: backend
+
+    # Granular rerun: record which tests failed so a re-run of this
+    # job targets only those (restored above). Reuses the backend JUnit adapter
+    # from the ci-conductor sources the report step just prepared. Best-effort:
+    # writes nothing unless every failure is attributable to a var, so an
+    # unattributable failure falls back to a full rerun.
+    - name: Collect failed tests for rerun
+      if: ${{ inputs.granular-rerun == 'true' && !cancelled() && steps.run-test.outcome == 'failure' }}
+      continue-on-error: true
+      shell: bash
+      # Clear the restored set first, so a collector that dies before deciding
+      # can't leave the previous attempt's file to be uploaded as this one's.
+      run: |
+        rm -f target/failed-tests
+        bun release/ci-conductor/src/collect-failed-backend.ts
+
+    - name: Upload failed tests for rerun
+      if: ${{ inputs.granular-rerun == 'true' && !cancelled() && steps.run-test.outcome == 'failure' }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.RERUN_ARTIFACT }}
+        path: target/failed-tests
+        if-no-files-found: ignore
 
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
@@ -83,7 +185,7 @@ runs:
       if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v7
       with:
-        name: ${{ format('test-logs-{0}{1}', github.job, inputs.logs-artifact-suffix && format('-{0}', inputs.logs-artifact-suffix) || '') }}
+        name: ${{ format('test-logs-{0}{1}', github.job, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
         path: logs/test-log.json
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.
@@ -92,13 +194,7 @@ runs:
     # Last, because this is the only step allowed to fail the job: everything above it reports the
     # failure (JUnit report, logs, ci-conductor) and must run regardless of the verdict below.
     - name: Quarantine gate
-      # Off master and release branches an "info" driver is data-collection only - the test always passes!
-      # On master and release branches "info" carries no weight - the quarantine logic applies.
-      if: |
-        !cancelled()
-        && steps.run-test.outcome == 'failure'
-        && !(inputs.driver-status == 'info'
-             && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')))
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
       uses: ./.github/actions/quarantine-gate
       with:
         adapter: backend

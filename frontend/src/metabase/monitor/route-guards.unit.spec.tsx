@@ -40,21 +40,19 @@ describe("monitor route-guards", () => {
     };
 
     it("redirects unauthenticated users to login with redirect back", async () => {
-      const { history } = setup({ currentUser: undefined });
+      const { router } = setup({ currentUser: undefined });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+        expect(router?.location.pathname).toBe("/auth/login");
       });
 
-      expect(
-        new URLSearchParams(history?.getCurrentLocation().search).get(
-          "redirect",
-        ),
-      ).toBe("/monitor");
+      expect(new URLSearchParams(router?.location.search).get("redirect")).toBe(
+        "/monitor",
+      );
     });
 
     it("redirects users without monitor access to unauthorized", async () => {
-      const { history } = setup({
+      const { router } = setup({
         currentUser: createMockUser({
           is_data_analyst: false,
           is_superuser: false,
@@ -62,10 +60,10 @@ describe("monitor route-guards", () => {
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().search).toBe("");
+      expect(router?.location.search).toBe("");
     });
 
     it("renders for analysts", () => {
@@ -114,7 +112,7 @@ describe("monitor route-guards", () => {
     });
 
     it("redirects a non-admin with monitoring permission to unauthorized without redirect-back", async () => {
-      const { history } = setup({
+      const { router } = setup({
         currentUser: createMockUser({
           is_superuser: false,
           is_data_analyst: false,
@@ -123,15 +121,15 @@ describe("monitor route-guards", () => {
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().search).toBe("");
+      expect(router?.location.search).toBe("");
       expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
 
     it("redirects an analyst to unauthorized without redirect-back", async () => {
-      const { history } = setup({
+      const { router } = setup({
         currentUser: createMockUser({
           is_superuser: false,
           is_data_analyst: true,
@@ -139,10 +137,10 @@ describe("monitor route-guards", () => {
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
 
-      expect(history?.getCurrentLocation().search).toBe("");
+      expect(router?.location.search).toBe("");
       expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
   });
@@ -180,7 +178,7 @@ describe("monitor route-guards", () => {
     });
 
     it("redirects a non-admin with monitoring permission to unauthorized without redirect-back", async () => {
-      const { history } = setup({
+      const { router } = setup({
         currentUser: createMockUser({
           is_superuser: false,
           is_data_analyst: false,
@@ -189,17 +187,15 @@ describe("monitor route-guards", () => {
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
 
-      expect(
-        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-      ).toEqual({});
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
       expect(screen.queryByText("ai auditing page")).not.toBeInTheDocument();
     });
 
     it("redirects an analyst to unauthorized without redirect-back", async () => {
-      const { history } = setup({
+      const { router } = setup({
         currentUser: createMockUser({
           is_superuser: false,
           is_data_analyst: true,
@@ -207,12 +203,10 @@ describe("monitor route-guards", () => {
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
 
-      expect(
-        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-      ).toEqual({});
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({});
       expect(screen.queryByText("ai auditing page")).not.toBeInTheDocument();
     });
   });

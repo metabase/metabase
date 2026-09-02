@@ -34,6 +34,6 @@ Metabase Cloud does not support customization of the "from address" for emailed 
 
 You won't be able to access the application database; if you want insights into how people are using your Metabase, check out [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
-## Queries time out after ten minutes
+## Queries time out after 20 minutes
 
-If a query takes longer than ten minutes to run, it will time out.
+If a query takes longer than 20 minutes to run, it will time out.

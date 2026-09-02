@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Radio, Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 

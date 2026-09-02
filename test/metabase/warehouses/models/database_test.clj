@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
@@ -766,6 +767,101 @@
           (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
 
 (driver/register! ::test, :abstract? true)
+
+(driver/register! ::host-details-driver, :abstract? true)
+(driver/register! ::alternate-details-driver, :abstract? true)
+
+(defmethod driver/connection-hosts ::host-details-driver
+  [_driver details]
+  (driver/hosts-from-details details [:host]))
+
+(defmethod driver/connection-hosts ::alternate-details-driver
+  [_driver details]
+  (driver/hosts-from-details details [:alternate-host]))
+
+(deftest engine-change-validates-existing-details-with-new-driver-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
+                                       :details {:host "8.8.8.8" :alternate-host "127.0.0.1"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"private or internal network address"
+           (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
+
+(deftest overlay-details-are-validated-the-way-they-are-resolved-test
+  ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
+  ;; [[metabase.driver.connection/effective-details]] rather than used on their own, so that merge is what has to
+  ;; satisfy the policy -- an overlay holding nothing but credentials repoints nothing.
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-temp [:model/Database db {:engine  (u/qualified-name ::host-details-driver)
+                                       :details {:host "8.8.8.8"}}]
+      (testing "an overlay carrying only credentials inherits the host it will be merged with"
+        (is (pos? (t2/update! :model/Database (:id db) {:write_data_details {:user "hummingbird"}}))))
+      (testing "an overlay that repoints the connection at an internal address is refused"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+
+(deftest audit-db-is-not-subject-to-the-network-policy-test
+  ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
+  ;; `:details` and is reached over the app-db connection. Under the policy its empty details read as `localhost` --
+  ;; every `:sql-jdbc` client substitutes that -- so validating it refuses the instance's own app db.
+  ;;
+  ;; This has to hold on update as well as insert, because
+  ;; [[metabase-enterprise.audit-app.audit/adjust-audit-db-to-source!]] flips `:engine` to "postgres" on every boot
+  ;; that installs analytics, and an `:engine` change is what makes `before-update` validate every details map. A
+  ;; refusal there is thrown during init, so Metabase fails to start rather than failing a request.
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (testing "the audit db can be created"
+      (mt/with-temp [:model/Database db {:is_audit true, :engine :h2, :details {}}]
+        (testing "and its engine can be flipped the way installing analytics flips it"
+          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))))
+    (testing "an ordinary database with the same empty details is still refused"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"private or internal network address"
+           (t2/insert! :model/Database {:name "not the audit db", :engine :postgres, :details {}}))))
+    (testing "`is_audit` is not itself a way past the policy -- serdes import can set it, so the exemption is
+             narrowed to the detail-less shape the analytics installer actually writes"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"private or internal network address"
+           (t2/insert! :model/Database {:name       "audit-flavored smuggling"
+                                        :is_audit   true
+                                        :engine     (u/qualified-name ::host-details-driver)
+                                        :details    {:host "127.0.0.1"}}))))))
+
+(deftest attached-dwh-relaxes-the-network-policy-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-premium-features #{:attached-dwh}
+      ;; the exemption requires the :attached-dwh token feature, which an OSS build can never have
+      (when config/ee-available?
+        (testing "an attached DWH on a private address can be written"
+          (mt/with-temp [:model/Database db {:engine          (u/qualified-name ::host-details-driver)
+                                             :is_attached_dwh true
+                                             :details         {:host "10.224.7.141"}}]
+            (testing "and updated"
+              (is (pos? (t2/update! :model/Database (:id db) {:details {:host "10.224.7.142"}})))))))
+      (testing "loopback and link-local stay blocked even for the attached DWH"
+        (doseq [host ["127.0.0.1" "169.254.169.254"]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"private or internal network address"
+               (t2/insert! :model/Database {:name            "attached dwh"
+                                            :engine          (u/qualified-name ::host-details-driver)
+                                            :is_attached_dwh true
+                                            :details         {:host host}}))
+              (str "should be refused: " host)))))
+    (testing "without the :attached-dwh token feature the flag confers no exemption"
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/insert! :model/Database {:name            "dwh-flavored smuggling"
+                                          :engine          (u/qualified-name ::host-details-driver)
+                                          :is_attached_dwh true
+                                          :details         {:host "10.224.7.141"}})))))))
 
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"

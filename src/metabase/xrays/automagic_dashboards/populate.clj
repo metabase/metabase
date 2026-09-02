@@ -1,7 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.populate
   "Create and save models that make up automagic dashboards."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -11,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -319,28 +317,6 @@
     (let [g (group-by f coll)]
       (access key-order g))))
 
-(mu/defn- create-dashboard-populate-dashcards :- [:sequential ::ads/dashcard]
-  [dashcards :- [:maybe [:sequential ::ads/card-template]]]
-  ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
-  ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
-  ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
-  ;; this code to be saner
-  (let [card-id->can-run-adhoc-query (binding [lib.schema/*HACK-disable-ref-validation* true]
-                                       (into {}
-                                             (map (juxt ::id :can_run_adhoc_query))
-                                             (queries/with-can-run-adhoc-query
-                                               (for [{:keys [card]} dashcards
-                                                     :when          (and (:id card)
-                                                                         (:dataset_query card))]
-                                                 (-> card
-                                                     (update :dataset_query lib-be/normalize-query)
-                                                     (set/rename-keys {:id ::id}))))))]
-    (for [dashcard dashcards
-          :let     [card (:card dashcard)
-                    card (when (seq card)
-                           (assoc card :can_run_adhoc_query (get card-id->can-run-adhoc-query (:id card))))]]
-      (u/assoc-dissoc dashcard :card card))))
-
 (mu/defn create-dashboard :- ::ads/dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
@@ -367,8 +343,7 @@
                                     [dashboard
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
-                                     (make-grid grid-width (* n grid-width))]))
-         dashboard     (update dashboard :dashcards create-dashboard-populate-dashcards)]
+                                     (make-grid grid-width (* n grid-width))]))]
      (log/debugf "Adding %s cards to dashboard" (count cards))
      (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
        (not-empty filters) (filters/add-filters filters max-filters)))))

@@ -14,7 +14,7 @@
 (def Models
   "Schema enumerating bookmarkable models."
   (into [:enum]
-        ["card" "dashboard" "collection" "document"]))
+        ["card" "dashboard" "collection" "document" "exploration"]))
 
 (def BookmarkOrderings
   "Schema for an ordered of bookmark orderings"
@@ -24,10 +24,11 @@
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card" [:model/Card :model/CardBookmark :card_id]
-   "dashboard"  [:model/Dashboard  :model/DashboardBookmark  :dashboard_id]
-   "collection" [:model/Collection :model/CollectionBookmark :collection_id]
-   "document" [:model/Document :model/DocumentBookmark :document_id]})
+  {"card"        [:model/Card        :model/CardBookmark        :card_id]
+   "dashboard"   [:model/Dashboard   :model/DashboardBookmark   :dashboard_id]
+   "collection"  [:model/Collection  :model/CollectionBookmark  :collection_id]
+   "document"    [:model/Document    :model/DocumentBookmark    :document_id]
+   "exploration" [:model/Exploration :model/ExplorationBookmark :exploration_id]})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

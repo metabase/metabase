@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSetting } from "metabase/common/hooks";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Outlet } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

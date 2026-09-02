@@ -123,7 +123,7 @@ describe("TaskRunsPage", () => {
   });
 
   it("should navigate to run details when a row is clicked", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       taskRunsResponse: createMockTaskRunsResponse({
         data: [createMockTaskRun({ id: 55 })],
       }),
@@ -132,9 +132,7 @@ describe("TaskRunsPage", () => {
     const row = await screen.findByTestId("task-run");
     await userEvent.click(row);
 
-    expect(history?.getCurrentLocation().pathname).toBe(
-      Urls.monitorTaskRunDetails(55),
-    );
+    expect(router?.location.pathname).toBe(Urls.monitorTaskRunDetails(55));
   });
 
   describe("sorting", () => {
@@ -177,7 +175,7 @@ describe("TaskRunsPage", () => {
     });
 
     it("sorts by each sortable column", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
         }),
@@ -212,14 +210,14 @@ describe("TaskRunsPage", () => {
         act(() => {
           jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
         });
-        expect(history?.getCurrentLocation().search).toEqual(
+        expect(router?.location.search).toEqual(
           `?sort_column=${column}&sort_direction=asc`,
         );
       }
     });
 
     it("toggles sort direction when clicking the active sorted column", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
         }),
@@ -240,9 +238,7 @@ describe("TaskRunsPage", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
-      expect(history?.getCurrentLocation().search).toEqual(
-        "?sort_direction=asc",
-      );
+      expect(router?.location.search).toEqual("?sort_direction=asc");
 
       await userEvent.click(
         screen.getByRole("columnheader", { name: /Started at/ }),
@@ -256,11 +252,11 @@ describe("TaskRunsPage", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
-      expect(history?.getCurrentLocation().search).toEqual("");
+      expect(router?.location.search).toEqual("");
     });
 
     it("resets pagination on sorting change", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         taskRunsResponse: createMockTaskRunsResponse({
           data: [createMockTaskRun()],
           total: 75,
@@ -284,7 +280,7 @@ describe("TaskRunsPage", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
-      expect(history?.getCurrentLocation().search).toEqual("?page=1");
+      expect(router?.location.search).toEqual("?page=1");
 
       await userEvent.click(
         screen.getByRole("columnheader", { name: /Run Type/ }),
@@ -297,7 +293,7 @@ describe("TaskRunsPage", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
-      expect(history?.getCurrentLocation().search).toEqual(
+      expect(router?.location.search).toEqual(
         "?sort_column=run_type&sort_direction=asc",
       );
     });

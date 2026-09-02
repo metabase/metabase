@@ -10,7 +10,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -465,7 +464,7 @@
                           (lib/breakout (lib/with-temporal-bucket column :year))
                           (lib/breakout (lib/with-temporal-bucket column :month)))
           query       (->> query
-                           (lib.query/->legacy-MBQL)
+                           lib/->legacy-MBQL
                            (lib/query meta/metadata-provider))]
       (is (= query
              (lib/replace-clause query

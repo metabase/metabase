@@ -60,7 +60,10 @@ describe("getOverviewDimensions", () => {
 
   it("returns chartable active dimensions in curated order", () => {
     expect(
-      getOverviewDimensions(definition, CURATED_DIMENSIONS_METRIC.dimensions),
+      getOverviewDimensions(
+        definition,
+        CURATED_DIMENSIONS_METRIC.dimensions || [],
+      ),
     ).toEqual([
       {
         dimensionId: "dim-quantity",

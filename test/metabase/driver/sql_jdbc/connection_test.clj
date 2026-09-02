@@ -377,6 +377,24 @@
         (is (= ::audit-db-not-in-cache!
                (get @#'sql-jdbc.conn/pool-cache-key->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))
 
+(deftest is-audit-dev-routing-requires-dev-mode-test
+  (testing "a user-supplied :is-audit-dev detail only routes to the app DB under analytics-dev-mode"
+    (mt/with-temp [:model/Database db {:engine :h2 :details {:is-audit-dev true}
+                                       :is_audit false}]
+      (let [routes-to-app-db? (fn []
+                                (= {:datasource (mdb/data-source)}
+                                   (sql-jdbc.conn/db->pooled-connection-spec (:id db))))]
+        (testing "dev mode off: reaching the connection layer with an :is-audit-dev db is an invariant violation, so
+                  it throws rather than silently building a connection against the wrong host"
+          (mt/with-temporary-setting-values [analytics-dev-mode false]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Cannot open a connection for an analytics-dev database"
+                 (routes-to-app-db?)))))
+        (testing "dev mode on: the flag is honored (the legitimate local-dev path still works)"
+          (mt/with-temporary-setting-values [analytics-dev-mode true]
+            (is (routes-to-app-db?))))))))
+
 (deftest ^:parallel include-unreturned-connection-timeout-test
   (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
     (is (=? {"unreturnedConnectionTimeout" integer?}

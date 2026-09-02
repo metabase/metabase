@@ -1,10 +1,12 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
+import { parseToolCallResult } from "metabase/metabot/utils/tool-call-result";
 import {
   ActionIcon,
   Badge,
@@ -32,18 +34,55 @@ export const ToolCallTitle = ({
   </Flex>
 );
 
+const ToolCallSection = ({
+  title,
+  value,
+  isJson = true,
+  copyLabel,
+  badge,
+}: {
+  title: string;
+  value: string;
+  isJson?: boolean;
+  copyLabel: string;
+  badge?: ReactNode;
+}) => {
+  const clipboard = useClipboard();
+
+  return (
+    <Stack gap="xs">
+      <Flex gap="xs">
+        <Flex align="center" gap="sm">
+          <Text fw="bold">{title}</Text>
+          {badge}
+        </Flex>
+        <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+          <ActionIcon
+            h="sm"
+            aria-label={copyLabel}
+            onClick={() => clipboard.copy(value)}
+          >
+            <Icon name="copy" size="1rem" />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+      <Box p="xs" bd="1px solid var(--mb-color-border-neutral)" bdrs="sm">
+        <CodeEditor
+          value={value}
+          language={isJson ? "json" : undefined}
+          lineNumbers={isJson}
+          readOnly
+        />
+      </Box>
+    </Stack>
+  );
+};
+
 export const ToolCallDetailsContent = ({
   message,
 }: {
   message: MetabotDebugToolCallMessage;
 }) => {
-  const argsClipboard = useClipboard();
-  const resultClipboard = useClipboard();
-  const codeBoxProps = {
-    p: "xs" as const,
-    bd: "1px solid var(--mb-color-border-neutral)",
-    bdrs: "sm" as const,
-  };
   const parsedArgs = useMemo(() => {
     try {
       return message.args
@@ -56,64 +95,51 @@ export const ToolCallDetailsContent = ({
     }
   }, [message.args]);
 
-  const parsedResult = useMemo(() => {
-    if (!message.result) {
-      return "";
-    }
-    try {
-      return JSON.stringify(JSON.parse(message.result), null, 2);
-    } catch {
-      return message.result;
-    }
-  }, [message.result]);
+  const { output, structuredOutput, extra } = useMemo(
+    () => parseToolCallResult(message.result),
+    [message.result],
+  );
 
   return (
     <Stack gap="md">
       {message.args && (
-        <Stack gap="xs">
-          <Flex gap="xs">
-            <Text fw="bold">{t`Request`}</Text>
-            <Tooltip label={argsClipboard.copied ? t`Copied!` : t`Copy`}>
-              <ActionIcon
-                h="sm"
-                aria-label={t`Copy request JSON`}
-                onClick={() => argsClipboard.copy(parsedArgs)}
-              >
-                <Icon name="copy" size="1rem" />
-              </ActionIcon>
-            </Tooltip>
-          </Flex>
-          <Box {...codeBoxProps}>
-            <CodeEditor value={parsedArgs} language="json" readOnly />
-          </Box>
-        </Stack>
+        <ToolCallSection
+          title={t`Request`}
+          value={parsedArgs}
+          copyLabel={t`Copy request JSON`}
+        />
       )}
 
-      {message.result && (
-        <Stack gap="xs">
-          <Flex gap="xs">
-            <Flex align="center" gap="sm">
-              <Text fw="bold">{t`Response`}</Text>
-              {message.is_error && (
-                <Badge color="negative" size="sm">
-                  {t`Errored`}
-                </Badge>
-              )}
-            </Flex>
-            <Tooltip label={resultClipboard.copied ? t`Copied!` : t`Copy`}>
-              <ActionIcon
-                h="sm"
-                aria-label={t`Copy response JSON`}
-                onClick={() => resultClipboard.copy(parsedResult)}
-              >
-                <Icon name="copy" size="1rem" />
-              </ActionIcon>
-            </Tooltip>
-          </Flex>
-          <Box {...codeBoxProps}>
-            <CodeEditor value={parsedResult} language="json" readOnly />
-          </Box>
-        </Stack>
+      {output && (
+        <ToolCallSection
+          title={t`Response`}
+          value={output}
+          isJson={false}
+          copyLabel={t`Copy response`}
+          badge={
+            message.is_error && (
+              <Badge color="negative" size="sm">
+                {t`Errored`}
+              </Badge>
+            )
+          }
+        />
+      )}
+
+      {structuredOutput && (
+        <ToolCallSection
+          title={t`Structured output`}
+          value={structuredOutput}
+          copyLabel={t`Copy structured output`}
+        />
+      )}
+
+      {extra && (
+        <ToolCallSection
+          title={t`Other fields`}
+          value={extra}
+          copyLabel={t`Copy other fields`}
+        />
       )}
     </Stack>
   );

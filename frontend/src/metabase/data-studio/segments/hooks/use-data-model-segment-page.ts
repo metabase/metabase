@@ -7,9 +7,8 @@ import {
   useUpdateSegmentMutation,
 } from "metabase/api";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
@@ -25,7 +24,7 @@ type DataModelSegmentPageParams = {
 export function useDataModelSegmentPage(
   params: Partial<DataModelSegmentPageParams>,
 ) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateSegment] = useUpdateSegmentMutation();
 
@@ -63,15 +62,13 @@ export function useDataModelSegmentPage(
       sendErrorToast(t`Failed to remove segment`);
     } else {
       sendSuccessToast(t`Segment removed`);
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId,
-            schemaName,
-            tableId,
-            tab: "segments",
-          }),
-        ),
+      navigate(
+        Urls.dataStudioData({
+          databaseId,
+          schemaName,
+          tableId,
+          tab: "segments",
+        }),
       );
     }
   }, [
@@ -80,9 +77,9 @@ export function useDataModelSegmentPage(
     schemaName,
     databaseId,
     updateSegment,
-    dispatch,
     sendSuccessToast,
     sendErrorToast,
+    navigate,
   ]);
 
   const isLoading = isLoadingSegment || isLoadingTable;

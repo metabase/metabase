@@ -61,11 +61,13 @@
 (defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
-    (let [model (t2/select-one :model/Card :id (:model_id action))]
-      (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
+    (let [model (t2/select-one :model/Card :id (:model_id action))
+          ;; the query executes against its own :database; fall back to the derived column if absent
+          action-db-id (or (:database (:dataset_query action)) (:database_id action))]
+      (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (t2/select-one :model/Database :id (:database_id action)))))
+         (t2/select-one :model/Database :id action-db-id))))
     (try
       (case action-type
         :query
@@ -188,47 +190,55 @@
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
-  [action request-parameters]
-  (let [;; if a value is supplied for a hidden parameter, it should raise an error
-        field-settings         (get-in action [:visualization_settings :fields])
-        hidden-param-ids       (->> (vals field-settings)
-                                    (filter :hidden)
-                                    (map :id))
-        destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
-        _ (check-no-extra-parameters request-parameters destination-param-ids)
-        ;; add default values for missing parameters (including hidden ones)
-        all-param-ids          (set (map :id (:parameters action)))
-        provided-param-ids     (set (keys request-parameters))
-        missing-param-ids      (set/difference all-param-ids provided-param-ids)
-        missing-param-defaults (into {}
-                                     (keep (fn [param-id]
-                                             (when-let [default-value (get-in field-settings [param-id :defaultValue])]
-                                               [param-id default-value])))
-                                     missing-param-ids)
-        request-parameters     (merge missing-param-defaults request-parameters)]
-    (case (:type action)
-      :implicit
-      (execute-implicit-action! action request-parameters)
-      (:query :http)
-      (execute-custom-action! action request-parameters)
-      (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
+  ([action request-parameters]
+   (execute-action! action request-parameters nil))
+  ([action request-parameters {:keys [allow-http-actions?] :or {allow-http-actions? true}}]
+   (when (and (= (:type action) :http) (not allow-http-actions?))
+     (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
+                     {:status-code 403})))
+   (let [;; if a value is supplied for a hidden parameter, it should raise an error
+         field-settings         (get-in action [:visualization_settings :fields])
+         hidden-param-ids       (->> (vals field-settings)
+                                     (filter :hidden)
+                                     (map :id))
+         destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
+         _ (check-no-extra-parameters request-parameters destination-param-ids)
+         ;; add default values for missing parameters (including hidden ones)
+         all-param-ids          (set (map :id (:parameters action)))
+         provided-param-ids     (set (keys request-parameters))
+         missing-param-ids      (set/difference all-param-ids provided-param-ids)
+         missing-param-defaults (into {}
+                                      (keep (fn [param-id]
+                                              (when-let [default-value (get-in field-settings [param-id :defaultValue])]
+                                                [param-id default-value])))
+                                      missing-param-ids)
+         request-parameters     (merge missing-param-defaults request-parameters)]
+     (case (:type action)
+       :implicit
+       (execute-implicit-action! action request-parameters)
+       (:query :http)
+       (execute-custom-action! action request-parameters)
+       (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action))))))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
-  [dashboard-id       :- ::lib.schema.id/dashboard
-   dashcard-id        :- ::lib.schema.id/dashcard
-   request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (analytics/track-event! :snowplow/action
-                            {:event     :action-executed
-                             :source    :dashboard
-                             :type      (:type action)
-                             :action_id (:id action)})
-    (execute-action! action request-parameters)))
+  ([dashboard-id dashcard-id request-parameters]
+   (execute-dashcard! dashboard-id dashcard-id request-parameters nil))
+  ([dashboard-id       :- ::lib.schema.id/dashboard
+    dashcard-id        :- ::lib.schema.id/dashcard
+    request-parameters :- [:maybe [:map-of :string :any]]
+    opts]
+   (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
+                                                :id dashcard-id
+                                                :dashboard_id dashboard-id))
+         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+     (analytics/track-event! :snowplow/action
+                             {:event     :action-executed
+                              :source    :dashboard
+                              :type      (:type action)
+                              :action_id (:id action)})
+     (execute-action! action request-parameters opts))))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]

@@ -2,15 +2,15 @@ import { t } from "ttag";
 
 import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SECURITY_CENTER,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";

@@ -1,5 +1,4 @@
 import type { Row } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -13,12 +12,12 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { dayjs } from "metabase/dayjs";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
-import { useDispatch } from "metabase/redux";
-import { Outlet, push } from "metabase/router";
+import { Outlet, useNavigate } from "metabase/router";
 import {
   ActionIcon,
   Center,
@@ -43,7 +42,7 @@ const PAGE_SIZE = 20;
 const COLUMN_WIDTHS = [0.22, 0.16, 0.28, 0.14, 0.14, 0.06];
 
 export function ModelPersistenceLogJobs() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
 
@@ -71,9 +70,9 @@ export function ModelPersistenceLogJobs() {
   const handleRowActivate = useCallback(
     (row: Row<ModelCacheRefreshStatus>) => {
       const { card_id, card_name } = row.original;
-      dispatch(push(Urls.model({ id: card_id, name: card_name })));
+      navigate(Urls.model({ id: card_id, name: card_name }));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<ModelCacheRefreshStatus>({

@@ -148,22 +148,36 @@
       :else             0.8)))
 
 (defn chart-interestingness
-  "Compute a `[0.0, 1.0]` interestingness score for a chart.
+  "Compute chart interestingness, returning the final blended `:score` *alongside*
+  its component sub-scores (so logging / diagnostics can see why a chart scored the
+  way it did):
+
+      {:score          <0..1>           ; the blended interestingness score
+       :non-degeneracy <0..1>           ; flatness / single-value gate
+       :signal         <0..1> | nil     ; statistical signal read from stats
+       :structure      <0..1> | nil     ; data-shape reasonableness
+       :chart-type     <keyword>}       ; dispatch type of the stats map
+
+  `:signal` and `:structure` are nil when the non-degeneracy gate fires — the score
+  short-circuits to 0 without computing them. The blend is `0.3·nd + 0.5·sig + 0.2·struct`.
 
   `chart-config` is the same map shape consumed by
-  [[metabase.interestingness.chart.stats/compute-chart-stats]]. Optional
-  `stats` lets callers who already computed stats avoid recomputation."
+  [[metabase.interestingness.chart.stats/compute-chart-stats]]. Optional `stats` lets
+  callers who already computed stats avoid recomputation."
   ([chart-config]
    (chart-interestingness chart-config
                           (chart.stats/compute-chart-stats chart-config {})))
   ([chart-config stats]
-   (let [nd (non-degeneracy-score chart-config)]
+   (let [nd         (non-degeneracy-score chart-config)
+         chart-type (:chart-type stats)]
      (if (zero? nd)
-       0.0
+       {:score 0.0 :non-degeneracy nd :signal nil :structure nil :chart-type chart-type}
        (let [sig    (signal-score stats)
              struct (structure-score chart-config)]
-         (min 1.0
-              (max 0.0
-                   (+ (* 0.3 nd)
-                      (* 0.5 sig)
-                      (* 0.2 struct)))))))))
+         {:score          (min 1.0 (max 0.0 (+ (* 0.3 nd)
+                                               (* 0.5 sig)
+                                               (* 0.2 struct))))
+          :non-degeneracy nd
+          :signal         sig
+          :structure      struct
+          :chart-type     chart-type})))))

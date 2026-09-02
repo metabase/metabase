@@ -3,13 +3,13 @@ import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { getUser } from "metabase/current-user";
 import {
   formatCreatorMessage,
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
 } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import { isNotFalsy } from "metabase/utils/types";
 import type {

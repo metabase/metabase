@@ -1,17 +1,12 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import {
-  refetchCurrentUser,
-  refetchSiteSettings,
-  settingsApi,
-  setupApi,
-  userApi,
-} from "metabase/api";
+import { setupApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { trackUserInvited } from "metabase/common/analytics";
+import { refetchCurrentUser } from "metabase/current-user";
 import { createDatabase } from "metabase/redux/databases";
 import type {
   InviteInfo,
@@ -21,7 +16,11 @@ import type {
   UserInfo,
 } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getSetting,
+  refetchSiteSettings,
+  settingsApi,
+} from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
@@ -36,11 +35,9 @@ import {
   trackUsageReasonSelected,
 } from "./analytics";
 import {
-  getAvailableLocales,
   getIsEmbeddingUseCase,
   getLocale,
   getNextStep,
-  getSetupToken,
   getUsageReason,
 } from "./selectors";
 import { getDefaultLocale, getLocales } from "./utils";
@@ -67,7 +64,7 @@ export const loadLocaleDefaults = createAsyncThunk<
   void,
   ThunkConfig
 >(LOAD_LOCALE_DEFAULTS, async (_, { getState }) => {
-  const data = getAvailableLocales(getState());
+  const data = getSetting(getState(), "available-locales");
   const locale = getDefaultLocale(getLocales(data));
   if (locale) {
     await loadLocalization(locale.code);
@@ -97,7 +94,7 @@ export const updateLocale = createAsyncThunk(
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
-    const token = getSetupToken(getState());
+    const token = getSetting(getState(), "setup-token");
     const locale = getLocale(getState());
 
     try {

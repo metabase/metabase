@@ -11,9 +11,9 @@ import {
 } from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {

@@ -2,9 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,

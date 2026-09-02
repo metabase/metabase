@@ -1,7 +1,7 @@
 import noResultsSource from "assets/img/no_results.svg";
 import type { IllustrationValue } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getSetting, getSettings } from "metabase/selectors/settings";
+import { getSetting, getSettings } from "metabase/settings";
 import type {
   EnterpriseSettings,
   IllustrationSettingValue,

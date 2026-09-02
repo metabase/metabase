@@ -61,6 +61,27 @@
                   {:table (mt/id :products)}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
+(deftest referenced-tables-fetches-only-named-tables-test
+  (testing "GHY-4251: referenced-tables looks up only the Tables the SQL names, never the Database's whole catalog.
+           Fetching the catalog per entity made dependency analysis scale with warehouse size instead of query size,
+           OOM-killing instances with ~20k synced tables."
+    (sql-tools.tu/test-parser-backends
+     (mt/test-driver :h2
+       (let [catalog-fetches (atom 0)
+             ;; capture via `original-fn`: once the var is proxied, a bare symbol ref resolves to the
+             ;; proxy and delegating to it would recurse forever.
+             all-tables      (mt/original-fn #'lib.metadata/tables)]
+         (mt/with-dynamic-fn-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
+           (testing "the referenced table still resolves"
+             ;; H2 stores table names upper-cased while the query spells them lower-case, so this also covers the
+             ;; case-folding that makes an exact name match unusable (the same mismatch Snowflake has).
+             (is (= #{{:table (mt/id :orders)}}
+                    (sql-tools/referenced-tables driver/*driver*
+                                                 (lib/native-query (mt/metadata-provider)
+                                                                   "select id from orders")))))
+           (testing "and it did so without fetching the catalog"
+             (is (zero? @catalog-fetches)))))))))
+
 ;;; ------------------------------------------------ replace-names -------------------------------------------------
 
 (deftest ^:parallel replace-names-table-test
@@ -98,34 +119,16 @@
 ;; transpile-sql is only implemented for the :sqlglot backend, so these tests bind it directly
 ;; rather than using test-parser-backends.
 
-(deftest ^:parallel transpile-sql-snowflake-quotes-identifiers-test
+(deftest ^:parallel transpile-sql-no-added-quoting-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
-    (testing "Snowflake should quote identifiers (case-sensitive dialect)"
-      (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM PUBLIC.users"
-                                                                     "snowflake" "snowflake")]
-        (is (= :success status))
-        (is (some? transpiled-sql))
-        (is (str/includes? transpiled-sql "\"PUBLIC\""))
-        (is (str/includes? transpiled-sql "\"users\""))))))
-
-(deftest ^:parallel transpile-sql-postgres-quotes-identifiers-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
-    (testing "PostgreSQL should quote identifiers (case-sensitive dialect)"
-      (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM public.users"
-                                                                     "postgres" "postgres")]
-        (is (= :success status))
-        (is (some? transpiled-sql))
-        (is (str/includes? transpiled-sql "\"public\""))
-        (is (str/includes? transpiled-sql "\"users\""))))))
-
-(deftest ^:parallel transpile-sql-mysql-no-quoting-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
-    (testing "MySQL should not add double-quote identifier quoting (not case-sensitive)"
-      (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM users"
-                                                                     "mysql" "mysql")]
-        (is (= :success status))
-        (is (some? transpiled-sql))
-        (is (not (str/includes? transpiled-sql "\"")))))))
+    (testing "unquoted identifiers stay unquoted, so folding dialects resolve them as written"
+      (doseq [dialect ["snowflake" "postgres" "mysql"]]
+        (testing dialect
+          (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM public.users"
+                                                                         dialect dialect)]
+            (is (= :success status))
+            (is (some? transpiled-sql))
+            (is (not (re-find #"[\"`]" transpiled-sql)))))))))
 
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]

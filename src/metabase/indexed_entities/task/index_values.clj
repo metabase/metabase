@@ -17,6 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; reference list of possible model-index :state values; not consulted by code
 #_{:clj-kondo/ignore [:unused-private-var]}
 ;; Possible values for the :state field on model index records.
 ;; Unused, but kept here for reference.

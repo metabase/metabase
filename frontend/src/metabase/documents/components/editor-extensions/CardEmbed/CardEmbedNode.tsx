@@ -1,0 +1,928 @@
+import { useMergedRef } from "@mantine/hooks";
+import {
+  Node,
+  findParentNodeClosestToPos,
+  mergeAttributes,
+} from "@tiptap/core";
+import {
+  type NodeViewProps,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import cx from "classnames";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "ttag";
+import { noop } from "underscore";
+
+import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
+import { QuestionPickerModal } from "metabase/common/components/Pickers";
+import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { getMetadata } from "metabase/metadata-store";
+import { useDispatch, useSelector } from "metabase/redux";
+import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
+import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
+import {
+  cleanupFlexContainerNodes,
+  findNodeParentAndPos,
+} from "metabase/rich_text_editing/tiptap/extensions/HandleEditorDrop/utils";
+import {
+  createIdAttribute,
+  createProseMirrorPlugin,
+} from "metabase/rich_text_editing/tiptap/extensions/NodeIds";
+import CS from "metabase/rich_text_editing/tiptap/extensions/extensions.module.css";
+import {
+  EDITOR_STYLE_BOUNDARY_CLASS,
+  MAX_GROUP_SIZE,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
+import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
+import { useNavigate } from "metabase/router";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
+import {
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getDatasetError,
+  getVisualizationTransformed,
+  isTimeseries,
+} from "metabase/viz-core";
+import Question from "metabase-lib/v1/Question";
+import type {
+  CardDisplayType,
+  StoredResultSort,
+  TimelineEvent,
+} from "metabase-types/api";
+
+import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
+
+import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
+import styles from "./CardEmbedNode.module.css";
+import { useExternalCardData } from "./ExternalCardDataContext";
+import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
+import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
+import { NativeQueryModal } from "./modals/NativeQueryModal";
+import { useUpdateCardOperations } from "./use-update-card-operations";
+import { getEmbedIndex } from "./utils";
+
+const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
+  "value_asc",
+  "value_desc",
+  "label_asc",
+  "label_desc",
+];
+
+const isStaticCardSort = (value: unknown): value is StoredResultSort =>
+  typeof value === "string" && STATIC_CARD_SORTS.some((sort) => sort === value);
+
+function formatCardEmbed(attrs: CardEmbedAttributes): string {
+  if (attrs.name) {
+    return `{% card id=${attrs.id} name="${attrs.name}" %}`;
+  } else {
+    return `{% card id=${attrs.id} %}`;
+  }
+}
+
+export interface CardEmbedAttributes {
+  id?: number;
+  name?: string;
+  class?: string;
+  stored_result_id?: number | null; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
+  sort?: string | null; // Sort to apply in-memory when reading a static snapshot. Static-mode only
+  chart_href?: string | null; // Override URL for the embed's title click
+  child_target_id?: string | null; // when set, comments on this embed use this child target instead of `_id`
+  host_data?: Record<string, unknown> | null; // opaque host-specific data
+}
+export const CardEmbed: Node<{
+  HTMLAttributes: CardEmbedAttributes;
+}> = Node.create({
+  name: "cardEmbed",
+  group: "block",
+  atom: true,
+  draggable: true,
+  selectable: true,
+  disableDropCursor: true,
+
+  addAttributes() {
+    return {
+      id: {
+        default: null,
+        parseHTML: (element) => {
+          const id = element.getAttribute("data-id");
+          if (id) {
+            return parseInt(id);
+          }
+          return null;
+        },
+      },
+      name: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-name"),
+      },
+      stored_result_id: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-stored-result-id");
+          if (!raw) {
+            return null;
+          }
+          const parsed = parseInt(raw, 10);
+          return Number.isFinite(parsed) ? parsed : null;
+        },
+      },
+      sort: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-sort"),
+      },
+      chart_href: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-chart-href"),
+      },
+      child_target_id: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-child-target-id") || null,
+      },
+      host_data: {
+        default: null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-host-data");
+          if (!raw) {
+            return null;
+          }
+          try {
+            const parsed: unknown = JSON.parse(raw);
+            if (
+              parsed != null &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+            ) {
+              // JSON.parse of an object literal is a plain Record; TipTap attrs are untyped JSON.
+              return parsed as Record<string, unknown>;
+            }
+          } catch {
+            return null;
+          }
+          return null;
+        },
+      },
+      ...createIdAttribute(),
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: `div[data-type="${CardEmbed.name}"]`,
+      },
+    ];
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      "div",
+      mergeAttributes(
+        HTMLAttributes,
+        {
+          "data-type": CardEmbed.name,
+          "data-id": node.attrs.id,
+          "data-name": node.attrs.name,
+          "data-stored-result-id":
+            node.attrs.stored_result_id != null
+              ? String(node.attrs.stored_result_id)
+              : null,
+          "data-sort": node.attrs.sort ?? null,
+          "data-chart-href": node.attrs.chart_href ?? null,
+          "data-child-target-id": node.attrs.child_target_id ?? null,
+          "data-host-data":
+            node.attrs.host_data != null
+              ? JSON.stringify(node.attrs.host_data)
+              : null,
+        },
+        this.options.HTMLAttributes,
+      ),
+      formatCardEmbed(node.attrs),
+    ];
+  },
+
+  addProseMirrorPlugins() {
+    return [createProseMirrorPlugin("cardEmbed")];
+  },
+
+  renderText({ node }) {
+    return formatCardEmbed(node.attrs);
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(CardEmbedComponent);
+  },
+});
+
+export const CardEmbedComponent = memo(
+  ({
+    node,
+    updateAttributes,
+    selected,
+    editor,
+    getPos,
+    deleteNode,
+    // eslint-disable-next-line complexity
+  }: NodeViewProps) => {
+    const { _id, id, name } = node.attrs;
+    const storedResultId = node.attrs.stored_result_id;
+    const isStatic = storedResultId != null;
+    const staticSort = isStaticCardSort(node.attrs.sort)
+      ? node.attrs.sort
+      : undefined;
+    const host = useDocumentEditorHost();
+    const {
+      ref: viewportRef,
+      isInViewport,
+      shouldLoadData,
+    } = host.useNodeInViewport(_id);
+    const childTargetId = useSelector(host.selectors.getChildTargetId);
+    const hoveredChildTargetId = useSelector(
+      host.selectors.getHoveredChildTargetId,
+    );
+    const document = useSelector(host.selectors.getCurrentDocument);
+    const externalCardData = useExternalCardData();
+    const hostData = node.attrs.host_data ?? null;
+    const commentChildTargetId = node.attrs.child_target_id ?? _id;
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(
+      commentChildTargetId,
+      {
+        skip: !isInViewport,
+      },
+    );
+    const visualizationMode = host.useVisualizationMode({
+      childTargetId: commentChildTargetId,
+      hostData,
+    });
+    const slots = host.useCardEmbedSlots({
+      childTargetId: commentChildTargetId,
+      hostData,
+    });
+
+    const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
+    const selectedEmbedIndex = useSelector(
+      host.selectors.getSelectedEmbedIndex,
+    );
+    const selectedTimelineEventIdsFromState = useSelector(
+      host.selectors.getSelectedTimelineEventIds,
+    );
+    const isOpen = childTargetId === commentChildTargetId;
+    const isHovered = hoveredChildTargetId === commentChildTargetId;
+    const commentsPath = host.useCommentUrl({
+      childTargetId: commentChildTargetId,
+    });
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const canWrite = editor.options.editable;
+
+    const {
+      isBeingDragged,
+      dragState,
+      setDragState,
+      handleDragOver,
+      dragElRef: cardEmbedRef,
+    } = useDndHelpers({ editor, node, getPos });
+
+    const embedIndex = getEmbedIndex(editor, getPos);
+    const selectedTimelineEventIds =
+      embedIndex === selectedEmbedIndex
+        ? selectedTimelineEventIdsFromState
+        : undefined;
+
+    const isExternalDocument = externalCardData != null;
+    const regularCardData = host.useCardData({
+      id,
+      skip: !shouldLoadData,
+      ...(storedResultId != null
+        ? { storedResultId, storedResultSort: staticSort }
+        : {}),
+    });
+    const externalCardDataResult = host.useExternalCardDataLoader(id, {
+      skip: !shouldLoadData,
+    });
+
+    const { card, dataset, isLoading, series, error } = isExternalDocument
+      ? externalCardDataResult
+      : regularCardData;
+
+    const highlighted = host.useHighlighted(
+      commentChildTargetId,
+      series ?? null,
+      hostData,
+    );
+
+    host.useReportPrefetchLoading(_id, isLoading);
+
+    const metadata = useSelector(getMetadata);
+    const datasetError = dataset && getDatasetError(dataset);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editedTitle, setEditedTitle] = useState(name || "");
+    const titleInputRef = useRef<HTMLInputElement>(null);
+    const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+    const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
+    const [menuView, setMenuView] = useState<string | null>(null);
+
+    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
+
+    const shouldAllowAddingSupportingText = () => {
+      const pos = getPos();
+      if (!pos) {
+        return false;
+      }
+      const resolvedPos = editor.state.doc.resolve(pos);
+      const match = findParentNodeClosestToPos(
+        resolvedPos,
+        (n) => n.type.name === "flexContainer",
+      );
+      if (!match) {
+        return true;
+      }
+      if (match.node.content.childCount >= MAX_GROUP_SIZE) {
+        return false;
+      }
+      const hasSupportingText = match?.node.content.content.some(
+        (n) => n.type.name === "supportingText",
+      );
+      return !hasSupportingText;
+    };
+
+    const handleAddSupportingText = !shouldAllowAddingSupportingText()
+      ? undefined
+      : async () => {
+          await Promise.resolve(); // Wait for the menu to close. The transaction below may cause this item to disable and the mouseup isn't registered (so the menu stays open).
+          const pos = getPos();
+          if (!pos) {
+            return;
+          }
+          const resolvedPos = editor.state.doc.resolve(pos);
+          const match = findParentNodeClosestToPos(
+            resolvedPos,
+            (n) =>
+              n.type.name === "flexContainer" || n.type.name === "resizeNode",
+          );
+          if (!match) {
+            return;
+          }
+          const { schema, tr } = editor.view.state;
+          const supportingText = schema.nodes.supportingText.create({}, [
+            schema.nodes.paragraph.create({}),
+          ]);
+          if (match.node.type.name === "flexContainer") {
+            tr.insert(match.start, supportingText);
+            editor.view.dispatch(tr);
+            editor.commands.focus(match.start + 1);
+            host.analytics.trackAddSupportingText(document);
+            return;
+          }
+          const flexContainer =
+            editor.view.state.schema.nodes.flexContainer.create(
+              {
+                columnWidths: [
+                  (1 / MAX_GROUP_SIZE) * 100,
+                  ((MAX_GROUP_SIZE - 1) / MAX_GROUP_SIZE) * 100,
+                ],
+              },
+              [supportingText, node],
+            );
+          const endPos = match.start + match.node.nodeSize;
+          tr.replaceWith(match.start, endPos, flexContainer);
+
+          editor.view.dispatch(tr);
+          editor.commands.focus(match.start + 2);
+          host.analytics.trackAddSupportingText(document);
+        };
+
+    const displayName = name || card?.name;
+    const question = useMemo(
+      () => (card != null ? new Question(card, metadata) : undefined),
+      [card, metadata],
+    );
+    const isNativeQuestion = question?.isNative();
+
+    const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
+      question: question!,
+      result: dataset!,
+      documentId: document?.id,
+    });
+
+    const {
+      handleChangeCardAndRun,
+      handleUpdateQuestion,
+      handleUpdateVisualizationSettings,
+    } = useUpdateCardOperations({
+      document,
+      regularCardData,
+      question,
+      editor,
+      embedIndex,
+      cardId: id,
+    });
+
+    useEffect(() => {
+      if (isEditingTitle && titleInputRef.current) {
+        titleInputRef.current.focus();
+        titleInputRef.current.select();
+      }
+    }, [isEditingTitle]);
+
+    const handleTitleSave = () => {
+      const trimmedTitle = editedTitle.trim();
+      if (trimmedTitle && trimmedTitle !== card?.name) {
+        updateAttributes({ name: trimmedTitle });
+      } else {
+        updateAttributes({ name: null });
+        setEditedTitle("");
+      }
+      setIsEditingTitle(false);
+    };
+
+    const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleTitleSave();
+      } else if (e.key === "Escape") {
+        setEditedTitle(name || "");
+        setIsEditingTitle(false);
+      }
+    };
+
+    // Load metadata for the card
+    useEffect(() => {
+      if (card) {
+        dispatch(host.actions.loadMetadataForDocumentCard(card));
+      }
+    }, [card, dispatch, host]);
+
+    const handleEditVisualizationSettings = () => {
+      if (embedIndex !== -1) {
+        dispatch(host.actions.openVizSettingsSidebar({ embedIndex }));
+      }
+    };
+
+    const shouldShowTimelineEventsMenu = useMemo(() => {
+      if (!series) {
+        return false;
+      }
+      const transformed = getVisualizationTransformed(
+        extractRemappings(series),
+      );
+      const settings = getComputedSettingsForSeries(transformed.series);
+      return isTimeseries(settings);
+    }, [series]);
+
+    const handleEditTimelineEvents = () => {
+      if (embedIndex !== -1) {
+        dispatch(host.actions.openTimelineEventsSidebar({ embedIndex }));
+      }
+    };
+
+    const handleOpenTimelines = useCallback(
+      (eventIds?: number[]) => {
+        if (embedIndex !== -1) {
+          dispatch(
+            host.actions.openTimelineEventsSidebar({
+              embedIndex,
+              focusedEventIds: eventIds,
+            }),
+          );
+        }
+      },
+      [dispatch, embedIndex, host.actions],
+    );
+
+    const handleSelectTimelineEvents = useCallback(
+      (events: TimelineEvent[]) => {
+        dispatch(host.actions.selectTimelineEvents(events));
+      },
+      [dispatch, host.actions],
+    );
+
+    const handleDeselectTimelineEvents = useCallback(() => {
+      dispatch(host.actions.deselectTimelineEvents());
+    }, [dispatch, host.actions]);
+
+    const handleTitleClick = () => {
+      const chartHref = node.attrs.chart_href;
+      if (chartHref) {
+        dispatch(host.navigateToCard(chartHref, document));
+        return;
+      }
+      if (!host.capabilities.canOpenCardInQueryBuilder) {
+        return;
+      }
+      if (card && metadata) {
+        try {
+          const isDraftCard = card.id < 0;
+          const question = new Question(
+            isDraftCard ? { ...card, id: null } : card,
+            metadata,
+          );
+          const url = Urls.question(question);
+          dispatch(host.navigateToCard(url, document));
+        } catch (error) {
+          console.error("Failed to navigate to question:", error);
+        }
+      }
+    };
+
+    const handleReplaceQuestion = () => {
+      setIsReplaceModalOpen(true);
+    };
+
+    const handleReplaceModalSelect = useCallback(
+      (item: QuestionPickerValueItem) => {
+        updateAttributes({
+          id: item.id,
+          name: null,
+        });
+        if (document) {
+          host.analytics.trackReplaceCard(document);
+        }
+
+        setIsReplaceModalOpen(false);
+      },
+      [updateAttributes, document, host],
+    );
+
+    const handleRemoveNode = useCallback(() => {
+      const nodeParentResult = findNodeParentAndPos(editor.view, node);
+
+      if (
+        nodeParentResult &&
+        nodeParentResult.parent.type.name === "resizeNode"
+      ) {
+        const { parent, parentPos } = nodeParentResult;
+        editor.view.dispatch(
+          editor.state.tr.delete(parentPos, parentPos + parent.nodeSize),
+        );
+      } else {
+        deleteNode();
+      }
+      cleanupFlexContainerNodes(editor.view);
+      editor.chain().focus();
+    }, [deleteNode, editor, node]);
+
+    if (isLoading && !card) {
+      return (
+        <NodeViewWrapper
+          aria-expanded={isOpen}
+          className={cx(styles.embedWrapper, CS.root, {
+            [CS.open]: isOpen || isHovered,
+          })}
+          data-type="cardEmbed"
+          data-id={id}
+          data-testid="document-card-embed"
+          style={{ position: "relative" }}
+        >
+          <Box
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
+          >
+            <Box className={styles.questionHeader}>
+              <Flex align="center" justify="space-between" gap="0.5rem">
+                <Box className={styles.titleContainer}>
+                  <Text size="md" c="text-primary" fw={700}>
+                    {t`Loading question...`}
+                  </Text>
+                </Box>
+              </Flex>
+            </Box>
+
+            <CardEmbedLoadingState />
+          </Box>
+        </NodeViewWrapper>
+      );
+    }
+
+    if (error) {
+      return (
+        <NodeViewWrapper
+          aria-expanded={isOpen}
+          className={cx(styles.embedWrapper, CS.root, {
+            [CS.open]: isOpen || isHovered,
+          })}
+          data-type="cardEmbed"
+          data-id={id}
+          data-testid="document-card-embed"
+          style={{ position: "relative" }}
+        >
+          <Box
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
+          >
+            <Flex className={styles.questionResults}>
+              <ErrorView
+                error={
+                  error === "not found"
+                    ? t`Couldn't find this chart.`
+                    : t`Failed to load question.`
+                }
+              />
+            </Flex>
+          </Box>
+        </NodeViewWrapper>
+      );
+    }
+
+    return (
+      <>
+        <NodeViewWrapper
+          aria-expanded={isOpen}
+          className={cx(styles.embedWrapper, CS.root, {
+            [CS.open]: isOpen || isHovered,
+          })}
+          data-type="cardEmbed"
+          data-id={id}
+          data-testid="document-card-embed"
+          data-drag-handle
+          onDragOver={handleDragOver}
+          onDrop={() => setDragState({ isDraggedOver: false, side: null })}
+        >
+          {canWrite && id && (
+            <>
+              <DropZone
+                isOver={dragState.isDraggedOver && dragState.side === "left"}
+                side="left"
+                disabled={isBeingDragged}
+              />
+              <DropZone
+                isOver={dragState.isDraggedOver && dragState.side === "right"}
+                side="right"
+                disabled={isBeingDragged}
+              />
+            </>
+          )}
+          <Box
+            ref={setRef}
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
+          >
+            {card && (
+              <Box className={styles.questionHeader}>
+                <Flex align="center" justify="space-between" gap="0.5rem">
+                  {isEditingTitle ? (
+                    <TextInput
+                      ref={titleInputRef}
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      onBlur={handleTitleSave}
+                      onKeyDown={handleTitleKeyDown}
+                      size="md"
+                      flex={1}
+                      styles={{
+                        input: {
+                          fontWeight: 700,
+                          fontSize: "1rem",
+                          border: "1px solid transparent",
+                          padding: 0,
+                          height: "auto",
+                          minHeight: "auto",
+                          lineHeight: 1.55,
+                          backgroundColor: "transparent",
+                          "&:focus": {
+                            border: "1px solid var(--mb-color-border-neutral)",
+                            backgroundColor:
+                              "var(--mb-color-background_page-primary)",
+                            padding: "0 0.25rem",
+                          },
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Box className={styles.titleContainer}>
+                      <Ellipsified lines={1} tooltip={displayName}>
+                        <Text
+                          className={styles.titleText}
+                          data-testid="card-embed-title"
+                          size="md"
+                          c="text-primary"
+                          fw={700}
+                          truncate="end"
+                          onClick={
+                            isExternalDocument ? undefined : handleTitleClick
+                          }
+                          style={{
+                            cursor: isExternalDocument ? undefined : "pointer",
+                          }}
+                        >
+                          {displayName}
+                        </Text>
+                      </Ellipsified>
+                      {canWrite && (
+                        <Icon
+                          name="pencil"
+                          size={14}
+                          c="text-secondary"
+                          className={styles.titleEditIcon}
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setEditedTitle(displayName);
+                            setIsEditingTitle(true);
+                          }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                  {!isEditingTitle &&
+                    document &&
+                    unresolvedCommentsCount > 0 && (
+                      <Box data-hide-on-print my="-sm" ml="auto">
+                        <CommentsButton
+                          // don't use Link component here since it messes with tiptap's link handling
+                          disabled={hasUnsavedChanges || !commentsPath}
+                          variant={isOpen ? "filled" : "default"}
+                          unresolvedCommentsCount={unresolvedCommentsCount}
+                          onClick={() => {
+                            navigate(commentsPath);
+                          }}
+                        />
+                      </Box>
+                    )}
+                  {!isEditingTitle &&
+                    (isExternalDocument && dataset && !canWrite ? (
+                      <ExternalDocumentCardMenu card={card} dataset={dataset} />
+                    ) : !isExternalDocument && (canWrite || dataset) ? (
+                      <Menu
+                        withinPortal
+                        position="bottom-end"
+                        data-hide-on-print
+                        opened={menuView !== null ? true : undefined}
+                        onClose={() => setMenuView(null)}
+                      >
+                        <Menu.Target>
+                          <Flex
+                            component="button"
+                            p="0.25rem"
+                            align="center"
+                            justify="center"
+                            className={styles.menuButton}
+                            onClick={(e: React.MouseEvent) =>
+                              e.stopPropagation()
+                            }
+                          >
+                            <Icon
+                              name="ellipsis"
+                              size={16}
+                              c="text-secondary"
+                            />
+                          </Flex>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <CardEmbedMenuDropdown
+                            menuView={menuView}
+                            setMenuView={setMenuView}
+                            canWrite={canWrite}
+                            isStatic={isStatic}
+                            dataset={dataset}
+                            question={question}
+                            isNativeQuestion={isNativeQuestion}
+                            isDownloadingData={isDownloadingData}
+                            handleDownload={handleDownload}
+                            handleEditVisualizationSettings={
+                              handleEditVisualizationSettings
+                            }
+                            shouldShowTimelineEventsMenu={
+                              shouldShowTimelineEventsMenu
+                            }
+                            handleEditTimelineEvents={handleEditTimelineEvents}
+                            handleAddSupportingText={handleAddSupportingText}
+                            setIsModifyModalOpen={setIsModifyModalOpen}
+                            handleReplaceQuestion={handleReplaceQuestion}
+                            handleRemoveNode={handleRemoveNode}
+                            commentsPath={commentsPath}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                          />
+                        </Menu.Dropdown>
+                      </Menu>
+                    ) : null)}
+                </Flex>
+                {slots.belowTitle}
+              </Box>
+            )}
+            {series && isInViewport ? (
+              <>
+                <Box className={styles.questionResults}>
+                  <ExplicitSizeRefreshModeContext.Provider value="layout">
+                    <Visualization
+                      rawSeries={series}
+                      metadata={metadata}
+                      mode={visualizationMode}
+                      highlighted={highlighted}
+                      onChangeCardAndRun={
+                        isStatic
+                          ? // A defined mode needs a truthy handler so the click-actions popover mounts
+                            visualizationMode != null
+                            ? noop
+                            : undefined
+                          : isExternalDocument
+                            ? undefined
+                            : handleChangeCardAndRun
+                      }
+                      onUpdateQuestion={
+                        isStatic || isExternalDocument
+                          ? undefined
+                          : handleUpdateQuestion
+                      }
+                      onUpdateVisualizationSettings={
+                        isExternalDocument
+                          ? undefined
+                          : handleUpdateVisualizationSettings
+                      }
+                      onOpenTimelines={handleOpenTimelines}
+                      onSelectTimelineEvents={handleSelectTimelineEvents}
+                      onDeselectTimelineEvents={handleDeselectTimelineEvents}
+                      selectedTimelineEventIds={selectedTimelineEventIds}
+                      getExtraDataForClick={() => ({})}
+                      isEditing={false}
+                      isDashboard={false}
+                      isDocument={true}
+                      customVizLoadingView={<CardEmbedLoadingState />}
+                      showTitle={false}
+                      error={datasetError?.message}
+                      errorIcon={datasetError?.icon}
+                    />
+                  </ExplicitSizeRefreshModeContext.Provider>
+                </Box>
+              </>
+            ) : (
+              <Box className={styles.questionResults}>
+                <ChartSkeleton
+                  // Unjustified type cast. FIXME
+                  display={(card?.display as CardDisplayType) || "table"}
+                />
+              </Box>
+            )}
+          </Box>
+          {isModifyModalOpen &&
+            card &&
+            (isNativeQuestion ? (
+              <NativeQueryModal
+                card={card}
+                isOpen={isModifyModalOpen}
+                onClose={() => setIsModifyModalOpen(false)}
+                initialDataset={dataset}
+                onSave={(result) => {
+                  updateAttributes({
+                    id: result.card_id,
+                  });
+                  setIsModifyModalOpen(false);
+                }}
+              />
+            ) : (
+              <ModifyQuestionModal
+                card={card}
+                isOpen={isModifyModalOpen}
+                onClose={() => setIsModifyModalOpen(false)}
+                onSave={(result) => {
+                  updateAttributes({
+                    id: result.card_id,
+                  });
+                  setIsModifyModalOpen(false);
+                }}
+              />
+            ))}
+          {isReplaceModalOpen && (
+            <QuestionPickerModal
+              onChange={handleReplaceModalSelect}
+              onClose={() => setIsReplaceModalOpen(false)}
+            />
+          )}
+        </NodeViewWrapper>
+      </>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.node.attrs.id === nextProps.node.attrs.id &&
+      prevProps.node.attrs.name === nextProps.node.attrs.name &&
+      prevProps.node.attrs.stored_result_id ===
+        nextProps.node.attrs.stored_result_id &&
+      prevProps.node.attrs.sort === nextProps.node.attrs.sort &&
+      prevProps.node.attrs.chart_href === nextProps.node.attrs.chart_href &&
+      prevProps.node.attrs.child_target_id ===
+        nextProps.node.attrs.child_target_id &&
+      prevProps.node.attrs.host_data === nextProps.node.attrs.host_data &&
+      prevProps.selected === nextProps.selected
+    );
+  },
+);
+
+CardEmbedComponent.displayName = "CardEmbedComponent";

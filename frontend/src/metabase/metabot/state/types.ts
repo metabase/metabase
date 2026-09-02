@@ -2,6 +2,7 @@ import type {
   KnownDataPart,
   SearchResultItem,
 } from "metabase/api/ai-streaming/schemas";
+import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
@@ -79,6 +80,15 @@ export type MetabotAgentTurnAbortedMessage = {
   externalId?: string;
 };
 
+export type MetabotAgentTurnIncompleteMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_incomplete";
+  finishReason: Exclude<FinishReason, "stop" | "error">;
+  contextWindowFull?: boolean;
+  externalId?: string;
+};
+
 export type MetabotAgentTurnDisplayError = {
   type: "alert" | "locked" | "message";
   message: string;
@@ -115,6 +125,7 @@ export type MetabotAgentChatMessage =
   | MetabotDebugToolCallMessage
   | MetabotAgentChainOfThoughtMessage
   | MetabotAgentTurnAbortedMessage
+  | MetabotAgentTurnIncompleteMessage
   | MetabotAgentTurnErroredMessage
   | MetabotAgentTurnInProgressMessage;
 
@@ -154,18 +165,23 @@ export type MetabotReactionsState = {
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
-export interface MetabotConverstationState {
+export type MetabotContextUsage = {
+  contextTokens: number;
+  contextWindowTokens: number;
+};
+
+export interface MetabotConversationState {
   conversationId: string;
-  loadId: string;
   title: string | undefined;
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
+  hasMessagedInSession: boolean;
   messages: MetabotChatMessage[];
-  visible: boolean;
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   activeChainId: string | undefined;
+  lastTokenUsage?: MetabotContextUsage;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {
@@ -174,13 +190,24 @@ export interface MetabotConverstationState {
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "sql", "ask"] as const;
+export interface MetabotAgentState {
+  conversationId: string;
+  visible: boolean;
+}
+
+export const fixedMetabotAgentIds = [
+  "omnibot",
+  "sql",
+  "ask",
+  "explorations",
+] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 
 export interface MetabotState {
-  conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
+  conversations: Record<string, MetabotConversationState | undefined>;
+  agents: Partial<Record<MetabotAgentId, MetabotAgentState>>;
   reactions: MetabotReactionsState;
   titlePollingConversationIds: string[];
   debugMode: boolean;

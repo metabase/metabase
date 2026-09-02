@@ -32,9 +32,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
@@ -284,7 +284,7 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { container, history, store } = renderWithProviders(
+  const { container, router, store } = renderWithProviders(
     <>
       <Route>
         <Route path="/" element={<TestHome />} />
@@ -327,7 +327,7 @@ export const setup = async ({
 
   return {
     container,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
     mockEventListener,
     store,
   };

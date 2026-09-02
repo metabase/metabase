@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { type Location, Navigate, Outlet } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
-import { getSetting } from "metabase/selectors/settings";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { replaceLocation } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { createGuard, createRedirectGuard } from "./create-guard";
 import {
@@ -23,7 +23,7 @@ function FullPageRedirect({ to }: { to: string }): null {
 }
 
 const loginUrlWithRedirect = (location: Omit<Location, "query" | "action">) => {
-  const from = `${location.pathname}${location.search}`;
+  const from = `${location.pathname}${location.search}${location.hash ?? ""}`;
   const query = new URLSearchParams({ redirect: from }).toString();
   return `/auth/login?${query}`;
 };
@@ -39,7 +39,7 @@ export const MetabaseIsSetup = createRedirectGuard(
 );
 
 export const AvailableInEmbedding = createRedirectGuard(
-  (state) => !getIsEmbeddingIframe(state),
+  () => !isWithinIframe(),
   "/unauthorized",
 );
 

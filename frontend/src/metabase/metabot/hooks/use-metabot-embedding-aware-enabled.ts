@@ -1,5 +1,5 @@
-import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/settings";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 /** Returns the value for `metabot-enabled?` or `embedded-metabot-enabled?` depending on the context

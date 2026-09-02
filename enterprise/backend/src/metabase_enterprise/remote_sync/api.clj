@@ -292,8 +292,10 @@
         (remote-sync.core/bulk-set-remote-sync collections)
         (catch Exception e
           (throw (ex-info (or (ex-message e) "Invalid collection settings")
-                          {:error       (ex-message e)
-                           :status-code 400} e)))))
+                          (assoc (ex-data e)
+                                 :error       (ex-message e)
+                                 :status-code 400)
+                          e)))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})

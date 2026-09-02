@@ -2,12 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Center, Icon, Text } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
-export type ChartSettingSegmentedControlProps = {
-  options: { name: string; value: string; icon?: IconName }[];
-  onChange: (value: string) => void;
-  value: string;
-};
+import type { ChartSettingSegmentedControlProps } from "metabase/viz-core";
 
 export const ChartSettingSegmentedControl = ({
   options,

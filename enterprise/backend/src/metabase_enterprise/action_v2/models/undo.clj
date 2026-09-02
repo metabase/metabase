@@ -42,6 +42,7 @@
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
   (t2/select :model/Undo
              :batch_num [:in
+                         ^:allow-subquery
                          {:select [[[(if undo? :max :min) :batch_num]]]
                           :from   [(t2/table-name :model/Undo)]
                           :where  [:and

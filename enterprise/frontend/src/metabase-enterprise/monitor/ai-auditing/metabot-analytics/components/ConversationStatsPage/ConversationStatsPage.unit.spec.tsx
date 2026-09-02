@@ -297,7 +297,7 @@ describe("ConversationStatsPage", () => {
     ])(
       "switches to the $metric charts and records the metric in the url",
       async ({ tab, metric }) => {
-        const { history } = setup();
+        const { router } = setup();
 
         await screen.findByText("Conversations by day");
         await userEvent.click(screen.getByRole("tab", { name: tab }));
@@ -310,11 +310,11 @@ describe("ConversationStatsPage", () => {
           expect(await screen.findByText(title)).toBeInTheDocument();
         }
         await waitFor(() => {
-          expect(
-            parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-          ).toMatchObject({
-            metric,
-          });
+          expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject(
+            {
+              metric,
+            },
+          );
         });
       },
     );
@@ -390,7 +390,7 @@ describe("ConversationStatsPage", () => {
     });
 
     it("filters the charts by the selected tenant", async () => {
-      const { history } = setup({ hasTenants: true });
+      const { router } = setup({ hasTenants: true });
 
       await screen.findByText("Conversations by day");
       await selectFilterOption(
@@ -399,9 +399,7 @@ describe("ConversationStatsPage", () => {
       );
 
       await waitFor(() => {
-        expect(
-          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-        ).toMatchObject({
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
           tenant: String(BOBBY_TENANT.id),
         });
       });
@@ -415,7 +413,7 @@ describe("ConversationStatsPage", () => {
 
   describe("filters", () => {
     it("applies the selected user to the url and to the chart queries", async () => {
-      const { history } = setup();
+      const { router } = setup();
 
       await screen.findByText("Conversations by day");
       await selectFilterOption(
@@ -424,9 +422,7 @@ describe("ConversationStatsPage", () => {
       );
 
       await waitFor(() => {
-        expect(
-          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-        ).toMatchObject({
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
           user: String(ROBERT.id),
         });
       });
@@ -436,15 +432,13 @@ describe("ConversationStatsPage", () => {
     });
 
     it("joins group members when a group is selected", async () => {
-      const { history } = setup();
+      const { router } = setup();
 
       await screen.findByText("Conversations by day");
       await selectFilterOption("conversation-filters-group-select", "data");
 
       await waitFor(() => {
-        expect(
-          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-        ).toMatchObject({
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
           group: String(DATA_GROUP.id),
         });
       });
@@ -489,27 +483,23 @@ describe("ConversationStatsPage", () => {
     ])(
       "drills from the $chart chart",
       async ({ chart, label, query, setupOpts }) => {
-        const { history } = setup(setupOpts);
+        const { router } = setup(setupOpts);
 
         await drillInto(chart, label);
 
-        expect(history?.getCurrentLocation().pathname).toBe(CONVERSATIONS_PATH);
-        expect(
-          parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-        ).toEqual(query);
+        expect(router?.location.pathname).toBe(CONVERSATIONS_PATH);
+        expect(parseSearchQuery(router?.location.search ?? "")).toEqual(query);
       },
     );
 
     it("carries the active filters over to the conversations list", async () => {
-      const { history } = setup({
+      const { router } = setup({
         initialRoute: `${STATS_PATH}?date=past6days~&group=${ADMIN_GROUP.id}`,
       });
 
       await drillInto("Users with most conversations", "Bobby Tables");
 
-      expect(
-        parseSearchQuery(history?.getCurrentLocation().search ?? ""),
-      ).toEqual({
+      expect(parseSearchQuery(router?.location.search ?? "")).toEqual({
         date: "past6days~",
         group: String(ADMIN_GROUP.id),
         user: String(BOBBY.id),
@@ -517,11 +507,11 @@ describe("ConversationStatsPage", () => {
     });
 
     it("does not drill on charts without a dimension handler", async () => {
-      const { history } = setup();
+      const { router } = setup();
 
       await drillInto("IP addresses with most conversations", "10.0.0.1");
 
-      expect(history?.getCurrentLocation().pathname).toBe(STATS_PATH);
+      expect(router?.location.pathname).toBe(STATS_PATH);
     });
   });
 });

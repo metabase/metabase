@@ -145,7 +145,7 @@ Use sparingly. Prefer explicit sets where feasible.
 ### Verifying changes
 
 ```bash
-./bin/test-agent :only '[metabase.core.modules-test]'
+./bin/mage project-tests modules
 ```
 
 Or at the REPL:

@@ -83,6 +83,7 @@ export const defaultMinDurationMs = 1000;
 /** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
 export const getPositiveIntegerSchema = () =>
   Yup.number()
+    .typeError(t`Enter a positive number.`)
     .positive(t`Enter a positive number.`)
     .integer(t`Enter an integer.`);
 
@@ -164,10 +165,8 @@ export const getPerformanceTabMetadata = () =>
 
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
-  // Unjustified type cast. FIXME
-  StrategyFormLauncherPanel: PluginPlaceholder as any,
-  // Unjustified type cast. FIXME
-  GranularControlsExplanation: PluginPlaceholder as any,
+  // The placeholder renders nothing and accepts the EE page component's (empty) props
+  DatabaseCachingEditor: PluginPlaceholder as ComponentType,
   SidebarCacheSection:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,

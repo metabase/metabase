@@ -70,15 +70,15 @@ describe("useUrlState", () => {
 
   it("replaces unparsable query params", () => {
     const location = createLocation("?name=abc&score=abc");
-    const { result, history } = setup({ location });
+    const { result, router } = setup({ location });
     const [state] = result.current;
     expect(state).toEqual({ name: "abc", score: null });
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc");
+    expect(router?.location.search).toEqual("?name=abc");
   });
 
   it("patches query params", async () => {
     const location = createLocation("?name=abc&score=123");
-    const { result, history } = setup({ location });
+    const { result, router } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
 
     act(() => {
@@ -87,17 +87,15 @@ describe("useUrlState", () => {
 
     const [state] = result.current;
     expect(state).toEqual({ name: "abc", score: 456 });
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
+    expect(router?.location.search).toEqual("?name=abc&score=123");
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toEqual(
-        "?name=abc&score=456",
-      );
+      expect(router?.location.search).toEqual("?name=abc&score=456");
     });
   });
 
   it("patches partial query params", async () => {
     const location = createLocation("?name=abc&score=123");
-    const { result, history } = setup({ location });
+    const { result, router } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
 
     act(() => {
@@ -106,17 +104,15 @@ describe("useUrlState", () => {
 
     const [state] = result.current;
     expect(state).toEqual({ name: "xyz", score: 456 });
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
+    expect(router?.location.search).toEqual("?name=abc&score=123");
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toEqual(
-        "?name=xyz&score=456",
-      );
+      expect(router?.location.search).toEqual("?name=xyz&score=456");
     });
   });
 
   it("syncs the URL right away when patched with immediate: true", () => {
     const location = createLocation("?name=abc&score=123");
-    const { result, history } = setup({ location });
+    const { result, router } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
 
     act(() => {
@@ -125,12 +121,12 @@ describe("useUrlState", () => {
 
     const [state] = result.current;
     expect(state).toEqual({ name: "abc", score: 456 });
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+    expect(router?.location.search).toEqual("?name=abc&score=456");
   });
 
   it("consumes the immediate bypass once, then debounces the next patch", async () => {
     const location = createLocation("?name=abc&score=123");
-    const { result, history } = setup({ location });
+    const { result, router } = setup({ location });
 
     act(() => {
       const [, { patchUrlState }] = result.current;
@@ -138,7 +134,7 @@ describe("useUrlState", () => {
     });
 
     // The immediate patch is synced right away.
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+    expect(router?.location.search).toEqual("?name=abc&score=456");
 
     act(() => {
       const [, { patchUrlState }] = result.current;
@@ -146,17 +142,15 @@ describe("useUrlState", () => {
     });
 
     // The following default patch must still debounce.
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=456");
+    expect(router?.location.search).toEqual("?name=abc&score=456");
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toEqual(
-        "?name=xyz&score=456",
-      );
+      expect(router?.location.search).toEqual("?name=xyz&score=456");
     });
   });
 
   it("removes query params", async () => {
     const location = createLocation("?name=abc&score=123");
-    const { result, history } = setup({ location });
+    const { result, router } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
 
     act(() => {
@@ -165,9 +159,9 @@ describe("useUrlState", () => {
 
     const [state] = result.current;
     expect(state).toEqual({ name: null, score: null });
-    expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
+    expect(router?.location.search).toEqual("?name=abc&score=123");
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toEqual("");
+      expect(router?.location.search).toEqual("");
     });
   });
 });

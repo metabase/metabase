@@ -1,13 +1,13 @@
 import { merge } from "icepick";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
-import { refetchSiteSettings } from "metabase/api";
 import {
   type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
 } from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { refetchSiteSettings } from "metabase/settings";
 import { isJWT } from "metabase/utils/jwt";
 
 import { getOrRefreshGuestSession } from "./auth";

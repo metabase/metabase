@@ -59,6 +59,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
         H.popover().findByText("Create an alert").click();
         cy.wait("@channel");
 
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
@@ -103,6 +104,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
         cy.findByText("When results go above the goal").click();
       });
 
+      H.selectScheduleTime();
       H.modal().within(() => {
         cy.findByLabelText("Delete this Alert after it's triggered").click();
 
@@ -123,6 +125,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       H.popover().findByText("Create an alert").click();
       cy.wait("@channel");
 
+      H.selectScheduleTime();
       H.modal().within(() => {
         cy.findByText("New alert").should("be.visible");
 

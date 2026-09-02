@@ -1,3 +1,5 @@
+import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
+
 export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
 const method = (proto: object, key: string): object | undefined =>
@@ -101,6 +103,13 @@ if (window.CookieStore) {
   block(method(window.CookieStore.prototype, "getAll"), "CookieStore.getAll");
   block(method(window.CookieStore.prototype, "set"), "CookieStore.set");
   block(method(window.CookieStore.prototype, "delete"), "CookieStore.delete");
+}
+
+// Global event-handler IDL setters — the property-path twin of the `addEventListener` block.
+for (const eventType of GLOBAL_BLOCKED_EVENT_TYPES) {
+  const handler = `on${eventType}`;
+  block(setter(Document.prototype, handler), `Document.set ${handler}`);
+  block(setter(Window.prototype, handler), `Window.set ${handler}`);
 }
 
 // Referrer — URL of the page that linked here, which can leak internal

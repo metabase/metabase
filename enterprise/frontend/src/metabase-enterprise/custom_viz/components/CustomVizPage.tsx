@@ -14,8 +14,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -74,7 +73,7 @@ const validationSchema: Yup.SchemaOf<FormState> = Yup.object({
 });
 
 export function CustomVizPage({ params }: Props) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
   const { data: plugins } = useListAllCustomVizPluginsQuery();
   const plugin = pluginId ? plugins?.find((p) => p.id === pluginId) : undefined;
@@ -112,29 +111,29 @@ export function CustomVizPage({ params }: Props) {
           throw error;
         }
       }
-      dispatch(push(Urls.customViz()));
+      navigate(Urls.customViz());
     },
-    [createPlugin, replaceBundle, plugin, isEdit, dispatch],
+    [createPlugin, replaceBundle, plugin, isEdit, navigate],
   );
 
   const handleCancel = useCallback(() => {
-    dispatch(push(Urls.customViz()));
-  }, [dispatch]);
+    navigate(Urls.customViz());
+  }, [navigate]);
 
   const shouldRedirectToList = isEdit && !plugin && !!plugins;
   const shouldRedirectToDev = isEdit && !!plugin?.dev_only;
 
   useEffect(() => {
     if (shouldRedirectToList) {
-      dispatch(push(Urls.customViz()));
+      navigate(Urls.customViz());
     }
-  }, [shouldRedirectToList, dispatch]);
+  }, [shouldRedirectToList, navigate]);
 
   useEffect(() => {
     if (shouldRedirectToDev) {
-      dispatch(push(Urls.customVizDev()));
+      navigate(Urls.customVizDev());
     }
-  }, [shouldRedirectToDev, dispatch]);
+  }, [shouldRedirectToDev, navigate]);
 
   if (shouldRedirectToList || shouldRedirectToDev) {
     return null;

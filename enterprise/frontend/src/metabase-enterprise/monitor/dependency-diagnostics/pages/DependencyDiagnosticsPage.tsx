@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch } from "metabase/redux";
-import { replace, useLocation } from "metabase/router";
+import { useUserKeyValue } from "metabase/current-user";
+import { useLocation, useNavigate } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";
 import type {
@@ -25,7 +24,7 @@ type DependencyDiagnosticsPageProps = {
 function DependencyDiagnosticsPage({ mode }: DependencyDiagnosticsPageProps) {
   const location = useLocation();
   const isInitializingRef = useRef(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     value: rawLastUsedParams,
@@ -50,15 +49,15 @@ function DependencyDiagnosticsPage({ mode }: DependencyDiagnosticsPageProps) {
     if (withSetLastUsedParams) {
       setLastUsedParams(getUserParams(params));
     }
-    dispatch(replace(getPageUrl(mode, params)));
+    navigate(getPageUrl(mode, params), { replace: true });
   };
 
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
-      dispatch(replace(getPageUrl(mode, params)));
+      navigate(getPageUrl(mode, params), { replace: true });
     }
-  }, [mode, params, isLoadingParams, dispatch]);
+  }, [mode, params, isLoadingParams, navigate]);
 
   return (
     <DependencyDiagnostics
