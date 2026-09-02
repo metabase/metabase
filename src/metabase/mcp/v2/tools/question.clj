@@ -41,9 +41,10 @@
 (defn- ->lib-template-tag
   "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
    already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
-   additionally carry a field (`field_id` — numeric id or 21-char entity_id, resolved here and
-   built into a pMBQL field ref, since a JSON caller cannot construct one directly: it requires
-   a `:lib/uuid`); `dimension` tags also carry a widget type (`widget_type`). Alongside the
+   additionally carry a field (`field_id` — a numeric field id, resolved here and built into a
+   pMBQL field ref, since a JSON caller cannot construct one directly: it requires a `:lib/uuid`.
+   Numeric only: `metabase_field.entity_id` was dropped by migration and `:model/Field` is not in
+   the eid-translation map, so an entity_id here could only ever fail); `dimension` tags also carry a widget type (`widget_type`). Alongside the
    underscore write dialect, the kebab-case read shape `get_content` emits (`display-name`,
    `widget-type`, a `dimension` ref) is accepted, so a read-modify-write round-trip needs no
    translation."
@@ -62,7 +63,7 @@
             skills/template-tag-contract)))
     (when (and field-ref? (nil? field-id))
       (common/throw-teaching-error
-       (format "A %s template tag requires a field_id — the numeric id or 21-character entity_id of the column it binds.\n%s"
+       (format "A %s template tag requires a field_id — the numeric id of the column it binds.\n%s"
                (name t) skills/template-tag-contract)))
     (cond-> (assoc existing-tag :type t)
       display-name (assoc :display-name display-name)
@@ -469,9 +470,8 @@
                                 "snippet" "card" "table"]]
                         [:display_name {:optional true} [:maybe [:string {:description "Widget label."}]]]
                         [:field_id {:optional true}
-                         [:maybe [:or {:description (str "Required for dimension/temporal-unit: the bound column, as "
-                                                         "a numeric field id or 21-char entity_id.")}
-                                  :int :string]]]
+                         [:maybe [:int {:description (str "Required for dimension/temporal-unit: the bound column, as "
+                                                          "a numeric field id. Fields have no entity_id.")}]]]
                         [:widget_type {:optional true}
                          [:maybe [:string {:description (str "Required for dimension: widget/operator matched to the "
                                                              "column's type — e.g. \"string/=\", \"string/contains\", "
