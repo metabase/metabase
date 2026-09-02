@@ -455,8 +455,8 @@ describe("CollectionBrowser", () => {
           await screen.findByTestId("collection-table"),
         ).toBeInTheDocument();
         expect(
-          fetchMock.callHistory.calls("path:/api/collection/root/items"),
-        ).not.toHaveLength(0);
+          fetchMock.callHistory.calls("path:/api/collection/root/items").length,
+        ).toBeGreaterThan(0);
       });
     });
 
