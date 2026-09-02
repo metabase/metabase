@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
@@ -7,6 +6,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
 import {
@@ -19,6 +19,7 @@ import {
   Stack,
   Switch,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import {
   useGetMfaAdminOverviewQuery,
@@ -93,10 +94,6 @@ export function AdminAuthCard() {
   const hasNoPasswordLogin =
     isPasswordLoginEnabled === false && isLdapEnabled === false;
 
-  if (hasNoPasswordLogin) {
-    return null;
-  }
-
   if (!hasFeature && !enabled) {
     return null;
   }
@@ -166,12 +163,19 @@ export function AdminAuthCard() {
       title={t`Two-factor authentication`}
       description={t`Let users secure their account with an authenticator app.`}
     >
-      <Switch
-        label={t`Allow two-factor authentication`}
-        checked={enforcement !== "off"}
-        onChange={(event) => handleEnable(event.currentTarget.checked)}
-        size="sm"
-      />
+      <Tooltip
+        disabled={!hasNoPasswordLogin || enforcement !== "off"}
+        label={t`Enable password or LDAP authentication to enable two-factor authentication`}
+      >
+        <Switch
+          label={t`Allow two-factor authentication`}
+          checked={enforcement !== "off"}
+          onChange={(event) => handleEnable(event.currentTarget.checked)}
+          size="sm"
+          disabled={enforcement === "off" && hasNoPasswordLogin}
+          w="fit-content"
+        />
+      </Tooltip>
       {showEnforcementOptions && (
         <Box>
           <Radio.Group
@@ -181,6 +185,8 @@ export function AdminAuthCard() {
             onChange={(value) =>
               isEnforcementOption(value) && handleRequire(value)
             }
+            // this disabled value will override the per option disabled values
+            disabled={hasNoPasswordLogin || undefined}
           >
             <Stack gap="sm">
               {getEnforcementOptions().map(({ label, value }) => (

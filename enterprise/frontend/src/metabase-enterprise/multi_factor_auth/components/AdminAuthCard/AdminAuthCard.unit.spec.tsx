@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 
 import {
   findRequests,
@@ -12,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 import {
@@ -98,6 +98,8 @@ async function findBulkSettingUpdate() {
 
 const ALLOW_LABEL = "Allow two-factor authentication";
 const ENFORCEMENT_LABEL = "Require two-factor authentication";
+const NO_PASSWORD_LOGIN_HINT =
+  "Enable password or LDAP authentication to enable two-factor authentication";
 
 async function selectEnforcement(label: string) {
   const option = await screen.findByLabelText(label);
@@ -153,27 +155,53 @@ describe("AdminAuthCard", () => {
   });
 
   describe("password authentication", () => {
-    it("should hide the card when password login and LDAP are both off", async () => {
-      setup({ isPasswordLoginEnabled: false, isLdapEnabled: false });
+    const NO_PASSWORD_LOGIN = {
+      isPasswordLoginEnabled: false,
+      isLdapEnabled: false,
+    };
 
-      await waitFor(() => {
-        expect(screen.queryByLabelText(ALLOW_LABEL)).not.toBeInTheDocument();
-      });
+    it("should not let 2FA be turned on when password login and LDAP are both off", async () => {
+      setup({ ...NO_PASSWORD_LOGIN, enforcement: "off" });
+
+      const enableSwitch = await screen.findByLabelText(ALLOW_LABEL);
+
+      expect(enableSwitch).toBeDisabled();
+
+      await userEvent.hover(enableSwitch);
+
       expect(
-        screen.queryByText("Two-factor authentication"),
-      ).not.toBeInTheDocument();
+        await screen.findByRole("tooltip", { name: NO_PASSWORD_LOGIN_HINT }),
+      ).toBeInTheDocument();
     });
 
-    it("should keep the card when password login is off but LDAP is on", async () => {
+    it("should still let an admin turn 2FA off once it is on", async () => {
+      setup({ ...NO_PASSWORD_LOGIN, enforcement: "optional" });
+
+      const enableSwitch = await screen.findByLabelText(ALLOW_LABEL);
+      expect(await screen.findByLabelText("Don't require")).toBeDisabled();
+      expect(screen.getByLabelText("Require now")).toBeDisabled();
+      expect(screen.getByLabelText("Require by a certain date")).toBeDisabled();
+
+      expect(enableSwitch).toBeEnabled();
+
+      await userEvent.click(enableSwitch);
+
+      await waitFor(async () => {
+        const put = await findBulkSettingUpdate();
+        expect(put?.body["mfa-enforcement"]).toBe("off");
+      });
+    });
+
+    it("should keep the switch live when password login is off but LDAP is on", async () => {
       setup({ isPasswordLoginEnabled: false, isLdapEnabled: true });
 
-      expect(await screen.findByLabelText(ALLOW_LABEL)).toBeInTheDocument();
+      expect(await screen.findByLabelText(ALLOW_LABEL)).toBeEnabled();
     });
 
-    it("should keep the card when password login is on", async () => {
+    it("should keep the switch live when password login is on", async () => {
       setup({ isPasswordLoginEnabled: true, isLdapEnabled: false });
 
-      expect(await screen.findByLabelText(ALLOW_LABEL)).toBeInTheDocument();
+      expect(await screen.findByLabelText(ALLOW_LABEL)).toBeEnabled();
     });
   });
 
