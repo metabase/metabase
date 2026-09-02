@@ -143,6 +143,23 @@
                                                                nil (a/promise-chan) 30000)))
           (is (not (contains? (keepalive-counts) 8))))))))
 
+(deftest keepalive-slot-is-released-when-the-stream-never-starts-test
+  (testing "`compojure.response/send*` reports a setup failure by calling `raise` rather than by throwing, so
+            releasing only in a catch returns the slot never — one leak per failed connect retires the cap a
+            connection at a time until the user can open no streams at all. Asserted on the wrapper directly:
+            `send*` is a protocol method, so redefining it does not reliably intercept dispatch."
+    (with-clean-keepalive-counts
+      (fn []
+        (is (true? (#'mcp.transport/acquire-keepalive-slot! 9)))
+        (let [raised (promise)
+              raise! (#'mcp.transport/releasing-raise #(#'mcp.transport/release-keepalive-slot! 9)
+                                                      #(deliver raised %))
+              boom   (ex-info "setup failed" {})]
+          (raise! boom)
+          (is (= boom (deref raised 1000 nil)) "the failure must still reach the original raise")
+          (is (not (contains? (keepalive-counts) 9))
+              "and the slot taken for a stream that never started must be returned"))))))
+
 (deftest keepalive-stream-at-the-cap-is-refused-test
   (testing "a user already holding the cap gets a 429 instead of another stream"
     (with-clean-keepalive-counts

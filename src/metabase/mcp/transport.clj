@@ -444,6 +444,18 @@
                (dissoc counts user-id)))))
   nil)
 
+(defn- releasing-raise
+  "Wrap an async `raise` so the keepalive slot is returned first.
+
+  `compojure.response/send*` reports a setup failure by calling `raise` rather than by throwing, so releasing
+  only in a `catch` returns the slot never — and one slot leaked per failed connect retires the cap a
+  connection at a time until the user can open no streams at all. `release!` is idempotent, so this and the
+  `catch` cannot double-release into a free slot."
+  [release! raise]
+  (fn [e]
+    (release!)
+    (raise e)))
+
 (defn- keepalive-stream-body!
   "Run [[keepalive-loop!]] and call `release!` however the loop ends — normally, on client disconnect, or by
   throwing. A slot leaked on disconnect would retire the cap one connection at a time."
@@ -490,7 +502,7 @@
                                                 (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
                                                 tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
         (try
-          (compojure.response/send* resp request respond raise)
+          (compojure.response/send* resp request respond (releasing-raise release! raise))
           (catch Throwable e
             (release!)
             (throw e)))))))
