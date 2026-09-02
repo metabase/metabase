@@ -13,6 +13,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
@@ -21,6 +22,8 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -265,6 +268,62 @@
         (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))
         (is (not= (t/offset-date-time 2001 12)
                   (:last_used_at (t2/select-one :model/FieldValues :field_id (mt/id :categories :name) :type :full))))))))
+
+(deftest detached-fetch!-shares-in-flight-work-test
+  (testing "callers sharing a cache key wait on the one in-flight run instead of each starting their own,
+            so retrying a slow field values request does not pile up warehouse scans (GHY-2937)"
+    (let [runs    (atom 0)
+          thunk   (fn []
+                    (swap! runs inc)
+                    ;; hold the fetch open long enough that every caller reaches it while it is in flight
+                    (Thread/sleep 1000)
+                    ::values)
+          callers (doall (repeatedly 5 #(future (field-values/detached-fetch! ::shared-key thunk))))]
+      (is (= (repeat 5 ::values)
+             (map #(deref % 30000 ::timed-out) callers)))
+      (is (= 1 @runs)))))
+
+(deftest detached-fetch!-outlives-canceled-caller-test
+  (testing "a fetch runs to completion even after the caller stops waiting, e.g. when the HTTP request
+            that asked for the values is canceled (GHY-2937)"
+    (let [started  (promise)
+          release  (promise)
+          finished (promise)
+          caller   (future (field-values/detached-fetch!
+                            ::canceled-key
+                            (fn []
+                              (deliver started true)
+                              @release
+                              (deliver finished true))))]
+      @started
+      (is (true? (future-cancel caller)))
+      (deliver release true)
+      (is (true? (deref finished 10000 ::timed-out))))))
+
+(deftest detached-fetch!-rethrows-test
+  (testing "an exception thrown by the fetch reaches the caller"
+    (is (thrown-with-msg? Exception #"oops"
+                          (field-values/detached-fetch! ::throwing-key #(throw (ex-info "oops" {})))))))
+
+(deftest get-or-create-full-field-values!-outlives-canceled-caller-test
+  (testing "FieldValues fetched on behalf of a canceled request still get saved to the app DB (GHY-2937)"
+    (mt/dataset test-data
+      (let [field-id             (mt/id :categories :name)
+            started              (promise)
+            release              (promise)
+            real-distinct-values field-values/distinct-values]
+        (t2/delete! :model/FieldValues :field_id field-id :type :full)
+        (with-redefs [field-values/distinct-values (fn [field]
+                                                     (deliver started true)
+                                                     @release
+                                                     (real-distinct-values field))]
+          (let [caller (future (field-values/get-or-create-full-field-values!
+                                (t2/select-one :model/Field :id field-id)))]
+            @started
+            (is (true? (future-cancel caller)))
+            (deliver release true)
+            (is (seq (:values (tu/poll-until 10000
+                                             (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"

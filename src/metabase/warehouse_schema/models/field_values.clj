@@ -522,6 +522,36 @@
       (clear-field-values-for-field! field)
       ::fv-deleted)))
 
+(def ^:private in-flight-fetches
+  "`cache-key` -> promise of the result of the fetch currently running for that key. See
+  [[detached-fetch!]]."
+  (atom {}))
+
+(defn detached-fetch!
+  "Run `thunk` on a background thread and return its result, rethrowing anything it throws.
+
+  Calls sharing a `cache-key` while a fetch is in flight all wait on that one run instead of
+  starting their own. Because the work is detached from the calling thread, it runs to completion
+  — and persists whatever it fetched — even when the caller stops waiting, e.g. when the HTTP
+  request that asked for the values is canceled."
+  [cache-key thunk]
+  (let [p    (promise)
+        this (get (swap! in-flight-fetches u/assoc-default cache-key p) cache-key)]
+    (when (identical? this p)
+      (future
+        (let [result (try
+                       {:value (thunk)}
+                       (catch Throwable e
+                         {:error e}))]
+          ;; drop the registry entry before delivering, so a caller that wakes up and immediately
+          ;; asks again starts a fresh fetch rather than re-attaching to this finished one
+          (swap! in-flight-fetches dissoc cache-key)
+          (deliver p result))))
+    (let [{:keys [value error]} @this]
+      (when error
+        (throw error))
+      value)))
+
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
   created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
@@ -530,17 +560,20 @@
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
-        (case (create-or-update-full-field-values! field)
-          ::fv-deleted
-          nil
+        (detached-fetch!
+         [:full field-id]
+         (fn []
+           (case (create-or-update-full-field-values! field)
+             ::fv-deleted
+             nil
 
-          ::fv-created
-          (get-latest-full-field-values field-id)
+             ::fv-created
+             (get-latest-full-field-values field-id)
 
-          (do
-            (when existing
-              (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
-            (get-latest-full-field-values field-id)))
+             (do
+               (when existing
+                 (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
+               (get-latest-full-field-values field-id)))))
         (do
           (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
