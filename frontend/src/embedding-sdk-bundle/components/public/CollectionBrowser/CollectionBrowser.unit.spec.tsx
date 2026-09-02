@@ -20,6 +20,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { reinitialize as reinitializePlugins } from "metabase/plugins";
+import { defer } from "metabase/utils/promise";
 import type {
   Collection,
   CollectionItem,
@@ -504,14 +505,6 @@ describe("CollectionBrowser", () => {
     });
   });
 });
-
-function defer<T>() {
-  let resolve: (value: T) => void = () => {};
-  const promise = new Promise<T>((res) => {
-    resolve = res;
-  });
-  return { promise, resolve };
-}
 
 function getColumnNames(): (string | null)[] {
   return within(screen.getByTestId("items-table-head"))
