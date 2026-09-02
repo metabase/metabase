@@ -311,12 +311,12 @@ When the built-in widgets don't fit, set `widget` to your own React component in
 
 Metabase injects these props into your widget component (import the type with `BaseWidgetProps<TValue, TSettings>`):
 
-| Prop               | Type                  | Description                     |
-| ------------------ | --------------------- | ------------------------------- |
+| Prop               | Type                  | Description                                                                                            |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | `id`               | `string`              | Form-only id for your control (e.g. a label's `htmlFor`). The value is arbitrary — don't interpret it. |
-| `value`            | `TValue \| undefined` | The setting's current value.    |
-| `onChange`         | `(value?) => void`    | Update this setting's value.    |
-| `onChangeSettings` | `(settings) => void`  | Update other settings of yours. |
+| `value`            | `TValue \| undefined` | The setting's current value.                                                                           |
+| `onChange`         | `(value?) => void`    | Update this setting's value.                                                                           |
+| `onChangeSettings` | `(settings) => void`  | Update other settings of yours.                                                                        |
 
 Add any extra props your component needs with `getProps()`. Its return type is your component's own props, minus the base props Metabase injects.
 
