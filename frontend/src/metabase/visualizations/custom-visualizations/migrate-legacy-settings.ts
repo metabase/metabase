@@ -1,14 +1,16 @@
+import { visualizations } from "metabase/visualizations/lib/registry";
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { getCustomVizSettingKeyPrefix } from "./setting-keys";
 
-const HOST_SETTING_KEYS_WITHOUT_DOT: ReadonlySet<string> = new Set([
-  "click_behavior",
-  "column",
-  "column_settings",
-  "series_settings",
+// Stored keys with no registered settings definition (or whose visualization
+// registers per entrypoint), so the registry can't vouch for them.
+const EXTRA_HOST_SETTING_KEYS: ReadonlySet<string> = new Set([
+  "virtual_card",
+  "visualization",
+  "iframe",
 ]);
 
 /**
@@ -29,14 +31,20 @@ export function migrateStoredCustomVizSettings(
   const prefix = getCustomVizSettingKeyPrefix(display);
   const definitions = getDefinitions();
 
+  // Built lazily per call: plugins and their settings register after startup.
+  let hostSettingKeys: ReadonlySet<string> | undefined;
+
   const legacyKeys = Object.keys(definitions)
     .filter((key) => key.startsWith(prefix))
     .map((key) => [key, key.slice(prefix.length)] as const)
     .filter(([, legacyKey]) => {
+      // A plugin must not capture or erase host settings by declaring a colliding
+      // id: `definitions` holds this display's ids (COMMON_SETTINGS included),
+      // the registry every other display's.
       return (
+        Object.hasOwn(storedSettings, legacyKey) &&
         !Object.hasOwn(definitions, legacyKey) &&
-        !isHostSettingKey(legacyKey) &&
-        Object.hasOwn(storedSettings, legacyKey)
+        !(hostSettingKeys ??= getHostSettingKeys()).has(legacyKey)
       );
     });
 
@@ -57,11 +65,14 @@ export function migrateStoredCustomVizSettings(
   return settings;
 }
 
-/**
- * A plugin must not capture or erase host settings by declaring a colliding id.
- * Never adopt a key that names one of Metabase's own settings (dotted keys like
- * graph.goal_value`, or the exceptions listed in HOST_SETTING_KEYS_WITHOUT_DOT).
- */
-function isHostSettingKey(key: string): boolean {
-  return key.includes(".") || HOST_SETTING_KEYS_WITHOUT_DOT.has(key);
+function getHostSettingKeys(): ReadonlySet<string> {
+  const keys = new Set(EXTRA_HOST_SETTING_KEYS);
+
+  for (const [, viz] of visualizations) {
+    for (const key of Object.keys(viz.settings ?? {})) {
+      keys.add(key);
+    }
+  }
+
+  return keys;
 }

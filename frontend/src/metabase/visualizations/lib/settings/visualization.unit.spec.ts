@@ -404,6 +404,9 @@ describe("getStoredSettingsForSeries", () => {
           [`${PREFIX}threshold`]: { widget: "number" },
           [`${PREFIX}card.title`]: { widget: "input" },
           [`${PREFIX}graph.goal_value`]: { widget: "number" },
+          [`${PREFIX}goal.color`]: { widget: "color" },
+          [`${PREFIX}series_settings`]: { widget: "input" },
+          [`${PREFIX}virtual_card`]: { widget: "input" },
           [`${PREFIX}toString`]: { widget: "input" },
         },
       });
@@ -445,6 +448,30 @@ describe("getStoredSettingsForSeries", () => {
 
       expect(getStoredSettingsForSeries(series)).toEqual({
         "graph.goal_value": 100,
+      });
+    });
+
+    it("adopts a dotted plugin id that names no host setting", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ "goal.color": "red" })),
+      ).toEqual({ [`${PREFIX}goal.color`]: "red" });
+    });
+
+    it("leaves a host setting registered by another display alone", () => {
+      const series = customVizSeries({
+        series_settings: { x: { title: "X" } },
+      });
+
+      expect(getStoredSettingsForSeries(series)).toEqual({
+        series_settings: { x: { title: "X" } },
+      });
+    });
+
+    it("leaves a stored key with no settings definition alone", () => {
+      const series = customVizSeries({ virtual_card: { display: "text" } });
+
+      expect(getStoredSettingsForSeries(series)).toEqual({
+        virtual_card: { display: "text" },
       });
     });
 
