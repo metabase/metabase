@@ -89,18 +89,18 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
 
 describe("VisualizationResult", () => {
   describe("without a mode prop", () => {
-    it("keeps column reordering disabled and the outline header", async () => {
+    it("should keep column reordering disabled and the outline header", async () => {
       setup();
 
       const header = await screen.findByRole("columnheader", { name: "Total" });
-      // dnd-kit gives headers that accept dragging a button role
+      // dnd-kit gives headers that accept dragging a button role.
       expect(within(header).queryByRole("button")).not.toBeInTheDocument();
       expect(within(header).getByTestId("header-cell")).toHaveClass(
         "outline-header-variant",
       );
     });
 
-    it("still resolves the stock drills on a cell click", async () => {
+    it("should still resolve the stock drills on a cell click", async () => {
       setup();
 
       const cells = await screen.findAllByRole("gridcell");
@@ -113,7 +113,7 @@ describe("VisualizationResult", () => {
   });
 
   describe("with an explicit mode", () => {
-    it("enables column reordering and the light header", async () => {
+    it("should enable column reordering and the light header", async () => {
       setup({ mode: defaultClickActionMode });
 
       const header = await screen.findByRole("columnheader", { name: "Total" });
@@ -126,7 +126,7 @@ describe("VisualizationResult", () => {
       );
     });
 
-    it("hides the add-column shortcut for the stock mode", async () => {
+    it("should hide the add-column shortcut for the stock mode", async () => {
       setup({ mode: defaultClickActionMode });
 
       await screen.findByRole("columnheader", { name: "Total" });
@@ -137,7 +137,7 @@ describe("VisualizationResult", () => {
   });
 
   describe("with a query mode that answers hasColumnShortcutActions", () => {
-    it("shows the add-column shortcut when the query mode's actions respond", async () => {
+    it("should show the add-column shortcut when the query mode's actions respond", async () => {
       setup({
         mode: new Mode(() => DefaultMode, { hasColumnShortcutActions: true }),
       });

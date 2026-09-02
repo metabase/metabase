@@ -219,21 +219,10 @@ export interface ClickActionsMode {
   ): ClickAction[];
 
   /**
-   * Answers whether the mode has legacy actions for the given click.
-   * Only modes that opt in define it,
-   * so TableInteractive's add-column shortcut stays off for every other mode.
+   * Whether any of the mode's click actions apply to the add-column shortcut click.
+   * Modes that leave it undefined hide the shortcut.
    */
   hasColumnShortcutActions?(props: ClickActionProps): boolean;
-}
-
-export function isClickActionsMode(value: unknown): value is ClickActionsMode {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "actionsForClick" in value &&
-    // Unjustified type cast. FIXME
-    typeof (value as any).actionsForClick === "function"
-  );
 }
 
 export type QueryClickActionsMode = {

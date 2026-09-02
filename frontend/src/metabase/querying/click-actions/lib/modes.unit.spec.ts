@@ -12,7 +12,7 @@ import { ArchivedMode } from "../modes/ArchivedMode";
 import { DefaultMode } from "../modes/DefaultMode";
 import { ListMode } from "../modes/ListMode";
 
-import { defaultClickActionMode, getQueryMode } from "./modes";
+import { getQueryMode } from "./modes";
 
 const metadata = createMockMetadata({});
 
@@ -21,22 +21,16 @@ function createQuestion(card: Partial<Card> = {}) {
 }
 
 describe("getQueryMode", () => {
-  it("returns ArchivedMode for an archived question", () => {
+  it("should return ArchivedMode for an archived question", () => {
     expect(getQueryMode(createQuestion({ archived: true }))).toBe(ArchivedMode);
   });
 
-  it("returns ListMode for a list question", () => {
+  it("should return ListMode for a list question", () => {
     expect(getQueryMode(createQuestion({ display: "list" }))).toBe(ListMode);
   });
 
-  it("returns DefaultMode for other questions", () => {
+  it("should return DefaultMode for other questions", () => {
     expect(getQueryMode(createQuestion())).toBe(DefaultMode);
-  });
-});
-
-describe("defaultClickActionMode", () => {
-  it("does not answer hasColumnShortcutActions, so the add-column shortcut stays off", () => {
-    expect(defaultClickActionMode.hasColumnShortcutActions).toBeUndefined();
   });
 });
 
@@ -52,7 +46,7 @@ describe("Mode", () => {
     clickAction.mockClear();
   });
 
-  it("resolves the query mode from the click-time question", () => {
+  it("should resolve the query mode from the click-time question", () => {
     const chooseQueryMode = jest.fn(() => queryMode);
     const mode = new Mode(chooseQueryMode);
     const question = createQuestion();
@@ -63,13 +57,17 @@ describe("Mode", () => {
     );
   });
 
-  it("resolves no actions without a question", () => {
+  it("should resolve no actions without a question", () => {
     const mode = new Mode(() => queryMode);
     expect(mode.actionsForClick({})).toEqual([]);
     expect(clickAction).not.toHaveBeenCalled();
   });
 
   describe("hasColumnShortcutActions", () => {
+    const props = {
+      question: createQuestion(),
+      clicked: { columnShortcuts: true },
+    };
     const shortcutAction: LegacyDrill = ({ question }) => [
       {
         name: "column-shortcut",
@@ -79,54 +77,38 @@ describe("Mode", () => {
       },
     ];
 
-    it("is not defined unless opted in, so the add-column shortcut stays off", () => {
+    it("should not be defined unless opted in, so the add-column shortcut stays off", () => {
       const mode = new Mode(() => queryMode);
       expect(mode.hasColumnShortcutActions).toBeUndefined();
     });
 
-    it("passes the click through to the query mode's actions", () => {
+    it("should pass the click through to the query mode's actions", () => {
       const mode = new Mode(() => queryMode, {
         hasColumnShortcutActions: true,
       });
-      const props = {
-        question: createQuestion(),
-        clicked: { columnShortcuts: true },
-      };
       mode.hasColumnShortcutActions?.(props);
       expect(clickAction).toHaveBeenCalledWith(props);
     });
 
-    it("answers true when an action offers something for the click", () => {
+    it("should answer true when an action offers something for the click", () => {
       const mode = new Mode(
         () => ({ ...queryMode, clickActions: [clickAction, shortcutAction] }),
         { hasColumnShortcutActions: true },
       );
-      const props = {
-        question: createQuestion(),
-        clicked: { columnShortcuts: true },
-      };
       expect(mode.hasColumnShortcutActions?.(props)).toBe(true);
     });
 
-    it("answers false when every action comes back empty", () => {
+    it("should answer false when every action comes back empty", () => {
       const mode = new Mode(() => queryMode, {
         hasColumnShortcutActions: true,
       });
-      const props = {
-        question: createQuestion(),
-        clicked: { columnShortcuts: true },
-      };
       expect(mode.hasColumnShortcutActions?.(props)).toBe(false);
     });
 
-    it("answers false when the query mode has no actions at all", () => {
+    it("should answer false when the query mode has no actions at all", () => {
       const mode = new Mode(() => ({ ...queryMode, clickActions: [] }), {
         hasColumnShortcutActions: true,
       });
-      const props = {
-        question: createQuestion(),
-        clicked: { columnShortcuts: true },
-      };
       expect(mode.hasColumnShortcutActions?.(props)).toBe(false);
     });
   });

@@ -43,7 +43,6 @@ import {
   type ClickObject,
   type OnBrush,
   type VisualizationPassThroughProps,
-  isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
 import {
@@ -147,8 +146,6 @@ type VisualizationOwnProps = {
   scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
-  // There is no built-in default mode: composition sites must pass their own.
-  // Without one, clicks resolve no actions.
   mode?: ClickActionsMode;
   /**
    * Resolves click actions when no `mode` is passed.
@@ -475,12 +472,8 @@ class Visualization extends PureComponent<
     );
     const question = Visualization.getQuestionForCard(metadata, card);
 
-    // Untyped callers can still pass a bare QueryClickActionsMode.
-    // Treat anything without actionsForClick as no mode rather than crashing.
-    const modeInstance = isClickActionsMode(mode) ? mode : undefined;
-
-    return modeInstance
-      ? modeInstance.actionsForClick(
+    return mode
+      ? mode.actionsForClick(
           {
             ...clicked,
             extraData: {

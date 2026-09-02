@@ -17,10 +17,6 @@ export function getQueryMode(question: Question): QueryClickActionsMode {
   return question.display() === "list" ? ListMode : DefaultMode;
 }
 
-/**
- * The stock drill behaviour, for surfaces with no mode of their own.
- * Visualization has no built-in default: passing this is opting in.
- */
 export const defaultClickActionMode: ClickActionsMode = new Mode(getQueryMode);
 
 export function getEmbeddingMode({
