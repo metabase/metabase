@@ -125,13 +125,12 @@
 
   So the consent screen names the full surface and the user decides there, rather than the server deciding for them
   by omission. This is not a widening of what the surface accepts — that set is unchanged, and `mb:full` and the
-  rest of the agent-API scopes remain refused (GHY-4226)."
-  [metabot.scope/agent-content-read
-   metabot.scope/agent-content-write
-   metabot.scope/agent-query-run
-   metabot.scope/agent-sql-run
-   metabot.scope/agent-delivery-write
-   metabot.scope/agent-resource-read])
+  rest of the agent-API scopes remain refused (GHY-4226).
+
+  Read from [[metabase.mcp.paths/v2-surface-scopes]] rather than listed here, because the OAuth server has to
+  grant exactly this set: when the two drifted, a client that followed the challenge asked for scopes
+  `validate-scope` rejected and the connect failed with \"Invalid scope\"."
+  mcp.paths/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

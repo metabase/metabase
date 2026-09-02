@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
    [metabase.metabot.scope :as metabot.scope]
@@ -238,6 +240,30 @@
             "a v2-minted credential must never carry the v1 exemption marker")
         (is (contains? claims :scp)
             "and must carry a scope claim, which is what subjects it to the native-SQL gate")))))
+
+(deftest v2-surface-scopes-match-metabot-scope-test
+  (testing "`v2-surface-scopes` spells its scopes as literals because `metabase.mcp.paths` must stay
+            dependency-free — `metabase.server.middleware.security` requires `metabase.mcp.core`, so requiring
+            `metabot.scope` from anything `mcp.core` reaches deadlocks namespace loading at web-server start.
+            This is what keeps the literals honest in place of that require."
+    (is (= [metabot.scope/agent-content-read
+            metabot.scope/agent-content-write
+            metabot.scope/agent-query-run
+            metabot.scope/agent-sql-run
+            metabot.scope/agent-delivery-write
+            metabot.scope/agent-resource-read]
+           mcp.paths/v2-surface-scopes))))
+
+(deftest challenge-scopes-are-grantable-test
+  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and the OAuth server
+            validates a requested scope against `all-agent-scopes`. A challenge naming scopes that set does not
+            contain is not merely over-broad — the client asks for exactly what it was told, is answered
+            \"Invalid scope\", and the connect fails outright. The surface becomes unreachable over OAuth."
+    (let [grantable (set ((requiring-resolve 'metabase.oauth-server.core/all-agent-scopes)))]
+      (doseq [scope @#'v2.api/default-ask-scopes]
+        (testing scope
+          (is (contains? grantable scope)
+              "a scope the v2 challenge asks for must be one the OAuth server will actually grant"))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
