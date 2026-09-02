@@ -76,7 +76,7 @@
         ctx    {:search-string "pasta" :archived? false :vector-search-strategy strategy}
         hybrid (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3] ctx)
         {:keys [ctes]} (#'semantic.index/flatten-ctes hybrid)]
-    (first (filter #(= :vector_candidates (first %)) ctes))))
+    (first (filter #(= 'vector_candidates (first %)) ctes))))
 
 (deftest flatten-ctes-preserves-materialized-test
   (testing "the :materialized opt survives CTE hoisting (the path every real query takes via scored-search-query)"
