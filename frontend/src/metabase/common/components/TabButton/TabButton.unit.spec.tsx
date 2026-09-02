@@ -73,7 +73,9 @@ describe("TabButton", () => {
     await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
-    expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: newLabel }),
+    ).toBeInTheDocument();
   });
 
   it("should ignore an empty tab name and revert to the previous on blur", async () => {
@@ -89,15 +91,22 @@ describe("TabButton", () => {
     await userEvent.clear(inputEl);
     await userEvent.type(inputEl, `{enter}`);
     expect(onRename).not.toHaveBeenCalled();
-    expect(await screen.findByDisplayValue(oldLabel)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: oldLabel }),
+    ).toBeInTheDocument();
 
-    // Let's do that one more time but with a name that contains only spaces
+    // Let's do that one more time but with a name that contains only spaces.
+    // The input is mounted per rename, so re-query rather than reusing the
+    // reference from the previous round.
     await userEvent.click(getIcon("chevrondown"));
     await userEvent.click(await renameOption());
-    await userEvent.clear(inputEl);
-    await userEvent.type(inputEl, `  {enter}`);
+    const secondInputEl = await screen.findByRole("textbox");
+    await userEvent.clear(secondInputEl);
+    await userEvent.type(secondInputEl, `  {enter}`);
     expect(onRename).not.toHaveBeenCalled();
-    expect(await screen.findByDisplayValue(oldLabel)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: oldLabel }),
+    ).toBeInTheDocument();
   });
 
   it("should allow the user to rename via double click", async () => {
@@ -111,7 +120,9 @@ describe("TabButton", () => {
     await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
-    expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: newLabel }),
+    ).toBeInTheDocument();
   });
 
   it("should limit the length to 75 chars", async () => {
@@ -129,7 +140,31 @@ describe("TabButton", () => {
     await userEvent.type(inputEl, `{enter}`, { delay: 0 });
 
     expect(onRename).toHaveBeenCalledWith(expectedLabel);
-    expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: expectedLabel }),
+    ).toBeInTheDocument();
+  });
+
+  it("should not render the label as a form field outside of renaming (metabase#81688)", async () => {
+    setup();
+
+    // A disabled input is still a fill target for password-manager extensions,
+    // which set `value` on the node directly, so the field must not exist at all.
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tab 1" })).toBeInTheDocument();
+  });
+
+  it("should opt the rename input out of autofill (metabase#81688)", async () => {
+    setup();
+
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
+
+    const inputEl = await screen.findByRole("textbox");
+    expect(inputEl).toHaveAttribute("autocomplete", "off");
+    expect(inputEl).toHaveAttribute("data-1p-ignore");
+    expect(inputEl).toHaveAttribute("data-lpignore", "true");
+    expect(inputEl).toHaveAttribute("data-form-type", "other");
   });
 });
 
