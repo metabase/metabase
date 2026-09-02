@@ -1374,7 +1374,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Document
-                    :model/Field}}
+                    :model/Field
+                    :model/User}}
 
   measures
   {:team "Graphy"
@@ -1635,6 +1636,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request

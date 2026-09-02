@@ -374,6 +374,47 @@
         (is (not (:isError result)) (-> result :content first :text))
         (is (= "new desc" (t2/select-one-fn :description :model/Card :id (:id card))))))))
 
+(deftest ^:parallel semantic-type-accepts-relation-types-test
+  (testing "type/PK and type/FK are relation types (not Semantic/*), accepted by the column schema and named
+            in the tool's own examples, so the check must let them through"
+    (is (= :type/PK (#'v2.question/check-semantic-type! "type/PK")))
+    (is (= :type/FK (#'v2.question/check-semantic-type! "type/FK")))
+    (is (= :type/Currency (#'v2.question/check-semantic-type! "type/Currency")))
+    (is (thrown-with-msg? Exception #"Invalid semantic_type" (#'v2.question/check-semantic-type! "type/Nope")))))
+
+(deftest update-by-entity-id-test
+  (testing "an update addressed by the card's 21-character entity_id resolves to the numeric id everywhere
+            downstream — the save-cycle graph and the readback select, not just the write check"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card card {:name "By eid" :dataset_query (orders-query)}]
+        (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                         {:method "update"
+                                          :id     (:entity_id card)
+                                          :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
+                                          :name   "By eid, renamed"})]
+          (is (not (:isError result)) (-> result :content first :text))
+          (is (= (:id card) (:id (:structuredContent result))))
+          (is (= "By eid, renamed" (t2/select-one-fn :name :model/Card :id (:id card)))))))))
+
+(deftest update-checks-permissions-before-inferring-metadata-test
+  (testing "on update, result-metadata inference (whose teaching errors name the columns it found) runs only
+            after the permission check on the new query — otherwise a caller could learn the columns of a
+            table they cannot run, one guessed column_metadata name at a time"
+    (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                           {:method          "update"
+                                            :id              (:id card)
+                                            ;; a different table than the stored query's, so this is a query
+                                            ;; modification and the run-permission check applies to it
+                                            :query           {:database (mt/id) :stages [{:source-table (mt/id :venues)}]}
+                                            :column_metadata [{:name "NOT_A_COLUMN" :description "guess"}]})
+                text   (-> result :content first :text)]
+            (is (:isError result))
+            (is (not (re-find #"not in the query results" text))
+                "the column-name teaching error must not be reachable without run permission on the query")))))))
+
 (deftest update-archive-restore-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:archived false :dataset_query (orders-query)}]

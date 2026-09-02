@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- `metabase.driver/validate-impersonated-query` `[driver query]` now has a `:sql-jdbc` implementation that
+  enforces, for every JDBC driver, that a connection-impersonated native query is a single statement.
+
 - `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
   multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
   user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,

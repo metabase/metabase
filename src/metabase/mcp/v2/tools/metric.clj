@@ -169,7 +169,12 @@
   [id {:keys [name description collection_position archived] :as args} session-id]
   (let [card-before  (v2.resolve/resolve-and-read-with
                       :model/Card id
-                      (fn [cid] (api/write-check :model/Card cid)))
+                      ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
+                      ;; verified card whose query changes by reading `:moderation_reviews` off the
+                      ;; card-before, and a bare row would leave the Verified badge on a swapped
+                      ;; definition.
+                      (fn [cid] (t2/hydrate (api/write-check :model/Card cid)
+                                            [:moderation_reviews :moderator_details])))
         _            (check-is-metric! card-before)
         card-id      (:id card-before)
         new-query    (resolve-definition args session-id)

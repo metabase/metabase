@@ -10,13 +10,13 @@ import {
   isMetric,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Card,
   CardId,
   DatasetColumn,
   DatasetData,
   JsonQuery,
   RowValues,
   Series,
+  SeriesCard,
   SingleSeries,
   VirtualCard,
 } from "metabase-types/api";
@@ -156,9 +156,14 @@ export function computeSplit(
   }
 }
 
+interface SameSeriesInput {
+  card?: SeriesCard | VirtualCard;
+  data?: DatasetData;
+}
+
 export function isSameSeries(
-  seriesA: Partial<Pick<SingleSeries, "card" | "data">>[] | undefined,
-  seriesB: Partial<Pick<SingleSeries, "card" | "data">>[] | undefined,
+  seriesA: SameSeriesInput[] | undefined,
+  seriesB: SameSeriesInput[] | undefined,
 ): boolean {
   if (!seriesA || !seriesB) {
     return seriesA === seriesB;
@@ -251,16 +256,15 @@ export function getColumnExtent(
 
 // TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
 export const cardHasBecomeDirty = (
-  nextCard: Card | VirtualCard,
-  previousCard: Card | VirtualCard,
+  nextCard: SeriesCard | VirtualCard,
+  previousCard: SeriesCard | VirtualCard,
 ): boolean =>
   !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) ||
   previousCard.display !== nextCard.display;
 
-export function getCardAfterVisualizationClick<T extends Card | VirtualCard>(
-  nextCard: T,
-  previousCard: T,
-): T {
+export function getCardAfterVisualizationClick<
+  T extends SeriesCard | VirtualCard,
+>(nextCard: T, previousCard: T): T {
   if (cardHasBecomeDirty(nextCard, previousCard)) {
     const isMultiseriesQuestion = !nextCard.id;
     const alreadyHadLineage = !!previousCard.original_card_id;
