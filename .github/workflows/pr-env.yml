@@ -21,13 +21,13 @@ on:
         default: false
 jobs:
   build:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    name: Build Metabase Docker image
-    uses: ./.github/workflows/build-private-ee-docker-image.yml
-    secrets:
-      PR_ENV_IAM_ROLE: ${{ secrets.PR_ENV_IAM_ROLE }}
-      PR_ENV_AWS_ACCOUNT_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
-  deploy_pr:
+    if: github.event.pull_request.head.repo.full_name == 'metabase/metabase'
+    uses: ./.github/workflows/uberjar.yml
+    with:
+      containerize: true
+      repo: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/metabase-enterprise
+      tag: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+  deploy:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV
