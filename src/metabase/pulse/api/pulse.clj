@@ -201,21 +201,38 @@
         (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients
-  "Sandboxed users and users using connection impersonation can't read the full recipient list for a pulse, so we need
-  to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
-  merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
+  "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.
+
+  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels!]]
+  deletes any recipient not present — so every recipient hidden on the read path must be restored on
+  the write path, or a caller who reads a pulse and submits it back silently deletes recipients it
+  never saw. Two read filters hide recipients, and each is compensated here:
+
+  * sandboxed and connection-impersonated users see only themselves
+    (see [[metabase.pulse.models.pulse/maybe-filter-pulses-recipients]]);
+  * tenant-scoped users see only same-tenant users
+    (see [[metabase.pulse.models.pulse/hidden-cross-tenant-recipients]]).
+
+  Only Metabase-user recipients are merged back. Raw email addresses stay visible to these users
+  under both filters, so they remain the caller's to add or remove."
   [pulse-updates pulse-before-update]
-  (if (perms/sandboxed-or-impersonated-user?)
-    (let [recipients-to-add (filter
-                             (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                             (:recipients (email-channel pulse-before-update)))]
+  (let [existing-recipients (:recipients (email-channel pulse-before-update))
+        recipients-to-add   (concat
+                             (when (perms/sandboxed-or-impersonated-user?)
+                               (filter (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                                       existing-recipients))
+                             (models.pulse/hidden-cross-tenant-recipients existing-recipients))]
+    (if (seq recipients-to-add)
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
-               (if (= "email" (:channel_type channel))
+               ;; normalize like [[email-channel]]: :channel_type is a string over REST but a
+               ;; keyword when this is called directly with a hydrated pulse
+               (if (= :email (keyword (:channel_type channel)))
                  (assoc channel :recipients
-                        (concat (:recipients channel) recipients-to-add))
-                 channel))))
-    pulse-updates))
+                        (m/distinct-by (some-fn :id :email)
+                                       (concat (:recipients channel) recipients-to-add)))
+                 channel)))
+      pulse-updates)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
