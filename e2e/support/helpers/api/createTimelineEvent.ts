@@ -11,7 +11,8 @@ export const createTimelineEvent = ({
   timezone = "UTC",
   archived = false,
   ...params
-}: CreateTimelineEventRequest): Cypress.Chainable<
+}: Partial<CreateTimelineEventRequest> &
+  Pick<CreateTimelineEventRequest, "timeline_id">): Cypress.Chainable<
   Cypress.Response<TimelineEvent>
 > => {
   return cy.request("POST", "/api/timeline-event", {

@@ -16,7 +16,7 @@ Events and timelines are a way to capture that chronological knowledge and make 
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
 
-Metabase displays events on time series charts when viewing an individual question, and on dashboards for questions that were saved with events turned on. Events aren't shown on public links, static embeds, or in dashboard subscriptions.
+Metabase displays events on time series charts when viewing an individual question, and on dashboards for questions that were saved with events turned on. Events aren't shown on public links, static embeds, in the embedded analytics SDK, or in dashboard subscriptions.
 
 ## Timelines
 
