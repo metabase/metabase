@@ -580,13 +580,13 @@
 (defmethod search-query-for-model "dataset"
   [_model search-ctx]
   (-> (shared-card-impl :model search-ctx)
-      (update :select (fn [columns]
+      (update 'select (fn [columns]
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
 (defmethod search-query-for-model "metric"
   [_model search-ctx]
   (-> (shared-card-impl :metric search-ctx)
-      (update :select (fn [columns]
+      (update 'select (fn [columns]
                         (cons [(h2x/literal "metric") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
