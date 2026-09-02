@@ -349,6 +349,15 @@
     (update-keys m (fn [k] (if (symbol? k) (keyword (namespace k) (name k)) k)))
     m))
 
+(methodical/defmethod t2.pipeline/resolve :around :default
+  "Spell the top-level clause keys of a resolved HoneySQL map as keywords as soon as it is resolved, so Toucan 2's own
+  checks on the resolved query (default fields, for one) see them; app-DB code writes them as symbols."
+  [query-type model queryable]
+  (let [resolved (next-method query-type model queryable)]
+    (if (map? resolved)
+      (with-meta (keyword-keys resolved) (meta resolved))
+      resolved)))
+
 (methodical/defmethod t2.pipeline/build :around :default
   "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
   dialect to do special query building magic. When building a Honey SQL form, make sure `:dialect` is bound to the
