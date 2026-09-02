@@ -9,8 +9,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- start-process!
-  "Start the command `args` as a subprocess. `dir` is its working directory. `env`, when given, replaces the
-  parent environment rather than adding to it."
+  "Starts `args` as a subprocess, using `dir` as its working directory when provided.
+  When non-nil, `env` must be a map and completely replaces the parent environment."
   ^Process [args env dir]
   (let [builder (ProcessBuilder. ^java.util.List (mapv str args))]
     (when dir
@@ -39,27 +39,27 @@
 ;; How often we re-ask a signalled process whether it has exited yet.
 (def ^:private exit-poll-interval-ms 50)
 
-;; How long the readers get to drain the pipes once the command itself has exited, over and above whatever
-;; is left of its budget.
+;; After a command exits, its output readers receive at least this much time to finish.
 (def ^:private drain-floor-ms (* 2 1000)) ; 2 seconds
 
 (def ^:private drain-failed-message
-  ;; Loud, because half a command's output returned as if it were all of it is worse than a failure.
+  ;; Returning partial output as complete would hide data loss, so this is an error.
   "Command exited, but something it left running is holding its output pipe open.")
 
 (defn- deadline-in
-  "A `nanoTime` instant `timeout-ms` from now, to measure against with [[remaining-ms]].
-  Wall-clock time is no good for this: an NTP correction or a DST shift would move the deadline."
+  "Returns the `System/nanoTime` deadline `timeout-ms` milliseconds from now."
   [timeout-ms]
+  ;; A monotonic reading, so an NTP correction or a DST shift cannot move the deadline.
   (+ (System/nanoTime) (* timeout-ms ns-per-ms)))
 
 (defn- remaining-ms
-  "How many milliseconds are left before `deadline`, or 0 once it has passed."
+  "Returns the milliseconds left before `deadline`, or zero once it has passed."
   [deadline]
   (max 0 (quot (- deadline (System/nanoTime)) ns-per-ms)))
 
 (defn- deref-by-deadline
-  "Deref `dereffable`, throwing an ex-info carrying `message` if `deadline` passes first."
+  "Returns the value of `dereffable` if it becomes available by `deadline`.
+  Throws `ExceptionInfo` with `message` and `:timed-out? true` if the deadline passes first."
   [dereffable deadline message]
   (let [result (deref dereffable (remaining-ms deadline) ::timed-out)]
     (when (= result ::timed-out)
@@ -72,7 +72,7 @@
     (catch java.io.IOException _ nil)))
 
 (defn- wait-for-exit
-  "Wait up to `timeout-ms` for every process in `handles` to exit."
+  "Waits until every process in `handles` exits or `timeout-ms` elapses."
   [handles timeout-ms]
   (let [deadline (deadline-in timeout-ms)]
     (loop []
@@ -82,15 +82,16 @@
         (recur)))))
 
 (defn- kill-process!
-  "Stop `proc` and every process it started, so a timed-out command cannot keep running behind the caller.
-  The descendants are listed before anything is signalled, and each survivor is force-killed on its own,
-  so a child that ignores the first signal dies even after its parent has gone.
-  A child that had already outlived its parent is not reachable from the root handle."
+  "Attempts to stop `proc` and every descendant reachable from it when this function begins.
+  Returns after every captured process exits or after two grace periods.
+  A process that has already outlived its parent is unreachable and cannot be stopped."
   [^Process proc]
   (let [root    (.toHandle proc)
+        ;; Capture descendants before signalling the root, which can make them unreachable when it exits.
         handles (cons root (iterator-seq (.iterator (.descendants root))))]
     (run! #(.destroy ^ProcessHandle %) handles)
     (wait-for-exit handles kill-grace-period-ms)
+    ;; Signal every survivor directly because its parent may already have exited.
     (run! (fn [^ProcessHandle handle]
             (when (.isAlive handle)
               (.destroyForcibly handle)))
@@ -100,25 +101,25 @@
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
 (defn sh*
-  "Run a shell command. Like [[clojure.java.shell/sh]], but prints output to stdout/stderr and returns a map with keys
-  `:exit`, `:out`, and `:err` (`:out` and `:err` are vectors of lines). Does not throw Exception if process exits with
-  non-zero status code.
+  "Runs a command and returns a map with `:exit`, `:out`, and `:err`; output values are vectors of lines.
+  Unlike [[clojure.java.shell/sh]], prints output as it arrives and does not throw for a nonzero exit status.
 
   Options:
 
-  * `env` -- environment variables (as a map) to use when running `cmd`. If `:env` is `nil`, the default parent
-    environment (i.e., the environment in which this Clojure code itself is ran) will be used; if `:env` IS passed, it
-    completely replaces the parent environment in which this script is ran -- make sure you pass anything that might be
-    needed such as `JAVA_HOME` and `PATH` if you do this
+  * `:env` replaces the parent environment when it is a map; `nil` uses the parent environment.
+    Include variables such as `JAVA_HOME` and `PATH` when replacing the environment.
 
-  * `dir` -- current directory to use when running the shell command. If not specified, command is run in the repo
-    root directory.
+  * `:dir` sets the working directory and defaults to the repository root.
 
-  * `quiet?` -- whether to suppress output from this shell command.
+  * `:quiet?` suppresses output while the command runs.
 
-  * `timeout-ms` -- how long to wait for the command before killing it and throwing; defaults to 15 minutes.
+  * `:timeout-ms` is the total budget for the command to exit and for stdout and stderr to be collected.
+    It defaults to 15 minutes.
+    On timeout, kills the command and its reachable descendants and throws `ExceptionInfo`.
+    After the command exits, allows at least two seconds to finish collecting its output.
+    Throws rather than return partial output if another process keeps an output pipe open.
 
-  * If you set MAGE_VERBOSE env var to true , the command will be printed before running it."
+  When `MAGE_VERBOSE` is present in the environment, prints the command before running it."
   {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
   [& args]
   (when (u/env "MAGE_VERBOSE" (constantly nil))
@@ -132,51 +133,47 @@
                            {:dir u/project-root-directory}
                            opts)
         {:keys [env dir]}  opts
-        ;; `or`, not `:or`: a caller computing the timeout from an env var or an option map can hand us an
-        ;; explicit nil, which `:or` passes straight through.
+        ;; `or` rather than `:or`, which fills in a default only when the key is absent. A caller that
+        ;; computes the timeout and comes up with nil would otherwise get nil.
         timeout-ms        (or (:timeout-ms opts) command-timeout-ms)
         proc              (start-process! args env dir)]
-    ;; Close child stdin so subprocesses that read from it see EOF immediately
-    ;; instead of blocking forever on the JVM-owned pipe.
+    ;; Closing child stdin tells subprocesses that no input is coming, so they do not wait forever.
     (.close (.getOutputStream proc))
     (let [out-stream (.getInputStream proc)
           err-stream (.getErrorStream proc)
           out-reader (BufferedReader. (InputStreamReader. out-stream))
           err-reader (BufferedReader. (InputStreamReader. err-stream))
-          ;; One deadline covers the whole command: `timeout-ms` is its total budget, not a budget per wait.
+          ;; The command exit and both output reads share one deadline.
           deadline   (deadline-in timeout-ms)
           exit-code  (future (.waitFor proc))
           out        (future (read-lines out-reader opts))
           err        (future (read-lines err-reader opts))]
       (try
         (let [exit  (deref-by-deadline exit-code deadline (format "Timed out after %d ms." timeout-ms))
-              ;; The command has exited, so everything it wrote is already in the pipe -- but `deadline`
-              ;; may have just run out, and a pipe holds a bounded amount, so the readers can still have
-              ;; work to do. Without a floor here a command that finished a millisecond inside its budget
-              ;; would have its output thrown away and be reported as a timeout.
+              ;; A process can exit near its deadline while readers still have buffered output to consume.
+              ;; Give them a small minimum window so a successful command is not mistaken for a timeout.
               drain (max deadline (deadline-in drain-floor-ms))]
           {:exit exit
            :out  (deref-by-deadline out drain drain-failed-message)
            :err  (deref-by-deadline err drain drain-failed-message)})
-        ;; A timeout is not the only way out of here. A reader future can fail on the pipe, and the calling
-        ;; thread can be interrupted; either way the command keeps running unless we stop it. Whether the
-        ;; process is still alive is the question that matters, not which exception got us here.
+        ;; Any exception can leave the command running, including a reader failure or thread interruption.
+        ;; Stop it whenever it is still alive, regardless of which exception reached us.
         (catch Throwable e
           (when (.isAlive proc)
             (kill-process! proc))
           (throw e))
         (finally
-          ;; Close the pipes rather than the readers. `BufferedReader.close` takes the same lock `readLine`
-          ;; holds while blocked, so it waits for EOF -- and a process the command orphaned onto our stdout
-          ;; can withhold EOF for as long as it lives. Closing the stream underneath ends the read at once.
+          ;; Close the pipes rather than the readers. `BufferedReader.close` waits on the same lock a
+          ;; blocked `readLine` holds, so it cannot return until EOF -- and a process the command left
+          ;; holding our stdout can withhold EOF for as long as it lives. Closing the stream underneath
+          ;; ends the read at once.
           (close-quietly out-stream)
           (close-quietly err-stream))))))
 
 (defn sh
-  "Like [[sh*]], but throws an Exception if the command exits with a non-zero status. Options are the same as `sh*` --
-  see its documentation for more information.
-
-  Returns sequence of output lines."
+  "Runs [[sh*]] and returns its stdout lines followed by its stderr lines.
+  Throws `ExceptionInfo` containing the response and command arguments when the exit status is nonzero.
+  Accepts the same options as [[sh*]]."
   {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
   [& args]
   (let [{:keys [exit out err], :as response} (apply sh* args)]
