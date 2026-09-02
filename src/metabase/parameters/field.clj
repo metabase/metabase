@@ -117,9 +117,12 @@
   "Like [[search-values-from-field-id]], but honest about the two things that fn papers over, for callers (the MCP
   `get_parameter_values` tool) that must not mislead an agent:
 
-    1. `:has_more_values` is a floor. It is `true` when the underlying query fills the `default-max-field-search-limit`
-       cap, so a column with more distinct values than the cap reads as truncated rather than complete. (A
-       `query-string` search still reports `true`, as before.)
+    1. `:has_more_values` is a floor: `true` exactly when the underlying query filled the
+       `default-max-field-search-limit` cap, so a column with more distinct values than the cap reads as truncated
+       rather than complete. Unlike [[search-values-from-field-id]] it does NOT report `true` merely because a
+       `query-string` narrowed the search — this fn runs the query itself and can count the rows, and claiming
+       more exist when the search returned everything tells an agent to keep narrowing a list it already has
+       in full.
 
     2. A fetch error propagates. Unlike [[search-values]], which logs and returns `[]` -- turning a warehouse timeout
        or sandbox error into an empty list that reads as \"no values\" -- this runs the search query directly, so the
@@ -134,8 +137,7 @@
         rows                 (search-values-query/search-values-query
                               (follow-fks field) (follow-fks search-field) (not-empty query-string) limit)]
     {:values          rows
-     :has_more_values (or (not (str/blank? query-string))
-                          (>= (count rows) limit))
+     :has_more_values (>= (count rows) limit)
      :field_id        field-id}))
 
 (defn parse-query-param-value-for-field
