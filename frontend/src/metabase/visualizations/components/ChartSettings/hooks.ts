@@ -48,7 +48,7 @@ export const useChartSettingsState = ({
   series,
   onChange,
 }: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
-  const display = series[0]?.card?.display;
+  const display = series[0].card.display;
   const visualization = getVisualizationRaw(series);
   const chartSettings = useMemo(() => {
     if (settings) {
