@@ -1,6 +1,7 @@
 import { version } from "../package.json";
 
 import gitignoreTemplate from "./templates/.gitignore?raw";
+import agentsMdTemplate from "./templates/AGENTS.md?raw";
 import readmeTemplate from "./templates/README.md?raw";
 import iconSvgTemplate from "./templates/icon.svg?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
@@ -59,3 +60,5 @@ export function generateGitignore(): string {
 export function generateReadme(name: string, displayName: string): string {
   return replaceDisplayName(replaceName(readmeTemplate, name), displayName);
 }
+
+export const generateAgentsMd = (): string => agentsMdTemplate;

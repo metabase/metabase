@@ -1,4 +1,7 @@
-import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
+import {
+  GLOBAL_BLOCKED_EVENT_TYPES,
+  NAVIGATOR_BLOCKED_GETTERS,
+} from "./blocklists";
 
 export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
@@ -183,25 +186,6 @@ block(
 );
 block(window.PaymentRequest, "PaymentRequest");
 
-// Navigator getters — credential / device leaks
-const NAVIGATOR_BLOCKED_GETTERS = [
-  "clipboard",
-  "geolocation",
-  "mediaDevices",
-  "serviceWorker",
-  "credentials",
-  "permissions",
-  "usb",
-  "bluetooth",
-  "share",
-  "hid",
-  "serial",
-  "xr",
-  "wakeLock",
-  "locks",
-  "storage",
-  "presentation",
-];
 for (const key of NAVIGATOR_BLOCKED_GETTERS) {
   block(getter(Navigator.prototype, key), `Navigator.get ${key}`);
 }
