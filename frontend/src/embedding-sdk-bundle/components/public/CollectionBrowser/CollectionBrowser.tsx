@@ -24,11 +24,13 @@ import { CollectionItemsTable } from "metabase/collections/components/Collection
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { CollectionBreadcrumbsView } from "metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView";
 import { collectionToCrumbs } from "metabase/nav/components/CollectionBreadcrumbs/utils";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
-import { Box, Icon, Stack } from "metabase/ui";
+import { Box, Group, Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -176,6 +178,9 @@ export const CollectionBrowserInner = ({
     [visibleColumns],
   );
 
+  // pagination for the virtual root
+  const { page, setPage, handleNextPage, handlePreviousPage } = usePagination();
+
   useEffect(() => {
     setInternalCollectionId(baseCollectionId);
   }, [baseCollectionId, setInternalCollectionId]);
@@ -233,6 +238,8 @@ export const CollectionBrowserInner = ({
     onClick?.(item);
 
     if (item.model === "collection") {
+      setPage(0);
+
       if (isGlobalBreadcrumbEnabled) {
         reportLocation({
           type: "collection",
@@ -262,7 +269,10 @@ export const CollectionBrowserInner = ({
       key: "all",
       icon: "collection" as const,
       label: t`All collections`,
-      onClick: () => setInternalCollectionId(undefined),
+      onClick: () => {
+        setPage(0);
+        setInternalCollectionId(undefined);
+      },
     },
     ...(collection
       ? collectionToCrumbs({
@@ -275,6 +285,11 @@ export const CollectionBrowserInner = ({
 
   const isVirtualRootEmpty =
     isAtVirtualRoot && allCollectionsItems.length === 0;
+
+  const visibleVirtualRootItems = allCollectionsItems.slice(
+    page * pageSize,
+    (page + 1) * pageSize,
+  );
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
@@ -302,10 +317,24 @@ export const CollectionBrowserInner = ({
       {isAtVirtualRoot && !isVirtualRootEmpty && (
         <Box w="100%" data-testid="all-collections-list">
           <ItemsTable
-            items={allCollectionsItems}
+            items={visibleVirtualRootItems}
             visibleColumnsMap={virtualRootColumnsMap}
             onClick={onClickVirtualRootItem}
           />
+
+          {allCollectionsItems.length > pageSize && (
+            <Group justify="flex-end" my="md">
+              <PaginationControls
+                showTotal
+                page={page}
+                pageSize={pageSize}
+                total={allCollectionsItems.length}
+                itemsLength={visibleVirtualRootItems.length}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
+              />
+            </Group>
+          )}
         </Box>
       )}
 

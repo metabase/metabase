@@ -456,6 +456,50 @@ describe("CollectionBrowser", () => {
         ).not.toHaveLength(0);
       });
     });
+
+    it("should page the virtual root and reset the page on the way back", async () => {
+      await setupAll({
+        rootReadable: false, // to force showing more collections
+        rootCollectionItems: [
+          createMockCollectionItem({
+            id: 101,
+            model: "collection",
+            name: "Collection A",
+          }),
+          createMockCollectionItem({
+            id: 102,
+            model: "collection",
+            name: "Collection B",
+          }),
+          createMockCollectionItem({
+            id: PROMOTED_COLLECTION_ID,
+            model: "collection",
+            name: PROMOTED_TEST_COLLECTION.name,
+          }),
+        ],
+        props: { pageSize: 2 },
+      });
+
+      expect(screen.getByText("Collection A")).toBeInTheDocument();
+      expect(screen.getByText("Collection B")).toBeInTheDocument();
+      expect(
+        screen.queryByText(PROMOTED_TEST_COLLECTION.name),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Next page"));
+
+      expect(
+        screen.getByText(PROMOTED_TEST_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Collection A")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText(PROMOTED_TEST_COLLECTION.name));
+      expect(await screen.findByText("Promoted Dashboard")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("All collections"));
+
+      expect(await screen.findByText("Collection A")).toBeInTheDocument();
+    });
   });
 });
 
