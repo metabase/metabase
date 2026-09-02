@@ -158,8 +158,8 @@
                   (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                   (is (= :done (mdb/setup-db! :create-sample-content? false))))))))))
     (testing "Database created with encryption configured is encrypted"
-      (encryption-test/with-secret-key "key2"
-        (mt/with-temp-empty-app-db [_conn driver/*driver*]
+      (mt/with-temp-empty-app-db [_conn driver/*driver*]
+        (encryption-test/with-secret-key "key2"
           (mdb/setup-db! :create-sample-content? true)
           (is (encryption/decryptable-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
           (is (encryption/decryptable-string? (t2/select-one-fn :details "metabase_database")))
@@ -197,8 +197,8 @@
 
 (deftest sentinel-state-never-triggers-encryption-test
   (testing "a restart must never encrypt a pre-existing plaintext row, whatever state the sentinel is in"
-    (encryption-test/with-secret-key "sentinel-state-key-1"
-      (mt/with-temp-empty-app-db [_conn :h2]
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (encryption-test/with-secret-key "sentinel-state-key-1"
         (mdb/setup-db! :create-sample-content? true)
         (let [db-id      (t2/select-one-fn :id :metabase_database)
               plaintext  "{\"host\":\"example.com\"}"
@@ -229,8 +229,8 @@
 
 (deftest fresh-install-with-encryption-key-test
   (testing "a database created with MB_ENCRYPTION_SECRET_KEY set stores every encrypted-at-rest value encrypted"
-    (encryption-test/with-secret-key "fresh-install-test-key-1234"
-      (mt/with-temp-empty-app-db [_conn :h2]
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (encryption-test/with-secret-key "fresh-install-test-key-1234"
         (mdb/setup-db! :create-sample-content? true)
         (testing "encrypted-at-rest columns (read raw, so no model transform can hide a plaintext value)"
           (doseq [[table column] @#'mdb.encryption/encrypted-string-columns

@@ -34,8 +34,8 @@
 
 (deftest remove-encryption!-test
   (testing "removing encryption"
-    (encryption-test/with-secret-key "key1"
-      (mt/with-temp-empty-app-db [_conn :h2]
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (encryption-test/with-secret-key "key1"
         (mdb/setup-db! :create-sample-content? true)
         (t2/insert! :model/Setting {:key "remove-encryption-test-setting", :value "unencrypted value"})
         (is (encryption/decryptable-string? (raw-value _conn "encryption-check")))
