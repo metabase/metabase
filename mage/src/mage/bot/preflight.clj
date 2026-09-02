@@ -183,8 +183,8 @@
    Exits on failure after timeout."
   [port]
   (let [url        (str "http://localhost:" port "/api/health")
-        timeout-ms (* 5 60 1000) ; 5 minutes
-        interval   (* 10 1000)   ; 10 seconds between health checks
+        timeout-ms (* 5 60 1000)
+        interval   (* 10 1000)
         start      (System/nanoTime)]
     (loop []
       (let [{:keys [exit out]} (shell/sh* {:quiet? true}
