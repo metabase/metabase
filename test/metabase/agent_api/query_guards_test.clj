@@ -8,7 +8,8 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.agent-api.query-guards :as query-guards]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -133,6 +134,30 @@
         ;; caller-named sub-maps are never scanned: an expression or tag called `native` is not a marker
         {:stages [{:lib/type "mbql.stage/mbql" :expressions {:NATIVE [:+ 1 1]}}]}
         {:query {:source-table 1 :template-tags {:Source_Query {:name "x"}}}}))))
+
+(deftest ^:parallel native-query?-sees-a-json-encoded-query-test
+  (testing "`POST /api/dataset/:export-format` accepts `query` as a JSON STRING for `<form>`-submit
+            back-compat, decoding it in Malli (`:decode/api`). `+refuse-unscoped-native-sql` runs ahead of that
+            decoding, so the guard is handed the raw string — and a string edge fell through to `deep-scan`,
+            which finds no marker inside text. The guard therefore could not see native SQL in that shape.
+
+            Unreachable today only because that route is absent from the MCP UI credential's allowlist, which
+            is exactly the coupling the middleware's docstring promises does NOT matter: \"a route later added
+            to the allowlist is covered the day it is added\"."
+    (testing "a JSON-encoded query is decoded and scanned, not skipped"
+      (are [q] (true? (query-guards/native-query? q))
+        {:query (json/encode {:type "native" :native {:query "select 1"}})}
+        {:query (json/encode {:query {:source_query {:native "select 1"}}})}
+        {:query (json/encode {:lib/type "mbql/query"
+                              :stages [{:lib/type "mbql.stage/native" :native "select 1"}]})}))
+    (testing "an encoded MBQL query is still not native"
+      (is (false? (query-guards/native-query? {:query (json/encode {:type "query"
+                                                                    :query {:source-table 1}})}))))
+    (testing "a string that is not JSON at all is left to the existing fallback rather than throwing"
+      (are [q] (false? (query-guards/native-query? q))
+        {:query "not json at all"}
+        {:query ""}
+        {:query "[1,2,3]"}))))
 
 (deftest reject-native-query!-test
   (testing "native queries throw a 400 with a steering message"
