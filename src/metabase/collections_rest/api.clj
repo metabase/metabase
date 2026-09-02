@@ -33,7 +33,7 @@
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -45,6 +45,40 @@
 (comment collection.root/keep-me)
 
 (declare root-collection)
+
+(mr/def ::CollectionId
+  "A Collection's ID: an integer for a real row, or the string \"root\" for the virtual Root Collection."
+  [:or ms/PositiveInt :string])
+
+(mr/def ::Collection
+  "A Collection as the REST API returns it. Deliberately open: which hydrated keys come back varies by endpoint and
+  by what the Collection is. `POST /` returns the freshly inserted row with no permission flags; `/root` describes a
+  virtual Collection with a string id and none of the database-backed columns; `/tree` nests `:children`. Only `:id`
+  and `:name` are present in every case, so only those are required here."
+  [:map
+   [:id   ::CollectionId]
+   ;; The virtual Trash collection carries a deferred-i18n name, and responses are validated before they are
+   ;; encoded to JSON, so the raw value reaching this schema is not always a plain string.
+   [:name [:or :string i18n/LocalizedString]]])
+
+(mr/def ::CollectionTreeNode
+  "A Collection in the `/tree` response. `:children` are nested tree nodes, except under `?shallow=true`, where the
+  endpoint returns only the requested level and `:children` degrades to a boolean saying whether any exist."
+  [:map
+   [:id       ::CollectionId]
+   [:name     [:or :string i18n/LocalizedString]]
+   [:children {:optional true} [:or :boolean [:sequential [:ref ::CollectionTreeNode]]]]])
+
+(mr/def ::ItemsResponse
+  "A page of a Collection's items. `:available_models` is present only when the request asked for it, and
+  `:limit`/`:offset` are dropped entirely in the `snippets` namespace, which is not paginated."
+  [:map
+   [:total            ms/IntGreaterThanOrEqualToZero]
+   [:data             [:sequential :map]]
+   [:models           [:maybe [:sequential :any]]]
+   [:limit            {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:offset           {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:available_models {:optional true} [:sequential :any]]])
 
 (defn- location-from-collection-id-clause
   "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
@@ -130,11 +164,7 @@
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- [:sequential ::Collection]
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
@@ -209,11 +239,7 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/tree"
+(api.macros/defendpoint :get "/tree" :- [:sequential ::CollectionTreeNode]
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
   ```
@@ -323,7 +349,7 @@
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ModelString])
 
 (def ^:private valid-pinned-state-values
-  "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
+  "Valid values for the `?pinned-state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
 (def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model" "description"})
@@ -1221,22 +1247,25 @@
                         (sql.helpers/where search-clause))
         limit         (request/limit)
         offset        (request/offset)
+        ;; A limit of 0 asks for the count alone rather than for a page.
+        count-only?   (= limit 0)
         ;; We didn't implement collection pagination for snippets namespace for root/items
-        ;; Rip out the limit for now and put it back in when we want it
+        ;; Rip out the limit for now and put it back in when we want it.
         limit-query   (if (or
                            (nil? limit)
                            (nil? offset)
-                           (= (:collection-namespace options) "snippets"))
+                           (and (= (:collection-namespace options) "snippets")
+                                (not count-only?)))
                         rows-query
                         (assoc rows-query
                                ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
                                ;; :total_count
-                               :limit  (if (zero? limit) 1 limit)
+                               :limit  (if count-only? 1 limit)
                                :offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
                         (mdb/query limit-query))
         res           {:total  (total-count rows rows-query offset)
-                       :data   (if (= limit 0)
+                       :data   (if count-only?
                                  []
                                  (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
                                    (post-process-rows options collection rows)))
@@ -1274,6 +1303,13 @@
        :offset (request/offset)
        :models valid-models})))
 
+(defn- filterable-models
+  "The models that can appear as a filterable item of `collection`. Snippets are never included: they are not a
+  filterable type. When present, `restrict-models` limits the set."
+  [collection restrict-models]
+  (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
+    (seq restrict-models) (filter restrict-models)))
+
 (mu/defn- collection-filter-metadata :- [:map
                                          [:available_models [:sequential :string]]]
   "Return the models that have at least one visible item in `collection`. Respect the requested scope and visibility,
@@ -1282,8 +1318,7 @@
   [collection                      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models                 :- [:maybe [:set :keyword]]
    {:keys [archived?] :as options} :- CollectionChildrenOptions]
-  (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
-                     (seq restrict-models) (filter restrict-models))
+  (let [candidates (filterable-models collection restrict-models)
         options    (-> options
                        (dissoc :models :search-text)
                        (assoc :collection-namespace (:namespace collection)))]
@@ -1309,6 +1344,30 @@
               sort
               vec)}))))
 
+(mr/def ::ItemsMetadata
+  [:map
+   [:available_models [:sequential :string]]
+   ;; Named apart from the `total` of a paged, filtered items response: this is the size of the whole list.
+   [:total_items ms/IntGreaterThanOrEqualToZero]])
+
+(mu/defn- collection-items-metadata :- ::ItemsMetadata
+  "Metadata about the items list of `collection`, independent of the search filter that the items endpoints accept:
+  the models with at least one visible item and the number of items in the whole list. `restrict-models`, when
+  present, limits both to those models, and `options` carries the rest of the scope (archived, pinned state, ...),
+  so the metadata describes the list a client actually shows. Both halves count the same models, so a type that is
+  never reported -- a snippet -- is never counted either."
+  [collection      :- collection/CollectionWithLocationAndIDOrRoot
+   restrict-models :- [:maybe [:set :keyword]]
+   options         :- CollectionChildrenOptions]
+  (let [options (dissoc options :models :search-text)
+        models  (set (filterable-models collection restrict-models))]
+    (assoc (collection-filter-metadata collection restrict-models options)
+           ;; An empty model set means "nothing to count"; `collection-children` would read it as "no restriction".
+           :total_items (if (empty? models)
+                          0
+                          (request/with-limit-and-offset 0 0
+                            (:total (collection-children collection (assoc options :models models))))))))
+
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
@@ -1323,11 +1382,7 @@
                   :can_restore
                   :can_delete)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/trash"
+(api.macros/defendpoint :get "/trash" :- ::Collection
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
   (collection-detail (api/read-check (collection/trash-collection))))
@@ -1444,11 +1499,7 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/root"
+(api.macros/defendpoint :get "/root" :- ::Collection
   "Return the 'Root' Collection object with standard details added"
   [_route-params
    {:keys [namespace]} :- [:map
@@ -1478,15 +1529,7 @@
   Otherwise, we'll just show you collections."
   #{nil "snippets" "transforms"})
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/root/items"
+(api.macros/defendpoint :get "/root/items" :- ::ItemsResponse
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -1501,30 +1544,31 @@
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter.
 
-  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
+  By default, library collections are excluded from the results; to include them, pass `?include-library=true`.
 
-  Pass `?q=` to filter items by name or last editor. Pass `?include_available_models=true` to include the models that
+  Pass `?q=` to filter items by name or last editor. Pass `?include-available-models=true` to include the models that
   have at least one visible item in the requested scope.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
-   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_library collection_type show_dashboard_questions
-           q include_available_models show_exploration_documents]} :- [:map
-                                                                       [:models                      {:optional true} [:maybe Models]]
-                                                                       [:collection_type             {:optional true} CollectionType]
-                                                                       [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                                                       [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                       [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                       [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                       [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                       [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                       [:q                           {:optional true} [:maybe :string]]
-                                                                       [:include_available_models    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:show_exploration_documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+   {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
+           include-library collection-type
+           show-dashboard-questions show-exploration-documents
+           q include-available-models]} :- [:map
+                                            [:models                      {:optional true} [:maybe Models]]
+                                            [:collection-type             {:optional true} CollectionType]
+                                            [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                            [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                            [:include-library             {:default false} [:maybe ms/BooleanValue]]
+                                            [:pinned-state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                            [:sort-column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                            [:sort-direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                            [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:q                           {:optional true} [:maybe :string]]
+                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1534,23 +1578,52 @@
                                   (not (mi/can-read? root-collection)))
                           #{:collection})
         options         {:archived?                   (boolean archived)
-                         :show-dashboard-questions?   (boolean show_dashboard_questions)
-                         :show-exploration-documents? (boolean show_exploration_documents)
-                         :collection-type             collection_type
-                         :include-library?            include_library
+                         :show-dashboard-questions?   (boolean show-dashboard-questions)
+                         :show-exploration-documents? (boolean show-exploration-documents)
+                         :collection-type             collection-type
+                         :include-library?            include-library
                          :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
                                                         #{:collection}
                                                         model-kwds)
-                         :pinned-state                (keyword pinned_state)
+                         :pinned-state                (keyword pinned-state)
                          :search-text                 q
-                         :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                       :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                         :sort-info                   {:sort-column                 (or (some-> sort-column normalize-sort-choice) :name)
+                                                       :sort-direction              (or (some-> sort-direction normalize-sort-choice) :asc)
                                                        ;; default to sorting official collections first, but provide the option not to
-                                                       :official-collections-first? (or (nil? official_collections_first)
-                                                                                        (boolean official_collections_first))}}]
+                                                       :official-collections-first? (or (nil? official-collections-first)
+                                                                                        (boolean official-collections-first))}}]
     (cond-> (collection-children root-collection options)
-      include_available_models
+      include-available-models
       (merge (collection-filter-metadata root-collection restrict-models options)))))
+
+(api.macros/defendpoint :get "/root/items/metadata" :- ::ItemsMetadata
+  "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.
+  Unlike `GET /api/collection/root/items`, the result does not depend on search text; pass that endpoint's other
+  scope params so the metadata describes the list being shown."
+  [_route-params
+   {:keys [models archived namespace pinned-state collection-type include-library
+           show-dashboard-questions show-exploration-documents]} :- [:map
+                                                                     [:models                     {:optional true} [:maybe Models]]
+                                                                     [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
+                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                                     [:collection-type            {:optional true} CollectionType]
+                                                                     [:include-library            {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
+  (let [root-collection (assoc collection/root-collection :namespace namespace)
+        model-set       (set (map keyword (u/one-or-many models)))
+        restrict-models (visible-model-kwds root-collection model-set)]
+    (collection-items-metadata root-collection restrict-models
+                               {:archived?                   (boolean archived)
+                                :show-dashboard-questions?   (boolean show-dashboard-questions)
+                                :show-exploration-documents? (boolean show-exploration-documents)
+                                :collection-type             collection-type
+                                :include-library?            include-library
+                                :pinned-state                (keyword pinned-state)
+                                :sort-info                   {:sort-column                 :name
+                                                              :sort-direction              :asc
+                                                              :official-collections-first? false}})))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -1560,11 +1633,7 @@
 ;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
 ;; `validate-new-tenant-collection!`, etc.
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- ::Collection
   "Create a new Collection."
   [_route-params
    _query-params
@@ -1637,18 +1706,6 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/graph"
-  "Fetch a graph of all Collection Permissions."
-  [_route-params
-   {:keys [namespace]} :- [:map
-                           [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/check-superuser)
-  (perms/graph namespace))
-
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
 
@@ -1676,6 +1733,14 @@
    [:revision {:optional true} [:maybe int?]]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
+(api.macros/defendpoint :get "/graph" :- PermissionsGraph
+  "Fetch a graph of all Collection Permissions."
+  [_route-params
+   {:keys [namespace]} :- [:map
+                           [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
+  (api/check-superuser)
+  (perms/graph namespace))
+
 (def ^:private graph-decoder
   "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"
   (mc/decoder PermissionsGraph (mtx/string-transformer)))
@@ -1692,11 +1757,7 @@
     {:revision (perms/latest-collection-permissions-revision-id)}
     (perms/graph namespace)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/graph"
+(api.macros/defendpoint :put "/graph" :- [:map [:revision {:optional true} [:maybe :int]]]
   "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
   are present in the request, and leave the rest unchanged.
 
@@ -1721,22 +1782,14 @@
 
 ;;; ------------------------------------------ Fetching a single Collection -------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id"
+(api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
+(api.macros/defendpoint :put "/:id" :- ::Collection
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
@@ -1770,11 +1823,8 @@
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.
+(api.macros/defendpoint :delete "/:id" :- ms/IntGreaterThanOrEqualToZero
   "Deletes a collection permanently"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -1798,61 +1848,81 @@
       ;; Now we can safely delete this collection and anything left under it.
       (t2/delete! :model/Collection :id id))))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/items"
+(api.macros/defendpoint :get "/:id/items" :- ::ItemsResponse
   "Fetch a specific Collection's items with the following options:
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
-  *  `pinned_state` - when `is_pinned`, return pinned objects only.
+  *  `pinned-state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
   *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.
-  *  `include_available_models` - include the models that have at least one visible item in the requested scope.
+  *  `include-available-models` - include the models that have at least one visible item in the requested scope.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
-           show_dashboard_questions q include_available_models
-           show_exploration_documents]} :- [:map
+   {:keys [models archived pinned-state sort-column sort-direction official-collections-first
+           show-dashboard-questions show-exploration-documents
+           q include-available-models]} :- [:map
                                             [:models                      {:optional true} [:maybe Models]]
                                             [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                            [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                            [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                            [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                            [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                            [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
-                                            [:show_exploration_documents  {:default false} [:maybe ms/BooleanValue]]
+                                            [:pinned-state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                            [:sort-column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                            [:sort-direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                            [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show-dashboard-questions    {:default false} [:maybe ms/BooleanValue]]
+                                            [:show-exploration-documents  {:default false} [:maybe ms/BooleanValue]]
                                             [:q                           {:optional true} [:maybe :string]]
-                                            [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
+                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         model-kwds  (set (map keyword (u/one-or-many models)))
         collection  (api/read-check :model/Collection resolved-id)
-        options     {:show-dashboard-questions?   show_dashboard_questions
-                     :show-exploration-documents? show_exploration_documents
+        options     {:show-dashboard-questions?   show-dashboard-questions
+                     :show-exploration-documents? show-exploration-documents
                      :models                      model-kwds
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
-                     :pinned-state                (keyword pinned_state)
+                     :pinned-state                (keyword pinned-state)
                      :search-text                 q
-                     :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                   :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                     :sort-info                   {:sort-column                 (or (some-> sort-column normalize-sort-choice) :name)
+                                                   :sort-direction              (or (some-> sort-direction normalize-sort-choice) :asc)
                                                    ;; default to sorting official collections first, except for the trash.
-                                                   :official-collections-first? (if (and (nil? official_collections_first)
+                                                   :official-collections-first? (if (and (nil? official-collections-first)
                                                                                          (not (collection/is-trash? collection)))
                                                                                   true
-                                                                                  (boolean official_collections_first))}}
+                                                                                  (boolean official-collections-first))}}
         children    (cond-> (collection-children collection options)
-                      include_available_models
+                      include-available-models
                       (merge (collection-filter-metadata collection nil options)))]
     (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
     children))
+
+(api.macros/defendpoint :get "/:id/items/metadata" :- ::ItemsMetadata
+  "Metadata about the collection's items list: the models with at least one visible item plus the item count. Unlike
+  `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope
+  params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the
+  metadata describes the list being shown."
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   {:keys [models archived pinned-state
+           show-dashboard-questions show-exploration-documents]} :- [:map
+                                                                     [:models                     {:optional true} [:maybe Models]]
+                                                                     [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:pinned-state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                                     [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        collection  (api/read-check :model/Collection resolved-id)]
+    (collection-items-metadata collection (set (map keyword (u/one-or-many models)))
+                               {:archived?                   (boolean (or archived
+                                                                          (:archived collection)
+                                                                          (collection/is-trash? collection)))
+                                :show-dashboard-questions?   (boolean show-dashboard-questions)
+                                :show-exploration-documents? (boolean show-exploration-documents)
+                                :pinned-state                (keyword pinned-state)
+                                :include-library?            true
+                                :sort-info                   {:sort-column                 :name
+                                                              :sort-direction              :asc
+                                                              :official-collections-first? false}})))

@@ -193,13 +193,13 @@ describe("CollectionBrowser", () => {
   it("should hide dashboard questions by default", async () => {
     await setup();
 
-    expect(getLastItemsRequestParam("show_dashboard_questions")).toBe("false");
+    expect(getLastItemsRequestParam("show-dashboard-questions")).toBe("false");
   });
 
   it("should show dashboard questions when showDashboardQuestions is true", async () => {
     await setup({ props: { showDashboardQuestions: true } });
 
-    expect(getLastItemsRequestParam("show_dashboard_questions")).toBe("true");
+    expect(getLastItemsRequestParam("show-dashboard-questions")).toBe("true");
   });
 
   it("should resolve collectionId=tenant to user's tenant collection", async () => {

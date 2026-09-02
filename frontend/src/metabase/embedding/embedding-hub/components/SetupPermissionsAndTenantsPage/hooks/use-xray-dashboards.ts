@@ -48,8 +48,8 @@ export const useLastXrayDashboard = () => {
         ? {
             id: autoGenCollection.id,
             models: ["dashboard"],
-            sort_column: "last_edited_at",
-            sort_direction: "desc",
+            "sort-column": "last_edited_at",
+            "sort-direction": "desc",
           }
         : skipToken,
     );

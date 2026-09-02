@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.collections-rest.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
@@ -17,6 +18,7 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
+   [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -895,7 +897,7 @@
         (letfn [(fetch [pin-state]
                   (:data (mt/user-http-request :crowberto :get 200
                                                (str "collection/" (u/the-id collection) "/items")
-                                               :pinned_state pin-state)))]
+                                               :pinned-state pin-state)))]
           (is (= #{"pinned-1" "pinned-2"}
                  (->> (fetch "is_pinned")
                       (map :name)
@@ -941,7 +943,7 @@
         (testing "combines search with the pinned-state filter"
           (is (= #{["collection" "Old revenue stuff"]
                    ["dashboard" "Revenue overview"]}
-                 (item-identities (fetch :q "revenue" :pinned_state "is_not_pinned")))))
+                 (item-identities (fetch :q "revenue" :pinned-state "is_not_pinned")))))
         (testing "trims search text and treats blank search text as absent"
           (let [all-items (item-identities (fetch))]
             (is (= (item-identities (fetch :q "revenue"))
@@ -1040,11 +1042,11 @@
                        :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") params))]
         (let [all-models        ["card" "collection" "dashboard" "metric" "timeline"]
               unpinned-models   ["card" "collection" "dashboard" "timeline"]
-              all-response      (fetch :include_available_models true)
-              unpinned-response (fetch :include_available_models true :pinned_state "is_not_pinned")
-              pinned-response   (fetch :include_available_models true :pinned_state "is_pinned")
-              search-response   (fetch :include_available_models true :q "zzz")
-              models-response   (fetch :include_available_models true :models "card")]
+              all-response      (fetch :include-available-models true)
+              unpinned-response (fetch :include-available-models true :pinned-state "is_not_pinned")
+              pinned-response   (fetch :include-available-models true :pinned-state "is_pinned")
+              search-response   (fetch :include-available-models true :q "zzz")
+              models-response   (fetch :include-available-models true :models "card")]
           (testing "is absent unless explicitly requested"
             (let [response (fetch)]
               (is (not (contains? response :available_models)))))
@@ -1072,8 +1074,164 @@
       (testing "reports explorations so they can be filtered on"
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items")
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= ["card" "exploration"] (:available_models response))))))))
+
+(deftest collection-items-metadata-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       _          {:name "Question" :collection_id (u/the-id collection)}
+                   :model/Dashboard  _          {:name "Dashboard" :collection_id (u/the-id collection)}
+                   :model/Card       _          {:name                "Metric"
+                                                 :type                :metric
+                                                 :collection_id       (u/the-id collection)
+                                                 :collection_position 1}
+                   :model/Collection _          {:name     "Child collection"
+                                                 :location (collection/children-location collection)}
+                   :model/Timeline   _          {:name "Timeline" :collection_id (u/the-id collection)}]
+      (let [url (str "collection/" (u/the-id collection) "/items/metadata")]
+        (testing "counts every model by default"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
+                  :total_items      5}
+                 (mt/user-http-request :crowberto :get 200 url))))
+        (testing "counts only the requested models, so hidden types stay out of the list metadata"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric"]
+                  :total_items      4}
+                 (mt/user-http-request :crowberto :get 200 url
+                                       :models "card" :models "dataset" :models "metric"
+                                       :models "dashboard" :models "collection"))))
+        (testing "ignores search text"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
+                  :total_items      5}
+                 (mt/user-http-request :crowberto :get 200 url :q "zzz"))))
+        (testing "accepts an entity id"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
+                  :total_items      5}
+                 (mt/user-http-request :crowberto :get 200
+                                       (str "collection/" (:entity_id collection) "/items/metadata")))))))
+    (testing "requires read access to the collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (str "collection/" (u/the-id collection) "/items/metadata")))))))))
+
+(deftest collection-items-metadata-matches-items-list-test
+  (testing "GET /api/collection/:id/items/metadata describes the same list as GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       _ {:name "Question" :collection_id (u/the-id collection)}
+                   :model/Card       _ {:name                "Pinned metric"
+                                        :type                :metric
+                                        :collection_id       (u/the-id collection)
+                                        :collection_position 1}
+                   :model/Timeline   _ {:name "Timeline" :collection_id (u/the-id collection)}
+                   :model/Dashboard  _ {:name              "Trashed dashboard"
+                                        :collection_id     (u/the-id collection)
+                                        :archived          true
+                                        :archived_directly true}]
+      (doseq [params [[]
+                      [:archived true]
+                      [:pinned-state "is_pinned"]
+                      [:pinned-state "is_not_pinned"]
+                      [:archived true :pinned-state "is_not_pinned"]]]
+        (testing (pr-str params)
+          (let [metadata (apply mt/user-http-request :crowberto :get 200
+                                (str "collection/" (u/the-id collection) "/items/metadata")
+                                params)
+                listed   (apply mt/user-http-request :crowberto :get 200
+                                (str "collection/" (u/the-id collection) "/items")
+                                :include-available-models true
+                                params)]
+            (is (= (:total listed) (:total_items metadata)))
+            (is (= (:available_models listed) (:available_models metadata)))))))))
+
+(deftest collection-items-metadata-trash-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (testing "describes the trash when asked about the trash collection"
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       _ {:name              "Trashed question"
+                                          :collection_id     (u/the-id collection)
+                                          :archived          true
+                                          :archived_directly true}]
+        (let [url      (str "collection/" (collection/trash-collection-id) "/items/metadata")
+              metadata (mt/user-http-request :crowberto :get 200 url :models "card")
+              listed   (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (collection/trash-collection-id) "/items")
+                                             :models "card")]
+          (is (= ["card"] (:available_models metadata)))
+          ;; Other trashed cards may exist in a shared app DB; what matters is that the count
+          ;; matches the items list for the same scope.
+          (is (pos? (:total_items metadata)))
+          (is (= (:total listed) (:total_items metadata))))))))
+
+(deftest collection-items-metadata-dashboard-questions-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard  dashboard {:name "Dashboard" :collection_id (u/the-id collection)}
+                   :model/Card       _         {:name          "Dashboard question"
+                                                :collection_id (u/the-id collection)
+                                                :dashboard_id  (u/the-id dashboard)}]
+      (let [url (str "collection/" (u/the-id collection) "/items/metadata")]
+        (testing "hides dashboard questions by default"
+          (is (= {:available_models ["dashboard"] :total_items 1}
+                 (mt/user-http-request :crowberto :get 200 url))))
+        (testing "counts dashboard questions when show-dashboard-questions is set"
+          (is (= {:available_models ["card" "dashboard"] :total_items 2}
+                 (mt/user-http-request :crowberto :get 200 url :show-dashboard-questions true))))))))
+
+(deftest root-collection-items-metadata-test
+  (testing "GET /api/collection/root/items/metadata"
+    (testing "describes the same list as GET /api/collection/root/items"
+      (mt/with-temp [:model/Card      _ {:name "UXW5016 root question" :collection_id nil}
+                     :model/Dashboard _ {:name "UXW5016 root dashboard" :collection_id nil}]
+        (let [metadata (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")
+              listed   (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                             :include-available-models true)]
+          (is (set/subset? #{"card" "dashboard"} (set (:available_models metadata))))
+          (is (= (:available_models listed) (:available_models metadata)))
+          (is (= (:total listed) (:total_items metadata))))))
+    (testing "restricts to the models valid for the requested namespace"
+      (mt/with-temp [:model/Collection _ {:name "UXW5016 currency child" :namespace "currency" :location "/"}]
+        (is (= ["collection"]
+               (:available_models (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                                        :namespace "currency"))))))
+    (testing "never counts snippets, which are not a filterable type"
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
+        (let [metadata (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                             :namespace "snippets")
+              listed   (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                             :namespace "snippets")]
+          (is (some #(= (:model %) "snippet") (:data listed))
+              "sanity check: the items list itself does return snippets")
+          (is (not (contains? (set (:available_models metadata)) "snippet")))
+          (is (= (count (remove #(= (:model %) "snippet") (:data listed)))
+                 (:total_items metadata))))))
+    (testing "excludes library collections unless include-library is set"
+      (mt/with-premium-features #{:library}
+        (mt/with-temp [:model/Collection _ {:name "UXW5016 library" :type "library-data" :location "/"}]
+          (let [without (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                              :models "collection")
+                with    (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                              :models "collection" :include-library true)]
+            (is (= (inc (:total_items without)) (:total_items with)))))))
+    (testing "restricts a user without root read permission to collections, like the items list"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Card       _                  {:name "Root question"}
+                       :model/Collection visible-collection {}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
+          (let [response (mt/user-http-request :rasta :get 200 "collection/root/items/metadata"
+                                               :models "card" :models "collection")
+                listed   (mt/user-http-request :rasta :get 200 "collection/root/items"
+                                               :models "card" :models "collection")]
+            (is (= ["collection"] (:available_models response)))
+            ;; Other visible root collections may exist in a shared app DB; what matters is
+            ;; that the count matches the items list for the same restricted user.
+            (is (pos? (:total_items response)))
+            (is (= (:total listed) (:total_items response))))
+          (testing "and reports nothing when only other models are requested"
+            (is (= {:available_models [] :total_items 0}
+                   (mt/user-http-request :rasta :get 200 "collection/root/items/metadata"
+                                         :models "card")))))))))
 
 (deftest collection-items-available-models-library-test
   (testing "GET /api/collection/:id/items"
@@ -1083,7 +1241,7 @@
       (letfn [(fetch []
                 (mt/user-http-request :crowberto :get 200
                                       (str "collection/" (u/the-id collection) "/items")
-                                      :include_available_models true))]
+                                      :include-available-models true))]
         (testing "excludes tables when the library feature is disabled"
           (mt/with-premium-features #{}
             (let [response (fetch)]
@@ -1107,7 +1265,7 @@
           (letfn [(fetch []
                     (mt/user-http-request :rasta :get 200
                                           (str "collection/" (u/the-id parent-collection) "/items")
-                                          :include_available_models true))]
+                                          :include-available-models true))]
             (testing "does not include a child collection the user cannot read"
               (let [response (fetch)]
                 (is (not (contains? (set (:available_models response)) "collection")))
@@ -1133,7 +1291,7 @@
                                            (str "collection/" (u/the-id collection) "/items")
                                            :archived true
                                            :q "revenue"
-                                           :include_available_models true)]
+                                           :include-available-models true)]
         (is (= 1 (:total response)))
         (is (= #{["card" "Old revenue"]}
                (set (map (juxt :model :name) (:data response)))))
@@ -1157,7 +1315,7 @@
       (let [response (mt/user-http-request :crowberto :get 200
                                            (str "collection/" (collection/trash-collection-id) "/items")
                                            :q "quarterly revenue"
-                                           :include_available_models true)]
+                                           :include-available-models true)]
         (is (= 1 (:total response)))
         (is (= #{[(:id matching-card) "Trashed quarterly revenue"]}
                (set (map (juxt :id :name) (:data response)))))
@@ -1175,7 +1333,7 @@
       (testing "searches root items and reports models before search filtering"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :q "UXW4950 ROOT revenue"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= 1 (:total response)))
           (is (= #{["card" "UXW4950 root revenue"]}
                  (set (map (juxt :model :name) (:data response)))))
@@ -1184,13 +1342,13 @@
       (testing "restricts metadata to namespace-valid models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "currency"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= ["collection"] (:available_models response)))
           (is (some #(= (:id currency-collection) (:id %)) (:data response)))))
       (testing "never reports snippets in available models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "snippets"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (some #(= (:model %) "snippet") (:data response)))
           (is (not (contains? (set (:available_models response)) "snippet")))))
       (testing "restricts metadata to collections for a user without root read permission"
@@ -1198,7 +1356,7 @@
           (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
           (let [response         (mt/user-http-request :rasta :get 200 "collection/root/items"
                                                        :q "UXW4950 ROOT revenue"
-                                                       :include_available_models true)
+                                                       :include-available-models true)
                 available-models (set (:available_models response))]
             (is (= [] (:data response)))
             (is (= #{"collection"} available-models))))))))
@@ -1419,24 +1577,24 @@
         (testing "Results can be ordered by last-edited-at"
           (testing "ascending"
             (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_at&sort-direction=asc"))
                         :data
                         (map :name)))))
           (testing "descending"
             (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_at&sort-direction=desc"))
                         :data
                         (map :name))))))
         (testing "Results can be ordered by last-edited-by"
           (testing "ascending"
             ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
             (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_by&sort-direction=asc"))
                         :data
                         (map :name)))))
           (testing "descending"
             (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_by&sort-direction=desc"))
                         :data
                         (map :name))))))))))
 
@@ -1452,12 +1610,12 @@
                      :model/Pulse      _ {:name "AA" :collection_id collection-id}]
         (testing "sort direction asc"
           (is (= [["dashboard" "AA"] ["dashboard" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["card" "AA"] ["card" "ZZ"]]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=asc"))
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=model&sort-direction=asc"))
                       :data
                       (map (juxt :model :name))))))
         (testing "sort direction desc"
           (is (= [["card" "AA"] ["card" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"]]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=model&sort-direction=desc"))
                       :data
                       (map (juxt :model :name))))))))))
 
@@ -1470,7 +1628,7 @@
                      :model/Dashboard  _ {:name "ZZ" :collection_id (u/the-id parent)}]
         (is (= "collection"
                (-> (mt/user-http-request :rasta :get 200
-                                         (str "collection/" (u/the-id parent) "/items?sort_column=model&sort_direction=desc"))
+                                         (str "collection/" (u/the-id parent) "/items?sort-column=model&sort-direction=desc"))
                    :data first :model)))))))
 
 (deftest collection-items-include-latest-revision-test
@@ -1727,6 +1885,29 @@
                              (into #{}
                                    (map #(select-keys % [:id :name]))
                                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
+
+(deftest snippet-collection-items-count-only-test
+  (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
+    (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
+      (mt/with-test-user :crowberto
+        (let [queries     (atom [])
+              real-query  mdb/query
+              this-thread (Thread/currentThread)]
+          ;; `with-redefs` is global, so only record what this thread asks for.
+          (with-redefs [mdb/query (fn [query & args]
+                                    (when (identical? this-thread (Thread/currentThread))
+                                      (swap! queries conj query))
+                                    (apply real-query query args))]
+            (request/with-limit-and-offset 0 0
+              (is (pos? (:total (#'api.collection/collection-children
+                                 (assoc collection/root-collection :namespace "snippets")
+                                 {:archived?                   false
+                                  :show-dashboard-questions?   false
+                                  :show-exploration-documents? false
+                                  :models                      #{:snippet}
+                                  :sort-info                   {:sort-column :name :sort-direction :asc}}))))))
+          (is (= [1] (mapv :limit @queries))
+              "the row query is bounded instead of fetching every snippet just to read the count"))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
@@ -2001,7 +2182,7 @@
                all-types (map :type (:data response))]
            (is (not-any? #{collection/library-collection-type} all-types))))
        (testing "Can choose to include include library items"
-         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include_library true)
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include-library true)
                all-types (map :type (:data response))]
            (is (some #{collection/library-collection-type} all-types))))))))
 
@@ -2721,8 +2902,8 @@
 
 (deftest fetch-root-items-collection-type-filter-test
   (testing "GET /api/collection/root/items"
-    (testing "collection_type parameter filters collections to only those with matching type"
-      (testing "collection_type=remote-synced returns only remote-synced collections"
+    (testing "collection-type parameter filters collections to only those with matching type"
+      (testing "collection-type=remote-synced returns only remote-synced collections"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection"}
                        :model/Collection _ {:name "Remote Synced Collection"
                                             :is_remote_synced true}
@@ -2730,7 +2911,7 @@
                                             :is_remote_synced true}
                        :model/Collection _ {:name "Second Normal Collection"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                               :collection_type "remote-synced")
+                                               :collection-type "remote-synced")
                 collections (->> (:data response)
                                  (filter #(= (:model %) "collection")))
                 collection-names (set (map :name collections))]
@@ -2744,7 +2925,7 @@
               (doseq [coll collections]
                 (is (true? (:is_remote_synced coll))
                     (str "Collection " (:name coll) " should have is_remote_synced=true")))))))
-      (testing "without collection_type parameter, all collections are returned"
+      (testing "without collection-type parameter, all collections are returned"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection Test"}
                        :model/Collection _ {:name "Remote Synced Collection Test"
                                             :is_remote_synced true}]
@@ -3568,7 +3749,7 @@
                [dash-id "dashboard"]}
              (set (map (juxt :id :model)
                        (:data
-                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))
+                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true")))))))))
   (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
                  :model/Collection {coll-id :id} {:location (collection/children-location parent)}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3580,7 +3761,7 @@
         (is (= ["dashboard" "card"]
                (:here
                 (first
-                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
+                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show-dashboard-questions=true")))))))))))
 
 (deftest dashboard-questions-have-dashboard-hydrated
   (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -3591,7 +3772,7 @@
       (is (= {:name dash-name
               :id dash-id
               :moderation_status nil}
-             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true"))
                   :data
                   (filter #(= (:model %) "card"))
                   first
@@ -3603,7 +3784,7 @@
                                                 :moderator_id        (mt/user->id :rasta)
                                                 :most_recent         true}]
         (is (= {:name dash-name :id dash-id :moderation_status "verified"}
-               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true"))
                     :data
                     (filter #(= (:model %) "card"))
                     first
@@ -3894,7 +4075,7 @@
         (is (not (some #(= (:id e) (:id %)) items)))))))
 
 (deftest exploration-pinning-test
-  (testing "explorations with collection_position appear under ?pinned_state=is_pinned"
+  (testing "explorations with collection_position appear under ?pinned-state=is_pinned"
     (mt/with-temp [:model/User        owner {}
                    :model/Collection  coll  {}
                    :model/Exploration pinned   {:name                "Pinned"
@@ -3905,7 +4086,7 @@
                                                 :creator_id    (:id owner)
                                                 :collection_id (:id coll)}]
       (let [pinned-items (->> (:data (mt/user-http-request :crowberto :get 200
-                                                           (str "collection/" (:id coll) "/items?pinned_state=is_pinned")))
+                                                           (str "collection/" (:id coll) "/items?pinned-state=is_pinned")))
                               (filter #(= "exploration" (:model %)))
                               (map :id)
                               set)]
