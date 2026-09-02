@@ -95,11 +95,14 @@
   (nil? (:bundle_hash plugin)))
 
 (defn- plugin-warnings
-  "Version warnings for a plugin. Dev-only plugins get no warnings."
+  "Warnings for a plugin. Dev-only plugins get no version warnings."
   [plugin]
-  (if (dev-only-plugin? plugin)
-    []
-    (manifest/warnings plugin)))
+  (cond-> (if (dev-only-plugin? plugin)
+            []
+            (manifest/warnings plugin))
+    ;; a legacy pre-validation identifier; /list skips such plugins entirely
+    (manifest/identifier-error (:identifier plugin))
+    (conj {:type "invalid-identifier" :identifier (:identifier plugin)})))
 
 (defn- plugin->response
   "Convert a plugin record to API response format."
@@ -257,6 +260,9 @@
    _query-params
    {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
+        _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
+                                (format "This plugin's identifier (\"%s\") is no longer supported. Delete the plugin and upload the bundle under a new name."
+                                        (:identifier existing)))
         tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
