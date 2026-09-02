@@ -4,17 +4,17 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.warehouse-schema.models.field :as field]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.models.field :as field]))
 
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (t2/select-one :model/Field :id id))
-                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
+  (let [field (-> (api/check-404 (warehouse-schema.db/field id))
+                  warehouse-schema.db/hydrate-field-details)
         field (if include-editable-data-model?
                 (field/hydrate-target-with-write-perms field)
-                (t2/hydrate field :target))]
+                (warehouse-schema.db/hydrate-target field))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -39,17 +39,16 @@
   "Get `Field`s with IDs in `ids`."
   [ids]
   (when (seq ids)
-    (let [fields (t2/select :model/Field :id [:in ids])]
+    (let [fields (warehouse-schema.db/fields ids)]
       (prime-table-perms-for-fields! fields)
       (-> (filter mi/can-read? fields)
-          (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
+          warehouse-schema.db/hydrate-field-list-details))))
 
 (defn field-ids->table-ids
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."
   [ids]
   (->> (when (seq ids)
-         (u/prog1 (t2/hydrate (t2/select [:model/Field :id :table_id] :id [:in ids])
-                              :table)
+         (u/prog1 (warehouse-schema.db/hydrate-table (warehouse-schema.db/field-table-id-rows ids))
            (prime-table-perms-for-fields! <>)))
        (filter mi/can-read?)
        (keep :table_id)
