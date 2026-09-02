@@ -51,6 +51,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       platforms: ${{ steps.platforms.outputs.result }}
+      ecr: ${{ steps.ecr.outputs.push }}
       repo: ${{ steps.image.outputs.repo }}
       tag: ${{ steps.image.outputs.tag }}
       full_image: ${{ steps.image.outputs.full_image }}
@@ -70,17 +71,38 @@ jobs:
         release: ${{ inputs.release }}
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
+    - name: Expand AWS_ACCOUNT_ID
+      id: repo
+      env:
+        REPO: ${{ inputs.repo }}
+        AWS_ACCOUNT_ID: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
+      run: | # bash
+        # `secrets` is not one of the contexts available to a reusable workflow's `with:`, so a
+        # private ECR repo arrives as AWS_ACCOUNT_ID.dkr.ecr.<region>.amazonaws.com/<name> and the
+        # account id is filled in here, where the secret is readable. Docker Hub repos pass
+        # through untouched.
+        echo "repo=${REPO/AWS_ACCOUNT_ID/$AWS_ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
     - name: Resolve image repo and tag
       id: image
       uses: ./.github/actions/get-docker-info
       with:
-        repo: ${{ inputs.repo }}
+        repo: ${{ steps.repo.outputs.repo }}
         tag: ${{ inputs.tag }}
         edition: ${{ inputs.edition }}
     - name: Check if image should be pushed to ECR
       id: ecr
-      run: |
-        # TODO: check if the repo contains dkr.ecr. and amazonaws.com and set GITHUB_OUTPUT push=true/false
+      env:
+        REPO: ${{ steps.image.outputs.repo }}
+      run: | # bash
+        # A private ECR repo looks like <account>.dkr.ecr.<region>.amazonaws.com/<name>; anything
+        # else (metabase/metabase, metabase/metabase-dev, ...) is Docker Hub.
+        if [[ "$REPO" == *".dkr.ecr."* && "$REPO" == *".amazonaws.com/"* ]]; then
+          push=true
+        else
+          push=false
+        fi
+        echo "Repo \"$REPO\" is an ECR repo: ${push}"
+        echo "push=${push}" >> "$GITHUB_OUTPUT"
     - name: Get platforms
       id: platforms
       uses: actions/github-script@v9
@@ -99,19 +121,19 @@ jobs:
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
     - name: Configure AWS credentials
-      if: ${{ steps.ecr.ouputs.push == 'true' }}
+      if: ${{ steps.ecr.outputs.push == 'true' }}
       uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC
         aws-region: us-east-1
     - name: Login to Amazon ECR
-      if: ${{ steps.ecr.ouputs.push == 'true' }}
+      if: ${{ steps.ecr.outputs.push == 'true' }}
       uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
       with:
         registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}" 
     - name: Login to Docker Hub
-      if: ${{ steps.ecr.ouputs.push == 'false' }}
+      if: ${{ steps.ecr.outputs.push == 'false' }}
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
@@ -155,6 +177,7 @@ jobs:
 
   verify-docker-pull:
     needs: containerize
+    if: needs.containerize.outputs.ecr != 'true'
     name: verify-docker-pull (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -175,7 +198,7 @@ jobs:
 
   verify-docker-pull-arm:
     needs: containerize
-    if: contains(needs.containerize.outputs.platforms, 'linux/arm64')
+    if: needs.containerize.outputs.ecr != 'true' && contains(needs.containerize.outputs.platforms, 'linux/arm64')
     name: verify-docker-pull-arm (${{ inputs.edition }})
     runs-on: arm-ubuntu-24-2core
     timeout-minutes: 15
@@ -201,9 +224,11 @@ jobs:
       !cancelled() &&
       !failure() &&
       !inputs.release &&
+      needs.containerize.outputs.ecr != 'true' &&
       github.event_name == 'pull_request'
     name: post-docker-info-comment (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
     - name: Post PR comment
       uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4

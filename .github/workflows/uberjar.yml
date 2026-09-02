@@ -220,7 +220,7 @@ jobs:
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
-    needs: [build, jar-healthcheck]
+    needs: [setup, build, jar-healthcheck]
     if: ${{ inputs.containerize && !failure() && !cancelled() }}
     name: containerize (${{ matrix.edition }})
     strategy:
