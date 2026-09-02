@@ -346,8 +346,9 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO FIXME
+   :api  #{metabase.app-db.cluster-lock
            metabase.app-db.core
+           metabase.app-db.hugsql
            metabase.app-db.init
            metabase.app-db.setup
            metabase.app-db.transient-error}
@@ -2431,6 +2432,7 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
+           app-db
            config
            models
            permissions
@@ -2499,6 +2501,7 @@
            metabase.timeline.core}
    :uses #{analytics
            api
+           app-db
            collections
            events
            models
@@ -3802,12 +3805,13 @@
            metabase-enterprise.stale.init}
    :uses #{analytics
            api
+           app-db
            collections
+           embedding
            premium-features
            queries
            request
            settings
-           staleness
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 

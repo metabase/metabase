@@ -350,6 +350,12 @@
    :requires [[mage.kondo-ratchet]]
    :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
 
+  lint-raw-splices
+  {:doc "Check HugSQL .sql files under src/ for raw-splice params (:sql:/:snip:) outside the allowlist."
+   :examples [["./bin/mage lint-raw-splices" "Scan src/**/*.sql; fails on any unallowlisted raw splice"]]
+   :requires [[dev.raw-splice]]
+   :task (task! (dev.raw-splice/cli-check! parsed))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]

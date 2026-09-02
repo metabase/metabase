@@ -410,6 +410,8 @@
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
 
+;; Covers a method nothing dispatches through -- see the `metabase.staleness.core` docstring. The
+;; stale-content feature itself is covered by `metabase-enterprise.stale.impl-test`.
 (deftest find-stale-query-test
   (testing "the Dashboard `find-stale-query` method selects stale dashboards and applies the model's own exclusions"
     (mt/with-temp [:model/Collection {col-id :id} {}

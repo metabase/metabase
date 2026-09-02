@@ -1696,6 +1696,8 @@
           (is (= db2-id (get-in updated-card [:dataset_query :database])))
           (is (= db2-id (:database_id updated-card))))))))
 
+;; Covers a method nothing dispatches through -- see the `metabase.staleness.core` docstring. The
+;; stale-content feature itself is covered by `metabase-enterprise.stale.impl-test`.
 (deftest find-stale-query-test
   (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
     (mt/with-temp [:model/Collection {col-id :id} {}

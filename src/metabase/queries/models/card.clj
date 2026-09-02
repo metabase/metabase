@@ -1659,6 +1659,8 @@
 (search/define-spec "metric"
   (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
 
+;; Unused: the EE stale module now runs a static HugSQL statement rather than dispatching here.
+;; See the `metabase.staleness.core` docstring before deleting or reviving this.
 (defmethod staleness/find-stale-query :model/Card
   [_model args]
   ^:allow-subquery {:select [:report_card.id

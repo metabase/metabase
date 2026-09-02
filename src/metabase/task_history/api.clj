@@ -1,5 +1,8 @@
 (ns metabase.task-history.api
   "/api/task endpoints"
+  ;; direct-jdbc-access-forbidden ban is centralized in .clj-kondo/config.edn :config-in-ns.
+  ;; Remaining direct t2 calls carry inline #_{:clj-kondo/ignore [:discouraged-var]} with a reason
+  ;; (cross-model name hydration; the bucket-A-hard run-listing sort).
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -7,10 +10,11 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.models.task-history-queries :as th.queries]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.models.task-run-queries :as tr.queries]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -145,7 +149,10 @@
                             (mapcat (fn [[entity-type model]]
                                       (when-let [entity-runs (grouped entity-type)]
                                         (let [ids   (map :entity_id entity-runs)
-                                              names (t2/select-pk->fn :name model :id [:in ids])]
+                                              ;; reads Card/Dashboard/Database names by id (other modules'
+                                              ;; tables, ids from DB rows); not a task-history query to port
+                                              names #_{:clj-kondo/ignore [:discouraged-var]}
+                                              (t2/select-pk->fn :name model :id [:in ids])]
                                           (map (fn [[id name]] [[entity-type id] name]) names))))
                                     entity-type->model))]
       (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
@@ -156,13 +163,7 @@
   (if (empty? runs)
     runs
     (let [run-ids      (map :id runs)
-          counts       (t2/query {:select   [:run_id
-                                             [[:count :id] :task_count]
-                                             [[:sum [:case [:= :status [::h2x/literal "success"]] [:inline 1] :else [:inline 0]]] :success_count]
-                                             [[:sum [:case [:= :status [::h2x/literal "failed"]] [:inline 1] :else [:inline 0]]] :failed_count]]
-                                  :from     :task_history
-                                  :where    [:in :run_id run-ids]
-                                  :group-by [:run_id]})
+          counts       (th.queries/task-counts-for-runs run-ids)
           ;; Coerce counts to int (MySQL may return BigDecimal)
           counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
                                        [run_id {:task_count    (int task_count)
@@ -174,17 +175,22 @@
                    (get counts-by-id (:id %)))
            runs))))
 
-(defn- timestamp-constraint
-  [field-name date-string]
+(defn- timestamp-range
+  "Parse a filter date-string into `{:start <inst-or-nil> :end <inst-or-nil>}` (end exclusive)."
+  [date-string]
   (let [{:keys [start end]}
         (try
           (params.dates/date-string->range date-string {:inclusive-end? false})
           (catch Exception e
             (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
                             {:status-code 400}
-                            e))))
-        start (some-> start u.date/parse)
-        end   (some-> end   u.date/parse)]
+                            e))))]
+    {:start (some-> start u.date/parse)
+     :end   (some-> end   u.date/parse)}))
+
+(defn- timestamp-constraint
+  [field-name date-string]
+  (let [{:keys [start end]} (timestamp-range date-string)]
     (into [:and] (remove nil?)
           [(when start
              [:>= field-name start])
@@ -239,14 +245,22 @@
   [_
    params :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
   (perms/check-has-application-permission :monitoring)
+  ;; TODO (HugSQL bucket-A-hard): the run listing's sort (runs-order-by) splices entity_name and
+  ;; task_count subquery LEFT JOINs selected by the client sort-column, so it is not a plain
+  ;; CASE-column port -- it needs per-sort static query variants (one .sql per sortable column)
+  ;; before it can move behind tr.queries. Until then this stays on t2/select and is the last
+  ;; direct-jdbc-access-forbidden exemption in the module.
   (let [where-clause (build-run-where-clause params)
         limit        (request/limit)
         offset       (request/offset)
-        runs         (t2/select :model/TaskRun (merge where-clause
-                                                      (runs-order-by params)
-                                                      (when limit {:limit limit})
-                                                      (when offset {:offset offset})))]
-    {:total  (t2/count :model/TaskRun where-clause)
+        runs         #_{:clj-kondo/ignore [:discouraged-var]}
+        (t2/select :model/TaskRun (merge where-clause
+                                         (runs-order-by params)
+                                         (when limit {:limit limit})
+                                         (when offset {:offset offset})))
+        total        #_{:clj-kondo/ignore [:discouraged-var]}
+        (t2/count :model/TaskRun where-clause)]
+    {:total  total
      :limit  limit
      :offset offset
      :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
@@ -255,8 +269,8 @@
   "Get a single task run with all its child tasks."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
-  (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
-        tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
+  (let [run   (api/check-404 (tr.queries/task-run id))
+        tasks (th.queries/tasks-for-run {:run-id id})]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
@@ -270,10 +284,9 @@
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)
-  (let [where-conditions [[:= :run_type (:run-type params)]
-                          (timestamp-constraint :started_at (:started-at params))]]
-    (->> (t2/query {:select-distinct [:entity_type :entity_id]
-                    :from            :task_run
-                    :where           (into [:and] where-conditions)})
-         (map #(update % :entity_type keyword))
+  (let [{:keys [start end]} (timestamp-range (:started-at params))]
+    (->> (tr.queries/distinct-run-entities
+          {:run_type     (:run-type params)
+           :started_from (or start (u.date/parse "0001-01-01T00:00:00Z"))
+           :started_to   (or end   (u.date/parse "9999-12-31T23:59:59Z"))})
          hydrate-entity-names)))
