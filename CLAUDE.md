@@ -84,6 +84,10 @@ tree may contain, and how many config-level suppressions (`:off` switches and `:
 `.clj-kondo/config.edn`) exist. `metabase.core.kondo-ratchet-test` fails when either budget drifts from the
 actual counts, in either direction. Prefer fixing the underlying warning over adding an ignore.
 
+The ratchets apply only to `master`. When a release branch is cut, `.clj-kondo/ratchets.edn` is replaced
+with `{:disabled true}`. The test and fixer recognize this explicit opt-out, while a missing file still
+causes an error on `master`.
+
 Budget too high (you removed ignores): a local run of the test tightens the file for you — commit the
 change. PRs labelled `kondo-ratchets-self-healing` get the lowered budgets committed to the branch by CI.
 To tighten by hand (babashka, no JVM; a no-op prints `unchanged`):

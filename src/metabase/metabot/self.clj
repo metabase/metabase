@@ -505,7 +505,8 @@
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
-                                       :credentials credentials :ai-proxy? ai-proxy?}
+                                       :credentials credentials :ai-proxy? ai-proxy?
+                                       :fast?       (metabot.settings/llm-fast-mode)}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)

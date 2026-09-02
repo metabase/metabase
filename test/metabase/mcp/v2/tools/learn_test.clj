@@ -20,14 +20,14 @@
   [result]
   (-> result :content first :text))
 
-(deftest catalog-test
+(deftest ^:parallel catalog-test
   (testing "learn() lists every pack with its description"
     (let [result (call {})]
       (is (not (:isError result)) (text-of result))
       (doseq [topic (skills/topics)]
         (is (str/includes? (text-of result) topic))))))
 
-(deftest every-pack-loads-test
+(deftest ^:parallel every-pack-loads-test
   (testing "learn(topic) returns each pack's whole SKILL.md, frontmatter included"
     (doseq [topic (skills/topics)]
       (let [result (call {:topic topic})]
@@ -36,7 +36,7 @@
             (str topic " should start with skill frontmatter"))
         (is (str/includes? (text-of result) (str "name: " topic)))))))
 
-(deftest references-load-test
+(deftest ^:parallel references-load-test
   (testing "every reference a pack declares is fetchable by name"
     (doseq [topic (skills/topics)
             ref   (skills/reference-names topic)]
@@ -46,13 +46,13 @@
   (testing "a skill with references names them in its footer"
     (is (str/includes? (text-of (call {:topic "query-dialect"})) "operators"))))
 
-(deftest pack-size-budget-test
+(deftest ^:parallel pack-size-budget-test
   (testing "no SKILL.md exceeds the pack size budget (roughly 6k tokens)"
     (doseq [topic (skills/topics)]
       (is (< (count (skills/skill-text topic)) 24000)
           (str topic " exceeds the SKILL.md size budget")))))
 
-(deftest unknown-topic-and-reference-test
+(deftest ^:parallel unknown-topic-and-reference-test
   (testing "an unknown topic is a teaching error listing what exists"
     (let [result (call {:topic "nope"})]
       (is (:isError result))
@@ -66,7 +66,7 @@
       (is (:isError result))
       (is (str/includes? (text-of result) "topic")))))
 
-(deftest examples-speak-the-v2-dialect-test
+(deftest ^:parallel examples-speak-the-v2-dialect-test
   (testing "packs never teach the CLI/REST dialects the v2 tools don't accept"
     (doseq [topic (skills/topics)
             :let [text (str (skills/skill-text topic)
@@ -88,7 +88,7 @@
        first
        :description))
 
-(deftest catalog-reaches-the-tool-description-test
+(deftest ^:parallel catalog-reaches-the-tool-description-test
   (testing "the learn description names every pack and reference — it is the catalog a client
             that never calls learn() sees, and nothing else ties it to skills/packs, so a new
             pack lands in the registry while the advertised catalog silently omits it"
@@ -108,7 +108,7 @@
    and the tool descriptions spell out — a real pack or reference name never contains one."
   #"learn\(\"([^\"<]+)\"(?:,\s*\"([^\"<]+)\")?\)")
 
-(deftest learn-pointers-resolve-test
+(deftest ^:parallel learn-pointers-resolve-test
   (testing "every learn(...) pointer in a tool description or pack body names a topic and
             reference that exist — renaming a pack otherwise leaves pointers aimed at nothing,
             and the model only finds out by calling learn() and getting a teaching error"

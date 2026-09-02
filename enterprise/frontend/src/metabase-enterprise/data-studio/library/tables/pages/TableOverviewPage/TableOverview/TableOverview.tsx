@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { OverviewVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
