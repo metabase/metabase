@@ -80,14 +80,14 @@
 (defn- payload-readable?
   "Whether the current user may read the notification's payload.
    [[models.notification/current-user-can-read-payload?]] has no `:notification/dashboard` clause
-   (its `case` throws on one), so dashboard rows are checked against the dashboard directly, through
-   the `:dashboard_id` of a hydrated `:payload`. The `:payload` hydration does not yet produce one for
-   dashboard rows (no dashboard notification is persisted today; subscriptions are pulse-backed), so a
-   persisted dashboard row reads as unreadable and its recipient lists are stripped for every caller —
-   fail closed until the payload hydration learns the dashboard shape."
+   (its `case` throws on one), and a migrated dashboard row has no payload to check against: no
+   payload table stands behind `:payload_id`, and the `:payload` batched hydration only has a
+   `:notification/card` branch, so `:payload` hydrates nil. With no dashboard reachable, the check
+   is superuser — the one caller who can read every dashboard — mirroring how
+   `:notification/system-event` is handled there."
   [notification]
   (if (= :notification/dashboard (:payload_type notification))
-    (boolean (some->> notification :payload :dashboard_id (mi/can-read? :model/Dashboard)))
+    (mi/superuser?)
     (models.notification/current-user-can-read-payload? notification)))
 
 (defn redact-notification

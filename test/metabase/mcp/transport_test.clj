@@ -121,50 +121,65 @@
             (release 2)
             (is (not (contains? (keepalive-counts) 2)))))))))
 
-(deftest keepalive-slot-is-released-when-the-stream-ends-test
-  (testing "a slot is held for the life of the stream and returned when it ends, however it ends — a slot leaked
-            on disconnect would retire the cap one connection at a time"
+(deftest keepalive-slot-is-held-for-the-life-of-the-stream-test
+  (testing "the stream body owns the slot: taken while it runs, returned however it ends. A slot leaked on
+            disconnect would retire the cap one connection at a time; one never taken would make the cap
+            meaningless."
     (with-clean-keepalive-counts
       (fn []
-        (is (true? (#'mcp.transport/acquire-keepalive-slot! 7)))
         (let [canceled (a/promise-chan)
-              sink     (StringWriter.)]
-          (#'mcp.transport/keepalive-stream-body! #(#'mcp.transport/release-keepalive-slot! 7)
+              sink     (StringWriter.)
+              held     (atom nil)]
+          (#'mcp.transport/keepalive-stream-body! 7
                                                   (signaling-writer! sink canceled)
-                                                  (constantly "hash") nil canceled 30000)
-          (is (not (contains? (keepalive-counts) 7))))))
-    (testing "and released even when the loop throws rather than returning"
-      (with-clean-keepalive-counts
-        (fn []
-          (is (true? (#'mcp.transport/acquire-keepalive-slot! 8)))
-          (is (thrown? Exception
-                       (#'mcp.transport/keepalive-stream-body! #(#'mcp.transport/release-keepalive-slot! 8)
-                                                               nil
-                                                               (fn [_] (throw (ex-info "boom" {})))
-                                                               nil (a/promise-chan) 30000)))
-          (is (not (contains? (keepalive-counts) 8))))))))
-
-(deftest keepalive-slot-is-released-when-the-stream-never-starts-test
-  (testing "a failure inside the streaming machinery's `respond` (status/header write, executor rejection) is
-            swallowed there: it closes the response's finished channel with `:unexpected-error` without ever
-            running the body, and `send*` never calls `raise`. Releasing only from the body would return the
-            slot never — one leak per failed connect retires the cap a connection at a time. The watcher on
-            the finished channel is what returns it."
+                                                  ;; read the count from inside the running loop
+                                                  (fn [_] (reset! held (get (keepalive-counts) 7)) "hash")
+                                                  nil canceled 30000)
+          (is (= 1 @held) "the slot is held while the stream is running")
+          (is (not (contains? (keepalive-counts) 7)) "and returned once it ends")))))
+  (testing "returned even when the loop throws rather than returning"
     (with-clean-keepalive-counts
       (fn []
-        (is (true? (#'mcp.transport/acquire-keepalive-slot! 9)))
-        (let [resp (streaming-response/streaming-response {:content-type "text/event-stream"} [_os _canceled-chan]
-                     nil)]
-          (#'mcp.transport/release-when-finished! #(#'mcp.transport/release-keepalive-slot! 9) resp)
-          (is (contains? (keepalive-counts) 9) "nothing has ended yet, so the slot is still held")
-          ;; What streaming-response's `respond` does on a setup failure, without running the body.
-          (a/>!! (streaming-response/finished-chan resp) :unexpected-error)
-          (a/close! (streaming-response/finished-chan resp))
-          (let [deadline (+ (System/currentTimeMillis) 2000)]
-            (while (and (contains? (keepalive-counts) 9) (< (System/currentTimeMillis) deadline))
-              (Thread/sleep 10)))
+        (is (thrown? Exception
+                     (#'mcp.transport/keepalive-stream-body! 8 nil
+                                                             (fn [_] (throw (ex-info "boom" {})))
+                                                             nil (a/promise-chan) 30000)))
+        (is (not (contains? (keepalive-counts) 8))))))
+  (testing "a user already at the cap never starts the loop — the body is where the cap is enforced now, so it
+            has to refuse there too and not merely be refused by the handler"
+    (with-clean-keepalive-counts
+      (fn []
+        (reset! @#'mcp.transport/keepalive-stream-counts
+                {9 @#'mcp.transport/max-concurrent-keepalive-streams})
+        (let [ran (atom false)]
+          (#'mcp.transport/keepalive-stream-body! 9 nil
+                                                  (fn [_] (reset! ran true) "hash")
+                                                  nil (a/promise-chan) 30000)
+          (is (false? @ran)))))))
+
+(deftest keepalive-slot-is-not-taken-when-the-stream-never-starts-test
+  (testing "GHY-4331: a slot must not be held by a stream that never ran. `StreamingResponse`'s `send*` binds
+            `_raise` and never calls it, and streaming-response's own `catch Throwable` sends a 500 and closes
+            its channels without rethrowing — so neither a wrapped `raise` nor a `catch` around `send*` can
+            observe a setup failure. Acquiring up front therefore leaked the slot for the process lifetime, and
+            the cap made that permanent: enough failed connects and the user can open no streams at all.
+
+            So the body owns the slot. `handle-get` only reads the count to refuse at the cap; nothing is taken
+            until the stream is actually running, and a setup failure has nothing to leak."
+    (with-clean-keepalive-counts
+      (fn []
+        (let [responded (promise)]
+          ;; Fail after `handle-get` has decided to serve, before any stream body can run.
+          (with-redefs-fn {#'mcp.transport/require-valid-session    (fn [_user-id _session-id] {:session-id "session"})
+                           #'streaming-response/-streaming-response (fn [_f _options]
+                                                                      (throw (ex-info "setup failed" {})))}
+            (fn []
+              (try
+                (#'mcp.transport/handle-get (constantly "hash") 9 {:headers {"mcp-session-id" "session"}}
+                                            #(deliver responded %) (fn [_] nil))
+                (catch Throwable _ nil))))
           (is (not (contains? (keepalive-counts) 9))
-              "the slot taken for a stream that never started must be returned"))))))
+              "a stream that never started must leave no slot behind"))))))
 
 (deftest keepalive-stream-at-the-cap-is-refused-test
   (testing "a user already holding the cap gets a 429 instead of another stream"
