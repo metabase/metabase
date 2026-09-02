@@ -71,7 +71,7 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
       question={question}
       result={createMockDataset({ data })}
       rawSeries={[{ card: question.card(), data }]}
-      // Becomes onChangeCardAndRun, without which Visualization never shows the click actions popover.
+      // VisualizationResult passes this on as onChangeCardAndRun, which the click actions popover needs to render.
       navigateToNewCardInsideQB={jest.fn()}
       {...props}
     />,

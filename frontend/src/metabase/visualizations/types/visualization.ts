@@ -163,7 +163,7 @@ export type VisualizationPassThroughProps = {
   mode?: ClickActionsMode;
   /**
    * Lets users drag column headers to reorder the columns.
-   * It also switches the header to the light variant, since the outline header is the read-only preview look.
+   * Without it the table shows the outline header, the style used for read-only previews.
    */
   hasColumnReordering?: boolean;
   renderEmptyMessage?: boolean;

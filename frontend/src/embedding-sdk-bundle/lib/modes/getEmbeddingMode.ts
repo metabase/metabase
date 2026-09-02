@@ -42,14 +42,10 @@ function applyClickActionsPlugin(
   }
 
   if ("onClick" in actionsOrActionObject) {
-    // If the plugin returns a single object, it means we should call that action right away without showing the popover
-    // `performDefaultAction` checks if it only gets one action, and if it has `default: true`, it's called directly without showing the popover
+    // When a click yields exactly one action and it has `default: true`, performDefaultAction runs it instead of showing the popover.
     return [
       {
-        // makes it run without showing the popover
         default: true,
-
-        // fallback values in case they just return `{ onClick: () => {})`}
         section: "auto",
         type: "custom",
         buttonType: "horizontal",
