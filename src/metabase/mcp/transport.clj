@@ -420,9 +420,20 @@
 (defonce ^:private keepalive-stream-counts
   (atom {}))
 
+(defn- at-keepalive-cap?
+  "Is `user-id` already holding [[max-concurrent-keepalive-streams]] running streams?
+
+  Read-only on purpose: `handle-get` decides whether to serve from this, but takes nothing. Only a stream that
+  is actually running holds a slot ([[acquire-keepalive-slot!]] is called from the body), so a connection that
+  dies during setup has nothing to leak. The cost is that two simultaneous connects can both read under the cap
+  and both proceed — over-admitting by a few is the right trade for a resource cap that must never wedge shut."
+  [user-id]
+  (>= (get @keepalive-stream-counts user-id 0) max-concurrent-keepalive-streams))
+
 (defn- acquire-keepalive-slot!
-  "Reserve a keepalive slot for `user-id`, returning true when reserved and false when they are already at
-  [[max-concurrent-keepalive-streams]]. A refusal costs the caller nothing."
+  "Take a keepalive slot for `user-id`, returning true when taken and false when they are already at
+  [[max-concurrent-keepalive-streams]]. Called from the stream body, not from the handler — see
+  [[at-keepalive-cap?]]."
   [user-id]
   (let [[old new] (swap-vals! keepalive-stream-counts
                               (fn [counts]
@@ -444,26 +455,21 @@
                (dissoc counts user-id)))))
   nil)
 
-(defn- releasing-raise
-  "Wrap an async `raise` so the keepalive slot is returned first.
-
-  `compojure.response/send*` reports a setup failure by calling `raise` rather than by throwing, so releasing
-  only in a `catch` returns the slot never — and one slot leaked per failed connect retires the cap a
-  connection at a time until the user can open no streams at all. `release!` is idempotent, so this and the
-  `catch` cannot double-release into a free slot."
-  [release! raise]
-  (fn [e]
-    (release!)
-    (raise e)))
-
 (defn- keepalive-stream-body!
-  "Run [[keepalive-loop!]] and call `release!` however the loop ends — normally, on client disconnect, or by
-  throwing. A slot leaked on disconnect would retire the cap one connection at a time."
-  [release! writer tools-hash-fn token-scopes canceled-chan interval-ms]
-  (try
-    (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
-    (finally
-      (release!))))
+  "Take `user-id`'s keepalive slot, run [[keepalive-loop!]], and return the slot however the loop ends —
+  normally, on client disconnect, or by throwing.
+
+  The slot is taken HERE rather than in the handler so that it exists only for a stream that is actually
+  running: streaming-response reports a setup failure by neither throwing out of `send*` nor calling `raise`
+  (its `Sendable` impl ignores `raise` entirely, and its own catch sends a 500 and closes its channels), so a
+  handler that took the slot up front could never learn to give it back, and the cap would wedge shut a
+  connection at a time."
+  [user-id writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  (when (acquire-keepalive-slot! user-id)
+    (try
+      (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
+      (finally
+        (release-keepalive-slot! user-id)))))
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
@@ -479,33 +485,25 @@
       (some? error)
       (respond error)
 
-      (not (acquire-keepalive-slot! user-id))
+      (at-keepalive-cap? user-id)
       (respond (json-response 429 (jsonrpc-error nil -32000
                                                  (str "Too many concurrent MCP event streams open for this user "
                                                       "(limit " max-concurrent-keepalive-streams
                                                       "). Close an existing stream before opening another."))))
 
       :else
-      ;; The slot is returned by `keepalive-stream-body!` once the stream ends. `release!` also covers the case
-      ;; where `send*` throws before the body is ever submitted, and is idempotent so the two paths cannot
-      ;; double-release and hand the user a free slot.
-      (let [released? (atom false)
-            release!  #(when (compare-and-set! released? false true)
-                         (release-keepalive-slot! user-id))
-            resp      (streaming-response/streaming-response
-                       {:content-type "text/event-stream"
-                        :headers      {"Cache-Control" "no-cache"}
-                        :status       200
-                        :executor     keepalive-executor}
-                       [os canceled-chan]
-                        (keepalive-stream-body! release!
-                                                (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-                                                tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
-        (try
-          (compojure.response/send* resp request respond (releasing-raise release! raise))
-          (catch Throwable e
-            (release!)
-            (throw e)))))))
+      ;; No slot is taken here — `keepalive-stream-body!` takes and returns it, so a connection that dies
+      ;; during streaming-response setup leaves nothing behind.
+      (let [resp (streaming-response/streaming-response
+                  {:content-type "text/event-stream"
+                   :headers      {"Cache-Control" "no-cache"}
+                   :status       200
+                   :executor     keepalive-executor}
+                  [os canceled-chan]
+                   (keepalive-stream-body! user-id
+                                           (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+                                           tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
+        (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."
