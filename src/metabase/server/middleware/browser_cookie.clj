@@ -25,7 +25,8 @@
           :path      "/"
           ;; Set the cookie to expire 20 years from now. That should be sufficient
           :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))}
-         (if (request/https? request)
+         ;; `:unknown` counts as HTTPS here: this only decides whether to add `Secure`
+         (if (#{:https :unknown} (request/https-state request))
            {:same-site :none, :secure true}
            {:same-site :lax})))
 

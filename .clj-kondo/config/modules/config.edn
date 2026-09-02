@@ -1651,6 +1651,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request
