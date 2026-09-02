@@ -9,7 +9,7 @@
 ;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts  {:aliased-namespace-symbol                                            3
-                  :case-symbol-test                                                    2
+                  :case-symbol-test                                                    1
                   :clojure-lsp/unused-public-var                                       9
                   :consistent-alias                                                    2
                   :def-fn                                                              1
