@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
@@ -1141,3 +1142,11 @@
                           (format "UPDATE %s SET name = 'a' WHERE id = -1; UPDATE %s SET name = 'b' WHERE id = -1" venues-table venues-table)
                           (format "INSERT INTO %s (name) VALUES ('x'); SELECT 1;" venues-table)
                           (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table))))))))))))))
+
+(deftest ^:parallel impersonated-query-placeholder-cast-test
+  (let [sql "SELECT (?::date - bill_date::date) AS diff FROM some_table"
+        query (lib/native-query meta/metadata-provider sql)
+        out-sql (-> (driver/validate-impersonated-query :postgres query)
+                    (get-in [:stages 0 :native]))]
+    (is (string? out-sql))
+    (is (re-find #"\?" out-sql) "the placeholder must survive into the re-emitted SQL")))
