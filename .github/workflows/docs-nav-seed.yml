@@ -40,7 +40,7 @@ jobs:
       - id: build
         env:
           # Push is a test trigger for this workflow, so limit it to a single version (not "all")
-          BRANCHES_INPUT: ${{ github.event_name == 'push' && 'release-x.44.x' || inputs.branches }}
+          BRANCHES_INPUT: ${{ github.event_name == 'push' && 'release-x.45.x' || inputs.branches }}
         run: echo "matrix=$(bun .github/scripts/docs-nav-seed-matrix.ts)" >> "$GITHUB_OUTPUT"
 
   seed-nav-file:
