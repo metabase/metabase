@@ -1,29 +1,68 @@
-name: CI for PR Review ENV Destroy
-run-name: Destroying Dynamic PR Environment for ${{ github.ref_name }} by @${{ github.actor }}
+name: Cleanup PR Environment
+run-name: Destroying Dynamic PR Environment for PR ${{ inputs.pr_number || github.event.number }} by @${{ github.actor }}
 
 on:
-  workflow_call:
+  pull_request:
+    types: [ closed, unlabeled ]
+  workflow_dispatch:
     inputs:
+      pr_number:
+        description: 'PR number to destroy environment for'
+        required: true
+        type: string
       self_hosting:
         description: 'Self-hosting stack'
-        required: false
         type: boolean
         default: false
-      pr_number:
-        description: 'PR number (required for manual dispatch)'
-        required: false
-        type: string
 
-env:
-  PR_NUMBER: ${{ inputs.pr_number || github.event.number }}
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.pr_number || github.event.number }}
+  cancel-in-progress: false
 
 jobs:
+  # Manual runs go through the pr-env-admin environment for approval.
+  # Skipped for pull_request events, which are already scoped to the PR's own labels.
+  approve:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    environment: pr-env-admin
+    steps:
+      - name: Approved
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          echo "Destroying PR environment for PR #${PR_NUMBER}"
+
   destroy_pr:
+    needs: [ approve ]
+    # Runs when dispatched manually (after approval), when a PR carrying a PR-Env
+    # label is closed, or when one of those labels is removed.
+    if: >-
+      ${{ !cancelled()
+          && (needs.approve.result == 'success' || needs.approve.result == 'skipped')
+          && (github.event_name == 'workflow_dispatch'
+              || (github.event.action == 'closed'
+                  && (contains(github.event.pull_request.labels.*.name, 'PR-Env')
+                      || contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
+                      || contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
+                      || contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')))
+              || (github.event.action == 'unlabeled'
+                  && (github.event.label.name == 'PR-Env'
+                      || github.event.label.name == 'PR-Env-self-hosting'
+                      || github.event.label.name == 'PR-Env-analytics-dev'
+                      || github.event.label.name == 'PR-Env-Stats-Dump'))) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV Destroy
     permissions:
       id-token: write
       contents: read
+    env:
+      PR_NUMBER: ${{ inputs.pr_number || github.event.number }}
+      SELF_HOSTING: >-
+        ${{ (github.event_name == 'workflow_dispatch' && inputs.self_hosting)
+            || (github.event.action == 'unlabeled' && github.event.label.name == 'PR-Env-self-hosting')
+            || (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')) }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
@@ -69,17 +108,17 @@ jobs:
                 namespace: default
                 user: oidc-token
       - name: Destroy PR Review ENV
-        if: ${{ !inputs.self_hosting }}
+        if: ${{ env.SELF_HOSTING != 'true' }}
         run: |
           kubectl delete metabase -n hosting-pr${{ env.PR_NUMBER }} hosting-pr${{ env.PR_NUMBER }}
           kubectl delete ns hosting-pr${{ env.PR_NUMBER }}
       - name: Setup Helm
-        if: ${{ inputs.self_hosting }}
+        if: ${{ env.SELF_HOSTING == 'true' }}
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           version: 'latest'
       - name: Destroy PR Review ENV (self-hosting)
-        if: ${{ inputs.self_hosting }}
+        if: ${{ env.SELF_HOSTING == 'true' }}
         run: |
           helm uninstall hosting-pr${{ env.PR_NUMBER }} --namespace hosting-pr${{ env.PR_NUMBER }} || true
           kubectl delete ns hosting-pr${{ env.PR_NUMBER }} || true
