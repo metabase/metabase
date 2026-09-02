@@ -91,7 +91,7 @@ tree may contain, and how many config-level suppressions (`:off` switches and `:
 `.clj-kondo/config.edn`) exist. Each `:ignore-counts` value is either a non-negative integer ceiling or
 `:unlimited`, which has no ceiling. This count policy is independent of `:comment-exempt`, described below.
 
-Both ratchet commands run in Babashka without starting a JVM:
+Both ratchet commands run in Babashka, in seconds rather than a JVM test run:
 
 ```bash
 ./bin/mage kondo-ratchets                       # validate the file without changing it
@@ -127,7 +127,8 @@ Fix the underlying warning when possible. Adding a suppression is a last resort 
 In every suppression map, `:clj-kondo/ignore` must be the first key. Unless every suppressed linter is in
 `:comment-exempt`, add a `;;` comment directly above the suppression or at the end of the same line to
 explain why it is necessary. The check reports missing comments. When a linter's last uncommented ignore
-gains a comment, the shrink workflow removes its stale exemption after the change lands.
+gains a comment, the check names the now-stale exemption as a warning and the shrink workflow removes it
+after the change lands.
 
 Introducing a new linter: `./bin/mage kondo-insert-ignores :the-linter` inserts an ignore at every site it
 flags, then `./bin/mage kondo-ratchets-shrink --seed :the-linter` records the budget. This lets the linter

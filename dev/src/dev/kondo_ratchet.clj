@@ -712,6 +712,15 @@
       (str "WARNING: :unlimited policies with no ignores left: " (str/join ", " linters)
            " -- delete an entry by hand once its linter no longer needs one"))))
 
+(defn stale-exemptions-warning
+  "One informational line naming the [[stale-exemptions]] linters, or nil when there are none.
+  The exemptions stay in place; the line only makes stale ones visible."
+  [exempt occurrences]
+  (let [linters (stale-exemptions exempt occurrences)]
+    (when (seq linters)
+      (str "WARNING: every ignore of these linters now carries a comment: " (str/join ", " linters)
+           " -- the shrink workflow drops their :comment-exempt entry on master"))))
+
 (defn change-report
   "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
   anything over budget and for `:unlimited` policies nothing uses any more."
@@ -840,6 +849,7 @@
             (let [occurrences (scan)
                   lines       (check-report ratchets occurrences (config-suppressions) (slurp *ratchets-file*))]
               (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts occurrences)) println)
+              (some-> (stale-exemptions-warning (:comment-exempt ratchets) occurrences) println)
               (if (empty? lines)
                 (println (format "ok -- %d ignore forms within %d policies"
                                  (count occurrences) (count (:ignore-counts ratchets))))

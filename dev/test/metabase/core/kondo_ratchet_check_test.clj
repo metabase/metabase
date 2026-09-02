@@ -111,6 +111,17 @@
            (check-with! ratchets (occurrences {:z-empty 1, :a-empty 1, :free 1, :over 1})))
         "no warning when every unlimited policy is in use")))
 
+(deftest check-reports-stale-exemptions-test
+  (let [ratchets    {:ignore-counts  {:grandfathered 1, :still-needed 1}
+                     :comment-exempt #{:grandfathered :still-needed}}
+        occurrences [{:file "f.clj", :line 1, :linters [:grandfathered], :justified? true}
+                     {:file "g.clj", :line 1, :linters [:still-needed], :justified? false}]]
+    (is (= {:lines   ["WARNING: every ignore of these linters now carries a comment: :grandfathered -- the shrink workflow drops their :comment-exempt entry on master"
+                      "ok -- 2 ignore forms within 2 policies"]
+            :thrown? false}
+           (check-with! ratchets occurrences))
+        "an exemption whose ignores are all commented is named, and does not fail the check")))
+
 (deftest ^:parallel stale-test
   (let [ratchets {:ignore-counts {:a 5, :gone 2}}]
     (is (= []
