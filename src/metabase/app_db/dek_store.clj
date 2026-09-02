@@ -24,13 +24,11 @@
   scope via [[metabase.util.encryption.dek/*store*]] instead of relying on the resolver."
   (:require
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.db :as mdb.db]
    [metabase.util.encryption.dek :as dek]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private table :model/DataEncryptionKey)
 
 ;; The process caches (unwrapped DEK material and the active-generation id in `dek`, plus the derived activation
 ;; answer below) are keyed by the current `ApplicationDB`'s unique id -- the codebase-blessed memoization key for
@@ -39,16 +37,6 @@
 ;; material, and id churn only ever costs a re-derivation (one query, plus one GCM unwrap per DEK generation).
 (defn- cache-key []
   [::app-db (mdb.connection/unique-identifier)])
-
-(defn- max-generation-id []
-  (t2/select-one-fn :id table {:order-by [[:id :desc]] :limit 1}))
-
-(defn- wrapped-material
-  "The wrapped DEK bytes for `generation-id`, materialized to a byte array *while the query's connection is still open*
-  (a JDBC `Blob` read after its connection is returned to the pool throws \"object is already closed\"). We apply the
-  `->bytes` coercion as the select fn so it runs during result-set reduction, inside the connection scope."
-  ^bytes [generation-id]
-  (t2/select-one-fn (comp dek/->bytes :key_material) table :id generation-id))
 
 (deftype AppDBDEKStore []
   dek/DEKStore
@@ -59,21 +47,19 @@
     ;; Concurrent mints (two instances or threads racing on an empty table) are safe: generation ids are DB-assigned,
     ;; each writer inserts its DEK row before writing any value that references it, and every inserted row stays
     ;; readable forever. The worst case is a harmless extra generation; "active" converges to max(id).
-    (if-let [gen-id (dek/cached-active-generation-id (cache-key) max-generation-id)]
+    (if-let [gen-id (dek/cached-active-generation-id (cache-key) mdb.db/max-data-encryption-key-id)]
       {:generation-id gen-id :dek (dek/dek-by-id store kek gen-id)}
       (dek/mint-generation! store kek)))
   (dek-by-id [_ kek generation-id]
     (dek/cached-dek (cache-key) kek generation-id
                     (fn []
-                      (let [wrapped (wrapped-material generation-id)]
+                      (let [wrapped (mdb.db/data-encryption-key-material generation-id)]
                         (when-not wrapped
                           (throw (ex-info "No such DEK generation" {:generation-id generation-id})))
                         (dek/unwrap-dek kek wrapped)))))
   (mint-generation! [_ kek]
     (let [material (dek/random-dek)
-          wrapped  (dek/wrap-dek kek material)
-          gen-id   (first (t2/insert-returning-pks! table {:key_material wrapped
-                                                           :created_at   :%now}))]
+          gen-id   (mdb.db/insert-data-encryption-key! (dek/wrap-dek kek material))]
       ;; Two separate caches: `cache-put!` stores the new generation's unwrapped key material (so the next read of it
       ;; needn't query + GCM-unwrap again), while `invalidate-active-generation!` clears the cached active-id pointer,
       ;; which this mint just changed (the new row is now the max id).
@@ -81,16 +67,13 @@
       (dek/invalidate-active-generation! (cache-key))
       {:generation-id gen-id :dek material}))
   (rewrap-all! [_ old-kek new-kek]
-    ;; Materialize each wrapped blob to bytes during result-set reduction (`select-fn->fn`), before the connection
-    ;; closes, to avoid "object is already closed" on the JDBC Blob.
-    (let [id->wrapped (t2/select-fn->fn :id (comp dek/->bytes :key_material) table {:order-by [[:id :asc]]})]
+    (let [id->wrapped (mdb.db/data-encryption-keys)]
       (doseq [[id wrapped] id->wrapped]
-        (let [material (dek/unwrap-dek old-kek wrapped)]
-          (t2/update! table :id id {:key_material (dek/wrap-dek new-kek material)})))
+        (mdb.db/update-data-encryption-key-material! id (dek/wrap-dek new-kek (dek/unwrap-dek old-kek wrapped))))
       ;; the unwrapped material is unchanged by a rewrap, so the process cache stays valid
       (count id->wrapped)))
   (generation-ids [_]
-    (vec (sort (t2/select-fn-set :id table)))))
+    (vec (mdb.db/data-encryption-key-ids))))
 
 (defn app-db-store
   "A [[dek/DEKStore]] backed by the current application database's `data_encryption_key` table."
@@ -120,7 +103,7 @@
   function's job; app-DB setup's sentinel check still does that. Throws whatever the sentinel query throws (missing
   table, early boot, broken DB); [[resolve-store]] decides what a failure means."
   []
-  (let [raw (t2/select-one-fn :value :setting :key "encryption-check")]
+  (let [raw (mdb.db/setting-value "encryption-check")]
     (and (some? raw) (not= raw "unencrypted"))))
 
 (defn- resolve-store

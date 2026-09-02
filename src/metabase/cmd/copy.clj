@@ -163,7 +163,10 @@
     :model/TransformJobRun
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformDagRun]
+    :model/TransformDagRun
+    ;; wrapped DEK generations for local envelope encryption; must be copied so an encrypted dump's v2 values stay
+    ;; readable on the target instance (their DEKs travel with them)
+    :model/DataEncryptionKey]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
