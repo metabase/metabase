@@ -220,6 +220,40 @@
       (log/errorf "ERROR ROTATING KEY: %s" (ex-message e))
       (system-exit! 1))))
 
+(defn ^:command mint-encryption-dek
+  "Mint a new active data-encryption key (DEK) generation for the metabase database. The MB_ENCRYPTION_SECRET_KEY
+  environment variable has to be set to the current key. This is instant: existing values keep decrypting under their
+  older DEK generations, and only new writes use the new generation."
+  []
+  (classloader/require 'metabase.cmd.mint-encryption-dek)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.mint-encryption-dek/mint-encryption-dek!))
+    (log/info "New DEK generation minted OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/errorf "ERROR MINTING DEK: %s" (ex-message e))
+      (system-exit! 1))))
+
+(defn ^:command deep-reencrypt
+  "Rewrite every encrypted value in the metabase database under the newest DEK generation and delete all retired DEK
+  rows, fully retiring old key material. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the
+  current key. This walks all encrypted data, like a full rotation."
+  []
+  (classloader/require 'metabase.cmd.deep-reencrypt)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.deep-reencrypt/deep-reencrypt!))
+    (log/info "Deep re-encryption OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/errorf "ERROR DURING DEEP RE-ENCRYPTION: %s" (ex-message e))
+      (system-exit! 1))))
+
 (defn ^:command remove-encryption
   "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
   the current key"

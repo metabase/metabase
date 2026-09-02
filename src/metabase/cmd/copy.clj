@@ -149,7 +149,11 @@
     :model/ExplorationQuery
     :model/ExplorationBookmark
     ;; 63+
-    :model/McpFeedback]
+    :model/McpFeedback
+    ;; 64+
+    ;; wrapped DEK generations for local envelope encryption; must be copied so an encrypted dump's v2 values stay
+    ;; readable on the target instance (their DEKs travel with them)
+    :model/DataEncryptionKey]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

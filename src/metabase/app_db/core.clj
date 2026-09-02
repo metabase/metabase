@@ -58,7 +58,9 @@
   clob->str]
  [mdb.encryption
   decrypt-db
-  encrypt-db]
+  deep-reencrypt-db!
+  encrypt-db
+  mint-new-dek!]
  [metabase.app-db.format
   format-sql]
  [mdb.setup

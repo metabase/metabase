@@ -14,6 +14,7 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
+   [metabase.app-db.dek-store :as dek-store]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
@@ -197,10 +198,28 @@
   Encryption status is tracked by an 'encryption-check' value in the settings table.
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   []
+  ;; Install the DEK-store resolver so v2 reads/writes are possible; whether it actually hands out a store is *derived
+  ;; from the database itself* (its encryption-check sentinel -- see `dek-store`), so no explicit activation happens
+  ;; here: for an already-encrypted DB the resolver supplies a store as soon as it is installed, which is what lets the
+  ;; (possibly v2) sentinel below decrypt and makes new writes use the envelope format while existing legacy values
+  ;; stay readable. Existing values are NOT bulk-upgraded at startup -- that happens on an explicit rotation (the
+  ;; first rotation upgrades remaining legacy values to v2). Installed before the sentinel check, and after migrations
+  ;; so the `data_encryption_key` table exists.
+  (dek-store/install-resolver!)
   (let [raw (try (t2/select-one-fn :value :setting :key "encryption-check")
                  (catch Throwable e (log/warnf "Error checking encryption status, assuming unencrypted: %s" (ex-message e))))
-        looks-encrypted (not= raw "unencrypted")]
+        ;; A nil `raw` means either no sentinel row (a DB that predates the sentinel) or the select above threw (a
+        ;; possibly-broken DB). In both cases we must NOT treat the DB as encrypted: doing so would run the wrong-key
+        ;; checks against a DB we could not even read the sentinel from. Only a present, non-"unencrypted" sentinel
+        ;; counts as encrypted -- the DEK-store resolver derives its answer the same way, so v2 writes stay off for
+        ;; such a DB too.
+        looks-encrypted (and (some? raw) (not= raw "unencrypted"))]
     (log/debug "Checking encryption configuration")
+    ;; At startup, log which ciphertext FORMAT the sentinel itself is in (v2 vs legacy). This is a cheap,
+    ;; single-value check -- we deliberately do NOT scan every encrypted row here (too costly); a full format census
+    ;; happens during rotation/deep/remove (see `do-encryption`).
+    (when looks-encrypted
+      (log/infof "Encryption sentinel is in %s format." (if (encryption/v2-string? raw) "v2 (envelope)" "legacy")))
     (when-not (nil? raw)
       (if looks-encrypted
         (do
@@ -212,6 +231,8 @@
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
+            ;; The DB is now (legacy-)encrypted and its sentinel says so; `encrypt-db` invalidated the resolver's
+            ;; derived-activation cache, so v2 is enabled for new writes going forward with no further action here.
             (mdb.encryption/encrypt-db (:db-type mdb.connection/*application-db*) (:data-source mdb.connection/*application-db*) nil)
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))
