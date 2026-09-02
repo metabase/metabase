@@ -45,6 +45,13 @@ describe("scripts-sandbox DOM-mutate distortions", () => {
       expect(el).toBeInstanceOf(HTMLDivElement);
     });
 
+    it("creates an allowed element supplied as a non-string value", () => {
+      const tag = { toLowerCase: () => "script", toString: () => "div" };
+
+      const el = createElement.call(document, asStringArg(tag));
+      expect(el).toBeInstanceOf(HTMLDivElement);
+    });
+
     it("blocks a blocked tag supplied as a plain string", () => {
       expect(() => createElement.call(document, "script")).toThrow(
         /blocked createElement/,
