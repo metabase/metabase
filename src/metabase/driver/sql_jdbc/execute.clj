@@ -830,6 +830,11 @@
                             :pulse}]
     (boolean (download-contexts context))))
 
+(def ^:private drivers-exempt-from-cancelation
+  "Drivers whose statements [[execute-reducible-query]] never cancels.
+  TODO: vertica is here only to find out whether it flakes because of cancelations. It should be removed afterwards!"
+  #{:vertica})
+
 (defn- cancel-statement!
   "Cancel `stmt` on the DBMS side. Returns whether a cancelation was actually issued."
   [driver ^Statement stmt]
@@ -925,9 +930,7 @@
                       ;; An exhausted ResultSet has nothing left to cancel, and the cancelation is itself what forces the
                       ;; pooled connection to be thrown away, so skip both when the rows simply ran out.
                       (finally
-                        ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
-                        ;;       It should be removed afterwards!
-                        (when-not (or @exhausted? (= :vertica driver))
+                        (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
                           (when (cancel-statement! driver stmt)
                             (vreset! discard-conn? true)))))))
              ;; the ResultSet and Statement must be closed before the physical Connection goes away: on ClickHouse
