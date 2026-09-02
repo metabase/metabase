@@ -134,6 +134,25 @@
             (is (= (into #{} (keys (first (:dashcards real))))
                    (into #{} (keys (first (:dashcards dry))))))))))))
 
+(deftest validate-only-reports-the-replacement-card-test
+  (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
+            `:card_id`, so a stale one would report the replace as a no-op and an agent validating before
+            committing would see the wrong thing"
+    (mt/with-temp [:model/Dashboard     dash  {:name "Sales"}
+                   :model/Card          old   {:name "Old revenue"}
+                   :model/Card          new-c {:name "New revenue"}
+                   :model/DashboardCard dc    {:dashboard_id (:id dash) :card_id (:id old)}]
+      (let [args {:method "update" :id (:id dash)
+                  :ops    [{:op "replace_card" :dashcard_id (:id dc) :card_id (:id new-c)}]}
+            dry  (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                          (wire (assoc args :validate_only true))))
+            real (tool-result (call-tool! :crowberto nil "dashboard_write" (wire args)))]
+        (is (= {:id (:id new-c) :name "New revenue"}
+               (-> dry :dashcards first :card)))
+        (is (= (-> real :dashcards first :card)
+               (-> dry :dashcards first :card))
+            "the dry run and the real save must agree")))))
+
 (deftest entity-id-is-accepted-test
   (testing "GHY-4147: `id` accepts a 21-character entity_id as well as a numeric id"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]

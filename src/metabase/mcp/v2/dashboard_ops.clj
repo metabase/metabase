@@ -317,10 +317,14 @@
   [state idx {:keys [dashcard_id card_id]}]
   (resolve-dashcard! state idx dashcard_id)
   (update-row state :dashcards dashcard_id
-              #(assoc % :card_id card_id
-                      :series []
-                      :parameter_mappings []
-                      :visualization_settings {})))
+              ;; `:card` is the hydrated row of the card being replaced. Dropping it is what makes the dry
+              ;; run honest: the projection prefers `:card` over `:card_id`, so leaving the old one would
+              ;; report the replace as a no-op while the real save reads back the new card.
+              #(-> (assoc % :card_id card_id
+                          :series []
+                          :parameter_mappings []
+                          :visualization_settings {})
+                   (dissoc :card))))
 
 (defmethod apply-op "move"
   [state idx {:keys [dashcard_id tab position] :as op}]
