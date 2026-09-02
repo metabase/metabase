@@ -106,6 +106,98 @@ describe("toPluginSettings", () => {
     expect(clickBehavior.type).toBe("crossfilter");
   });
 
+  it("keeps an undefined host value as an own key", () => {
+    const pluginSettings = toPluginSettings(
+      { click_behavior: undefined },
+      PREFIX,
+    );
+
+    expect(Object.hasOwn(pluginSettings, "click_behavior")).toBe(true);
+  });
+
+  it("preserves a Map setting value a JSON round-trip would corrupt", () => {
+    const pluginSettings = toPluginSettings(
+      { [`${PREFIX}lookup`]: new Map([["a", 1]]) },
+      PREFIX,
+    );
+    const lookup: unknown = Reflect.get(pluginSettings, "lookup");
+    const getEntry =
+      isObject(lookup) && isFunction(lookup.get) ? lookup.get : null;
+
+    if (!getEntry) {
+      throw new Error("Expected the plugin to keep its Map setting");
+    }
+
+    expect(getEntry.call(lookup, "a")).toBe(1);
+  });
+
+  it("exposes column as a callable whose results can't poison the host", () => {
+    const columnSettings = { prefix: "$" };
+    const settings = { column: () => columnSettings };
+
+    const pluginSettings = toPluginSettings(settings, PREFIX);
+    const column: unknown = Reflect.get(pluginSettings, "column");
+
+    if (!isFunction(column)) {
+      throw new Error("Expected the plugin to see the column function");
+    }
+
+    const col = { name: "X" };
+    const first: unknown = column(col);
+    if (!isObject(first)) {
+      throw new Error("Expected column settings");
+    }
+    first.prefix = "mutated";
+
+    expect(columnSettings.prefix).toBe("$");
+    expect(column(col)).toEqual({ prefix: "$", column: col });
+  });
+
+  it("hands the caller's own column back and drops host caches from the result", () => {
+    const settings = {
+      column: (col: unknown) => ({
+        prefix: "$",
+        column: col,
+        _numberFormatter: new Intl.NumberFormat(),
+      }),
+    };
+
+    const pluginSettings = toPluginSettings(settings, PREFIX);
+    const column: unknown = Reflect.get(pluginSettings, "column");
+
+    if (!isFunction(column)) {
+      throw new Error("Expected the plugin to see the column function");
+    }
+
+    const col = { name: "mine" };
+    const result: unknown = column(col);
+    if (!isObject(result)) {
+      throw new Error("Expected column settings");
+    }
+
+    expect(result.column).toBe(col);
+    expect(Object.hasOwn(result, "_numberFormatter")).toBe(false);
+  });
+
+  it("silently drops other function-valued settings", () => {
+    const pluginSettings = toPluginSettings(
+      { [`${PREFIX}callback`]: () => 1 },
+      PREFIX,
+    );
+
+    expect(Object.hasOwn(pluginSettings, "callback")).toBe(false);
+  });
+
+  it("silently drops values structuredClone rejects", () => {
+    const pluginSettings = toPluginSettings(
+      { _numberFormatter: new Intl.NumberFormat(), "card.title": "Title" },
+      PREFIX,
+    );
+
+    expect(Object.hasOwn(pluginSettings, "_numberFormatter")).toBe(false);
+    expect(pluginSettings["card.title"]).toBe("Title");
+  });
+
   it("reuses the translation for the same settings object", () => {
     const settings = { [`${PREFIX}threshold`]: 42 };
 
