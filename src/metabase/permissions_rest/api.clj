@@ -187,8 +187,7 @@
                                       :where  [:and
                                                [:= :user_id api/*current-user-id*]
                                                [:= :is_group_manager true]]}])
-         ;; Data-app groups are a server-managed namespace, hidden by default. The People/Groups admin opts
-         ;; in to show them (to assign members); permission-config screens keep the default and hide them.
+         ;; Hidden by default; the People/Groups admin opts in (to assign members) via include-app-groups.
          (when-not include-app-groups
            [:not :is_data_app_group])
          (when-not (setting/get :use-tenants)

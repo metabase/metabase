@@ -110,7 +110,7 @@
             (is (=? {:id app-group-id, :is_data_app_group true, :is_stale_data_app_group false}
                     (admin app-group-id))))
           (testing "when the app is gone but its group remains, it is marked stale (still hidden by default)"
-            ;; Delete only the data_app row (raw, no cascade), leaving its group behind — the stale case.
+            ;; Raw-delete the data_app row so its group survives — a stale group.
             (t2/delete! :data_app :id (:id app))
             (is (nil? (default app-group-id)))
             (is (=? {:id app-group-id, :is_data_app_group true, :is_stale_data_app_group true}

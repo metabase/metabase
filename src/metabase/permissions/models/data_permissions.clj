@@ -1381,9 +1381,8 @@
   #{})
 
 (defenterprise active-data-app-group-ids
-  "Ids of the data-app groups whose app still exists (a live `data_app` row points at them). These stay
-   hidden from the groups UI; a group flagged `is_data_app_group` but absent here is stale — its app was
-   removed without its group — and is surfaced so an admin can delete it. OSS has none."
+  "Ids of the data-app groups whose app still exists (a live `data_app` points at them). A flagged group
+   absent here is stale — its app was removed. OSS has none."
   metabase-enterprise.data-apps.models.data-app
   []
   #{})

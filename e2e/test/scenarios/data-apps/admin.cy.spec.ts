@@ -80,8 +80,7 @@ describe("scenarios > data apps > admin management", () => {
   it("shows a stale data-app group on the Groups page (badged, deletable), hidden by default", () => {
     const STALE_GROUP = "Data App: orphaned";
 
-    // A stale group is a leftover no product flow can create (the app is gone but its group survives),
-    // so a test-only endpoint seeds one directly: flagged, with no backing app.
+    // No product flow leaves a stale group (app gone, group survives), so seed one via a test endpoint.
     cy.request("POST", "/api/testing/stale-data-app-group", {
       name: STALE_GROUP,
     }).then(({ body: staleGroup }) => {
@@ -135,7 +134,6 @@ describe("scenarios > data apps > admin management", () => {
     cy.request("POST", "/api/apps/orders-app/draft");
 
     cy.visit("/admin/people");
-    // Open the first user's edit modal via its row actions.
     cy.findAllByLabelText("group-summary")
       .first()
       .closest("tr")
@@ -156,7 +154,6 @@ describe("scenarios > data apps > admin management", () => {
     cy.request("POST", "/api/apps/orders-app/draft");
 
     cy.visit("/admin/people");
-    // Each user's Groups cell opens a dropdown to toggle membership.
     cy.findAllByLabelText("group-summary").first().click();
     H.popover().findByLabelText("Data App: orders-app").should("be.visible");
   });

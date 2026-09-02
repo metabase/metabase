@@ -176,8 +176,6 @@ interface DeleteGroupButtonProps {
   onDeleteGroupClicked: (group: GroupInfo) => void;
 }
 
-// A stale data-app group only exists to be removed, so it gets a direct trash
-// action rather than an Edit/Remove menu.
 function DeleteGroupButton({
   group,
   apiKeys,
@@ -250,8 +248,7 @@ function GroupNameCell({ group }: { group: GroupInfo }) {
   const name = getGroupNameLocalized(group);
   const avatar = <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />;
 
-  // A stale data-app group (its app removed) has nothing to manage — render it as plain,
-  // non-clickable text (no link, no link-blue name); it exists only to be deleted.
+  // A stale group has no detail page to visit — plain, non-clickable text.
   if (group.is_stale_data_app_group) {
     return (
       <Flex align="center" gap="md">
@@ -297,9 +294,6 @@ function GroupActionsCell({
   onEditGroupClicked,
   onDeleteGroupClicked,
 }: GroupActionsCellProps) {
-  // A stale data-app group offers only deletion (cleanup). Active data-app groups and the built-in
-  // groups (All Users, Administrators, external users) are server-managed — no row actions (members
-  // are managed from the group's page). Every other group gets the edit/remove menu.
   if (group.is_stale_data_app_group) {
     return (
       <DeleteGroupButton
@@ -310,6 +304,7 @@ function GroupActionsCell({
     );
   }
 
+  // Server-managed groups (active data-app + built-in) have no row actions.
   const isManaged =
     group.is_data_app_group ||
     isDefaultGroup(group) ||

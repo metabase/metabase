@@ -55,7 +55,6 @@ export const permissionApi = Api.injectEndpoints({
       GroupListQuery[],
       | {
           tenancy?: "external" | "internal";
-          // People/Groups admin: also return data-app groups (so members can be assigned).
           "include-app-groups"?: boolean;
         }
       | undefined

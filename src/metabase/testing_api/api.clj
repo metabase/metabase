@@ -221,9 +221,8 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 (api.macros/defendpoint :post "/stale-data-app-group"
-  "Create a stale data-app group: a permission group flagged `is_data_app_group` with no backing app (as
-   if the app were removed without its group). Lets e2e exercise the admin groups page, which surfaces
-   only stale app groups so they can be cleaned up."
+  "Create a stale data-app group (flagged `is_data_app_group`, with no backing app) so e2e can exercise
+   its badge and deletion on the admin groups page."
   [_route-params
    _query-params
    {:keys [name]} :- [:map [:name ms/NonBlankString]]]

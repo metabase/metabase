@@ -1,8 +1,5 @@
-## Add permissions_group.is_data_app_group — a data-app group is a server-managed namespace, like a
-## tenant group: hidden from the normal groups UI and not user-configurable. Mirrors is_tenant_group.
-## The app code that creates a data app's group sets this true; every other group defaults to false.
-## The second changeSet backfills groups that already existed before the column, identified by the
-## data_app.permission_group_id FK, so they are hidden and blocked like freshly-created ones.
+## permissions_group.is_data_app_group marks a data app's server-managed group (mirrors is_tenant_group).
+## The second changeSet backfills groups created before the column, via the data_app.permission_group_id FK.
 
 databaseChangeLog:
   - changeSet:
@@ -38,4 +35,4 @@ databaseChangeLog:
                   valueBoolean: true
             where: >-
               id IN (SELECT permission_group_id FROM data_app WHERE permission_group_id IS NOT NULL)
-      rollback: # no-op: the column and this data are dropped when the add-column change above rolls back
+      rollback: # no-op: dropped with the column when the add-column changeSet rolls back
