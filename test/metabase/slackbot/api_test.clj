@@ -1024,8 +1024,8 @@
       (is (nil? result) "handler returns nil and does not schedule async work")
       (is (zero? (t2/count :model/MetabotFeedback 'user_id rasta-id
                            {'where ['in 'message_id
-                                    {'select ['id] 'from ['metabot_message]
-                                     'where ['= 'external_id "nothing-to-match"]}]}))
+                                    ^:allow-subquery {'select ['id] 'from ['metabot_message]
+                                                      'where ['= 'external_id "nothing-to-match"]}]}))
           "no feedback row written for unresolvable submissions"))))
 
 (deftest handle-feedback-modal-submission-lurker-test

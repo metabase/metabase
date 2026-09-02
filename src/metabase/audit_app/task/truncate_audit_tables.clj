@@ -25,13 +25,13 @@
      {'delete-from (keyword table-name)
       'where ['in
               'id
-              {'select ['id]
-               'from (keyword table-name)
-               'where ['<=
-                       (keyword time-column)
-                       (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
-               'order-by [['id 'asc]]
-               'limit (audit-app.settings/audit-table-truncation-batch-size)}]}
+              ^:allow-subquery {'select ['id]
+                                'from (keyword table-name)
+                                'where ['<=
+                                        (keyword time-column)
+                                        (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))]
+                                'order-by [['id 'asc]]
+                                'limit (audit-app.settings/audit-table-truncation-batch-size)}]}
 
      (:mysql :mariadb)
      {'delete-from (keyword table-name)

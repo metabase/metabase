@@ -153,9 +153,9 @@
                   (concat (t2/select-fn-vec :card_id :model/DashboardCard 'dashboard_id dashboard-id)
                           (t2/select-fn-vec :card_id :model/DashboardCardSeries
                                             {'where ['in 'dashboardcard_id
-                                                     {'select ['id]
-                                                      'from   [(t2/table-name :model/DashboardCard)]
-                                                      'where  ['= 'dashboard_id dashboard-id]}]})))
+                                                     ^:allow-subquery {'select ['id]
+                                                                       'from   [(t2/table-name :model/DashboardCard)]
+                                                                       'where  ['= 'dashboard_id dashboard-id]}]})))
    :actions (set (t2/select-fn-vec :action_id :model/DashboardCard 'dashboard_id dashboard-id))})
 
 (def ^:private no-references {:cards #{} :actions #{}})
@@ -730,23 +730,23 @@
                               'c.dashboard_id
                               [nil 'location]
                               [(h2x/literal "card")  'model]
-                              [{'select   ['status]
-                                'from     ['moderation_review]
-                                'where    ['and
-                                           ['= 'moderated_item_type "card"]
-                                           ['= 'moderated_item_id 'c.id]
-                                           ['= 'most_recent true]]
-                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                ;; protecting against potential bugs
-                                'order-by [['id 'desc]]
-                                'limit    1}
+                              [^:allow-subquery {'select   ['status]
+                                                 'from     ['moderation_review]
+                                                 'where    ['and
+                                                            ['= 'moderated_item_type "card"]
+                                                            ['= 'moderated_item_id 'c.id]
+                                                            ['= 'most_recent true]]
+                                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                                 ;; protecting against potential bugs
+                                                 'order-by [['id 'desc]]
+                                                 'limit    1}
                                'moderated_status]]
                      'from      [['report_card 'c]]
                      'where     ['and
                                  ['= 'c.dashboard_id id]
-                                 ['exists {'select 1
-                                           'from [['report_dashboardcard 'dc]]
-                                           'where ['and ['= 'c.id 'dc.card_id] ['= 'c.dashboard_id 'dc.dashboard_id]]}]
+                                 ['exists ^:allow-subquery {'select 1
+                                                            'from [['report_dashboardcard 'dc]]
+                                                            'where ['and ['= 'c.id 'dc.card_id] ['= 'c.dashboard_id 'dc.dashboard_id]]}]
                                  ['= 'c.archived false]]}
                     (when (request/paged?)
                       {:limit (request/limit)

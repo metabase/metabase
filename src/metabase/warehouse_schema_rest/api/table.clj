@@ -120,11 +120,11 @@
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      published-only          (conj [:= :is_published true])
                      (and unused-only (premium-features/has-feature? :dependencies))
-                     (conj [:not-exists {'select ['*]
-                                         'from   [['dependency 'd]]
-                                         'where  ['and
-                                                  ['= 'd.to_entity_id 'metabase_table.id]
-                                                  ['= 'd.to_entity_type "table"]]}]))
+                     (conj [:not-exists ^:allow-subquery {'select ['*]
+                                                          'from   [['dependency 'd]]
+                                                          'where  ['and
+                                                                   ['= 'd.to_entity_id 'metabase_table.id]
+                                                                   ['= 'd.to_entity_type "table"]]}]))
         query      {'where where, 'order-by [['name 'asc]]}
         hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]

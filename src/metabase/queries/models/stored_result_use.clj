@@ -57,9 +57,9 @@
   from."
   [card-id :- ms/PositiveInt]
   (let [snapshots (t2/select :model/StoredResult
-                             'id ['in {'select ['stored_result_id]
-                                       'from   ['stored_result_use]
-                                       'where  ['= 'card_id card-id]}])]
+                             'id ['in ^:allow-subquery {'select ['stored_result_id]
+                                                        'from   ['stored_result_use]
+                                                        'where  ['= 'card_id card-id]}])]
     (when (empty? snapshots)
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
     (doseq [snapshot snapshots]

@@ -243,32 +243,32 @@
    (fn []
      (let [card-ids       (map u/the-id cards)
            all-dashboards (t2/query {'union-all [;; First get dashboards from direct card connections
-                                                 {'nest
-                                                  {'select   [['dc.card_id 'card_id]
-                                                              'd.name
-                                                              'd.collection_id
-                                                              'd.description
-                                                              'd.id
-                                                              'd.archived
-                                                              'd.enable_embedding]
-                                                   'from     [['report_dashboardcard 'dc]]
-                                                   'join     [['report_dashboard 'd] ['= 'dc.dashboard_id 'd.id]]
-                                                   'where    ['in 'dc.card_id ['inline card-ids]]
-                                                   'order-by [['d.id 'asc]]}}
+                                                 ^:allow-subquery {'nest
+                                                                   ^:allow-subquery {'select   [['dc.card_id 'card_id]
+                                                                                                'd.name
+                                                                                                'd.collection_id
+                                                                                                'd.description
+                                                                                                'd.id
+                                                                                                'd.archived
+                                                                                                'd.enable_embedding]
+                                                                                     'from     [['report_dashboardcard 'dc]]
+                                                                                     'join     [['report_dashboard 'd] ['= 'dc.dashboard_id 'd.id]]
+                                                                                     'where    ['in 'dc.card_id ['inline card-ids]]
+                                                                                     'order-by [['d.id 'asc]]}}
                                                  ;; Then get dashboards from series
-                                                 {'nest
-                                                  {'select   [['dcs.card_id 'card_id]
-                                                              'd.name
-                                                              'd.collection_id
-                                                              'd.description
-                                                              'd.id
-                                                              'd.archived
-                                                              'd.enable_embedding]
-                                                   'from     [['dashboardcard_series 'dcs]]
-                                                   'join     [['report_dashboardcard 'dc] ['= 'dc.id 'dcs.dashboardcard_id]
-                                                              ['report_dashboard 'd] ['= 'd.id 'dc.dashboard_id]]
-                                                   'where    ['in 'dcs.card_id ['inline card-ids]]
-                                                   'order-by [['d.id 'asc]]}}]})]
+                                                 ^:allow-subquery {'nest
+                                                                   ^:allow-subquery {'select   [['dcs.card_id 'card_id]
+                                                                                                'd.name
+                                                                                                'd.collection_id
+                                                                                                'd.description
+                                                                                                'd.id
+                                                                                                'd.archived
+                                                                                                'd.enable_embedding]
+                                                                                     'from     [['dashboardcard_series 'dcs]]
+                                                                                     'join     [['report_dashboardcard 'dc] ['= 'dc.id 'dcs.dashboardcard_id]
+                                                                                                ['report_dashboard 'd] ['= 'd.id 'dc.dashboard_id]]
+                                                                                     'where    ['in 'dcs.card_id ['inline card-ids]]
+                                                                                     'order-by [['d.id 'asc]]}}]})]
        (update-vals
         (group-by :card_id all-dashboards)
         (fn [dashes]
@@ -951,9 +951,9 @@
   ;; return empty by the time the actual DELETE executes.
   (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
                                                       'payload_type :notification/card
-                                                      'payload_id ['in {'select ['id]
-                                                                        'from   ['notification_card]
-                                                                        'where  ['= 'card_id id]}]))]
+                                                      'payload_id ['in ^:allow-subquery {'select ['id]
+                                                                                         'from   ['notification_card]
+                                                                                         'where  ['= 'card_id id]}]))]
     (t2/delete! :model/Notification 'id ['in notification-ids])))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
@@ -1562,9 +1562,9 @@
   dangling reference even setting the lens question aside."
   [:or
    [:= :document_id nil]
-   [:in :document_id {'select ['id]
-                      'from   ['document]
-                      'where  ['= 'exploration_id nil]}]])
+   [:in :document_id ^:allow-subquery {'select ['id]
+                                       'from   ['document]
+                                       'where  ['= 'exploration_id nil]}]])
 
 (defmethod serdes/extract-query "Card"
   [model-name opts]
@@ -1597,9 +1597,9 @@
                   :collection-id        true
                   :creator-id           true
                   :dashboard-id         true
-                  :dashboardcard-count  {'select ['%count.*]
-                                         'from   ['report_dashboardcard]
-                                         'where  ['= 'report_dashboardcard.card_id 'this.id]}
+                  :dashboardcard-count  ^:allow-subquery {'select ['%count.*]
+                                                          'from   ['report_dashboardcard]
+                                                          'where  ['= 'report_dashboardcard.card_id 'this.id]}
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
@@ -1661,35 +1661,35 @@
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]
-  {'select ['report_card.id
-            [(h2x/literal "Card") 'model]
-            ['report_card.name 'name]
-            'last_used_at]
-   'from 'report_card
-   'left-join ['moderation_review ['and
-                                   ['= 'moderation_review.moderated_item_id 'report_card.id]
-                                   ['= 'moderation_review.moderated_item_type (h2x/literal "card")]
-                                   ['= 'moderation_review.most_recent true]
-                                   ['= 'moderation_review.status (h2x/literal "verified")]]
-               'pulse_card ['= 'pulse_card.card_id 'report_card.id]
-               'pulse ['and
-                       ['= 'pulse_card.pulse_id 'pulse.id]
-                       ['= 'pulse.archived false]]
-               'sandboxes ['= 'sandboxes.card_id 'report_card.id]
-               'collection ['= 'collection.id 'report_card.collection_id]]
-   'where ['and
-           ['= 'sandboxes.id nil]
-           ['= 'pulse.id nil]
-           ['= 'moderation_review.id nil]
-           ['= 'report_card.archived false]
-           ['<= 'report_card.last_used_at (-> args :cutoff-date)]
-           ;; find things only in regular collections, not the `instance-analytics` collection.
-           ['= 'collection.type nil]
-           (when (embed.settings/some-embedding-enabled?)
-             [:= :report_card.enable_embedding false])
-           (when (setting/get :enable-public-sharing)
-             [:= :report_card.public_uuid nil])
-           ['or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_card.collection_id nil])
-            ['in 'report_card.collection_id (-> args :collection-ids)]]]})
+  ^:allow-subquery {'select ['report_card.id
+                             [(h2x/literal "Card") 'model]
+                             ['report_card.name 'name]
+                             'last_used_at]
+                    'from 'report_card
+                    'left-join ['moderation_review ['and
+                                                    ['= 'moderation_review.moderated_item_id 'report_card.id]
+                                                    ['= 'moderation_review.moderated_item_type (h2x/literal "card")]
+                                                    ['= 'moderation_review.most_recent true]
+                                                    ['= 'moderation_review.status (h2x/literal "verified")]]
+                                'pulse_card ['= 'pulse_card.card_id 'report_card.id]
+                                'pulse ['and
+                                        ['= 'pulse_card.pulse_id 'pulse.id]
+                                        ['= 'pulse.archived false]]
+                                'sandboxes ['= 'sandboxes.card_id 'report_card.id]
+                                'collection ['= 'collection.id 'report_card.collection_id]]
+                    'where ['and
+                            ['= 'sandboxes.id nil]
+                            ['= 'pulse.id nil]
+                            ['= 'moderation_review.id nil]
+                            ['= 'report_card.archived false]
+                            ['<= 'report_card.last_used_at (-> args :cutoff-date)]
+                            ;; find things only in regular collections, not the `instance-analytics` collection.
+                            ['= 'collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_card.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_card.public_uuid nil])
+                            ['or
+                             (when (contains? (:collection-ids args) nil)
+                               [:is :report_card.collection_id nil])
+                             ['in 'report_card.collection_id (-> args :collection-ids)]]]})

@@ -26,15 +26,11 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.model :as t2.model]
-   [toucan2.pipeline :as t2.pipeline]
-   [toucan2.tools.identity-query :as t2.identity-query])
+   [toucan2.model :as t2.model])
   (:import
-   (clojure.lang ExceptionInfo)
-   (toucan2.tools.identity_query IdentityQuery)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -93,60 +89,6 @@
   {'left-join [(t2/table-name (t2.model/resolve-model dest-entity))
                ['= (qualify source-entity fk) (qualify dest-entity pk)]]})
 
-;;;; Rejecting app-DB queries that contain a keyword
-
-(comment t2.identity-query/keep-me)
-
-;;; We write application-DB Honey SQL out of symbols, and so does Toucan 2, so a keyword can never get into a query we
-;;; built: `{'select ['*], 'from ['core_user], 'where ['= 'id id]}` is all symbols no matter what `id` turns out to be.
-;;; A keyword reaching the compile step therefore means some *data* -- a request body, a stored blob, anything that came
-;;; from outside -- was spliced into the query, and that data could just as easily have been `{:raw "..."}` or
-;;; `[:inline "..."]`, i.e. arbitrary SQL. So we refuse to compile it.
-
-(defn- first-keyword
-  "Depth-first search for a keyword in `form`, looking at both keys and values. Returns `{:keyword k, :path [...]}` for
-  the first one found -- the path is there to make the error message actionable -- or `nil` if there is none."
-  [form path]
-  (cond
-    (keyword? form)
-    {:keyword form, :path path}
-
-    (map? form)
-    (some (fn [[k v]]
-            (or (first-keyword k (conj path k))
-                (first-keyword v (conj path k))))
-          form)
-
-    (coll? form)
-    (first (keep-indexed (fn [i x]
-                           (first-keyword x (conj path i)))
-                         form))))
-
-(defn keyword-free?
-  "Whether `query` contains no keyword at all, in any key or value, at any depth."
-  [query]
-  (nil? (first-keyword query [])))
-
-(defn assert-keyword-free
-  "Throw if `query` contains a keyword anywhere. `extra` is merged into the exception's data to say which query it was."
-  ([query]
-   (assert-keyword-free query nil))
-  ([query extra]
-   (when-let [{:keys [keyword path]} (first-keyword query [])]
-     (throw (ex-info (str "A keyword reached the app-DB compile step. App-DB Honey SQL is written with symbols, so a "
-                          "keyword here is data from outside that would be compiled as SQL rather than passed as a "
-                          "parameter. Write the query with symbols; if " keyword " really is a value, make it a "
-                          "string.")
-                     (merge {:type ::keyword-in-query, :keyword keyword, :path path, :query query}
-                            extra))))
-   query))
-
-(methodical/defmethod t2.pipeline/compile :before :default
-  [_query-type model built-query]
-  (when-not (instance? IdentityQuery built-query)
-    (assert-keyword-free built-query {:model model}))
-  built-query)
-
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
   {:arglists '([query])}
@@ -162,7 +104,6 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honey-sql]
-  (assert-keyword-free honey-sql)
   (let [sql-args (try
                    (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
                    (catch Throwable e

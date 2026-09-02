@@ -197,7 +197,7 @@
 (defn- model-select-fragment
   [model]
   (case model
-    :model/Field {:order-by [[:id :asc]]}
+    :model/Field {'order-by [['id 'asc]]}
     nil))
 
 (defn- sql-for-selecting-instances-from-source-db [model]

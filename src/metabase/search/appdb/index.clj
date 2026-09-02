@@ -128,11 +128,11 @@
                              ["search_index" "search_index_next" "search_index_retired"]]]
                            ;; Exclude temp tables — they are managed by with-temp-index-table
                            ['not-like ['lower 'ist.table_name] "%\\_temp"]
-                           ['not ['exists {'select [1]
-                                           'from   [[(t2/table-name :model/SearchIndexMetadata) 'sim]]
-                                           'where  ['and
-                                                    ['= 'sim.engine "appdb"]
-                                                    ['= ['lower 'sim.index_name] ['lower 'ist.table_name]]]}]]]})))
+                           ['not ['exists ^:allow-subquery {'select [1]
+                                                            'from   [[(t2/table-name :model/SearchIndexMetadata) 'sim]]
+                                                            'where  ['and
+                                                                     ['= 'sim.engine "appdb"]
+                                                                     ['= ['lower 'sim.index_name] ['lower 'ist.table_name]]]}]]]})))
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
@@ -173,7 +173,7 @@
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
-          [:default [:raw "CURRENT_TIMESTAMP"]]
+          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
           :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]

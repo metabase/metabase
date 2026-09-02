@@ -20,6 +20,7 @@
     (let [stored  (t2/select :model/MetabotPermissions
                              {'where ['and
                                       ['in 'group_id
+                                       ^:allow-subquery
                                        {'select ['group_id]
                                         'from   [(t2/table-name :model/PermissionsGroupMembership)]
                                         'where  ['= 'user_id user-id]}]

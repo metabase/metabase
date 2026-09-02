@@ -15,25 +15,34 @@
   [x]
   (boolean (some-> x meta :allow-subquery)))
 
+(defn- get-clause
+  "Honey SQL accepts a clause spelled as a keyword or as a symbol; app-DB queries use both."
+  [m k]
+  (or (get m (keyword k)) (get m (symbol k))))
+
+(defn- has-clause?
+  [m k]
+  (or (contains? m (keyword k)) (contains? m (symbol k))))
+
 (defn- raw-honeysql-map?
   [x]
   (and (map? x)
-       (contains? x :raw)))
+       (has-clause? x :raw)))
 
 (defn- inline-honeysql-map?
   [x]
   (and (map? x)
-       (contains? x :inline)))
+       (has-clause? x :inline)))
 
 (defn- raw-honeysql-form?
   [x]
   (and (sequential? x)
-       (= :raw (first x))))
+       (contains? #{:raw 'raw} (first x))))
 
 (defn- inline-honeysql-form?
   [x]
   (and (sequential? x)
-       (= :inline (first x))))
+       (contains? #{:inline 'inline} (first x))))
 
 (defn- allow-raw-sql?
   [x]
@@ -82,15 +91,16 @@
   [query]
   (if (map? query)
     (and (not (or (raw-honeysql-map? query) (inline-honeysql-map? query)))
-         (every? safe-value? (vals (dissoc query :values :set)))
-         (every? safe-row? (:values query))
-         (safe-row? (:set query)))
+         (every? safe-value? (vals (dissoc query :values :set 'values 'set)))
+         (every? safe-row? (get-clause query :values))
+         (safe-row? (get-clause query :set)))
     (safe-value? query)))
 
 (methodical/defmethod t2.pipeline/build :around [:toucan.query-type/select.exists :default clojure.lang.IPersistentMap]
   [query-type model parsed-args resolved-query]
-  (update-in (next-method query-type model parsed-args resolved-query)
-             [:select 0 0 1] vary-meta assoc :allow-subquery true))
+  (let [query      (next-method query-type model parsed-args resolved-query)
+        select-key (if (contains? query 'select) 'select :select)]
+    (update-in query [select-key 0 0 1] vary-meta assoc :allow-subquery true)))
 
 (methodical/defmethod t2.pipeline/compile :before :default
   [_query-type model built-query]

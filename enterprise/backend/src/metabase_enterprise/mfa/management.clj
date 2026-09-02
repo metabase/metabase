@@ -199,12 +199,12 @@
 (def ^:private confirmed-totp-exists
   ;; enrollment state is the auth_identity.confirmed_at COLUMN (queryable), not the encrypted
   ;; credentials JSON
-  [:exists {'select [1]
-            'from   ['auth_identity]
-            'where  ['and
-                     ['= 'auth_identity.user_id 'core_user.id]
-                     ['= 'auth_identity.provider "totp"]
-                     ['not= 'auth_identity.confirmed_at nil]]}])
+  [:exists ^:allow-subquery {'select [1]
+                             'from   ['auth_identity]
+                             'where  ['and
+                                      ['= 'auth_identity.user_id 'core_user.id]
+                                      ['= 'auth_identity.provider "totp"]
+                                      ['not= 'auth_identity.confirmed_at nil]]}])
 
 (def ^:private unenrolled-user-where
   ;; active personal users without a confirmed TOTP enrollment
@@ -241,11 +241,11 @@
   ;; a correlated scalar subselect rather than a join: the unique (user_id, provider) constraint
   ;; guarantees at most one row, and joining would force qualifying every selected column, since
   ;; auth_identity also has id/created_at/updated_at
-  [[{'select ['auth_identity.confirmed_at]
-     'from   ['auth_identity]
-     'where  ['and
-              ['= 'auth_identity.user_id 'core_user.id]
-              ['= 'auth_identity.provider "totp"]]}
+  [[^:allow-subquery {'select ['auth_identity.confirmed_at]
+                      'from   ['auth_identity]
+                      'where  ['and
+                               ['= 'auth_identity.user_id 'core_user.id]
+                               ['= 'auth_identity.provider "totp"]]}
     :enrolled_at]])
 
 (defn- search-where

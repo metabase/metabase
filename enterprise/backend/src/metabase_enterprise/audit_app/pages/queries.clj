@@ -71,7 +71,7 @@
                                 [(common/user-full-name :u) 'user_name]
                                 ['card.updated_at 'updated_at]
                                 ;; Keep this last: the streaming xform strips it positionally and hoists it to the root.
-                                [['over [['count '*] {} 'total_count]]]]
+                                [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
                     'from      [['report_card 'card]]
                     'left-join [['collection 'coll]                ['= 'card.collection_id 'coll.id]
                                 ['metabase_database 'db]           ['= 'card.database_id 'db.id]

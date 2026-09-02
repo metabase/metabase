@@ -394,7 +394,7 @@
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr [:raw (name sql-type)]]
+        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
@@ -628,7 +628,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff [:raw "MICROSECOND"] start-form end-form])
+  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

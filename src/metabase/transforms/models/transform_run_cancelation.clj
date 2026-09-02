@@ -40,11 +40,11 @@
 
 (defn- no-active-run-clause
   []
-  [:not [:exists          {'select [1]
-                           'from   [['transform_run 'wr]]
-                           'where  ['and
-                                    ['= 'wr.id 'transform_run_cancelation.run_id]
-                                    'wr.is_active]}]])
+  [:not [:exists          ^:allow-subquery {'select [1]
+                                            'from   [['transform_run 'wr]]
+                                            'where  ['and
+                                                     ['= 'wr.id 'transform_run_cancelation.run_id]
+                                                     'wr.is_active]}]])
 
 (defn delete-cancelation!
   "Delete a cancelation once it has been handled."

@@ -503,10 +503,10 @@
             (t2/reducible-select :model/Table
                                  {'select    ['t.*]
                                   'from      [[(t2/table-name :model/Table) 't]]
-                                  'left-join [[{'select   ['table_id
-                                                           [['min 'last_analyzed] 'earliest_last_analyzed]]
-                                                'from     [(t2/table-name :model/Field)]
-                                                'group-by ['table_id]} 'sub]
+                                  'left-join [[^:allow-subquery {'select   ['table_id
+                                                                            [['min 'last_analyzed] 'earliest_last_analyzed]]
+                                                                 'from     [(t2/table-name :model/Field)]
+                                                                 'group-by ['table_id]} 'sub]
                                               ['= 't.id 'sub.table_id]]
                                   'where     ['and sync-tables-clause ['= 't.db_id (u/the-id database-or-id)]]
                                   'order-by  [['sub.earliest_last_analyzed 'asc]]})))

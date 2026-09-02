@@ -224,14 +224,14 @@
      []
      (t2/reducible-query {'select   ['name 'description 'database_id 'dataset_query 'id 'collection_id
                                      'result_metadata 'type 'source_card_id 'card_schema
-                                     [{'select   ['status]
-                                       'from     ['moderation_review]
-                                       'where    ['and
-                                                  ['= 'moderated_item_type "card"]
-                                                  ['= 'moderated_item_id 'report_card.id]
-                                                  ['= 'most_recent true]]
-                                       'order-by [['id 'desc]]
-                                       'limit    1}
+                                     [^:allow-subquery {'select   ['status]
+                                                        'from     ['moderation_review]
+                                                        'where    ['and
+                                                                   ['= 'moderated_item_type "card"]
+                                                                   ['= 'moderated_item_id 'report_card.id]
+                                                                   ['= 'most_recent true]]
+                                                        'order-by [['id 'desc]]
+                                                        'limit    1}
                                       'moderated_status]]
                           'from     ['report_card]
                           'where    (into [:and
@@ -557,11 +557,11 @@
 
 (defn- card-query
   [db-id model type-str]
-  {'select [['%count.* model]]
-   'from   ['report_card]
-   'where  ['and
-            ['= 'database_id db-id]
-            ['= 'type type-str]]})
+  ^:allow-subquery {'select [['%count.* model]]
+                    'from   ['report_card]
+                    'where  ['and
+                             ['= 'database_id db-id]
+                             ['= 'type type-str]]})
 
 (defmethod database-usage-query :question
   [_ db-id]
@@ -577,19 +577,19 @@
 
 (defmethod database-usage-query :segment
   [_ db-id]
-  {'select [['%count.* 'segment]]
-   'from   ['segment]
-   'where  ['in 'table_id {'select ['id]
-                           'from   ['metabase_table]
-                           'where  ['= 'db_id db-id]}]})
+  ^:allow-subquery {'select [['%count.* 'segment]]
+                    'from   ['segment]
+                    'where  ['in 'table_id ^:allow-subquery {'select ['id]
+                                                             'from   ['metabase_table]
+                                                             'where  ['= 'db_id db-id]}]})
 
 (defmethod database-usage-query :transform
   [_ db-id]
-  {'select [['%count.* 'transform]]
-   'from   ['transform]
-   'where  ['or
-            ['= 'source_database_id db-id]
-            ['= 'target_db_id db-id]]})
+  ^:allow-subquery {'select [['%count.* 'transform]]
+                    'from   ['transform]
+                    'where  ['or
+                             ['= 'source_database_id db-id]
+                             ['= 'target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -1335,10 +1335,10 @@
 (defn- delete-all-field-values-for-database! [database-or-id]
   (t2/query-one {'delete-from 'metabase_fieldvalues
                  'where      ['in 'field_id
-                              {'select     ['f.id]
-                               'from       [['metabase_field 'f]]
-                               'right-join [['metabase_table 't] ['= 'f.table_id 't.id]]
-                               'where      ['= 't.db_id (u/the-id database-or-id)]}]}))
+                              ^:allow-subquery {'select     ['f.id]
+                                                'from       [['metabase_field 'f]]
+                                                'right-join [['metabase_table 't] ['= 'f.table_id 't.id]]
+                                                'where      ['= 't.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;

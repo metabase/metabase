@@ -11,7 +11,7 @@
   up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
   that failure poisons the surrounding transaction."
   [user-or-id]
-  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+  (t2/select-one :model/Collection 'personal_owner_id (u/the-id user-or-id)))
 
 (defn personal-collection-id
   "The ID of a User's Personal Collection. See [[personal-collection]]."

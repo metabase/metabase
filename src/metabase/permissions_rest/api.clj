@@ -171,11 +171,11 @@
          (when (and (not api/*is-superuser?*)
                     (premium-features/enable-advanced-permissions?)
                     api/*is-group-manager?*)
-           [:in :id {'select ['group_id]
-                     'from   ['permissions_group_membership]
-                     'where  ['and
-                              ['= 'user_id api/*current-user-id*]
-                              ['= 'is_group_manager true]]}])
+           [:in :id ^:allow-subquery {'select ['group_id]
+                                      'from   ['permissions_group_membership]
+                                      'where  ['and
+                                               ['= 'user_id api/*current-user-id*]
+                                               ['= 'is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
          (when-not (premium-features/enable-advanced-permissions?)
@@ -310,17 +310,17 @@
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
                                   (sql.helpers/where
-                                   ['in 'group_id {'select ['group_id]
-                                                   'from   ['permissions_group_membership]
-                                                   'where  ['and
-                                                            ['= 'user_id api/*current-user-id*]
-                                                            ['= 'is_group_manager true]]}])
+                                   ['in 'group_id ^:allow-subquery {'select ['group_id]
+                                                                    'from   ['permissions_group_membership]
+                                                                    'where  ['and
+                                                                             ['= 'user_id api/*current-user-id*]
+                                                                             ['= 'is_group_manager true]]}])
                                   (not (premium-features/enable-advanced-permissions?))
                                   (sql.helpers/where ['not= 'group_id (u/the-id (perms/data-analyst-group))])
                                   (not (setting/get :use-tenants))
-                                  (sql.helpers/where ['not-in 'group_id                                                       {'select ['id]
-                                                                                                                               'from   ['permissions_group]
-                                                                                                                               'where  ['= 'is_tenant_group true]}])))))
+                                  (sql.helpers/where ['not-in 'group_id                                                       ^:allow-subquery {'select ['id]
+                                                                                                                                                'from   ['permissions_group]
+                                                                                                                                                'where  ['= 'is_tenant_group true]}])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

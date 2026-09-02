@@ -73,57 +73,57 @@
 (defn- bookmarks-union-query
   [user-id]
   (let [as-null (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
-        base-queries [{'select ['card_id
-                                [as-null 'dashboard_id]
-                                [as-null 'collection_id]
-                                [as-null 'document_id]
-                                [as-null 'exploration_id]
-                                ['card_id 'item_id]
-                                [(h2x/literal "card") 'type]
-                                'created_at]
-                       'from   ['card_bookmark]
-                       'where  ['= 'user_id user-id]}
-                      {'select [[as-null 'card_id]
-                                'dashboard_id
-                                [as-null 'collection_id]
-                                [as-null 'document_id]
-                                [as-null 'exploration_id]
-                                ['dashboard_id 'item_id]
-                                [(h2x/literal "dashboard") 'type]
-                                'created_at]
-                       'from   ['dashboard_bookmark]
-                       'where  ['= 'user_id user-id]}
-                      {'select [[as-null 'card_id]
-                                [as-null 'dashboard_id]
-                                'collection_id
-                                [as-null 'document_id]
-                                [as-null 'exploration_id]
-                                ['collection_id 'item_id]
-                                [(h2x/literal "collection") 'type]
-                                'created_at]
-                       'from   ['collection_bookmark]
-                       'where ['= 'user_id user-id]}
-                      {'select [[as-null 'card_id]
-                                [as-null 'dashboard_id]
-                                [as-null 'collection_id]
-                                'document_id
-                                [as-null 'exploration_id]
-                                ['document_id 'item_id]
-                                [(h2x/literal "document") 'type]
-                                'created_at]
-                       'from ['document_bookmark]
-                       'where ['= 'user_id user-id]}]]
+        base-queries [^:allow-subquery {'select ['card_id
+                                                 [as-null 'dashboard_id]
+                                                 [as-null 'collection_id]
+                                                 [as-null 'document_id]
+                                                 [as-null 'exploration_id]
+                                                 ['card_id 'item_id]
+                                                 [(h2x/literal "card") 'type]
+                                                 'created_at]
+                                        'from   ['card_bookmark]
+                                        'where  ['= 'user_id user-id]}
+                      ^:allow-subquery {'select [[as-null 'card_id]
+                                                 'dashboard_id
+                                                 [as-null 'collection_id]
+                                                 [as-null 'document_id]
+                                                 [as-null 'exploration_id]
+                                                 ['dashboard_id 'item_id]
+                                                 [(h2x/literal "dashboard") 'type]
+                                                 'created_at]
+                                        'from   ['dashboard_bookmark]
+                                        'where  ['= 'user_id user-id]}
+                      ^:allow-subquery {'select [[as-null 'card_id]
+                                                 [as-null 'dashboard_id]
+                                                 'collection_id
+                                                 [as-null 'document_id]
+                                                 [as-null 'exploration_id]
+                                                 ['collection_id 'item_id]
+                                                 [(h2x/literal "collection") 'type]
+                                                 'created_at]
+                                        'from   ['collection_bookmark]
+                                        'where ['= 'user_id user-id]}
+                      ^:allow-subquery {'select [[as-null 'card_id]
+                                                 [as-null 'dashboard_id]
+                                                 [as-null 'collection_id]
+                                                 'document_id
+                                                 [as-null 'exploration_id]
+                                                 ['document_id 'item_id]
+                                                 [(h2x/literal "document") 'type]
+                                                 'created_at]
+                                        'from ['document_bookmark]
+                                        'where ['= 'user_id user-id]}]]
     {'union-all (conj base-queries
-                      {'select [[as-null 'card_id]
-                                [as-null 'dashboard_id]
-                                [as-null 'collection_id]
-                                [as-null 'document_id]
-                                'exploration_id
-                                ['exploration_id 'item_id]
-                                [(h2x/literal "exploration") 'type]
-                                'created_at]
-                       'from ['exploration_bookmark]
-                       'where ['= 'user_id user-id]})}))
+                      ^:allow-subquery {'select [[as-null 'card_id]
+                                                 [as-null 'dashboard_id]
+                                                 [as-null 'collection_id]
+                                                 [as-null 'document_id]
+                                                 'exploration_id
+                                                 ['exploration_id 'item_id]
+                                                 [(h2x/literal "exploration") 'type]
+                                                 'created_at]
+                                        'from ['exploration_bookmark]
+                                        'where ['= 'user_id user-id]})}))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and

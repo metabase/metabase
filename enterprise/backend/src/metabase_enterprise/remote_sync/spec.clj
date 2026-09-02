@@ -632,12 +632,12 @@
    i.e. unsynced local work (an already-synced entity's removal is a normal reconcile, not data loss).
    `id-col` is the qualified id column of the model's own table (see [[model-id-column]])."
   [model-type id-col]
-  [:not [:exists {'select [1]
-                  'from   ['remote_sync_object]
-                  'where  ['and
-                           ['= 'remote_sync_object.model_type model-type]
-                           ['= 'remote_sync_object.model_id id-col]
-                           ['= 'remote_sync_object.status "synced"]]}]])
+  [:not [:exists ^:allow-subquery {'select [1]
+                                   'from   ['remote_sync_object]
+                                   'where  ['and
+                                            ['= 'remote_sync_object.model_type model-type]
+                                            ['= 'remote_sync_object.model_id id-col]
+                                            ['= 'remote_sync_object.status "synced"]]}]])
 
 (defn check-deletion-conflicts
   "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import

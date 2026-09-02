@@ -158,14 +158,16 @@
 
 (defn- search-doc->select
   [{:keys [id model]}]
-  {'select [[['inline (str id)]] [['inline model]]]})
+  ^:allow-subquery
+  {'select [[^:allow-raw-sql ['inline (str id)]] [^:allow-raw-sql ['inline model]]]})
 
 (defn- search-index-query
   [search-results]
-  {'with     [[['search_index {'columns ['model_id 'model]}]
+  {'with     [[['search_index ^:allow-subquery {'columns ['model_id 'model]}]
                ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
                ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
                ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
+               ^:allow-subquery
                {'union (map search-doc->select search-results)}]]
    'select   [[['cast 'search_index.model_id (if (= :mysql (mdb/db-type))
                                                :unsigned

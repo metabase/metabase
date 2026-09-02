@@ -127,6 +127,7 @@
                                            :boolean]]
   (when (seq user-id-group-id->is-group-manager?)
     {'insert-into [['permissions_group_membership ['group_id 'user_id 'is_group_manager]]
+                   ^:allow-subquery
                    {'select ['g.id 'u.id [(into [:case]
                                                 (mapcat (fn [[[user-id group-id] is-group-manager?]]
                                                           [[[:and

@@ -7,13 +7,13 @@
   "Count all unique normalized domains found in active user emails"
   []
   (:count (t2/query-one {'select [['%count.* 'count]]
-                         'from [[{'select-distinct (condp contains? (db/db-type)
-                                                     #{:postgres}  [[[:split_part :email "@" [:inline 2]]]]
-                                                     #{:h2 :mysql} [[[:substring :email [:locate "@" :email]]]])
-                                  'from ['core_user]
-                                  'where ['and
-                                          ['= 'is_active true]
-                                          ['= 'type "personal"]]} 'distinct_emails]]})))
+                         'from [[^:allow-subquery {'select-distinct (condp contains? (db/db-type)
+                                                                      #{:postgres}  [[[:split_part :email "@" [:inline 2]]]]
+                                                                      #{:h2 :mysql} [[[:substring :email [:locate "@" :email]]]])
+                                                   'from ['core_user]
+                                                   'where ['and
+                                                           ['= 'is_active true]
+                                                           ['= 'type "personal"]]} 'distinct_emails]]})))
 
 (defn external-users-count
   "Number of users with sso-source: JWT as a proxy for tenant users of embedded views"

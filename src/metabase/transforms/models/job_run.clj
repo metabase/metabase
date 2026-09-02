@@ -20,8 +20,9 @@
 
 (defn- latest-runs-query [job-ids]
   {'with [['ranked_runs
+           ^:allow-subquery
            {'select ['*
-                     [['over [['row_number] {'partition-by 'job_id, 'order-by [['start_time 'desc]]}]] 'rn]]
+                     [['over [['row_number] ^:allow-subquery {'partition-by 'job_id, 'order-by [['start_time 'desc]]}]] 'rn]]
             'from ['transform_job_run]
             'where ['in 'job_id job-ids]}]]
    'select ['*]

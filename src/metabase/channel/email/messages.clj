@@ -258,11 +258,11 @@
                                          'from     [['permissions_group_membership 'pgm]]
                                          'join     [['permissions_group 'pg] ['= 'pgm.group_id 'pg.id]]
                                          'where    ['and
-                                                    ['exists {'select [1]
-                                                              'from [['permissions 'p]]
-                                                              'where ['and
-                                                                      ['= 'p.group_id 'pg.id]
-                                                                      ['= 'p.object monitoring]]}]]
+                                                    ['exists ^:allow-subquery {'select [1]
+                                                                               'from [['permissions 'p]]
+                                                                               'where ['and
+                                                                                       ['= 'p.group_id 'pg.id]
+                                                                                       ['= 'p.object monitoring]]}]]
                                          'group-by ['pgm.user_id]}
                                         app-db/query
                                         (mapv :user_id)))

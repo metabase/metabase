@@ -121,17 +121,18 @@
   New rows participate via `metabot_message.user_id`; legacy rows created before
   message authors were stamped fall back to the conversation originator."
   [user-id]
-  (let [participation-exists [:exists {'select [[['inline 1]]]
-                                       'from   [['metabot_message 'participation_message]]
-                                       'where  ['and
-                                                ['= 'participation_message.conversation_id 'c.id]
-                                                ['= 'participation_message.user_id user-id]]}]]
+  (let [participation-exists [:exists ^:allow-subquery {'select [[['inline 1]]]
+                                                        'from   [['metabot_message 'participation_message]]
+                                                        'where  ['and
+                                                                 ['= 'participation_message.conversation_id 'c.id]
+                                                                 ['= 'participation_message.user_id user-id]]}]]
     [:or
      [:= :c.user_id user-id]
      participation-exists]))
 
 (defn- last-live-message-profile-id-subquery
   []
+  ^:allow-subquery
   {'select   ['last_message.profile_id]
    'from     [['metabot_message 'last_message]]
    'where    ['and
@@ -142,6 +143,7 @@
 
 (defn- live-message-count-subquery
   []
+  ^:allow-subquery
   {'select [[['count '*]]]
    'from   [['metabot_message 'counted_message]]
    'where  ['and
@@ -150,6 +152,7 @@
 
 (defn- last-live-message-at-subquery
   []
+  ^:allow-subquery
   {'select [[['max 'recent_message.created_at]]]
    'from   [['metabot_message 'recent_message]]
    'where  ['and

@@ -174,18 +174,20 @@
   e.g. created before that column existed). Uses
   `ROW_NUMBER() OVER (PARTITION BY notification_id ORDER BY started_at DESC)`."
   []
+  ^:allow-subquery
   {'select ['id 'notification_id 'status 'started_at 'ended_at]
-   'from   [[{'select ['id 'notification_id 'status 'started_at 'ended_at
-                       [['over [['row_number]
-                                {'partition-by ['notification_id]
-                                 'order-by     [['started_at 'desc]]}]]
-                        'rn]]
-              'from   ['task_run]
-              'where  ['and
-                       ['= 'run_type run-type-alert]
-                       ['is-not 'notification_id nil]
-                       ['in 'status terminal-statuses]
-                       ['> 'started_at (lookback-cutoff)]]}
+   'from   [[^:allow-subquery {'select ['id 'notification_id 'status 'started_at 'ended_at
+                                        [['over [['row_number]
+                                                 ^:allow-subquery
+                                                 {'partition-by ['notification_id]
+                                                  'order-by     [['started_at 'desc]]}]]
+                                         'rn]]
+                               'from   ['task_run]
+                               'where  ['and
+                                        ['= 'run_type run-type-alert]
+                                        ['is-not 'notification_id nil]
+                                        ['in 'status terminal-statuses]
+                                        ['> 'started_at (lookback-cutoff)]]}
              'sub]]
    'where  ['= 'sub.rn 1]})
 
@@ -202,6 +204,7 @@
     - `:has_failure` — true if any channel-send in the tick failed"
   []
   (let [lookback (lookback-cutoff)]
+    ^:allow-subquery
     {'select ['lr.notification_id
               ['lr.run_id          'id]
               ['lr.tick_started_at 'started_at]
@@ -218,25 +221,26 @@
                 true
                 'else false]
                'has_failure]]
-     'from   [[{'select ['tr2.notification_id
-                         ['tr2.id         'run_id]
-                         ['tr2.started_at 'tick_started_at]
-                         [['over [['row_number]
-                                  {'partition-by ['tr2.notification_id]
-                                   'order-by     [['tr2.started_at 'desc]]}]]
-                          'rn]]
-                'from   [['task_run 'tr2]]
-                'where  ['and
-                         ['= 'tr2.run_type run-type-alert]
-                         ['is-not 'tr2.notification_id nil]
-                         ['in 'tr2.status terminal-statuses]
-                         ['> 'tr2.started_at lookback]
-                         ;; only keep runs that actually had channel-send rows
-                         ['exists {'select [[1]]
-                                   'from   [['task_history 'tx]]
-                                   'where  ['and
-                                            ['= 'tx.run_id 'tr2.id]
-                                            ['= 'tx.task task-channel-send]]}]]}
+     'from   [[^:allow-subquery {'select ['tr2.notification_id
+                                          ['tr2.id         'run_id]
+                                          ['tr2.started_at 'tick_started_at]
+                                          [['over [['row_number]
+                                                   ^:allow-subquery
+                                                   {'partition-by ['tr2.notification_id]
+                                                    'order-by     [['tr2.started_at 'desc]]}]]
+                                           'rn]]
+                                 'from   [['task_run 'tr2]]
+                                 'where  ['and
+                                          ['= 'tr2.run_type run-type-alert]
+                                          ['is-not 'tr2.notification_id nil]
+                                          ['in 'tr2.status terminal-statuses]
+                                          ['> 'tr2.started_at lookback]
+                                          ;; only keep runs that actually had channel-send rows
+                                          ['exists {'select [[1]]
+                                                    'from   [['task_history 'tx]]
+                                                    'where  ['and
+                                                             ['= 'tx.run_id 'tr2.id]
+                                                             ['= 'tx.task task-channel-send]]}]]}
                'lr]]
      'where ['= 'lr.rn 1]}))
 
@@ -259,7 +263,8 @@
   query needs no `DISTINCT`."
   [channels]
   (let [channels (if (sequential? channels) channels [channels])]
-    [:exists
+    [:exists ^:allow-subquery ^:allow-subquery
+     ^:allow-subquery
      {'select [[1]]
       'from   [(t2/table-name :model/NotificationHandler)]
       'where  ['and
@@ -426,19 +431,20 @@
   (when (seq run-ids)
     (->> (t2/select :model/TaskHistory
                     {'select ['run_id 'task_details]
-                     'from   [[{'select ['run_id 'task_details
-                                         [['over [['row_number]
-                                                  {'partition-by ['run_id]
-                                                   'order-by     [[['case
-                                                                    ['= 'task task-notification-send] 0
-                                                                    'else                             1] 'asc]
-                                                                  ['ended_at 'desc]]}]]
-                                          'rn]]
-                                'from   ['task_history]
-                                'where  (cond-> [:and
-                                                 [:in :run_id run-ids]
-                                                 [:in :status ["failed" "abandoned"]]]
-                                          task-name (conj [:= :task task-name]))}
+                     'from   [[^:allow-subquery {'select ['run_id 'task_details
+                                                          [['over [['row_number]
+                                                                   ^:allow-subquery
+                                                                   {'partition-by ['run_id]
+                                                                    'order-by     [[['case
+                                                                                     ['= 'task task-notification-send] 0
+                                                                                     'else                             1] 'asc]
+                                                                                   ['ended_at 'desc]]}]]
+                                                           'rn]]
+                                                 'from   ['task_history]
+                                                 'where  (cond-> [:and
+                                                                  [:in :run_id run-ids]
+                                                                  [:in :status ["failed" "abandoned"]]]
+                                                           task-name (conj [:= :task task-name]))}
                                'sub]]
                      'where  ['= 'sub.rn 1]})
          (into {} (map (juxt :run_id (comp :message :task_details)))))))

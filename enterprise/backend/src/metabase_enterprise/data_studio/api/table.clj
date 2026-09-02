@@ -86,7 +86,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
-  {'select ['id] 'from [(t2/table-name :model/Table)] 'where where})
+  ^:allow-subquery {'select ['id] 'from [(t2/table-name :model/Table)] 'where where})
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.

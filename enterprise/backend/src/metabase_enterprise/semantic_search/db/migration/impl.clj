@@ -68,12 +68,12 @@
                                 'where  (if schema
                                           [:and
                                            [:= :schemaname [:inline schema]]
-                                           [:<> :tablename [:inline "migration"]]]
+                                           [:<> :tablename ^:allow-raw-sql [:inline "migration"]]]
                                           ;; dedicated mode only ever creates tables in the default
                                           ;; schema, so the reset has no business outside it
                                           [:and
-                                           [:= :schemaname [:raw "current_schema()"]]
-                                           [:<> :tablename  [:inline "migration"]]])})
+                                           [:= :schemaname ^:allow-raw-sql [:raw "current_schema()"]]
+                                           [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]])})
                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     ;; the sentinel scan reads every table in scope, not just ours: an app db is recognized by tables we
     ;; would never drop
@@ -239,8 +239,8 @@
              model-id-col       (semantic.util/column-keyword table-name "model_id")
              root-coll-type-col (semantic.util/column-keyword table-name "root_collection_type")
              gate-id            (semantic.util/column-keyword gate-table "id")
-             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") [:inline "root_collection_type"]]
-             composite-gate-id  [:|| model-col [:inline "_"] model-id-col]]
+             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") ^:allow-raw-sql [:inline "root_collection_type"]]
+             composite-gate-id  [:|| model-col ^:allow-raw-sql [:inline "_"] model-id-col]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {'update kw-tbl
@@ -253,7 +253,7 @@
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
            (execute! {'update kw-tbl
-                      'set    {'root_collection_type ['inline root-type]}
+                      'set    {'root_collection_type ^:allow-raw-sql ['inline root-type]}
                       'where  ['and
                                ['= 'root_collection_type nil]
                                ['in 'collection_id (mapv key entries)]]})))))))
@@ -280,7 +280,7 @@
                           {'where ['and
                                    ['= 'active true]
                                    ['or ['= 'is_published true]
-                                    ['= 'data_authority ['inline "authoritative"]]]]}))
+                                    ['= 'data_authority ^:allow-raw-sql ['inline "authoritative"]]]]}))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -321,7 +321,7 @@
   (doseq [chunk (partition-all 5000 model-ids)]
     (execute! {'update kw-tbl
                'set    set-map
-               'where  ['and ['= 'model ['inline model]] ['in 'model_id (vec chunk)]]})))
+               'where  ['and ['= 'model ^:allow-raw-sql ['inline model]] ['in 'model_id (vec chunk)]]})))
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
@@ -354,10 +354,10 @@
              ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
              (execute! {'update kw-tbl
                         'set   {'curated curated-expr}
-                        'where ['and ['= 'curated nil] ['!= 'model ['inline "table"]]]})
+                        'where ['and ['= 'curated nil] ['!= 'model ^:allow-raw-sql ['inline "table"]]]})
              ;; Tables: curated only from the appdb sweep. Authoritative rows also get data_authority.
              (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
-                                            {:data_authority [:inline "authoritative"] :curated true})
+                                            {:data_authority ^:allow-raw-sql [:inline "authoritative"] :curated true})
              (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
              ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
              ;; official dashboards (curated alone would leave them scoring as non-official until reindex).

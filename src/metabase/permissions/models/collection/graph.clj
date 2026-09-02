@@ -84,6 +84,7 @@
           accum
           (t2/reducible-query
            {'with [['eligible_collections
+                    ^:allow-subquery
                     {'select ['id]
                      'from ['collection]
                      'where ['and
@@ -94,13 +95,14 @@
                              ['= 'personal_owner_id nil]
                              (when (seq ids-without-root)
                                [:in :id ids-without-root])
-                             ['not ['exists {'select [1]
-                                             'from [['collection 'pc]]
-                                             'where ['and
-                                                     ['not= 'pc.personal_owner_id nil]
-                                                     ['like 'collection.location
-                                                      ['concat "/" 'pc.id "/%"]]]}]]]}]
+                             ['not ['exists ^:allow-subquery {'select [1]
+                                                              'from [['collection 'pc]]
+                                                              'where ['and
+                                                                      ['not= 'pc.personal_owner_id nil]
+                                                                      ['like 'collection.location
+                                                                       ['concat "/" 'pc.id "/%"]]]}]]]}]
                    ['relevant_permissions
+                    ^:allow-subquery
                     {'select ['group_id 'collection_id 'perm_value]
                      'from ['permissions]
                      'where (into [:and
@@ -111,6 +113,7 @@
             'union-all
             [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
              ;; and :root is not present in that collection
+             ^:allow-subquery
              {'select [['pg.id 'group_id]
                        [nil 'collection_id]
                        [['max ['case ['= 'p.object root-object]
@@ -129,6 +132,7 @@
                              [[:in :pg.id group-ids]]))
               'group-by ['pg.id]}
              ;; Query 2: Regular collection permissions
+             ^:allow-subquery
              {'select [['pg.id 'group_id]
                        ['c.id 'collection_id]
                        [['max ['case ['= 'p.perm_value "read-and-write"]
@@ -145,6 +149,7 @@
               'group-by ['pg.id 'c.id]}
              ;; Query 3: The Administrators group has write access to all collections
              ;; but does not have any explicit permissions.
+             ^:allow-subquery
              {'select [[(u/the-id (perms-group/admin)) 'group_id]
                        ['c.id 'collection_id]
                        [['inline 1] 'writable]
@@ -270,12 +275,12 @@
        [:and
         [:in :id id-set]
         [:or [:not= :personal_owner_id nil]
-         [:exists           {'select [1]
-                             'from [['collection 'pc]]
-                             'where ['and
-                                     ['not= 'pc.personal_owner_id nil]
-                                     ['like 'collection.location
-                                      ['concat "/" 'pc.id "/%"]]]}]]]))))
+         [:exists           ^:allow-subquery {'select [1]
+                                              'from [['collection 'pc]]
+                                              'where ['and
+                                                      ['not= 'pc.personal_owner_id nil]
+                                                      ['like 'collection.location
+                                                       ['concat "/" 'pc.id "/%"]]]}]]]))))
 
 (defn- remove-personal-collections-from-graph
   "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."

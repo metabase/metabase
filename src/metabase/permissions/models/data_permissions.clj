@@ -206,17 +206,17 @@
   for deactivated tables. All caches must select from this same row set so they can never answer the same permission
   question differently — change the row set here, not in one of the queries. `db-ids` of nil means every database."
   [user-id db-ids]
-  {'from [[(t2/table-name :model/PermissionsGroupMembership) 'pgm]]
-   'join [[(t2/table-name :model/PermissionsGroup) 'pg] ['= 'pg.id 'pgm.group_id]
-          [(t2/table-name :model/DataPermissions) 'p] ['= 'p.group_id 'pg.id]]
-   'left-join [[(t2/table-name :model/Table) 'mt] ['= 'mt.id 'p.table_id]]
-   'where ['and
-           ['= 'pgm.user_id user-id]
-           (when (seq db-ids)
-             [:in :p.db_id db-ids])
-           ['or
-            ['= 'p.table_id nil]
-            ['= 'mt.active true]]]})
+  ^:allow-subquery {'from [[(t2/table-name :model/PermissionsGroupMembership) 'pgm]]
+                    'join [[(t2/table-name :model/PermissionsGroup) 'pg] ['= 'pg.id 'pgm.group_id]
+                           [(t2/table-name :model/DataPermissions) 'p] ['= 'p.group_id 'pg.id]]
+                    'left-join [[(t2/table-name :model/Table) 'mt] ['= 'mt.id 'p.table_id]]
+                    'where ['and
+                            ['= 'pgm.user_id user-id]
+                            (when (seq db-ids)
+                              [:in :p.db_id db-ids])
+                            ['or
+                             ['= 'p.table_id nil]
+                             ['= 'mt.active true]]]})
 
 (def ^:private value-rank-case
   "A HoneySQL CASE expression mapping a data_permissions row's (perm_type, perm_value) to the value's rank in its
@@ -1451,11 +1451,11 @@
                                     'where  ['and
                                              ['in 'group_id group-ids]
                                              ['in 'perm_type ["perms/create-queries" "perms/download-results"]]
-                                             ['not ['exists {'select [1]
-                                                             'from   [[(t2/table-name :model/Database) 'audit_db]]
-                                                             'where  ['and
-                                                                      ['= 'audit_db.is_audit true]
-                                                                      ['= 'audit_db.id 'data_permissions.db_id]]}]]]}))
+                                             ['not ['exists ^:allow-subquery {'select [1]
+                                                                              'from   [[(t2/table-name :model/Database) 'audit_db]]
+                                                                              'where  ['and
+                                                                                       ['= 'audit_db.is_audit true]
+                                                                                       ['= 'audit_db.id 'data_permissions.db_id]]}]]]}))
           ;; Group by (group_id, perm_type) → set of values
           perms-by-grp (when all-perms
                          (reduce (fn [acc {:keys [group_id perm_type perm_value]}]

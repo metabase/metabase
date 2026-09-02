@@ -185,11 +185,11 @@
               ['= 'id thread-id]
               ['= 'analysis_started_at nil]
               ['= 'canceled_at nil]
-              ['not-exists {'select [1]
-                            'from   ['exploration_query]
-                            'where  ['and
-                                     ['= 'exploration_thread_id thread-id]
-                                     ['= 'status "pending"]]}]]})))
+              ['not-exists ^:allow-subquery {'select [1]
+                                             'from   ['exploration_query]
+                                             'where  ['and
+                                                      ['= 'exploration_thread_id thread-id]
+                                                      ['= 'status "pending"]]}]]})))
 
 (defn maybe-complete-thread!
   "Invoke after any state transition that could be the last unit of work for `thread-id`

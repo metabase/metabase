@@ -26,7 +26,8 @@
 ;; `[nil :col]` fills in columns a table lacks.
 
 (defn- job-run-subquery [transform-ids]
-  {'select [[['inline "job"] 'run_type]
+  ^:allow-subquery
+  {'select [[^:allow-raw-sql ['inline "job"] 'run_type]
             'id
             ['job_id 'entity_id]
             ['job_name 'entity_name]
@@ -38,34 +39,36 @@
    'from   ['transform_job_run]
    'where  (if (seq transform-ids)
              ;; only job runs that actually ran one of these transforms
-             [:exists {'select [[['inline 1]]]
-                       'from   [['transform_run 'member]]
-                       'where  ['and
-                                ['= 'member.job_run_id 'transform_job_run.id]
-                                ['in 'member.transform_id transform-ids]]}]
+             [:exists ^:allow-subquery {'select [[['inline 1]]]
+                                        'from   [['transform_run 'member]]
+                                        'where  ['and
+                                                 ['= 'member.job_run_id 'transform_job_run.id]
+                                                 ['in 'member.transform_id transform-ids]]}]
              true)})
 
 (defn- dag-run-subquery [transform-ids]
-  {'select [[['inline "dag"] 'run_type]
+  ^:allow-subquery
+  {'select [[^:allow-raw-sql ['inline "dag"] 'run_type]
             'id
             ['source_transform_id 'entity_id]
             ['source_transform_name 'entity_name]
             'direction
             'transform_count
-            [['inline "manual"] 'run_method]
+            [^:allow-raw-sql ['inline "manual"] 'run_method]
             'status 'is_active 'start_time 'end_time 'message
             'user_id]
    'from   ['transform_dag_run]
    'where  (if (seq transform-ids)
-             [:exists {'select [[['inline 1]]]
-                       'from   [['transform_run 'member]]
-                       'where  ['and
-                                ['= 'member.dag_run_id 'transform_dag_run.id]
-                                ['in 'member.transform_id transform-ids]]}]
+             [:exists ^:allow-subquery {'select [[['inline 1]]]
+                                        'from   [['transform_run 'member]]
+                                        'where  ['and
+                                                 ['= 'member.dag_run_id 'transform_dag_run.id]
+                                                 ['in 'member.transform_id transform-ids]]}]
              true)})
 
 (defn- transform-run-subquery [transform-ids]
-  {'select [[['inline "transform"] 'run_type]
+  ^:allow-subquery
+  {'select [[^:allow-raw-sql ['inline "transform"] 'run_type]
             'id
             ['transform_id 'entity_id]
             ['transform_name 'entity_name]
@@ -86,6 +89,7 @@
   narrowed to runs touching one of `transform-ids`."
   [types transform-ids]
   (let [types (set (or (seq types) run-types))]
+    ^:allow-subquery
     {'union-all (cond-> []
                   (:job types)       (conj (job-run-subquery transform-ids))
                   (:dag types)       (conj (dag-run-subquery transform-ids))

@@ -99,37 +99,37 @@
   (let [queries
         (for [{:keys [model model_id config]} cache-configs]
           (let [rerun-cutoff (duration-ago config)]
-            {:nest
-             {'select   [['q.query 'query]
-                         ['qc.query_hash 'cache-hash]
-                         ['qe.card_id 'card-id]
-                         ['qe.dashboard_id 'dashboard-id]
-                         [['count 'q.query_hash] 'count]]
-              'from     [[(t2/table-name :model/Query) 'q]]
-              'join     [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]
-                         [(t2/table-name :model/QueryCache) 'qc] ['= 'qc.query_hash 'qe.cache_hash]]
-              'where    ['and
-                         (case model
-                           "question" [:= :qe.card_id model_id]
-                           "dashboard" [:= :qe.dashboard_id model_id])
-                         ['<= 'qc.updated_at rerun-cutoff]
-                         ;; This is a safety check so that we don't scan all of query_execution -- if a query
-                         ;; has not been executed at all in the last month (including cache hits) we won't bother
-                         ;; refreshing it again.
-                         ['>= 'qe.started_at (duration-ago {:duration 30 :unit "days"})]
-                         ['= 'qe.error nil]
-                         ['= 'qe.is_sandboxed false]
-                         (if parameterized?
-                           [:and
-                            [:= :qe.parameterized true]
-                            ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
-                            [:= :qe.cache_hit true]
-                            ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
-                            [:not= :qe.context (name :cache-refresh)]]
-                           [:= :qe.parameterized false])]
-              'group-by ['q.query_hash 'q.query 'qc.query_hash 'qe.card_id 'qe.dashboard_id]}}))]
+            ^:allow-subquery {:nest
+                              ^:allow-subquery {'select   [['q.query 'query]
+                                                           ['qc.query_hash 'cache-hash]
+                                                           ['qe.card_id 'card-id]
+                                                           ['qe.dashboard_id 'dashboard-id]
+                                                           [['count 'q.query_hash] 'count]]
+                                                'from     [[(t2/table-name :model/Query) 'q]]
+                                                'join     [[(t2/table-name :model/QueryExecution) 'qe] ['= 'qe.hash 'q.query_hash]
+                                                           [(t2/table-name :model/QueryCache) 'qc] ['= 'qc.query_hash 'qe.cache_hash]]
+                                                'where    ['and
+                                                           (case model
+                                                             "question" [:= :qe.card_id model_id]
+                                                             "dashboard" [:= :qe.dashboard_id model_id])
+                                                           ['<= 'qc.updated_at rerun-cutoff]
+                                                           ;; This is a safety check so that we don't scan all of query_execution -- if a query
+                                                           ;; has not been executed at all in the last month (including cache hits) we won't bother
+                                                           ;; refreshing it again.
+                                                           ['>= 'qe.started_at (duration-ago {:duration 30 :unit "days"})]
+                                                           ['= 'qe.error nil]
+                                                           ['= 'qe.is_sandboxed false]
+                                                           (if parameterized?
+                                                             [:and
+                                                              [:= :qe.parameterized true]
+                                                              ;; Only rerun a parameterized query if it's had a cache hit within the last caching window
+                                                              [:= :qe.cache_hit true]
+                                                              ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
+                                                              [:not= :qe.context (name :cache-refresh)]]
+                                                             [:= :qe.parameterized false])]
+                                                'group-by ['q.query_hash 'q.query 'qc.query_hash 'qe.card_id 'qe.dashboard_id]}}))]
     {'select ['u.query 'u.cache-hash 'u.card-id 'u.dashboard-id 'u.count]
-     'from   [[{'union queries} 'u]]}))
+     'from   [[^:allow-subquery {'union queries} 'u]]}))
 
 (defn- select-parameterized-queries
   "Given a list of parameterized query definitions from the Query table with additional :count and :card-id keys,

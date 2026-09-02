@@ -491,28 +491,30 @@
   ;; revisions of its Summary Document. `rn = 1` picks the winner.
   ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
   ;; the attached Document, so "Last edited" must reflect both sources.
+  ^:allow-subquery
   {'select ['exploration_id
             'timestamp
             'user_id
-            [['over [['row_number] {'partition-by ['exploration_id]
-                                    'order-by     [['timestamp 'desc]]}]] 'rn]]
-   'from   [[{'union-all
-              [{'select [['r.model_id 'exploration_id]
-                         ['r.timestamp 'timestamp]
-                         ['r.user_id   'user_id]]
-                'from   [['revision 'r]]
-                'where  ['and
-                         ['= 'r.model (h2x/literal "Exploration")]
-                         ['= 'r.most_recent true]]}
-               {'select [['d.exploration_id 'exploration_id]
-                         ['r.timestamp      'timestamp]
-                         ['r.user_id        'user_id]]
-                'from   [['revision 'r]]
-                'join   [['document 'd] ['= 'd.id 'r.model_id]]
-                'where  ['and
-                         ['= 'r.model (h2x/literal "Document")]
-                         ['= 'r.most_recent true]
-                         ['not= 'd.exploration_id nil]]}]}
+            [['over [['row_number] ^:allow-subquery {'partition-by ['exploration_id]
+                                                     'order-by     [['timestamp 'desc]]}]] 'rn]]
+   'from   [[^:allow-subquery {'union-all
+                               [^:allow-subquery {'select [['r.model_id 'exploration_id]
+                                                           ['r.timestamp 'timestamp]
+                                                           ['r.user_id   'user_id]]
+                                                  'from   [['revision 'r]]
+                                                  'where  ['and
+                                                           ['= 'r.model (h2x/literal "Exploration")]
+                                                           ['= 'r.most_recent true]]}
+                                ^:allow-subquery
+                                {'select [['d.exploration_id 'exploration_id]
+                                          ['r.timestamp      'timestamp]
+                                          ['r.user_id        'user_id]]
+                                 'from   [['revision 'r]]
+                                 'join   [['document 'd] ['= 'd.id 'r.model_id]]
+                                 'where  ['and
+                                          ['= 'r.model (h2x/literal "Document")]
+                                          ['= 'r.most_recent true]
+                                          ['not= 'd.exploration_id nil]]}]}
              'all_edits]]})
 
 (defmethod collection-children-query :exploration
@@ -1211,8 +1213,8 @@
                        :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
         rows-query    (cond-> {'with     [['visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               'select   ['* [['over [['count '*] {} 'total_count]]]]
-                               'from     [[{'union-all queries} 'dummy_alias]]
+                               'select   ['* [['over [['count '*] ^:allow-subquery {} 'total_count]]]]
+                               'from     [[^:allow-subquery {'union-all queries} 'dummy_alias]]
                                'order-by sql-order}
                         search-clause
                         (sql.helpers/where search-clause))

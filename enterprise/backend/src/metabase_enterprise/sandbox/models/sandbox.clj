@@ -158,9 +158,9 @@
   (let [cards (t2/select :model/Card
                          {'select ['c.id 'c.dataset_query 'c.database_id 'c.card_schema]
                           'from   [[(t2/table-name :model/Card) 'c]]
-                          'where  ['exists {'select [[['inline 1]]]
-                                            'from   [[(t2/table-name :model/Sandbox) 's]]
-                                            'where  ['= 's.card_id 'c.id]}]})]
+                          'where  ['exists ^:allow-subquery {'select [[['inline 1]]]
+                                                             'from   [[(t2/table-name :model/Sandbox) 's]]
+                                                             'where  ['= 's.card_id 'c.id]}]})]
     (into (into #{} (map :id) cards)
           (mapcat (fn [{:keys [dataset_query database_id]}]
                     (when (seq dataset_query)

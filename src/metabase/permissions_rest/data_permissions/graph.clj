@@ -233,11 +233,11 @@
                 (when group-id [:= :group_id group-id])
                 (when group-ids [:in :group_id group-ids])
                 (when-not audit? [:not= :db_id audit/audit-db-id])
-                ['not ['exists {'select [1]
-                                'from   [[(t2/table-name :model/Database) 'router_db]]
-                                'where  ['and
-                                         ['not= 'router_db.router_database_id nil]
-                                         ['= 'router_db.id 'db_id]]}]]]
+                ['not ['exists ^:allow-subquery {'select [1]
+                                                 'from   [[(t2/table-name :model/Database) 'router_db]]
+                                                 'where  ['and
+                                                          ['not= 'router_db.router_database_id nil]
+                                                          ['= 'router_db.id 'db_id]]}]]]
      'order-by ['group_id 'db_id]})))
 
 (defn- add-perm

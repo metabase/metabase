@@ -74,7 +74,7 @@
          ;; Use seconds for granularity in the fraction.
          (if (= :mysql db-type)
            [:coalesce
-            [[:timestampdiff [:raw "SECOND"] from-column to-column]]
+            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
            [[::h2x/extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]
@@ -91,6 +91,7 @@
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
   (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+    ^:allow-subquery
     {'select [[['case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
                 ['= 'search_index.model "transform"]

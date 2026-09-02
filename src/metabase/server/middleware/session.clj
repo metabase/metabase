@@ -132,13 +132,13 @@
                                     [:or [:= :tenant.id nil] :tenant.is_active]
                                     [:= :tenant.id nil])
                                   [:= :user.is_active true]
-                                  [:= :session.key_hashed [:raw "?"]]
+                                  [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
                                   [:or [:= :session.expires_at nil]
                                    [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
-                                                                 :full-app-embed [:raw "?"])]]
+                                                                 :full-app-embed ^:allow-raw-sql [:raw "?"])]]
                                  (when session-timeout-seconds
                                    [[:> [:coalesce :session.last_active_at :session.created_at]
                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
@@ -168,7 +168,7 @@
                 'left-join [['core_user 'user] ['= 'api_key.user_id 'user.id]]
                 'where     ['and
                             ['= 'user.is_active true]
-                            ['= 'api_key.key_prefix ['raw "?"]]]
+                            ['= 'api_key.key_prefix ^:allow-raw-sql ['raw "?"]]]
                 'limit     ['inline 1]}
          enable-advanced-permissions?
          (->
@@ -193,7 +193,7 @@
                 'from      [['core_user 'user]]
                 'where     ['and
                             ['= 'user.is_active true]
-                            ['= 'user.id ['raw "?"]]]
+                            ['= 'user.id ^:allow-raw-sql ['raw "?"]]]
                 'limit     ['inline 1]}
          enable-advanced-permissions?
          (->

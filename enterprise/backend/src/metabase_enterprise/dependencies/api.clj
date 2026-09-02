@@ -220,19 +220,20 @@
                      (when api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {'select ['id] 'from [table-name]}]])
+                        [:in entity-id-field ^:allow-subquery {'select ['id] 'from [table-name]}]])
 
                      :model/Transform
                      (cond
                        api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {'select ['id] 'from [table-name]}]]
+                        [:in entity-id-field ^:allow-subquery {'select ['id] 'from [table-name]}]]
 
                        api/*is-data-analyst?*
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field
+                         ^:allow-subquery
                          {'select ['id]
                           'from   [table-name]
                           'where  ['in 'source_database_id
@@ -252,6 +253,7 @@
                          [:and
                           [:= entity-type-field (name entity-type)]
                           [:in entity-id-field
+                           ^:allow-subquery
                            {'select ['id]
                             'from   [table-name]
                             'where  ['and
@@ -273,6 +275,7 @@
                      [:and
                       [:= entity-type-field (name entity-type)]
                       [:in entity-id-field
+                       ^:allow-subquery
                        {'select ['id]
                         'from   [table-name]
                         'where  ['in id-column
@@ -290,11 +293,13 @@
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field
+                         ^:allow-subquery
                          {'select ['id]
                           'from   [table-name]
                           'where  ['and
                                    ;; Check that user can see the table this entity belongs to
                                    ['in table-id-column
+                                    ^:allow-subquery
                                     {'select ['metabase_table.id]
                                      'from   ['metabase_table]
                                      ;; using this clause because we had to change the mi/visible-filter-clause
@@ -329,6 +334,7 @@
                 [:and
                  [:= entity-type-field (name entity-type)]
                  [:in entity-id-field
+                  ^:allow-subquery
                   {'select ['analyzed_entity_id]
                    'from ['analysis_finding]
                    'where ['and
@@ -760,25 +766,25 @@
   (case sort-column
     :location {:sort-column location-column
                :sort-joins (location-joins-for-entity entity-type)}
-    :dependents-errors {:sort-column                         {'select [[['count ['distinct (if (= :mysql (mdb/db-type))
-                                                                                             [:concat :error_type "-" [:coalesce :error_detail ""]]
-                                                                                             [:composite :error_type :error_detail])]]]]
-                                                              'from ['analysis_finding_error]
-                                                              'where ['and
-                                                                      ['= 'source_entity_id 'entity.id]
-                                                                      ['= 'source_entity_type (name entity-type)]
-                                                                      (visible-entities-filter-clause
-                                                                       :analyzed_entity_type :analyzed_entity_id)]}
+    :dependents-errors {:sort-column                         ^:allow-subquery {'select [[['count ['distinct (if (= :mysql (mdb/db-type))
+                                                                                                              [:concat :error_type "-" [:coalesce :error_detail ""]]
+                                                                                                              [:composite :error_type :error_detail])]]]]
+                                                                               'from ['analysis_finding_error]
+                                                                               'where ['and
+                                                                                       ['= 'source_entity_id 'entity.id]
+                                                                                       ['= 'source_entity_type (name entity-type)]
+                                                                                       (visible-entities-filter-clause
+                                                                                        :analyzed_entity_type :analyzed_entity_id)]}
                         :sort-joins #{}}
-    :dependents-with-errors {:sort-column                              {'select [[['count ['distinct (if (= :mysql (mdb/db-type))
-                                                                                                       [:concat :analyzed_entity_id "-" :analyzed_entity_type]
-                                                                                                       [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
-                                                                        'from ['analysis_finding_error]
-                                                                        'where ['and
-                                                                                ['= 'source_entity_id 'entity.id]
-                                                                                ['= 'source_entity_type (name entity-type)]
-                                                                                (visible-entities-filter-clause
-                                                                                 :analyzed_entity_type :analyzed_entity_id)]}
+    :dependents-with-errors {:sort-column                              ^:allow-subquery {'select [[['count ['distinct (if (= :mysql (mdb/db-type))
+                                                                                                                        [:concat :analyzed_entity_id "-" :analyzed_entity_type]
+                                                                                                                        [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
+                                                                                         'from ['analysis_finding_error]
+                                                                                         'where ['and
+                                                                                                 ['= 'source_entity_id 'entity.id]
+                                                                                                 ['= 'source_entity_type (name entity-type)]
+                                                                                                 (visible-entities-filter-clause
+                                                                                                  :analyzed_entity_type :analyzed_entity_id)]}
                              :sort-joins #{}}
     {:sort-column name-column
      :sort-joins #{}}))
@@ -802,9 +808,10 @@
                                                        (when (= query-type :breaking)
                                                          {:include-archived-items :all}))
         all-required-joins (set/union filter-joins sort-joins)
-        select-clause [[[:inline (name entity-type)] :entity_type]
+        select-clause [[^:allow-raw-sql [:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
                        [sort-column :sort_key]]]
+    ^:allow-subquery
     {(if (= query-type :breaking) :select-distinct :select) select-clause
      :from [[table-name :entity]]
      :left-join (build-left-joins join all-required-joins)
@@ -873,7 +880,7 @@
                                                      :include-personal-collections include-personal-collections
                                                      :sort-column sort-column})
                            selected-types)
-        union-query {'union-all union-queries}
+        union-query ^:allow-subquery {'union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
                                       :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                                       :offset offset
@@ -930,7 +937,7 @@
                                                      :include-personal-collections include-personal-collections
                                                      :sort-column sort-column})
                            selected-types)
-        union-query {'union-all union-queries}
+        union-query ^:allow-subquery {'union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
                                       :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                                       :offset offset

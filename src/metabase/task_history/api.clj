@@ -224,9 +224,9 @@
 
       :task_count
       {'select    ['task_run.*]
-       'left-join [[{'select   ['run_id [['count '*] 'task_count]]
-                     'from     ['task_history]
-                     'group-by ['run_id]}
+       'left-join [[^:allow-subquery {'select   ['run_id [['count '*] 'task_count]]
+                                      'from     ['task_history]
+                                      'group-by ['run_id]}
                     'sort_tc]
                    ['= 'sort_tc.run_id 'task_run.id]]
        'order-by  [[['coalesce 'sort_tc.task_count ['inline 0]] dir] secondary]}

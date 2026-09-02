@@ -78,7 +78,7 @@
              'left-join [[(keyword metadata-table-name) 'meta]
                          ['= 'meta.table_name stored-name]]
              'where ['and
-                     ['like 't.table_name ['inline like-pattern]]
+                     ['like 't.table_name ^:allow-raw-sql ['inline like-pattern]]
                      ['= 'meta.table_name nil]
                      ['= 't.table_type ['inline "BASE TABLE"]]
                      ['= 't.table_schema (if schema
@@ -112,7 +112,7 @@
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
         repair-tables-sql (-> {'select ['t.table_name]
                                'from [['information_schema.tables 't]]
-                               'where (scope-where-to-schema [:and [:like :t.table_name [:inline "repair_%"]]] schema)}
+                               'where (scope-where-to-schema [:and [:like :t.table_name ^:allow-raw-sql [:inline "repair_%"]]] schema)}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))

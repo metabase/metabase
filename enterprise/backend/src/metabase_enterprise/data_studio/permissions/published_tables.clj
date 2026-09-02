@@ -55,6 +55,7 @@
   :feature :library
   [table-id-column {:keys [user-id is-superuser?]}]
   [:in table-id-column
+   ^:allow-subquery
    {'select ['id]
     'from   ['metabase_table]
     'where  ['and
@@ -75,6 +76,7 @@
   :feature :library
   [{:keys [user-id is-superuser?]} perm-types active-only?]
   (when (contains? (set perm-types) :perms/create-queries)
+    ^:allow-subquery
     {'select [['mt.id 'id]
               [(h2x/literal :perms/create-queries) 'perm_type]
               [(h2x/literal :query-builder) 'perm_value]]
