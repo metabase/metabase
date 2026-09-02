@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 
 import { skipToken, useListTimelinesQuery } from "metabase/api";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TimelineEvent } from "metabase-types/api";
 
@@ -18,6 +23,9 @@ interface UseTimelineEventsResult {
 // stable reference to avoid triggering re-renders
 const EMPTY_EVENTS: TimelineEvent[] = [];
 
+const canLoadTimelineEvents = () =>
+  !isPublicEmbedding() && !isStaticEmbedding() && !isEmbeddingSdk();
+
 export function useTimelineEvents({
   timelineEvents: timelineEventsProp,
   settings,
@@ -28,6 +36,7 @@ export function useTimelineEvents({
 
   const shouldFetch =
     !timelineEventsProp &&
+    canLoadTimelineEvents() &&
     selectedTimelineIds != null &&
     selectedTimelineIds.length > 0;
 
@@ -48,7 +57,7 @@ export function useTimelineEvents({
       return timelineEventsProp;
     }
 
-    if (!selectedTimelineIds || selectedTimelineIds.length === 0) {
+    if (!shouldFetch) {
       return EMPTY_EVENTS;
     }
 
@@ -65,6 +74,7 @@ export function useTimelineEvents({
     });
   }, [
     timelineEventsProp,
+    shouldFetch,
     timelines,
     selectedTimelineIds,
     excludedTimelineEventIds,
