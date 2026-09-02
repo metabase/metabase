@@ -264,7 +264,8 @@
 
     ;; => true"
   [query join-type table]
-  (->> (get query join-type) (partition 2) (map first) (some #(and (ident? %) (= (name %) (name table)))) boolean))
+  (->> (or (get query join-type) (get query (symbol (name join-type))))
+       (partition 2) (map first) (some #(and (ident? %) (= (name %) (name table)))) boolean))
 
 ;; We won't need this post-legacy as it defines the joins à la carte.
 (defn- search-model->revision-model [model]

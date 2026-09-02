@@ -183,7 +183,7 @@
 (deftest date-range-filter-clause-test
   (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
     (are [created-at expected-where]
-         (= expected-where (#'search.filter/date-range-filter-clause :card.created_at created-at))
+         (= expected-where (#'search.filter/date-range-filter-clause 'card.created_at created-at))
       ;; absolute datetime
       "Q1-2023"                                 ['and ['>= ['cast 'card.created_at 'date] #t "2023-01-01"]
                                                  ['< ['cast 'card.created_at 'date]  #t "2023-04-01"]]

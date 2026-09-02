@@ -153,7 +153,7 @@
                 ['in 'search_index.model_id ["1" "2" "3" "4"]]
                 ['< ['cast 'search_index.last_edited_at 'date] #t "2024-10-03"]
                 ['>= ['cast 'search_index.model_created_at 'date] #t "2024-10-01"]
-                'and
+                :and
                 ['= 'search_index.database_id 231]
                 ['in 'search_index.display_type ["line"]]
                 ['>= ['cast 'search_index.last_edited_at 'date] #t "2024-10-02"]}}
