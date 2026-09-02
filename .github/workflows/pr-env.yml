@@ -1,27 +1,26 @@
-name: CI for PR Review ENV
+name: Deploy PR Environment
 run-name: Building Dynamic PR Environment for ${{ github.ref_name }} by @${{ github.actor }}
 
 on:
-  workflow_call:
-    inputs:
-      self_hosting:
-        description: "Deploy self-hosting stack"
-        required: false
-        type: boolean
-        default: false
-      analytics_dev_mode:
-        description: "Enable analytics development mode"
-        required: false
-        type: boolean
-        default: false
-      stats_dump:
-        description: "Load a recent app DB stats dump on first env creation"
-        required: false
-        type: boolean
-        default: false
+  pull_request:
+    types: [ labeled, synchronize, reopened ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    if: github.event.pull_request.head.repo.full_name == 'metabase/metabase'
+    if: >-
+      ${{
+        github.event.pull_request.head.repo.full_name == 'metabase/metabase' && 
+        (
+          github.event.label.name == 'PR-Env' || 
+          github.event.label.name == 'PR-Env-self-hosting' || 
+          github.event.label.name == 'PR-Env-analytics-dev' || 
+          github.event.label.name == 'PR-Env-Stats-Dump'
+        )
+      }}
     uses: ./.github/workflows/uberjar.yml
     with:
       containerize: true
@@ -37,6 +36,11 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
+      - name: Resolve Labels
+        if: ${{ github.event_name == 'pull_request' }}
+        id: label
+        run: |
+          # TODO: iterate through list of labels add set self_hosting, analytics_dev_mode and stats_dump
       - name: Tailscale
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
         with:
