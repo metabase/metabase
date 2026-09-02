@@ -18,6 +18,7 @@
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.settings :as mdb.settings]
    [metabase.app-db.transient-error :as transient-error]
    [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
@@ -567,21 +568,30 @@
       (list `with-temp-env-var-value! '[a])
       (list `with-temp-env-var-value! '[a b c]))))
 
+(defn- raw-setting
+  "The `setting` row for `setting-k` as it sits in the table, or nil."
+  [setting-k]
+  (t2/select-one [:setting :value :details] :key setting-k))
+
 (defn- upsert-raw-setting!
-  [original-value setting-k value]
+  "Write `value` for `setting-k` straight into the table, bypassing the model and so any setter: `value` bare, and
+  `details` the way the model stores it, so the app reads the value back. A nil `value` removes the row."
+  [original setting-k value]
   (if (some? value)
-    (if original-value
-      (t2/update! :model/Setting setting-k {:value value})
-      (t2/insert! :model/Setting :key setting-k :value value))
-    (when original-value
-      (t2/delete! :model/Setting :key setting-k)))
+    (let [row {:value value, :details (mdb.settings/wrap-value-maybe-encrypt setting-k value)}]
+      (if original
+        (t2/update! :setting :key setting-k row)
+        (t2/insert! :setting (assoc row :key setting-k))))
+    (when original
+      (t2/delete! :setting :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
-  [original-value setting-k]
-  (if original-value
-    (t2/update! :model/Setting setting-k {:value original-value})
-    (t2/delete! :model/Setting :key setting-k))
+  "Put back the row [[raw-setting]] found, byte for byte, or remove the one written over nothing."
+  [original setting-k]
+  (if original
+    (t2/update! :setting :key setting-k original)
+    (t2/delete! :setting :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value!
@@ -610,7 +620,7 @@
     (if (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
-                             (t2/select-one-fn :value :model/Setting :key setting-k)
+                             (raw-setting setting-k)
                              (if skip-init?
                                (setting/read-setting setting-k)
                                (setting/get setting-k)))]

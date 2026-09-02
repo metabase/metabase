@@ -102,7 +102,6 @@
   get-raw-value
   get-raw-value-source
   log-deprecated-env-var-usage!
-  migrate-settings!
   get-value-of-type
   has-advanced-setting-access?
   obfuscate-value

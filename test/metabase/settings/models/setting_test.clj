@@ -7,10 +7,11 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.settings :as mdb.settings]
+   [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.config.core :as config]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
-   [metabase.settings.util :as settings.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -24,6 +25,10 @@
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
+
+;; side-effect require: registers the DML build guard exercised by
+;; [[migrate-settings!-repairs-past-the-read-only-mode-guard-test]]
+(comment cloud-migration/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -624,7 +629,7 @@
 (defn- wrap-setting-value
   "The JSON envelope a Setting row stores `value` in, before any encryption is applied to it."
   [setting-key value]
-  (settings.util/wrap-value (name setting-key) value))
+  (mdb.settings/wrap-value (name setting-key) value))
 
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
@@ -663,7 +668,7 @@
         (is (= "toucan-name" (:setting-key (ex-data e))))))))
 
 (deftest setting-value-envelope-test
-  (let [wrap settings.util/wrap-value
+  (let [wrap mdb.settings/wrap-value
         read #'setting/read-setting-value]
     (encryption-test/with-secret-key nil
       (testing "a value round trips through the envelope its details hold"
@@ -672,6 +677,10 @@
       (testing "the envelope carries the key it was written against"
         (is (= "{\"setting-key\":\"test-setting-1\",\"setting-value\":\"Sad Can\"}"
                (wrap "test-setting-1" "Sad Can"))))
+      (testing "only a string goes in -- a number would come back out as one, into a getter expecting text"
+        (is (thrown? clojure.lang.ExceptionInfo (wrap "test-setting-1" 5))))
+      (testing "only a string goes in -- a number would come back out as one, into a getter expecting text"
+        (is (thrown? clojure.lang.ExceptionInfo (wrap "test-setting-1" 5))))
       (testing "a value moved to another setting's row is rejected"
         (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                       #"Setting \"test-setting-2\" is stored under the key \"test-setting-1\""
@@ -1826,7 +1835,7 @@
         ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
         (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
                               {:key "test-never-encrypted-setting", :value "foobar"}])
-        (setting/migrate-settings!)
+        (mdb.settings/migrate-settings!)
         (testing "an encrypted row's details are the envelope, encrypted the same way"
           (is (= (wrap-setting-value :toucan-name "Lenny")
                  (encryption/decrypt (raw-setting-details :toucan-name)))))
@@ -1839,11 +1848,11 @@
         (testing "details that already agree with `value` are left byte-identical"
           (toucan-name! "Sad Can")
           (let [before (raw-setting-details :toucan-name)]
-            (setting/migrate-settings!)
+            (mdb.settings/migrate-settings!)
             (is (= before (raw-setting-details :toucan-name)))))
         (testing "details holding a value an older version has since changed are rebuilt from `value`"
           (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
-          (setting/migrate-settings!)
+          (mdb.settings/migrate-settings!)
           (is (= (wrap-setting-value :toucan-name "Bird Can")
                  (encryption/decrypt (raw-setting-details :toucan-name))))
           ;; the repair runs before the cache is populated at startup; here it is already warm
@@ -1854,9 +1863,26 @@
                         (encryption/encrypt (wrap-setting-value :toucan-name "Old Can")))]
             (t2/update! :setting :key "toucan-name" {:value   (encryption/encrypt "Lenny")
                                                      :details stale})
-            (setting/migrate-settings!)
+            (mdb.settings/migrate-settings!)
             (is (= (wrap-setting-value :toucan-name "Lenny")
                    (encryption/decrypt (raw-setting-details :toucan-name))))))))))
+
+(deftest migrate-settings!-repairs-past-the-read-only-mode-guard-test
+  ;; The cloud-migration guard on Toucan DML (registered when `metabase.cloud-migration.models.cloud-migration`
+  ;; loads -- required above so this holds in a targeted run too) reads `read-only-mode` through the model before
+  ;; every update. The repair's writes must not go through it: the row it reads may be one of those being repaired,
+  ;; and the model's read of it is strict.
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+      (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
+        (t2/insert! :setting {:key     "read-only-mode"
+                              :value   "false"
+                              :details (encryption/encrypt old-key (wrap-setting-value :read-only-mode "false"))})
+        (mdb.settings/migrate-settings!)
+        (is (= (wrap-setting-value :read-only-mode "false")
+               (encryption/decrypt (raw-setting-details :read-only-mode))))))))
 
 (deftest setter-none-does-not-imply-encryption-test
   (testing "`:setter :none` does not imply encryption -- it is decided by type or stated explicitly, like any setting"

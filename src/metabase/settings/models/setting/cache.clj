@@ -5,10 +5,8 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.settings.util :as settings.util]
+   [metabase.app-db.settings :as mdb.settings]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -70,23 +68,14 @@
   "Internal key used to store the last updated timestamp for Settings."
   "settings-last-updated")
 
-(defn- db-timestamp
-  "The application DB's own current timestamp, as the string `settings-last-updated` records it as. Read from the DB
-  rather than from this machine's clock because instances compare these timestamps to each other."
-  ^String []
-  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
-                                                       (h2x/current-datetime-honeysql-form (mdb/db-type)))]
-    (-> (t2/query-one {:select [[current-timestamp-as-string-honeysql :timestamp]]}) :timestamp)))
-
 (defn update-settings-last-updated!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
   ;; `details` compares in SQL. `details` is enveloped and encrypted like any other setting's.
-  (let [now      (db-timestamp)
-        envelope (encryption/maybe-encrypt (settings.util/wrap-value settings-last-updated-key now))]
+  (let [now      (mdb/current-timestamp-string (mdb/db-type))
+        envelope (mdb.settings/wrap-value-maybe-encrypt settings-last-updated-key now)]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value now, :details envelope}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both

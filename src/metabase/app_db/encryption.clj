@@ -1,9 +1,9 @@
 (ns metabase.app-db.encryption
   (:require
-   [metabase.settings.util :as settings.util]
+   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.settings :as mdb.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -99,7 +99,7 @@
                    :invalid))
         ;; `details` holds the sentinel in the same envelope as any other setting; `value` holds it bare
         from-details (when (some? details)
-                       (status details #(settings.util/unwrap-value encryption-check-key %)))]
+                       (status details #(mdb.settings/unwrap-value encryption-check-key %)))]
     ;; A version predating `details` rewrites the sentinel through `value` alone, so `details` can be stale next to a
     ;; `value` that is right: an unreadable `details` defers to `value` rather than refusing to boot.
     (if (or (nil? from-details) (= :invalid from-details))
@@ -177,7 +177,7 @@
     (t2/delete! :conn conn :setting :key encryption-check-key)
     (t2/insert! :conn conn :setting {:key     encryption-check-key
                                      :value   (encrypt sentinel)
-                                     :details (settings.util/details encryption-check-key sentinel encrypt)})))
+                                     :details (encrypt (mdb.settings/wrap-value encryption-check-key sentinel))})))
 
 (defn- write-encryption-check!
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
@@ -335,14 +335,6 @@
                   (t2/update! :conn conn table {key-column id} {column (encryption/encrypt value)})))
               (t2/reducible-select [table [key-column :id] [column :value]] {:where [:!= column nil]}))))))
 
-(defn- db-timestamp
-  "The application DB's own current timestamp, as the string `settings-last-updated` records it as."
-  ^String [db-type]
-  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [cast-form (h2x/cast (if (= db-type :mysql) :char :text)
-                            (h2x/current-datetime-honeysql-form db-type))]
-    (-> (t2/query-one {:select [[cast-form :timestamp]]}) :timestamp)))
-
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
 
@@ -368,10 +360,10 @@
       ;; predating that column reads, so a rollback must not land on ciphertext under the old key.
       (doseq [{:keys [key value]} (t2/select :setting)]
         (case key
-          "settings-last-updated" (let [now (db-timestamp db-type)]
+          "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
                                     (t2/update! :conn conn :setting {:key key}
                                                 {:value   now
-                                                 :details (settings.util/details key now encrypt-str-fn)}))
+                                                 :details (encrypt-str-fn (mdb.settings/wrap-value key now))}))
           "encryption-check" nil
           (when (seq value)
             (t2/update! :conn conn :setting {:key key}

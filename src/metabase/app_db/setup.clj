@@ -17,6 +17,7 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.settings :as mdb.settings]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.honey-sql-2]
@@ -243,20 +244,15 @@
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (defn- migrate-settings!
-  "Fill in `setting.details` from the legacy `value` column beside it, in the states where every row can be read --
-  see [[metabase.settings.core/migrate-settings!]]. A caller that skips [[mdb.encryption/check-encryption]]
-  (`enable-encryption`, `copy!`) can get here with a database whose rows the key in hand cannot decrypt, and a repair
-  run then would wrap ciphertext as if it were a value, so those states are left for the caller to sort out.
-
-  Here, rather than at application startup, because every entry point that migrates the app DB comes through this
-  function and several never reach `metabase.core.core/init!` -- `migrate up`, the serialization commands,
-  `reset-password`, the encryption commands -- and a JVM that skipped the repair would read every setting as nil.
-  Resolved at call time as [[metabase.settings.models.setting]] does for this namespace's own `db-is-set-up?`: the
-  Setting model is built on top of this one (setting -> setting.cache -> app-db.core -> app-db.setup), so requiring
-  it here is a cycle."
+  "Run [[mdb.settings/migrate-settings!]] once the migrations have, in an encryption state where every row of the
+  database can be read: a caller that skips [[mdb.encryption/check-encryption]] (`enable-encryption`, `copy!`) can get
+  here with rows the key in hand cannot decrypt, and those are left for it to sort out. Here rather than at
+  application startup because every entry point that migrates the app DB comes through [[setup-db!]], and several
+  never reach `metabase.core.core/init!` -- `migrate up`, the serialization commands, `reset-password`, the
+  encryption commands -- and a JVM that skipped the repair would read every setting as nil."
   [db-state]
   (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
-    ((requiring-resolve 'metabase.settings.core/migrate-settings!))))
+    (mdb.settings/migrate-settings!)))
 
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;

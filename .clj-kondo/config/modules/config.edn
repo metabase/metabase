@@ -349,13 +349,13 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.settings
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader
            config
            connection-pool
-           settings
            task
            util}
    :model-imports #{:model/Field :model/QueryCache}}
@@ -2235,7 +2235,7 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.core metabase.settings.init metabase.settings.util}
+   :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
            config
