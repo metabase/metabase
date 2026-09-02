@@ -271,7 +271,10 @@
         ;; incompatibility check below, so it must not be widened into this one.
         type-omitted?   (and (empty? types) (not (true? recent)))
         effective-types (if type-omitted? engine-searchable-types types)
-        narrowed        (atom [])] ; [{:excluded #{...} :disclosure "..."}], one entry per narrowing filter
+        ;; [{:excluded #{...} :label "..." :because "..."}], one entry per narrowing filter. The
+        ;; message is built after the fold, from the final narrowed set — a message built here would
+        ;; name this filter's own subtraction and so advertise types a sibling filter also removed.
+        narrowed        (atom [])]
     (when (and (contains? types "snippet") (next types))
       (common/throw-teaching-error
        (format (str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the "
@@ -286,10 +289,9 @@
       (when-let [bad (seq (sort (remove created-by-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
-                 {:excluded   (set bad)
-                  :disclosure (format "created_by narrowed the search to %s — %s don't index a creator."
-                                      (str/join ", " (sort (set/difference effective-types (set bad))))
-                                      (str/join ", " bad))})
+                 {:excluded (set bad)
+                  :label    "created_by"
+                  :because  "don't index a creator"})
           (common/throw-teaching-error
            (format (str "created_by only applies to types that index a creator: %s. "
                         "Remove %s from type or drop created_by.")
@@ -299,10 +301,9 @@
       (when-let [bad (seq (sort (filter collectionless-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
-                 {:excluded   (set bad)
-                  :disclosure (format "collection_id narrowed the search to %s — %s don't live in collections."
-                                      (str/join ", " (sort (set/difference effective-types (set bad))))
-                                      (str/join ", " bad))})
+                 {:excluded (set bad)
+                  :label    "collection_id"
+                  :because  "don't live in collections"})
           (common/throw-teaching-error
            (format (str "collection_id cannot filter %s — these types don't live in collections. "
                         "Remove them from type or drop collection_id.")
@@ -321,10 +322,9 @@
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
-                 {:excluded   (set bad)
-                  :disclosure (format "archived: true narrowed the search to %s — %s have no archived state."
-                                      (str/join ", " (sort (set/difference effective-types (set bad))))
-                                      (str/join ", " bad))})
+                 {:excluded (set bad)
+                  :label    "archived: true"
+                  :because  "have no archived state"})
           (common/throw-teaching-error
            (format (str "archived: true cannot filter %s — these types have no archived state. "
                         "Remove them from type or drop archived.")
@@ -339,8 +339,13 @@
         (common/throw-teaching-error
          "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
     (if (seq @narrowed)
-      {:types       (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
-       :disclosures (mapv :disclosure @narrowed)}
+      (let [final-types (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
+            type-list   (str/join ", " final-types)]
+        {:types       final-types
+         :disclosures (mapv (fn [{:keys [excluded label because]}]
+                              (format "%s narrowed the search to %s — %s %s."
+                                      label type-list (str/join ", " (sort excluded)) because))
+                            @narrowed)})
       {:types nil :disclosures []})))
 
 (defn- resolve-collection-filter

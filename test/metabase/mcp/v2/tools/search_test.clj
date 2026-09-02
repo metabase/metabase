@@ -222,6 +222,25 @@
       (is (= 400 (:status-code (ex-data (try (validate-filters! {:created_by "me" :type ["database"]})
                                              (catch clojure.lang.ExceptionInfo e e)))))))))
 
+(deftest multi-filter-disclosures-name-the-final-type-set-test
+  (testing "GHY-4137/P5: when two filters each narrow an omitted type, every disclosure must name
+            the search's FINAL type set. Each message used to be built from the full engine surface
+            minus only its own exclusions, so a later disclosure advertised types an earlier filter
+            had already removed — telling the model the search covered ground it did not."
+    (let [{:keys [types disclosures]} (validate-filters! {:created_by "me" :archived true})
+          final-types "action, dashboard, document, measure, metric, model, question"]
+      (is (= ["action" "dashboard" "document" "measure" "metric" "model" "question"] types)
+          "sanity: both filters narrow, so this exercises the multi-narrowing path")
+      (is (= 2 (count disclosures)))
+      (testing "every disclosure names exactly the final set, not its own private subtraction"
+        (doseq [d disclosures]
+          (is (= final-types (second (re-find #"narrowed the search to (.+?) —" d))) d)))
+      (testing "each disclosure still explains why its own filter excluded what it did"
+        (is (some #(re-find #"collection, database, segment, table, transform don't index a creator" %)
+                  disclosures))
+        (is (some #(re-find #"database, table, transform have no archived state" %)
+                  disclosures))))))
+
 (deftest snippet-rows-does-not-load-content-test
   (testing "GHY-4137: snippet-rows must not pull the SQL body (:content) into the heap — it needs
             only id/name/description for output and :collection_id for the can-read? check"
