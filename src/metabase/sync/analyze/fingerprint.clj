@@ -183,7 +183,7 @@
   false)
 
 (mu/defn- honeysql-for-fields-that-need-fingerprint-updating :- [:map
-                                                                 [:where :any]]
+                                                                 ['where :any]]
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
    {'where (cond-> fields-to-fingerprint-base-clause
