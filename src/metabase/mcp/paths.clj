@@ -39,9 +39,11 @@
     v2-path})
 
 (def v2-surface-scopes
-  "Every OAuth scope the v2 MCP surface accepts.
+  "Every OAuth scope the v2 MCP surface accepts, as an ordered vector — unlike [[endpoint-paths]] above, which
+   is a set. The order is the order the 401 challenge lists them in, and `contains?` on this would test an
+   index rather than a scope.
 
-   Three things must agree on this set, and they are reached from different places, which is why it lives in
+   Three things must agree on these, and they are reached from different places, which is why they live in
    this leaf rather than beside any one of them:
 
    - the 401 `WWW-Authenticate` challenge, which tells an uninstructed client what to ask for
@@ -56,7 +58,7 @@
 
    Spelled as literals rather than read from `metabot.scope` because requiring that namespace here would close
    the load cycle described above; `v2-surface-scopes-match-metabot-scope-test` is what keeps them in step.
-   Scopes are never renamed — issued tokens carry literal strings — so this set only ever grows."
+   Scopes are never renamed — issued tokens carry literal strings — so this only ever grows."
   ["agent:content:read"
    "agent:content:write"
    "agent:query:run"

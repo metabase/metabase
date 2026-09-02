@@ -27,6 +27,7 @@
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.premium-features.core :as premium-features]
    [metabase.pulse.api :as pulse.api]
    [metabase.pulse.core :as pulse]
    [metabase.util :as u]
@@ -178,8 +179,18 @@
 (defn- resolve-parameters
   "Validate that every `{id, value}` names a parameter the dashboard actually has. A subscription
    stores only the id and value; the dashboard's own definition of the parameter is merged in at
-   send time, so an id that matches nothing is stored and then silently ignored."
+   send time, so an id that matches nothing is stored and then silently ignored.
+
+   Refused outright without the `dashboard-subscription-filters` feature: the send-time merge is the
+   EE half of `notification.payload.impl.dashboard/the-parameters`, and the OSS one returns the
+   dashboard's own parameters untouched. Storing the pairs there would report a filtered subscription
+   that delivers unfiltered."
   [parameters dashboard-parameters]
+  (when (and (seq parameters) (not (premium-features/enable-dashboard-subscription-filters?)))
+    (common/throw-teaching-error
+     (str "Filtered subscriptions need the dashboard-subscription-filters feature, which this instance "
+          "doesn't have — the filter values would be stored and then ignored at send time. Omit "
+          "`parameters` to subscribe to the dashboard's own default filter values.")))
   (let [known (into #{} (map (comp u/qualified-name :id)) dashboard-parameters)]
     (doseq [{param-id :id} parameters]
       (when-not (contains? known param-id)

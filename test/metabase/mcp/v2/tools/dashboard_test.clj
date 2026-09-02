@@ -10,6 +10,8 @@
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -134,6 +136,43 @@
             (is (= (into #{} (keys (first (:dashcards real))))
                    (into #{} (keys (first (:dashcards dry))))))))))))
 
+(deftest validate-only-reports-the-replacement-card-test
+  (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
+            `:card_id`, so a stale one would report the replace as a no-op and an agent validating before
+            committing would see the wrong thing"
+    (mt/with-temp [:model/Dashboard     dash  {:name "Sales"}
+                   :model/Card          old   {:name "Old revenue"}
+                   :model/Card          new-c {:name "New revenue"}
+                   :model/DashboardCard dc    {:dashboard_id (:id dash) :card_id (:id old)}]
+      (let [args {:method "update" :id (:id dash)
+                  :ops    [{:op "replace_card" :dashcard_id (:id dc) :card_id (:id new-c)}]}
+            dry  (tool-result (call-tool! :crowberto nil "dashboard_write"
+                                          (wire (assoc args :validate_only true))))
+            real (tool-result (call-tool! :crowberto nil "dashboard_write" (wire args)))]
+        (is (= {:id (:id new-c) :name "New revenue"}
+               (-> dry :dashcards first :card)))
+        (is (= (-> real :dashcards first :card)
+               (-> dry :dashcards first :card))
+            "the dry run and the real save must agree")))))
+
+(deftest patch-dashcard-accepts-json-parameter-mappings-test
+  (testing "`parameter_mappings` is advertised as patchable, and a mapping arrives as raw JSON with string
+            clause heads. Without the same target coercion `wire_parameter` does, every such patch failed
+            validation with \"should be :dimension\" — a documented key that could never be used."
+    (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
+                   :model/Card          card {:name "Revenue"}
+                   :model/DashboardCard dc   {:dashboard_id (:id dash) :card_id (:id card)}]
+      (let [result (call-tool! :crowberto nil "dashboard_write"
+                               (wire {:method "update" :id (:id dash)
+                                      :ops [{:op "patch_dashcard" :dashcard_id (:id dc)
+                                             :patch {:parameter_mappings
+                                                     [{:parameter_id "p1"
+                                                       :card_id (:id card)
+                                                       :target ["dimension" ["field" (mt/id :venues :price) nil]]}]}}]}))]
+        (is (not (:isError result)) (-> result :content first :text))
+        (is (=? [{:parameter_id "p1" :target [:dimension [:field (mt/id :venues :price) nil]]}]
+                (t2/select-one-fn :parameter_mappings :model/DashboardCard :id (:id dc))))))))
+
 (deftest entity-id-is-accepted-test
   (testing "GHY-4147: `id` accepts a 21-character entity_id as well as a numeric id"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
@@ -239,6 +278,27 @@
                    (tool-error (call-tool! :crowberto nil "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
+
+(deftest unreadable-card-is-refused-for-a-non-admin-test
+  (testing "a card that EXISTS but the caller cannot read is refused the same way a nonexistent one is, before
+            any write and without confirming it exists — the `can-read?` filter in `fetch-cards` is the only
+            thing enforcing that, and an admin-only test can never exercise it"
+    (mt/with-temp [:model/Collection {secret-id :id} {}
+                   :model/Card       {hidden-id :id} {:name "CONFIDENTIAL" :collection_id secret-id}
+                   :model/Dashboard  dash            {:name "Sales"}]
+      ;; The dashboard stays in the root collection rasta can write; only the CARD is out of reach, so the
+      ;; refusal under test is the card read check rather than the dashboard's own.
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (doseq [[label ops] [["card_id" [{:op "add_card" :id -1 :card_id hidden-id}]]
+                           ["series"  [{:op "add_card" :id -1 :card_id hidden-id :series [hidden-id]}]]]]
+        (testing label
+          (let [error (tool-error (call-tool! :rasta nil "dashboard_write"
+                                              (wire {:method "update" :id (:id dash) :ops ops})))]
+            (is (re-find #"you can read" error))
+            (is (not (re-find #"CONFIDENTIAL" error))
+                "the refusal must not leak the card's name"))))
+      (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id dash)))
+          "nothing may be written before the refusal"))))
 
 (deftest create-applies-display-attributes-test
   (testing "GHY-4147: width and auto_apply_filters are honored on create, not silently dropped"

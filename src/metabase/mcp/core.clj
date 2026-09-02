@@ -7,9 +7,7 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.v2.registry :as v2.registry]
-   [metabase.mcp.v2.resources :as v2.resources]))
+   [metabase.mcp.settings :as mcp.settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,10 +72,13 @@
       (into (comp (keep #(get-in % [:form :metadata :scope]))
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
-      ;; mcp v2 tool scopes
-      (into (v2.registry/registered-scopes))
-      ;; mcp v2 ui-resource scopes
-      (into (v2.resources/resource-scopes))
+      ;; The v2 surface's scopes, read from the require-free leaf rather than from the registry. Deriving them
+      ;; from `v2.registry/registered-scopes` would report only the tools whose namespaces happen to be loaded,
+      ;; and reaching `v2.resources` from here puts `metabot.scope` (and `premium-features`) on the security
+      ;; middleware's load path — the cycle `metabase.mcp.paths`' docstring exists to prevent. The literal set
+      ;; already covers every scope the v2 tools and resources gate on, and
+      ;; `v2-surface-scopes-match-metabot-scope-test` keeps it in step.
+      (into mcp.paths/v2-surface-scopes)
       ;; v1 resource scopes (retire with the v1 surface)
       (into (mcp.resources/resource-scopes))))
 

@@ -317,10 +317,14 @@
   [state idx {:keys [dashcard_id card_id]}]
   (resolve-dashcard! state idx dashcard_id)
   (update-row state :dashcards dashcard_id
-              #(assoc % :card_id card_id
-                      :series []
-                      :parameter_mappings []
-                      :visualization_settings {})))
+              ;; `:card` is the hydrated row of the card being replaced. Dropping it is what makes the dry
+              ;; run honest: the projection prefers `:card` over `:card_id`, so leaving the old one would
+              ;; report the replace as a no-op while the real save reads back the new card.
+              #(-> (assoc % :card_id card_id
+                          :series []
+                          :parameter_mappings []
+                          :visualization_settings {})
+                   (dissoc :card))))
 
 (defmethod apply-op "move"
   [state idx {:keys [dashcard_id tab position] :as op}]
@@ -355,6 +359,16 @@
   (resolve-dashcard! state idx dashcard_id)
   (update-row state :dashcards dashcard_id #(assoc % :series (mapv (fn [cid] {:id cid}) card_ids))))
 
+(defn- coerce-target
+  "Keywordize the clause heads of a raw JSON `target` — `[\"dimension\", [\"template-tag\", \"x\"]]`
+   arrives as strings throughout, and the mapping schema wants keyword heads. Only position 0 of each
+   nested vector is a head; every other element (tag names, column names, ids, options maps) is data
+   and passes through untouched."
+  [x]
+  (if (and (sequential? x) (string? (first x)))
+    (into [(keyword (first x))] (map coerce-target) (rest x))
+    x))
+
 (defmethod apply-op "patch_dashcard"
   [state idx {:keys [dashcard_id patch]}]
   (resolve-dashcard! state idx dashcard_id)
@@ -370,7 +384,15 @@
               (fn [dc]
                 (cond-> (merge dc (dissoc patch :visualization_settings))
                   (contains? patch :visualization_settings)
-                  (update :visualization_settings merge (:visualization_settings patch))))))
+                  (update :visualization_settings merge (:visualization_settings patch))
+
+                  ;; A patched mapping arrives as raw JSON, so its target's clause heads are strings
+                  ;; ("dimension", "field") where the mapping schema wants keywords — the same coercion
+                  ;; `wire_parameter` does. Without it every parameter_mappings patch, a key this op
+                  ;; advertises as patchable, fails validation with "should be :dimension".
+                  (contains? patch :parameter_mappings)
+                  (update :parameter_mappings
+                          (partial mapv #(cond-> % (:target %) (update :target (comp coerce-target vec)))))))))
 
 ;;; -------------------------------------------------- Tab ops ------------------------------------------------------
 
@@ -584,16 +606,6 @@
                                           (str/join ", ")
                                           not-empty)
                                      "none")))))))
-
-(defn- coerce-target
-  "Keywordize the clause heads of a raw JSON `target` — `[\"dimension\", [\"template-tag\", \"x\"]]`
-   arrives as strings throughout, and the mapping schema wants keyword heads. Only position 0 of each
-   nested vector is a head; every other element (tag names, column names, ids, options maps) is data
-   and passes through untouched."
-  [x]
-  (if (and (sequential? x) (string? (first x)))
-    (into [(keyword (first x))] (map coerce-target) (rest x))
-    x))
 
 (defn- text-tag-names
   "The `{{tag}}` placeholder names a dashcard's own content carries — a text or heading card's
