@@ -228,8 +228,8 @@
 (deftest keepalive-stream-does-not-run-on-the-shared-streaming-pool-test
   (testing (str "GHY-4331: the GET keepalive blocks for the life of the client's connection, so it must not be "
                 "submitted to the fixed streaming-response pool that also serves query downloads")
-    ;; This harness never drives the stream body, so the slot the handler takes is never returned — cleared here
-    ;; rather than left to leak into whichever slot test happens to run next.
+    ;; The body owns the keepalive slot; this harness captures the body without running it, so no slot is ever
+    ;; taken. The counts are still cleared so a leak from elsewhere can't bleed into whichever slot test runs next.
     (with-clean-keepalive-counts
       (fn []
         (let [captured  (atom nil)
@@ -445,7 +445,9 @@
                                                   (jsonrpc-request "initialize"))]
         (is (= 401 (:status response)))
         (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
-        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))))))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))
+        (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
+            "the invalid_token challenge still carries RFC 9728 discovery")))))
 
 (deftest expired-bearer-token-returns-401-test
   (testing "GHY-4337: an access token past its expiry is refused. The row is still there and still names a real
@@ -466,7 +468,9 @@
                                                       (jsonrpc-request "initialize"))]
             (is (= 401 (:status response)))
             (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
-            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))))))))
+            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))
+            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
+                "the invalid_token challenge still carries RFC 9728 discovery")))))))
 
 (defn- issue-bearer!
   "Insert an OAuth access token row for `user-id` and return the raw (unhashed) token to present. `:token` is stored
@@ -512,7 +516,9 @@
                 (is (= 401 (:status response)))
                 (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
                     "a deactivated user must not be handed a working MCP session")
-                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))))))))))
+                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token"))
+                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
+                    "the invalid_token challenge still carries RFC 9728 discovery")))))))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 

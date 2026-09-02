@@ -71,6 +71,13 @@
                     {:tool-name tool-name :required-extensions (:required-extensions tool)})))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
+  ;; The registry is keyed by public name. Re-evaluating the same `deftool` (REPL, test reload) registers
+  ;; the same handler var again and may replace its entry; a second definition claiming an existing name
+  ;; would otherwise silently shadow the first, with load order deciding which one `tools/call` reaches.
+  (when-let [existing (get @tools* tool-name)]
+    (when (not= (:handler existing) handler)
+      (throw (ex-info (format "v2 MCP tool %s is already registered with a different handler" tool-name)
+                      {:tool-name tool-name}))))
   (swap! tools* assoc tool-name tool)
   ;; flush cache to allow for repl/test redefinition.
   (reset! manifest-cache nil)

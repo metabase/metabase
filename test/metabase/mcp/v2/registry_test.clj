@@ -88,7 +88,9 @@
         (is (= "Unknown tool: ping_v2" (-> result :content first :text)))))))
 
 (deftest ^:parallel registered-scopes-test
-  (testing "every registered tool's :scope flows through registered-scopes into the default DCR grant"
+  (testing "registered-scopes reports the scopes of the landed tools. (It does not feed the DCR grant: that reads
+            `mcp.paths/v2-surface-scopes`, and a tool whose :scope is outside that set is unreachable over OAuth
+            — which the containment below guards.)"
     (is (set/subset? #{"agent:content:read"} (set (registry/registered-scopes)))))
   ;; GHY-4225 retired :required-scopes from v2: duplicate_content's per-type create scopes all
   ;; collapsed into the single `agent:content:write` it already gates on, so there is no longer a
@@ -155,6 +157,29 @@
 
 ;; not ^:parallel: exercises register-tool!'s load-time guards
 (deftest registration-validation-test
+  (testing "an unknown option key fails loudly — a misspelled :required-extensions would silently disable the gate"
+    (is (thrown-with-msg? Exception #"unknown option"
+                          (registry/register-tool! {:name               "typo_key"
+                                                    :scope              "agent:content:read"
+                                                    :description        "x"
+                                                    :args               [:map]
+                                                    :handler            (fn [_ _] nil)
+                                                    :require-extensions #{:mcp-app-ui}}))))
+  (testing ":required-extensions must be a set of keywords"
+    (is (thrown-with-msg? Exception #"set of keywords"
+                          (registry/register-tool! {:name                "bad_extensions"
+                                                    :scope               "agent:content:read"
+                                                    :description         "x"
+                                                    :args                [:map]
+                                                    :handler             (fn [_ _] nil)
+                                                    :required-extensions ["mcp-app-ui"]}))))
+  (testing "a second definition claiming a registered name with a different handler fails loudly; the same
+            handler var re-registering (REPL/test reload) is allowed"
+    (let [existing (get @@#'registry/tools* "ping_v2")]
+      (is (some? existing) "ping_v2 must be registered for this to prove anything")
+      (is (thrown-with-msg? Exception #"already registered"
+                            (registry/register-tool! (assoc existing :handler (fn [_ _] nil)))))
+      (is (= "ping_v2" (registry/register-tool! existing)))))
   (testing "a blank :name fails loudly"
     (is (thrown-with-msg? Exception #":name"
                           (registry/register-tool! {:name        ""
