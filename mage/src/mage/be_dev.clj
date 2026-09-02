@@ -11,7 +11,7 @@
    [mage.shell :as shell]
    [mage.util :as u])
   (:import
-   [java.io InputStream PushbackInputStream]
+   (java.io InputStream PushbackInputStream)
    (java.net ConnectException Socket)))
 
 (set! *warn-on-reflection* true)
