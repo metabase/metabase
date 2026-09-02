@@ -12,7 +12,7 @@ export const Visualization = (
 ) => {
   const { series, settings, renderingContext, onClick, onHover, locale } =
     props;
-  const { threshold } = settings;
+  const { threshold, columns } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
 
@@ -62,6 +62,9 @@ export const Visualization = (
     <div>
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
+      <div data-testid="demo-viz-columns">
+        Columns: {columns?.join(", ") ?? "none"}
+      </div>
       <div>Value: {value}</div>
       <div data-testid="demo-viz-formatted-value">
         Formatted: {formatValue(value, settings.column?.(cols[0]))}

@@ -5,6 +5,7 @@ import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import { clonePluginValue } from "./clone-plugin-value";
 import { toHostSettings } from "./plugin-view";
 
 // What the plugin's setting widget receives: the SDK base props + whatever setting definition's `getProps` adds.
@@ -60,7 +61,7 @@ function toPluginWidgetProps(
   return {
     ...extraProps,
     id,
-    value: structuredClone(value),
+    value: clonePluginValue(value),
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>
       onChangeSettings(

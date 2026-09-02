@@ -174,6 +174,29 @@ describe("wrapPluginWidget", () => {
     expect(pluginWidget.mock.calls[0][1].value).toBeUndefined();
   });
 
+  it("copies a value that arrives as a membrane proxy instead of throwing", () => {
+    const pluginWidget = jest.fn<
+      WidgetMountHandle<WidgetProps>,
+      Parameters<WidgetMount>
+    >(() => ({ update: jest.fn(), unmount: jest.fn() }));
+    const pluginValue = ["count"];
+
+    wrapPluginWidget(
+      pluginWidget,
+      PLUGIN,
+      PREFIX,
+    )(document.createElement("div"), {
+      id: `${PREFIX}columns`,
+      value: new Proxy(pluginValue, {}),
+      onChange: jest.fn(),
+      onChangeSettings: jest.fn(),
+    });
+
+    const mountedValue = pluginWidget.mock.calls[0][1].value;
+    expect(mountedValue).toEqual(pluginValue);
+    expect(mountedValue).not.toBe(pluginValue);
+  });
+
   it("delegates unmount", () => {
     const { handle, mountHandle } = setup();
 

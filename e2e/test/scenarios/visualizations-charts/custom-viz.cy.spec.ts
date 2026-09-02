@@ -706,6 +706,36 @@ describe("admin > custom visualizations", () => {
       });
     });
 
+    it("hands the plugin its own array-valued settings, including edits made in the session", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.log("the default the plugin computes is an array");
+      cy.findByTestId("demo-viz-columns").should("have.text", "Columns: count");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .click();
+      cy.findByTestId("demo-viz-columns").should(
+        "have.text",
+        "Columns: count, extra",
+      );
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.deep.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
+            ["count", "extra"],
+          );
+        });
+      });
+    });
+
     it("keeps an unsaved question's custom viz after a browser reload (metabase#76065)", () => {
       H.visitQuestionAdhoc({
         dataset_query: {
@@ -2475,7 +2505,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      25,
+      27,
     );
   });
 

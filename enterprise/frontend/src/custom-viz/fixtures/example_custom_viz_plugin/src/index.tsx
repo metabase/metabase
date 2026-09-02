@@ -9,7 +9,19 @@ type Settings = {
   threshold?: number;
   metricColumn?: string | null;
   renameQuestion?: null;
+  columns?: string[];
 };
+
+function ColumnsWidget({
+  value,
+  onChange,
+}: BaseWidgetProps<string[], Settings>) {
+  return (
+    <button type="button" onClick={() => onChange([...(value ?? []), "extra"])}>
+      Add column from plugin
+    </button>
+  );
+}
 
 function RenameQuestionWidget({
   onChangeSettings,
@@ -108,6 +120,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
         widget: RenameQuestionWidget,
         getDefault() {
           return null;
+        },
+      }),
+      columns: defineSetting({
+        id: "columns",
+        title: "Columns",
+        widget: ColumnsWidget,
+        getDefault(series) {
+          return series[0].data.cols.map((col) => col.name);
         },
       }),
     },

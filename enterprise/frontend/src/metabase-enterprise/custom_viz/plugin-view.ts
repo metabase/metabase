@@ -3,6 +3,8 @@ import type { CustomVisualizationProps } from "custom-viz";
 import { isCustomVizSettingKey } from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
+import { clonePluginValue } from "./clone-plugin-value";
+
 type PluginProps = CustomVisualizationProps<Record<string, unknown>>;
 
 export type PluginSeries = PluginProps["series"];
@@ -111,7 +113,7 @@ export function toPluginSettings(
   return pluginSettings;
 }
 
-// Drops entries values of which structuredClone rejects.
+// Drops entries that can't be copied, like functions and Intl formatters.
 function cloneCloneableEntries(
   value: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -119,7 +121,7 @@ function cloneCloneableEntries(
 
   for (const [key, entry] of Object.entries(value)) {
     try {
-      cloned[key] = structuredClone(entry);
+      cloned[key] = clonePluginValue(entry);
     } catch {
       // dropped
     }
