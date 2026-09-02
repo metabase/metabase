@@ -55,7 +55,7 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (let [strategy (channel.settings/http-channel-host-strategy)
+  (let [strategy (channel.settings/http-channel-allowed-networks)
         resolver (u.http/network-policy-dns-resolver strategy)]
     (check-url! strategy url)
     (let [req (-> (merge

@@ -55,3 +55,15 @@ src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 # @metabase/metabot-frontend
 enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
+
+# @metabase/core-frontend-gadget
+bin/custom-viz @metabase/core-frontend-gadget
+docs/developers-guide/custom-visualizations.md @metabase/core-frontend-gadget
+enterprise/frontend/src/custom-viz @metabase/core-frontend-gadget
+enterprise/frontend/src/metabase-enterprise/api/custom-viz-plugin.ts @metabase/core-frontend-gadget
+enterprise/frontend/src/metabase-enterprise/custom_viz @metabase/core-frontend-gadget
+frontend/src/metabase-types/api/custom-viz-plugin.ts @metabase/core-frontend-gadget
+frontend/src/metabase/plugins/oss/custom-viz.ts @metabase/core-frontend-gadget
+frontend/src/metabase/visualizations/custom-visualizations @metabase/core-frontend-gadget
+frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
+.github/workflows/release-custom-viz.yml @metabase/devexp @metabase/core-frontend-gadget

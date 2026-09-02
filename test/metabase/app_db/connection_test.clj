@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.data-source :as mdb.data-source]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -9,8 +10,10 @@
    [toucan2.core :as t2]
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
+   (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
    (java.sql Connection SQLException)
-   (java.util.concurrent Semaphore)))
+   (java.util.concurrent Semaphore)
+   (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
 
@@ -615,3 +618,59 @@
         (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
       (finally
         (t2/delete! :metabase_cluster_lock :lock_name lock-name)))))
+
+(deftest quartz-data-source-pool-construction-test
+  (testing "with :create-pool? true, the Quartz job store gets its own (smaller) c3p0 pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pool-construction-test")
+          app-db      (mdb.connection/application-db :h2 data-source :create-pool? true)]
+      (try
+        (let [^PoolBackedDataSource main   (:data-source app-db)
+              ^PoolBackedDataSource quartz (:quartz-data-source app-db)]
+          (is (instance? PoolBackedDataSource main))
+          (is (instance? PoolBackedDataSource quartz))
+          (is (not (identical? main quartz)))
+          (is (= "metabase-h2-quartz" (.getDataSourceName quartz)))
+          (let [^WrapperConnectionPoolDataSource pool-config (.getConnectionPoolDataSource quartz)]
+            (is (= 5 (.getMaxPoolSize pool-config)))
+            (is (= 1 (.getMinPoolSize pool-config)))
+            (is (= 1 (.getInitialPoolSize pool-config)))))
+        (finally
+          (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
+          (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db)))))))
+
+(deftest quartz-data-source-rejects-pre-pooled-test
+  (testing ":create-pool? true with an already-pooled data-source throws instead of silently sharing one pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-pre-pooled-test")
+          pre-pooled  (DataSources/pooledDataSource ^javax.sql.DataSource data-source)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already-pooled"
+                              (mdb.connection/application-db :h2 pre-pooled :create-pool? true)))
+        (finally
+          (DataSources/destroy pre-pooled))))))
+
+(deftest quartz-data-source-no-pool-test
+  (testing "with :create-pool? false, the Quartz data source is just the raw data source itself"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:quartz-no-pool-test")
+          app-db      (mdb.connection/application-db :h2 data-source)]
+      (is (identical? data-source (:data-source app-db)))
+      (is (identical? data-source (:quartz-data-source app-db))))))
+
+(deftest quartz-data-source-respects-lock-test
+  (testing "acquiring a Quartz connection blocks while the application DB write lock is held"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource
+                       "jdbc:h2:mem:quartz-lock-test;DB_CLOSE_DELAY=-1")
+          app-db      (mdb.connection/application-db :h2 data-source)]
+      (binding [mdb.connection/*application-db* app-db]
+        (let [quartz-ds                    (mdb.connection/quartz-data-source)
+              ^ReentrantReadWriteLock lock (:lock app-db)]
+          (.. lock writeLock lock)
+          (let [acquire (future
+                          (with-open [^Connection conn (.getConnection quartz-ds)]
+                            (instance? Connection conn)))]
+            (try
+              (is (= ::blocked (deref acquire 300 ::blocked))
+                  "getConnection should block while the write lock is held")
+              (finally
+                (.. lock writeLock unlock)))
+            (is (true? (deref acquire 5000 ::timed-out))
+                "getConnection should proceed once the write lock is released")))))))

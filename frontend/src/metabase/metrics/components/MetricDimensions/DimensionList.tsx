@@ -73,12 +73,12 @@ export function DimensionList({
     <Stack
       className={S.column}
       data-testid="metric-dimension-list"
-      gap="md"
-      pt="lg"
+      gap="lg"
+      pt="xl"
     >
       <Group justify="space-between" wrap="nowrap" align="center">
         <Title order={4}>{t`Dimensions of this metric`}</Title>
-        <Group gap="md" wrap="nowrap" align="center">
+        <Group gap="lg" wrap="nowrap" align="center">
           {hasChecked && (
             <ActionIcon
               className={S.deleteIconButton}

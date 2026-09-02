@@ -120,12 +120,18 @@ export function ExplorationSummary({
   return (
     <>
       <Box flex={1} h="100%" pb="3rem" pr="1rem">
-        <Box bg="background-primary" bd="1px solid border" bdrs="md" h="100%">
+        <Box
+          bg="background-primary"
+          bd="1px solid border"
+          bdrs="sm"
+          h="100%"
+          style={{ overflow: "hidden" }}
+        >
           <Group gap={0} h="100%">
             <Stack
               h="100%"
               flex={1}
-              p="lg"
+              p="xl"
               pr={sidebarMode != null ? "5rem" : "lg"}
               pt="3rem"
               gap={0}

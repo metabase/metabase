@@ -783,7 +783,8 @@
 
   ([fn-symb   :- qualified-symbol?
     perms-set :- [:set :string]]
-   (let [f (requiring-resolve fn-symb)]
+   ;; resolves the permissions implementation lazily to avoid a models -> permissions load cycle
+   (let [f #_{:clj-kondo/ignore [:metabase/modules]} (requiring-resolve fn-symb)]
      (assert f)
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))

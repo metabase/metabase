@@ -55,7 +55,7 @@ export const DatabaseRoutingWarning = ({
       color="warning"
       icon={<Icon name="warning" />}
       title={t`Database routing active`}
-      mb="md"
+      mb="lg"
     >
       {resourceType === "dashboard"
         ? t`One or more questions in this dashboard are querying a database with database routing enabled. The corresponding database queries will be executed against the router database.`
