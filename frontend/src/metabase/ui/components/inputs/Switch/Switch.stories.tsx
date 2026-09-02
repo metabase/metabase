@@ -175,6 +175,7 @@ const GroupTemplate: StoryFn<SwitchProps> = () => (
 );
 
 export const Group = {
+  name: "Switch.Group",
   render: GroupTemplate,
   parameters: {
     controls: { disable: true },
