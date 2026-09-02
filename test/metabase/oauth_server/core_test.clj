@@ -144,16 +144,26 @@
 
 (deftest narrow-scope-to-resource-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-    (let [mcp-uri "http://localhost:3000/api/metabase-mcp"
+    (let [mcp-uri "http://localhost:3000/api/metabase-mcp/v2"
+          v1-uri  "http://localhost:3000/api/metabase-mcp"
           scopes #(set (some-> % (str/split #"\s+")))]
-      (testing "an indicator naming the MCP resource drops scopes that surface does not accept"
+      (testing "a v1 alias keeps the scopes v1's tools gate on — until the switchover those paths still
+                serve v1, and narrowing them to the v2 set would strip the capabilities the client asked
+                for from a grant the user then approves"
+        (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
+                                [v1-uri]
+                                "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
+          (is (contains? narrowed "agent:question:create"))
+          (is (contains? narrowed "agent:sql:execute"))
+          (is (contains? narrowed "agent:content:read"))))
+      (testing "an indicator naming the v2 resource drops scopes that surface does not accept"
         (let [narrowed (scopes (oauth-server/narrow-scope-to-resource
                                 [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
       (testing "every scope the surface advertises survives narrowing — otherwise the resource doc would
                 advertise a scope its own consent flow strips"
-        (let [advertised (oauth-server/mcp-resource-scopes)]
+        (let [advertised (oauth-server/mcp-resource-scopes "/api/metabase-mcp/v2")]
           (is (= (set advertised)
                  (scopes (oauth-server/narrow-scope-to-resource
                           [mcp-uri] (str/join " " advertised)))))))
@@ -167,13 +177,19 @@
           (is (nil? (oauth-server/narrow-scope-to-resource [mcp-uri] "mb:full")))))
       (testing "GHY-4250: every alias narrows, not just the canonical path — a client that connected
                 through an alias was handed that path as its resource identifier, so recognizing
-                only the canonical one would silently hand it the wide consent screen"
+                only the canonical one would silently hand it the wide consent screen. Each narrows to
+                what its OWN surface accepts: the v2 path to the v2 set, the aliases (still v1 until the
+                switchover) to v1's, which is why `mb:full` goes everywhere but `agent:question:create`
+                survives only where a v1 tool can still use it."
         (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
           (testing path
-            (is (= "agent:content:read"
-                   (oauth-server/narrow-scope-to-resource
-                    [(str "http://localhost:3000" path)]
-                    "agent:content:read agent:question:create"))))))
+            (let [narrowed (oauth-server/narrow-scope-to-resource
+                            [(str "http://localhost:3000" path)]
+                            "mb:full agent:content:read agent:question:create")]
+              (is (not (str/includes? narrowed "mb:full")))
+              (is (str/includes? narrowed "agent:content:read"))
+              (is (= (not= path "/api/metabase-mcp/v2")
+                     (str/includes? narrowed "agent:question:create")))))))
       (testing "no indicator, or one naming a different resource, leaves the scope alone"
         (let [wide "agent:content:read agent:question:create"]
           (is (= wide (oauth-server/narrow-scope-to-resource nil wide)))

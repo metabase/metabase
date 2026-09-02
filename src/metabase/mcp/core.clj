@@ -7,8 +7,9 @@
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.v2.registry :as v2.registry]
-   [metabase.mcp.v2.resources :as v2.resources]))
+   ;; Only for `registered-opt-in-scopes`. Deliberately NOT `mcp.v2.resources`: that reaches
+   ;; `metabot.scope`/`premium-features`, which must stay off the security middleware's load path.
+   [metabase.mcp.v2.registry :as v2.registry]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,6 +17,11 @@
   "The advertised MCP URL path, relative to site-url (see [[metabase.mcp.paths/canonical-path]])."
   []
   mcp.paths/canonical-path)
+
+(defn mcp-v2-path
+  "The path serving the v2 tool surface during the migration (see [[metabase.mcp.paths/v2-path]])."
+  []
+  mcp.paths/v2-path)
 
 (defn mcp-endpoint-paths
   "Every path serving MCP, canonical plus back-compat aliases
@@ -67,18 +73,27 @@
       (into (comp (keep #(get-in % [:form :metadata :scope]))
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
-      ;; mcp v2 tool scopes
-      (into (v2.registry/registered-scopes))
-      ;; mcp v2 ui-resource scopes
-      (into (v2.resources/resource-scopes))))
+      ;; The v2 surface's scopes, read from the require-free leaf rather than from the registry. Deriving them
+      ;; from `v2.registry/registered-scopes` would report only the tools whose namespaces happen to be loaded,
+      ;; and reaching `v2.resources` from here puts `metabot.scope` (and `premium-features`) on the security
+      ;; middleware's load path — the cycle `metabase.mcp.paths`' docstring exists to prevent. The literal set
+      ;; already covers every scope the v2 tools and resources gate on, and
+      ;; `v2-surface-scopes-match-metabot-scope-test` keeps it in step.
+      (into mcp.paths/v2-surface-scopes)))
 
 (defn v2-scopes
-  "The scopes the v2 MCP surface itself gates on: its tool registry's scopes plus its resource
-   registry's. Excludes the agent-API endpoint scopes [[all-scopes]] also gathers — those belong
-   to a different resource, and advertising them for v2 is what puts per-entity scopes the v2 tools
-   don't use on a v2 client's consent screen."
+  "The scopes the v2 MCP surface itself gates on. Excludes the agent-API endpoint scopes
+   [[all-scopes]] also gathers — those belong to a different resource, and advertising them for v2 is
+   what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
+
+   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]] rather than from the
+   registries: `metabase.server.middleware.security` requires this namespace, so reaching
+   `mcp.v2.resources` from here would put `metabot.scope` (and `premium-features`) on the security
+   middleware's load path — the cycle `mcp.paths` exists to prevent. Deriving from the registry is also
+   load-order dependent, reporting only the tools whose namespaces happen to be loaded.
+   `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
   []
-  (into (v2.registry/registered-scopes) (v2.resources/resource-scopes)))
+  mcp.paths/v2-surface-scopes)
 
 (defn opt-in-scopes
   "MCP scopes advertised for a token to request explicitly but excluded from the default DCR

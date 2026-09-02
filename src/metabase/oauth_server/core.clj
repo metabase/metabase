@@ -49,14 +49,23 @@
       vec))
 
 (defn mcp-resource-scopes
-  "The scopes advertised for the MCP resource specifically. RFC 9728 metadata answers \"what does *this* resource
-  accept\", and the MCP surface accepts exactly the scopes its tool registry gates on — the rationalized five — plus
-  the resource scopes its UI tools render through."
-  []
-  (-> (sorted-set)
-      (into (mcp/v2-scopes))
-      (into (mcp/opt-in-scopes))
-      vec))
+  "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
+  accept\", and what a path accepts depends on which surface it reaches.
+
+  `/api/metabase-mcp/v2` reaches v2, which accepts exactly the scopes its tool registry gates on — the
+  rationalized five — plus the resource scopes its UI tools render through. The other aliases still reach v1
+  until the switchover, and v1's tools gate on the per-entity agent-API scopes; advertising the v2-only set
+  for them would tell a client to request scopes no v1 tool accepts, leaving it with an empty `tools/list`
+  and a 403 on every call. They keep the full set until v1 retires, and this fn collapses to the v2 answer
+  when it does."
+  ([] (mcp-resource-scopes (mcp/mcp-v2-path)))
+  ([path]
+   (-> (sorted-set)
+       (into (if (= path (mcp/mcp-v2-path))
+               (mcp/v2-scopes)
+               (mcp/all-scopes)))
+       (into (mcp/opt-in-scopes))
+       vec)))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
@@ -135,7 +144,11 @@
                        (keep #(canonical-resource-uri (str (system/site-url) %))
                              (mcp/mcp-endpoint-paths))))
       scope
-      (let [accepted (set (mcp-resource-scopes))]
+      ;; Narrow to what the named path actually accepts: a client naming a v1 alias must keep its v1 scopes,
+      ;; or the grant it consented to silently loses the capabilities it asked for.
+      (let [named-v2? (some (into #{} (keep canonical-resource-uri) resources)
+                            [(canonical-resource-uri (str (system/site-url) (mcp/mcp-v2-path)))])
+            accepted  (set (mcp-resource-scopes (if named-v2? (mcp/mcp-v2-path) (mcp/mcp-canonical-path))))]
         (not-empty (str/join " " (filter accepted (str/split scope #"\s+"))))))))
 
 (defn- build-provider-config

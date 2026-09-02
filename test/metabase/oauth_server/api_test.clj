@@ -1135,7 +1135,8 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [wide         "agent:content:read agent:question:create agent:sql:execute"
-              mcp-uri      (str "http://localhost:3000" (mcp/mcp-canonical-path))
+              ;; the v2 path: the aliases still reach v1, whose tools gate on the agent-API scopes
+              mcp-uri      (str "http://localhost:3000" (mcp/mcp-v2-path))
               client-id    (:client_id (create-test-client!
                                         {:scopes ["agent:content:read" "agent:question:create"
                                                   "agent:sql:execute"]}))
