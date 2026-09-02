@@ -187,6 +187,7 @@ jobs:
       github.event_name == 'pull_request'
     name: post-docker-info-comment (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
     - name: Post PR comment
       uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
