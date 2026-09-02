@@ -163,6 +163,34 @@
     (let [reparsed (md/parse "~~~\n{% card id=118 %}\n~~~")]
       (is (= ["codeBlock" "paragraph"] (mapv :type (:content reparsed)))))))
 
+(deftest ^:parallel code-language-cannot-break-the-fence-test
+  (testing "a :language holding a backtick — a tilde fence's info string legitimately carries one —
+           serializes behind a tilde fence, so re-parsing cannot promote the fenced content to
+           structure"
+    (let [ast {:type "doc"
+               :content [{:type "codeBlock" :attrs {:language "foo`bar" :_id "cb"}
+                          :content [{:type "text" :text "{% card id=666 %}"}]}
+                         {:type "paragraph" :attrs {:_id "pz"}}]}
+          {m :markdown} (md/serialize ast)
+          reparsed      (md/parse m)]
+      (is (= (strip-ids ast) (strip-ids reparsed)))
+      (is (not-any? #(= "cardEmbed" (:type %)) (tree-seq :content :content reparsed)))))
+  (testing "the tilde fence still clears a tilde run inside the code text"
+    (let [ast {:type "doc"
+               :content [{:type "codeBlock" :attrs {:language "a`b" :_id "cb"}
+                          :content [{:type "text" :text "~~~~\n{% card id=666 %}"}]}
+                         {:type "paragraph" :attrs {:_id "pz"}}]}
+          reparsed (md/parse (:markdown (md/serialize ast)))]
+      (is (= (strip-ids ast) (strip-ids reparsed)))))
+  (testing "a newline in :language collapses to a space rather than splitting the fence line"
+    (let [ast {:type "doc"
+               :content [{:type "codeBlock" :attrs {:language "sql\n{% card id=666 %}" :_id "cb"}
+                          :content [{:type "text" :text "SELECT 1"}]}
+                         {:type "paragraph" :attrs {:_id "pz"}}]}
+          reparsed (md/parse (:markdown (md/serialize ast)))]
+      (is (= ["codeBlock" "paragraph"] (mapv :type (:content reparsed))))
+      (is (not-any? #(= "cardEmbed" (:type %)) (tree-seq :content :content reparsed))))))
+
 (deftest ^:parallel unclosed-token-never-overflows-test
   (testing "a very long unclosed token parses as plain text instead of overflowing the regex engine"
     (let [text (str "{% entity " (apply str (repeat 100000 "a")))]
@@ -177,6 +205,44 @@
                           (md/parse "{% card id=99999999999999999999 %}")))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"height must be a number"
                           (md/parse "::: resize {height=99999999999999999999}\n{% card id=1 %}\n:::")))))
+
+(deftest ^:parallel malformed-token-grammar-is-a-teaching-error-test
+  (testing "an unknown card token attribute"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown card token attribute"
+                          (md/parse "{% card id=1 foo=2 %}"))))
+  (testing "an unclosed container fence"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unclosed ::: flex"
+                          (md/parse "::: flex\n{% card id=1 %}"))))
+  (testing "an unknown container fence attribute"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown ::: resize attribute"
+                          (md/parse "::: resize {bogus=1}\n{% card id=1 %}\n:::"))))
+  (testing "flex columns that aren't a numeric array"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"numeric array"
+                          (md/parse "::: flex {columns=abc}\n{% card id=1 %}\n:::")))))
+
+;;; ------------------------------------------------ Container content models --------------------------------------
+
+(deftest ^:parallel container-content-model-violations-are-teaching-errors-test
+  (testing "a resize container wrapping prose"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resize container must wrap"
+                          (md/parse "::: resize\nprose\n:::"))))
+  (testing "a flex container holding a bare paragraph"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"flex container must hold"
+                          (md/parse "::: flex\nsome prose\n:::"))))
+  (testing "a flex container with four columns"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"flex container must hold"
+                          (md/parse (str "::: flex\n"
+                                         "{% card id=1 %}\n{% card id=2 %}\n{% card id=3 %}\n{% card id=4 %}\n"
+                                         ":::")))))
+  (testing "a supporting block holding a card embed"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"supporting block can only hold"
+                          (md/parse "::: supporting\n{% card id=1 %}\n:::"))))
+  (testing "a splice whose re-parse breaks the touched container's content model"
+    (let [ast (md/parse "::: resize\n{% card id=118 %}\n:::")
+          ser (md/serialize ast)
+          i   (str/index-of (:markdown ser) "{% card id=118 %}")]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resize container must wrap"
+                            (md/splice ast ser i (+ i (count "{% card id=118 %}")) "just prose"))))))
 
 ;;; ------------------------------------------------ Nesting depth -------------------------------------------------
 
@@ -749,13 +815,43 @@
                       ::no-error
                       (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))))))
 
+(deftest ^:parallel out-of-range-numeric-attr-test
+  (testing "an integral double a long can't hold is a teaching error, not an IllegalArgumentException"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a positive integer"
+                          (md/serialize {:type "doc" :content [{:type "cardEmbed" :attrs {:id 1.0E19 :_id "c"}}]})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a positive integer"
+                          (md/serialize {:type "doc"
+                                         :content [{:type "paragraph" :attrs {:_id "p"}
+                                                    :content [{:type "smartLink"
+                                                               :attrs {:entityId 1.0E19 :model "card"}}]}]}))))
+  (testing "a resize height past long range serializes in double notation instead of throwing"
+    (let [ast {:type "doc" :content [{:type "resizeNode" :attrs {:height 1.0E19 :minHeight 280}
+                                      :content [{:type "cardEmbed" :attrs {:id 1 :_id "c"}}]}]}]
+      (is (str/includes? (:markdown (md/serialize ast)) "height=1.0E19")))))
+
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
 
-(deftest unresolved-smart-link-defaults-test
+(deftest ^:parallel unresolved-smart-link-defaults-test
   (testing "an entity token whose id doesn't resolve keeps the node with default label/href"
     (let [reparsed (md/parse "x {% entity id=\"987654321\" model=\"dashboard\" %} y")]
       (is (= {:entityId 987654321 :model "dashboard" :label nil :href "/"}
              (get-in reparsed [:content 0 :content 1 :attrs]))))))
+
+(defn- smart-links-in
+  [ast]
+  (filter #(= "smartLink" (:type %)) (tree-seq :content :content ast)))
+
+(deftest ^:parallel entity-token-guards-test
+  (testing "an entity token inside an inline code span stays literal code text"
+    (let [reparsed (md/parse "use `{% entity id=\"1\" model=\"card\" %}` here")
+          code     (some #(when (some (comp #{"code"} :type) (:marks %)) %)
+                         (tree-seq :content :content reparsed))]
+      (is (empty? (smart-links-in reparsed)))
+      (is (= "{% entity id=\"1\" model=\"card\" %}" (:text code)))))
+  (testing "an entity token with a model this grammar has no node for stays prose"
+    (is (empty? (smart-links-in (md/parse "{% entity id=\"1\" model=\"bogus\" %} x")))))
+  (testing "an entity token with a non-positive id stays prose"
+    (is (empty? (smart-links-in (md/parse "{% entity id=\"0\" model=\"card\" %} x"))))))
 
 ;;; ------------------------------------------------ Splice --------------------------------------------------------
 
@@ -843,6 +939,59 @@
     (is (= 1 (count (:content out))))
     (is (= "paragraph" (:type (first (:content out)))))
     (is (some? (get-in out [:content 0 :attrs :_id])))))
+
+(deftest ^:parallel splice-deep-replacement-is-a-teaching-error-test
+  (testing "the replacement text re-parses behind the same StackOverflowError backstop [[md/parse]]
+           has — a raw Error would sail past the `catch Exception` that sanitizes tool failures"
+    (let [ast (md/parse "alpha\n\nomega")
+          ser (md/serialize ast)
+          i   (str/index-of (:markdown ser) "omega")]
+      (doseq [[label replacement] (deeply-nested-markdown 4000)]
+        (testing label
+          (let [outcome (try (md/splice ast ser i (+ i (count "omega")) replacement)
+                             :spliced
+                             (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))
+                             (catch StackOverflowError _ :stack-overflow))]
+            (is (= 400 outcome)
+                (format "%s should be a 400 teaching error, got %s" label (pr-str outcome)))))))))
+
+(deftest ^:parallel splice-span-bounds-test
+  (testing "an out-of-range or non-int span is a teaching error, not a StringIndexOutOfBoundsException"
+    (let [ast (md/parse "alpha")
+          ser (md/serialize ast)
+          n   (count (:markdown ser))]
+      (doseq [[s e] [[-1 1] [2 1] [0 (inc n)] [nil 1] [0.5 1]]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid splice span"
+                              (md/splice ast ser s e "x")))))))
+
+(deftest ^:parallel splice-insertion-between-blocks-test
+  (testing "a pure insertion (start = end) inside the separator between two blocks parses the
+           replacement alone and reuses both neighbours by identity"
+    (let [ast (md/parse "alpha\n\nomega")
+          ser (md/serialize ast)
+          pos (dec (str/index-of (:markdown ser) "omega"))
+          out (md/splice ast ser pos pos "middle")]
+      (is (= [["paragraph" "alpha"] ["paragraph" "middle"] ["paragraph" "omega"]]
+             (mapv (juxt :type #(get-in % [:content 0 :text])) (:content out))))
+      (is (identical? (nth (:content ast) 0) (nth (:content out) 0)))
+      (is (identical? (nth (:content ast) 1) (nth (:content out) 2))))))
+
+(deftest ^:parallel splice-separator-only-span-test
+  (testing "a span confined to the separator between two blocks re-parses both neighbours; a
+           replacement that joins them merges into one block keeping the head block's id"
+    (let [ast (md/parse "alpha\n\nomega")
+          ser (md/serialize ast)
+          s   (str/index-of (:markdown ser) "\n\n")
+          out (md/splice ast ser s (+ s 2) " ")]
+      (is (= 1 (count (remove #(empty? (:content %)) (:content out)))))
+      (is (= "alpha omega" (get-in out [:content 0 :content 0 :text])))
+      (is (= (get-in ast [:content 0 :attrs :_id]) (get-in out [:content 0 :attrs :_id])))))
+  (testing "deleting the separator outright merges the blocks the same way"
+    (let [ast (md/parse "alpha\n\nomega")
+          ser (md/serialize ast)
+          s   (str/index-of (:markdown ser) "\n\n")
+          out (md/splice ast ser s (+ s 2) "")]
+      (is (= "alphaomega" (get-in out [:content 0 :content 0 :text]))))))
 
 (deftest ^:parallel splice-stale-markdown-test
   (let [ast (md/parse "hello world")

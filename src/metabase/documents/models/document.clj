@@ -168,7 +168,7 @@
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
 
-(defn create-card!
+(defn- create-card!
   "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
   checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
   read access to any card the parameters draw values from, and query permission on the fields the parameter targets
@@ -357,7 +357,10 @@
        [:document {:optional true} :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-       [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]
+       ;; Any int key, matching the REST `DocumentUpdateOptions` this backs: with no `:document`
+       ;; in the body the map is ignored entirely, and [[create-cards-for-document!]] still holds
+       ;; the actually-consumed keys to negative ints.
+       [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
        [:archived {:optional true} [:maybe :boolean]]]]
   (let [document-id (:id existing-document)
         document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]

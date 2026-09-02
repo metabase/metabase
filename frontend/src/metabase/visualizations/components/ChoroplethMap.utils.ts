@@ -15,7 +15,7 @@ export type FeatureClickContext = {
   settings: VisualizationSettings;
   getFeatureName: (feature: Feature) => string;
   getFeatureKey: (feature: Feature, opts?: { lowerCase?: boolean }) => string;
-  cardId: CardId;
+  cardId: CardId | undefined;
 };
 
 export function buildFeatureClickObject(
