@@ -12,6 +12,7 @@
    [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
@@ -141,37 +142,53 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (if (= 403 (:status-code (ex-data e)))
-        (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
-                        (:type entity) (:id entity))
-            nil)
-        (do (log/error "Error fetching entity details for viewing context"
-                       {:type (:type entity) :id (:id entity)}
-                       (ex-message e))
-            (format-simple-entity entity))))))
+      (let [status-code (:status-code (ex-data e))]
+        (cond
+          (= 403 status-code)
+          (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
+                          (:type entity) (:id entity))
+              nil)
+
+          ;; A 404 is always an intentional, expected signal here (from api/check-404), never an
+          ;; accidental failure -- either the entity plainly doesn't exist, or (per
+          ;; check-resource-database) it's a routing-internal destination database masquerading as
+          ;; "not found" so as not to disclose its existence. Neither warrants an ERROR log; both
+          ;; still render best-effort from the caller's own claimed fields, same as before.
+          (= 404 status-code)
+          (do (log/debugf "Falling back to simple rendering for an unresolvable viewing-context entity: %s %s"
+                          (:type entity) (:id entity))
+              (format-simple-entity entity))
+
+          :else
+          (do (log/error "Error fetching entity details for viewing context"
+                         {:type (:type entity) :id (:id entity)}
+                         (ex-message e))
+              (format-simple-entity entity)))))))
 
 (defmethod format-entity "table"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a table:"
-                    #(entity-details/get-table-details {:entity-type :table
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-table-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a model:"
-                    #(entity-details/get-table-details {:entity-type :model
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :model
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/model->xml))
 
 (defn- format-chart-config-ids
@@ -214,16 +231,18 @@
     (format-native-query entity)
     (fetch-and-format entity
                       "The user is currently looking at the results of a report:"
-                      #(entity-details/get-report-details {:report-id (:id entity)
-                                                           :with-field-values? false})
+                      #(do (resources-tools/check-card-resource-database (:id entity))
+                           (entity-details/get-report-details {:report-id (:id entity)
+                                                               :with-field-values? false}))
                       llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a metric:"
-                    #(entity-details/get-metric-details {:metric-id (:id entity)
-                                                         :with-field-values? false})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-metric-details {:metric-id (:id entity)
+                                                             :with-field-values? false}))
                     llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"

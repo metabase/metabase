@@ -654,6 +654,21 @@
                 (is (not (contains? output :metrics)))
                 (is (= 0 @calls))))))))))
 
+(deftest answer-sources-omits-models-with-no-visible-fields-test
+  (testing "a model built on a table the user has no view-data permission on is omitted entirely from
+            list_available_data_sources, rather than listed with :fields []"
+    (mt/with-temp [:model/Card    {model-id :id} {:dataset_query (mt/mbql-query orders)
+                                                  :type          :model
+                                                  :collection_id nil}
+                   :model/Metabot metabot {:name          "root metabot"
+                                           :collection_id nil
+                                           :use_verified_content false}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [structured-output]} (entity-details/answer-sources
+                                             {:metabot-id (:entity_id metabot)})]
+            (is (not (contains? (set (map :id (:models structured-output))) model-id)))))))))
+
 (deftest related-tables-with-fields-capped-test
   (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "
                 "with a very large / highly-connected schema can't fetch and pin an unbounded number of columns "
@@ -848,8 +863,8 @@
             (is (contains? user-id :fk_target_portable_fk))))))))
 
 (deftest related-tables-permission-checks-are-memoized-test
-  (testing "the permission gate on FK expansion re-asks the same tables the same questions, so an agent
-            turn's memo cuts the app-DB reads it costs ( gap 3)"
+  (testing "the entity-details entry point binds the permission memo itself, so an outer agent-turn memo
+            does not change its app-DB reads or output"
     (mt/test-driver :h2
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -864,8 +879,8 @@
                 uncached (t2/with-call-count [calls] (details) (calls))
                 cached   (metabot.perms/with-cache
                            (t2/with-call-count [calls] (details) (calls)))]
-            (is (< cached uncached)
-                (format "expected fewer app-DB calls with the memo bound (cached %d, uncached %d)"
+            (is (= cached uncached)
+                (format "expected the entry point's own memo to make the outer binding redundant (cached %d, uncached %d)"
                         cached uncached))
             (testing "and the output is unchanged"
               (is (= (:structured-output (metabot.perms/with-cache (details)))
