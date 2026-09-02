@@ -176,7 +176,7 @@
 (defn lowercase-field
   "Lowercase a SQL field, to enter into honeysql query"
   [field]
-  [:lower field])
+  ['lower field])
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.
