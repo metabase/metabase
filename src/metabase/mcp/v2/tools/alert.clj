@@ -222,13 +222,17 @@
                                       "`slack_channel` is required when channel is \"slack\"."))))
 
       "email"
-      (assoc base
-             :channel_type :channel/email
-             :recipients   (cond
-                             (seq recipients)         (mapv email-recipient recipients)
-                             (seq (:recipients base)) (:recipients base)
-                             :else [{:type    :notification-recipient/user
-                                     :user_id api/*current-user-id*}])))))
+      (do
+        (when slack_channel
+          (common/throw-teaching-error
+           "`slack_channel` only applies to a Slack alert — pass channel \"slack\" to post there, or drop slack_channel to keep delivering by email."))
+        (assoc base
+               :channel_type :channel/email
+               :recipients   (cond
+                               (seq recipients)         (mapv email-recipient recipients)
+                               (seq (:recipients base)) (:recipients base)
+                               :else [{:type    :notification-recipient/user
+                                       :user_id api/*current-user-id*}]))))))
 
 ;;; ---------------------------------------------------- create ----------------------------------------------------
 

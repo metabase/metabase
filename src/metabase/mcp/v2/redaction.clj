@@ -52,17 +52,56 @@
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
 
+(defn- lookup-recipient-tenant-ids
+  "Map of user id to tenant id for the `recipients` whose `:user` hydration came back nil, in one
+   query. The `:recipients-detail` hydration deliberately attaches `:user` nil for a deactivated
+   user, whose tenant must then be looked up — otherwise a deactivated recipient reads as
+   tenantless and slips past (or is wrongly dropped by) the tenant filter."
+  [recipients]
+  (let [ids (into #{} (comp (remove :user) (keep :user_id)) recipients)]
+    (if (seq ids)
+      (t2/select-pk->fn :tenant_id :model/User :id [:in ids])
+      {})))
+
+(defn- recipient-tenant-id
+  "The tenant of a user recipient: read off the hydrated `:user` when present, else off
+   `id->tenant-id`, the batched lookup for recipients that have no `:user`."
+  [id->tenant-id recipient]
+  (if-some [user (:user recipient)]
+    (:tenant_id user)
+    (id->tenant-id (:user_id recipient))))
+
 (defn- visible-recipients
   "`recipients` less the ones the current user may not see: sandboxed or impersonated callers see
-   only themselves among user recipients, and non-superusers never see cross-tenant users."
-  [recipients]
-  (vec (cond->> recipients
-         (perms/sandboxed-or-impersonated-user?)
-         (filter #(or (nil? (:user_id %)) (= (:user_id %) api/*current-user-id*)))
+   only themselves among user recipients, and a caller who belongs to a tenant sees only user
+   recipients of that tenant. Same rule as `pulse/maybe-filter-pulses-recipients`: a tenantless
+   caller sees recipients unfiltered, as before tenants existed.
 
-         (not api/*is-superuser?*)
-         (filter #(or (nil? (:user_id %))
-                      (= (some-> % :user :tenant_id) (:tenant_id @api/*current-user*)))))))
+   `id->tenant-id` is a delay over [[lookup-recipient-tenant-ids]] shared across the notification's
+   handlers, so the lookup costs one query for the whole notification and none at all for a caller
+   the tenant filter does not apply to."
+  [id->tenant-id recipients]
+  (let [caller-tenant-id (:tenant_id @api/*current-user*)]
+    (vec (cond->> recipients
+           (perms/sandboxed-or-impersonated-user?)
+           (filter #(or (nil? (:user_id %)) (= (:user_id %) api/*current-user-id*)))
+
+           (and (not api/*is-superuser?*) (some? caller-tenant-id))
+           (filter #(or (nil? (:user_id %))
+                        (= (recipient-tenant-id @id->tenant-id %) caller-tenant-id)))))))
+
+(defn- payload-readable?
+  "Whether the current user may read the notification's payload.
+   [[models.notification/current-user-can-read-payload?]] has no `:notification/dashboard` clause
+   (its `case` throws on one), and a migrated dashboard row has no payload to check against: no
+   payload table stands behind `:payload_id`, and the `:payload` batched hydration only has a
+   `:notification/card` branch, so `:payload` hydrates nil. With no dashboard reachable, the check
+   is superuser — the one caller who can read every dashboard — mirroring how
+   `:notification/system-event` is handled there."
+  [notification]
+  (if (= :notification/dashboard (:payload_type notification))
+    (mi/superuser?)
+    (models.notification/current-user-can-read-payload? notification)))
 
 (defn redact-notification
   "`notification`, hydrated, with handler recipients redacted for the current user the way
@@ -70,15 +109,16 @@
    recipient — not its payload — loses the recipient lists entirely; otherwise individual
    recipients are filtered by [[visible-recipients]]."
   [notification]
-  (let [strip? (and (= :notification/card (:payload_type notification))
-                    (not (models.notification/current-user-can-read-payload? notification)))]
+  (let [strip? (and (#{:notification/card :notification/dashboard} (:payload_type notification))
+                    (not (payload-readable? notification)))]
     (update notification :handlers
             (fn [handlers]
-              (mapv (fn [handler]
-                      (if strip?
-                        (dissoc handler :recipients)
-                        (update handler :recipients visible-recipients)))
-                    handlers)))))
+              (let [id->tenant-id (delay (lookup-recipient-tenant-ids (mapcat :recipients handlers)))]
+                (mapv (fn [handler]
+                        (if strip?
+                          (dissoc handler :recipients)
+                          (update handler :recipients (partial visible-recipients id->tenant-id))))
+                      handlers))))))
 
 (defn hydrate-and-redact-notification
   "`notification`, hydrated and recipient-redacted for the current user — the shape

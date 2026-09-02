@@ -54,7 +54,13 @@
 
 (defn all-scopes
   "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata, the
-   scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query)."
+   scopes v2 tools gate on (registry), and the scopes v2 UI resources gate on (e.g. visualize_query).
+
+   DCR snapshots this set into a client's registered scopes when the client registers without naming any, and
+   the OAuth server's `validate-scope` then checks a requested scope against that per-client snapshot. So a
+   scope the v2 401 challenge asks for must be here, or a freshly registered client that follows the challenge
+   is answered \"Invalid scope\" instead of having its grant narrowed. A client registered before a scope was
+   added keeps its older snapshot until it re-registers."
   []
   (-> (sorted-set)
       ;; agent-api scopes from defendpoint metadata

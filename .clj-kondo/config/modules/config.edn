@@ -1362,6 +1362,7 @@
            system
            task
            transforms
+           users
            util
            warehouse-schema}
    :model-imports #{:model/Card
@@ -1639,6 +1640,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request

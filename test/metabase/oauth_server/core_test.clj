@@ -7,7 +7,10 @@
    [metabase.agent-api.api]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.oauth-server.core :as oauth-server]
-   [metabase.test :as mt]))
+   [metabase.oauth-server.test-util :as oauth-server.tu]
+   [metabase.test :as mt]
+   [oidc-provider.store :as oidc.store]
+   [toucan2.core :as t2]))
 
 (comment metabase.agent-api.api/keep-me)
 
@@ -45,17 +48,17 @@
             scopes, so an unasked-for write scope removes those tools from `tools/list` entirely, with
             no in-product way for the user to request them afterwards."
     (is (= (set (oauth-server/mcp-resource-scopes))
-           (set v2.api/default-ask-scopes))
+           (set @#'v2.api/default-ask-scopes))
         "the ask and the accepted set are the same — a scope in one but not the other is a bug in whichever moved")
     (testing "every asked scope is inside the ceiling, or the ask itself would be rejected"
       (let [ceiling (set (oauth-server/default-grant-scopes))]
-        (doseq [scope v2.api/default-ask-scopes]
+        (doseq [scope @#'v2.api/default-ask-scopes]
           (testing scope
             (is (contains? ceiling scope))))))
     (testing "GHY-4226: the wider agent-API scopes stay out — asking for the surface is not asking for the REST API"
       (doseq [scope ["mb:full" "agent:question:create" "agent:timelines:write"]]
         (testing scope
-          (is (not (contains? (set v2.api/default-ask-scopes) scope))))))))
+          (is (not (contains? (set @#'v2.api/default-ask-scopes) scope))))))))
 
 (deftest advertised-scopes-are-distinct-test
   (testing "GHY-4151: scopes_supported is a set of scope strings (RFC 8414) — it unions the default
@@ -118,6 +121,24 @@
         (is (= "http://localhost:3000" (:issuer config)))
         (is (= "http://localhost:3000/oauth/authorize" (:authorization-endpoint config)))
         (is (= "http://localhost:3000/oauth/token" (:token-endpoint config)))))))
+
+(deftest resolve-access-token-requires-existing-client-test
+  (testing "an access token stops authenticating once its oauth_client row is deleted (SEC-863)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server.tu/with-oauth-client [client-id]
+          (let [token   (str (random-uuid))
+                user-id (mt/user->id :rasta)
+                expiry  (+ (inst-ms (java.util.Date.)) 3600000)]
+            (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                          token (str user-id) client-id ["openid"] expiry nil)
+            (testing "resolves while the client exists"
+              (is (=? {:user-id user-id
+                       :scopes  #{"openid"}}
+                      (oauth-server/resolve-access-token token))))
+            (testing "returns nil once the client row is gone — token must not outlive its client"
+              (t2/delete! :model/OAuthClient :client_id client-id)
+              (is (nil? (oauth-server/resolve-access-token token))))))))))
 
 ;;; ----------------------------------- RFC 8707 resource narrowing -----------------------------------
 

@@ -222,7 +222,9 @@
    of letting an unrecognized value fail deep in the insert as a sanitized internal error."
   [semantic_type]
   (let [k (keyword semantic_type)]
-    (when-not (isa? k :Semantic/*)
+    ;; `type/PK` and `type/FK` are relation types, not semantic ones, but the column schema accepts
+    ;; either under `semantic_type` and the tool's own examples name them.
+    (when-not (or (isa? k :Semantic/*) (isa? k :Relation/*))
       (common/throw-teaching-error
        (format "Invalid semantic_type %s — pass a type in the \"type/…\" namespace, e.g. \"type/Currency\" or \"type/PK\"."
                (pr-str semantic_type))))
@@ -387,7 +389,14 @@
   (check-dashboard-collection-exclusive! dashboard_id args)
   (let [card-before  (v2.resolve/resolve-and-read-with
                       :model/Card id
-                      (fn [cid] (api/write-check :model/Card cid)))
+                      ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
+                      ;; verified card whose query changes by reading `:moderation_reviews` off the
+                      ;; card-before, and a bare row would leave the Verified badge on a swapped query.
+                      (fn [cid] (t2/hydrate (api/write-check :model/Card cid)
+                                            [:moderation_reviews :moderator_details])))
+        ;; The resolved numeric id, never the raw `id` arg: a 21-char entity_id would build the
+        ;; save-cycle graph on a node no dependency matches, and select the readback by a string.
+        card-id      (:id card-before)
         _            (check-is-question! card-before)
         dashboard    (resolve-dashboard! dashboard_id)
         dashboard-id (:dashboard-id dashboard)
@@ -405,11 +414,6 @@
                        (contains? args :cache_ttl)              (assoc :cache_ttl cache_ttl)
                        (contains? args :card_type)              (assoc :type (keyword card_type))
                        (contains? args :archived)               (assoc :archived (boolean archived))
-                       (seq column_metadata)                    (assoc :result_metadata
-                                                                       (resolve-result-metadata
-                                                                        (or new-query (:dataset_query card-before))
-                                                                        card-before
-                                                                        column_metadata))
                        new-query                                (assoc :dataset_query new-query))
         card-updates (api/updates-with-archived-directly card-before raw-updates)
         card-updates (force-restore-on-dashboard-move card-before card-updates)]
@@ -418,13 +422,23 @@
     (queries/check-card-can-be-saved! (:dataset_query card-updates)
                                       (or (:type card-updates) (:type card-before)))
     (when-some [query (:dataset_query card-updates)]
-      (queries/check-no-save-cycle! id query))
+      (queries/check-no-save-cycle! card-id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
-    (queries/update-card! {:card-before-update    card-before
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
-    (update-card-response (t2/select-one :model/Card :id id))))
+    ;; Result-metadata inference runs the query's preprocess over whatever tables and cards the new
+    ;; query names, and its teaching errors name the columns it found — so it must come AFTER the
+    ;; permission check above, or a caller could learn the columns of a table (or another user's
+    ;; card) they cannot run, one guessed name at a time.
+    (let [card-updates (cond-> card-updates
+                         (seq column_metadata) (assoc :result_metadata
+                                                      (resolve-result-metadata
+                                                       (or new-query (:dataset_query card-before))
+                                                       card-before
+                                                       column_metadata)))]
+      (queries/update-card! {:card-before-update    card-before
+                             :card-updates          card-updates
+                             :actor                 @api/*current-user*
+                             :delete-old-dashcards? false}))
+    (update-card-response (t2/select-one :model/Card :id card-id))))
 
 (def ^:private question-write-args-schema
   [:map {:closed true}

@@ -191,12 +191,13 @@
    expired, or revoked token, a token with no associated user, or a token whose user has since
    been deactivated).
 
-   The deactivated-user check is enforced here rather than only at each caller: the token store
-   knows only the token's existence, expiry, and user-id, so a token minted for a user who is later
-   deactivated stays otherwise valid. The core session middleware's bearer bridge happens to re-filter
-   on `is_active` via its user-info query, but the v1 MCP transport dispatches straight on the returned
-   `:user-id`, so a deactivated user's still-live token would authenticate there. Gating in this shared
-   resolver closes that for every caller at once.
+   The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
+   the model fires `:event/user-credentials-revoked`, and `metabase.oauth-server.events.revoke-on-deactivation`
+   stamps `revoked_at` on every token, which the store lookup above already filters on. This gate covers
+   the paths that don't go through the model hook — a direct SQL or migration update of `core_user`, a
+   restored backup — and keeps the invariant local to the one resolver every bearer caller shares (the
+   v1 MCP transport dispatches straight on the returned `:user-id` with no re-check of its own). It costs
+   one indexed primary-key lookup per bearer request.
 
    This is the single token-resolution lookup shared by the MCP transport and the core
    session middleware's bearer-token bridge — keep it the only place an access token is
@@ -206,8 +207,10 @@
     (when-let [provider (get-provider)]
       (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
         (let [expiry (:expiry token-data)]
-          (when (or (nil? expiry)
-                    (t/after? (t/instant expiry) (t/instant)))
+          (when (and (or (nil? expiry)
+                         (t/after? (t/instant expiry) (t/instant)))
+                     ;; Fail closed if the issuing client is gone (SEC-863).
+                     (t2/exists? :model/OAuthClient :client_id (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (t2/exists? :model/User :id user-id :is_active true)
                 {:user-id user-id
