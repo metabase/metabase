@@ -532,7 +532,7 @@
     `(do
        (defmethod mi/can-read? ~target
          ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (t2/select-one ~target ~'id pk#))))
+         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
     (string? target)

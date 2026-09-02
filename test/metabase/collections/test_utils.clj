@@ -48,9 +48,9 @@
        (finally
          ;; Clean up any created library collections
          (t2/delete! :model/Collection
-                     ~'type [:in [collection/library-collection-type
-                                  collection/library-data-collection-type
-                                  collection/library-metrics-collection-type]])))))
+                     :type [:in [collection/library-collection-type
+                                 collection/library-data-collection-type
+                                 collection/library-metrics-collection-type]])))))
 
 (defn do-with-library-synced
   "Implementation for with-library-synced macro.

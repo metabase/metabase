@@ -1930,13 +1930,13 @@
   `(let [k# (name ~k)]
      (binding [setting/*deprecated-db-key-warned* (atom #{})]
        (try
-         (if (t2/select-one :model/Setting ~'key k#)
+         (if (t2/select-one :model/Setting :key k#)
            (t2/update! :model/Setting :key k# {:value ~v})
            (t2/insert! :model/Setting {:key k# :value ~v}))
          (setting.cache/restore-cache!)
          ~@body
          (finally
-           (t2/delete! (t2/table-name :model/Setting) ~'key k#)
+           (t2/delete! (t2/table-name :model/Setting) :key k#)
            (setting.cache/restore-cache!))))))
 
 (deftest deprecated-name-db-fallback-only-legacy-test

@@ -472,7 +472,7 @@
        (let [~collection-binding (first (t2/insert-returning-instances! :model/Collection :name name#, :location ~location))]
          ~@body)
        (finally
-         (t2/delete! :model/Collection ~'name name#)))))
+         (t2/delete! :model/Collection :name name#)))))
 
 (defn- nonexistent-collection-id []
   (inc (or (:max (t2/select-one [:model/Collection [:%max.id :max]]))

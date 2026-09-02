@@ -45,7 +45,7 @@
                                             :credentials  {:secret ~secret-binding}})
            ~@body
            (finally
-             (t2/delete! :model/AuthIdentity ~'user_id (mt/user->id :rasta) ~'provider "totp")))))))
+             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
 
 (deftest two-step-login-test
   (with-enrolled-rasta! [secret]

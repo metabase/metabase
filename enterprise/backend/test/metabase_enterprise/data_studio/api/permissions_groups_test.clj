@@ -22,7 +22,7 @@
 ;;; ---------------------------------------- sync-data-analyst-group-for-oss! tests ----------------------------------------
 
 (defmacro with-reset-data-analyst-group! [& body]
-  `(let [original-group# (t2/select-one :model/PermissionsGroup ~'magic_group_type perms-group/data-analyst-magic-group-type)]
+  `(let [original-group# (t2/select-one :model/PermissionsGroup :magic_group_type perms-group/data-analyst-magic-group-type)]
      (try
        (mt/with-model-cleanup [:model/PermissionsGroup]
          (do ~@body))
