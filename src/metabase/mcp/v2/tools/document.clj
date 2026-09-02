@@ -21,6 +21,8 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -73,19 +75,34 @@
 
 (defn- smart-link-readable?
   "Whether the current user is allowed to see `row`'s display name. Every model but `user` has
-  a [[mi/can-read?]] implementation to defer to.
-
-  `:model/User` has none, so a user's name follows the mention picker's visibility rule instead
-  (see `filter-clauses` in [[metabase.users.models.user]]): a sandboxed or impersonated caller
-  resolves nobody but themselves, and everyone else resolves any user — non-admins are already
-  handed other people's names to populate subscription recipients. The internal user is not
-  filtered out the way the picker does it; a system account's name is noise, not a permission
-  boundary, and `:type` isn't among `:model/User`'s default fields to test cheaply."
+  a [[mi/can-read?]] implementation to defer to; user rows are pre-filtered by
+  [[visible-user-rows]], and a sandboxed or impersonated caller resolves nobody but themselves."
   [model row]
   (if (= "user" model)
     (or (= (:id row) api/*current-user-id*)
         (not (perms/sandboxed-or-impersonated-user?)))
     (mi/can-read? row)))
+
+(defn- visible-user-rows
+  "The `:model/User` rows among `ids` whose names the current user may see: the mention picker's
+  rule (`GET /api/comment/mentions`, `GET /api/user/recipients`). A superuser sees everyone; anyone
+  else sees active personal accounts in their own tenant, narrowed further by the `user-visibility`
+  setting (`:group` — users sharing a group; `:none` — only themselves). `:model/User` has no
+  `can-read?`, and resolving any id the caller names would let a document author enumerate names and
+  emails (`:common_name` is the email when a user has no name) across tenants."
+  [ids]
+  (let [clauses (cond-> [:and [:in :id ids] [:= :type "personal"] [:= :is_active true]]
+                  (not api/*is-superuser?*)
+                  (conj [:= :tenant_id (:tenant_id @api/*current-user*)]))
+        clauses (if api/*is-superuser?*
+                  clauses
+                  (case (users.settings/user-visibility)
+                    :all   clauses
+                    :group (conj clauses [:in :id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                      set
+                                                      (conj api/*current-user-id*))])
+                    :none  (conj clauses [:= :id api/*current-user-id*])))]
+    (t2/select :model/User {:where clauses})))
 
 (defn- smart-link-rows
   "`{[model id] row}` for every distinct smart-link target among `links` the current user may
@@ -101,7 +118,9 @@
                         rows     (when db-model
                                    (try
                                      (filterv #(smart-link-readable? model %)
-                                              (t2/select db-model :id [:in ids]))
+                                              (if (= "user" model)
+                                                (visible-user-rows ids)
+                                                (t2/select db-model :id [:in ids])))
                                      (catch Exception e
                                        (log/warnf e "smart link lookup failed for %s" model)
                                        nil)))]
