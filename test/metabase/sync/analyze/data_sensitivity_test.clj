@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.core :as analyze]
    [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
@@ -142,6 +143,48 @@
         (testing "the next scan retries the field"
           (sync.data-sensitivity/scan-data-sensitivity! db)
           (is (= 2 @calls)))))))
+
+(deftest sync-database-end-to-end-test
+  (testing "a full sync with the setting on labels every field of every table using this run's inferred table context"
+    (mt/with-temp-test-data [["app_users"
+                              [{:field-name "ssn", :base-type :type/Text}
+                               {:field-name "email", :base-type :type/Text}
+                               {:field-name "card_number", :base-type :type/Text}
+                               {:field-name "city", :base-type :type/Text}
+                               {:field-name "notes", :base-type :type/Text}
+                               {:field-name "foo", :base-type :type/Text}]
+                              [["123-45-6789" "a@b.com" "4111111111111111" "Berlin" "called back twice" "x"]]]
+                             ["products"
+                              [{:field-name "title", :base-type :type/Text}
+                               {:field-name "city", :base-type :type/Text}
+                               {:field-name "price", :base-type :type/Float}]
+                              [["Widget" "Berlin" 9.99]]]]
+      (mt/with-temporary-setting-values [data-sensitivity-scan-enabled true]
+        (sync/sync-database! (mt/db)))
+      (let [labels (fn [table]
+                     (into {} (map (juxt (comp u/lower-case-en :name) :data_sensitivity))
+                           (t2/select [:model/Field :name :data_sensitivity] :table_id (mt/id table))))]
+        (testing "app_users is a UserTable, so the gated city rule fires alongside the explicit name rules"
+          (is (= :entity/UserTable (t2/select-one-fn :entity_type :model/Table :id (mt/id :app_users))))
+          (is (= {"id"          :PUBLIC
+                  "ssn"         :PII
+                  "email"       :PII
+                  "card_number" :PCI_FIN
+                  "city"        :PII
+                  "notes"       :PUBLIC
+                  "foo"         :PUBLIC}
+                 (labels :app_users))))
+        (testing "products is not a UserTable, so city stays PUBLIC"
+          (is (= {"id" :PUBLIC "title" :PUBLIC "city" :PUBLIC "price" :PUBLIC}
+                 (labels :products))))
+        (testing "no mirror rows were created"
+          (is (zero? (t2/count :model/FieldUserSettings
+                               :field_id [:in (t2/select-pks-set :model/Field :table_id [:in [(mt/id :app_users) (mt/id :products)]])]))))
+        (testing "the analyze step recorded its counts in task_history"
+          (is (=? {:status       :success
+                   :task_details {:fields-scanned 11 :fields-labeled 4 :fields-failed 0}}
+                  (t2/select-one :model/TaskHistory :db_id (mt/id) :task "classify-data-sensitivity"
+                                 {:order-by [[:id :desc]]}))))))))
 
 (deftest scan-single-table-test
   (mt/with-temp [:model/Database db     {}

@@ -67,6 +67,5 @@
   :setter     :none
   :visibility :internal
   :export?    false
-  :doc        "Opt-in for the deterministic data sensitivity classifier. When enabled, each sync's analyze phase
-  labels fields that have no data_sensitivity yet, writing PUBLIC when no rule matches. The label is metadata only and
-  does not mask or restrict data. Labels set by a user are never overwritten.")
+  :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
+  page. Fields that already carry a label, including PUBLIC, are not rescanned.")
