@@ -171,8 +171,10 @@ We have a few helpers for dealing with tests involving snowplow
 Some of our tests depend on the email being set up, and require a local SMTP server. We use `maildev` Docker image for that purpose. At the time of this writing the image we use is `maildev/maildev:2.1.0`. The default cypress configuration for local development will handle this for you. If you want to set it up manually, you can use this command:
 
 ```sh
-docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:latest
+docker run -d -p 1180:1080 -p 1125:1025 maildev/maildev:2.2.1
 ```
+
+The e2e maildev is published on host ports 1180 (web UI) and 1125 (SMTP) on purpose. These differ, on purpose, from the 1080/1025 used for development.
 
 ### Running tests that require translation dictionaries
 
