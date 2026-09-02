@@ -153,6 +153,12 @@
     (testing "an encoded MBQL query is still not native"
       (is (false? (query-guards/native-query? {:query (json/encode {:type "query"
                                                                     :query {:source-table 1}})}))))
+    (testing "sequence edges decode symmetrically, so a JSON-string `stages` cannot become the one shape the
+              scan is blind to"
+      (is (true? (query-guards/native-query?
+                  {:stages (json/encode [{:lib/type "mbql.stage/native" :native "select 1"}])})))
+      (is (false? (query-guards/native-query?
+                   {:stages (json/encode [{:lib/type "mbql.stage/mbql" :source-table 1}])}))))
     (testing "a string that is not JSON at all is left to the existing fallback rather than throwing"
       (are [q] (false? (query-guards/native-query? q))
         {:query "not json at all"}

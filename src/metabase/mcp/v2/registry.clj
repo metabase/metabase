@@ -65,19 +65,29 @@
                                   (keys tool)))]
     (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
                     {:tool-name tool-name :unknown-keys (vec unknown)})))
-  (when (and (contains? tool :required-extensions)
-             (not (and (set? (:required-extensions tool)) (every? keyword? (:required-extensions tool)))))
-    (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
-                    {:tool-name tool-name :required-extensions (:required-extensions tool)})))
+  ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
+  ;; `ui-resource/supported-extensions`'s output, so the tool would be hidden from and refused to every
+  ;; client forever, with no error to say why.
+  (when (contains? tool :required-extensions)
+    (let [exts (:required-extensions tool)]
+      (when-not (and (set? exts) (every? keyword? exts))
+        (throw (ex-info (format "v2 MCP tool %s :required-extensions must be a set of keywords" tool-name)
+                        {:tool-name tool-name :required-extensions exts})))
+      (when-let [unknown (seq (remove mcp.ui-resource/known-extensions exts))]
+        (throw (ex-info (format "v2 MCP tool %s requires unknown client extension(s) %s — no client can satisfy them"
+                                tool-name (vec unknown))
+                        {:tool-name tool-name :unknown-extensions (vec unknown)})))))
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
-  ;; The registry is keyed by public name. Re-evaluating the same `deftool` (REPL, test reload) registers
-  ;; the same handler var again and may replace its entry; a second definition claiming an existing name
-  ;; would otherwise silently shadow the first, with load order deciding which one `tools/call` reaches.
-  (when-let [existing (get @tools* tool-name)]
-    (when (not= (:handler existing) handler)
-      (throw (ex-info (format "v2 MCP tool %s is already registered with a different handler" tool-name)
-                      {:tool-name tool-name}))))
+  ;; The registry is keyed by public name, so a second definition claiming an existing name would
+  ;; silently shadow the first, with load order deciding which one `tools/call` reaches. Compared by the
+  ;; handler var's fully-qualified symbol, not by identity: reloading a tool namespace (REPL,
+  ;; tools.namespace refresh) mints a fresh var for the same name, which an identity check would reject.
+  (let [handler-sym (fn [h] (when (var? h) (symbol h)))]
+    (when-let [existing (get @tools* tool-name)]
+      (when-not (= (handler-sym (:handler existing)) (handler-sym handler))
+        (throw (ex-info (format "v2 MCP tool %s is already registered by a different handler" tool-name)
+                        {:tool-name tool-name})))))
   (swap! tools* assoc tool-name tool)
   ;; flush cache to allow for repl/test redefinition.
   (reset! manifest-cache nil)

@@ -669,7 +669,8 @@
         projected (project-rows :collection-item args rows)
         line      (when (< (+ offset (count rows)) total)
                     (if (nil? ns-str)
-                      (common/truncation-line {:param :type :offset offset :limit limit :total total})
+                      (common/truncation-line {:param :type :offset offset :limit limit :total total
+                                               :returned (count rows)})
                       (format "Returned %d of %d — continue with `offset: %d`."
                               (count rows) total (+ offset limit))))]
     (common/success-content (cond-> (json/encode (common/list-envelope projected total))
@@ -748,7 +749,16 @@
                   :namespaces                     namespaces
                   :shallow                        false
                   :include-library?               false})
-        grouped (group-by #(or (last (collection/location-path->ids (:location %))) ::root) colls)]
+        visible (into #{} (map :id) colls)
+        ;; Group by the nearest VISIBLE ancestor, not the direct parent. `select-collections` is
+        ;; permission-filtered, so a collection the caller can read may sit under one they cannot; keying on
+        ;; the direct parent would drop it from the tree entirely. `collections->tree` pulls such a
+        ;; collection up to its nearest visible ancestor (A > B > C with B hidden renders as A > C) and this
+        ;; mirrors that.
+        grouped (group-by (fn [c]
+                            (or (last (filterv visible (collection/location-path->ids (:location c))))
+                                ::root))
+                          colls)]
     (fn [id]
       (mapv (fn [c] {:id (:id c) :name (:name c) :children (contains? grouped (:id c))})
             (grouped (if (number? id) id ::root))))))
