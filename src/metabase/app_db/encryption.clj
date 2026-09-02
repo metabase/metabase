@@ -22,40 +22,42 @@
   (cond-> v
     (instance? Blob v) blob->bytes))
 
-;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, `mi/transform-encrypted`, or
-;; the encrypted-text/EDN transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key
-;; only requires decrypting the raw value with the current key and re-encrypting the resulting string. We list raw
-;; table names (not models) so this also works for enterprise models that aren't loaded in every edition.
+(def ^:private boot-healed-columns
+  "Encrypted-at-rest string columns whose legacy plaintext rows [[encrypt-plaintext-columns!]] converts on startup."
+  [[:metabase_database :details]
+   [:metabase_database :settings]
+   [:metabase_database :write_data_details]
+   [:metabase_database :admin_details]
+   [:core_user :settings]
+   [:channel :details]
+   [:api_key :key]
+   [:auth_identity :credentials]
+   [:exploration_query_result :chart_stats]
+   [:exploration_query_result :metric_description]
+   [:exploration_query_result :chart_description]
+   [:report_card :public_uuid]
+   [:report_dashboard :public_uuid]
+   [:action :public_uuid]
+   [:document :public_uuid]
+   [:notification_recipient :details]
+   [:pulse_channel :details]])
+
 (def ^:private migration-converted-columns
-  "Columns whose existing rows are converted by `EncryptDwhDerivedColumns` rather than by [[encrypt-plaintext-columns!]].
-  Every path that could leave them plaintext already runs the migration or `encrypt-db`, so scanning them on the boot
-  path would decrypt every card's `result_metadata` on every startup to learn nothing."
+  "Warehouse-derived columns, encrypted at rest since v64, whose legacy rows `EncryptDwhDerivedColumns` converts.
+  Kept off the boot path: `result_metadata` is non-null on nearly every card, and the heal decrypts each row to
+  decide. `metabase_field.fingerprint` and `metabase_fieldvalues` are not encrypted at all, being far too many rows
+  to rewrite synchronously (see #80081)."
   [[:report_card :result_metadata]
    [:user_parameter_value :value]
    [:transform :last_checkpoint_value]])
 
+;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, `mi/transform-encrypted`, or
+;; the encrypted-text/EDN transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key
+;; only requires decrypting the raw value with the current key and re-encrypting the resulting string. We list raw
+;; table names (not models) so this also works for enterprise models that aren't loaded in every edition.
+;; Split only by who converts legacy rows; every consumer but the boot heal wants all of them.
 (def ^:private encrypted-string-columns
-  (into
-   [[:metabase_database :details]
-    [:metabase_database :settings]
-    [:metabase_database :write_data_details]
-    [:metabase_database :admin_details]
-    [:core_user :settings]
-    [:channel :details]
-    [:api_key :key]
-    [:auth_identity :credentials]
-    [:exploration_query_result :chart_stats]
-    [:exploration_query_result :metric_description]
-    [:exploration_query_result :chart_description]
-    [:report_card :public_uuid]
-    [:report_dashboard :public_uuid]
-    [:action :public_uuid]
-    [:document :public_uuid]
-    [:notification_recipient :details]
-    [:pulse_channel :details]]
-   ;; warehouse-derived, encrypted at rest since v64. `metabase_field.fingerprint` and `metabase_fieldvalues` are
-   ;; deliberately not encrypted at all: both are far too many rows to rewrite synchronously (see #80081).
-   migration-converted-columns))
+  (into boot-healed-columns migration-converted-columns))
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
@@ -330,14 +332,12 @@
   A value that decrypts with the current key is left byte-identical; whether a value is encrypted is
   decided by [[encryption/decryptable-string?]] (actually decrypting), never by shape. The `^bytes` columns are not
   scanned: every shipped version writes those encrypted, so they cannot regress this way. No-op when
-  MB_ENCRYPTION_SECRET_KEY is not set.
-
-  [[migration-converted-columns]] are skipped: a custom migration converts those, and re-checking them here would
-  decrypt every card's `result_metadata` on every startup."
+  MB_ENCRYPTION_SECRET_KEY is not set. Walks [[boot-healed-columns]], not every encrypted column: see
+  [[migration-converted-columns]]."
   []
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [conn]
-      (doseq [[table column] (remove (set migration-converted-columns) encrypted-string-columns)]
+      (doseq [[table column] boot-healed-columns]
         (run! (fn [{:keys [id value]}]
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
@@ -357,7 +357,9 @@
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
-        (doseq [[table column] (remove (set migration-converted-columns) encrypted-string-columns)]
+        ;; every encrypted column, not just the boot-healed ones: a rotation that skipped one would leave it under
+        ;; the old key, unreadable once that key is gone
+        (doseq [[table column] encrypted-string-columns]
           (reencrypt-encrypted-column! conn table column encrypt-str-fn
                                        (and (= check-status :valid)
                                             (contains? clearable-when-undecryptable [table column])))))

@@ -1,6 +1,7 @@
 (ns metabase.app-db.encryption-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.notification.core :as notification]
@@ -72,6 +73,30 @@
           (mdb/encrypt-plaintext-columns!)
           (is (= plaintext (stored))
               "the boot heal encrypted a column the migration owns"))))))
+
+(deftest rotation-rewrites-migration-converted-columns-test
+  (testing "key rotation must rewrite every encrypted column, including the ones the boot heal skips: one left under
+            the old key is unreadable once that key is gone"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (let [plaintext "[\"a\",\"b\"]"
+            upv-id    (encryption-test/with-secret-key "rotation-test-key-one"
+                        (let [user-id (t2/insert-returning-pk! :core_user
+                                                               {:first_name "Rot" :last_name "Test"
+                                                                :email      "rotation-test@metabase.com"
+                                                                :password   "x" :date_joined :%now
+                                                                :entity_id  (u/generate-nano-id)})
+                              upv-id  (t2/insert-returning-pk! :user_parameter_value
+                                                               {:user_id      user-id
+                                                                :parameter_id "abc123"
+                                                                :value        (encryption/encrypt plaintext)})]
+                          (mdb/encrypt-db :h2 (:data-source mdb.connection/*application-db*)
+                                          "rotation-test-key-two")
+                          upv-id))]
+        (encryption-test/with-secret-key "rotation-test-key-two"
+          (is (= plaintext
+                 (encryption/maybe-decrypt (t2/select-one-fn :value :user_parameter_value :id upv-id)))
+              "the column was left under the old key by rotation"))))))
 
 (deftest encrypt-value-test
   ;; pure: rebind the key directly rather than `with-secret-key`, which needs an app db for the setting cache
