@@ -240,7 +240,8 @@
   Applying it to the whole `/api/dataset` tree rather than to the two executing routes is deliberate: the
   guard is keyed on `:mcp-ui-credential`, which the session middleware attaches only for the routes on the
   credential's own allowlist, so every other route short-circuits before the body is read. That also means a
-  route later added to the allowlist is covered the day it is added — which is why the scan decodes a
+  `/api/dataset` route later added to the allowlist is covered the day it is added — a route added ELSEWHERE
+  is not, because this middleware wraps only that tree — which is why the scan decodes a
   JSON-string `query` edge rather than assuming the already-decoded shape: `/api/dataset/:export-format`
   takes one, this middleware runs ahead of Malli's `:decode/api`, and that route is off the allowlist only
   for now."
