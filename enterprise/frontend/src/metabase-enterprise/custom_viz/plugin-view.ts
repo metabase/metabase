@@ -9,8 +9,8 @@ export type PluginSeries = PluginProps["series"];
 
 export type PluginSettings = PluginProps["settings"];
 
-// Keyed by a host object, then by the plugin's prefix: every plugin gets its
-// own copy, so one plugin's mutations can't reach another's.
+// Keyed by a host object, then by the plugin's prefix.
+// Every plugin gets its own copy, so one plugin's mutations can't reach another's.
 class PerPluginCache<K extends object, V> {
   private readonly byKey = new WeakMap<K, Map<string, V>>();
 
