@@ -307,6 +307,22 @@
     (when (:isError result)
       (-> result :content first :text))))
 
+(deftest markdown-tables-are-rejected-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (with-tool-documents
+      (fn [created!]
+        (let [message "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}."
+              table   "| Table | Rows |\n|---|---|\n| users | 5,000 |"
+              created (created! (call {:method "create" :name "Table test" :content_markdown "No table"}))
+              doc-id  (:id created)]
+          (is (= message (write-error {:method "create" :name "Rejected" :content_markdown table})))
+          (is (= message (write-error {:method "update" :id doc-id :content_markdown table})))
+          (is (= message (write-error {:method "update" :id doc-id
+                                       :edits [{:old_str "No table" :new_str table}]})))
+          (is (:id (created! (call {:method           "create"
+                                    :name             "Code example"
+                                    :content_markdown (str "```markdown\n" table "\n```")})))))))))
+
 (defn- written-smart-link-attrs
   "The smartLink attrs of a document written through the tool, read back from the stored AST — the
    `label`/`href` an editor would render. Goes through the tool rather than `md/parse` because
@@ -629,6 +645,7 @@
       (testing "the manifest carries a description and an input schema that advertises `clear`"
         (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
           (is (seq (:description tool)))
+          (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
           (is (get-in tool [:inputSchema :properties :clear])))))))
 
 ;; Closes the inherited finding from slice 09a's review (.private/findings/slice-09a/parallel-review.md,

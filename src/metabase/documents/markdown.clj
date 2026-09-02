@@ -383,6 +383,21 @@
                (and (str/includes? header "|") (table-delimiter-row? delimiter))))
        boolean))
 
+(defn contains-table?
+  "Returns true when `markdown-string` contains a GFM pipe table outside a code block."
+  [markdown-string]
+  (letfn [(node-table? [node]
+            (and (instance? Paragraph node)
+                 (table-paragraph? (fm-children node))))
+          (segment-table? [{:keys [kind text children]}]
+            (case kind
+              :markdown (let [root (.parse flexmark-parser ^String text)]
+                          (boolean (some node-table? (tree-seq #(seq (fm-children %)) fm-children root))))
+              :container (boolean (some segment-table? children))
+              false))]
+    (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
+      (boolean (some segment-table? segments)))))
+
 (defn- reference-link-url
   "The URL a `[text][ref]` link resolves to, or nil when nothing in the document defines `ref`. The
   definition is a block of its own that carries no ProseMirror node, so this lookup is the only way

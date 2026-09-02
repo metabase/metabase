@@ -289,6 +289,12 @@
         ticks      (count (re-seq #"(?<!\\\\)`" line))]
     (or (odd? fence-count) (odd? ticks))))
 
+(defn- check-no-markdown-tables!
+  [^String markdown]
+  (when (documents/contains-table? markdown)
+    (common/throw-teaching-error
+     "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}.")))
+
 (defn- replace-all
   "Splice every occurrence of `old_str`, right-to-left so a replacement containing `old_str`
   is never re-matched, re-serializing between splices so each offset is taken against the
@@ -482,7 +488,7 @@
                           "collection_position"]]]]])
 
 (registry/deftool document-write-tool
-  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). To unset a property rather than change it, name it in clear: [\"collection_position\"] — a null does not clear, since strict clients fill every unset property with null and those are stripped. The response lists orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened; read that document with get_content and rewrite it with content_markdown rather than edits. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
+  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. No Markdown tables - embed a table-display question instead. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). To unset a property rather than change it, name it in clear: [\"collection_position\"] — a null does not clear, since strict clients fill every unset property with null and those are stripped. The response lists orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened; read that document with get_content and rewrite it with content_markdown rather than edits. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
   {:name        "document_write"
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}
@@ -492,6 +498,9 @@
                   {:create-required [:name :content_markdown]
                    :clearable       #{:collection_position}}
                   args)
+        write-args (if (= op :create) a b)
+        _          (doseq [markdown (cons (:content_markdown write-args) (map :new_str (:edits write-args)))]
+                     (check-no-markdown-tables! markdown))
         payload  (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                                     (case op
                                       :create (create! a)
