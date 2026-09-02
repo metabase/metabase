@@ -312,7 +312,13 @@
 
 (def ^:private mcp-ui-request-surface
   "The complete API surface used by the MCP visualization iframe. A UI credential
-   is deliberately not a general Metabase API credential."
+   is deliberately not a general Metabase API credential.
+
+   This is the surface the credential may PASS THROUGH, not the privilege it carries — see the
+   `::scope/mcp-ui` stamp below. The distinction matters because this set is an inventory of what the
+   embedded app happens to call rather than a decision about what it should reach: the credential is
+   installed as app-wide auth on the client (`installMcpUiCredential`), so anything the SDK adds lands here
+   by default. GHY-4400 tracks replacing this with a purpose-built surface."
   #{[:get  "/api/user/current"]
     [:get  "/api/session/properties"]
     [:post "/api/dataset"]
@@ -332,9 +338,18 @@
                (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
       (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid]))
               (m/update-existing :is-group-manager? boolean)
-              ;; Endpoint scope middleware treats this as session-like auth, but the
-              ;; route allowlist above is the actual authorization boundary.
-              (assoc :token-scopes #{::scope/unrestricted}
+              ;; `::scope/mcp-ui`, NOT `::scope/unrestricted`. The allowlist decides which routes this
+              ;; credential may pass through; it must not also decide what privilege it arrives with. Stamped
+              ;; unrestricted, a credential that reached anything off the list — a routing change, a new alias,
+              ;; a mistake in the set — arrived with full session privilege. `::mcp-ui` satisfies no endpoint's
+              ;; declared `:scope`, and `ensure-scopes-checked` refuses it where none is declared, so the same
+              ;; mistake now fails closed.
+              ;;
+              ;; `:token-scopes-checked` is what lets the allowlisted routes serve it: they declare no `:scope`
+              ;; of their own, and annotating them would push MCP vocabulary into `users-rest`, `session` and
+              ;; `query-processor`, deepening exactly the coupling GHY-4400 exists to remove.
+              (assoc :token-scopes #{::scope/mcp-ui}
+                     :token-scopes-checked true
                      :mcp-ui-session-id sid
                      :mcp-ui-credential claims)))))
 

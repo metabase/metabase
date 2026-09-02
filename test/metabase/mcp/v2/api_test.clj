@@ -13,6 +13,7 @@
    [metabase.mcp.v2.resources :as v2.resources]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -377,6 +378,35 @@
             (let [traced (keep :ai/tool-output @recorded)]
               (is (seq traced) "the tool output must actually be recorded, or this proves nothing")
               (is (not-any? #(get-in % [:_meta :com.metabase/mcp-apps]) traced)))))))))
+
+(deftest ui-credential-is-not-a-general-session-test
+  (testing "GHY-4400: the UI credential used to be stamped `::scope/unrestricted`, so the route allowlist was
+            the only thing standing between it and full session privilege — and that allowlist is an inventory
+            of what the embedded app happens to call, not a decision about what the credential should reach.
+            It now carries `::scope/mcp-ui`, which satisfies no endpoint's declared scope and is refused by
+            `ensure-scopes-checked` where none is declared, so a credential that reaches anything off the list
+            fails closed instead of arriving as the user."
+    (mcp.ui-resource/with-fallback-template
+      (let [session-id (initialize-ui-client!)
+            credential (-> (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name "refresh_ui_credential" :arguments {}})
+                                        {"mcp-session-id" session-id})
+                           (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
+            headers    {"x-metabase-mcp-ui-auth" credential}]
+        (is (some? credential) "the tool must hand back a credential, or this proves nothing")
+        (testing "an allowlisted route still serves it — the iframe has to boot"
+          (is (= 200 (:status (client/client-full-response :get 200 "user/current"
+                                                           {:request-options {:headers headers}})))))
+        (testing "a route off the allowlist is refused, as before"
+          (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                           {:request-options {:headers headers}})))))
+        (testing "and the request it authenticates is not stamped unrestricted"
+          (is (= #{:metabase.api.macros.scope/mcp-ui}
+                 (:token-scopes (#'mw.session/current-user-info-for-mcp-ui-credential
+                                 {:request-method :get
+                                  :uri            "/api/user/current"
+                                  :headers        {"x-metabase-mcp-ui-auth" credential}})))
+              "a credential must not carry the unrestricted sentinel"))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
