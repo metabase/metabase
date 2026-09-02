@@ -478,8 +478,8 @@
   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
   (database-routing/with-database-routing-off
-    (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                parameters zoom x y lat-field lon-field)))
+    (api.public/process-tiles-query-for-dashcard dashboard dashcard card
+                                                 parameters zoom x y lat-field lon-field)))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param

@@ -9,6 +9,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
+   [metabase.api.common :as api]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.lib.core :as lib]
@@ -2194,6 +2195,61 @@
             (is (png? (client/client :get 200 url
                                      :latField lat-field
                                      :lonField lon-field)))))))))
+
+(defn last-used-param-values
+  "The `{parameter-id value}` map that `user-kw` would see as `dashboard-id`'s last used parameter values.
+
+  `:last_used_param_values` hydrates off `api/*current-user-id*` rather than off an argument, so reading another
+  user's values means binding it. Also used by [[metabase.embedding-rest.api.embed-test]]."
+  [user-kw dashboard-id]
+  (binding [api/*current-user-id* (mt/user->id user-kw)]
+    (:last_used_param_values
+     (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :last_used_param_values))))
+
+(deftest dashcard-tile-query-does-not-save-last-used-parameters-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
+    (testing "must not persist the URL's parameters as a signed-in visitor's last used parameter values"
+      (let [uuid (str (random-uuid))]
+        (mt/with-temporary-setting-values [enable-public-sharing                true
+                                           dashboards-save-last-used-parameters true]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid
+                                                                  :parameters  [{:id   "_STATE_", :name "State"
+                                                                                 :slug "state",   :type "string/="}]}
+                         :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                         :model/DashboardCard {dashcard-id :id}  {:card_id            card-id
+                                                                  :dashboard_id       dashboard-id
+                                                                  :parameter_mappings [{:parameter_id "_STATE_"
+                                                                                        :card_id      card-id
+                                                                                        :target       [:dimension [:field (mt/id :people :state) nil]]}]}]
+            (let [url (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")]
+              (is (png? (mt/user-http-request :rasta :get 200 url
+                                              :latField   (tiles.api-test/encoded-lat-field-ref)
+                                              :lonField   (tiles.api-test/encoded-lon-field-ref)
+                                              :parameters (json/encode [{:id "_STATE_", :value ["CA"]}]))))
+              (is (= {}
+                     (last-used-param-values :rasta dashboard-id))))))))))
+
+(deftest dashcard-tile-query-archived-card-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
+    (testing "must not render an archived Card, matching its non-tiles siblings (SEC-1143)"
+      (let [uuid (str (random-uuid))]
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
+                         :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                         :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                                  :dashboard_id dashboard-id}]
+            ;; assert on the status alone: the success body is a PNG, and letting it reach the test report
+            ;; renders the whole run's output binary.
+            (let [url         (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")
+                  tile-status #(:status (client/client-full-response
+                                         :get url
+                                         :latField (tiles.api-test/encoded-lat-field-ref)
+                                         :lonField (tiles.api-test/encoded-lon-field-ref)))]
+              (testing "sanity: the tile renders while the Card is live"
+                (is (= 200 (tile-status))))
+              (t2/update! :model/Card card-id {:archived true})
+              (testing "and 404s once it is archived"
+                (is (= 404 (tile-status)))))))))))
 
 (deftest card-tile-query-implicit-join-ref-test
   (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
