@@ -2247,7 +2247,8 @@
            premium-features
            util
            enterprise/advanced-permissions}
-   :model-exports #{:model/Setting}}
+   :model-exports #{:model/Setting}
+   :model-imports #{:model/User}}
 
   settings-rest
   {:team "DevEx"

@@ -3,15 +3,14 @@
    one-layer FK expansion, and response building."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.erd.db :as erd.db]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
@@ -110,9 +109,7 @@
       (perms/prime-table-perms-cache (if (contains? opts :table-ids)
                                        {:table-ids (set table-ids)}
                                        {:db-ids #{database-id}}))
-      (->> (t2/select :model/Table
-                      {:select table-select-columns
-                       :where  where})
+      (->> (erd.db/tables-where table-select-columns where)
            (filter mi/can-read?)))))
 
 (defn- readable-table-ids
@@ -127,20 +124,13 @@
    as table metadata view (`/api/table/:id/query_metadata`)."
   [table-ids]
   (when (seq table-ids)
-    (t2/select :model/Field
-               {:where    [:and
-                           [:in :table_id table-ids]
-                           [:= :active true]]
-                :order-by schema.table/field-order-rule})))
+    (erd.db/active-fields-for-tables table-ids)))
 
 (defn- fetch-fields-by-ids
   "Fetch active fields by ID."
   [field-ids]
   (when (seq field-ids)
-    (t2/select :model/Field
-               {:where [:and
-                        [:in :id field-ids]
-                        [:= :active true]]})))
+    (erd.db/active-fields field-ids)))
 
 (defn- discover-fk-targets
   "Given a collection of fields, find FK target field IDs that point to tables
@@ -180,7 +170,7 @@
         neighbor-fields        (fetch-fields-for-tables neighbor-table-ids)
         ;; Batch-hydrate `:owner` once across the whole node set so the
         ;; per-node build doesn't trigger N+1 user lookups.
-        all-tables             (t2/hydrate (concat focal-tables neighbor-tables) :owner)
+        all-tables             (erd.db/hydrate-owner (concat focal-tables neighbor-tables))
         all-fields             (concat focal-fields neighbor-fields)]
     {:tables-by-id       (index-by-id all-tables)
      :fields-by-table    (group-by :table_id all-fields)

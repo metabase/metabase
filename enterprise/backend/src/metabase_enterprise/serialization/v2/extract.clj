@@ -4,6 +4,7 @@
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
@@ -60,11 +61,7 @@
 
   Does not export ee-only analytics collections."
   [user-id]
-  (let [roots (t2/select :model/Collection {:where [:and [:= :location "/"]
-                                                    [:or [:= :personal_owner_id nil]
-                                                     [:= :personal_owner_id user-id]]
-                                                    [:or [:= :namespace nil]
-                                                     [:!= :namespace "analytics"]]]})]
+  (let [roots (serialization.db/root-collections-for-user user-id)]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
@@ -90,7 +87,7 @@
       [model-name resolved-id]
       (throw (missing-target-error model-name "entity ID" id)))
     (let [model (keyword "model" model-name)]
-      (when-not (t2/exists? model (first (t2/primary-keys model)) id)
+      (when-not (serialization.db/instance-exists? model (first (t2/primary-keys model)) id)
         (throw (missing-target-error model-name "ID" id)))
       target)))
 
@@ -98,7 +95,7 @@
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
    These collections are intentionally excluded from serialization."
   []
-  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+  (let [analytics-roots (serialization.db/analytics-root-collections)]
     (into (set (map :id analytics-roots))
           (mapcat collection/descendant-ids)
           analytics-roots)))
@@ -113,9 +110,7 @@
       (into #{}
             (comp (partition-all serdes/query-batch-size)
                   (mapcat (fn [batch]
-                            (t2/select-pks-set :model/Card {:where [:and
-                                                                    [:in :id (vec batch)]
-                                                                    [:in :collection_id (vec analytics-colls)]]}))))
+                            (serialization.db/card-ids-in-collections (vec batch) (vec analytics-colls)))))
             card-ids)
       #{})))
 

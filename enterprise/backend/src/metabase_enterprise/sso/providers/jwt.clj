@@ -2,6 +2,7 @@
   "JWT authentication provider implementation."
   (:require
    [buddy.sign.jwt :as jwt]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -10,8 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -163,7 +163,7 @@
     (sso-utils/group-names->ids group-names name-mappings)
     (let [names (into #{} (sso-utils/group-names->strings group-names))]
       (when (seq names)
-        (t2/select-pks-set :model/PermissionsGroup :name [:in names])))))
+        (sso.db/group-ids-by-name names)))))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.

@@ -6,6 +6,7 @@
   Handlers in `metabase-enterprise.metabot-analytics.api` should stay thin —
   auth, param coercion, and delegation to the functions here."
   (:require
+   [metabase-enterprise.metabot-analytics.db :as metabot-analytics.db]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.metabot.persistence :as metabot-persistence]
@@ -14,8 +15,7 @@
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.slackbot.api :as slackbot.api]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -152,8 +152,7 @@
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
-                           (->> (t2/select [:model/MetabotMessage :conversation_id :data :data_version]
-                                           :conversation_id [:in conversation-ids])
+                           (->> (metabot-analytics.db/message-data-for-conversations conversation-ids)
                                 (group-by :conversation_id)))]
     (map (fn [row]
            (let [msgs (get messages-by-conv (:id row) [])]
@@ -179,16 +178,17 @@
         direction  (if (= sort-dir "asc") :asc :desc)
         order-by   (conj (mapv #(vector % direction) sort-exprs)
                          [:c.id :asc])
-        total      (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
-                                                  :from   [[:metabot_conversation :c]]}
-                                           where (assoc :where where))))
-        rows       (t2/select :model/MetabotConversation
-                              (cond-> (assoc list-query
-                                             :order-by order-by
-                                             :limit    limit
-                                             :offset   offset)
-                                where (assoc :where where)))]
-    {:data   (->> (t2/hydrate rows :user)
+        total      (:count (metabot-analytics.db/conversation-count-row
+                            (cond-> {:select [[[:count :*] :count]]
+                                     :from   [[:metabot_conversation :c]]}
+                              where (assoc :where where))))
+        rows       (metabot-analytics.db/conversations-where
+                    (cond-> (assoc list-query
+                                   :order-by order-by
+                                   :limit    limit
+                                   :offset   offset)
+                      where (assoc :where where)))]
+    {:data   (->> (metabot-analytics.db/hydrate-user rows)
                   hydrate-tool-counts
                   (map row->summary))
      :total  total
@@ -206,24 +206,8 @@
    thread can yield multiple rows for the same message — so the submitter is
    hydrated as `:user` for display."
   [conversation-id]
-  (let [rows (t2/select :model/MetabotFeedback
-                        {:select   [:metabot_feedback.id
-                                    :metabot_feedback.message_id
-                                    :metabot_feedback.user_id
-                                    [:mm.external_id :external_id]
-                                    :metabot_feedback.positive
-                                    :metabot_feedback.issue_type
-                                    :metabot_feedback.freeform_feedback
-                                    :metabot_feedback.created_at
-                                    :metabot_feedback.updated_at]
-                         :from     [:metabot_feedback]
-                         :join     [[:metabot_message :mm]
-                                    [:= :mm.id :metabot_feedback.message_id]]
-                         :where    [:= :mm.conversation_id conversation-id]
-                         :order-by [[:metabot_feedback.created_at :asc]
-                                    [:metabot_feedback.message_id :asc]
-                                    [:metabot_feedback.user_id :asc]]})]
-    (t2/hydrate rows :user)))
+  (let [rows (metabot-analytics.db/feedback-for-conversation conversation-id)]
+    (metabot-analytics.db/hydrate-user rows)))
 
 (defn- fork-boundary-external-id
   "The `external_id` of the last message copied in from the parent when this
@@ -239,13 +223,11 @@
 (defn fetch-conversation-detail
   "Fetch a conversation detail or throw a 404."
   [conversation-id]
-  (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+  (let [conversation (metabot-analytics.db/conversation conversation-id)]
     (api/check-404 conversation)
-    (let [all-messages (t2/select :model/MetabotMessage
-                                  :conversation_id conversation-id
-                                  {:order-by [[:created_at :asc] [:id :asc]]})
+    (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
           forked-from  (:forked_from_conversation_id conversation)
-          hydrated     (t2/hydrate conversation :user)]
+          hydrated     (metabot-analytics.db/hydrate-user conversation)]
       {:conversation_id             (:id conversation)
        :created_at                  (:created_at conversation)
        :title                       (:title conversation)

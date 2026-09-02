@@ -1,14 +1,14 @@
 (ns metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
   (:require
+   [metabase-enterprise.snippet-collections.db :as snippet-collections.db]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as snippets]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn- has-parent-collection-perms?
   [snippet       :- [:map [:collection_id [:maybe ms/PositiveInt]]]
@@ -24,7 +24,7 @@
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
-   (can-read? (t2/select-one [model :collection_id] :id id))))
+   (can-read? (snippet-collections.db/collection-id-row model id))))
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
@@ -36,7 +36,7 @@
     (has-parent-collection-perms? snippet :write)
     (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
   ([model id]
-   (can-write? (t2/select-one [model :collection_id] :id id))))
+   (can-write? (snippet-collections.db/collection-id-row model id))))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"

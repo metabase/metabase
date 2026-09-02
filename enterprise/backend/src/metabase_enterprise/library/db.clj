@@ -1,0 +1,42 @@
+(ns metabase-enterprise.library.db
+  "Application database queries for the library module. Every function here is a direct Toucan 2 call with no
+  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  (:require
+   [toucan2.core :as t2]))
+
+(defn card-types-in-collections
+  "The set of Card types present in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids]))
+
+(defn published-table-in-collections?
+  "Whether a published Table exists in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids]))
+
+(defn library-collections-where
+  "The Collections matching the Honey SQL `where`, ordered by name."
+  [where]
+  (t2/select :model/Collection {:where where, :order-by [[:%lower.name :asc]]}))
+
+(defn collection-type
+  "The type of the Collection with `collection-id`."
+  [collection-id]
+  (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
+
+(defn unarchived-card-collection-types-reducible
+  "Reducible distinct Collection ID and Card type pairs of the unarchived Cards."
+  []
+  (t2/reducible-query {:select-distinct [:collection_id :type]
+                       :from            [:report_card]
+                       :where           [:= :archived false]}))
+
+(defn hydrate-can-write
+  "Hydrate `:can_write` onto `collections`."
+  [collections]
+  (t2/hydrate collections :can_write))
+
+(defn hydrate-can-write-and-effective-children
+  "Hydrate `:can_write` and `:effective_children` onto `collection`."
+  [collection]
+  (t2/hydrate collection :can_write :effective_children))

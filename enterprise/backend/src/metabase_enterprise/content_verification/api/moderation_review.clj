@@ -1,11 +1,11 @@
 (ns metabase-enterprise.content-verification.api.moderation-review
   "`api/ee/moderation-review` routes."
   (:require
+   [metabase-enterprise.content-verification.db :as content-verification.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-verification.core :as moderation]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -27,5 +27,5 @@
                      :moderated_item_type moderated_item_type
                      :moderator_id        api/*current-user-id*
                      :status              status}]
-    (api/check-404 (t2/exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
+    (api/check-404 (content-verification.db/instance-exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
     (moderation/create-review! review-data)))

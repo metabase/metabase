@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
@@ -40,7 +41,7 @@
 ;;; ----------------------------------------- helpers -----------------------------------------
 
 (defn- get-exploration-or-404 [id]
-  (api/check-404 (t2/select-one :model/Exploration :id id)))
+  (api/check-404 (explorations.db/exploration id)))
 
 (defn- check-destination-collection-perms!
   "When `updates` moves the exploration to a different `collection_id`, verify the current
@@ -63,9 +64,7 @@
   "Propagate an Exploration's new `collection_id` to its Summary document.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
-  (t2/update! :model/Document
-              :exploration_id exploration-id
-              {:collection_id new-coll-id}))
+  (explorations.db/move-summary-documents! exploration-id new-coll-id))
 
 (defn- cascade-archived-to-documents!
   "Propagate an Exploration's archive flip to its Summary document.
@@ -75,28 +74,21 @@
   (user-archived) are never touched."
   [exploration-id new-archived?]
   (if new-archived?
-    (t2/update! :model/Document
-                :exploration_id exploration-id
-                :archived       false
-                {:archived true :archived_directly false})
-    (t2/update! :model/Document
-                :exploration_id      exploration-id
-                :archived            true
-                :archived_directly   false
-                {:archived false})))
+    (explorations.db/archive-summary-documents! exploration-id)
+    (explorations.db/unarchive-summary-documents! exploration-id)))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
   must not call this — there is one Summary per exploration."
   [exploration-id coll-id]
-  (t2/insert! :model/Document
-              {:name            summary-document-name
-               :document        {:type "doc" :content []}
-               :content_type    documents/prose-mirror-content-type
-               :creator_id      api/*current-user-id*
-               :collection_id   coll-id
-               :exploration_id  exploration-id
-               :is_placeholder  true}))
+  (explorations.db/insert-document!
+   {:name            summary-document-name
+    :document        {:type "doc" :content []}
+    :content_type    documents/prose-mirror-content-type
+    :creator_id      api/*current-user-id*
+    :collection_id   coll-id
+    :exploration_id  exploration-id
+    :is_placeholder  true}))
 
 (defn- blocks-by-thread-id
   "The persisted blocks (`ExplorationBlock`) for `thread-ids`, in authoring order, grouped by
@@ -104,9 +96,7 @@
   [thread-ids]
   (when (seq thread-ids)
     (group-by :exploration_thread_id
-              (t2/select :model/ExplorationBlock
-                         :exploration_thread_id [:in thread-ids]
-                         {:order-by [[:position :asc] [:id :asc]]}))))
+              (explorations.db/blocks-for-threads thread-ids))))
 
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
@@ -145,11 +135,10 @@
         block-ids        (map :id all-blocks)
         pages-by-block   (when (seq block-ids)
                            (group-by :exploration_block_id
-                                     (t2/select :model/ExplorationPage
-                                                :exploration_block_id [:in block-ids])))
+                                     (explorations.db/pages-for-blocks block-ids)))
         card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-blocks))
         cards            (when (seq card-ids)
-                           (t2/select [:model/Card :id :name] :id [:in card-ids]))
+                           (explorations.db/card-names card-ids))
         card-name-by-id  (into {} (map (juxt :id :name)) cards)]
     (mapv (fn [thread]
             (let [blocks (get blocks-by-thread (:id thread) [])
@@ -232,8 +221,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator :can_write :collection :document
-                  [:threads :queries :timelines])
+      explorations.db/hydrate-exploration-details
       (update :threads
               #(some->> %
                         (mapv (comp redact-thread-query-errors attach-thread-status))
@@ -255,9 +243,8 @@
    in two blocks is stored on both."
   [thread-id blocks]
   (when (seq blocks)
-    (t2/insert! :model/ExplorationBlock
-                (positional-rows thread-id
-                                 (map #(select-keys % [:metrics :dimensions]) blocks)))))
+    (explorations.db/insert-blocks! (positional-rows thread-id
+                                                     (map #(select-keys % [:metrics :dimensions]) blocks)))))
 
 (defn- insert-thread-timelines!
   "Attach `timeline-ids` to the thread, in payload order. Deduped (`distinct`, keeping first
@@ -265,9 +252,8 @@
    `(exploration_thread_id, timeline_id)` constraint and 500 the create."
   [thread-id timeline-ids]
   (when (seq timeline-ids)
-    (t2/insert! :model/ExplorationThreadTimeline
-                (positional-rows thread-id
-                                 (map (fn [tl-id] {:timeline_id tl-id}) (distinct timeline-ids))))))
+    (explorations.db/insert-thread-timelines! (positional-rows thread-id
+                                                               (map (fn [tl-id] {:timeline_id tl-id}) (distinct timeline-ids))))))
 
 (defn- reset-thread-for-rerun!
   "CAS-reset a *terminal* thread (`completed_at` set — natural completion, terminal failure, or
@@ -280,23 +266,8 @@
   `completed_at IS NOT NULL` keeps a thread that is still working from being restarted under itself."
   [thread-id]
   (t2/with-transaction [_conn]
-    (when (pos? (t2/query-one
-                 {:update :exploration_thread
-                  :set    {:started_at            (t/offset-date-time)
-                           :query_plan_started_at nil
-                           :query_plan_transcript nil
-                           :analysis_started_at   nil
-                           :completed_at          nil
-                           :canceled_at           nil}
-                  :where  [:and
-                           [:= :id thread-id]
-                           [:not= :completed_at nil]
-                           [:not-exists ^:allow-subquery {:select [1]
-                                                          :from   [:exploration_query]
-                                                          :where  [:and
-                                                                   [:= :exploration_thread_id thread-id]
-                                                                   [:= :status "running"]]}]]}))
-      (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
+    (when (pos? (explorations.db/reset-terminal-thread! thread-id (t/offset-date-time)))
+      (explorations.db/delete-queries-for-thread! thread-id)
       ;; Enqueue planning inside the reset transaction so the plan message publishes iff the reset
       ;; commits (:queue/exploration-plan is :transactional :require).
       (explorations.queues/start-thread! thread-id)
@@ -650,27 +621,25 @@
     (api/read-check :model/Timeline timeline-id))
   (let [persisted
         (t2/with-transaction [_]
-          (let [exploration (first (t2/insert-returning-instances! :model/Exploration
-                                                                   {:name          name
-                                                                    :description   description
-                                                                    :collection_id collection_id
-                                                                    :creator_id    api/*current-user-id*}))
+          (let [exploration (explorations.db/insert-exploration! {:name          name
+                                                                  :description   description
+                                                                  :collection_id collection_id
+                                                                  :creator_id    api/*current-user-id*})
                 ;; `started_at` marks the thread as started (past the draft phase). Planning itself
                 ;; is kicked off by the `start-thread!` enqueue below — its plan message rides a
                 ;; `:transactional :require` queue, so it publishes only once this whole transaction,
                 ;; including the dependent block/timeline rows below, commits atomically.
                 ;; The plan listener therefore can never observe (or plan) a half-built thread.
-                thread      (first (t2/insert-returning-instances! :model/ExplorationThread
-                                                                   {:exploration_id (:id exploration)
-                                                                    :prompt         prompt
-                                                                    :position       0
-                                                                    :started_at     (t/offset-date-time)}))
+                thread      (explorations.db/insert-thread! {:exploration_id (:id exploration)
+                                                             :prompt         prompt
+                                                             :position       0
+                                                             :started_at     (t/offset-date-time)})
                 tid         (:id thread)]
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
             (insert-summary-document! (:id exploration) collection_id)
             (explorations.queues/start-thread! tid)
-            (t2/select-one :model/Exploration :id (:id exploration))))]
+            (explorations.db/exploration (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.
     (events/publish-event! :event/exploration-create
@@ -708,18 +677,16 @@
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
     (api/write-check exploration)
-    (let [page          (api/check-404 (t2/select-one :model/ExplorationPage :id page_id))
-          block         (api/check-404 (t2/select-one :model/ExplorationBlock
-                                                      :id (:exploration_block_id page)))
+    (let [page          (api/check-404 (explorations.db/page page_id))
+          block         (api/check-404 (explorations.db/block (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
-          src-thread    (t2/select-one :model/ExplorationThread :id src-thread-id)
+          src-thread    (explorations.db/thread src-thread-id)
           ;; The clicked page must live in *this* exploration — a page keys off a block off a
           ;; thread off an exploration, and "Explore further" only ever drills a chart the caller
           ;; is already viewing here. Reject anything else with a 404: without this check a caller
           ;; could copy any page in the instance (metric selections, dimension snapshots, card ids,
           ;; and the queries the planner then runs) into an exploration they can write (IDOR).
-          _             (api/check-404 (t2/exists? :model/ExplorationThread
-                                                   :id src-thread-id :exploration_id id))
+          _             (api/check-404 (explorations.db/thread-in-exploration? src-thread-id id))
           _             (api/check-403
                          (contains? (derived-perms/thread-ids-with-visible-derived-data [src-thread-id])
                                     src-thread-id))
@@ -727,7 +694,7 @@
           metric-selection  (first metric-selections)
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (t2/select-one :model/Card :id card_id)))))
+                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -738,36 +705,29 @@
           ;; carries `:explore_filters`; `into` keeps that earlier segment scope and adds this one.
           metrics'      (mapv #(update % :explore_filters (fnil into []) enriched-filters)
                               (:metrics block))
-          timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
-                                          :exploration_thread_id src-thread-id
-                                          {:order-by [[:position :asc] [:id :asc]]})
-          next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
-                                                   :exploration_id id
-                                                   {:order-by [[:position :desc] [:id :desc]]})
-                                 0))]
+          timeline-ids  (explorations.db/thread-timeline-ids src-thread-id)
+          next-position (inc (or (explorations.db/last-thread-position id) 0))]
       (t2/with-transaction [_]
-        (let [thread (first (t2/insert-returning-instances!
-                             :model/ExplorationThread
-                             {:exploration_id id
-                              :name           (explore-further-thread-name card-name
-                                                                           enriched-filters
-                                                                           top-level-follow-up?)
-                              :data_access_token (drill-thread-token exploration cards)
-                              :position       next-position
-                              ;; drill lineage — lets the sidebar nest this thread
-                              ;; under the one owning the drilled page
-                              :source_page_id page_id}))
+        (let [thread (explorations.db/insert-thread!
+                      {:exploration_id    id
+                       :name              (explore-further-thread-name card-name
+                                                                       enriched-filters
+                                                                       top-level-follow-up?)
+                       :data_access_token (drill-thread-token exploration cards)
+                       :position          next-position
+                       ;; drill lineage — lets the sidebar nest this thread
+                       ;; under the one owning the drilled page
+                       :source_page_id    page_id})
               tid    (:id thread)]
-          (t2/insert! :model/ExplorationBlock
-                      {:exploration_thread_id tid
-                       :metrics               metrics'
-                       :dimensions            (stringify-dim-types (:dimensions block))
-                       :position              0})
+          (explorations.db/insert-blocks! {:exploration_thread_id tid
+                                           :metrics               metrics'
+                                           :dimensions            (stringify-dim-types (:dimensions block))
+                                           :position              0})
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
-          (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+          (explorations.db/update-thread! tid {:started_at (t/offset-date-time)})
           (explorations.queues/start-thread! tid)
-          (let [persisted (t2/select-one :model/Exploration :id id)]
+          (let [persisted (explorations.db/exploration id)]
             (events/publish-event! :event/exploration-update
                                    {:object persisted :user-id api/*current-user-id*})
             (hydrate-exploration persisted)))))))
@@ -849,8 +809,8 @@
   []
   (let [limit  (request/limit)
         offset (request/offset)
-        rows   (-> (t2/select :model/Exploration (my-explorations-honeysql api/*current-user-id* limit offset))
-                   (t2/hydrate :creator :collection))]
+        rows   (-> (explorations.db/explorations-where (my-explorations-honeysql api/*current-user-id* limit offset))
+                   explorations.db/hydrate-creator-and-collection)]
     {:total  (or (-> rows first :total_count) 0)
      :limit  limit
      :offset offset
@@ -881,12 +841,12 @@
     (check-destination-collection-perms! existing updates')
     (t2/with-transaction [_]
       (when (seq updates')
-        (t2/update! :model/Exploration id updates')
+        (explorations.db/update-exploration! id updates')
         (when (contains? updates' :collection_id)
           (cascade-collection-id-to-documents! id (:collection_id updates')))
         (when (contains? updates' :archived)
           (cascade-archived-to-documents! id (:archived updates')))))
-    (let [updated (t2/select-one :model/Exploration :id id)]
+    (let [updated (explorations.db/exploration id)]
       (when (seq updates')
         (events/publish-event! :event/exploration-update
                                {:object updated :user-id api/*current-user-id*}))
@@ -900,17 +860,17 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
-    (t2/delete! :model/Exploration :id id))
+    (explorations.db/delete-exploration! id))
   nil)
 
 (defn- get-exploration-page-or-404
   [page-id]
-  (api/check-404 (t2/select-one :model/ExplorationPage :id page-id)))
+  (api/check-404 (explorations.db/page page-id)))
 
 (defn- get-thread-or-404
   "Fetch the thread, or 404."
   [thread-id]
-  (api/check-404 (t2/select-one :model/ExplorationThread :id thread-id)))
+  (api/check-404 (explorations.db/thread thread-id)))
 
 (defn- write-check-thread [thread-id]
   (let [thread (get-thread-or-404 thread-id)]
@@ -957,11 +917,7 @@
     (t2/with-transaction [_conn]
       ;; CAS gate on `completed_at IS NULL` makes both already-canceled and already-completed
       ;; threads safe no-ops. When this UPDATE matches 0 rows, the thread is already terminal.
-      (t2/update! :model/ExplorationThread
-                  :id           thread-id
-                  :completed_at nil
-                  {:canceled_at now
-                   :completed_at now})
+      (explorations.db/cancel-thread! thread-id now)
       ;; Bulk-flip pending → canceled. SKIP LOCKED on Postgres/MySQL skips the row currently
       ;; held by an in-flight QP worker so this API call doesn't block on QP duration; that row
       ;; will commit as `done` (or `error`) naturally. H2 has only one worker (see worker-count
@@ -972,7 +928,7 @@
       ;; (error 1093). The selected rows stay locked until the surrounding transaction commits,
       ;; so the SKIP LOCKED semantics are preserved.
       (let [pending-ids (map :id
-                             (t2/query
+                             (explorations.db/pending-query-id-rows-for-thread
                               (cond-> {:select [:id]
                                        :from   [:exploration_query]
                                        :where  [:and
@@ -980,17 +936,14 @@
                                                 [:= :status "pending"]]}
                                 (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked]))))]
         (when (seq pending-ids)
-          (t2/query
-           {:update (t2/table-name :model/ExplorationQuery)
-            :set    {:status "canceled"}
-            :where  [:in :id pending-ids]})))))
-  (t2/select-one [:model/ExplorationThread :id :canceled_at :completed_at] :id thread-id))
+          (explorations.db/cancel-queries! pending-ids)))))
+  (explorations.db/thread-terminal-state thread-id))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up
   through `ExplorationThread` to the parent `Exploration`."
   [query-id]
-  (api/read-check (api/check-404 (t2/select-one :model/ExplorationQuery :id query-id))))
+  (api/read-check (api/check-404 (explorations.db/query query-id))))
 
 (defn- stream-stored-result
   "Replay a worker-serialized QP result (gzipped+nippy bytes from `:model/StoredResult.result_data`)
@@ -1042,7 +995,7 @@
    {:keys [starred]} :- [:map [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
-    (t2/update! :model/ExplorationPage id {:starred starred}))
+    (explorations.db/update-page! id {:starred starred}))
   nil)
 
 (api.macros/defendpoint :put "/pages/hidden" :- :nil
@@ -1056,15 +1009,13 @@
   (doseq [id page_ids]
     (api/write-check (get-exploration-page-or-404 id)))
   (when (seq page_ids)
-    (t2/update! :model/ExplorationPage :id [:in page_ids] {:hidden hidden}))
+    (explorations.db/update-pages! page_ids {:hidden hidden}))
   nil)
 
 (defn- summary-document-or-404
   "The non-archived Summary document for `exploration-id`, or 404."
   [exploration-id]
-  (api/check-404 (t2/select-one :model/Document
-                                :exploration_id exploration-id
-                                :archived false)))
+  (api/check-404 (explorations.db/unarchived-summary-document exploration-id)))
 
 (defn- exploration-query-ids-belong-to-exploration?
   "True when every id in `eq-ids` refers to an `ExplorationQuery` whose thread belongs to
@@ -1072,30 +1023,19 @@
   [exploration-id eq-ids]
   (let [distinct-ids (distinct eq-ids)]
     (= (count distinct-ids)
-       (t2/count :model/ExplorationQuery
-                 {:where [:and
-                          [:in :id distinct-ids]
-                          [:in :exploration_thread_id
-                           ^:allow-subquery {:select [:id]
-                                             :from   [:exploration_thread]
-                                             :where  [:= :exploration_id exploration-id]}]]}))))
+       (explorations.db/query-count-in-exploration exploration-id distinct-ids))))
 
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."
   [doc-id]
-  (t2/select-one [:model/Document
-                  :id :name :exploration_id :creator_id :content_type
-                  :created_at :updated_at :archived :is_placeholder]
-                 :id doc-id))
+  (explorations.db/summary-document-columns doc-id))
 
 (defn- page-explore-filters
   "Hydrated explore-further filters on the block that owns `page-id`, or nil
   when the page is unfiltered."
   [page-id]
-  (when-let [block-id (t2/select-one-fn :exploration_block_id
-                                        :model/ExplorationPage
-                                        :id page-id)]
-    (-> (t2/select-one-fn :metrics :model/ExplorationBlock :id block-id)
+  (when-let [block-id (explorations.db/page-block-id page-id)]
+    (-> (explorations.db/block-metrics block-id)
         first
         :explore_filters
         not-empty)))

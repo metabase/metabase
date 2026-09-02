@@ -1,5 +1,6 @@
 (ns metabase-enterprise.stale.impl
   (:require
+   [metabase-enterprise.stale.db :as stale.db]
    [metabase.staleness.core :as staleness]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -75,5 +76,5 @@
                (comp
                 (map #(select-keys % [:id :model]))
                 (map (fn [v] (update v :model #(keyword "model" %)))))
-               (t2/query (rows-query args)))
-   :total (:count (t2/query-one (total-query args)))})
+               (stale.db/query-rows (rows-query args)))
+   :total (:count (stale.db/query-one-row (total-query args)))})

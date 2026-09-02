@@ -25,6 +25,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase-enterprise.entity-retrieval.db :as entity-retrieval.db]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.collections.core :as collections]
@@ -32,8 +33,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.sql Connection)))
 
@@ -159,28 +159,20 @@
 (defn- library-cards [lib-ids id]
   ;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard). Card :type is keywordized
   ;; (:metric / :model); the entity_type is its name string.
-  (->> (apply t2/select [:model/Card :id :name :description :type :card_schema]
-              (cond-> [:collection_id [:in lib-ids], :archived false, :type [:in ["metric" "model"]]]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-cards-where lib-ids (when id [:= :id id]))
        (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))))))
 
 (defn- library-tables [lib-ids id]
   ;; A published table's user-facing label is its display_name; fall back to the raw name.
-  (->> (apply t2/select [:model/Table :id :name :display_name :description]
-              (cond-> [:collection_id [:in lib-ids], :is_published true, :active true]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-tables-where lib-ids (when id [:= :id id]))
        (map (fn [t] (->library-entity "table" (:id t) (or (:display_name t) (:name t)) (:description t))))))
 
 (defn- library-measures [table-ids id]
-  (->> (apply t2/select [:model/Measure :id :name :description]
-              (cond-> [:table_id [:in table-ids], :archived false]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-measures-where table-ids (when id [:= :id id]))
        (map (fn [mv] (->library-entity "measure" (:id mv) (:name mv) (:description mv))))))
 
 (defn- library-segments [table-ids id]
-  (->> (apply t2/select [:model/Segment :id :name :description]
-              (cond-> [:table_id [:in table-ids], :archived false]
-                id (conj :id id)))
+  (->> (entity-retrieval.db/library-segments-where table-ids (when id [:= :id id]))
        (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))))))
 
 (defn- library-entities
@@ -212,9 +204,8 @@
 
         (#{"measure" "segment"} entity-type)
         ;; A measure/segment is a member only when its parent table is a current library table.
-        (when-let [table-id (t2/select-one-fn :table_id
-                                              (if (= entity-type "measure") :model/Measure :model/Segment)
-                                              :id entity-local-id)]
+        (when-let [table-id (entity-retrieval.db/table-id-of (if (= entity-type "measure") :model/Measure :model/Segment)
+                                                             entity-local-id)]
           (when (seq (library-tables lib-ids table-id))
             (first (if (= entity-type "measure")
                      (library-measures [table-id] entity-local-id)
@@ -243,7 +234,7 @@
   card's live metric/model type). One row per card is guaranteed by the normalized storage key."
   []
   (u/index-by entity-class :ai_context
-              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
+              (entity-retrieval.db/ai-contexts)))
 
 (defn- dedup-by-doc-id [docs]
   ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
@@ -266,9 +257,8 @@
   (if-let [member (library-entity entity-type entity-local-id)]
     ;; Match ai_context by the normalized storage type: a card's row is stored as `card`, so look it up by
     ;; `card` whichever live label (metric/model) drove this targeted run.
-    (let [ai-ctx (t2/select-one-fn :ai_context :model/OsiAiContext
-                                   :entity_local_id entity-local-id
-                                   :entity_type (entity-retrieval/normalize-entity-type entity-type))]
+    (let [ai-ctx (entity-retrieval.db/ai-context entity-local-id
+                                                 (entity-retrieval/normalize-entity-type entity-type))]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 
