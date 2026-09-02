@@ -323,10 +323,20 @@
    accidental coupling between tests."
   (not (or config/is-test? config/is-dev?)))
 
+(defn- check-feature
+  "Ask `driver` whether it supports one feature, degrading to false (with a log line) if it throws. Puts no bound on
+  how long the driver may take -- callers bound it at whatever granularity suits them."
+  [driver feature database]
+  (try
+    (driver/database-supports? driver feature database)
+    (catch Throwable e
+      (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
+      false)))
+
 (defn- supports?* [driver feature database]
   (try
     (u/with-timeout supports?-timeout-ms
-      (driver/database-supports? driver feature database))
+      (check-feature driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -376,10 +386,35 @@
   #{;; used intenrally during the sync process, does not really need to be hydrated
     :metadata/table-writable-check})
 
-(defn- features* [driver database]
+(defn- feature-set
+  "The set of features for which `supported?` returns truthy, minus the ones we never hydrate."
+  [supported?]
   (set (for [feature driver/features
-             :when (and (not (skip-internal-features feature)) (supports? driver feature database))]
+             :when (and (not (skip-internal-features feature)) (supported? feature))]
          feature)))
+
+(defn- features* [driver database]
+  (feature-set #(supports? driver % database)))
+
+(defn- features-timeout-ms
+  "Budget for one batched scan of every feature. Read per call so that rebinding [[supports?-timeout-ms]] moves it too."
+  []
+  (* 4 supports?-timeout-ms))
+
+(defn- features-batched*
+  "Like [[features*]], but bounds the whole scan with a single timeout instead of giving each of the ~90 checks its
+  own. A per-check timeout costs a thread handoff that the check itself does not, and that handoff dominates the scan.
+
+  Only used while [[*memoize-supports?*]] is off. With memoization on, [[memoized-supports?*]] already absorbs the
+  repeat cost, and going around it would change what that cache ends up holding."
+  [driver database]
+  (try
+    (u/with-timeout (features-timeout-ms)
+      (feature-set #(check-feature driver % database)))
+    (catch Throwable _
+      ;; Budget blown, so fall back to the per-feature path: it bounds each check separately and therefore yields
+      ;; exactly what this call would have yielded had it never been batched.
+      (features* driver database))))
 
 (def ^:private memoized-features*
   (memoize/memo
@@ -396,9 +431,10 @@
                 [:map
                  [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
-  (let [database (ensure-lib-database database)
-        f (if *memoize-supports?* memoized-features* features*)]
-    (f driver database)))
+  (let [database (ensure-lib-database database)]
+    (if *memoize-supports?*
+      (memoized-features* driver database)
+      (features-batched* driver database))))
 
 (defn available-drivers
   "Return a set of all currently available drivers."
