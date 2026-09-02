@@ -85,6 +85,14 @@
                :source-table table-id
                :aggregation  [["count" {}]]}]})
 
+(defn- filter-definition
+  "A real MBQL 5 lib query on `table-kw` holding one filter on `field-kw`, in wire shape — the
+   segment counterpart to [[count-definition]]."
+  [table-kw field-kw]
+  (let [mp (mt/metadata-provider)]
+    (wire (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+              (lib/filter (lib/= (lib.metadata/field mp (mt/id table-kw field-kw)) 3))))))
+
 (def ^:private mbql4-fragment
   {:filter ["=" 1 1]})
 
@@ -551,6 +559,47 @@
             (is (= "You don't have permissions to do that."
                    (tool-error (call-tool! blind-analyst-id nil "segment_write"
                                            (assoc segment-args :name "definitions-test blind segment")))))))))))
+
+;; not ^:parallel: with-no-data-perms-for-all-users! rewrites global data perms, and rows are
+;; created through the tool under with-model-cleanup
+(deftest table-move-permission-test
+  (testing "GHY-4153/GHY-4154: `definition` carries the row to its own source table, so an update
+            retargeting a table the caller cannot author on is denied — the write check ran against
+            the old table, and only the domain create-check covers the new one"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/User {analyst-id :id} {:is_data_analyst true}]
+          (perms/add-user-to-group! analyst-id group-id)
+          ;; venues only — checkins is the table the analyst may not author on
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+          (let [segment (tool-result (call-tool! analyst-id nil "segment_write"
+                                                 {:method     "create" :table_id (mt/id :venues)
+                                                  :name       "definitions-test move segment"
+                                                  :definition mbql4-fragment}))
+                measure (tool-result (call-tool! analyst-id nil "measure_write"
+                                                 {:method     "create" :table_id (mt/id :venues)
+                                                  :name       "definitions-test move measure"
+                                                  :definition (count-definition (mt/id :venues))}))]
+            (testing "segment"
+              (is (= "You don't have permissions to do that."
+                     (tool-error (call-tool! analyst-id nil "segment_write"
+                                             {:method           "update" :id (:id segment)
+                                              :definition       (filter-definition :checkins :venue_id)
+                                              :revision_message "move to checkins"}))))
+              (testing "and the denial actually prevented the move"
+                (is (= (mt/id :venues)
+                       (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
+            (testing "measure"
+              (is (= "You don't have permissions to do that."
+                     (tool-error (call-tool! analyst-id nil "measure_write"
+                                             {:method           "update" :id (:id measure)
+                                              :definition       (count-definition (mt/id :checkins))
+                                              :revision_message "move to checkins"}))))
+              (testing "and the denial actually prevented the move"
+                (is (= (mt/id :venues)
+                       (t2/select-one-fn :table_id :model/Measure :id (:id measure))))))))))))
 
 ;; not ^:parallel: narrows the all-users group's view-data on the temp database
 (deftest existence-oracle-test
