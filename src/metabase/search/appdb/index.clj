@@ -312,9 +312,9 @@
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
-  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
-  continue so the rest of the reindex can finish and activate whatever was successfully written.
+  Returns the name of the table that was written to, or nil if no table is being tracked or a
+  recoverable batch failure was logged and skipped. Interrupts and unrecoverable retry failures
+  propagate to the caller.
 
   We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
   [table-type table-name-fn entries]
@@ -463,7 +463,7 @@
             ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
-                (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
+                (let [deleted (search-index-metadata/delete-pending-index! :appdb (search.spec/index-version-hash) table-name)]
                   (when (pos? deleted)
                     (log/infof "Deleted %d pending indices" deleted))))
               (swap! *indexes* assoc :pending nil))

@@ -63,10 +63,15 @@
          ;; We assume that failure corresponds to a unique index conflict (a pending entry already exists)
          false)))))
 
-(defn delete-index!
-  "Delete the given pending index, as long as its still pending."
+(defn delete-pending-index!
+  "Delete the given index if it is still pending."
   [engine version index-name]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :index_name (name index-name)))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version version
+              :lang_code (i18n/site-locale-string)
+              :index_name (name index-name)
+              :status :pending))
 
 (defn active-pending!
   "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."

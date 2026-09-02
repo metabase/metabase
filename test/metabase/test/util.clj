@@ -32,6 +32,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -970,17 +971,25 @@
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (doseq [[model pk] models
-                ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let [old-max-id (get model->old-max-id model)
-                      max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)
-                      where-clause [:and max-id-condition additional-conditions]]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where where-clause}))
-        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (reindex-search-index!)))))
+        (let [search-relevant? (set (keys (search.spec/model-hooks)))
+              deleted-searched (reduce
+                                +
+                                0
+                                (for [[model pk] models
+                                      ;; might not have an old max ID if this is the first time the macro is used in
+                                      ;; this test run.
+                                      :let [old-max-id (get model->old-max-id model)
+                                            max-id-condition (if old-max-id [:> pk old-max-id] true)
+                                            additional-conditions (with-model-cleanup-additional-conditions model)
+                                            where-clause [:and max-id-condition additional-conditions]
+                                            deleted (t2/query-one
+                                                     {:delete-from (t2/table-name model)
+                                                      :where where-clause})]]
+                                  (if (and (search-relevant? model) (number? deleted)) deleted 0)))]
+          ;; The raw DELETEs above skip t2 hooks, so the search index never hears about them. A full reindex purges
+          ;; the stale entries, but only when a search-relevant model actually lost rows.
+          (when (pos? deleted-searched)
+            (reindex-search-index!)))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.

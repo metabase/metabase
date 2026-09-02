@@ -204,7 +204,7 @@
   "Populate a new index, and make it active. Simultaneously updates the current index.
   Returns a future that will complete when the reindexing is done.
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  Alternatively, if `:async?` is false, it will also run synchronously."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try

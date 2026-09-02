@@ -25,11 +25,18 @@
         (is (false? (search-index-metadata/create-pending! engine version index-2))))
       (testing "You can activate an index"
         (is (= index-1 (search-index-metadata/active-pending! engine version)))
-        (is (= {:active index-1} (indexes))))
+        (is (= {:active index-1} (indexes)))
+        (testing "Deleting an active index is a no-op"
+          (is (zero? (search-index-metadata/delete-pending-index! engine version index-1)))
+          (is (= {:active index-1} (indexes)))))
       (testing "If there is no pending index, it will return the current index"
         (is (= index-1 (search-index-metadata/active-pending! engine version))))
       (testing "You can retire an index"
         (is (search-index-metadata/create-pending! engine version index-2))
+        (testing "Deleting a pending index removes it"
+          (is (= 1 (search-index-metadata/delete-pending-index! engine version index-2)))
+          (is (= {:active index-1} (indexes)))
+          (is (search-index-metadata/create-pending! engine version index-2)))
         (is (= {:active index-1 :pending index-2} (indexes)))
         (is (= index-2 (search-index-metadata/active-pending! engine version)))
         (is (= {:retired index-1 :active index-2} (indexes))))
