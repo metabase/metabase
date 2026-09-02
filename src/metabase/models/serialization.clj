@@ -451,7 +451,7 @@
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
         entities    (-> (extract-query (name (:model transform))
-                                       (assoc opts :where [:in backward-fk (map :id batch)] ::nested-fetch true))
+                                       (assoc opts :where ['in backward-fk (map :id batch)] ::nested-fetch true))
                         t2.realize/realize)]
     (group-by backward-fk entities)))
 

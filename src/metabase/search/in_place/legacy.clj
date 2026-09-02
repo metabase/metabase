@@ -224,7 +224,7 @@
   [query :- :map
    target-alias :- :keyword
    with :- :keyword]
-  (let [selects     (:select query)
+  (let [selects     ('select query)
         idx         (first (keep-indexed (fn [index item]
                                            (when (and (coll? item)
                                                       (= (last item) target-alias))
@@ -232,7 +232,7 @@
                                          selects))
         with-select [with target-alias]]
     (if (some? idx)
-      (assoc query :select (m/replace-nth idx with-select selects))
+      (assoc query 'select (m/replace-nth idx with-select selects))
       (throw (ex-info "Failed to replace selector" {:status-code  400
                                                     :target-alias target-alias
                                                     :with         with})))))

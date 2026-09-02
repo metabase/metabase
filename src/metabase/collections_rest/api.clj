@@ -1190,7 +1190,7 @@
   [rows rows-query offset]
   (or (some-> rows first :total_count)
       (when (pos? (or offset 0))
-        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+        (some-> (mdb/query (assoc rows-query 'limit 1)) first :total_count))
       0))
 
 (defn- collection-children*
@@ -1230,8 +1230,8 @@
                         (assoc rows-query
                                ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
                                ;; :total_count
-                               :limit  (if (zero? limit) 1 limit)
-                               :offset offset))
+                               'limit  (if (zero? limit) 1 limit)
+                               'offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
                         (mdb/query limit-query))
         res           {:total  (total-count rows rows-query offset)

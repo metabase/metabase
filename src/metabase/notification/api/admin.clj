@@ -504,8 +504,8 @@
   (let [base-filters (dissoc filters :limit :offset)
         page-rows    (t2/select :model/Notification
                                 (assoc (list-query base-filters)
-                                       :limit  limit
-                                       :offset offset))
+                                       'limit  limit
+                                       'offset offset))
         total        (or (:count (t2/query-one (count-query base-filters))) 0)
         decorated    (-> page-rows
                          decorate-runs

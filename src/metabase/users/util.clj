@@ -101,4 +101,4 @@
 (defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
   [clauses]
-  (dissoc clauses :order-by :limit :offset))
+  (dissoc clauses 'order-by 'limit 'offset))

@@ -885,10 +885,10 @@
   [{:keys [model-key tracking]} model-id]
   (if-let [query (:hydrate-query tracking)]
     ;; Use custom query for joins (Field, Segment)
-    (first (t2/query (update query :where
+    (first (t2/query (update query 'where
                              (fn [where-clause]
                                (walk/postwalk
-                                #(if (= % :?id) model-id %)
+                                #(if (= % '?id) model-id %)
                                 where-clause)))))
     ;; Simple select using select-fields
     (when-let [fields (:select-fields tracking)]

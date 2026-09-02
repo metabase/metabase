@@ -741,7 +741,7 @@
                     'where ['<= 'distance max-cosine-distance]
                     'order-by [['semantic_rank 'asc]]}]
     (if filters
-      (update base-query :where #(into [:and] [% filters]))
+      (update base-query 'where #(into ['and] [% filters]))
       base-query)))
 
 (defn- brute-force-search-query
@@ -877,7 +877,7 @@
 
   Takes a query map and returns {:ctes [...] :query query-without-with}"
   [query]
-  (if-not (:with query)
+  (if-not ('with query)
     {:ctes [] :query query}
     (let [ctes (reduce
                 ;; `assoc` swaps the (possibly flattened) inner query back into the binding while preserving the
@@ -886,9 +886,9 @@
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
                     (into acc (conj ctes (assoc cte-binding 1 query)))))
                 []
-                (:with query))]
+                ('with query))]
       {:ctes ctes
-       :query (dissoc query :with)})))
+       :query (dissoc query 'with)})))
 
 (defn- hybrid-select
   "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
