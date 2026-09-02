@@ -20,7 +20,8 @@
               {:type :text :text "Hi there!"}])))))
 
 (deftest ^:parallel parts->cc-messages-drops-reasoning-test
-  (testing "reasoning parts are dropped, not turned into empty user messages"
+  (testing "without a replay hook — every dialect but Mistral — reasoning parts are dropped,
+           not turned into empty user messages"
     (is (=? [{:role "user" :content "Hello"}
              {:role "assistant" :content "Hi there!"}]
             (chat-completions/parts->cc-messages
@@ -28,6 +29,49 @@
               {:type :reasoning :id "r1" :text "thinking"}
               {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "abc"}}}
               {:type :text :text "Hi there!"}])))))
+
+(deftest ^:parallel parts->cc-messages-reasoning-replay-hook-test
+  (let [think-hook (fn [part]
+                     {:role    "assistant"
+                      :content [{:type "thinking" :thinking [(:text part)]}]})]
+    (testing "a dialect's replay hook turns each coalesced reasoning block into its message,
+             merged with the step's text and tool calls as chunk-array content"
+      (is (= [{:role "user" :content "Hello"}
+              {:role       "assistant"
+               :content    [{:type "thinking" :thinking ["thinking"]}
+                            {:type "text" :text "Hi there!"}]
+               :tool_calls [{:id       "call-1"
+                             :type     "function"
+                             :function {:name "f" :arguments "{}"}}]}]
+             (chat-completions/parts->cc-messages
+              [{:role :user :content "Hello"}
+               ;; a block streams as small parts plus an empty-text metadata carrier;
+               ;; the hook must see ONE coalesced part
+               {:type :reasoning :id "r1" :text "think"}
+               {:type :reasoning :id "r1" :text "ing"}
+               {:type :reasoning :id "r1" :text "" :provider-metadata {:mistral {:signature "abc"}}}
+               {:type :text :text "Hi there!"}
+               {:type :tool-input :id "call-1" :function "f" :arguments {}}]
+              {:reasoning-part->message think-hook}))))
+    (testing "the coalesced part carries the block's metadata for the hook to use"
+      (let [seen (atom nil)]
+        (chat-completions/parts->cc-messages
+         [{:type :reasoning :id "r1" :text "a"}
+          {:type :reasoning :id "r1" :text "" :provider-metadata {:mistral {:signature "abc"}}}]
+         {:reasoning-part->message (fn [part] (reset! seen part) nil)})
+        (is (= {:type              :reasoning
+                :id                "r1"
+                :text              "a"
+                :provider-metadata {:mistral {:signature "abc"}}}
+               @seen))))
+    (testing "string-only assistant groups fold exactly as they do without a hook"
+      (is (= (chat-completions/parts->cc-messages
+              [{:type :text :text "Hi"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}])
+             (chat-completions/parts->cc-messages
+              [{:type :text :text "Hi"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}]
+              {:reasoning-part->message think-hook}))))))
 
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
