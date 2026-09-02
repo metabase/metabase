@@ -7,14 +7,12 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
-import { getErrorMessage } from "metabase/api/utils/errors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import { useToast } from "metabase/common/hooks/use-toast";
 import {
   Form,
   FormErrorMessage,
@@ -27,17 +25,14 @@ import { useAdminSetting, useAdminSettings } from "metabase/settings";
 import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { reload } from "metabase/utils/dom";
-import type { EnterpriseSettings } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
 
-type DomainsSettings = Pick<
-  EnterpriseSettings,
-  "allowed-iframe-hosts" | "csp-img-enabled" | "csp-img-allowed-hosts"
->;
-
-// BE settings code does not support empty strings, so we use " " as a sentinel for ""
-const EMPTY_ALLOWED_IFRAME_HOSTS = " ";
+import {
+  type DomainsSettings,
+  isDomainSettingsDirty,
+  normalizeDomainSettings,
+} from "./domainSettingsUtils";
 
 export function DomainsSettingsPage() {
   const { values, details, updateSettings, isLoading, error } =
@@ -46,7 +41,6 @@ export function DomainsSettingsPage() {
       "csp-img-enabled",
       "csp-img-allowed-hosts",
     ]);
-  const [sendToast] = useToast();
 
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
@@ -62,22 +56,12 @@ export function DomainsSettingsPage() {
     values: DomainsSettings,
     { resetForm }: FormikHelpers<DomainsSettings>,
   ) => {
-    const allowedIframeHosts = values["allowed-iframe-hosts"];
     const { error } = await updateSettings({
-      ...values,
-      "allowed-iframe-hosts":
-        allowedIframeHosts == null || allowedIframeHosts === ""
-          ? EMPTY_ALLOWED_IFRAME_HOSTS
-          : allowedIframeHosts,
+      ...normalizeDomainSettings(values),
       toast: false,
     });
     if (error) {
-      sendToast({
-        message: getErrorMessage(error, t`Error saving changes`),
-        icon: "warning",
-        toastColor: "feedback-negative",
-      });
-      return;
+      throw error;
     }
     // CSP settings need a reload to take effect
     // but reloading while the form is dirty triggers LeaveRouteConfirmModal
@@ -97,113 +81,118 @@ export function DomainsSettingsPage() {
           initialValues={{
             ...values,
             "allowed-iframe-hosts":
-              values["allowed-iframe-hosts"] === EMPTY_ALLOWED_IFRAME_HOSTS
+              values["allowed-iframe-hosts"].trim().length === 0
                 ? ""
                 : values["allowed-iframe-hosts"],
           }}
           onSubmit={onSubmit}
         >
-          {({ dirty, values }) => (
-            <>
-              <Form disabled={!dirty}>
-                <Stack gap="lg">
-                  <Box>
-                    <SettingHeader
-                      id="allowed-iframe-hosts"
-                      title={t`Allowed domains for iframes in dashboards`}
-                      description={
-                        <>
-                          {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>}`}
-                        </>
-                      }
-                    />
-                    {isSettingSetFromEnvVar(details["allowed-iframe-hosts"]) ? (
-                      <SetByEnvVar
-                        varName={details["allowed-iframe-hosts"].env_name}
-                      />
-                    ) : (
-                      <FormTextarea
+          {({ initialValues, values }) => {
+            const dirty = isDomainSettingsDirty(initialValues, values);
+            return (
+              <>
+                <Form disabled={!dirty}>
+                  <Stack gap="lg">
+                    <Box>
+                      <SettingHeader
                         id="allowed-iframe-hosts"
-                        name="allowed-iframe-hosts"
-                        nullable
-                      />
-                    )}
-                  </Box>
-                  <Box>
-                    <SettingHeader
-                      id="csp-img-enabled"
-                      title={t`Restrict image domains`}
-                      description={
-                        customVizEnabled
-                          ? jt`Required by Custom Visualizations. Turn off ${(
-                              <Link
-                                key="custom-viz"
-                                to={Urls.customViz()}
-                                variant="brand"
-                              >
-                                {t`Custom Visualizations`}
-                              </Link>
-                            )} before disabling this setting.`
-                          : customVizAvailable
-                            ? jt`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
-                            : t`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below.`
-                      }
-                    />
-                    {isSettingSetFromEnvVar(details["csp-img-enabled"]) ? (
-                      <SetByEnvVar
-                        varName={details["csp-img-enabled"].env_name}
-                      />
-                    ) : (
-                      <FormSwitch
-                        id="csp-img-enabled"
-                        name="csp-img-enabled"
-                        label={
-                          values["csp-img-enabled"] ? t`Enabled` : t`Disabled`
+                        title={t`Allowed domains for iframes in dashboards`}
+                        description={
+                          <>
+                            {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>}`}
+                          </>
                         }
-                        size="sm"
-                        disabled={Boolean(customVizEnabled)}
                       />
-                    )}
-                  </Box>
-                  <Box>
-                    <SettingHeader
-                      id="csp-img-allowed-hosts"
-                      title={t`Allowed domains for images`}
-                      description={
-                        values["csp-img-enabled"]
-                          ? customVizAvailable
-                            ? jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
-                            : jt`Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
-                          : t`Turn on the "Restrict image domains" setting above to enforce this allowlist.`
-                      }
-                    />
-                    {isSettingSetFromEnvVar(
-                      details["csp-img-allowed-hosts"],
-                    ) ? (
-                      <SetByEnvVar
-                        varName={details["csp-img-allowed-hosts"].env_name}
+                      {isSettingSetFromEnvVar(
+                        details["allowed-iframe-hosts"],
+                      ) ? (
+                        <SetByEnvVar
+                          varName={details["allowed-iframe-hosts"].env_name}
+                        />
+                      ) : (
+                        <FormTextarea
+                          id="allowed-iframe-hosts"
+                          name="allowed-iframe-hosts"
+                          nullable
+                        />
+                      )}
+                    </Box>
+                    <Box>
+                      <SettingHeader
+                        id="csp-img-enabled"
+                        title={t`Restrict image domains`}
+                        description={
+                          customVizEnabled
+                            ? jt`Required by Custom Visualizations. Turn off ${(
+                                <Link
+                                  key="custom-viz"
+                                  to={Urls.customViz()}
+                                  variant="brand"
+                                >
+                                  {t`Custom Visualizations`}
+                                </Link>
+                              )} before disabling this setting.`
+                            : customVizAvailable
+                              ? jt`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below. Required to enable Custom Visualizations. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+                              : t`Restrict the browser's Content Security Policy so images can only load from this Metabase instance or the domains you list below.`
+                        }
                       />
-                    ) : (
-                      <FormTextarea
+                      {isSettingSetFromEnvVar(details["csp-img-enabled"]) ? (
+                        <SetByEnvVar
+                          varName={details["csp-img-enabled"].env_name}
+                        />
+                      ) : (
+                        <FormSwitch
+                          id="csp-img-enabled"
+                          name="csp-img-enabled"
+                          label={
+                            values["csp-img-enabled"] ? t`Enabled` : t`Disabled`
+                          }
+                          size="sm"
+                          disabled={Boolean(customVizEnabled)}
+                        />
+                      )}
+                    </Box>
+                    <Box>
+                      <SettingHeader
                         id="csp-img-allowed-hosts"
-                        name="csp-img-allowed-hosts"
-                        disabled={!values["csp-img-enabled"]}
-                        nullable
+                        title={t`Allowed domains for images`}
+                        description={
+                          values["csp-img-enabled"]
+                            ? customVizAvailable
+                              ? jt`Domains that images can be loaded from in dashboard text, entity descriptions, and custom visualizations. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+                              : jt`Domains that images can be loaded from in dashboard text and entity descriptions. Leave empty to only allow images hosted by this Metabase instance. ${<ExternalLink key="img-docs" href={imgDocsUrl}>{t`Learn more`}</ExternalLink>}`
+                            : t`Turn on the "Restrict image domains" setting above to enforce this allowlist.`
+                        }
                       />
-                    )}
-                  </Box>
-                  <FormErrorMessage />
-                  <FormSubmitButton
-                    label={t`Save changes`}
-                    variant="filled"
-                    disabled={!dirty}
-                    style={{ alignSelf: "flex-end" }}
-                  />
-                </Stack>
-              </Form>
-              <LeaveRouteConfirmModal isEnabled={dirty} />
-            </>
-          )}
+                      {isSettingSetFromEnvVar(
+                        details["csp-img-allowed-hosts"],
+                      ) ? (
+                        <SetByEnvVar
+                          varName={details["csp-img-allowed-hosts"].env_name}
+                        />
+                      ) : (
+                        <FormTextarea
+                          id="csp-img-allowed-hosts"
+                          name="csp-img-allowed-hosts"
+                          disabled={!values["csp-img-enabled"]}
+                          nullable
+                        />
+                      )}
+                    </Box>
+                    <FormErrorMessage />
+                    <FormSubmitButton
+                      label={t`Save changes`}
+                      variant="filled"
+                      disabled={!dirty}
+                      style={{ alignSelf: "flex-end" }}
+                    />
+                  </Stack>
+                </Form>
+                <LeaveRouteConfirmModal isEnabled={dirty} />
+              </>
+            );
+          }}
         </FormProvider>
       </SettingsSection>
     </SettingsPageWrapper>

@@ -73,6 +73,12 @@ const setup = async ({
   await screen.findByText("Domains");
 };
 
+const isUnloadGuarded = () => {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
 describe("DomainsSettingsPage", () => {
   beforeEach(() => {
     jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
@@ -95,7 +101,13 @@ describe("DomainsSettingsPage", () => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 
-  it("should save changed settings and reload (metabase#80489)", async () => {
+  it("should save changed settings and reload without a beforeunload prompt (metabase#80489)", async () => {
+    let wasUnloadGuardedAtReload = true;
+    // Check inside reload() — after it returns the form is already clean.
+    jest.spyOn(domUtils, "reload").mockImplementation(() => {
+      wasUnloadGuardedAtReload = isUnloadGuarded();
+    });
+
     await setup();
 
     await userEvent.clear(screen.getByLabelText(IFRAME_HOSTS_LABEL));
@@ -107,6 +119,7 @@ describe("DomainsSettingsPage", () => {
     const save = screen.getByRole("button", { name: "Save changes" });
     expect(save).toBeEnabled();
     expect(domUtils.reload).not.toHaveBeenCalled();
+    expect(isUnloadGuarded()).toBe(true);
 
     await userEvent.click(save);
 
@@ -123,6 +136,7 @@ describe("DomainsSettingsPage", () => {
       "csp-img-allowed-hosts": "imgcdn.example.com",
     });
     expect(domUtils.reload).toHaveBeenCalledTimes(1);
+    expect(wasUnloadGuardedAtReload).toBe(false);
   });
 
   it("should persist an empty iframe-hosts field as a single space so the default list does not return (metabase#55373)", async () => {
@@ -146,28 +160,47 @@ describe("DomainsSettingsPage", () => {
     expect(screen.getByLabelText(IFRAME_HOSTS_LABEL)).toHaveValue("");
   });
 
-  it("should persist an empty image-hosts field as null, not a single space", async () => {
-    await setup();
+  it("should not treat whitespace-only host values as dirty", async () => {
+    await setup({ iframeHosts: " ", imageHosts: "" });
 
-    await userEvent.clear(screen.getByLabelText(IMAGE_HOSTS_LABEL));
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const save = screen.getByRole("button", { name: "Save changes" });
+    const iframeHosts = screen.getByLabelText(IFRAME_HOSTS_LABEL);
+    const imageHosts = screen.getByLabelText(IMAGE_HOSTS_LABEL);
 
-    await waitFor(async () => {
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-    });
+    expect(iframeHosts).toHaveValue("");
+    expect(save).toBeDisabled();
 
-    const [{ body }] = await findRequests("PUT");
-    expect(body["csp-img-allowed-hosts"]).toBeNull();
+    await userEvent.type(iframeHosts, " ");
+    expect(save).toBeDisabled();
+
+    await userEvent.clear(iframeHosts);
+    expect(save).toBeDisabled();
+
+    await userEvent.type(iframeHosts, "vimeo.com");
+    expect(save).toBeEnabled();
+
+    await userEvent.clear(iframeHosts);
+    expect(save).toBeDisabled();
+
+    await userEvent.type(imageHosts, "   ");
+    expect(save).toBeDisabled();
   });
 
-  it("should show an error toast and not reload when save fails", async () => {
+  it("should show a form error and not reload when save fails", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+
     await setup({ saveStatus: 500 });
 
     await userEvent.type(screen.getByLabelText(IFRAME_HOSTS_LABEL), ".extra");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(await screen.findByText("Error saving changes")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "An error occurred",
+    );
+    expect(screen.getByRole("button", { name: "Failed" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Success" }),
+    ).not.toBeInTheDocument();
     expect(domUtils.reload).not.toHaveBeenCalled();
   });
 
@@ -175,12 +208,15 @@ describe("DomainsSettingsPage", () => {
     await setup({ cspImgEnabled: false });
 
     const imageHosts = screen.getByLabelText(IMAGE_HOSTS_LABEL);
+    const save = screen.getByRole("button", { name: "Save changes" });
     expect(imageHosts).toBeDisabled();
+    expect(save).toBeDisabled();
 
     await userEvent.click(
       screen.getByRole("switch", { name: CSP_SWITCH_NAME }),
     );
     expect(imageHosts).toBeEnabled();
+    expect(save).toBeEnabled();
   });
 
   it("should disable Restrict image domains when custom visualizations are enabled", async () => {
