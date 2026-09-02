@@ -135,6 +135,11 @@
           ;; decodes it in Malli, which runs AFTER this guard, so the guard is handed the raw string. Without
           ;; decoding, a string edge falls to `deep-scan`, which finds no marker inside text. Anything that is
           ;; not a map and not JSON-decodable to one is deep-scanned as before.
+          ;;
+          ;; This reaches a JSON body. A genuinely `<form>`-encoded submit — the shape that back-compat is
+          ;; actually about — leaves `(:body request)` a stream, not a map, so nothing structural is visible
+          ;; and the scan passes. That route is off the credential's allowlist, so it is unreachable today;
+          ;; adding it would mean reading `[:params :query]` alongside the body.
           (scan-map-edge [node]
             (cond
               (nil? node)    false

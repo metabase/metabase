@@ -1360,7 +1360,7 @@
            settings
            system
            util}
-   :model-imports #{:model/Dashboard :model/User}}
+   :model-imports #{:model/User}}
 
   measures
   {:team "Graphy"
