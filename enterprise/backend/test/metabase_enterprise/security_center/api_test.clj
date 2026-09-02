@@ -47,7 +47,7 @@
   "Create temporary SecurityAdvisories from [[test-advisories]] and execute `body`."
   [& body]
   (let [temps (mapcat (fn [advisory]
-                        [:model/SecurityAdvisory :_ advisory])
+                        [:model/SecurityAdvisory _ advisory])
                       test-advisories)]
     `(mt/with-temp [~@temps]
        ~@body)))
