@@ -277,7 +277,9 @@
              (record! "success" nil nil))
            ;; `::common/error-code` is an internal classification marker — never expose it to the client.
            (let [result (dissoc result ::common/error-code)]
-             (ait/record! {:ai/tool-output result})
+             ;; Trace the result WITHOUT the private MCP Apps block: it can carry a live UI credential, and a
+             ;; trace outlives the credential's five-minute window. The client still gets the full result.
+             (ait/record! {:ai/tool-output (common/redact-mcp-apps-meta result)})
              result))
          (catch Throwable e
            ;; A handler that throws something the dispatch try doesn't convert would otherwise skip instrumentation

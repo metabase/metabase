@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.ai-tracing.core :as ait]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
@@ -264,6 +265,63 @@
         (testing scope
           (is (contains? grantable scope)
               "a scope the v2 challenge asks for must be one the OAuth server will actually grant"))))))
+
+(def ^:private mcp-app-ui-capabilities
+  "The `initialize` capabilities an MCP Apps host advertises. Tools gated on `:mcp-app-ui` are hidden from — and
+  refused to — a client that does not send this, so any test driving one has to handshake as a capable client."
+  {:capabilities {:extensions {:io.modelcontextprotocol/ui {:mimeTypes ["text/html;profile=mcp-app"]}}}})
+
+(defn- initialize-ui-client!
+  "Handshake as a client that can render MCP Apps, returning the session id."
+  []
+  (-> (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+      (get-in [:headers "Mcp-Session-Id"])))
+
+(deftest refresh-ui-credential-test
+  (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
+            tool — the production template carries no `uiCredential` placeholder any more. v1 got the tool;
+            v2 did not, so a v2 iframe booted with no credential, called `refresh_ui_credential`, and got
+            unknown-tool. The widget could not load at all."
+    (let [session-id (initialize-ui-client!)
+          call!      (fn [] (-> (mcp-request (jsonrpc-request "tools/call"
+                                                              {:name "refresh_ui_credential" :arguments {}})
+                                             {"mcp-session-id" session-id})
+                                (get-in [:body :result])))]
+      (testing "the tool exists on v2 and hands back a resolvable credential in private _meta"
+        (let [result (call!)]
+          (is (not (:isError result)))
+          (let [{:keys [credential sessionId]} (get-in result [:_meta :com.metabase/mcp-apps])]
+            (is (= session-id sessionId))
+            (is (some? (mcp.session/resolve-ui-credential credential))))))
+      (testing "the credential it mints is scoped, never the v1 legacy exemption — a tool minting through the
+                2-arity would opt v2 back out of the native-SQL gate"
+        (let [claims (-> (call!) (get-in [:_meta :com.metabase/mcp-apps :credential])
+                         mcp.session/resolve-ui-credential)]
+          (is (nil? (:legacy claims)))
+          (is (contains? claims :scp))))
+      (testing "it is hidden from clients that cannot render an iframe, like the shells it serves"
+        (is (not (some #(= "refresh_ui_credential" (:name %))
+                       (registry/list-tools nil {:supports-mcp-ui? false}))))
+        (is (some #(= "refresh_ui_credential" (:name %))
+                  (registry/list-tools nil {:supports-mcp-ui? true})))))))
+
+(deftest refresh-ui-credential-is-redacted-from-traces-test
+  (testing "GHY-4157: the credential rides tool-result `_meta`, and `call-tool` records the whole result into
+            the eval trace. Recording it verbatim parks a live 5-minute authenticator in trace files and the
+            superuser-readable ai-tracing API. v1 strips the same channel before tracing
+            (`mcp.resources/redact-ui-credential`); the transport's HTML scrub does not reach tool results."
+    (let [recorded (atom [])]
+      (mt/with-dynamic-fn-redefs [ait/record! (fn [m] (swap! recorded conj m))]
+        (let [result (mt/with-current-user (mt/user->id :crowberto)
+                       (registry/call-tool #{"agent:query:run"}
+                                           (mcp.session/create! (mt/user->id :crowberto) nil)
+                                           "refresh_ui_credential" {} {:supports-mcp-ui? true}))]
+          (testing "the caller still gets the credential"
+            (is (some? (get-in result [:_meta :com.metabase/mcp-apps :credential]))))
+          (testing "but the trace does not"
+            (let [traced (keep :ai/tool-output @recorded)]
+              (is (seq traced) "the tool output must actually be recorded, or this proves nothing")
+              (is (not-any? #(get-in % [:_meta :com.metabase/mcp-apps]) traced)))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

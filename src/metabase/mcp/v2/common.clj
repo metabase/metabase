@@ -50,6 +50,25 @@
    (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
+(def mcp-apps-meta-key
+  "The `_meta` key MCP Apps credentials ride on, private to the host and never shown to the model.
+
+  Named here rather than inline because two places must agree on it: the tool that puts a credential there, and
+  the redaction that strips it before the result reaches an eval trace."
+  :com.metabase/mcp-apps)
+
+(defn redact-mcp-apps-meta
+  "`result` with the private MCP Apps `_meta` block removed.
+
+  A credential in a tool result is a live authenticator for the /api/dataset surface. Recording one verbatim
+  parks it in trace files and the superuser-readable ai-tracing API, where it outlives its five-minute window
+  in backups and log shipping. v1 strips the same channel before tracing
+  (`metabase.mcp.resources/redact-ui-credential`); the transport's HTML scrub covers `resources/read` bodies
+  and does not reach tool results."
+  [result]
+  (cond-> result
+    (map? (:_meta result)) (update :_meta dissoc mcp-apps-meta-key)))
+
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
 (defn throw-teaching-error

@@ -16,6 +16,7 @@
    ;; Tool namespaces self-register via `deftool` when loaded. The core surface ships with the `learn`
    ;; hello-world tool; each later PR adds its tool's require line here alongside the tool file.
    [metabase.mcp.v2.tools.learn]
+   [metabase.mcp.v2.tools.ui-credential]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.scope :as metabot.scope]))
 
