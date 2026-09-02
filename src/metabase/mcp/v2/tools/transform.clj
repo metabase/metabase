@@ -165,8 +165,13 @@
                database source-db-id database)))
     (when (and (nil? existing) (nil? target-name))
       (common/throw-teaching-error "`target.name` is required when method is \"create\" — it names the table the transform writes."))
-    (cond-> (assoc (select-keys existing [:schema :database]) :type "table"
-                   :name (or target-name (:name existing)))
+    ;; `:database` is derived from the query being stored, never carried over from `existing`: on a
+    ;; source-database swap the stored target would otherwise keep the OLD database while the query reads
+    ;; the new one, so the echo reports a database the transform does not write, and passing that echo
+    ;; back unchanged is refused by the check above — the tool rejecting the round-trip it promises.
+    (cond-> (assoc (select-keys existing [:schema]) :type "table"
+                   :name     (or target-name (:name existing))
+                   :database (or source-db-id (:database existing)))
       schema (assoc :schema schema))))
 
 (defn- check-target-free!
