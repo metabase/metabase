@@ -438,6 +438,27 @@
                (norm (tool-error (call-tool! :rasta write-scope "metric_write"
                                              {:method "update" :id 13371337 :name "x"})))))))))
 
+(deftest create-runs-the-permission-stack-test
+  (testing "GHY-4146: `check-allowed-to-create-card!` is what stops a caller saving a metric into a collection
+            they cannot curate, or over a query they cannot run. `create-card!` performs no check of its own,
+            so deleting that line would let both through — and every other create test here runs as an admin,
+            for whom the checks are vacuous."
+    (mt/with-model-cleanup [:model/Card]
+      (testing "a collection the caller cannot curate is refused, and nothing is written"
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
+          (is (some? (tool-error (call-tool! :rasta write-scope "metric_write"
+                                             {:method "create" :name "Perm probe"
+                                              :collection_id coll-id
+                                              :definition (count-definition)}))))
+          (is (zero? (t2/count :model/Card :name "Perm probe")))))
+      (testing "a query the caller has no data permission to run is refused"
+        (mt/with-no-data-perms-for-all-users!
+          (is (some? (tool-error (call-tool! :rasta write-scope "metric_write"
+                                             {:method "create" :name "Perm probe 2"
+                                              :definition (count-definition)}))))
+          (is (zero? (t2/count :model/Card :name "Perm probe 2"))))))))
+
 ;;; ------------------------------------------------- Scopes -------------------------------------------------------
 
 (deftest ^:parallel scope-gating-test
