@@ -550,15 +550,15 @@
      [linter entry])))
 
 (def ^:private header
-  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
-       ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
-       ";; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
+  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts), and\n"
+       ";; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).\n"
+       ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions. The workflow runs\n"
-       ";; it on master, so feature branches do not need to record reductions. Raising or adding a budget\n"
-       ";; (`--seed` for inline ignores, a manual edit for config) or widening the exemptions must be explained\n"
-       ";; in the PR.\n"
+       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets and removes stale exemptions.\n"
+       ";; The workflow runs it on master, so feature branches do not need to record reductions.\n"
+       ";; Raising or adding a budget (`--seed` for inline ignores, a manual edit for config) or widening the\n"
+       ";; exemptions must be explained in the PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn- render-counts
@@ -713,13 +713,13 @@
            " -- delete an entry by hand once its linter no longer needs one"))))
 
 (defn stale-exemptions-warning
-  "One informational line naming the [[stale-exemptions]] linters, or nil when there are none.
-  The exemptions stay in place; the line only makes stale ones visible."
+  "An informational warning naming linters whose `:comment-exempt` entries are stale, or nil when there
+  are none. Does not modify the exemptions."
   [exempt occurrences]
   (let [linters (stale-exemptions exempt occurrences)]
     (when (seq linters)
-      (str "WARNING: every ignore of these linters now carries a comment: " (str/join ", " linters)
-           " -- the shrink workflow drops their :comment-exempt entry on master"))))
+      (str "WARNING: :comment-exempt is no longer needed for these linters: " (str/join ", " linters)
+           " -- the shrink workflow removes the stale entries on master"))))
 
 (defn change-report
   "The lines [[fix!]] prints: lowered/dropped/seeded budgets, dropped exemptions, plus warnings for
@@ -834,7 +834,7 @@
   ignores or config suppressions exceed a bounded budget, an ignore lacks a required justification
   comment, or the file is not normalized.
   Only an explicit `{:disabled true}` opts out of enforcement.
-  An unused `:unlimited` policy is reported but does not fail the check."
+  Unused `:unlimited` policies and stale `:comment-exempt` entries are reported but do not fail the check."
   []
   (if-not (.exists (io/file *ratchets-file*))
     (fail! (str *ratchets-file* " is missing -- only {:disabled true} opts out of enforcement"))
