@@ -5,7 +5,12 @@ import {
 } from "metabase/redux/store/mocks";
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import { createMockSettings } from "metabase-types/api/mocks";
+import type { UnsavedCard } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockParameter,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -16,6 +21,8 @@ import {
   selectMetadataProviderFactory,
   selectMetadataProviderUnfiltered,
   selectMetricMetadataProvider,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
 } from "./provider";
 import { getMetadata } from "./selectors";
 
@@ -98,5 +105,53 @@ describe("the Metadata object these selectors build on", () => {
     // canonicalises its options. Without that, a bare call and an explicit
     // undefined build two Metadata objects over the same records.
     expect(getMetadata(state) === getMetadata(state, undefined)).toBe(true);
+  });
+});
+
+describe("the question selectors", () => {
+  it("build a question that carries the metadata", () => {
+    const question = selectQuestionFromOpts(state, {
+      DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    });
+
+    expect(question.databaseId()).toBe(SAMPLE_DB_ID);
+  });
+
+  it("wrap an existing card", () => {
+    const card = createMockCard({ id: 1 });
+
+    expect(selectQuestionFromCard(state, card).id()).toBe(card.id);
+  });
+
+  it("accept an unsaved card, which is what a draft question holds", () => {
+    // `Card` extends `UnsavedCard`, so the door models the unsaved shape. A
+    // `VirtualCard` has no `dataset_query` and so is still rejected, which the
+    // type checker enforces rather than this test.
+    const unsaved: UnsavedCard = {
+      display: "table",
+      dataset_query: createMockCard().dataset_query,
+      visualization_settings: {},
+    };
+
+    expect(selectQuestionFromCard(state, unsaved).display()).toBe("table");
+  });
+
+  it("carry the parameter values the constructor takes", () => {
+    const parameter = createMockParameter({ id: "p1" });
+    const card = createMockCard({ id: 1, parameters: [parameter] });
+
+    const question = selectQuestionFromCard(state, card, { p1: 42 });
+
+    expect(question.parameters()).toEqual([
+      expect.objectContaining({ id: "p1", value: 42 }),
+    ]);
+  });
+
+  it("do not memoise the questions themselves", () => {
+    // Each call builds a fresh Question, which is why the hooks return
+    // builders rather than a question.
+    expect(
+      selectQuestionFromOpts(state, {}) === selectQuestionFromOpts(state, {}),
+    ).toBe(false);
   });
 });
