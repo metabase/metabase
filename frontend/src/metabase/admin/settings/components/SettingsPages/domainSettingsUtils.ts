@@ -32,6 +32,6 @@ export function normalizeDomainSettings(values: DomainsSettings) {
   };
 }
 
-function isEmptyString(value?: string | null) {
+export function isEmptyString(value?: string | null) {
   return value == null || value.trim() === "";
 }

@@ -31,6 +31,7 @@ import { SettingHeader } from "../SettingHeader";
 import {
   type DomainsSettings,
   isDomainSettingsDirty,
+  isEmptyString,
   normalizeDomainSettings,
 } from "./domainSettingsUtils";
 
@@ -80,10 +81,11 @@ export function DomainsSettingsPage() {
         <FormProvider
           initialValues={{
             ...values,
-            "allowed-iframe-hosts":
-              values["allowed-iframe-hosts"].trim().length === 0
-                ? ""
-                : values["allowed-iframe-hosts"],
+            "allowed-iframe-hosts": isEmptyString(
+              values["allowed-iframe-hosts"],
+            )
+              ? ""
+              : values["allowed-iframe-hosts"],
           }}
           onSubmit={onSubmit}
         >
