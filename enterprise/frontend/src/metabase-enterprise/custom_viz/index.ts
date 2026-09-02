@@ -19,7 +19,7 @@ import {
   useCustomVizPlugins,
   useCustomVizPluginsIcon,
 } from "./custom-viz-plugins";
-import { isWidgetMount } from "./widget-mount";
+import { getSettingWidgetDomId, isWidgetMount } from "./widget-mount";
 
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
@@ -40,6 +40,7 @@ export function initializePlugin() {
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
       isWidgetMount,
+      getSettingWidgetDomId,
       CustomVizSettingWidget,
     });
   }

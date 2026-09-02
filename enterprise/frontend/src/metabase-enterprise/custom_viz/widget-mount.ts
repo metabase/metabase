@@ -1,5 +1,4 @@
 import type { BaseWidgetProps, WidgetMount } from "custom-viz";
-import type { ComponentType } from "react";
 
 import type { CustomVizSettingWidgetProps } from "metabase/visualizations/types";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
@@ -15,10 +14,12 @@ export type PluginWidgetProps = BaseWidgetProps<
   Record<string, unknown>;
 
 /**
- * A host-allocated `WidgetMount` tagged with the plugin it renders.
+ * A host-allocated `WidgetMount` tagged with the plugin it renders and its
+ * settings-key prefix.
  */
 type WidgetMountWithPlugin = WidgetMount<CustomVizSettingWidgetProps> & {
   plugin: CustomVizPluginRuntime;
+  prefix: string;
 };
 
 /**
@@ -45,7 +46,20 @@ export function wrapPluginWidget(
     };
   };
 
-  return Object.assign(mount, { plugin });
+  return Object.assign(mount, { plugin, prefix });
+}
+
+function toPluginWidgetId(id: string, prefix: string): string {
+  return id.startsWith(prefix) ? id.slice(prefix.length) : id;
+}
+
+/**
+ * DOM id a plugin widget renders for a host setting id: the plugin's own bare
+ * id for a plugin mount, the id unchanged otherwise. Keeps the host label's
+ * htmlFor paired with the widget's control.
+ */
+export function getSettingWidgetDomId(widget: unknown, id: string): string {
+  return isWidgetMount(widget) ? toPluginWidgetId(id, widget.prefix) : id;
 }
 
 function toPluginWidgetProps(
@@ -60,7 +74,7 @@ function toPluginWidgetProps(
 ): PluginWidgetProps {
   return {
     ...extraProps,
-    id,
+    id: toPluginWidgetId(id, prefix),
     value: structuredClone(value),
     onChange: (value) => onChange(value),
     onChangeSettings: (settings) =>
@@ -70,15 +84,7 @@ function toPluginWidgetProps(
   };
 }
 
-export function isWidgetMount(
-  value:
-    | string
-    | WidgetMount<CustomVizSettingWidgetProps>
-    | ComponentType<{
-        id: string;
-      }>
-    | undefined,
-): value is WidgetMountWithPlugin {
+export function isWidgetMount(value: unknown): value is WidgetMountWithPlugin {
   return typeof value === "function" && "plugin" in value;
 }
 

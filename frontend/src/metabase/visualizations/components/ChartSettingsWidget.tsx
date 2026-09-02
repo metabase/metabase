@@ -68,7 +68,10 @@ const ChartSettingsWidget = ({
             fw="bold"
             fz={isFormField ? "0.75rem" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
-            htmlFor={extraWidgetProps.id}
+            htmlFor={PLUGIN_CUSTOM_VIZ.getSettingWidgetDomId(
+              Widget,
+              extraWidgetProps.id,
+            )}
           >
             {title}
           </Text>
