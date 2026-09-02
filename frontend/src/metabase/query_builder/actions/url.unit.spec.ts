@@ -6,6 +6,7 @@
 // other side: how `navigate` drives the router.
 
 import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/metadata-store";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -17,7 +18,6 @@ import {
   getIsNavigationPending,
   navigate,
 } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
