@@ -242,7 +242,7 @@
         (is (contains? claims :scp)
             "and must carry a scope claim, which is what subjects it to the native-SQL gate")))))
 
-(deftest v2-surface-scopes-match-metabot-scope-test
+(deftest ^:parallel v2-surface-scopes-match-metabot-scope-test
   (testing "`v2-surface-scopes` spells its scopes as literals because `metabase.mcp.paths` must stay
             dependency-free — `metabase.server.middleware.security` requires `metabase.mcp.core`, so requiring
             `metabot.scope` from anything `mcp.core` reaches deadlocks namespace loading at web-server start.
@@ -255,11 +255,12 @@
             metabot.scope/agent-resource-read]
            mcp.paths/v2-surface-scopes))))
 
-(deftest challenge-scopes-are-grantable-test
-  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and the OAuth server
-            validates a requested scope against `all-agent-scopes`. A challenge naming scopes that set does not
-            contain is not merely over-broad — the client asks for exactly what it was told, is answered
-            \"Invalid scope\", and the connect fails outright. The surface becomes unreachable over OAuth."
+(deftest ^:parallel challenge-scopes-are-grantable-test
+  (testing "GHY-4226: the 401 challenge tells an uninstructed client what to ask for, and DCR snapshots
+            `all-agent-scopes` into each newly registered client, which is what the OAuth server validates a
+            requested scope against. A challenge naming scopes that set does not contain is not merely
+            over-broad — a fresh client asks for exactly what it was told, is answered \"Invalid scope\", and the
+            connect fails outright. The surface becomes unreachable over OAuth."
     (let [grantable (set ((requiring-resolve 'metabase.oauth-server.core/all-agent-scopes)))]
       (doseq [scope @#'v2.api/default-ask-scopes]
         (testing scope
@@ -303,7 +304,31 @@
         (is (not (some #(= "refresh_ui_credential" (:name %))
                        (registry/list-tools nil {:supports-mcp-ui? false}))))
         (is (some #(= "refresh_ui_credential" (:name %))
-                  (registry/list-tools nil {:supports-mcp-ui? true})))))))
+                  (registry/list-tools nil {:supports-mcp-ui? true}))))
+      (testing "and refused to them over the wire — hiding is not enforcement; a text-only model must never be
+                handed a live /api/dataset authenticator by calling the tool by name"
+        (let [plain-session (-> (mcp-request (jsonrpc-request "initialize" {:capabilities {}}))
+                                (get-in [:headers "Mcp-Session-Id"]))
+              result        (-> (mcp-request (jsonrpc-request "tools/call"
+                                                              {:name "refresh_ui_credential" :arguments {}})
+                                             {"mcp-session-id" plain-session})
+                                (get-in [:body :result]))]
+          (is (true? (:isError result)))
+          (is (nil? (get-in result [:_meta :com.metabase/mcp-apps]))))))))
+
+(deftest refresh-ui-credential-is-redacted-from-the-transport-trace-test
+  (testing "the transport records the whole JSON-RPC response one frame above the registry's tool-output
+            trace; over the wire, no recorded frame may carry the credential the client receives"
+    (let [recorded   (atom [])
+          session-id (initialize-ui-client!)
+          credential (mt/with-dynamic-fn-redefs [ait/record! (fn [m] (swap! recorded conj m))]
+                       (-> (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name "refresh_ui_credential" :arguments {}})
+                                        {"mcp-session-id" session-id})
+                           (get-in [:body :result :_meta :com.metabase/mcp-apps :credential])))]
+      (is (string? credential) "the client must still receive the credential")
+      (is (seq (filter :mcp/response @recorded)) "the transport frame must actually be recorded")
+      (is (not-any? #(str/includes? (pr-str %) credential) @recorded)))))
 
 (deftest refresh-ui-credential-is-redacted-from-traces-test
   (testing "GHY-4157: the credential rides tool-result `_meta`, and `call-tool` records the whole result into
@@ -354,13 +379,13 @@
 ;;; ------------------------------------------------ Auth methods --------------------------------------------------
 
 (deftest sso-provisioned-session-dispatches-test
-  (testing "GHY-4287: refusing API keys must not close the embedding integration path that replaces them — a
-            customer's backend signs a JWT per end user, exchanges it for a Metabase session at `/auth/sso`, and
-            drives MCP with that session, so every call lands on a real, billable `:type \"personal\"` user. An
-            SSO login mints its session through `create-session-with-auth-tracking!`, which links it to the
-            user's `auth_identity` row; the session middleware then reports that row's provider as the auth
-            method, so an SSO session is classified by provider, never \"api-key\", and a refusal keyed on
-            API-key auth must not catch it.
+  (testing "GHY-4287: the embedding integration path — a customer's backend signs a JWT per end user, exchanges
+            it for a Metabase session at `/auth/sso`, and drives MCP with that session — must dispatch as that
+            end user. An SSO login mints its session through `create-session-with-auth-tracking!`, which links
+            it to the user's `auth_identity` row; the session middleware reports that row's provider as the
+            auth method, and the v2 transport's session branch must accept it like any cookie session. (This
+            slice refuses no auth method by kind; the test pins the SSO path so a later refusal keyed on auth
+            method cannot silently catch it.)
 
             The customer's provider is JWT, but every provider mints its session through that one fn, and only
             OSS providers derive `::provider/provider` in an OSS run — so this uses OIDC to hold the guarantee in

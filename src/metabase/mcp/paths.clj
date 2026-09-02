@@ -41,8 +41,8 @@
 
    - the 401 `WWW-Authenticate` challenge, which tells an uninstructed client what to ask for
      ([[metabase.mcp.v2.api/default-ask-scopes]]);
-   - what the OAuth server will actually grant — DCR's default registration and `validate-scope` both read
-     [[metabase.mcp.core/all-scopes]];
+   - what the OAuth server will actually grant — DCR snapshots [[metabase.mcp.core/all-scopes]] into each
+     newly registered client, and `validate-scope` checks requests against that per-client snapshot;
    - what v2 tools and resources may gate on.
 
    When the challenge drifted ahead of the grant, a client that followed it asked for exactly what it was told

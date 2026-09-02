@@ -134,7 +134,7 @@
                                      extra-claims)))]
     (str payload "." (ui-credential-signature payload))))
 
-(defn issue-legacy-ui-credential
+(defn- issue-legacy-ui-credential
   "v1-compat ONLY. Mint a UI credential with no scope claim, stamped `:legacy`.
 
   A credential minted here is EXEMPT from the native-SQL scope gate

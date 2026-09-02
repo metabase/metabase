@@ -105,8 +105,8 @@
 (deftest ^:parallel native-query?-is-case-and-separator-insensitive-test
   (testing "the QP normalizer canonicalizes keys case-insensitively and treats `_` and `-` alike, so a payload
             spelled `:SOURCE_QUERY` still reaches the query processor as a native stage. Matching edge names and
-            markers case-exactly let a caller walk straight past the guard by changing the spelling — and once
-            `check-mcp-ui-native-query!` is wired onto /api/dataset (the next slice), this scan is the only gate
+            markers case-exactly let a caller walk straight past the guard by changing the spelling — and with
+            `check-mcp-ui-native-query!` wired onto /api/dataset by this slice, this scan is the only gate
             standing between an unrestricted-stamped MCP UI credential and raw SQL."
     (testing "nested-query edges, however spelled"
       (are [q] (true? (query-guards/native-query? q))

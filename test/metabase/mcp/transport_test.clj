@@ -145,21 +145,26 @@
           (is (not (contains? (keepalive-counts) 8))))))))
 
 (deftest keepalive-slot-is-released-when-the-stream-never-starts-test
-  (testing "`compojure.response/send*` reports a setup failure by calling `raise` rather than by throwing, so
-            releasing only in a catch returns the slot never — one leak per failed connect retires the cap a
-            connection at a time until the user can open no streams at all. Asserted on the wrapper directly:
-            `send*` is a protocol method, so redefining it does not reliably intercept dispatch."
+  (testing "a failure inside the streaming machinery's `respond` (status/header write, executor rejection) is
+            swallowed there: it closes the response's finished channel with `:unexpected-error` without ever
+            running the body, and `send*` never calls `raise`. Releasing only from the body would return the
+            slot never — one leak per failed connect retires the cap a connection at a time. The watcher on
+            the finished channel is what returns it."
     (with-clean-keepalive-counts
       (fn []
         (is (true? (#'mcp.transport/acquire-keepalive-slot! 9)))
-        (let [raised (promise)
-              raise! (#'mcp.transport/releasing-raise #(#'mcp.transport/release-keepalive-slot! 9)
-                                                      #(deliver raised %))
-              boom   (ex-info "setup failed" {})]
-          (raise! boom)
-          (is (= boom (deref raised 1000 nil)) "the failure must still reach the original raise")
+        (let [resp (streaming-response/streaming-response {:content-type "text/event-stream"} [_os _canceled-chan]
+                     nil)]
+          (#'mcp.transport/release-when-finished! #(#'mcp.transport/release-keepalive-slot! 9) resp)
+          (is (contains? (keepalive-counts) 9) "nothing has ended yet, so the slot is still held")
+          ;; What streaming-response's `respond` does on a setup failure, without running the body.
+          (a/>!! (streaming-response/finished-chan resp) :unexpected-error)
+          (a/close! (streaming-response/finished-chan resp))
+          (let [deadline (+ (System/currentTimeMillis) 2000)]
+            (while (and (contains? (keepalive-counts) 9) (< (System/currentTimeMillis) deadline))
+              (Thread/sleep 10)))
           (is (not (contains? (keepalive-counts) 9))
-              "and the slot taken for a stream that never started must be returned"))))))
+              "the slot taken for a stream that never started must be returned"))))))
 
 (deftest keepalive-stream-at-the-cap-is-refused-test
   (testing "a user already holding the cap gets a 429 instead of another stream"

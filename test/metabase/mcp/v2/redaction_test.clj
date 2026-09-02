@@ -7,6 +7,7 @@
    `sandboxed-or-impersonated-user?` is always false."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.api.common :as api]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.test :as mt]))
@@ -35,6 +36,14 @@
    :payload      {:dashboard_id dashboard-id}
    :handlers     [{:id 10 :channel_type :channel/email :recipients recipients}]})
 
+(defn- as-tenant-caller
+  "Run `thunk` with the current user belonging to tenant `tenant-id`. The predefined test users are all
+   tenantless, and the tenant filter only engages for a caller who has one."
+  [tenant-id thunk]
+  (let [me @api/*current-user*]
+    (binding [api/*current-user* (delay (assoc me :tenant_id tenant-id))]
+      (thunk))))
+
 (defn- visible-user-ids
   [notification]
   (->> (redaction/redact-notification notification)
@@ -44,15 +53,18 @@
        (mapv :user_id)))
 
 (deftest redact-notification-hides-cross-tenant-recipients-test
-  (testing "GHY-4219: a non-superuser never sees recipients from another tenant, while raw email
-            recipients — which have no tenant — always survive"
+  (testing "GHY-4219: a caller who belongs to a tenant sees only that tenant's user recipients, while raw
+            email recipients — which have no tenant — always survive. Same rule as /api/pulse."
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
       (let [notification (dashboard-notification dashboard-id
                                                  [same-tenant-recipient
                                                   cross-tenant-recipient
                                                   email-recipient])]
         (mt/with-test-user :rasta
-          (is (= [100 nil] (visible-user-ids notification))))
+          (testing "a tenantless caller sees every recipient, as before tenants existed"
+            (is (= [100 200 nil] (visible-user-ids notification))))
+          (testing "a tenant caller sees only its own tenant"
+            (as-tenant-caller 42 #(is (= [200 nil] (visible-user-ids notification))))))
         (testing "a superuser sees every recipient"
           (mt/with-test-user :crowberto
             (is (= [100 200 nil] (visible-user-ids notification)))))))))
@@ -83,13 +95,16 @@
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
       (mt/with-test-user :rasta
         (testing "filtered to empty projects as an empty list"
-          (let [handler (-> (dashboard-notification dashboard-id [cross-tenant-recipient])
-                            redaction/redact-notification
-                            projections/notification-row
-                            :handlers
-                            first)]
-            (is (contains? handler :recipients))
-            (is (= [] (:recipients handler)))))
+          ;; A tenant caller, so the cross-tenant recipient is filtered rather than shown.
+          (as-tenant-caller 99
+                            (fn []
+                              (let [handler (-> (dashboard-notification dashboard-id [cross-tenant-recipient])
+                                                redaction/redact-notification
+                                                projections/notification-row
+                                                :handlers
+                                                first)]
+                                (is (contains? handler :recipients))
+                                (is (= [] (:recipients handler)))))))
         (testing "stripped projects without the key at all"
           (let [handler (-> (dashboard-notification dashboard-id [same-tenant-recipient])
                             ;; What `redact-notification` does when the caller cannot read the

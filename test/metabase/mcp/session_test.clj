@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
-   [metabase.events.core :as events]
    [metabase.mcp.session :as mcp.session]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.session.core :as session]
@@ -409,12 +408,13 @@
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-embedding-session! does not publish :event/user-login"
-    (let [login-events (atom [])
-          user-id      (mt/user->id :crowberto)
-          session-id   (mcp.session/create! user-id nil)]
-      (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic payload]
-                                                          (when (= topic :event/user-login)
-                                                            (swap! login-events conj payload)))]
-        (mcp.session/get-or-create-embedding-session! session-id user-id))
-      (is (empty? @login-events)
-          "No :event/user-login should be published for MCP embedding sessions"))))
+    ;; Observed through the event's one synchronous side effect — `metabase.users.events.last-login` stamps
+    ;; `last_login` on the user — rather than by redefining `events/publish-event!`: it is a methodical
+    ;; multimethod, and `with-dynamic-fn-redefs` permanently swaps its root for a plain-fn proxy, after which
+    ;; any later `methodical/defmethod` on it (e.g. `metabase.api-routes.events`, loaded when the test web
+    ;; server first starts) fails to macroexpand.
+    (mt/with-temp [:model/User {user-id :id} {:last_login nil}]
+      (let [session-id (mcp.session/create! user-id nil)]
+        (mcp.session/get-or-create-embedding-session! session-id user-id)
+        (is (nil? (t2/select-one-fn :last_login :model/User :id user-id))
+            "No :event/user-login should be published for MCP embedding sessions")))))

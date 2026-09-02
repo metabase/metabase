@@ -64,20 +64,27 @@
 
 (defn- visible-recipients
   "`recipients` less the ones the current user may not see: sandboxed or impersonated callers see
-   only themselves among user recipients, and non-superusers never see cross-tenant users."
+   only themselves among user recipients, and a caller who belongs to a tenant sees only user
+   recipients of that tenant. Same rule as `pulse/maybe-filter-pulses-recipients`: a tenantless
+   caller sees recipients unfiltered, as before tenants existed."
   [recipients]
-  (vec (cond->> recipients
-         (perms/sandboxed-or-impersonated-user?)
-         (filter #(or (nil? (:user_id %)) (= (:user_id %) api/*current-user-id*)))
+  (let [caller-tenant-id (:tenant_id @api/*current-user*)]
+    (vec (cond->> recipients
+           (perms/sandboxed-or-impersonated-user?)
+           (filter #(or (nil? (:user_id %)) (= (:user_id %) api/*current-user-id*)))
 
-         (not api/*is-superuser?*)
-         (filter #(or (nil? (:user_id %))
-                      (= (recipient-tenant-id %) (:tenant_id @api/*current-user*)))))))
+           (and (not api/*is-superuser?*) (some? caller-tenant-id))
+           (filter #(or (nil? (:user_id %))
+                        (= (recipient-tenant-id %) caller-tenant-id)))))))
 
 (defn- payload-readable?
   "Whether the current user may read the notification's payload.
    [[models.notification/current-user-can-read-payload?]] has no `:notification/dashboard` clause
-   (its `case` throws on one), so dashboard rows are checked against the dashboard directly."
+   (its `case` throws on one), so dashboard rows are checked against the dashboard directly, through
+   the `:dashboard_id` of a hydrated `:payload`. The `:payload` hydration does not yet produce one for
+   dashboard rows (no dashboard notification is persisted today; subscriptions are pulse-backed), so a
+   persisted dashboard row reads as unreadable and its recipient lists are stripped for every caller —
+   fail closed until the payload hydration learns the dashboard shape."
   [notification]
   (if (= :notification/dashboard (:payload_type notification))
     (boolean (some->> notification :payload :dashboard_id (mi/can-read? :model/Dashboard)))

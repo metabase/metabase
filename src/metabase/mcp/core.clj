@@ -45,9 +45,12 @@
    defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query),
    plus everything the v2 MCP surface accepts.
 
-   This is what DCR grants a client by default and what `validate-scope` checks a requested scope against, so
-   a scope the v2 401 challenge asks for but that is missing here fails the connect with \"Invalid scope\"
-   instead of narrowing the grant. [[metabase.mcp.paths/v2-surface-scopes]] is the shared set both read."
+   DCR snapshots this set into a client's registered scopes when the client registers without naming any, and
+   the OAuth server's `validate-scope` then checks a requested scope against that per-client snapshot. So a
+   scope the v2 401 challenge asks for must be here, or a freshly registered client that follows the challenge
+   is answered \"Invalid scope\" instead of having its grant narrowed. A client registered before a scope was
+   added keeps its older snapshot until it re-registers. [[metabase.mcp.paths/v2-surface-scopes]] is the shared
+   set both read."
   []
   (into (into (mcp.resources/resource-scopes) mcp.paths/v2-surface-scopes)
         (comp (keep #(get-in % [:form :metadata :scope]))

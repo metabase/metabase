@@ -137,8 +137,7 @@
                    (let [response (try
                                     (dispatch-method-fn id method params session-id token-scopes request-context)
                                     (catch Throwable e
-                                      (log/error e "Error dispatching JSON-RPC method" method)
-                                      ;; The sanitizer, not the raw message: handlers that answer with a
+                                      ;; Logged inside `caller-safe-error-message` (once). The sanitizer, not the raw message: handlers that answer with a
                                       ;; JSON-RPC error (resources/read render-fns, tools/list) don't pass
                                       ;; through `->mcp-error-content`, and a thrown Error (not Exception)
                                       ;; skips even the tool-call sanitizer — either way an unvetted message
@@ -451,17 +450,17 @@
                (dissoc counts user-id)))))
   nil)
 
-(defn- releasing-raise
-  "Wrap an async `raise` so the keepalive slot is returned first.
-
-  `compojure.response/send*` reports a setup failure by calling `raise` rather than by throwing, so releasing
-  only in a `catch` returns the slot never — and one slot leaked per failed connect retires the cap a
-  connection at a time until the user can open no streams at all. `release!` is idempotent, so this and the
-  `catch` cannot double-release into a free slot."
-  [release! raise]
-  (fn [e]
-    (release!)
-    (raise e)))
+(defn- release-when-finished!
+  "Return the keepalive slot when `resp`'s stream finishes, however it finishes. The body's own `finally`
+   covers the normal and error endings, but a failure inside the streaming machinery's `respond` (status or
+   header write, executor rejection) is swallowed there: it completes the request and closes the response's
+   `finished-chan` without ever running the body, and `send*` never calls `raise`. The finished channel is
+   the one signal every ending emits. `release!` is idempotent, so this and the body's `finally` cannot
+   double-release and hand the user a free slot."
+  [release! resp]
+  (a/go
+    (a/<! (streaming-response/finished-chan resp))
+    (release!)))
 
 (defn- keepalive-stream-body!
   "Run [[keepalive-loop!]] and call `release!` however the loop ends — normally, on client disconnect, or by
@@ -493,9 +492,9 @@
                                                       "). Close an existing stream before opening another."))))
 
       :else
-      ;; The slot is returned by `keepalive-stream-body!` once the stream ends. `release!` also covers the case
-      ;; where `send*` throws before the body is ever submitted, and is idempotent so the two paths cannot
-      ;; double-release and hand the user a free slot.
+      ;; The slot is returned by `keepalive-stream-body!` once the stream ends, and by
+      ;; [[release-when-finished!]] when the stream never starts. `release!` is idempotent so the paths
+      ;; cannot double-release and hand the user a free slot.
       (let [released? (atom false)
             release!  #(when (compare-and-set! released? false true)
                          (release-keepalive-slot! user-id))
@@ -508,8 +507,9 @@
                         (keepalive-stream-body! release!
                                                 (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
                                                 tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
+        (release-when-finished! release! resp)
         (try
-          (compojure.response/send* resp request respond (releasing-raise release! raise))
+          (compojure.response/send* resp request respond raise)
           (catch Throwable e
             (release!)
             (throw e)))))))
@@ -664,8 +664,12 @@
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
+           ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
+           ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
            (respond (json-response 401 (jsonrpc-error nil -32603 "Invalid bearer token")
-                                   {"WWW-Authenticate" "Bearer error=\"invalid_token\""}))
+                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
+                                                                                        default-ask-scopes request)
+                                                            ", error=\"invalid_token\"")}))
 
            ;; No auth at all — return 401 with discovery
            :else

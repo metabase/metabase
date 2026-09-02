@@ -65,11 +65,13 @@
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 "Missing required parameter: uri")
-      ;; Reading the shell is what mints the scoped credential the iframe authenticates with — it
-      ;; is the only place the browser ever receives one. Deliberately a delay: the URI has not been
-      ;; resolved yet, so minting eagerly hands a live 5-minute authenticator to data resources that
-      ;; ignore it, and burns one on reads that turn out to be unknown or scope-denied. Only
-      ;; [[metabase.mcp.ui-resource/embed-render-fn]] forces it, and only after the scope gate has passed.
+      ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
+      ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
+      ;; templates that embed it (the test fallback), and the production template discards it.
+      ;; Deliberately a delay: the URI has not been resolved yet, so minting eagerly would hand a live
+      ;; 5-minute authenticator to data resources that ignore it, and burn one on reads that turn out
+      ;; to be unknown or scope-denied. Only [[metabase.mcp.ui-resource/embed-render-fn]] forces it,
+      ;; and only after the scope gate has passed.
       (let [user-id       api/*current-user-id*
             ui-credential (when user-id
                             (delay (mcp.session/issue-ui-credential session-id user-id token-scopes)))
