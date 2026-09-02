@@ -54,6 +54,7 @@
     :model/ContentTranslation
     :model/DashboardBookmark
     :model/DataComplexityScore
+    :model/DataEncryptionKey
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency

@@ -86,6 +86,7 @@
    "ContentTranslation"
    "DashboardBookmark"
    "DataComplexityScore"
+   "DataEncryptionKey"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
