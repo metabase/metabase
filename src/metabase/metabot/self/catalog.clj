@@ -28,12 +28,9 @@
       false)))
 
 (defn supports-fast-mode?
-  "Whether a model reference names a model we can serve in Anthropic fast mode.
-
-  Anthropic-only and BYOK-only: fast mode is premium-priced, and proxied connections bill through
-  Metabase Cloud rather than the instance's own API key."
+  "Whether a model reference names a model we can serve in Anthropic fast mode."
   [model-ref]
   (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
-    (boolean (and (= type "anthropic")
-                  (not ai-proxy?)
-                  (claude/fast-mode-model? model)))))
+    (case type
+      "anthropic" (claude/fast-mode-model? model ai-proxy?)
+      false)))
