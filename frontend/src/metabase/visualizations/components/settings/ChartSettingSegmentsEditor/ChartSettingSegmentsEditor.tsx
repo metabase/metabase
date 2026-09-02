@@ -131,13 +131,19 @@ export const ChartSettingSegmentsEditor = ({
 };
 
 function getColorPalette() {
-  return [
+  // `background_page-tertiary` resolves to the same hex as the gray accent that
+  // `getAccentColors()` already returns, so the raw list holds that color twice.
+  // That renders two identical pills, marks both as selected when either is
+  // picked (ColorSelectorPopover compares by value), and makes `newSegment`
+  // resume from the first occurrence rather than the one the user chose.
+  // (metabase#80823)
+  return _.uniq([
     ...getAccentColors(),
     Color(color("feedback-negative")).hex(),
     Color(color("feedback-warning")).hex(),
     Color(color("feedback-positive")).hex(),
     Color(color("background_page-tertiary")).hex(),
-  ];
+  ]);
 }
 
 function newSegment(segments: ScalarSegment[]) {
