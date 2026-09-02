@@ -1844,19 +1844,27 @@
                  (raw-setting-details :test-never-encrypted-setting))))
         (testing "and the values are readable again"
           (is (= "Lenny" (toucan-name))))
-        (testing "details that are already there are left alone, so a value this version wrote is not overwritten"
+        (testing "details that already agree with `value` are left byte-identical"
           (toucan-name! "Sad Can")
           (let [before (raw-setting-details :toucan-name)]
-            (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Lenny")})
             (setting/backfill-setting-details!)
             (is (= before (raw-setting-details :toucan-name)))))
-        (testing "details that are there but cannot be read are left alone -- they may be newer than `value`"
+        (testing "details holding a value an older version has since changed are rebuilt from `value`"
+          (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
+          (setting/backfill-setting-details!)
+          (is (= (wrap-setting-value :toucan-name "Bird Can")
+                 (encryption/decrypt (raw-setting-details :toucan-name))))
+          ;; the repair runs before the cache is populated at startup; here it is already warm
+          (setting.cache/restore-cache!)
+          (is (= "Bird Can" (toucan-name))))
+        (testing "details encrypted under a key that a rotation has since replaced are rebuilt too"
           (let [stale (encryption-test/with-secret-key "12345678ABCDEFGH"
                         (encryption/encrypt (wrap-setting-value :toucan-name "Old Can")))]
             (t2/update! :setting :key "toucan-name" {:value   (encryption/encrypt "Lenny")
                                                      :details stale})
             (setting/backfill-setting-details!)
-            (is (= stale (raw-setting-details :toucan-name)))))))))
+            (is (= (wrap-setting-value :toucan-name "Lenny")
+                   (encryption/decrypt (raw-setting-details :toucan-name))))))))))
 
 (deftest migrate-encrypted-settings!-works
   ;; Isolated app DB: with a secret key active this mutates the at-rest encryption of every registered setting row,

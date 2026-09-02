@@ -304,12 +304,13 @@
 ;; references for now
 (defmethod setting.cache/call-on-change :default
   [old new]
-  (let [rs      @registered-settings
-        [d1 d2] (data/diff old new)]
-    (doseq [changed-setting (into (set (keys d1))
-                                  (set (keys d2)))]
-      (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
-        (on-change (core/get old changed-setting) (core/get new changed-setting))))))
+  (when (some? new)
+    (let [rs      @registered-settings
+          [d1 d2] (data/diff old new)]
+      (doseq [changed-setting (into (set (keys d1))
+                                    (set (keys d2)))]
+        (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
+          (on-change (core/get old changed-setting) (core/get new changed-setting)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -1833,28 +1834,59 @@
   (cond-> setting
     (some? (:key setting)) read-setting-value))
 
+(defn- stored-details-value
+  "The value a row's `details` hold, or nil if they hold nothing readable: they are absent, they do not decrypt, or
+  what comes out is not this setting's envelope. Decrypted leniently, so a plaintext envelope counts -- reconciling
+  that against the setting's declared `:encryption` is [[migrate-encrypted-settings!]]'s job, not this one's."
+  [setting-key details]
+  (when (some? details)
+    (u/ignore-exceptions
+      (settings.util/unwrap-value setting-key (encryption/maybe-decrypt-accepting-plaintext details)))))
+
 (defn backfill-setting-details!
-  "Give every setting row that has no `details` the value from the legacy `value` column instead, stored the way
-  [[write-setting-value]] would have stored it.
+  "Bring every setting row's `details` back in line with the legacy `value` column beside them, storing the value the
+  way [[write-setting-value]] would have stored it. Runs on every startup, before anything restores the settings
+  cache.
 
-  Runs on every startup, before anything restores the settings cache, and repairs what a version predating the column
-  leaves behind: it writes only `value`, so a setting it changed while running alongside this one has no `details` at
-  all.
+  Every write from this version sets both columns, so the two agreeing is the normal state and nothing here has
+  anything to do. They come apart only where a version predating `details` has written: it sets `value` alone, so a
+  setting it added has no `details` at all and one it changed has `details` still holding the previous value -- which
+  the read would otherwise serve indefinitely, as a plausible older value rather than as an error. A rotation run from
+  such a version is worse still: it rewrites `value` under the new key and leaves `details` encrypted under the old
+  one, and a single row like that fails the whole settings cache restore rather than just its own setting.
 
-  Only an empty `details` is filled in. One that is there but cannot be read -- encrypted under a key some rotation
-  has since replaced, say -- is left exactly as it is: it may well be newer than the `value` beside it, and quietly
-  replacing it with the older value would lose a setting rather than report a problem. A row this version wrote is
-  never touched for the same reason, so a setting an older version *changed* rather than created stays lost. Rows of
-  unregistered settings are skipped, since they read as no value whatever their `details` hold. Runs with the settings
-  cache disabled for the same reason [[migrate-encrypted-settings!]] does."
+  `value` therefore wins here, and only here: it is the column every version maintains, and the one an older version
+  is already trusting. The read stays strict, so while this version is running a value still has to arrive inside the
+  envelope naming the setting it belongs to. Rows of unregistered settings are skipped, since they read as no value
+  whatever their `details` hold. Runs with the settings cache disabled for the same reason
+  [[migrate-encrypted-settings!]] does."
   []
   (binding [config/*disable-setting-cache* true]
-    (t2/with-transaction [_conn]
-      (doseq [{:keys [key value details]} (t2/select :setting {:for :update})
-              :when (and (seq value) (nil? details) (maybe-resolve-setting key))
-              ;; a `value` that looks encrypted but does not decrypt is no better than the empty details it would fill
-              :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
-              :when (some? plain)]
-        (log/warnf "Setting %s has no details; filling them in from its value." key)
-        (t2/update! :setting :key key
-                    (select-keys (write-setting-value {:key key, :value plain}) [:details]))))))
+    (let [repaired (atom 0)
+          rows     (t2/select :setting)
+          ;; `contains?`, not the value: migrations can be run to a target that predates the column, and a row read
+          ;; from a table without it simply has no such key
+          column?  (contains? (first rows) :details)]
+      (t2/with-transaction [_conn]
+        (doseq [{:keys [key value details]} (when column? rows)
+                :when (and (seq value) (maybe-resolve-setting key))
+                ;; a `value` that looks encrypted but does not decrypt is no better than the details it would replace
+                :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
+                :when (and (some? plain) (not= plain (stored-details-value key details)))]
+          (swap! repaired inc)
+          (t2/update! :setting :key key
+                      (select-keys (write-setting-value {:key key, :value plain}) [:details]))))
+      (when (pos? @repaired)
+        (log/infof "Rebuilt the details of %d setting(s) from their value." @repaired)))))
+
+(defn migrate-settings!
+  "Put the `setting` table in a state every setting can be read from: [[backfill-setting-details!]] fills in `details`
+  from the legacy `value` column beside it, then [[migrate-encrypted-settings!]] reconciles how those `details` are
+  encrypted with what each setting declares.
+
+  Call it after the application DB is set up and before reading a setting. That is `metabase.core.core/init!` for the
+  server, and each command that migrates the app DB itself and then goes on to read settings -- otherwise a
+  `serdes export` run straight after `migrate up` would quietly write a file of nothing but defaults."
+  []
+  (backfill-setting-details!)
+  (migrate-encrypted-settings!))

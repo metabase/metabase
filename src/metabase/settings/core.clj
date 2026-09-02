@@ -97,15 +97,14 @@
   disabled-for-db-reasons
   env-var-name
   env-var-value
-  backfill-setting-details!
   export?
   get
   get-raw-value
   get-raw-value-source
   log-deprecated-env-var-usage!
+  migrate-settings!
   get-value-of-type
   has-advanced-setting-access?
-  migrate-encrypted-settings!
   obfuscate-value
   obfuscated-value?
   read-setting
