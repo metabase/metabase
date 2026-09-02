@@ -162,7 +162,7 @@
                                      :value          (cond-> sentinel encrypt-fn encrypt-fn)
                                      :value_with_aad (cond-> sentinel encrypt-setting-fn (encrypt-setting-fn encryption-check-key))})))
 
-(defn- encrypt-setting-fn
+(defn- encrypt-setting
   "A function of a string and a setting key that encrypts the string the way `setting.value_with_aad` holds it: under
   that setting's AAD, and under `secret-key` when given, the current MB_ENCRYPTION_SECRET_KEY otherwise."
   [secret-key]
@@ -174,7 +174,7 @@
   sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
   []
   (t2/with-transaction [conn]
-    (replace-encryption-check! conn encryption/encrypt (encrypt-setting-fn nil))))
+    (replace-encryption-check! conn encryption/encrypt (encrypt-setting nil))))
 
 (def ^:private EncryptionState
   [:enum :encrypted :unencrypted :fresh :pre-sentinel :missing-key :wrong-key :not-decryptable])
@@ -318,11 +318,11 @@
                   (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
               (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]})))
       ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
-      (let [encrypt-setting (encrypt-setting-fn nil)]
+      (let [encrypt-setting-fn (encrypt-setting nil)]
         (run! (fn [{:keys [key value_with_aad]}]
                 (when (and (string? value_with_aad)
                            (not (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad key)})))
-                  (t2/update! :conn conn :setting {:key key} {:value_with_aad (encrypt-setting value_with_aad key)})))
+                  (t2/update! :conn conn :setting {:key key} {:value_with_aad (encrypt-setting-fn value_with_aad key)})))
               (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))))))
 
 (defn- do-encryption
@@ -333,7 +333,7 @@
   [db-type data-source encrypting? to-key]
   (let [encrypt-str-fn     (if encrypting? #(encryption/maybe-encrypt % {:secret-key to-key}) identity)
         encrypt-bytes-fn   (if encrypting? #(encryption/maybe-encrypt-bytes % {:secret-key to-key}) identity)
-        encrypt-setting    (if encrypting? (encrypt-setting-fn to-key) (fn [s _setting-key] s))]
+        encrypt-setting-fn (if encrypting? (encrypt-setting to-key) (fn [s _setting-key] s))]
     (t2/with-transaction [conn {:datasource data-source}]
       (let [check-status (encryption-check-status)]
         (when (= check-status :invalid)
@@ -360,10 +360,10 @@
           (let [aad-opts {:aad (mdb.setting/setting-aad key)}
                 changes  (cond-> {}
                            (seq value)          (assoc :value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value)))
-                           (seq value_with_aad) (assoc :value_with_aad (encrypt-setting (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key)))]
+                           (seq value_with_aad) (assoc :value_with_aad (encrypt-setting-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key)))]
             (when (seq changes)
               (t2/update! :conn conn :setting {:key key} changes)))))
-      (replace-encryption-check! conn (when encrypting? encrypt-str-fn) (when encrypting? encrypt-setting))
+      (replace-encryption-check! conn (when encrypting? encrypt-str-fn) (when encrypting? encrypt-setting-fn))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))
