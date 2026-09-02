@@ -155,6 +155,29 @@
           (is (= common/error-code-invalid-params (:error-code r)))
           (is (some? (:error-message r))))))))
 
+;; not ^:parallel: re-registers a tool in the shared registry
+(deftest registration-survives-a-namespace-reload-test
+  (testing "the same-name guard compares the handler var's fully-qualified symbol, not the var object: a
+            tools.namespace reload re-interns the same symbol (accepted), while a same-named var from a
+            different namespace is a genuinely different handler (refused)"
+    (let [existing (get @@#'registry/tools* "ping_v2")
+          handler  (:handler existing)
+          ;; What a namespace reload leaves behind: a different var object carrying the same
+          ;; fully-qualified name. Built in a throwaway namespace so the live handler is untouched.
+          reload-ns (create-ns (gensym "mcp-reload-probe"))
+          reloaded  (intern reload-ns (:name (meta handler)) @handler)]
+      (try
+        (is (not (identical? reloaded handler)) "the probe must really be a different var")
+        (is (= (:name (meta handler)) (:name (meta reloaded))))
+        (is (thrown-with-msg? Exception #"already registered"
+                              (registry/register-tool! (assoc existing :handler reloaded)))
+            "a same-NAMED var from another namespace is still a different handler and is refused")
+        (is (= "ping_v2" (registry/register-tool! existing))
+            "and the genuine handler var re-registers cleanly")
+        (finally
+          (remove-ns (ns-name reload-ns))
+          (registry/register-tool! (assoc existing :handler handler)))))))
+
 ;; not ^:parallel: exercises register-tool!'s load-time guards
 (deftest registration-validation-test
   (testing "an unknown option key fails loudly — a misspelled :required-extensions would silently disable the gate"
@@ -173,8 +196,16 @@
                                                     :args                [:map]
                                                     :handler             (fn [_ _] nil)
                                                     :required-extensions ["mcp-app-ui"]}))))
+  (testing "a required extension no client can advertise fails loudly — it would hide the tool from everyone"
+    (is (thrown-with-msg? Exception #"unknown client extension"
+                          (registry/register-tool! {:name                "unknown_extension"
+                                                    :scope               "agent:content:read"
+                                                    :description         "x"
+                                                    :args                [:map]
+                                                    :handler             (fn [_ _] nil)
+                                                    :required-extensions #{:mcp-app-holodeck}}))))
   (testing "a second definition claiming a registered name with a different handler fails loudly; the same
-            handler var re-registering (REPL/test reload) is allowed"
+            handler re-registering (REPL/test reload, which mints a fresh var for the same name) is allowed"
     (let [existing (get @@#'registry/tools* "ping_v2")]
       (is (some? existing) "ping_v2 must be registered for this to prove anything")
       (is (thrown-with-msg? Exception #"already registered"
