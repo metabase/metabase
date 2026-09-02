@@ -781,7 +781,8 @@
   "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
   budgets, an ignore lacks a required justification comment, or `text` is not normalized.
   Lower counts are allowed because the shrink workflow records them after the change lands."
-  [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} occurrences config-actual text]
+  [{:keys [ignore-counts config-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
+   occurrences config-actual text]
   (let [over        (over-budget ignore-counts occurrences)
         config-over (config-over-budget config-counts config-actual)
         uncommented (unjustified comment-exempt occurrences)

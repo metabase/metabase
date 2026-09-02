@@ -296,7 +296,7 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Validate .clj-kondo/ratchets.edn and the source tree's kondo suppressions (Babashka only; no JVM)."
+  {:doc "Validate .clj-kondo/ratchets.edn and the source tree's kondo suppressions (Babashka; seconds, not a test run)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check))}
