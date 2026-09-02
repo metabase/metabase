@@ -512,7 +512,7 @@
 
 (mu/defn- metadata-spec->honey-sql :- [:map
                                        {:closed true}
-                                       [:where {:optional true} vector?]]
+                                       ['where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
   [database-id                                                                                                             :- ::lib.schema.id/database
    {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]

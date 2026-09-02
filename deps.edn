@@ -83,7 +83,7 @@
   inflections/inflections                   {:mvn/version "0.15.0"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
   io.github.camsaul/toucan2                 {:git/url "https://github.com/ranquild/toucan2.git"
-                                             :git/sha "e8e14ceb4be4c81b2d06c30819f78dcc77c32b14"} ; EXPERIMENT: the honeysql-symbols branch -- Toucan 2 generates symbol Honey SQL. Point back at an :mvn/version once it is released.
+                                             :git/sha "bdc44e139cac370137b8890224b0d33719f0a655"} ; EXPERIMENT: the honeysql-symbols branch -- Toucan 2 generates symbol Honey SQL. Point back at an :mvn/version once it is released.
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
