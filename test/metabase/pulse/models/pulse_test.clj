@@ -582,6 +582,7 @@
          ;; app DB instead of reading it off the map.
          (let [pulses [{:channels [{:recipients [{:id same-id}
                                                  {:id other-id}
+                                                 {:id internal-id}
                                                  {:email "ext@example.com"}]}]}]]
            (mt/with-current-user caller-id
              (let [kept (-> (models.pulse/maybe-filter-pulses-recipients pulses)
@@ -590,10 +591,12 @@
                  (is (some #(= same-id (:id %)) kept)))
                (testing "other-tenant Metabase user is redacted"
                  (is (not (some #(= other-id (:id %)) kept))))
+               (testing "an internal (tenantless) user is redacted too: a tenant caller sees only its own tenant"
+                 (is (not (some #(= internal-id (:id %)) kept))))
                (testing "raw email recipient is always preserved"
                  (is (some #(= "ext@example.com" (:email %)) kept)))))
            (testing "a caller with no tenant sees recipients unfiltered, as before tenants existed"
              (mt/with-current-user internal-id
-               (is (= [{:id same-id} {:id other-id} {:email "ext@example.com"}]
+               (is (= [{:id same-id} {:id other-id} {:id internal-id} {:email "ext@example.com"}]
                       (-> (models.pulse/maybe-filter-pulses-recipients pulses)
                           first :channels first :recipients)))))))))))

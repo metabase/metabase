@@ -79,6 +79,11 @@
     (is (false? (query-guards/native-query? {:stages [1]})))
     (is (false? (query-guards/native-query? {:stages [42 {:lib/type :mbql.stage/mbql :source-table 1}]})))
     (is (true? (query-guards/native-query? {:stages [42 {:lib/type :mbql.stage/native :native "SELECT 1"}]}))))
+  (testing "the deep-scan fallbacks fail closed: a marker buried inside a malformed edge value still trips"
+    (are [query-map] (true? (query-guards/native-query? query-map))
+      {:stages [[{:native "SELECT 1"}]]}                                  ; non-map stage element wrapping a marker
+      {:query [{:native "SELECT 1"}]}                                     ; :query edge holding a vector, not a map
+      {:stages [{:source-query [[{:type "native"}]]}]}))                  ; nested non-map :source-query
   (testing "clean MBQL queries are not native"
     (are [query-map] (false? (query-guards/native-query? query-map))
       {:stages [{:lib/type :mbql.stage/mbql :source-table 1}]}
@@ -100,9 +105,9 @@
 (deftest ^:parallel native-query?-is-case-and-separator-insensitive-test
   (testing "the QP normalizer canonicalizes keys case-insensitively and treats `_` and `-` alike, so a payload
             spelled `:SOURCE_QUERY` still reaches the query processor as a native stage. Matching edge names and
-            markers case-exactly let a caller walk straight past the guard by changing the spelling — and since
-            `+refuse-unscoped-native-sql` went live on /api/dataset, this scan is the only gate standing between
-            an unrestricted-stamped MCP UI credential and raw SQL."
+            markers case-exactly let a caller walk straight past the guard by changing the spelling — and once
+            `check-mcp-ui-native-query!` is wired onto /api/dataset (the next slice), this scan is the only gate
+            standing between an unrestricted-stamped MCP UI credential and raw SQL."
     (testing "nested-query edges, however spelled"
       (are [q] (true? (query-guards/native-query? q))
         {:query {:source-query {:native "select 1"}}}
