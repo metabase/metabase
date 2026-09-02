@@ -184,6 +184,26 @@
                                        {:method "update" :id 13371337 :revision_message "x"
                                         :table_id (mt/id :venues)}))))))))
 
+(deftest ^:parallel blank-name-test
+  (testing "GHY-4153/GHY-4154: a whitespace-only `name` is refused. The REST endpoints these tools
+            delegate to take `ms/NonBlankString`, and a tool that inherits their checks must not be
+            laxer than they are — `[:string {:min 1}]` alone lets \" \" through."
+    (doseq [[tool definition] {"segment_write" mbql4-fragment
+                               "measure_write" (count-definition (mt/id :venues))}]
+      (testing tool
+        (testing "create"
+          (is (re-find #"`name` cannot be blank"
+                       (tool-error (call-tool! :crowberto nil tool
+                                               {:method     "create" :table_id (mt/id :venues)
+                                                :name       "   "
+                                                :definition definition})))))
+        (testing "update — refused before the id lookup, so it reads as an argument error"
+          (is (re-find #"`name` cannot be blank"
+                       (tool-error (call-tool! :crowberto nil tool
+                                               {:method           "update" :id 13371337
+                                                :name             "   "
+                                                :revision_message "x"})))))))))
+
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
     (is (= "Invalid id \"abc\" — pass a numeric id or a 21-character entity_id."
