@@ -159,7 +159,10 @@
                  (let [persisted-dim (find-persisted-by-target (:target mapping)
                                                                persisted-mappings
                                                                persisted-dims-by-id)
-                       dim-id        (or (:id persisted-dim) (random-uuid-str))
+                       ;; the computed dimension's own id is derived from its target and so is stable
+                       ;; across recomputation; the random fallback only covers callers that don't
+                       ;; supply one.
+                       dim-id        (or (:id persisted-dim) (:id dimension) (random-uuid-str))
                        merged-dim    (-> dimension
                                          (assoc :id dim-id)
                                          (assoc :status :status/active)
@@ -233,11 +236,17 @@
                                     persisted-dims)
      :dimension-mappings (vec persisted-mappings)}))
 
+(defn- persistable-lib-source
+  "Normalize `:lib/source` to the string form the JSON column round-trips to."
+  [dimension]
+  (cond-> dimension
+    (keyword? (:lib/source dimension)) (update :lib/source u/qualified-name)))
+
 (mu/defn extract-persisted-dimensions :- [:sequential ::lib-metric.schema/persisted-dimension]
   "Extract dimensions that should be persisted to the database.
    A dimension should be persisted if it has a status (either active or orphaned)."
   [dimensions :- [:sequential ::lib-metric.schema/persisted-dimension]]
-  (filterv :status dimensions))
+  (into [] (comp (filter :status) (map persistable-lib-source)) dimensions))
 
 ;;; ---------------------------------------------- Dimension CRUD (pure) ----------------------------------------------
 ;;; Pure transforms over the persisted dimension/mapping vectors. They never recompute from columns;

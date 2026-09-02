@@ -350,15 +350,18 @@
 (defn- write-check-metric! [id]
   (api/write-check (t2/select-one :model/Card :id id :type "metric")))
 
-;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
-;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
-(events/derive! ::dimensions-event :metabase/event)
-(events/derive! :event/metric-dimensions-update ::dimensions-event)
-
 (defn- notify-dimensions-changed!
-  "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
-  [id]
-  (events/publish-event! :event/metric-dimensions-update {:object {:id id}}))
+  "Announce a dimension write as a card update.
+
+  These endpoints write the Card's `dimensions`/`dimension_mappings` columns directly rather than
+  going through the card update path, but both columns are part of the Card's serialization, so every
+  one of these writes is a card content change like any other: remote sync has to mark the card dirty,
+  the dependency graph has to be rechecked, and the edit belongs in the audit log (UXW-4943)."
+  [previous-card]
+  (events/publish-event! :event/card-update
+                         {:object          (t2/select-one :model/Card :id (:id previous-card))
+                          :previous-object previous-card
+                          :user-id         api/*current-user-id*}))
 
 (api.macros/defendpoint :get "/:id/dimension"
   :- [:map
@@ -391,9 +394,9 @@
                                                        [:display_name   {:optional true} ms/NonBlankString]
                                                        [:description    {:optional true} [:maybe :string]]
                                                        [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
-  (write-check-metric! id)
-  (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
-    (notify-dimensions-changed! id)))
+  (let [previous-card (write-check-metric! id)]
+    (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
+      (notify-dimensions-changed! previous-card))))
 
 (api.macros/defendpoint :post "/:id/dimension/remove"
   :- [:sequential :map]
@@ -401,9 +404,9 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
-  (write-check-metric! id)
-  (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
-    (notify-dimensions-changed! id)))
+  (let [previous-card (write-check-metric! id)]
+    (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
+      (notify-dimensions-changed! previous-card))))
 
 (api.macros/defendpoint :post "/:id/dimension/set-default"
   :- [:sequential :map]
@@ -413,8 +416,9 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_id]} :- [:map [:dimension_id [:maybe ms/NonBlankString]]]]
-  (write-check-metric! id)
-  (metrics/set-default-dimension! :metadata/metric id dimension_id))
+  (let [previous-card (write-check-metric! id)]
+    (u/prog1 (metrics/set-default-dimension! :metadata/metric id dimension_id)
+      (notify-dimensions-changed! previous-card))))
 
 (api.macros/defendpoint :post "/:id/dimension/reorder"
   :- [:sequential :map]
@@ -424,8 +428,9 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
-  (write-check-metric! id)
-  (metrics/reorder-dimensions! :metadata/metric id dimension_ids))
+  (let [previous-card (write-check-metric! id)]
+    (u/prog1 (metrics/reorder-dimensions! :metadata/metric id dimension_ids)
+      (notify-dimensions-changed! previous-card))))
 
 (api.macros/defendpoint :post "/:id/dimension/:dimension-key"
   :- :map
@@ -442,8 +447,6 @@
             [:description  {:optional true} [:maybe :string]]
             [:default_temporal_unit {:optional true} ms/NonBlankString]
             [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
-  (write-check-metric! id)
-  (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
-    ;; Only a source-column change alters the mapping (and thus the deps graph).
-    (when (:source body)
-      (notify-dimensions-changed! id))))
+  (let [previous-card (write-check-metric! id)]
+    (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
+      (notify-dimensions-changed! previous-card))))

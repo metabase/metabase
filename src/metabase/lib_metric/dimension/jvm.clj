@@ -4,6 +4,7 @@
    via a direct database lookup, which is only available on the JVM."
   (:require
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
@@ -49,8 +50,24 @@
         (assoc-in [1 :source-field] (:lib/original-fk-field-id column)))
       ref)))
 
+(defn- dimension-id
+  "Id for a computed dimension, derived from the column it maps to rather than generated.
+
+   Un-curated metrics recompute their whole dimension set on every read (the `card_schema` 23→24
+   backfill), so a generated id would hand the same metric different ids — and therefore different
+   exported content — on every SELECT, and its remote-sync content hash would never settle. Deriving
+   it from the mapping target keeps the backfill stable and makes persisting it a no-op.
+
+   As with [[group-id]], ids are only unique within an entity: two metrics over the same column
+   deliberately share one, since a dimension id is only ever resolved against its own entity's
+   `dimension_mappings`."
+  ^String [target]
+  (str (UUID/nameUUIDFromBytes
+        (.getBytes (pr-str (lib-metric.dimension/field-ref->key target)) "UTF-8"))))
+
 (defn- column->computed-pair
-  "Convert a column to a dimension/mapping pair. IDs are nil until reconciliation.
+  "Convert a column to a dimension/mapping pair. The dimension id is derived from the mapping target;
+   reconciliation replaces it with the persisted id when the column is already curated.
    The table-id is extracted from the column's metadata.
    When `group` is provided, it is attached to the dimension."
   ([column]
@@ -58,7 +75,7 @@
   ([column group]
    (let [target (field-id-ref column)
          has-field-values (lib/infer-has-field-values column)]
-     {:dimension (cond-> {:id             nil
+     {:dimension (cond-> {:id             (dimension-id target)
                           :name           (:name column)
                           :effective-type (or (:effective-type column)
                                               (:base-type column))}
