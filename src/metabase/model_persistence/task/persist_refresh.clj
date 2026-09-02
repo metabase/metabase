@@ -161,36 +161,36 @@
   persisted info records pointing to cards that are no longer models, archived cards/models, and all records where the corresponding
   card or database has been permanently deleted."
   []
-  (let [hsql {:select    [:p.*]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-              :where     [:or
-                          [:and
-                           [:in :state (persisted-info/prunable-states)]
+  (let [hsql {'select    ['p.*]
+              'from      [['persisted_info 'p]]
+              'left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
+              'where     ['or
+                          ['and
+                           ['in 'state (persisted-info/prunable-states)]
                            ;; Buffer deletions for an hour if the
                            ;; prune job happens soon after setting state.
                            ;; 1. so that people have a chance to change their mind.
                            ;; 2. if a query is running against the cache, it doesn't get ripped out.
-                           [:< :state_change_at
-                            (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                          [:= :c.type "question"]
-                          [:= :c.archived true]
+                           ['< 'state_change_at
+                            (h2x/add-interval-honeysql-form (mdb/db-type) '%now -1 :hour)]]
+                          ['= 'c.type "question"]
+                          ['= 'c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
-                          [:= :p.card_id nil]]}]
+                          ['= 'p.card_id nil]]}]
     (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (let [hsql {:select    [:p.* :c.type :c.archived :c.name]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-              :where     [:and
-                          [:= :p.database_id database-id]
-                          [:in :p.state (persisted-info/refreshable-states)]
-                          [:= :c.archived false]
-                          [:= :c.type "model"]]}]
+  (let [hsql {'select    ['p.* 'c.type 'c.archived 'c.name]
+              'from      [['persisted_info 'p]]
+              'left-join [['report_card 'c] ['= 'c.id 'p.card_id]]
+              'where     ['and
+                          ['= 'p.database_id database-id]
+                          ['in 'p.state (persisted-info/refreshable-states)]
+                          ['= 'c.archived false]
+                          ['= 'c.type "model"]]}]
     (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id :db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
