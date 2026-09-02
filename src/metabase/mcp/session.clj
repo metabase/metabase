@@ -104,6 +104,18 @@
    (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
                 (str "mcp-ui-v1." payload))))
 
+(defn- session-payload-signature
+  "HMAC over the encoded capability `payload` for `uuid`, base64url.
+
+   Bound to the uuid so a signature cannot be lifted from one session id onto another — the payload alone is
+   `{\"v\":1,\"ui\":true}` for every UI-capable session, so an unbound signature would be a reusable token
+   granting the capability to any correlator. Domain-separated from
+   [[ui-credential-signature]] so neither can be replayed as the other."
+  [^String uuid ^String payload]
+  (base64url-encode-bytes
+   (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
+                (str "mcp-session-v1." uuid "." payload))))
+
 (declare valid-id?)
 
 (defn- encode-token-scopes
@@ -234,9 +246,11 @@
   a known payload version must include a supported payload shape so malformed capability hints do not silently fall
   back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling deploy
   version skew does not invalidate the whole session."
-  [payload]
+  [payload signed?]
   (cond
     (nil? payload)
+    ;; A bare uuid predates capability hints entirely. It claims nothing: reading it as "supports MCP Apps"
+    ;; would make signing pointless, since a caller could omit the payload and be believed anyway.
     {:extended false}
 
     (str/blank? payload)
@@ -258,7 +272,13 @@
                known-version?
                (mr/validate ::session-payload decoded-payload))
           {:extended true
-           :payload  (select-keys decoded-payload [:ui])}
+           ;; The capability is believed only when the signature proves the SERVER minted this claim. An
+           ;; unsigned or tampered payload leaves the session usable — the id is a stateless correlator and
+           ;; any well-formed one works for its presenter — but claims nothing, so the gate it feeds fails
+           ;; closed rather than trusting a self-assertion.
+           :payload  (if signed?
+                       (select-keys decoded-payload [:ui])
+                       {:ui false})}
 
           ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
           ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
@@ -271,29 +291,40 @@
 (defn- session-parts
   "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
 
-  New session ids have the form `<uuid>.<base64url-json>`, currently with payload `{\"v\":1,\"ui\":true}`.  We keep
+  New session ids have the form `<uuid>.<base64url-json>.<signature>`, currently with payload
+  `{\"v\":1,\"ui\":true}`. An id whose signature is absent or wrong is still a VALID session — it is a
+  stateless correlator and any well-formed one works for its presenter — but its capability claim is not
+  believed, so a client cannot self-assert MCP Apps support by forging a payload. We keep
   the UUID as the first segment because existing MCP session behavior derives the embedding session key from this
   server-created id, while the JSON segment lets us remember initialize-time UI capability statelessly across multiple
   Metabase webservers."
   [session-id]
   (when (and (string? session-id)
              (<= (count session-id) max-session-id-length))
-    (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
-      (when (#{1 2} (count parts))
-        (when-let [uuid (parse-uuid uuid)]
-          (some-> (parse-session-payload payload)
-                  (assoc :uuid uuid)))))))
+    (let [[uuid payload signature :as parts] (str/split session-id #"\." -1)]
+      (when (#{1 2 3} (count parts))
+        (when-let [parsed-uuid (parse-uuid uuid)]
+          (let [signed? (boolean (and payload signature
+                                      (let [^String expected (session-payload-signature uuid payload)]
+                                        (MessageDigest/isEqual (.getBytes expected StandardCharsets/UTF_8)
+                                                               (.getBytes ^String signature
+                                                                          StandardCharsets/UTF_8)))))]
+            (some-> (parse-session-payload payload signed?)
+                    (assoc :uuid parsed-uuid))))))))
 
 (defn- create-session-id
   "Create a stateless MCP session id containing client capability hints.
 
-  The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
-  limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
+  The server creates this id during initialize; clients only echo it back. The capability payload is SIGNED
+  (`<uuid>.<payload>.<signature>`) because `:required-extensions` gates on it: unsigned, it is a claim the
+  client makes about itself, and any caller could mint one asserting MCP Apps support it never advertised.
+  The id itself remains an opaque stateless correlator — see [[session-parts]] for why an unproven claim
+  downgrades the capability rather than rejecting the session."
   [{:keys [supports-mcp-ui?]}]
-  (let [session-id (str (UUID/randomUUID)
-                        "."
-                        (encode-session-payload {:v  session-payload-version
-                                                 :ui (true? supports-mcp-ui?)}))]
+  (let [uuid       (str (UUID/randomUUID))
+        payload    (encode-session-payload {:v  session-payload-version
+                                            :ui (true? supports-mcp-ui?)})
+        session-id (str uuid "." payload "." (session-payload-signature uuid payload))]
     ;; Enforce the `mcp_query_handle.mcp_session_id` column width (254) at the mint site, not only on the read path
     ;; ([[session-parts]]). A future payload field that pushed an id past the cap would otherwise mint fine and
     ;; initialize a working session, then have every later request 404 "Invalid or expired session" once the
@@ -334,13 +365,16 @@
    (create-session-id metadata)))
 
 (defn supports-mcp-ui?
-  "Return true if the client advertised MCP Apps UI support during initialize."
+  "Return true if the client PROVABLY advertised MCP Apps UI support during initialize.
+
+  Only a signed capability payload counts. This gates `:required-extensions`, so a claim the server cannot
+  verify has to read as absent: a plain UUID id — issued before capability hints existed — used to return
+  true here, which meant a caller could bypass the whole gate by simply omitting the payload. Both that and an
+  unsigned payload now fail closed."
   [session-id]
-  (when-let [{:keys [payload extended]} (session-parts session-id)]
-    (if extended
-      (true? (:ui payload))
-      ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
-      true)))
+  (boolean
+   (when-let [{:keys [payload extended]} (session-parts session-id)]
+     (and extended (true? (:ui payload))))))
 
 (defn get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
