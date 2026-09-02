@@ -102,16 +102,28 @@
 
 (defn- attr-value->param-value
   "Take an `attr-value` with a desired `target-type` and coerce to that type if need be. If not type is given or it's
-  already correct, return the original `attr-value`"
+  already correct, return the original `attr-value`.
+
+  Throws if a string `attr-value` cannot be coerced to the column's type: an unparseable value would otherwise become
+  a `nil` parameter value, which parameter expansion silently drops - removing the sandbox filter entirely and
+  exposing ALL rows (#81821). Sandboxes must always fail closed."
   [target-type attr-value]
   (let [attr-string? (string? attr-value)]
     (cond
       ;; If the attr-value is a string and the target type is integer, parse it as a long
       (and attr-string? (isa? target-type :type/Integer))
-      (parse-long attr-value)
+      (or (parse-long attr-value)
+          (throw (ex-info (tru "Sandbox attribute value `{0}` cannot be compared with an integer column" attr-value)
+                          {:type             qp.error-type/invalid-parameter
+                           :attribute-value  attr-value
+                           :target-base-type target-type})))
       ;; If the attr-value is a string and the target type is float, parse it as a double
       (and attr-string? (isa? target-type :type/Float))
-      (parse-double attr-value)
+      (or (parse-double attr-value)
+          (throw (ex-info (tru "Sandbox attribute value `{0}` cannot be compared with a float column" attr-value)
+                          {:type             qp.error-type/invalid-parameter
+                           :attribute-value  attr-value
+                           :target-base-type target-type})))
       ;; No need to parse it if the type isn't numeric or if it's already a number
       :else
       attr-value)))
