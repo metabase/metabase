@@ -2,8 +2,9 @@
   "Ratchet on inline kondo ignore forms.
 
   Per-linter policies live in `.clj-kondo/ratchets.edn`, with the linters whose ignores need no comment.
-  Local tests require an exact match; CI rejects only increases and lets the shrink workflow record the rest.
-  `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions, never the reverse.
+  A count over its budget fails the check; a budget above its count does not, anywhere.
+  `./bin/mage kondo-ratchets-shrink` lowers budgets and drops stale exemptions, never the reverse, and
+  nothing else writes the file.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
@@ -552,11 +553,12 @@
   (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts),\n"
        ";; and config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude\n"
        ";; entries). Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
-       ";; CI rejects counts above a numeric budget; local tests require those counts to match exactly.\n"
+       ";; A count above a numeric budget fails the check; a budget above its count does not.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage fix-kondo-ratchets` lowers budgets and drops stale exemptions; local test runs do it\n"
-       ";; automatically. Raising a budget, adding one (`--seed` for inline, by hand for config), or\n"
-       ";; widening the exemptions is a hand edit to defend in your PR.\n"
+       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets and drops stale exemptions, and nothing else does:\n"
+       ";; on master the shrink workflow runs it, and a branch is free to leave the numbers high. Raising a\n"
+       ";; budget, adding one (`--seed` for inline, by hand for config), or widening the exemptions is a hand\n"
+       ";; edit to defend in your PR.\n"
        ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
 
 (defn- render-counts
@@ -735,7 +737,7 @@
                               linter budget n linter)))
      (some-> (unexercised-unlimited-warning (apply dissoc ignore-counts seeded) actual) vector)
      (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
-       (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage fix-kondo-ratchets --seed %s`"
+       (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed %s`"
                linter n linter))
      (for [[linter {:keys [recorded actual]}] (config-drift config-counts config-actual)]
        (cond
@@ -777,17 +779,18 @@
 
 (defn check-report
   "The lines [[check]] prints when inline ignores or config suppressions (`config-actual`) exceed their
-  budgets, or `text` is not normalized.
+  budgets, an ignore lacks the justification comment it needs, or `text` is not normalized.
   Lower counts are allowed because the shrink workflow records them after the change lands."
-  [{:keys [ignore-counts config-counts] :as ratchets} occurrences config-actual text]
+  [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} occurrences config-actual text]
   (let [over        (over-budget ignore-counts occurrences)
         config-over (config-over-budget config-counts config-actual)
+        uncommented (unjustified comment-exempt occurrences)
         linter-line (fn [[linter {:keys [recorded actual]}]]
                       (format "  %s: %d recorded, %d actual" linter recorded actual))]
     (concat
      (when (seq over)
        (cons (str "over budget -- remove an ignore, or seed the budget with"
-                  " `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:")
+                  " `./bin/mage kondo-ratchets-shrink --seed <linter>` and defend it in the PR:")
              (mapcat (fn [[_ {:keys [examples]} :as entry]]
                        (cons (linter-line entry) (map #(str "    " %) examples)))
                      over)))
@@ -795,8 +798,14 @@
        (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
                   ", or raise the budget by hand and defend it in the PR:")
              (map linter-line config-over)))
+     (when (seq uncommented)
+       (cons (str "unjustified ignores -- add a `;;` comment above the form (or trailing on its line)"
+                  " saying why the suppression is warranted:")
+             (map (fn [{:keys [file line linters]}]
+                    (format "  %s:%d %s" file line (vec linters)))
+                  uncommented)))
      (when (not= text (render ratchets))
-       [(str *ratchets-file* " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
+       [(str *ratchets-file* " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
              " to fix the formatting")]))))
 
 (defn- exit!
@@ -812,7 +821,8 @@
 
 (defn check
   "Fail the babashka task when the ratchets file is missing, a policy names an unknown linter, inline
-  ignores or config suppressions exceed a bounded budget, or the file is not normalized.
+  ignores or config suppressions exceed a bounded budget, an ignore lacks a required justification
+  comment, or the file is not normalized.
   Only an explicit `{:disabled true}` opts out of enforcement.
   An unused `:unlimited` policy is reported but does not fail the check."
   []

@@ -1,5 +1,7 @@
 (ns metabase.core.kondo-ratchet-test
-  "Ratchet on inline kondo ignore forms: budgets live in `.clj-kondo/ratchets.edn` and only move down.
+  "Unit tests for [[dev.kondo-ratchet]]: the scanner, the policy reader, the renderer, the merge, and the
+  fixer. `./bin/mage kondo-ratchets` checks the real source tree; [[metabase.core.kondo-ratchet-check-test]]
+  covers that.
   The ignore forms in this file are string fixtures — the scanner masks string literals, so they don't
   count as suppressions."
   (:require
@@ -12,131 +14,22 @@
 
 (set! *warn-on-reflection* true)
 
-;; Scanning walks the whole tree, so the ratchet tests share one pass per run. The cache only exists
-;; while the :once fixture is live; a directly-run test var (no fixture) always scans fresh, so a
-;; long-lived REPL never compares fresh ratchet-file contents with stale counts.
-(def ^:private tree-scan-cache
-  (atom nil))
-
-(defn- tree-scan []
-  (if-let [scan @tree-scan-cache]
-    @scan
-    (kondo-ratchet/scan)))
-
-(defn- ratchets-enabled? []
-  (not (kondo-ratchet/disabled?)))
-
-;; Local tooling sets CI=false and CI=, and both are truthy when tested for presence.
-(defn- ci? []
-  (= "true" (System/getenv "CI")))
-
-(defn- budget-drift
-  [ci? policies occurrences]
-  (if ci?
-    (kondo-ratchet/over-budget policies occurrences)
-    (kondo-ratchet/drift policies occurrences)))
-
-(defn- config-budget-drift
-  [ci? budgets counts]
-  (if ci?
-    (kondo-ratchet/config-over-budget budgets counts)
-    (kondo-ratchet/config-drift budgets counts)))
-
-;; Stale exemptions fail local runs only; the shrink workflow drops them, so CI must not fail when
-;; another PR has already justified the last ignore.
-(defn- stale-exemptions
-  [ci? exempt occurrences]
-  (if ci?
-    #{}
-    (kondo-ratchet/stale-exemptions exempt occurrences)))
-
-;; Outside CI, tighten the ratchets before asserting — the fix rides along in your next commit.
-;; The shrink workflow performs the same update on master.
-(use-fixtures :once (fn [thunk]
-                      (when-not (ci?)
-                        (kondo-ratchet/fix!))
-                      (reset! tree-scan-cache (delay (kondo-ratchet/scan)))
-                      (try
-                        (thunk)
-                        (finally
-                          (reset! tree-scan-cache nil)))))
-
 ;;;; ---------------------------------------------------------------------------
-;;;; The ratchets themselves
+;;;; Budget semantics
 ;;;; ---------------------------------------------------------------------------
 
-(deftest ^:parallel budgets-match-actual-counts-test
-  (when (ratchets-enabled?)
-    (testing (str "\nBudgets in " kondo-ratchet/*ratchets-file* " must match the actual inline ignore counts in development.\n"
-                  "Budget too low: remove an ignore, or seed the budget with\n"
-                  "`./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR.\n"
-                  "Budget too high: run `./bin/mage fix-kondo-ratchets`; the shrink workflow records\n"
-                  "lower counts after the change lands. Too high in a local run means\n"
-                  "`fix!` itself is broken, since the test fixture just ran it.")
-      (let [{:keys [ignore-counts]} (kondo-ratchet/read-ratchets)]
-        (is (= {}
-               (budget-drift (ci?) ignore-counts (tree-scan))))))))
-
-(deftest ^:parallel ignores-are-justified-test
-  (when (ratchets-enabled?)
-    (testing (str "\nInline ignores of these linters need an explanatory `;;` comment on the line above\n"
-                  "(or trailing on the same line) saying why the suppression is warranted.\n"
-                  "Linters in :comment-exempt in " kondo-ratchet/*ratchets-file* " are grandfathered;\n"
-                  "widening that set is a hand edit to defend in the PR.")
-      (let [exempt (:comment-exempt (kondo-ratchet/read-ratchets))]
-        (is (= []
-               (map #(dissoc % :justified?)
-                    (kondo-ratchet/unjustified exempt (tree-scan)))))))))
-
-(deftest ^:parallel no-stale-exemptions-test
-  (when (ratchets-enabled?)
-    (testing (str "\nEvery linter in :comment-exempt still has at least one unjustified ignore; once the last\n"
-                  "one gains a comment, the exemption goes. Run `./bin/mage fix-kondo-ratchets`.")
-      (let [{:keys [comment-exempt]} (kondo-ratchet/read-ratchets)]
-        (is (= #{}
-               (stale-exemptions (ci?) comment-exempt (tree-scan))))))))
-
-(deftest ^:parallel config-budgets-match-actual-test
-  (when (ratchets-enabled?)
-    (testing (str "\nConfig-level suppression budgets in " kondo-ratchet/*ratchets-file* " must match\n"
-                  ".clj-kondo/config.edn (:off switches and :exclude entries, per linter).\n"
-                  "Budget too low: remove the new config suppression, or raise the budget by hand and\n"
-                  "defend it in the PR. Budget too high: run `./bin/mage fix-kondo-ratchets`.")
-      (is (= {}
-             (config-budget-drift (ci?)
-                                  (:config-counts (kondo-ratchet/read-ratchets))
-                                  (kondo-ratchet/config-suppressions)))))))
-
-(deftest ^:parallel ci-tolerates-reductions-test
+;; Reductions are the shrink workflow's business, so nothing on a branch fails over one: a removed ignore
+;; or a justified last exemption leaves the budgets high until master records the lower numbers.
+(deftest ^:parallel reductions-are-tolerated-test
   (let [occurrences [{:file "f.clj", :line 1, :linters [:a], :justified? false}
                      {:file "g.clj", :line 1, :linters [:b], :justified? true}]]
     (testing "inline budgets"
-      (is (= {} (budget-drift true {:a 3, :b 1} occurrences)))
-      (is (= {:a {:recorded 3, :actual 1}} (budget-drift false {:a 3, :b 1} occurrences)))
-      (is (= {:a {:recorded 0, :actual 1, :examples ["f.clj:1"]}} (budget-drift true {:b 1} occurrences))))
+      (is (= {} (kondo-ratchet/over-budget {:a 3, :b 1} occurrences)))
+      (is (= {:a {:recorded 0, :actual 1, :examples ["f.clj:1"]}}
+             (kondo-ratchet/over-budget {:b 1} occurrences))))
     (testing "config budgets"
-      (is (= {} (config-budget-drift true {:cfg 3} {:cfg 1})))
-      (is (= {:cfg {:recorded 3, :actual 1}} (config-budget-drift false {:cfg 3} {:cfg 1})))
-      (is (= {:cfg {:recorded 1, :actual 2}} (config-budget-drift true {:cfg 1} {:cfg 2}))))
-    (testing "stale exemptions"
-      (is (= #{} (stale-exemptions true #{:a :b} occurrences)))
-      (is (= #{:b} (stale-exemptions false #{:a :b} occurrences))))))
-
-(deftest ^:parallel ratchets-file-normalized-test
-  (when (ratchets-enabled?)
-    (testing (str "\n" kondo-ratchet/*ratchets-file* " should be sorted and aligned exactly as the generator"
-                  " writes it.\nAfter a hand edit, run `./bin/mage fix-kondo-ratchets` to normalize the"
-                  " formatting.")
-      (is (= (kondo-ratchet/render (kondo-ratchet/read-ratchets))
-             (slurp kondo-ratchet/*ratchets-file*))))))
-
-(deftest ^:parallel policies-name-known-linters-test
-  (when (ratchets-enabled?)
-    (testing (str "\nEvery policy key in " kondo-ratchet/*ratchets-file* " must name a linter: a clj-kondo built-in\n"
-                  "in the pinned version, a linter configured under .clj-kondo/, or an external diagnostic\n"
-                  "such as :clojure-lsp/unused-public-var. Unknown names are never removed automatically.")
-      (is (= #{}
-             (kondo-ratchet/unknown-linters (kondo-ratchet/read-ratchets) (kondo-ratchet/known-linters)))))))
+      (is (= {} (kondo-ratchet/config-over-budget {:cfg 3} {:cfg 1})))
+      (is (= {:cfg {:recorded 1, :actual 2}} (kondo-ratchet/config-over-budget {:cfg 1} {:cfg 2}))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
@@ -400,15 +293,12 @@
                         {:file "f.clj", :line line, :linters [:a]})]
       (is (= 5 (count (:examples (:a (kondo-ratchet/drift {} occurrences)))))))))
 
-(deftest ^:parallel budget-drift-test
+(deftest ^:parallel over-budget-unlimited-test
   (let [policies    {:bounded 2, :free :unlimited, :empty :unlimited}
         occurrences [{:file "f.clj", :line 1, :linters [:bounded :free]}]]
-    (is (= {:bounded {:recorded 2, :actual 1}}
-           (budget-drift nil policies occurrences))
-        "local checks require bounded counts to match exactly, but ignore unlimited linters")
     (is (= {}
-           (budget-drift "true" policies occurrences))
-        "CI allows bounded improvements and unlimited policies, including stale ones")))
+           (kondo-ratchet/over-budget policies occurrences))
+        "an unlimited policy has no ceiling, and a stale one does not fail either")))
 
 (deftest ^:synchronized fix-when-disabled-test
   (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"

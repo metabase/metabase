@@ -11,12 +11,13 @@
   '[dev.modules-config-test
     metabase.core.modules-test])
 
-(def ^:private ratchet-check-namespaces
+(def ^:private ratchet-test-namespaces
+  ;; Unit tests for the ratchet tooling. `./bin/mage kondo-ratchets` checks the real tree.
   '[metabase.core.kondo-ratchet-test
     metabase.core.kondo-ratchet-check-test])
 
 (def ^:private backend-check-namespaces
-  (vec (concat module-check-namespaces ratchet-check-namespaces)))
+  (vec (concat module-check-namespaces ratchet-test-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."
@@ -39,7 +40,7 @@
   {"backend"    "backend checks"
    "migrations" "migration checks"
    "modules"    "module checks"
-   "ratchets"   "ratchet checks"})
+   "ratchets"   "ratchet tooling tests"})
 
 (defn- run-suite!
   "Run one suite and return its exit code.
@@ -51,7 +52,7 @@
              "backend"    (run-clojure-checks! sh backend-check-namespaces)
              "migrations" (run-migration-checks! sh)
              "modules"    (run-clojure-checks! sh module-check-namespaces)
-             "ratchets"   (run-clojure-checks! sh ratchet-check-namespaces)))
+             "ratchets"   (run-clojure-checks! sh ratchet-test-namespaces)))
     (catch Exception e
       (println "Could not run" (suite-labels suite) "--" (ex-message e))
       1)))

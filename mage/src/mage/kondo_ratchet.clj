@@ -416,7 +416,7 @@
                                               (count covered)
                                               (str/join ", " (sort (distinct (map :type covered))))
                                               keep-marker)))
-                           (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
+                           (println "Now run `./bin/mage kondo-ratchets-shrink` to update the budgets, and `./bin/mage kondo` for the final word.")
                            (when (or (seq exposed) (seq mismatched))
                              (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
                                              {:exit-code 1}))))
@@ -484,14 +484,14 @@
     (println)
     (if (empty? by-file)
       (println "No findings; nothing inserted.")
-      (do (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage fix-kondo-ratchets --seed %s"
+      (do (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage kondo-ratchets-shrink --seed %s"
                            (count (distinct (map (juxt :filename :row) findings)))
                            (count by-file)
                            linter))
           ;; Inserted ignores carry no justification comment of their own, so the justification ratchet
           ;; fails unless the linter is grandfathered -- but an insert lands under whatever comment was
           ;; already above the flagged form, which justifies it. Advising an exemption none of the sites
-          ;; need would just fail no-stale-exemptions-test instead, so ask the scanner first.
+          ;; need would just be dropped again by the next shrink, so ask the scanner first.
           (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
             (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
                                                               (kondo-ratchet/scan roots))))

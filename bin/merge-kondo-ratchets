@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Resolve a conflicted .clj-kondo/ratchets.edn and stage the result.
-# This script only reads the index stages; `./bin/mage merge-kondo-ratchets` merges the policies.
+# This script only reads the index stages; `./bin/mage -kondo-ratchets-merge` merges the policies.
 
 set -euo pipefail
 
@@ -39,7 +39,7 @@ else
   printf '{}\n' > "$tmp_dir/base"
 fi
 
-"$bin_dir/mage" merge-kondo-ratchets \
+"$bin_dir/mage" -kondo-ratchets-merge \
   "$tmp_dir/base" \
   "$tmp_dir/ours" \
   "$tmp_dir/theirs" \

@@ -111,7 +111,12 @@ liability it usually is.
 ### Miscellaneous
 
 - [ ] Example data is bird-themed when possible
-- [ ] Kondo linter suppressions use proper format (not `#_:clj-kondo/ignore` keyword form)
+- [ ] Kondo linter suppressions use proper format (not `#_:clj-kondo/ignore` keyword form), with
+      `:clj-kondo/ignore` as the map's first key
+- [ ] New suppressions are a last resort with the underlying fix ruled out, carry a `;;` comment saying
+      why, and any budget increase is defended in the PR
+- [ ] No *lowered* budgets in `.clj-kondo/ratchets.edn` — removing ignores needs no ratchet diff; master's
+      shrink workflow records the reduction
 
 ## Pattern matching table
 
