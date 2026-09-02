@@ -23,7 +23,7 @@ export function ProviderFallbackSettings() {
   };
 
   return (
-    <Stack gap="xs" data-testid="provider-fallback-settings">
+    <Stack gap="xxs" data-testid="provider-fallback-settings">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
         <Stack gap={0}>
           <Text fw="bold">{t`Fall back to the next provider`}</Text>
