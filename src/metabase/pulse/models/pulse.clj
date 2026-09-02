@@ -403,11 +403,36 @@
           hydrate-notification
           notification->pulse))))
 
+(defn- filter-cross-tenant-recipients
+  "Drop Metabase-user recipients that belong to a different tenant than the current (tenant-scoped)
+  user. Recipient maps come from the `:recipients` batched-hydrate, which does not select
+  `:tenant_id`, so tenant membership is looked up here rather than read off the map — reading it
+  off the map compares nil to nil and filters nothing (or, once the caller has a tenant, drops
+  every recipient)."
+  [pulses]
+  (let [tenant-id     (:tenant_id @api/*current-user*)
+        recipient-ids (into #{}
+                            (comp (mapcat :channels) (mapcat :recipients) (keep :id))
+                            pulses)
+        id->tenant-id (if (seq recipient-ids)
+                        (t2/select-pk->fn :tenant_id :model/User :id [:in recipient-ids])
+                        {})]
+    (for [pulse pulses]
+      (assoc pulse :channels
+             (for [channel (:channels pulse)]
+               (assoc channel :recipients
+                      (filter (fn [recipient]
+                                (or (not (:id recipient))
+                                    (= (id->tenant-id (:id recipient)) tenant-id)))
+                              (:recipients channel))))))))
+
 (defn maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved.
 
-  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
+  If the current user belongs to a tenant (and is not a superuser), also filters the recipient
+  lists down to users in the same tenant. A user with no tenant sees recipients unfiltered, as
+  before tenants existed."
   [pulses]
   (cond->> pulses
     (perms/sandboxed-or-impersonated-user?)
@@ -420,15 +445,9 @@
                                          (= (:id recipient) api/*current-user-id*)))
                                    (:recipients channel)))))))
 
-    (not api/*is-superuser?*)
-    (map (fn [pulse]
-           (assoc pulse :channels
-                  (for [channel (:channels pulse)]
-                    (assoc channel :recipients
-                           (filter (fn [recipient]
-                                     (or (not (:id recipient))
-                                         (= (:tenant_id recipient) (:tenant_id @api/*current-user*))))
-                                   (:recipients channel)))))))))
+    (and (not api/*is-superuser?*)
+         (some? (:tenant_id @api/*current-user*)))
+    filter-cross-tenant-recipients))
 
 (defn maybe-filter-pulse-recipients
   "[[maybe-filter-pulses-recipients]] for a single pulse."

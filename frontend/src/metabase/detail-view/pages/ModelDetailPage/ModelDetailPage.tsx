@@ -12,11 +12,11 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
+import { getMetadata } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";

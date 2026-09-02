@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [mage.util :as u])
   (:import
-   (java.io BufferedReader File InputStreamReader)))
+   (java.io BufferedReader File InputStreamReader)
+   (java.lang ProcessHandle)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,8 +20,43 @@
 (defn- deref-with-timeout [dereffable timeout-ms]
   (let [result (deref dereffable timeout-ms ::timed-out)]
     (when (= result ::timed-out)
-      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {})))
+      (throw (ex-info (format "Timed out after %d ms." timeout-ms) {:timed-out? true})))
     result))
+
+(def ^:private ns-per-ms 1000000)
+
+;; How long a signalled process gets to wind itself down before the next, harsher signal.
+(def ^:private kill-grace-period-ms (* 5 1000)) ; 5 seconds
+
+;; How often we re-ask a signalled process whether it has exited yet.
+(def ^:private exit-poll-interval-ms 50)
+
+(defn- wait-for-exit
+  "Wait up to `timeout-ms` for every process in `handles` to exit."
+  [handles timeout-ms]
+  ;; nanoTime rather than wall-clock time, so an NTP correction or a DST shift cannot move the deadline.
+  (let [deadline (+ (System/nanoTime) (* timeout-ms ns-per-ms))]
+    (loop []
+      (when (and (some #(.isAlive ^ProcessHandle %) handles)
+                 (< (System/nanoTime) deadline))
+        (Thread/sleep exit-poll-interval-ms)
+        (recur)))))
+
+(defn- kill-process!
+  "Stop `proc` and every process it started, so a timed-out command cannot keep running behind the caller.
+  The descendants are listed before anything is signalled, and each survivor is force-killed on its own,
+  so a child that ignores the first signal dies even after its parent has gone.
+  A child that had already outlived its parent is not reachable from the root handle."
+  [^Process proc]
+  (let [root    (.toHandle proc)
+        handles (cons root (iterator-seq (.iterator (.descendants root))))]
+    (run! #(.destroy ^ProcessHandle %) handles)
+    (wait-for-exit handles kill-grace-period-ms)
+    (run! (fn [^ProcessHandle handle]
+            (when (.isAlive handle)
+              (.destroyForcibly handle)))
+          handles)
+    (wait-for-exit handles kill-grace-period-ms)))
 
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
@@ -41,8 +77,10 @@
 
   * `quiet?` -- whether to suppress output from this shell command.
 
+  * `timeout-ms` -- how long to wait for the command before killing it and throwing; defaults to 15 minutes.
+
   * If you set MAGE_VERBOSE env var to true , the command will be printed before running it."
-  {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
+  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
   [& args]
   (when (u/env "MAGE_VERBOSE" (constantly nil))
     (println (str "$ " (str/join " " (map (comp pr-str str) (if (map? (first args))
@@ -54,7 +92,8 @@
         opts              (merge
                            {:dir u/project-root-directory}
                            opts)
-        {:keys [env dir]} opts
+        {:keys [env dir timeout-ms]
+         :or   {timeout-ms command-timeout-ms}} opts
         cmd-array         (into-array (map str args))
         env-array         (when env
                             (assert (map? env))
@@ -72,16 +111,21 @@
       (let [exit-code (future (.waitFor proc))
             out       (future (read-lines out-reader opts))
             err       (future (read-lines err-reader opts))]
-        {:exit (deref-with-timeout exit-code command-timeout-ms)
-         :out  (deref-with-timeout out command-timeout-ms)
-         :err  (deref-with-timeout err command-timeout-ms)}))))
+        (try
+          {:exit (deref-with-timeout exit-code timeout-ms)
+           :out  (deref-with-timeout out timeout-ms)
+           :err  (deref-with-timeout err timeout-ms)}
+          (catch clojure.lang.ExceptionInfo e
+            (when (:timed-out? (ex-data e))
+              (kill-process! proc))
+            (throw e)))))))
 
 (defn sh
   "Like [[sh*]], but throws an Exception if the command exits with a non-zero status. Options are the same as `sh*` --
   see its documentation for more information.
 
   Returns sequence of output lines."
-  {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
+  {:arglists '([cmd & args] [{:keys [env dir quiet? timeout-ms]} cmd & args])}
   [& args]
   (let [{:keys [exit out err], :as response} (apply sh* args)]
     (if (zero? exit)
