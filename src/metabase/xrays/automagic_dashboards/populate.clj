@@ -175,7 +175,7 @@
           (merge (dashcard-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
-                                           (dashboard-card/virtual-card-settings "text" text)
+                                           (dashboard-card/virtual-card-settings "text" {:text text})
                                            visualization-settings)
                   :col                    y
                   :row                    x

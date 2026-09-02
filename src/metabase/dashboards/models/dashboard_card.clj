@@ -119,15 +119,16 @@
 
 (defn virtual-card-settings
   "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
-  card or heading. `display` is the virtual display type as a string (\"text\", \"heading\", ...).
-  Mirrors the shape the frontend saves; see `createVirtualCard` in
-  frontend/src/metabase/common/utils/dashboard.ts."
-  [display text]
-  (cond-> {:virtual_card {:name                   nil
-                          :display                display
-                          :visualization_settings {}
-                          :archived               false}
-           :text         text}
+  card, heading, link, or iframe. `display` is the virtual display type as a string (\"text\",
+  \"heading\", \"link\", \"iframe\", ...); `extras` (e.g. `{:text \"...\"}`, `{:link {:url \"...\"}}`)
+  is merged in on top of the `:virtual_card` wrapper. Mirrors the shape the frontend saves; see
+  `createVirtualCard` in frontend/src/metabase/common/utils/dashboard.ts."
+  [display extras]
+  (cond-> (merge {:virtual_card {:name                   nil
+                                 :display                display
+                                 :visualization_settings {}
+                                 :archived               false}}
+                 extras)
     ;; headings render without a card background, matching the frontend default
     (= display "heading") (assoc :dashcard.background false)))
 
