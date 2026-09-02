@@ -143,7 +143,8 @@
               (is (some #(= "Leave me alone." (get-in % [:content 0 :text])) after)))
             (testing "the rewritten block keeps its id, so its comment thread stays anchored"
               (is (= edited-id (id-of after #(str/includes? (str (get-in % [:content 0 :text])) "Edited"))))
-              (is (= [] (:orphaned_comment_threads updated))))))))))
+              (is (= [] (:orphaned_comment_threads updated)))
+              (is (= [] (:changed_blocks updated))))))))))
 
 (deftest edits-report-orphans-only-for-deleted-blocks-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -166,7 +167,9 @@
                                :edits  [{:old_str "\n\nDelete me." :new_str ""}]})]
             (testing "a block the edit removed reports its thread orphaned"
               (is (= [{:child_target_id doomed :comment_count 1}]
-                     (:orphaned_comment_threads updated))))
+                     (:orphaned_comment_threads updated)))
+              (is (= [{:block_id doomed :old_type "paragraph" :new_type nil}]
+                     (:changed_blocks updated))))
             (is (= "Keep me.\n\nKeep me too." (:content_markdown updated)))))))))
 
 (deftest rename-and-metadata-only-update-test
@@ -249,32 +252,48 @@
                                  :edits [{:old_str "gamma" :new_str "gamma gamma" :replace_all true}]})]
               (is (= "gamma gamma one\n\ngamma gamma two" (:content_markdown updated))))))))))
 
-(deftest edit-replacement-is-literal-text-not-markdown-test
-  (testing "a replacement that looks like Markdown syntax stays literal text — it does not reopen the
-           block as a list/heading, lose characters to a consumed marker, or change the block's id"
+(deftest edit-replacement-parses-markdown-test
+  (testing "replacement text is parsed as Markdown"
     (mt/with-current-user (mt/user->id :crowberto)
       (with-tool-documents
         (fn [created!]
-          (let [payload (created! (call {:method "create" :name "Literal" :content_markdown "x x x x x"}))
-                doc-id  (:id payload)
-                block-id (fn [] (-> (t2/select-one-fn :document :model/Document :id doc-id)
-                                    :content first :attrs :_id))
-                id-before (block-id)]
-            (testing "* as a replace_all replacement: still one paragraph, all five survive, id kept"
-              (let [updated (call {:method "update" :id doc-id
-                                   :edits [{:old_str "x" :new_str "*" :replace_all true}]})
-                    stored  (t2/select-one-fn :document :model/Document :id doc-id)]
-                (is (= "\\* \\* \\* \\* \\*" (:content_markdown updated))
-                    "the serialized body escapes each * as literal text — no marker was consumed")
-                (is (= ["paragraph"] (mapv :type (:content stored)))
-                    "the paragraph did not become a bulletList")
-                (is (= id-before (-> stored :content first :attrs :_id))
-                    "a text-only edit kept the block's id, so anchored comments stay put")))))))))
+          (doseq [[label replacement expected-markdown expected-type]
+                  [["bold" "**Bold**" "**Bold**" "paragraph"]
+                   ["list" "- first\n- second" "- first\n- second\n\n" "bulletList"]
+                   ["code fence" "```sql\nselect 1\n```" "```sql\nselect 1\n```\n\n" "codeBlock"]]]
+            (testing label
+              (let [payload  (created! (call {:method "create" :name label
+                                              :content_markdown "Replace me."}))
+                    doc-id   (:id payload)
+                    old-id   (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                                 :content first :attrs :_id)
+                    updated  (call {:method "update" :id doc-id
+                                    :edits [{:old_str "Replace me." :new_str replacement}]})]
+                (is (= expected-markdown (:content_markdown updated)))
+                (is (= expected-type
+                       (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                           :content first :type)))
+                (is (= (if (= "paragraph" expected-type)
+                         []
+                         [{:block_id old-id :old_type "paragraph" :new_type expected-type}])
+                       (:changed_blocks updated))))))
+          (testing "layout container"
+            (let [payload (created! (call {:method "create" :name "Layout"
+                                           :content_markdown "Replace me."}))
+                  doc-id  (:id payload)
+                  old-id  (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                              :content first :attrs :_id)
+                  updated (call {:method "update" :id doc-id
+                                 :edits [{:old_str "Replace me."
+                                          :new_str "::: flex\n::: supporting\nwords\n:::\n:::"}]})]
+              (is (str/includes? (:content_markdown updated) "::: flex"))
+              (is (= "resizeNode" (-> (t2/select-one-fn :document :model/Document :id doc-id)
+                                      :content first :type)))
+              (is (= [{:block_id old-id :old_type "paragraph" :new_type nil}]
+                     (:changed_blocks updated))))))))))
 
-(deftest edit-inside-code-is-not-escaped-test
-  (testing "backslashes are literal inside a code span or fenced block, so the escaping that keeps a
-            replacement literal in prose would store characters the caller never wrote there —
-            `my_var` must not become `my\\_var` just because the edit landed in code"
+(deftest edit-inside-code-round-trips-test
+  (testing "replacement text inside code remains code content"
     (mt/with-current-user (mt/user->id :crowberto)
       (with-tool-documents
         (fn [created!]
@@ -291,12 +310,12 @@
                                  :edits [{:old_str "ls" :new_str "my_var"}]})]
               (is (str/includes? (:content_markdown updated) "my_var -la"))
               (is (not (str/includes? (:content_markdown updated) "my\\_var")))))
-          (testing "prose in the same document still escapes, so a replacement cannot reopen the block"
+          (testing "prose replacement is parsed as Markdown"
             (let [payload (created! (call {:method "create" :name "Mixed"
                                            :content_markdown "plain ls here"}))
                   updated (call {:method "update" :id (:id payload)
                                  :edits [{:old_str "ls" :new_str "*em*"}]})]
-              (is (= "plain \\*em\\* here" (:content_markdown updated))))))))))
+              (is (= "plain *em* here" (:content_markdown updated))))))))))
 
 (defn- write-error
   "The error text `document_write` returns for `args`, called through the registry rather than the
