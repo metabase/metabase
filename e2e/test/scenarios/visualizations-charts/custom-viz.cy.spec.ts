@@ -1814,10 +1814,6 @@ describe("sandbox", () => {
       errorPattern: blockedPattern(/API call: Document\.set onpaste/),
     },
     {
-      // Window is a WebIDL [Global] interface — its on* accessors live on
-      // the window instance, not Window.prototype, so they are gated at the
-      // instance level. Property-path counterpart of the
-      // addEventListener("storage") case above.
       name: "window.onstorage setter",
       payload: "window.onstorage = function () {};",
       errorPattern: blockedPattern(/API call: Window\.set onstorage/),
