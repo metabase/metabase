@@ -117,12 +117,26 @@
   (date-add unit amount expr))
 
 ;; Presto/Trino doesn't coerce untyped `NULL` across `UNION ALL` branches, so the UA pivot
-;; compiler's default bare-`NULL` pad fails preparation. Emit `CAST(NULL AS <breakout-db-type>)`
-;; so the branch's null-padded column carries the same type as its counterpart in the
-;; full-breakout branch.
+;; compiler's default bare-`NULL` pad fails preparation. Map the MBQL breakout `:base-type` to a
+;; Presto cast target so the branch's null-padded column carries the same type as its
+;; counterpart in the full-breakout branch.
+(defn- base-type->presto-cast-type
+  [base-type]
+  (cond
+    (isa? base-type :type/Text)           "varchar"
+    (isa? base-type :type/Integer)        "bigint"
+    (isa? base-type :type/Float)          "double"
+    (isa? base-type :type/Decimal)        "decimal"
+    (isa? base-type :type/Boolean)        "boolean"
+    (isa? base-type :type/Date)           "date"
+    (isa? base-type :type/Time)           "time"
+    (isa? base-type :type/DateTimeWithTZ) "timestamp with time zone"
+    (isa? base-type :type/DateTime)       "timestamp"))
+
 (defmethod sql.pivot/null-pad-breakout-hsql :presto-jdbc
-  [_driver breakout-expr]
-  (sql.pivot/typed-cast-null-hsql breakout-expr))
+  [_driver [_tag opts _id-or-name] _breakout-expr]
+  (when-let [presto-type (base-type->presto-cast-type (or (:effective-type opts) (:base-type opts)))]
+    (h2x/cast presto-type nil)))
 
 (defn- describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
