@@ -2,13 +2,12 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
@@ -32,11 +31,8 @@
 #_(derive :model/ModelIndex :hook/search-index)
 
 (t2/deftransforms :model/ModelIndex
-  ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
-  ;; first place!) on the way out
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  {:pk_ref    mi/transform-legacy-field-ref
-   :value_ref mi/transform-legacy-field-ref})
+  {:pk_ref    lib-be/transform-field-ref
+   :value_ref lib-be/transform-field-ref})
 
 (t2/define-before-delete :model/ModelIndex
   [model-index]
@@ -54,20 +50,20 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn- fix-expression-refs :- ::mbql.s/FieldOrExpressionRef
+(mu/defn- fix-expression-refs :- ::lib.schema.ref/ref
   "Convert expression ref into a field ref.
 
-  Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
+  Expression refs (`[:expression {} \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
   don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
   `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- ::mbql.s/FieldOrExpressionRef
+  [field-ref :- ::lib.schema.ref/ref
    base-type :- ::lib.schema.common/base-type]
   (case (first field-ref)
     :field field-ref
-    :expression (let [[_ expression-name] field-ref]
+    :expression (let [[_ _ expression-name] field-ref]
                   ;; api validated that this is a text field when the model-index was created. When selecting the
                   ;; expression we treat it as a field.
-                  [:field expression-name {:base-type base-type}])
+                  (lib/normalize [:field {:base-type base-type} expression-name]))
     (throw (ex-info (format "Invalid field ref for indexing: %s" field-ref)
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
@@ -83,19 +79,20 @@
   (let [model     (t2/select-one :model/Card :id (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
-                    ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
-                    (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+                    (-> (lib/normalize ::lib.schema.ref/ref field-ref)
+                        (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
-        pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
+        pk-ref    (-> model-index :pk_ref (fix :type/Integer))
+        mp        (lib-be/application-database-metadata-provider
+                   (:database_id model))
+        query     (lib/query mp (lib.metadata/card mp (:id model)))]
     (try
       [nil (->> (qp/process-query
-                 ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
-                 {:database (:database_id model)
-                  :type     :query
-                  :query    {:source-table (format "card__%d" (:id model))
-                             :breakout     [pk-ref value-ref]
-                             :limit        (inc max-indexed-values)}})
+                 (-> query
+                     (lib/breakout pk-ref)
+                     (lib/breakout value-ref)
+                     (lib/limit (inc max-indexed-values))))
                 :data :rows (filter valid-tuples?))]
       (catch Exception e
         (log/warnf "Error fetching indexed values for model %s: %s" (:id model) (ex-message e))

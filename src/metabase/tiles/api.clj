@@ -3,15 +3,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ;; tile API field refs are still legacy MBQL; keep the legacy schema until the MBQL 5 port above
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -85,10 +82,10 @@
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
 (defn- create-tile ^BufferedImage [zoom points]
-  (let [tile        (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
+  (let [tile        (BufferedImage. tile-size tile-size BufferedImage/TYPE_INT_ARGB)
         graphics    (.getGraphics tile)
-        color-blue  (new Color 76 157 230)
-        color-white (Color/white)]
+        color-blue  (Color. 76 157 230)
+        color-white Color/white]
     (try
       (doseq [[^double lat ^double lon] points
               :let [[world-x world-y] (mercator/latlon->world-px lat lon zoom)
@@ -123,22 +120,20 @@
 
 ;;; ---------------------------------------------------- ENDPOINTS ----------------------------------------------------
 
-;; TODO (Cam 9/30/25) -- we should update these endpoints to accept Field IDs and/or desired column aliases instead of
-;; (or preferentially to) legacy refs
-(mr/def ::legacy-ref
-  "Form-encoded JSON-encoded legacy MBQL :field ref."
+(mr/def ::encoded-ref
+  "Form-encoded JSON-encoded MBQL :field ref."
   [:schema
    {:decode/api (fn [field]
                   (when (string? field)
                     (let [deserialized (json/decode field)]
                       (when (sequential? deserialized)
-                        (mbql.normalize/normalize deserialized)))))}
-   [:ref ::mbql.s/field]])
+                        (lib/normalize deserialized)))))}
+   [:ref ::lib.schema.ref/ref]])
 
 (mu/defn- resolve-field :- ::lib.schema.metadata/column
-  [query      :- ::lib.schema/query
-   legacy-ref :- ::legacy-ref]
-  (let [field (lib/metadata query (lib/->mbql5 legacy-ref))]
+  [query :- ::lib.schema/query
+   ref   :- ::lib.schema.ref/ref]
+  (let [field (lib/metadata query ref)]
     (api/check-400 (not (:fk-field-id field))
                    (tru "Fields referenced via implicit joins are not supported."))
     field))
@@ -150,17 +145,17 @@
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query                :- :map
+  [query         :- :map
    zoom
    x
    y
-   lat-field-legacy-ref :- ::legacy-ref
-   lon-field-legacy-ref :- ::legacy-ref]
+   lat-field-ref :- ::lib.schema.ref/ref
+   lon-field-ref :- ::lib.schema.ref/ref]
   (let [query     (-> query
                       lib-be/normalize-query
                       lib/append-stage)
-        lat-field (resolve-field query lat-field-legacy-ref)
-        lon-field (resolve-field query lon-field-legacy-ref)]
+        lat-field (resolve-field query lat-field-ref)
+        lon-field (resolve-field query lon-field-ref)]
     (-> query
         (add-inside-filter lat-field lon-field x y zoom)
         (lib/with-fields [lat-field lon-field])
@@ -171,8 +166,10 @@
   (when-not (= (:status qp-response) :completed)
     (throw (ex-info (format "Error running tiles query: %s" (:error qp-response))
                     (assoc qp-response :status-code 400))))
-  (let [lat-id-or-name (second lat-field-ref)
-        lon-id-or-name (second lon-field-ref)
+  (let [lat-id-or-name (or (lib/field-ref-id lat-field-ref)
+                           (lib/field-ref-name lat-field-ref))
+        lon-id-or-name (or (lib/field-ref-id lon-field-ref)
+                           (lib/field-ref-name lon-field-ref))
 
         find-fn        (fn [id-or-name]
                          (or (first (keep-indexed
@@ -230,8 +227,8 @@
     lat-field :latField
     lon-field :lonField} :- [:map
                              [:query    ::query]
-                             [:latField ::legacy-ref]
-                             [:lonField ::legacy-ref]]]
+                             [:latField ::encoded-ref]
+                             [:lonField ::encoded-ref]]]
   (let [updated-query (tiles-query query zoom x y lat-field lon-field)
         result        (qp/process-query
                        (qp/userland-query
@@ -244,8 +241,8 @@
   "Generates a single tile image for a pre-loaded Card and returns a Ring response that contains the data as a PNG.
   Callers are responsible for selecting the `card` entity exactly once per request and threading it here."
   [card parameters zoom x y lat-field-ref lon-field-ref]
-  (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
-        lon-field-ref (mbql.normalize/normalize lon-field-ref)
+  (let [lat-field-ref (lib/normalize lat-field-ref)
+        lon-field-ref (lib/normalize lon-field-ref)
         result
         (qp.card/process-query-for-card
          card
@@ -265,8 +262,8 @@
 (defn process-tiles-query-for-dashcard
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG."
   [dashboard dashcard card parameters zoom x y lat-field-ref lon-field-ref]
-  (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
-        lon-field-ref (mbql.normalize/normalize lon-field-ref)
+  (let [lat-field-ref (lib/normalize lat-field-ref)
+        lon-field-ref (lib/normalize lon-field-ref)
         result
         (qp.dashboard/process-query-for-dashcard
          :dashboard     dashboard
@@ -300,8 +297,8 @@
    {:keys [parameters], lat-field :latField lon-field :lonField}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField ::legacy-ref]
-       [:lonField ::legacy-ref]]]
+       [:latField ::encoded-ref]
+       [:lonField ::encoded-ref]]]
   (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card card-id))
                                 parameters zoom x y lat-field lon-field))
 
@@ -322,8 +319,8 @@
    {:keys [parameters] lat-field :latField, lon-field :lonField, :as _query-params}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField ::legacy-ref]
-       [:lonField ::legacy-ref]]]
+       [:latField ::encoded-ref]
+       [:lonField ::encoded-ref]]]
   (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
                                     (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
                                     (api/check-404 (t2/select-one :model/Card card-id))
