@@ -2,8 +2,8 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { PythonTransformTableAliases } from "metabase-types/api";

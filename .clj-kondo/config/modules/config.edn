@@ -1375,6 +1375,7 @@
            settings
            system
            transforms
+           users
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1650,6 +1651,7 @@
    :uses #{api
            api-scope
            appearance
+           events
            mcp
            models
            request

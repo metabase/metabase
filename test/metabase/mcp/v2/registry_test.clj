@@ -88,7 +88,9 @@
         (is (= "Unknown tool: ping_v2" (-> result :content first :text)))))))
 
 (deftest ^:parallel registered-scopes-test
-  (testing "every registered tool's :scope flows through registered-scopes into the default DCR grant"
+  (testing "registered-scopes reports the scopes of the landed tools. (It does not feed the DCR grant: that reads
+            `mcp.paths/v2-surface-scopes`, and a tool whose :scope is outside that set is unreachable over OAuth
+            — which the containment below guards.)"
     (is (set/subset? #{"agent:content:read"} (set (registry/registered-scopes)))))
   ;; GHY-4225 retired :required-scopes from v2: duplicate_content's per-type create scopes all
   ;; collapsed into the single `agent:content:write` it already gates on, so there is no longer a
@@ -113,11 +115,11 @@
    which is returned. Lets the usage-logging contract be asserted without the EE DB writer."
   [thunk]
   (let [records (atom [])]
-    (with-redefs [mcp.usage/record-mcp-tool-call! (fn [m] (swap! records conj m))]
+    (mt/with-dynamic-fn-redefs [mcp.usage/record-mcp-tool-call! (fn [m] (swap! records conj m))]
       (thunk))
     @records))
 
-;; not ^:parallel: with-redefs on the shared usage var
+;; not ^:parallel: exercises shared registry/tool state alongside the usage redef
 (deftest usage-logging-contract-test
   (testing "every tools/call outcome writes exactly one usage record with the right status/error-code"
     (testing "success → status \"success\", no error"
@@ -155,6 +157,29 @@
 
 ;; not ^:parallel: exercises register-tool!'s load-time guards
 (deftest registration-validation-test
+  (testing "an unknown option key fails loudly — a misspelled :required-extensions would silently disable the gate"
+    (is (thrown-with-msg? Exception #"unknown option"
+                          (registry/register-tool! {:name               "typo_key"
+                                                    :scope              "agent:content:read"
+                                                    :description        "x"
+                                                    :args               [:map]
+                                                    :handler            (fn [_ _] nil)
+                                                    :require-extensions #{:mcp-app-ui}}))))
+  (testing ":required-extensions must be a set of keywords"
+    (is (thrown-with-msg? Exception #"set of keywords"
+                          (registry/register-tool! {:name                "bad_extensions"
+                                                    :scope               "agent:content:read"
+                                                    :description         "x"
+                                                    :args                [:map]
+                                                    :handler             (fn [_ _] nil)
+                                                    :required-extensions ["mcp-app-ui"]}))))
+  (testing "a second definition claiming a registered name with a different handler fails loudly; the same
+            handler var re-registering (REPL/test reload) is allowed"
+    (let [existing (get @@#'registry/tools* "ping_v2")]
+      (is (some? existing) "ping_v2 must be registered for this to prove anything")
+      (is (thrown-with-msg? Exception #"already registered"
+                            (registry/register-tool! (assoc existing :handler (fn [_ _] nil)))))
+      (is (= "ping_v2" (registry/register-tool! existing)))))
   (testing "a blank :name fails loudly"
     (is (thrown-with-msg? Exception #":name"
                           (registry/register-tool! {:name        ""
@@ -201,13 +226,55 @@
    granting writes, so it keeps its own scope rather than folding into `content:write`."
   #{"agent:content:write" "agent:delivery:write" "agent:sql:run"})
 
+(defn- do-with-temp-tool!
+  "Register a throwaway tool for the body, then restore the registry and flush the manifest cache."
+  [tool thunk]
+  (let [tools-atom @#'registry/tools*
+        snapshot   @tools-atom]
+    (try
+      (registry/register-tool! tool)
+      (thunk)
+      (finally
+        (reset! tools-atom snapshot)
+        (reset! @#'registry/manifest-cache nil)))))
+
 (defn- mutating-tools
   "Registered tools that declare they mutate, as `{name tool}`. Enumerated from the registry rather
-   than a hand-kept list, so a write tool landing tomorrow is covered the day it registers."
+   than a hand-kept list, so a write tool landing tomorrow is covered the day it registers.
+
+   Read from the MANIFEST, not from the raw registry entries: `:annotations` are defaulted at manifest
+   time, so the raw entry for a tool that declared none carries no `:readOnlyHint` at all while clients
+   are told `false`. See [[mutating-tools-sees-what-clients-see-test]]."
   []
   (into {}
-        (filter (fn [[_ tool]] (false? (get-in tool [:annotations :readOnlyHint]))))
-        @@#'registry/tools*))
+        (comp (filter #(false? (get-in % [:annotations :readOnlyHint])))
+              (map (juxt :name identity)))
+        (@#'registry/manifest)))
+
+;; not ^:parallel: registers a throwaway tool
+(deftest mutating-tools-sees-what-clients-see-test
+  (testing "GHY-4337: the three invariants below are only as good as this enumeration, and `default-annotations`
+            supplies `:readOnlyHint false` at MANIFEST time rather than at registration. So a tool that declares
+            no `:annotations` is published to clients as mutating while its raw registry entry carries no
+            `:readOnlyHint` at all — and enumerating from the raw entry would skip exactly the tool these
+            invariants exist to catch: one that mutates, says nothing about it, and rides a read scope."
+    (do-with-temp-tool!
+     {:name        "annotation_free_mutator"
+      :scope       "agent:content:read"
+      :description "test-only tool that declares no annotations at all"
+      :args        [:map]
+      :handler     (fn [_ _] nil)}
+     (fn []
+       (testing "clients are told it mutates"
+         (is (false? (->> (registry/list-tools nil)
+                          (filter #(= "annotation_free_mutator" (:name %)))
+                          first
+                          :annotations
+                          :readOnlyHint))))
+       (testing "so the enumeration the invariants run over must see it too"
+         (is (contains? (set (keys (mutating-tools))) "annotation_free_mutator")))
+       (testing "and it carries the :scope the invariants check, so they can actually run on it"
+         (is (= "agent:content:read" (:scope (get (mutating-tools) "annotation_free_mutator")))))))))
 
 (deftest write-tools-are-annotated-as-mutating-test
   (testing "a tool named `*_write` declares `:readOnlyHint false`. This guards the enumeration the

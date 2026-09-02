@@ -323,9 +323,8 @@
     [:post "/api/embed-mcp/feedback"]})
 
 (defn- current-user-info-for-mcp-ui-credential
-  "Resolve the short-lived credential rendered into an MCP visualization iframe.
-   It is accepted only for [[mcp-ui-request-surface]], so possession never
-   authenticates arbitrary API routes."
+  "Resolve the short-lived credential from an MCP App tool result.
+   Accept it only for [[mcp-ui-request-surface]]."
   [request]
   (when (and (init-status/complete?)
              (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))
