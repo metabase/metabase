@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+# mage comes from this script's own checkout, not from the working directory: the next line moves to the
+# toplevel of whatever repository holds the conflict, which need not be this one.
 bin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 cd -- "$(git rev-parse --show-toplevel)"
 
