@@ -39,7 +39,6 @@ describe("toPluginSeries", () => {
 
   it("reuses the data clone when the series array is rebuilt", () => {
     const series = [createMockSingleSeries({})];
-    // the shape getSeriesWithDisplay produces for every sensibility probe
     const rebuilt = series.map((single) => ({
       ...single,
       card: { ...single.card },
