@@ -18,6 +18,11 @@
   []
   mcp.paths/canonical-path)
 
+(defn mcp-v2-path
+  "The path serving the v2 tool surface during the migration (see [[metabase.mcp.paths/v2-path]])."
+  []
+  mcp.paths/v2-path)
+
 (defn mcp-endpoint-paths
   "Every path serving MCP, canonical plus back-compat aliases
    (see [[metabase.mcp.paths/endpoint-paths]])."

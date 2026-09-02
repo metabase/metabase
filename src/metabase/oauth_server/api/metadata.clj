@@ -68,19 +68,19 @@
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   []
-  (protected-resource-metadata "/api/metabase-mcp" oauth-server/mcp-resource-scopes))
+  (protected-resource-metadata "/api/metabase-mcp" #(oauth-server/mcp-resource-scopes "/api/metabase-mcp")))
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the legacy `/api/mcp` MCP alias."
   []
-  (protected-resource-metadata "/api/mcp" oauth-server/mcp-resource-scopes))
+  (protected-resource-metadata "/api/mcp" #(oauth-server/mcp-resource-scopes "/api/mcp")))
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp/v2"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the `/v2` MCP alias."
   []
-  (protected-resource-metadata "/api/metabase-mcp/v2" oauth-server/mcp-resource-scopes))
+  (protected-resource-metadata "/api/metabase-mcp/v2" #(oauth-server/mcp-resource-scopes "/api/metabase-mcp/v2")))
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
 ;; request doesn't fall through to the SPA's HTML catch-all and trip a `JSON.parse` error (BOT-1617). Advertise the
