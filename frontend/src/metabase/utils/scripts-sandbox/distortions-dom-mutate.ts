@@ -1,5 +1,7 @@
 import DOMPurify from "dompurify";
 
+import { coerceToString } from "./coerce";
+
 export const CREATE_ELEMENT = Document.prototype.createElement;
 export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
 export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;
@@ -96,21 +98,13 @@ export const BLOCKED_TAGS = new Set([
   "foreignobject",
 ]);
 
-/**
- * Coerce a distortion argument to a string once, up front, so the validation
- * check and the native DOM call operate on the same value.
- */
-export function toString(value: unknown): string {
-  return String(value);
-}
-
 export function createElementDistortion(errorPrefix: string) {
   return function createElement(
     this: Document,
     tag: string,
     options?: ElementCreationOptions,
   ) {
-    const tagName = toString(tag);
+    const tagName = coerceToString(tag);
     if (BLOCKED_TAGS.has(tagName.toLowerCase())) {
       throw new Error(`[${errorPrefix}] blocked createElement: ${tagName}`);
     }
@@ -133,7 +127,7 @@ export function createElementNSDistortion(errorPrefix: string) {
     qualifiedName: string,
     options?: ElementCreationOptions,
   ) {
-    const name = toString(qualifiedName);
+    const name = coerceToString(qualifiedName);
     if (BLOCKED_TAGS.has(getXmlElementLocalName(name).toLowerCase())) {
       throw new Error(`[${errorPrefix}] blocked createElementNS: ${name}`);
     }
@@ -185,8 +179,8 @@ function assertSafeAttrAssignment(
 
 export function setAttributeDistortion(errorPrefix: string) {
   return function setAttribute(this: Element, name: string, value: string) {
-    const attrName = toString(name);
-    const attrValue = toString(value);
+    const attrName = coerceToString(name);
+    const attrValue = coerceToString(value);
     assertSafeAttrAssignment(errorPrefix, "setAttribute", attrName, attrValue);
     return SET_ATTRIBUTE.call(this, attrName, attrValue);
   };
@@ -199,8 +193,8 @@ export function setAttributeNSDistortion(errorPrefix: string) {
     qualifiedName: string,
     value: string,
   ) {
-    const attrName = toString(qualifiedName);
-    const attrValue = toString(value);
+    const attrName = coerceToString(qualifiedName);
+    const attrValue = coerceToString(value);
     assertSafeAttrAssignment(
       errorPrefix,
       "setAttributeNS",
@@ -216,8 +210,8 @@ export function setAttributeNodeDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setAttributeNode",
-      toString(attr.name),
-      toString(attr.value),
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_ATTRIBUTE_NODE.call(this, attr);
   };
@@ -228,8 +222,8 @@ export function setAttributeNodeNSDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setAttributeNodeNS",
-      toString(attr.name),
-      toString(attr.value),
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_ATTRIBUTE_NODE_NS.call(this, attr);
   };
@@ -240,8 +234,8 @@ export function setNamedItemDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setNamedItem",
-      toString(attr.name),
-      toString(attr.value),
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_NAMED_ITEM.call(this, attr);
   };
@@ -252,8 +246,8 @@ export function setNamedItemNSDistortion(errorPrefix: string) {
     assertSafeAttrAssignment(
       errorPrefix,
       "setNamedItemNS",
-      toString(attr.name),
-      toString(attr.value),
+      coerceToString(attr.name),
+      coerceToString(attr.value),
     );
     return SET_NAMED_ITEM_NS.call(this, attr);
   };
@@ -261,11 +255,11 @@ export function setNamedItemNSDistortion(errorPrefix: string) {
 
 export function attrValueSetterDistortion(errorPrefix: string) {
   return function (this: Attr, val: string) {
-    const value = toString(val);
+    const value = coerceToString(val);
     assertSafeAttrAssignment(
       errorPrefix,
       "Attr.set value",
-      toString(this.name),
+      coerceToString(this.name),
       value,
     );
     SET_ATTR_VALUE_DESCRIPTOR?.call(this, value);

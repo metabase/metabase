@@ -1,9 +1,7 @@
 import DOMPurify from "dompurify";
 
-import {
-  getXmlElementLocalName,
-  toString,
-} from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
+import { coerceToString } from "metabase/utils/scripts-sandbox/coerce";
+import { getXmlElementLocalName } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 /**
  * Blocks realm-creating elements for every creator in the data-app document: guest
@@ -113,7 +111,7 @@ class HostRealmElementGuard {
     };
 
     const guardedCreate = (tag: string, options?: ElementCreationOptions) => {
-      const tagName = toString(tag);
+      const tagName = coerceToString(tag);
       rejectIfBlocked(tagName, "createElement");
       return createElement(tagName, options);
     };
@@ -123,7 +121,7 @@ class HostRealmElementGuard {
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) => {
-      const name = toString(qualifiedName);
+      const name = coerceToString(qualifiedName);
       rejectIfBlocked(name, "createElementNS");
       return createElementNS(namespaceURI, name, options);
     };

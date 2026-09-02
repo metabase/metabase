@@ -1,8 +1,8 @@
+import { coerceToString } from "metabase/utils/scripts-sandbox/coerce";
 import {
   CREATE_ELEMENT,
   CREATE_ELEMENT_NS,
   getXmlElementLocalName,
-  toString,
 } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 const isStyleTag = (tag: string) => tag.toLowerCase() === "style";
@@ -40,7 +40,7 @@ export function makeCreateElementDistortion(
       tag: string,
       options?: ElementCreationOptions,
     ) {
-      const tagName = toString(tag);
+      const tagName = coerceToString(tag);
       // Data-app bundles inline imported CSS with
       // `vite-plugin-css-injected-by-js`, which creates a `<style>` tag at
       // runtime. Allow only that tag while keeping the shared dangerous-tag
@@ -64,7 +64,7 @@ export function makeCreateElementDistortion(
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) {
-      const name = toString(qualifiedName);
+      const name = coerceToString(qualifiedName);
       if (isStyleQualifiedName(name)) {
         // Same exception as `createElement("style")`, but for namespaced
         // creation paths.

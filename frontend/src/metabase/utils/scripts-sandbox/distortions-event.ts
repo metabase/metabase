@@ -1,4 +1,4 @@
-import { toString } from "./distortions-dom-mutate";
+import { coerceToString } from "./coerce";
 
 export const ADD_EVENT_LISTENER = EventTarget.prototype.addEventListener;
 
@@ -36,7 +36,7 @@ export function addEventListenerDistortion(errorPrefix: string) {
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
   ): void {
-    const eventType = toString(type);
+    const eventType = coerceToString(type);
     if (
       isGlobalEventTarget(this) &&
       GLOBAL_BLOCKED_EVENT_TYPES.has(eventType.toLowerCase())
