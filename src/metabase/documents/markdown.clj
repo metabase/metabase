@@ -383,6 +383,21 @@
                (and (str/includes? header "|") (table-delimiter-row? delimiter))))
        boolean))
 
+(defn contains-table?
+  "Returns true when `markdown-string` contains a GFM pipe table outside a code block."
+  [markdown-string]
+  (letfn [(node-table? [node]
+            (and (instance? Paragraph node)
+                 (table-paragraph? (fm-children node))))
+          (segment-table? [{:keys [kind text children]}]
+            (case kind
+              :markdown (let [root (.parse flexmark-parser ^String text)]
+                          (boolean (some node-table? (tree-seq #(seq (fm-children %)) fm-children root))))
+              :container (boolean (some segment-table? children))
+              false))]
+    (let [[segments _] (scan-segments (str/split-lines (or markdown-string "")) 0 nil 0)]
+      (boolean (some segment-table? segments)))))
+
 (defn- reference-link-url
   "The URL a `[text][ref]` link resolves to, or nil when nothing in the document defines `ref`. The
   definition is a block of its own that carries no ProseMirror node, so this lookup is the only way
@@ -781,6 +796,17 @@
   line endings to `\\n` on the way out."
   ^String [^String s]
   (str/join "\n" (map escape-line-start (str/split s line-ending-re -1))))
+
+(defn escape-text
+  "Escape `s` so that, spliced into Markdown source and re-parsed, it round-trips back to the same
+  literal text wherever it lands — inline or at the start of a line. [[splice]] treats its
+  replacement as Markdown *source* (that is how it inserts a heading or a card embed), so a caller
+  that means literal text — `document_write`'s `edits` — must escape it first, or a replacement
+  like `*` reopens the block as a list. Escapes inline emphasis/link/code characters on every line,
+  then any leading character that would open a block construct; over-escaping a character that was
+  not actually in a special position is inert (CommonMark renders `\\#` as `#`)."
+  ^String [^String s]
+  (str/join "\n" (map (comp escape-line-start escape-inline) (str/split s line-ending-re -1))))
 
 (defn- code-span
   "Wrap `s` in a backtick run longer than any run it contains, space-padded when the content
