@@ -239,7 +239,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: transforms-python
+        logs-artifact-suffix: bigquery-transforms-python
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
@@ -1059,23 +1059,11 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 70
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
-              :fail-fast? true
-          - name: Upload Tests
-            test-args: >-
-              :only-tags [:mb/upload-tests]
-          - name: Transforms Python Tests
-            test-args: >-
-              :only-tags [:mb/transforms-python-test]
-            needs-python-runner: true
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -1095,11 +1083,91 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
-    name: Snowflake ${{ matrix.job.name }}
+    name: Snowflake Driver Tests ${{ matrix.runner-index }}
+    steps:
+    - uses: actions/checkout@v6
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+
+  be-tests-snowflake-upload-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake Upload Tests
+    steps:
+    - uses: actions/checkout@v6
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        # This is the same as the driver-tests job above to preserve quarantine history in ci-conductor.
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: >-
+          :only-tags [:mb/upload-tests]
+        artifact-suffix: upload
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+
+  be-tests-snowflake-transforms-python-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake Transforms Python Tests
     steps:
     - uses: actions/checkout@v6
     - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
         metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -1107,16 +1175,20 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
+        # This is the same as the driver-tests job above to preserve quarantine history in ci-conductor.
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ${{ matrix.job.test-args }}
-        artifact-suffix: ${{ matrix.job.name }}
+        test-args: >-
+          :only-tags [:mb/transforms-python-test]
+        artifact-suffix: transforms-python
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
-      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      if: ${{ always() }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        # Driver-qualified: cleanup-python-runner names its artifact from this suffix alone, so it
+        # must not collide with the BigQuery transforms-python job's in the same run.
+        logs-artifact-suffix: snowflake-transforms-python
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
@@ -1340,6 +1412,8 @@ jobs:
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
       - be-tests-snowflake-ee
+      - be-tests-snowflake-transforms-python-ee
+      - be-tests-snowflake-upload-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
