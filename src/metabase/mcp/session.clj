@@ -471,10 +471,14 @@
   off *their* `core_session`.
 
   Handles are deleted before the session row so they can still be scoped through it; the `ON DELETE CASCADE` that
-  follows is then a no-op for this user. Rows with no `core_session_id` are deliberately left alone: no code path
-  creates one ([[store-handle!]] always sets it), [[find-handle-row]] inner-joins `core_session` so such a row
-  could never be read back, and nothing attributes it to a user — deleting it on session id alone is precisely
-  the cross-user delete this scoping exists to prevent."
+  follows is then a no-op for this user.
+
+  Rows with a NULL `core_session_id` ARE reaped, on session id alone. `store-handle!` always sets the column now,
+  but it is nullable and released code predating that left rows without it; scoping those through `core_session`
+  strands them forever, since `NULL IN (subquery)` never matches and nothing else sweeps the table. Reaping them
+  unscoped is safe precisely because they are unattributed: [[find-handle-row]] inner-joins `core_session`, so
+  such a row can never be read back by anyone. That makes it unreachable data rather than another user's working
+  handle — the opposite of the attributed rows, which stay scoped."
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
@@ -489,7 +493,9 @@
     (t2/query {:delete-from :mcp_query_handle
                :where       [:and
                              [:= :mcp_session_id session-id]
-                             [:in :core_session_id own-sessions]]})
+                             [:or
+                              [:= :core_session_id nil]
+                              [:in :core_session_id own-sessions]]]})
     (t2/query {:delete-from :core_session
                :where       [:and
                              [:= :key_hashed key-hashed]

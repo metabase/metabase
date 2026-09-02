@@ -382,6 +382,31 @@
           (mcp.session/delete! session-id owner-id)
           (mcp.session/delete! session-id other-id))))))
 
+(deftest delete-reaps-unattributed-legacy-handles-test
+  (testing "`core_session_id` is nullable, and released code predating the always-set write left rows with it
+            NULL. Scoping the delete through `core_session` alone strands those forever — `NULL IN (subquery)`
+            never matches and nothing else reaps them.
+
+            They are safe to delete on session id alone, unlike attributed rows: `find-handle-row` inner-joins
+            `core_session`, so a NULL row can never be read back by anyone. It is unreachable data, not another
+            user's working handle, so reaping it cannot destroy anything usable."
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id nil)
+          legacy-id  (str (random-uuid))]
+      (try
+        (t2/insert! :model/McpQueryHandle {:id              legacy-id
+                                           :mcp_session_id  session-id
+                                           :core_session_id nil
+                                           :encoded_query   "legacy payload"})
+        (is (t2/exists? :model/McpQueryHandle :id legacy-id))
+        (is (nil? (mcp.session/resolve-query-handle session-id user-id legacy-id))
+            "the row is unreadable even before deletion — that is what makes it safe to reap unscoped")
+        (mcp.session/delete! session-id user-id)
+        (is (not (t2/exists? :model/McpQueryHandle :id legacy-id))
+            "delete! must reclaim it rather than strand it")
+        (finally
+          (t2/delete! :model/McpQueryHandle :id legacy-id))))))
+
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-embedding-session! does not publish :event/user-login"
     (let [login-events (atom [])
