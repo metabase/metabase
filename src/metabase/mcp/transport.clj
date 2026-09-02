@@ -426,13 +426,22 @@
 (defonce ^:private keepalive-stream-counts
   (atom {}))
 
+(def ^:private keepalive-cap-error
+  "The JSON-RPC error every keepalive refusal carries, whether it goes out as a 429 body or as an SSE frame on a
+  stream whose headers are already sent."
+  (jsonrpc-error nil -32000
+                 (str "Too many concurrent MCP event streams open for this user "
+                      "(limit " max-concurrent-keepalive-streams
+                      "). Close an existing stream before opening another.")))
+
 (defn- at-keepalive-cap?
   "Is `user-id` already holding [[max-concurrent-keepalive-streams]] running streams?
 
   Read-only on purpose: `handle-get` decides whether to serve from this, but takes nothing. Only a stream that
   is actually running holds a slot ([[acquire-keepalive-slot!]] is called from the body), so a connection that
   dies during setup has nothing to leak. The cost is that two simultaneous connects can both read under the cap
-  and both proceed — over-admitting by a few is the right trade for a resource cap that must never wedge shut."
+  and both proceed — over-admitting by a few is the right trade for a resource cap that must never wedge shut. A
+  connection that loses that race is refused by [[keepalive-stream-body!]] instead, on the stream itself."
   [user-id]
   (>= (get @keepalive-stream-counts user-id 0) max-concurrent-keepalive-streams))
 
@@ -469,13 +478,20 @@
   running: streaming-response reports a setup failure by neither throwing out of `send*` nor calling `raise`
   (its `Sendable` impl ignores `raise` entirely, and its own catch sends a 500 and closes its channels), so a
   handler that took the slot up front could never learn to give it back, and the cap would wedge shut a
-  connection at a time."
-  [user-id writer tools-hash-fn token-scopes canceled-chan interval-ms]
-  (when (acquire-keepalive-slot! user-id)
+  connection at a time.
+
+  A slot can be missing here even though `handle-get` read the user as under the cap: that read is advisory, so
+  racing connects can both pass it and one of them loses the slot. Refuse in band rather than by returning, since
+  status 200 and the SSE headers are already on the wire by the time the body runs."
+  [user-id ^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  (if (acquire-keepalive-slot! user-id)
     (try
       (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
       (finally
-        (release-keepalive-slot! user-id)))))
+        (release-keepalive-slot! user-id)))
+    (do
+      (.write writer ^String (sse-body [keepalive-cap-error]))
+      (.flush writer))))
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
@@ -492,10 +508,7 @@
       (respond error)
 
       (at-keepalive-cap? user-id)
-      (respond (json-response 429 (jsonrpc-error nil -32000
-                                                 (str "Too many concurrent MCP event streams open for this user "
-                                                      "(limit " max-concurrent-keepalive-streams
-                                                      "). Close an existing stream before opening another."))))
+      (respond (json-response 429 keepalive-cap-error))
 
       :else
       ;; No slot is taken here — `keepalive-stream-body!` takes and returns it, so a connection that dies

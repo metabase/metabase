@@ -152,7 +152,7 @@
         (reset! @#'mcp.transport/keepalive-stream-counts
                 {9 @#'mcp.transport/max-concurrent-keepalive-streams})
         (let [ran (atom false)]
-          (#'mcp.transport/keepalive-stream-body! 9 nil
+          (#'mcp.transport/keepalive-stream-body! 9 (StringWriter.)
                                                   (fn [_] (reset! ran true) "hash")
                                                   nil (a/promise-chan) 30000)
           (is (false? @ran)))))))
@@ -195,6 +195,35 @@
           (let [response (deref responded 5000 nil)]
             (is (= 429 (:status response)))
             (is (str/includes? (str (:body response)) "concurrent"))))))))
+
+(deftest keepalive-stream-refused-mid-stream-names-the-limit-test
+  (testing (str "GHY-4331: `at-keepalive-cap?` is advisory by design, so two connects can both read under the cap "
+                "and the loser only learns it lost inside the stream body — by then 200 and the SSE headers are on "
+                "the wire and the handler's 429 is unreachable. The refusal has to go out in band carrying the same "
+                "JSON-RPC error the 429 carries, or the client cannot tell a refused stream from a healthy one that "
+                "ended immediately.")
+    (with-clean-keepalive-counts
+      (fn []
+        (let [cap       @#'mcp.transport/max-concurrent-keepalive-streams
+              sink      (StringWriter.)
+              ran       (atom false)
+              responded (promise)]
+          (reset! @#'mcp.transport/keepalive-stream-counts {9 cap})
+          (#'mcp.transport/keepalive-stream-body! 9 sink
+                                                  (fn [_] (reset! ran true) "hash")
+                                                  nil (a/promise-chan) 30000)
+          (is (false? @ran) "the loop must not run without a slot")
+          (let [frames (->> (str/split-lines (str sink))
+                            (keep #(when (str/starts-with? % "data: ") (json/decode+kw (subs % 6)))))]
+            (is (= 1 (count frames)) "exactly one SSE frame explaining why the stream ended")
+            (with-redefs-fn {#'mcp.transport/require-valid-session (fn [_user-id _session-id] {:session-id "session"})}
+              (fn []
+                (#'mcp.transport/handle-get (constantly "hash") 9 {:headers {"mcp-session-id" "session"}}
+                                            #(deliver responded %) (fn [e] (throw e)))))
+            (is (= 429 (:status (deref responded 5000 nil))))
+            (is (= (json/decode+kw (:body (deref responded 5000 nil)))
+                   (first frames))
+                "the racing loser and the non-racing 429 say the same thing")))))))
 
 (deftest keepalive-stream-does-not-run-on-the-shared-streaming-pool-test
   (testing (str "GHY-4331: the GET keepalive blocks for the life of the client's connection, so it must not be "
