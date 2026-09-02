@@ -1,28 +1,42 @@
 import { makeSandboxDistortionCallback } from "./distortions";
 import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
 
-const setterOf = (target: object, key: string) =>
-  Object.getOwnPropertyDescriptor(target, key)?.set;
+type WindowHandlerSetter = Extract<keyof Window, `on${string}`>;
+type DocumentHandlerSetter = Extract<keyof Document, `on${string}`>;
 
-// Blocked event types with no on* IDL handler attribute in this environment,
-// so addEventListener is the only way to listen for them here.
-const TYPES_WITHOUT_HANDLER_ATTRIBUTE = new Set([
-  "beforepaste",
-  "beforecopy",
-  "beforecut",
-  "compositionstart",
-  "compositionupdate",
-  "compositionend",
-]);
+const WINDOW_HANDLER_SETTERS: readonly WindowHandlerSetter[] = [
+  "onkeydown",
+  "onkeyup",
+  "onkeypress",
+  "onbeforeinput",
+  "oninput",
+  "onpaste",
+  "oncopy",
+  "oncut",
+  "onstorage",
+];
 
-const TYPES_WITH_WINDOW_HANDLER = [...GLOBAL_BLOCKED_EVENT_TYPES].filter(
-  (type) => !TYPES_WITHOUT_HANDLER_ATTRIBUTE.has(type),
-);
+const DOCUMENT_HANDLER_SETTERS: readonly DocumentHandlerSetter[] = [
+  "onkeydown",
+  "onkeyup",
+  "onkeypress",
+  "onbeforeinput",
+  "oninput",
+  "onpaste",
+  "oncopy",
+  "oncut",
+];
 
-// `storage` events fire at window only, so Document has no onstorage.
-const TYPES_WITH_DOCUMENT_HANDLER = TYPES_WITH_WINDOW_HANDLER.filter(
-  (type) => type !== "storage",
-);
+function getSetterOf(target: object, key: string) {
+  return Object.getOwnPropertyDescriptor(target, key)?.set;
+}
+
+function getBlockedHandlerSettersOn(target: object) {
+  return [...GLOBAL_BLOCKED_EVENT_TYPES]
+    .map((type) => `on${type}`)
+    .filter((handler) => getSetterOf(target, handler))
+    .sort();
+}
 
 describe("scripts-sandbox global event-handler setter distortions", () => {
   it("distorts addEventListener('keydown') on document (reference boundary)", () => {
@@ -36,7 +50,7 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
 
   it("distorts the Document.cookie setter (reference boundary)", () => {
     const distort = makeSandboxDistortionCallback("plugin 1");
-    const cookieSetter = setterOf(Document.prototype, "cookie");
+    const cookieSetter = getSetterOf(Document.prototype, "cookie");
     if (!cookieSetter) {
       throw new Error("expected a Document.cookie setter");
     }
@@ -44,15 +58,25 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
     expect(distort(cookieSetter)).not.toBe(cookieSetter);
   });
 
-  // Window is a WebIDL [Global] interface, so its on* accessors are own
-  // properties of the window instance, not Window.prototype.
-  it.each(TYPES_WITH_WINDOW_HANDLER)(
-    "replaces the window.on%s instance setter with a distortion that refuses the assignment",
-    (type) => {
+  it("lists every blocked event type that has a handler setter on the window instance", () => {
+    expect([...WINDOW_HANDLER_SETTERS].sort()).toEqual(
+      getBlockedHandlerSettersOn(window),
+    );
+  });
+
+  it("lists every blocked event type that has a handler setter on Document.prototype", () => {
+    expect([...DOCUMENT_HANDLER_SETTERS].sort()).toEqual(
+      getBlockedHandlerSettersOn(Document.prototype),
+    );
+  });
+
+  it.each(WINDOW_HANDLER_SETTERS)(
+    "replaces the window.%s instance setter with a distortion that refuses the assignment",
+    (handler) => {
       const distort = makeSandboxDistortionCallback("plugin 1");
-      const handlerSetter = setterOf(window, `on${type}`);
+      const handlerSetter = getSetterOf(window, handler);
       if (!handlerSetter) {
-        throw new Error(`expected an on${type} setter on the window instance`);
+        throw new Error(`expected a ${handler} setter on the window instance`);
       }
 
       const distorted = distort(handlerSetter);
@@ -64,13 +88,13 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
     },
   );
 
-  it.each(TYPES_WITH_DOCUMENT_HANDLER)(
-    "replaces the Document.prototype.on%s setter with a distortion that refuses the assignment",
-    (type) => {
+  it.each(DOCUMENT_HANDLER_SETTERS)(
+    "replaces the Document.prototype.%s setter with a distortion that refuses the assignment",
+    (handler) => {
       const distort = makeSandboxDistortionCallback("plugin 1");
-      const handlerSetter = setterOf(Document.prototype, `on${type}`);
+      const handlerSetter = getSetterOf(Document.prototype, handler);
       if (!handlerSetter) {
-        throw new Error(`expected an on${type} setter on Document.prototype`);
+        throw new Error(`expected a ${handler} setter on Document.prototype`);
       }
 
       const distorted = distort(handlerSetter);
@@ -79,15 +103,6 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
       expect(() => distorted.call(document, () => {})).toThrow(
         /blocked API call/,
       );
-    },
-  );
-
-  it.each([...TYPES_WITHOUT_HANDLER_ATTRIBUTE])(
-    "on%s has no handler attribute in this environment — addEventListener is the only listen path",
-    (type) => {
-      expect(GLOBAL_BLOCKED_EVENT_TYPES.has(type)).toBe(true);
-      expect(`on${type}` in window).toBe(false);
-      expect(`on${type}` in document).toBe(false);
     },
   );
 });
