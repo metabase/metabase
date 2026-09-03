@@ -173,19 +173,10 @@
        :or   {entity (comments.db/entity (type->model target_type) target_id)
               parent (when parent_comment_id
                        (comments.db/comment-by-id parent_comment_id))}}]]
-  (let [clause     (if parent_comment_id
-                     {:where [:in :id ^:allow-subquery {:from   [:comment]
-                                                        :select [:creator_id]
-                                                        :where  [:or
-                                                                 [:= :id parent_comment_id]
-                                                                 [:= :parent_comment_id parent_comment_id]]}]}
-                     ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
-                     {:where [:= :id (:creator_id entity)]})
-        mentions   (->> (comment/mentions (:content comment))
+  (let [mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
-        recipients (-> (comments.db/user-emails
-                        (cond-> clause
-                          (seq mentions) (sql.helpers/where :or [:in :id mentions])))
+        ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
+        recipients (-> (comments.db/comment-recipient-emails (:creator_id entity) parent_comment_id mentions)
                        (disj (:email @api/*current-user*)))
         payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)

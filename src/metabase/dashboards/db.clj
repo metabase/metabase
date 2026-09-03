@@ -2,6 +2,10 @@
   "Application database queries for the dashboards module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [medley.core :as m]
+   [metabase.app-db.core :as mdb]
+   [metabase.models.serialization :as serdes]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn dashboard
@@ -204,10 +208,94 @@
   [rows]
   (t2/insert! :model/DashboardCardSeries rows))
 
-(defn rows
-  "The rows returned by the Honey SQL `query`."
-  [query]
-  (t2/query query))
+;;; ----------------------------------------------- Link cards ----------------------------------------------------
+
+(defn ensure-integer-link-card-id
+  "Return `id` if it is an integer, else throw a 400."
+  [id]
+  (when-not (integer? id)
+    (throw (ex-info "Link card entity id must be an integer"
+                    {:status-code 400, :id id})))
+  id)
+
+(def ^:private all-card-info-columns
+  {:model         :text
+   :id            :integer
+   :name          :text
+   :description   :text
+
+   ;; for cards and datasets
+   :collection_id :integer
+   :display       :text
+
+   ;; for tables
+   :db_id        :integer})
+
+(def ^:private  link-card-columns-for-model
+  {"database"   [:id :name :description]
+   "table"      [:id [:display_name :name] :description :db_id]
+   "dashboard"  [:id :name :description :collection_id]
+   "card"       [:id :name :description :collection_id :display]
+   "dataset"    [:id :name :description :collection_id :display]
+   "collection" [:id :name :description]})
+
+(defn- ->column-alias
+  "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
+  column name"
+  [column-or-aliased]
+  (if (sequential? column-or-aliased)
+    (second column-or-aliased)
+    column-or-aliased))
+
+(defn- select-clause-for-link-card-model
+  "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
+  of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
+  missing from `entity-columns` but found in `all-card-info-columns`."
+  [model]
+  (let [model-cols                       (link-card-columns-for-model model)
+        model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
+    (for [[col col-type] all-card-info-columns
+          :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
+      (cond
+        (= col :model)
+        [(h2x/literal model) :model]
+
+        maybe-aliased-col
+        maybe-aliased-col
+
+        ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
+        ;; correct type, e.g.
+        ;;
+        ;;    SELECT cast(NULL AS integer)
+        ;;
+        ;; For MySQL, this is not needed.
+        :else
+        [(when-not (= (mdb/db-type) :mysql)
+           [:cast nil col-type])
+         col]))))
+
+(defn link-card-info-query-for-model
+  "Return a honeysql query that is used to fetch info for a linkcard."
+  [model id-or-ids]
+  ^:allow-subquery {:select (select-clause-for-link-card-model model)
+                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
+                    :where  (if (coll? id-or-ids)
+                              [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
+                              [:= :id (ensure-integer-link-card-id id-or-ids)])})
+
+(defn- link-card-info-query
+  [link-card-model->ids]
+  (if (= 1 (count link-card-model->ids))
+    (apply link-card-info-query-for-model (first link-card-model->ids))
+    {:select   [:*]
+     :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
+                 :alias_is_required_by_sql_but_not_needed_here]]}))
+
+(defn link-card-info-rows
+  "The name, description, and related columns of the entities the link cards `link-card-model->ids`
+  (`[[model #{ids}] ...]`) point at."
+  [link-card-model->ids]
+  (t2/query (link-card-info-query link-card-model->ids)))
 
 (defn dashboard-tab
   "The DashboardTab with `tab-id`, or nil."

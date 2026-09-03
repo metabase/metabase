@@ -47,17 +47,6 @@
 
 (declare root-collection)
 
-(defn- location-from-collection-id-clause
-  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
-   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
-   then restrict to that collection's parents and children."
-  [collection-id]
-  (if collection-id
-    [:and
-     [:like :location (str "%/" collection-id "/%")]
-     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
-    [:not [:like :location "/%/%/"]]))
-
 (defn- remove-other-users-personal-subcollections
   [user-id collections]
   (let [personal-ids         (set (collections-rest.db/other-users-personal-collection-ids user-id))
@@ -83,49 +72,8 @@
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
   By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
-  (cond->>
-   (collections-rest.db/collections
-    {:where [:and
-             (case archived
-               nil nil
-               false [:and
-                      [:not= :id (collection/trash-collection-id)]
-                      [:not :archived]]
-               true [:or
-                     [:= :id (collection/trash-collection-id)]
-                     :archived])
-             (when shallow
-               (location-from-collection-id-clause collection-id))
-             (when personal-only
-               [:!= :personal_owner_id nil])
-             (when exclude-other-user-collections
-               [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
-             (when-not include-library?
-               [:or [:= nil :type]
-                [:not-in :type [collection/library-collection-type
-                                collection/library-data-collection-type
-                                collection/library-metrics-collection-type]]])
-             [:or
-              (when (contains? namespaces nil)
-                [:= :namespace nil])
-              (when (seq namespaces)
-                [:in :namespace namespaces])]
-             (collection/visible-collection-filter-clause
-              :id
-              {:include-archived-items    (if archived
-                                            :only
-                                            :exclude)
-               :include-trash-collection? true
-               :permission-level          :read
-               :archive-operation-id      nil})]
-     ;; Order NULL collection types first so that audit collections are last
-     :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                [[[:case
-                   [:= :type nil] 0
-                   [:= :type collection/trash-collection-type] 1
-                   :else 2]] :asc]
-                [:%lower.name :asc]]})
+  [{:keys [exclude-other-user-collections] :as options}]
+  (cond->> (collections-rest.db/collections-for-listing options api/*current-user-id*)
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -911,8 +859,7 @@
                 (when (seq descendant-collection-ids)
                   (collections-rest.db/unarchived-card-collection-types-in-reducible
                    descendant-collection-ids
-                   (when-not show-dashboard-questions?
-                     [:= :dashboard_id nil]))))
+                   (not show-dashboard-questions?))))
 
         ;; Tables in collections are an EE feature (library)
         collections-containing-tables

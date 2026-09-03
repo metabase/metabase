@@ -8,7 +8,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -30,19 +29,12 @@
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
-(defn- ensure-integer-link-card-id
-  [id]
-  (when-not (integer? id)
-    (throw (ex-info "Link card entity id must be an integer"
-                    {:status-code 400, :id id})))
-  id)
-
 (defn- validate-link-card-entity-id
   "Require the link-card entity id to be an integer before it is stored. It is used as an id when the linked
   entity is looked up on read, so validating on write keeps a malformed value from being persisted."
   [dashcard]
   (when-let [id (get-in dashcard [:visualization_settings :link :entity :id])]
-    (ensure-integer-link-card-id id))
+    (dashboards.db/ensure-integer-link-card-id id))
   dashcard)
 
 (defn- validate-click-behavior-target-ids
@@ -300,81 +292,12 @@
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
-(def ^:private all-card-info-columns
-  {:model         :text
-   :id            :integer
-   :name          :text
-   :description   :text
-
-   ;; for cards and datasets
-   :collection_id :integer
-   :display       :text
-
-   ;; for tables
-   :db_id        :integer})
-
-(def ^:private  link-card-columns-for-model
-  {"database"   [:id :name :description]
-   "table"      [:id [:display_name :name] :description :db_id]
-   "dashboard"  [:id :name :description :collection_id]
-   "card"       [:id :name :description :collection_id :display]
-   "dataset"    [:id :name :description :collection_id :display]
-   "collection" [:id :name :description]})
-
-(defn- ->column-alias
-  "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
-  column name"
-  [column-or-aliased]
-  (if (sequential? column-or-aliased)
-    (second column-or-aliased)
-    column-or-aliased))
-
-(defn- select-clause-for-link-card-model
-  "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
-  of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
-  missing from `entity-columns` but found in `all-card-info-columns`."
-  [model]
-  (let [model-cols                       (link-card-columns-for-model model)
-        model-col-alias->honeysql-clause (m/index-by ->column-alias model-cols)]
-    (for [[col col-type] all-card-info-columns
-          :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
-      (cond
-        (= col :model)
-        [(h2x/literal model) :model]
-
-        maybe-aliased-col
-        maybe-aliased-col
-
-        ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
-        ;; correct type, e.g.
-        ;;
-        ;;    SELECT cast(NULL AS integer)
-        ;;
-        ;; For MySQL, this is not needed.
-        :else
-        [(when-not (= (mdb/db-type) :mysql)
-           [:cast nil col-type])
-         col]))))
-
 (def ^:private link-card-models
   (set (keys serdes/link-card-model->toucan-model)))
 
-(defn link-card-info-query-for-model
+(def link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
-  [model id-or-ids]
-  ^:allow-subquery {:select (select-clause-for-link-card-model model)
-                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
-                    :where  (if (coll? id-or-ids)
-                              [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
-                              [:= :id (ensure-integer-link-card-id id-or-ids)])})
-
-(defn- link-card-info-query
-  [link-card-model->ids]
-  (if (= 1 (count link-card-model->ids))
-    (apply link-card-info-query-for-model (first link-card-model->ids))
-    {:select   [:*]
-     :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
-                 :alias_is_required_by_sql_but_not_needed_here]]}))
+  dashboards.db/link-card-info-query-for-model)
 
 (mi/define-batched-hydration-method dashcard-linkcard-info
   :dashcard/linkcard-info
@@ -396,7 +319,7 @@
       (let [;; query all entities in 1 db call
             ;; {[:table 3] {:name ...}}
             model-and-id->info
-            (-> (m/index-by (juxt :model :id) (dashboards.db/rows (link-card-info-query model-and-ids)))
+            (-> (m/index-by (juxt :model :id) (dashboards.db/link-card-info-rows model-and-ids))
                 (update-vals (fn [{model :model :as instance}]
                                (if (mi/can-read? (t2/instance (serdes/link-card-model->toucan-model model) instance))
                                  instance

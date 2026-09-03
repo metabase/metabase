@@ -143,48 +143,6 @@
    :config                (dissoc strategy :type :refresh_automatically)
    :refresh_automatically (:refresh_automatically strategy)})
 
-(defn- sort-column->order-by
-  "Convert a sort column to the appropriate SQL order-by expression."
-  [sort-column]
-  (case sort-column
-    :name       [:coalesce :report_card.name :report_dashboard.name]
-    :collection [:coalesce :report_card.collection_id :report_dashboard.collection_id]
-    :policy     :cache_config.strategy))
-
-(defn- base-query
-  "Build the base query for cache configs with JOINs for name/collection access."
-  [models collection id]
-  (if id
-    {:select [:cache_config.*]
-     :from   [:cache_config]
-     :where  [:and [:in :model models] [:= :model_id id]]}
-    {:select    [:cache_config.*
-                 [[:coalesce :report_card.name :report_dashboard.name] :item_name]
-                 [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]
-                 [:collection.name :collection_name]
-                 [:collection.authority_level :collection_authority_level]
-                 [:collection.type :collection_type]]
-     :from      [:cache_config]
-     :left-join [:report_card      [:and
-                                    [:= :model "question"]
-                                    [:= :model_id :report_card.id]
-                                    (when collection
-                                      [:= :report_card.collection_id collection])]
-                 :report_dashboard [:and
-                                    [:= :model "dashboard"]
-                                    [:= :model_id :report_dashboard.id]
-                                    (when collection
-                                      [:= :report_dashboard.collection_id collection])]
-                 :collection       [:= :collection.id
-                                    [:coalesce :report_card.collection_id
-                                     :report_dashboard.collection_id]]]
-     :where     [:and
-                 [:in :model models]
-                 [:case
-                  [:= :model "question"]  [:!= :report_card.id nil]
-                  [:= :model "dashboard"] [:!= :report_dashboard.id nil]
-                  :else                             true]]}))
-
 (mu/defn get-list
   "Get a list of cache configurations for given `models` and a `collection`.
    Supports pagination via `limit` and `offset`, and sorting via `sort-params`."
@@ -195,21 +153,14 @@
   (let [{:keys [sort_column sort_direction]
          :or   {sort_column :name sort_direction :asc}} sort-params
         ;; Only apply sorting when paginating (limit provided) and not querying by id
-        apply-sorting? (and limit (nil? id))
-        query (cond-> (base-query models collection id)
-                apply-sorting? (assoc :order-by [[(sort-column->order-by sort_column) sort_direction]])
-                limit          (assoc :limit limit)
-                offset         (assoc :offset offset))]
-    (->> (cache.db/cache-configs query)
+        apply-sorting? (and limit (nil? id))]
+    (->> (cache.db/cache-configs-page models collection id (when apply-sorting? sort_column) sort_direction limit offset)
          (mapv row->config))))
 
 (mu/defn get-list-total
   "Get the total count of cache configurations for given `models` and a `collection`."
   [models collection id]
-  (let [query (-> (base-query models collection id)
-                  (dissoc :select)
-                  (assoc :select [[[:count :*] :count]]))]
-    (:count (cache.db/cache-config-count query))))
+  (:count (cache.db/cache-config-count-row models collection id)))
 
 (defn store!
   "Store cache configuration in DB."

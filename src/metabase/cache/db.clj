@@ -34,15 +34,64 @@
   []
   (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl))
 
-(defn cache-configs
-  "The CacheConfigs selected by the Honey SQL `query`."
-  [query]
-  (t2/select :model/CacheConfig query))
+(defn- sort-column->order-by
+  "Convert a sort column to the appropriate SQL order-by expression."
+  [sort-column]
+  (case sort-column
+    :name       [:coalesce :report_card.name :report_dashboard.name]
+    :collection [:coalesce :report_card.collection_id :report_dashboard.collection_id]
+    :policy     :cache_config.strategy))
 
-(defn cache-config-count
-  "The `:count` row of the Honey SQL count `query`."
-  [query]
-  (t2/query-one query))
+(defn- base-query
+  "Build the base query for cache configs with JOINs for name/collection access."
+  [models collection id]
+  (if id
+    {:select [:cache_config.*]
+     :from   [:cache_config]
+     :where  [:and [:in :model models] [:= :model_id id]]}
+    {:select    [:cache_config.*
+                 [[:coalesce :report_card.name :report_dashboard.name] :item_name]
+                 [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]
+                 [:collection.name :collection_name]
+                 [:collection.authority_level :collection_authority_level]
+                 [:collection.type :collection_type]]
+     :from      [:cache_config]
+     :left-join [:report_card      [:and
+                                    [:= :model "question"]
+                                    [:= :model_id :report_card.id]
+                                    (when collection
+                                      [:= :report_card.collection_id collection])]
+                 :report_dashboard [:and
+                                    [:= :model "dashboard"]
+                                    [:= :model_id :report_dashboard.id]
+                                    (when collection
+                                      [:= :report_dashboard.collection_id collection])]
+                 :collection       [:= :collection.id
+                                    [:coalesce :report_card.collection_id
+                                     :report_dashboard.collection_id]]]
+     :where     [:and
+                 [:in :model models]
+                 [:case
+                  [:= :model "question"]  [:!= :report_card.id nil]
+                  [:= :model "dashboard"] [:!= :report_dashboard.id nil]
+                  :else                             true]]}))
+
+(defn cache-configs-page
+  "The CacheConfigs of `models` in `collection` (or of the entity with `id`), with the name and Collection of the
+  configured entity, sorted by `sort-column` in `sort-direction` when given and paged by `limit` and `offset`."
+  [models collection id sort-column sort-direction limit offset]
+  (t2/select :model/CacheConfig
+             (cond-> (base-query models collection id)
+               sort-column (assoc :order-by [[(sort-column->order-by sort-column) sort-direction]])
+               limit       (assoc :limit limit)
+               offset      (assoc :offset offset))))
+
+(defn cache-config-count-row
+  "The `:count` row of the CacheConfigs [[cache-configs-page]] pages through."
+  [models collection id]
+  (t2/query-one (-> (base-query models collection id)
+                    (dissoc :select)
+                    (assoc :select [[[:count :*] :count]]))))
 
 (defn lock-cache-config
   "The CacheConfig for `model` and `model-id` locked for update, or nil."

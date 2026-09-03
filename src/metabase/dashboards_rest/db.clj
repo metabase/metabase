@@ -4,10 +4,14 @@
   (:require
    [toucan2.core :as t2]))
 
-(defn dashboards-where
-  "The Dashboards matching the Honey SQL `where` clause, in case-insensitive name order."
-  [where]
-  (t2/select :model/Dashboard {:where where, :order-by [:%lower.name]}))
+(defn dashboards
+  "The archived or unarchived (`archived?`) Dashboards, restricted to those created by `creator-id` when given, in
+  case-insensitive name order."
+  [archived? creator-id]
+  (t2/select :model/Dashboard {:where    [:and
+                                          (when creator-id [:= :creator_id creator-id])
+                                          [:= :archived archived?]]
+                               :order-by [:%lower.name]}))
 
 (defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

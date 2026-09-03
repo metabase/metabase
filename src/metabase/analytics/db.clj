@@ -2,6 +2,9 @@
   "Application database queries for the analytics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [clojure.string :as str]
+   [metabase.app-db.core :as app-db]
+   [metabase.models.interface :as mi]
    [toucan2.core :as t2]))
 
 (defn first-user-date-joined-row
@@ -60,25 +63,27 @@
   (t2/count :model/PermissionsGroup))
 
 (defn dashboard-stats-columns
-  "The creator, public uuid, parameters, and embedding columns of the Dashboards matching the Honey SQL `where`
-  clause."
-  [where]
+  "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
+  []
   (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
-             {:where where}))
+             {:where (mi/exclude-internal-content-hsql :model/Dashboard)}))
 
 (defn dashcards-of-dashboards
-  "The DashboardCards of the Dashboards (aliased `d`) matching the Honey SQL `where` clause."
-  [where]
+  "The DashboardCards of the non-internal Dashboards."
+  []
   (t2/query {:select :dc.*
              :from [[(t2/table-name :model/DashboardCard) :dc]]
              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
-             :where where}))
+             :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)}))
 
-(defn frequencies-by-column
-  "The distinct `column` values (as `:k`) and their `:count` among the `model` rows also selected by the Honey SQL
-  `query`."
-  [model column query]
-  (t2/select [model [column :k] [:%count.* :count]] (merge {:group-by [column]} query)))
+(defn notification-frequencies-by-column
+  "The distinct `column` values (as `:k`) and their `:count` among the `model` rows (Pulses, or rows joined to
+  their Pulse) of alerts when `alerts?`, or of pulses otherwise."
+  [model column alerts?]
+  (t2/select [model [column :k] [:%count.* :count]]
+             (cond-> {:group-by [column]
+                      :where    [(if alerts? :not= :=) :pulse.alert_condition nil]}
+               (not= model :model/Pulse) (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
 
 (defn pulse-count
   "The number of Pulses that are not alerts."
@@ -101,36 +106,37 @@
   (t2/count :model/Pulse :alert_condition [:not= nil], :alert_above_goal true))
 
 (defn collection-count
-  "The number of Collections matching the Honey SQL `where` clause."
-  [where]
-  (t2/count :model/Collection {:where where}))
+  "The number of non-internal Collections."
+  []
+  (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
 
 (defn card-collection-ids
-  "The Collection id and schema of the Cards matching the Honey SQL `where` clause."
-  [where]
-  (t2/select [:model/Card :collection_id :card_schema] {:where where}))
+  "The Collection id and schema of the non-internal Cards."
+  []
+  (t2/select [:model/Card :collection_id :card_schema] {:where [:and (mi/exclude-internal-content-hsql :model/Card)]}))
 
 (defn database-stats-columns
-  "The sync, engine, and DBMS version of the Databases matching the Honey SQL `where` clause."
-  [where]
-  (t2/select [:model/Database :is_full_sync :engine :dbms_version] {:where where}))
+  "The sync, engine, and DBMS version of the non-internal Databases."
+  []
+  (t2/select [:model/Database :is_full_sync :engine :dbms_version]
+             {:where (mi/exclude-internal-content-hsql :model/Database)}))
 
 (defn table-database-and-schema
-  "The Database id and schema of the Tables whose Database (aliased `d`) matches the Honey SQL `where` clause."
-  [where]
+  "The Database id and schema of the Tables of the non-internal Databases."
+  []
   (t2/query {:select [:t.db_id :t.schema]
              :from   [[(t2/table-name :model/Table) :t]]
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-             :where  where}))
+             :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
 (defn field-table-ids
-  "The Table id of the Fields whose Database (aliased `d`) matches the Honey SQL `where` clause."
-  [where]
+  "The Table id of the Fields of the non-internal Databases."
+  []
   (t2/query {:select [:f.table_id]
              :from [[(t2/table-name :model/Field) :f]]
              :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
                     [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-             :where where}))
+             :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
 
 (defn segment-count
   "The number of Segments."
@@ -142,10 +148,62 @@
   []
   (t2/count :model/Card :type :metric :archived false))
 
-(defn rows
-  "The rows returned by the Honey SQL or raw SQL `query`."
-  [query]
-  (t2/query query))
+(defn- execution-metrics-sql []
+  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
+  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
+  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
+  ;; any time shifts due to DST. See PR #48204
+  (let [thirty-days-ago (case (app-db/db-type)
+                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
+                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
+        started-at      (case (app-db/db-type)
+                          :postgres "started_at AT TIME ZONE 'UTC'"
+                          :h2       "started_at"
+                          :mysql    "started_at")
+        timestamp-where (str started-at " > " thirty-days-ago)]
+    (str/join
+     "\n"
+     ["WITH user_executions AS ("
+      "    SELECT executor_id, COUNT(*) AS num_executions"
+      "    FROM query_execution"
+      "    WHERE " timestamp-where
+      "    GROUP BY executor_id"
+      "),"
+      "query_stats_1 AS ("
+      "    SELECT"
+      "        COUNT(*) AS executions,"
+      "        SUM(CASE WHEN error IS NULL OR length(error) = 0 THEN 1 ELSE 0 END) AS by_status__completed,"
+      "        SUM(CASE WHEN error IS NOT NULL OR length(error) > 0 THEN 1 ELSE 0 END) AS by_status__failed,"
+      "        COALESCE(SUM(CASE WHEN running_time = 0 THEN 1 ELSE 0 END), 0) AS num_by_latency__0,"
+      "        COALESCE(SUM(CASE WHEN running_time > 0 AND running_time < 1000 THEN 1 ELSE 0 END), 0) AS num_by_latency__lt_1,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 1000 AND running_time < 10000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1_10,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 10000 AND running_time < 50000 THEN 1 ELSE 0 END), 0) AS num_by_latency__11_50,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 50000 AND running_time < 250000 THEN 1 ELSE 0 END), 0) AS num_by_latency__51_250,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 250000 AND running_time < 1000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__251_1000,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
+      "    FROM query_execution"
+      "    WHERE " timestamp-where
+      "),"
+      "query_stats_2 AS ("
+      "    SELECT"
+      "        COALESCE(SUM(CASE WHEN num_executions = 0 THEN 1 ELSE 0 END), 0) AS num_per_user__0,"
+      "        COALESCE(SUM(CASE WHEN num_executions > 0 AND num_executions < 1 THEN 1 ELSE 0 END), 0) AS num_per_user__lt_1,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 1 AND num_executions < 10 THEN 1 ELSE 0 END), 0) AS num_per_user__1_10,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 10 AND num_executions < 50 THEN 1 ELSE 0 END), 0) AS num_per_user__11_50,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 50 AND num_executions < 250 THEN 1 ELSE 0 END), 0) AS num_per_user__51_250,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 250 AND num_executions < 1000 THEN 1 ELSE 0 END), 0) AS num_per_user__251_1000,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 1000 AND num_executions < 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__1001_10000,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__10000_plus"
+      "    FROM user_executions"
+      ")"
+      "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
+
+(defn execution-metrics-row
+  "The single row of execution statistics over the last 30 days of QueryExecutions."
+  []
+  (first (t2/query (execution-metrics-sql))))
 
 (defn query-cache-stats
   "The average result `:length` and `:count` of the QueryCache entries."
@@ -153,12 +211,11 @@
   (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]))
 
 (defn user-count-joined-before
-  "The number (up to `limit`) of Users who joined at or before `joined-before` also matching the Honey SQL
-  `where-clause`."
-  [joined-before where-clause limit]
+  "The number (up to `limit`) of non-internal Users who joined at or before `joined-before`."
+  [joined-before limit]
   (t2/count :model/User {:where [:and
                                  [:<= :date_joined joined-before]
-                                 where-clause]
+                                 (mi/exclude-internal-content-hsql :model/User)]
                          :limit limit}))
 
 (defn query-execution-ids-excluding-database

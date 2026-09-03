@@ -38,10 +38,21 @@
   [id]
   (t2/select-one :model/Comment :id id))
 
-(defn user-emails
-  "The emails of the Users selected by the Honey SQL `query`."
-  [query]
-  (t2/select-fn-set :email [:model/User :email] query))
+(defn comment-recipient-emails
+  "The emails of the Users to notify about a comment: the authors of the Comment with `parent-comment-id` and of its
+  replies, or the User with `creator-id` for a top-level comment, plus the Users with `mention-ids`."
+  [creator-id parent-comment-id mention-ids]
+  (t2/select-fn-set :email [:model/User :email]
+                    {:where [:or
+                             (if parent-comment-id
+                               [:in :id ^:allow-subquery {:from   [:comment]
+                                                          :select [:creator_id]
+                                                          :where  [:or
+                                                                   [:= :id parent-comment-id]
+                                                                   [:= :parent_comment_id parent-comment-id]]}]
+                               [:= :id creator-id])
+                             (when (seq mention-ids)
+                               [:in :id mention-ids])]}))
 
 (defn insert-comment!
   "Insert the Comment `row` and return the inserted instance."

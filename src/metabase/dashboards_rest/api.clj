@@ -62,10 +62,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- dashboards-list [filter-option]
-  (as-> (dashboards-rest.db/dashboards-where [:and (case (or (keyword filter-option) :all)
-                                                     (:all :archived)  true
-                                                     :mine [:= :creator_id api/*current-user-id*])
-                                              [:= :archived (= (keyword filter-option) :archived)]]) <>
+  (as-> (dashboards-rest.db/dashboards (= (keyword filter-option) :archived)
+                                       (when (= (keyword filter-option) :mine)
+                                         api/*current-user-id*)) <>
     (dashboards-rest.db/hydrate-creator <>)
     (filter mi/can-read? <>)))
 

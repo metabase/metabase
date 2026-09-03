@@ -20,7 +20,6 @@
    [metabase.internal-stats.core :as internal-stats]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.humanization :as humanization]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
@@ -224,8 +223,8 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (analytics.db/dashboard-stats-columns (mi/exclude-internal-content-hsql :model/Dashboard))
-        dashcards  (analytics.db/dashcards-of-dashboards (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d))]
+  (let [dashboards (analytics.db/dashboard-stats-columns)
+        dashcards  (analytics.db/dashcards-of-dashboards)]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
@@ -245,28 +244,18 @@
                                                 :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
 
 (defn- db-frequencies
-  "Fetch the frequencies of a given `column` with a normal SQL `SELECT COUNT(*) ... GROUP BY` query. This is way more
-  efficient than fetching every single row and counting them in Clojure-land!
+  "Fetch the frequencies of a given `column` of the notification `model` rows (Pulses, or rows joined to their Pulse)
+  belonging to alerts when `alerts?`, or to pulses otherwise, with a normal SQL `SELECT COUNT(*) ... GROUP BY` query.
+  This is way more efficient than fetching every single row and counting them in Clojure-land!
 
-    (db-frequencies Database :engine)
-    ;; -> {\"h2\" 2, \"postgres\" 1, ...}
-
-    ;; include `WHERE` conditions or other arbitrary HoneySQL
-    (db-frequencies Database :engine {:where [:= :is_sample false]})
-    ;; -> {\"h2\" 1, \"postgres\" 1, ...}
+    (db-frequencies :model/PulseChannel :channel_type false)
+    ;; -> {\"email\" 2, \"slack\" 1, ...}
 
     ;; Generate a histogram:
-    (micro-histogram (vals (db-frequencies Database :engine)))
-    ;; -> {\"2\" 1, \"1\" 1, ...}
-
-    ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
-    ;; (Number of Tables per DB engine)
-    (db-frequencies Table (app-db/qualify Database :engine)
-      {:left-join [Database [:= (app-db/qualify Database :id)
-                                (app-db/qualify Table :db_id)]]})
-    ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
-  [model column & [additonal-honeysql]]
-  (into {} (for [{:keys [k count]} (analytics.db/frequencies-by-column model column additonal-honeysql)]
+    (micro-histogram (vals (db-frequencies :model/PulseChannel :channel_type false)))
+    ;; -> {\"2\" 1, \"1\" 1, ...}"
+  [model column alerts?]
+  (into {} (for [{:keys [k count]} (analytics.db/notification-frequencies-by-column model column alerts?)]
              [k count])))
 
 (defn- num-notifications-with-xls-or-csv-cards
@@ -292,32 +281,30 @@
   "Get metrics based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
-  (let [pulse-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:= :pulse.alert_condition nil]}]
-    {:pulses               (analytics.db/pulse-count)
-     ;; "Table Cards" are Cards that include a Table you can download
-     :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
-     :pulse_types          (db-frequencies :model/PulseChannel :channel_type  pulse-conditions)
-     :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type pulse-conditions)
-     :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc pulse-conditions :left-join))))
-     :num_pulses_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    pulse-conditions)))
-     :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
+  {:pulses               (analytics.db/pulse-count)
+   ;; "Table Cards" are Cards that include a Table you can download
+   :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
+   :pulse_types          (db-frequencies :model/PulseChannel :channel_type  false)
+   :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type false)
+   :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id false)))
+   :num_pulses_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    false)))
+   :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   false)))})
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
-    {:alerts               (analytics.db/alert-count)
-     :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
-     :first_time_only      (analytics.db/first-time-only-alert-count)
-     :above_goal           (analytics.db/above-goal-alert-count)
-     :alert_types          (db-frequencies :model/PulseChannel :channel_type alert-conditions)
-     :num_alerts_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc alert-conditions :left-join))))
-     :num_alerts_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    alert-conditions)))
-     :num_cards_per_alerts (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   alert-conditions)))}))
+  {:alerts               (analytics.db/alert-count)
+   :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
+   :first_time_only      (analytics.db/first-time-only-alert-count)
+   :above_goal           (analytics.db/above-goal-alert-count)
+   :alert_types          (db-frequencies :model/PulseChannel :channel_type true)
+   :num_alerts_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id true)))
+   :num_alerts_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    true)))
+   :num_cards_per_alerts (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   true)))})
 
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (analytics.db/collection-count (mi/exclude-internal-content-hsql :model/Collection))
-        cards       (analytics.db/card-collection-ids [:and (mi/exclude-internal-content-hsql :model/Card)])]
+  (let [collections (analytics.db/collection-count)
+        cards       (analytics.db/card-collection-ids)]
     {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -327,7 +314,7 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (analytics.db/database-stats-columns (mi/exclude-internal-content-hsql :model/Database))]
+  (let [databases (analytics.db/database-stats-columns)]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -341,7 +328,7 @@
 (defn- table-metrics
   "Get metrics based on Tables."
   []
-  (let [tables (analytics.db/table-database-and-schema (mi/exclude-internal-content-hsql :model/Database :table-alias :d))]
+  (let [tables (analytics.db/table-database-and-schema)]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
@@ -349,7 +336,7 @@
 (defn- field-metrics
   "Get metrics based on Fields."
   []
-  (let [fields (analytics.db/field-table-ids (mi/exclude-internal-content-hsql :model/Database :table-alias :d))]
+  (let [fields (analytics.db/field-table-ids)]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
@@ -365,58 +352,6 @@
 
 ;;; Execution Metrics
 
-(defn- execution-metrics-sql []
-  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
-  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
-  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
-  ;; any time shifts due to DST. See PR #48204
-  (let [thirty-days-ago (case (app-db/db-type)
-                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
-                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
-        started-at      (case (app-db/db-type)
-                          :postgres "started_at AT TIME ZONE 'UTC'"
-                          :h2       "started_at"
-                          :mysql    "started_at")
-        timestamp-where (str started-at " > " thirty-days-ago)]
-    (str/join
-     "\n"
-     ["WITH user_executions AS ("
-      "    SELECT executor_id, COUNT(*) AS num_executions"
-      "    FROM query_execution"
-      "    WHERE " timestamp-where
-      "    GROUP BY executor_id"
-      "),"
-      "query_stats_1 AS ("
-      "    SELECT"
-      "        COUNT(*) AS executions,"
-      "        SUM(CASE WHEN error IS NULL OR length(error) = 0 THEN 1 ELSE 0 END) AS by_status__completed,"
-      "        SUM(CASE WHEN error IS NOT NULL OR length(error) > 0 THEN 1 ELSE 0 END) AS by_status__failed,"
-      "        COALESCE(SUM(CASE WHEN running_time = 0 THEN 1 ELSE 0 END), 0) AS num_by_latency__0,"
-      "        COALESCE(SUM(CASE WHEN running_time > 0 AND running_time < 1000 THEN 1 ELSE 0 END), 0) AS num_by_latency__lt_1,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 1000 AND running_time < 10000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1_10,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 10000 AND running_time < 50000 THEN 1 ELSE 0 END), 0) AS num_by_latency__11_50,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 50000 AND running_time < 250000 THEN 1 ELSE 0 END), 0) AS num_by_latency__51_250,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 250000 AND running_time < 1000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__251_1000,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
-      "    FROM query_execution"
-      "    WHERE " timestamp-where
-      "),"
-      "query_stats_2 AS ("
-      "    SELECT"
-      "        COALESCE(SUM(CASE WHEN num_executions = 0 THEN 1 ELSE 0 END), 0) AS num_per_user__0,"
-      "        COALESCE(SUM(CASE WHEN num_executions > 0 AND num_executions < 1 THEN 1 ELSE 0 END), 0) AS num_per_user__lt_1,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 1 AND num_executions < 10 THEN 1 ELSE 0 END), 0) AS num_per_user__1_10,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 10 AND num_executions < 50 THEN 1 ELSE 0 END), 0) AS num_per_user__11_50,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 50 AND num_executions < 250 THEN 1 ELSE 0 END), 0) AS num_per_user__51_250,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 250 AND num_executions < 1000 THEN 1 ELSE 0 END), 0) AS num_per_user__251_1000,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 1000 AND num_executions < 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__1001_10000,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__10000_plus"
-      "    FROM user_executions"
-      ")"
-      "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
-
 (defn- execution-metrics
   "Get metrics based on QueryExecutions."
   []
@@ -428,7 +363,7 @@
                              "251_1000"   "251-1000"
                              "1001_10000" "1001-10000"
                              "10000_plus" "10000+"} x x))
-        raw-results (-> (first (analytics.db/rows (execution-metrics-sql)))
+        raw-results (-> (analytics.db/execution-metrics-row)
                         ;; cast numbers to int because some DBs output bigdecimals
                         (update-vals #(some-> % int)))]
     (reduce (fn [acc [k v]]
@@ -538,7 +473,6 @@
   (let [users-in-activation-period
         (analytics.db/user-count-joined-before (t/plus (t/offset-date-time (analytics.settings/instance-creation))
                                                        (t/days activation-days))
-                                               (mi/exclude-internal-content-hsql :model/User)
                                                (inc num-users))]
     (>= users-in-activation-period num-users)))
 
