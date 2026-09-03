@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 
-import S from "./LogOutput.modules.css";
+import S from "./LogOutput.module.css";
 
 type LogOutputProps = {
   content?: string;
