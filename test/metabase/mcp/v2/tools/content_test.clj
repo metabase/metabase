@@ -898,7 +898,11 @@
       (is (contains? catalog "source_card_id")))
     (testing "the concise projection compacts nils rather than emitting them"
       (is (= {:id 1 :name "Q"}
-             (projections/project :question :concise {:id 1 :name "Q" :description nil}))))))
+             (projections/project :question :concise {:id 1 :name "Q" :description nil})))))
+  (testing "the same holds for the projections metric_write and document_write share with this tool —
+            each had a competing registration whose winner was decided by load order"
+    (is (contains? (set (projections/catalog :metric)) "query_summary"))
+    (is (contains? (set (projections/catalog :document)) "content_markdown"))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not

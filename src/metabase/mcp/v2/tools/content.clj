@@ -93,19 +93,9 @@
   [row]
   (some-> (::query row) lib/prepare-for-serialization))
 
-;; The question/model projection (`:question`) is the one canonical card projection, registered
-;; in [[metabase.mcp.v2.projections]] because browse_collection shares it. metric/measure/etc.
-;; below are get_content's own and registered here.
-(def ^:private metric-concise-keys
-  [:id :name :type :description :collection_id :database_id :table_id :source_card_id
-   :archived :query_summary])
-
-(def ^:private metric-detailed-keys
-  (into metric-concise-keys
-        [:entity_id :display :creator_id :created_at :updated_at]))
-
-(projections/register-key-projection! :metric metric-concise-keys
-                                      :detailed-keys metric-detailed-keys)
+;; The projections another tool also builds on — `:question` (browse_collection), `:metric`
+;; (metric_write), `:document` (document_write) — are registered in [[metabase.mcp.v2.projections]],
+;; the namespace every consumer requires. The ones registered below are get_content's alone.
 
 ;;; ------------------------------------------------ measure / segment ---------------------------------------------
 

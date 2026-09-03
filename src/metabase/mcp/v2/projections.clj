@@ -188,6 +188,21 @@
 (register-key-projection! :document document-concise-keys
                           :detailed-keys document-detailed-keys)
 
+;; Shared by `metric_write`'s echo and `get_content`'s metric reads, and registered here for the
+;; same reason. Owning it from either tool leaves the other reading a projection registered by a
+;; namespace it does not require, so both tools once carried their own copy of this and the winner
+;; was decided by `api.clj`'s require order.
+(def ^:private metric-concise-keys
+  [:id :name :type :description :collection_id :database_id :table_id :source_card_id
+   :archived :query_summary])
+
+(def ^:private metric-detailed-keys
+  (into metric-concise-keys
+        [:entity_id :display :creator_id :created_at :updated_at]))
+
+(register-key-projection! :metric metric-concise-keys
+                          :detailed-keys metric-detailed-keys)
+
 ;;; ----------------------------------------------- dashboard ------------------------------------------------------
 
 (defn- dashcard-kind
