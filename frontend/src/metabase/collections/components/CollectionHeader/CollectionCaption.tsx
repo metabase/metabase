@@ -53,6 +53,7 @@ export const CollectionCaption = ({
         <CollectionCaptionIcon collection={collection} />
         <EditableText
           key={collection.id}
+          as="h1"
           initialValue={collection.name}
           placeholder={t`Add title`}
           isDisabled={!isEditable}
