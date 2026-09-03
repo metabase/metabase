@@ -2,6 +2,7 @@
   "Application database queries for the action-v2 module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Tables and Fields ------------------------------------------------
@@ -46,15 +47,15 @@
   [table-id]
   (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id))
 
-(defn category-list-field-ids-by-lower-name
-  "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose lower-cased name is
-  one of `lower-names`."
-  [table-id lower-names]
+(defn category-list-field-ids-by-name
+  "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose name matches one
+  of `names`, case-insensitively."
+  [table-id names]
   (t2/query {:select [:id [[:lower :name] :lower_name]]
              :from   [(t2/table-name :model/Field)]
              :where  [:and
                       [:= :table_id table-id]
-                      [:in [:lower :name] lower-names]
+                      [:in [:lower :name] (map u/lower-case-en names)]
                       [:in :has_field_values ["list" "auto-list"]]
                       [:= :semantic_type "type/Category"]]}))
 
@@ -65,7 +66,7 @@
 
 ;;; ------------------------------------------------------ Undo ------------------------------------------------------
 
-(defn- scope-and-user-where
+(defn- scope-and-user-expr
   [scope user-id]
   [:and
    (when scope [:= :scope scope])
@@ -92,7 +93,7 @@
   [batches-to-keep scope user-id]
   (t2/query {:select   [:batch_num]
              :from     [(t2/table-name :model/Undo)]
-             :where    (scope-and-user-where scope user-id)
+             :where    (scope-and-user-expr scope user-id)
              :group-by :batch_num
              :order-by [[:batch_num :desc]]
              :limit    1
@@ -110,7 +111,7 @@
 (defn delete-undo-batches-up-to!
   "Delete the Undo rows of batches up to `batch-num`, narrowed by the optional `scope` and `user-id`."
   [batch-num scope user-id]
-  (t2/delete! :model/Undo :batch_num [:<= batch-num] {:where (scope-and-user-where scope user-id)}))
+  (t2/delete! :model/Undo :batch_num [:<= batch-num] {:where (scope-and-user-expr scope user-id)}))
 
 (defn delete-undone-batches-from!
   "Delete the undone Undo rows in `scope` from batch `batch-num` onwards."

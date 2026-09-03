@@ -73,17 +73,13 @@
   Collection are deleted before Collection itself)."
   [synced-collection-ids {:keys [by-entity-id]}]
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
-          :let [entity-ids (get by-entity-id (:model-type model-spec) [])
-                clauses    (spec/removal-where-clauses model-spec synced-collection-ids entity-ids)]]
-    (cond
-      ;; Scoped model with no collections to scope to — nothing to delete
-      (nil? clauses) nil
-      ;; A predicate — delete matching rows
-      (seq clauses)  (remote-sync.db/delete-where! model-key (if (= 1 (count clauses))
-                                                               (first clauses)
-                                                               (into [:and] clauses)))
-      ;; No predicate (global model, no imported ids or conditions) — delete all
-      :else          (remote-sync.db/delete-all! model-key))))
+          :let [entity-ids (get by-entity-id (:model-type model-spec) [])]]
+    (remote-sync.db/delete-removed-instances!
+     model-key
+     {:scope-key             (get-in model-spec [:removal :scope-key])
+      :synced-collection-ids synced-collection-ids
+      :entity-ids            entity-ids
+      :removal-conditions    (spec/removal-conditions model-spec)})))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."

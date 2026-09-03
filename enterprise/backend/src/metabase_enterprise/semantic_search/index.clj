@@ -135,7 +135,7 @@
    Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
-    (let [colls                (semantic-search.db/collection-owner-rows collection-ids)
+    (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
           direct               (into {} (map (juxt :id :personal_owner_id)) personal)

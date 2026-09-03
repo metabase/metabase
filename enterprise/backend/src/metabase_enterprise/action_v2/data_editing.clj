@@ -141,7 +141,7 @@
         ln->ids     (when (seq lower-names)
                       (u/group-by
                        :lower_name :id
-                       (action-v2.db/category-list-field-ids-by-lower-name table-id lower-names)))
+                       (action-v2.db/category-list-field-ids-by-name table-id lower-names)))
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
                                       old-values (into #{} cat (action-v2.db/field-values-of-fields field-ids))]]

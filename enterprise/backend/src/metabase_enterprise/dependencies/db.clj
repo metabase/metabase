@@ -2,26 +2,468 @@
   "Application database queries for the dependencies module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [clojure.set :as set]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------ Composed queries ------------------------------------------------
-;;; The dependency graph endpoints build their Honey SQL out of the permission visibility clause and per-entity-type
-;;; union members, so those queries arrive here fully assembled.
+;;; ------------------------------------------------ Graph edge restrictions ------------------------------------------------
+;;; The dependency graph is traversed generically over every entity type the module knows about; these private
+;;; helpers build the permission and type-allowlist fragments the graph and item-list queries below restrict edges
+;;; and items by.
 
-(defn query-rows
-  "Run the Honey SQL `query` and return its rows."
-  [query]
-  (t2/query query))
+(defn- visible-entities-expr
+  "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,
+  `is-superuser?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
+  default `:exclude`; applies to both archived collections and archived entities).
 
-(defn dependencies-matching
-  "The Dependencies matching the Honey SQL `where` clause."
-  [where]
-  (t2/select :model/Dependency {:where where}))
+  Handles different entity types:
+  - Superuser-only (`:model/Sandbox`): only if `is-superuser?` is true
+  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`): filters
+    by collection visibility and archived status. Native query snippets have additional restrictions for
+    sandboxed users.
+  - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
+    of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
+  - Transform: analysts can view any transform they have source view permission to."
+  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
+                                      :or   {include-archived-items :exclude}}]
+  (into [:or]
+        (keep (fn [[entity-type model]]
+                (let [table-name (t2/table-name model)
+                      id-column  (keyword (name table-name) "id")]
+                  (case model
+                    :model/Sandbox
+                    (when is-superuser?
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]])
 
-(defn finding-errors-matching
-  "The AnalysisFindingErrors matching the Honey SQL `where` clause."
-  [where]
-  (t2/select :model/AnalysisFindingError {:where where}))
+                    :model/Transform
+                    (cond
+                      is-superuser?
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
+
+                      is-data-analyst?
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field
+                        ^:allow-subquery
+                        {:select [:id]
+                         :from   [table-name]
+                         :where  [:in :source_database_id
+                                  (perms/visible-database-filter-select
+                                   {:user-id          user-id
+                                    :is-superuser?    is-superuser?
+                                    :is-data-analyst? is-data-analyst?}
+                                   {:perms/create-queries :query-builder})]}]])
+
+                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
+                    (let [archived-column (keyword (name table-name) "archived")]
+                      (when-not (and (= model :model/NativeQuerySnippet)
+                                     (or (perms/sandboxed-user?)
+                                         (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
+                        [:and
+                         [:= entity-type-field (name entity-type)]
+                         [:in entity-id-field
+                          ^:allow-subquery
+                          {:select [:id]
+                           :from   [table-name]
+                           :where  [:and
+                                    (collection/visible-collection-filter-clause
+                                     (keyword (name table-name) "collection_id")
+                                     {:include-archived-items include-archived-items}
+                                     {:current-user-id user-id
+                                      :is-superuser?   is-superuser?})
+                                    (case include-archived-items
+                                      :exclude [:= archived-column false]
+                                      :only    [:= archived-column true]
+                                      :all     nil)]}]]))
+
+                    :model/Table
+                    [:and
+                     [:= entity-type-field (name entity-type)]
+                     [:in entity-id-field
+                      ^:allow-subquery
+                      {:select [:id]
+                       :from   [table-name]
+                       :where  [:in id-column
+                                (perms/visible-table-filter-select
+                                 :id
+                                 {:user-id user-id :is-superuser? is-superuser?}
+                                 {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]]
+
+                    (:model/Segment :model/Measure)
+                    (let [archived-column (keyword (name table-name) "archived")
+                          table-id-column (keyword (name table-name) "table_id")]
+                      [:and
+                       [:= entity-type-field (name entity-type)]
+                       [:in entity-id-field
+                        ^:allow-subquery
+                        {:select [:id]
+                         :from   [table-name]
+                         :where  [:and
+                                  [:in table-id-column
+                                   ^:allow-subquery
+                                   {:select [:metabase_table.id]
+                                    :from   [:metabase_table]
+                                    :where  [:in :metabase_table.id
+                                             (perms/visible-table-filter-select
+                                              :id
+                                              {:user-id user-id :is-superuser? is-superuser?}
+                                              {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]
+                                  (case include-archived-items
+                                    :exclude [:= archived-column false]
+                                    :only    [:= archived-column true]
+                                    :all     nil)]}]])))))
+        deps.dependency-types/dependency-type->model))
+
+(defn- broken-entities-expr
+  "Matches entities at `entity-type-field`/`entity-id-field` that have failed analysis (an AnalysisFinding with
+  `:result` false)."
+  [entity-type-field entity-id-field]
+  (into [:or]
+        (keep (fn [[entity-type _model]]
+                [:and
+                 [:= entity-type-field (name entity-type)]
+                 [:in entity-id-field
+                  ^:allow-subquery
+                  {:select [:analyzed_entity_id]
+                   :from   [:analysis_finding]
+                   :where  [:and
+                            [:= :analysis_finding.analyzed_entity_type (name entity-type)]
+                            [:= :analysis_finding.result false]]}]]))
+        deps.dependency-types/dependency-type->model))
+
+(defn- allowed-entity-types-expr
+  "Matches entities at `entity-type-field` whose type is one of `entity-types`."
+  [entity-type-field entity-types]
+  (into [:or] (map (fn [entity-type] [:= entity-type-field (name entity-type)])) entity-types))
+
+(defn- entity-ids-expr
+  "Matches entities at `entity-type-field`/`entity-id-field` that are of type `entity-type` and whose id is in
+  `ids`."
+  [entity-type-field entity-id-field {:keys [entity-type ids]}]
+  [:and [:= entity-type-field (name entity-type)] [:in entity-id-field ids]])
+
+(defn- edge-restriction-expr
+  "The combined `:where` fragment for `restriction-spec` (nil for no filter), which may include `:visible` (opts for
+  [[visible-entities-expr]]), `:broken?` (restrict to [[broken-entities-expr]]), `:types` (restrict to
+  [[allowed-entity-types-expr]]), or `:entity-type` + `:ids` (restrict to [[entity-ids-expr]]). Combinable
+  fragments are AND-ed together."
+  [entity-type-field entity-id-field {:keys [visible broken? types entity-type ids]}]
+  (let [fragments (cond-> []
+                    visible               (conj (visible-entities-expr entity-type-field entity-id-field visible))
+                    broken?               (conj (broken-entities-expr entity-type-field entity-id-field))
+                    types                 (conj (allowed-entity-types-expr entity-type-field types))
+                    (and entity-type ids) (conj (entity-ids-expr entity-type-field entity-id-field
+                                                                 {:entity-type entity-type :ids ids})))]
+    (case (count fragments)
+      0 nil
+      1 (first fragments)
+      (into [:and] fragments))))
+
+(defn dependency-edges
+  "The Dependencies from the entities of type `entity-type` with `entity-ids`, where `src-type`/`src-id` name the
+  Dependency columns identifying those entities and `dst-type`/`dst-id` name the columns identifying the related
+  entities on the other side of the edge, optionally restricted by `destination-restriction` (applied to
+  `dst-type`/`dst-id`) and `source-restriction` (applied to `src-type`/`src-id`) — see [[edge-restriction-expr]] for the
+  filter spec shape."
+  [{:keys [src-type src-id dst-type dst-id entity-type entity-ids destination-restriction source-restriction]}]
+  (t2/select :model/Dependency
+             {:where (into [:and
+                            [:= src-type (name entity-type)]
+                            [:in src-id entity-ids]]
+                           (keep identity)
+                           [(edge-restriction-expr dst-type dst-id destination-restriction)
+                            (edge-restriction-expr src-type src-id source-restriction)])}))
+
+(defn finding-errors-from-sources
+  "The AnalysisFindingErrors caused by any of the entities `source-entity-type` `source-entity-ids`, whose analyzed
+  entity is visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
+  [source-entity-type source-entity-ids {:keys [user-id is-superuser? is-data-analyst?]}]
+  (t2/select :model/AnalysisFindingError
+             {:where [:and
+                      [:= :source_entity_type (name source-entity-type)]
+                      [:in :source_entity_id source-entity-ids]
+                      (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
+                                             {:user-id user-id :is-superuser? is-superuser?
+                                              :is-data-analyst? is-data-analyst?})]}))
+
+(defn finding-errors-for-entities-with-visible-sources
+  "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, excluding those whose source
+  entity exists but is not visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
+  [entity-type entity-ids {:keys [user-id is-superuser? is-data-analyst?]}]
+  (t2/select :model/AnalysisFindingError
+             {:where [:and
+                      [:= :analyzed_entity_type (name entity-type)]
+                      [:in :analyzed_entity_id entity-ids]
+                      [:or
+                       [:= :source_entity_type nil]
+                       (visible-entities-expr :source_entity_type :source_entity_id
+                                              {:user-id user-id :is-superuser? is-superuser?
+                                               :is-data-analyst? is-data-analyst?})]]}))
+
+;;; ------------------------------------------ Dependency item list queries -------------------------------------------
+;;; The /graph/unreferenced and /graph/breaking endpoints union together one SELECT per entity type, each producing
+;;; `entity_type`/`entity_id`/`sort_key` rows, then page and count that union. These private helpers build the
+;;; per-entity-type SELECT and the pieces (joins, extra filters, sort expression) that make it up.
+
+(defn personal-root-collection-ids
+  "The IDs of the personal Collections."
+  []
+  (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
+
+(defn- entity-type-config
+  "The table name and name/location column expressions to select an item list row for `entity-type`."
+  [entity-type]
+  (let [root-collection (collection.root/root-collection-with-ui-details
+                         (case entity-type
+                           :transform :transforms
+                           :snippet :snippets
+                           nil))]
+    {:table-name (case entity-type
+                   :card :report_card
+                   :table :metabase_table
+                   :transform :transform
+                   :snippet :native_query_snippet
+                   :dashboard :report_dashboard
+                   :document :document
+                   :sandbox :sandboxes
+                   :segment :segment
+                   :measure :measure)
+     :name-column (case entity-type
+                    :table :entity.display_name
+                    :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                    :entity.name)
+     :location-column (case entity-type
+                        :card [:case
+                               [:not= :entity.dashboard_id nil] :dashboard.name
+                               [:not= :entity.document_id nil] :document.name
+                               :else [:coalesce :collection.name (:name root-collection)]]
+                        :table :database.name
+                        (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
+                        :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
+                        (:segment :measure) :table.display_name)}))
+
+(defn- item-query-join
+  "The join and join-filter for `query-type`, restricting the joined-in dependency/finding-error rows to those
+  whose other-side entity passes `default-visible-restriction` (see [[edge-restriction-expr]]; this is independent of any
+  archived-items override applied to the item's own visibility)."
+  [query-type entity-type default-visible-restriction]
+  (case query-type
+    :unreferenced {:join [:dependency [:and
+                                       [:= :dependency.to_entity_id :entity.id]
+                                       [:= :dependency.to_entity_type (name entity-type)]
+                                       (edge-restriction-expr :dependency.from_entity_type :dependency.from_entity_id
+                                                              default-visible-restriction)]]
+                   :join-filter [:= :dependency.id nil]}
+    :broken {:join [:analysis_finding [:and
+                                       [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                       [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+             :join-filter [:= :analysis_finding.result false]}
+    :breaking {:join [:analysis_finding_error [:and
+                                               [:= :analysis_finding_error.source_entity_id :entity.id]
+                                               [:= :analysis_finding_error.source_entity_type (name entity-type)]
+                                               (edge-restriction-expr :analysis_finding_error.analyzed_entity_type
+                                                                      :analysis_finding_error.analyzed_entity_id
+                                                                      default-visible-restriction)]]
+               :join-filter [:!= :analysis_finding_error.id nil]}))
+
+(defn- location-joins-for-entity
+  "The set of join keywords needed for location-based operations on `entity-type`."
+  [entity-type]
+  (case entity-type
+    :card #{:collection :dashboard :document}
+    (:transform :snippet :dashboard :document) #{:collection}
+    (:segment :measure) #{:table}
+    :table #{:database}
+    #{}))
+
+(defn- optional-item-expr-and-joins
+  "The extra `:where` fragments and joins for `params`' card-type, search-text, database, internal-content,
+  archived, and personal-collection restrictions."
+  [{:keys [query-type entity-type card-types search-text include-personal-collections?]}
+   {:keys [name-column location-column]}]
+  (let [card-type-expr (when (and (= entity-type :card) (seq card-types))
+                         {:expr [:in :entity.type (mapv name card-types)]
+                          :joins #{}})
+        search-expr (when (and search-text (not= entity-type :sandbox))
+                      (let [pattern (h2x/like-substring search-text)]
+                        {:expr [:or
+                                [:like [:lower name-column] pattern]
+                                [:like [:lower location-column] pattern]]
+                         :joins (location-joins-for-entity entity-type)}))
+        database-expr (when (= entity-type :table)
+                        {:expr [:and [:not :database.is_sample] [:not :database.is_audit]]
+                         :joins #{:database}})
+        ;; Hide system-managed (internal-user) content like Usage Analytics from the unreferenced
+        ;; list — analytics dashboards have nothing pointing at them by design and would just be
+        ;; noise. The breaking-items list intentionally still surfaces them, since broken analytics
+        ;; deps are real signals worth showing.
+        internal-content-expr (when-let [model (and (= query-type :unreferenced)
+                                                    (case entity-type
+                                                      :card      :model/Card
+                                                      :dashboard :model/Dashboard
+                                                      nil))]
+                                {:expr (mi/exclude-internal-content-hsql model :table-alias :entity)
+                                 :joins #{}})
+        ;; note that tables are not filtered by active/visibility_type, so that dependencies
+        ;; broken by dropped tables stay visible
+        archived-expr (when-not (= query-type :breaking)
+                        {:expr (case entity-type
+                                 (:card :dashboard :document :snippet :segment :measure)
+                                 [:= :entity.archived false]
+                                 nil)
+                         :joins #{}})
+        personal-expr (when-not include-personal-collections?
+                        (case entity-type
+                          (:card :dashboard :document :snippet)
+                          (let [personal-ids (personal-root-collection-ids)]
+                            (when (seq personal-ids)
+                              {:expr [:or
+                                      [:= :entity.collection_id nil]
+                                      [:and
+                                       [:= :collection.personal_owner_id nil]
+                                       (into [:and]
+                                             (for [pid personal-ids]
+                                               [:not-like :collection.location (str "/" pid "/%")]))]]
+                               :joins #{:collection}}))
+                          nil))
+        results (keep identity [card-type-expr search-expr database-expr
+                                internal-content-expr archived-expr personal-expr])]
+    {:exprs (keep :expr results)
+     :joins (reduce set/union #{} (map :joins results))}))
+
+(defn- sort-key-expr-and-joins
+  "The sort expression and extra joins for `sort-column`, restricting the `dependents-errors`/`dependents-with-errors`
+  counts to finding errors whose analyzed entity passes `default-visible-restriction` (see [[edge-restriction-expr]])."
+  [sort-column entity-type name-column location-column default-visible-restriction]
+  (case sort-column
+    :location {:sort-expr location-column
+               :joins (location-joins-for-entity entity-type)}
+    :dependents-errors {:sort-expr ^:allow-subquery
+                        {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                                        [:concat :error_type "-" [:coalesce :error_detail ""]]
+                                                        [:composite :error_type :error_detail])]]]]
+                         :from [:analysis_finding_error]
+                         :where [:and
+                                 [:= :source_entity_id :entity.id]
+                                 [:= :source_entity_type (name entity-type)]
+                                 (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
+                        :joins #{}}
+    :dependents-with-errors {:sort-expr ^:allow-subquery
+                             {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                                             [:concat :analyzed_entity_id "-" :analyzed_entity_type]
+                                                             [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
+                              :from [:analysis_finding_error]
+                              :where [:and
+                                      [:= :source_entity_id :entity.id]
+                                      [:= :source_entity_type (name entity-type)]
+                                      (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
+                             :joins #{}}
+    {:sort-expr name-column
+     :joins #{}}))
+
+(defn- build-left-joins
+  "`base-join` with the LEFT JOINs needed for `joins` (a set of `:database`, `:collection`, `:dashboard`,
+  `:document`, and/or `:table`) appended."
+  [base-join joins]
+  (cond-> base-join
+    (:database joins) (conj [:metabase_database :database] [:= :entity.db_id :database.id])
+    (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
+    (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
+    (:document joins) (conj :document [:= :entity.document_id :document.id])
+    (:table joins) (conj [:metabase_table :table] [:= :entity.table_id :table.id])))
+
+(defn- dependency-item-select
+  "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
+  `query-type` (`:unreferenced` or `:breaking`) items of `entity-type`, restricted to `card-types`, `search-text`,
+  and `include-personal-collections?`, visible to the user described by `user-id`, `is-superuser?`, and
+  `is-data-analyst?`, with `sort-column`'s expression selected as `:sort_key`."
+  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst?] :as params}]
+  (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
+        visible (when user-id {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?})
+        default-visible-restriction {:visible visible}
+        ;; The item's own visibility check includes archived items when listing what's breaking other entities,
+        ;; so dependencies broken by an archived source still surface; nothing else is affected by this.
+        item-visible-restriction (cond-> default-visible-restriction
+                                   (= query-type :breaking) (assoc-in [:visible :include-archived-items] :all))
+        {:keys [join join-filter]} (item-query-join query-type entity-type default-visible-restriction)
+        {:keys [exprs joins]} (optional-item-expr-and-joins params config)
+        {sort-expr :sort-expr sort-joins :joins} (sort-key-expr-and-joins sort-column entity-type name-column
+                                                                          location-column default-visible-restriction)
+        all-joins (set/union joins sort-joins)
+        item-visible-expr (edge-restriction-expr (name entity-type) :entity.id item-visible-restriction)
+        select-clause [[^:allow-raw-sql [:inline (name entity-type)] :entity_type]
+                       [:entity.id :entity_id]
+                       [sort-expr :sort_key]]]
+    ^:allow-subquery
+    {(if (= query-type :breaking) :select-distinct :select) select-clause
+     :from [[table-name :entity]]
+     :left-join (build-left-joins join all-joins)
+     :where (into [:and join-filter item-visible-expr] (keep identity) exprs)}))
+
+(defn dependency-item-ids
+  "A page of `[entity-type entity-id]` pairs for `query-type` (`:unreferenced` or `:breaking`), restricted to
+  `entity-types`, `card-types` (applied only to `:card` entities), `search-text` (nil for none), and
+  `include-personal-collections?`; sorted by `sort-column` (`:name`, `:location`, `:dependents-errors`, or
+  `:dependents-with-errors`) in `sort-direction`, skipping `offset` and returning up to `limit`. Entities are
+  restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
+  [{:keys [entity-types sort-direction offset limit] :as params}]
+  (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
+                                                       entity-types)}]
+    (->> (t2/query (assoc union-query
+                          :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
+                          :offset offset
+                          :limit limit))
+         (map (fn [{:keys [entity_id entity_type]}] [(keyword entity_type) entity_id])))))
+
+(defn dependency-item-count
+  "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
+  and limit)."
+  [{:keys [entity-types] :as params}]
+  (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
+                                                       entity-types)}]
+    (-> (t2/query {:select [[:%count.* :total]] :from [[union-query :subquery]]})
+        first
+        :total)))
+
+(defn broken-entity-pairs
+  "The `[:analyzed_entity_type :analyzed_entity_id]` pairs whose analysis failed and were caused by the entity
+  `source-entity-type` `source-entity-id`, restricted to `dependent-types` and `dependent-card-types` (each nil
+  for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
+  [{:keys [source-entity-type source-entity-id dependent-types dependent-card-types
+           user-id is-superuser? is-data-analyst?]}]
+  (t2/query
+   (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type] [:afe.analyzed_entity_id :entity_id]]
+            :from [[:analysis_finding_error :afe]]
+            :join [[:analysis_finding :af]
+                   [:and
+                    [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
+                    [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
+            :where (cond-> [:and
+                            [:= :afe.source_entity_type (name source-entity-type)]
+                            [:= :afe.source_entity_id source-entity-id]
+                            [:= :af.result false]
+                            (visible-entities-expr :afe.analyzed_entity_type :afe.analyzed_entity_id
+                                                   {:user-id user-id :is-superuser? is-superuser?
+                                                    :is-data-analyst? is-data-analyst?
+                                                    :include-archived-items :exclude})]
+                     dependent-types      (conj [:in :afe.analyzed_entity_type dependent-types])
+                     dependent-card-types (conj [:or
+                                                 [:!= :afe.analyzed_entity_type "card"]
+                                                 [:in :rc.type dependent-card-types]]))}
+     dependent-card-types (assoc :left-join [[:report_card :rc]
+                                             [:and
+                                              [:= :afe.analyzed_entity_type "card"]
+                                              [:= :rc.id :afe.analyzed_entity_id]]]))))
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
@@ -84,11 +526,6 @@
   "The IDs of the Transforms reading from the Database with `db-id`."
   [db-id]
   (t2/select-pks-set :model/Transform :source_database_id db-id))
-
-(defn personal-root-collection-ids
-  "The IDs of the personal Collections."
-  []
-  (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 

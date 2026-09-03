@@ -13,9 +13,9 @@
   []
   [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
 
-(defn- visible-groups-clause
-  "Honey SQL clause matching the groups the admin UI shows in the mode selected by `advanced?`: Administrators, All
-  Users, and All tenant users in simple mode, every other group in group-level mode."
+(defn- visible-groups-expr
+  "Matches the groups the admin UI shows in the mode selected by `advanced?`: Administrators, All Users, and All
+  tenant users in simple mode, every other group in group-level mode."
   [advanced?]
   (if advanced?
     [:not-in :group_id (default-group-ids)]
@@ -41,7 +41,7 @@
                        {:select [:group_id]
                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                         :where  [:= :user_id user-id]}]
-                      (visible-groups-clause advanced?)]}))
+                      (visible-groups-expr advanced?)]}))
 
 (defn permission-exists?
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
@@ -61,7 +61,7 @@
 (defn delete-hidden-group-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
   [advanced?]
-  (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-clause advanced?)]}))
+  (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
 
 ;;; ------------------------------------------------- Usage limits -------------------------------------------------
 
@@ -75,7 +75,7 @@
   [group-id]
   (t2/select-one :model/MetabotGroupLimit :group_id group-id))
 
-(defn user-max-usage-row
+(defn max-usage-for-user
   "The `:max_usage` row holding the largest group limit of the User with `user-id`, or nil if any of their groups
   is unlimited."
   [user-id]
@@ -134,26 +134,26 @@
   [row]
   (t2/insert! :model/AiUsageLog row))
 
-(defn- usage-where
+(defn- usage-window-expr
   [period-start user-id tenant-id]
   [:and
    [:>= :created_at period-start]
    (when user-id [:= :user_id user-id])
    (when tenant-id [:= :tenant_id tenant-id])])
 
-(defn usage-token-sum-row
+(defn usage-token-sum
   "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
   [period-start user-id tenant-id]
   (t2/query-one {:select [[[:sum :total_tokens] :sum]]
                  :from   [:ai_usage_log]
-                 :where  (usage-where period-start user-id tenant-id)}))
+                 :where  (usage-window-expr period-start user-id tenant-id)}))
 
-(defn usage-message-count-row
+(defn usage-message-count
   "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
   [period-start user-id tenant-id]
   (t2/query-one {:select [[[:count :*] :cnt]]
                  :from   [:ai_usage_log]
-                 :where  (usage-where period-start user-id tenant-id)}))
+                 :where  (usage-window-expr period-start user-id tenant-id)}))
 
 (defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

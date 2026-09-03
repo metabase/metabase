@@ -5,10 +5,18 @@
    [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
-(defn tables-where
-  "The `columns` of the Tables matching the Honey SQL `where`."
-  [columns where]
-  (t2/select :model/Table {:select columns, :where where}))
+(defn active-tables-in-database
+  "The `columns` of the active Tables in the Database with `database-id`. `opts` may restrict the result: a
+  `:table-ids` key restricts to those IDs (even when its value is empty), and a `:schema` key restricts to that
+  schema (`\"\"` matches both nil and empty-string schemas)."
+  [columns database-id {:keys [table-ids schema] :as opts}]
+  (t2/select :model/Table
+             {:select columns
+              :where  (cond-> [:and [:= :db_id database-id] [:= :active true]]
+                        (contains? opts :table-ids) (conj [:in :id table-ids])
+                        (contains? opts :schema)     (conj (if (= schema "")
+                                                             [:or [:= :schema nil] [:= :schema ""]]
+                                                             [:= :schema schema])))}))
 
 (defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."

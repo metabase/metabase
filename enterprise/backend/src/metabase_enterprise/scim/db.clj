@@ -2,6 +2,7 @@
   "Application database queries for the scim module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private user-columns
@@ -29,10 +30,10 @@
 
 ;;; ------------------------------------------------------- Users -------------------------------------------------------
 
-(defn- personal-user-where
-  [lower-email]
+(defn- personal-user-expr
+  [email]
   [:and [:= :type "personal"]
-   (when lower-email [:= :%lower.email lower-email])])
+   (when email [:= :%lower.email (u/lower-case-en email)])])
 
 (defn scim-user-by-entity-id
   "The SCIM columns of the personal User with `entity-id`, or nil."
@@ -42,27 +43,27 @@
 (defn scim-user-by-email
   "The SCIM columns of the User with `email`, or nil."
   [email]
-  (t2/select-one user-columns :email email))
+  (t2/select-one user-columns :email (u/lower-case-en email)))
 
 (defn scim-users
-  "The SCIM columns of the personal Users, narrowed to the optional lower-cased `lower-email`, paged by `limit` and
-  `offset` in ID order."
-  [lower-email limit offset]
+  "The SCIM columns of the personal Users, narrowed to the optional `email` (case-insensitive), paged by `limit`
+  and `offset` in ID order."
+  [email limit offset]
   (t2/select user-columns
-             {:where    (personal-user-where lower-email)
+             {:where    (personal-user-expr email)
               :limit    limit
               :offset   offset
               :order-by [[:id :asc]]}))
 
 (defn scim-user-count
-  "The number of personal Users, narrowed to the optional lower-cased `lower-email`."
-  [lower-email]
-  (t2/count :model/User {:where (personal-user-where lower-email)}))
+  "The number of personal Users, narrowed to the optional `email` (case-insensitive)."
+  [email]
+  (t2/count :model/User {:where (personal-user-expr email)}))
 
 (defn user-email-exists?
-  "Whether a User with the lower-cased email `lower-email` exists."
-  [lower-email]
-  (t2/exists? :model/User :%lower.email lower-email))
+  "Whether a User with `email` (case-insensitive) exists."
+  [email]
+  (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
 
 (defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
@@ -92,7 +93,7 @@
 
 ;;; ------------------------------------------------------ Groups ------------------------------------------------------
 
-(defn- manageable-group-where
+(defn- manageable-group-expr
   [excluded-group-ids group-name]
   (into [:and (when group-name [:= :name group-name])]
         (map (fn [group-id] [:not= :id group-id]))
@@ -101,14 +102,14 @@
 (defn scim-group-by-entity-id
   "The SCIM columns of the PermissionsGroup with `entity-id` other than `excluded-group-ids`, or nil."
   [entity-id excluded-group-ids]
-  (t2/select-one group-columns :entity_id entity-id {:where (manageable-group-where excluded-group-ids nil)}))
+  (t2/select-one group-columns :entity_id entity-id {:where (manageable-group-expr excluded-group-ids nil)}))
 
 (defn scim-groups
   "The SCIM columns of the PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`,
   paged by `limit` and `offset` in ID order."
   [excluded-group-ids group-name limit offset]
   (t2/select group-columns
-             {:where    (manageable-group-where excluded-group-ids group-name)
+             {:where    (manageable-group-expr excluded-group-ids group-name)
               :limit    limit
               :offset   offset
               :order-by [[:id :asc]]}))
@@ -116,12 +117,12 @@
 (defn scim-group-count
   "The number of PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`."
   [excluded-group-ids group-name]
-  (t2/count :model/PermissionsGroup {:where (manageable-group-where excluded-group-ids group-name)}))
+  (t2/count :model/PermissionsGroup {:where (manageable-group-expr excluded-group-ids group-name)}))
 
 (defn group-name-exists?
-  "Whether a PermissionsGroup with the lower-cased name `lower-name` exists."
-  [lower-name]
-  (t2/exists? :model/PermissionsGroup :%lower.name lower-name))
+  "Whether a PermissionsGroup with `group-name` (case-insensitive) exists."
+  [group-name]
+  (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
 
 (defn insert-group!
   "Insert `group` and return the new instance."

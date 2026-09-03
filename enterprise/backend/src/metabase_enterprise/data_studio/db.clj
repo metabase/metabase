@@ -6,9 +6,8 @@
    [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
-(defn- table-selectors-where
-  "Honey SQL clause matching the Tables selected by `database-ids`, `table-ids`, and `schema-ids` (each
-  `\"<db-id>:<schema>\"`)."
+(defn- table-selectors-expr
+  "Matches the Tables selected by `database-ids`, `table-ids`, and `schema-ids` (each `\"<db-id>:<schema>\"`)."
   [{:keys [database-ids table-ids schema-ids]}]
   (let [schema-expr (fn [s]
                       (let [[schema-db-id schema-name] (str/split s #"\:")]
@@ -20,7 +19,7 @@
 
 (defn- table-selectors-subquery
   [selectors]
-  ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where (table-selectors-where selectors)})
+  ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where (table-selectors-expr selectors)})
 
 (defn remapped-table-ids-reducible
   "Reducible `:table_id` rows of the Tables reachable from `tables` through FK remapping Dimensions, from the
@@ -54,12 +53,12 @@
   `extra-table-ids` that are unpublished (`:unpublished` mode) or any of them (`:any` mode)."
   [selectors extra-table-ids extra-mode]
   (t2/select-pks-set :model/Table
-                     {:where (let [where (table-selectors-where selectors)]
+                     {:where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
-                                 [:or where (case extra-mode
-                                              :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
-                                              :any         [:in :id extra-table-ids])]
-                                 where))}))
+                                 [:or selector-expr (case extra-mode
+                                                      :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
+                                                      :any         [:in :id extra-table-ids])]
+                                 selector-expr))}))
 
 (defn published-table-ids
   "The IDs of the published Tables among `table-ids`."

@@ -65,12 +65,28 @@
               [nil :database_id]]
              :id [:in dashboard-ids]))
 
-(defn query-rows
-  "The rows of the Honey SQL `query`."
-  [query]
-  (t2/query query))
+(defn- stale-content-union
+  "The union of `union-queries` (per-model SELECTs from `metabase.staleness.core/find-stale-query`),
+  aliased for use as a `:from` source."
+  [union-queries]
+  [[^:allow-subquery {:union-all union-queries} :dummy_alias]])
 
-(defn query-one-row
-  "The single row of the Honey SQL `query`."
-  [query]
-  (t2/query-one query))
+(defn stale-content-rows
+  "A page of `:id`/`:model` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
+  `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
+  restriction)."
+  [union-queries sort-column sort-direction limit offset]
+  (t2/query (cond-> {:select   [:id :model]
+                     :from     (stale-content-union union-queries)
+                     :order-by [[(case sort-column
+                                   :name         :%lower.name
+                                   :last_used_at :last_used_at)
+                                 sort-direction]]}
+              (some? limit)  (assoc :limit limit)
+              (some? offset) (assoc :offset offset))))
+
+(defn stale-content-count
+  "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
+  [union-queries]
+  (:count (t2/query-one {:select [[:%count.* :count]]
+                         :from   (stale-content-union union-queries)})))

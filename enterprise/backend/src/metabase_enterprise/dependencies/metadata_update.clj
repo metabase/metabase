@@ -27,14 +27,7 @@
   All other types of nodes are ignored and are neither included in the graph or traversed to find transitive
   dependents."
   [mp]
-  (-> (models.dependency/filtered-graph-dependents
-       nil
-       (fn [type-field _id-field]
-         [:or
-          [:= type-field "card"]
-          [:= type-field "sandbox"]
-          [:= type-field "segment"]
-          [:= type-field "measure"]]))
+  (-> (models.dependency/filtered-graph-dependents nil {:types #{:card :sandbox :segment :measure}})
       (graph/filtered-graph (fn [[type id]]
                               (not (and (= type :card)
                                         (->> (lib.metadata/card mp id)

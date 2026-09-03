@@ -2,6 +2,8 @@
   "Application database queries for the semantic-search module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.search.scoring :as search.scoring]
    [toucan2.core :as t2]))
 
 (defn library-root-collections
@@ -36,7 +38,7 @@
                        {:where [:and [:= :archived false]
                                 [:in :collection_id collection-ids]]}))
 
-(defn collection-owner-rows
+(defn collection-owners-and-locations
   "The ID, owner, and location of the Collections with `collection-ids`."
   [collection-ids]
   (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
@@ -58,10 +60,34 @@
   [model ids]
   (t2/select model :id [:in ids]))
 
-(defn query-rows
-  "The rows of the search index Honey SQL `query`."
-  [query]
-  (t2/query query))
+(defn- search-doc-select
+  [{:keys [id model]}]
+  ^:allow-subquery
+  {:select [[^:allow-raw-sql [:inline (str id)]] [^:allow-raw-sql [:inline model]]]})
+
+(defn- search-index-select
+  "A `search_index` CTE selecting the `:id` and `:model` of each of `search-results` (each `{:id :model}`)."
+  [search-results]
+  {:with   [[[:search_index ^:allow-subquery {:columns [:model_id :model]}]
+             ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
+             ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
+             ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
+             ^:allow-subquery
+             {:union (map search-doc-select search-results)}]]
+   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :int)] :id]
+            [:search_index.model :model]]
+   :from   [:search_index]})
+
+(defn appdb-scored-rows
+  "The `:id`/`:model` rows of `search-results` (each `{:id :model}`) augmented with the SELECT expressions of
+  `scorers` (a map of scorer key to SELECT expression, see
+  `metabase-enterprise.semantic-search.scoring/appdb-scorers`) evaluated under `search-ctx`, joining bookmark
+  tables when `:bookmarked` is among `scorers`."
+  [search-results search-ctx scorers]
+  (-> (search-index-select search-results)
+      (search.scoring/with-scores search-ctx scorers)
+      (cond-> (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx)))
+      t2/query))
 
 (defn insert-token-tracking!
   "Insert the SemanticSearchTokenTracking `row`."

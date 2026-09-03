@@ -7,13 +7,8 @@
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Spec-driven queries ------------------------------------------------
-;;; The sync specs describe their models as data (Toucan conditions, removal clauses, and hydration queries), so
-;;; these take the model and the assembled conditions from the spec machinery.
-
-(defn query-rows
-  "Run the Honey SQL `query` and return its rows."
-  [query]
-  (t2/query query))
+;;; The sync specs describe their models as data (Toucan conditions and removal clauses), so these take the model
+;;; and the assembled conditions from the spec machinery.
 
 (defn instances-matching
   "The instances of `model` matching the Toucan 2 `conditions`."
@@ -30,25 +25,66 @@
   [model & conditions]
   (apply t2/count model conditions))
 
-(defn count-where
-  "The number of instances of `model` matching the Honey SQL `where` clause."
-  [model where]
-  (t2/count model {:where where}))
+(defn- removal-condition-exprs
+  "Turns a spec's removal-conditions map into `:where` fragments: an `:entity_id` entry whose value is an
+  `[op value]` pair becomes `[op :entity_id value]`; any other entry with a vector value becomes `[:in key value]`;
+  a scalar value becomes `[:= key value]`."
+  [removal-conditions]
+  (for [[k v] removal-conditions]
+    (cond
+      (and (= k :entity_id) (vector? v)) (let [[op value] v] [op :entity_id value])
+      (vector? v)                        [:in k v]
+      :else                              [:= k v])))
 
-(defn names-where
-  "Up to `limit` names of the instances of `model` matching the Honey SQL `where` clause."
-  [model where limit]
-  (t2/select-fn-vec :name model {:where where :limit limit}))
+(defn- removal-exprs
+  "The `:where` fragments (see [[removal-condition-exprs]]) selecting the `model-key` rows an import removes:
+  scoped to `synced-collection-ids` (when `scope-key` is given), excluding `entity-ids`, and matching
+  `removal-conditions`. Returns nil for a scoped model with no synced collections (removes nothing)."
+  [{:keys [scope-key synced-collection-ids entity-ids removal-conditions]}]
+  (when-not (and scope-key (empty? synced-collection-ids))
+    (cond-> []
+      scope-key        (conj [:in scope-key synced-collection-ids])
+      (seq entity-ids) (conj [:not-in :entity_id entity-ids])
+      :always          (into (removal-condition-exprs removal-conditions)))))
 
-(defn delete-where!
-  "Delete the instances of `model` matching the Honey SQL `where` clause."
-  [model where]
-  (t2/delete! model {:where where}))
+(defn delete-removed-instances!
+  "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
+  synced collections, and a delete of every row when nothing restricts it."
+  [model-key removal-opts]
+  (when-let [exprs (removal-exprs removal-opts)]
+    (if (seq exprs)
+      (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
+      (t2/delete! model-key))))
 
-(defn delete-all!
-  "Delete every instance of `model`."
-  [model]
-  (t2/delete! model))
+(defn- unsynced-anti-join-expr
+  "A `[:not [:exists ...]]` fragment keeping only rows with no RemoteSyncObject of `model-type` in 'synced'
+  status — i.e. unsynced local work (an already-synced entity's removal is a normal reconcile, not data loss).
+  `id-column` is the qualified id column of the model's own table."
+  [model-type id-column]
+  [:not [:exists ^:allow-subquery {:select [1]
+                                   :from   [:remote_sync_object]
+                                   :where  [:and
+                                            [:= :remote_sync_object.model_type model-type]
+                                            [:= :remote_sync_object.model_id id-column]
+                                            [:= :remote_sync_object.status "synced"]]}]])
+
+(defn- unsynced-instance-expr
+  [model-key model-type removal-opts]
+  (let [id-column (keyword (str (name (t2/table-name model-key)) ".id"))]
+    (into [:and (unsynced-anti-join-expr model-type id-column)] (removal-exprs removal-opts))))
+
+(defn unsynced-instance-count
+  "The number of `model-key` rows [[delete-removed-instances!]] would remove (see [[removal-exprs]]) that also
+  have no RemoteSyncObject of `model-type` in synced status — unsynced local work an import would otherwise wipe
+  out."
+  [model-key model-type removal-opts]
+  (t2/count model-key {:where (unsynced-instance-expr model-key model-type removal-opts)}))
+
+(defn unsynced-instance-names
+  "Up to `limit` names of the rows [[unsynced-instance-count]] counts."
+  [model-key model-type removal-opts limit]
+  (t2/select-fn-vec :name model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
+                                     :limit limit}))
 
 ;;; ------------------------------------------------- Synced entities -------------------------------------------------
 
@@ -85,6 +121,43 @@
   [model ids]
   (t2/delete! model :id [:in ids]))
 
+(defn- tracking-select-parts
+  "The SELECT/FROM/JOIN joining a `model-key` instance (Field, Segment, or Measure) to its Table for sync tracking,
+  plus the `alias` its own table is joined under (so callers can address its `:id` and `:entity_id` columns)."
+  [model-key]
+  (case model-key
+    :model/Field   {:alias  "f"
+                    :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+                    :from   [[:metabase_field :f]]
+                    :join   [[:metabase_table :t] [:= :f.table_id :t.id]]}
+    :model/Segment {:alias  "s"
+                    :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+                    :from   [[:segment :s]]
+                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}
+    ;; Measure uses alias "s" too because the batch entity-id lookup below hardcodes it.
+    :model/Measure {:alias  "s"
+                    :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+                    :from   [[:measure :s]]
+                    :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}))
+
+(defn tracking-details-by-id
+  "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
+  `model-id`, or nil."
+  [model-key model-id]
+  (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
+    (first (t2/query {:select select :from from :join join :where [:= (keyword alias "id") model-id]}))))
+
+(defn tracking-details-by-entity-ids
+  "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with
+  `entity-ids`."
+  [model-key entity-ids]
+  (let [{:keys [alias select from join]} (tracking-select-parts model-key)
+        id-column (keyword alias "id")]
+    (t2/query {:select (into [id-column] select)
+               :from   from
+               :join   join
+               :where  [:in (keyword alias "entity_id") entity-ids]})))
+
 (defn entity-id
   "The entity ID of the instance of `model` with `id`."
   [model id]
@@ -105,9 +178,9 @@
   [model entity-ids]
   (t2/select-pks-vec model :entity_id [:in entity-ids]))
 
-(defn- path-where
-  "Honey SQL clause matching the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased
-  `f`) when `has-field?`."
+(defn- path-expr
+  "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
+  `has-field?`."
   [paths has-field?]
   (into [:or]
         (for [path paths]
@@ -125,7 +198,7 @@
   (t2/query {:select [:t.id :t.name :t.collection_id]
              :from   [[:metabase_table :t]]
              :join   [[:metabase_database :db] [:= :db.id :t.db_id]]
-             :where  (path-where paths false)}))
+             :where  (path-expr paths false)}))
 
 (defn fields-at-paths
   "The `:id`, `:name`, `:table_id`, `:collection_id`, and `:table_name` rows of the Fields at `paths`
@@ -135,7 +208,7 @@
              :from   [[:metabase_field :f]]
              :join   [[:metabase_table :t] [:= :t.id :f.table_id]
                       [:metabase_database :db] [:= :db.id :t.db_id]]
-             :where  (path-where paths true)}))
+             :where  (path-expr paths true)}))
 
 (defn card-types
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
@@ -154,8 +227,8 @@
 
 ;;; ---------------------------------------------------- Collections ----------------------------------------------------
 
-(defn- subtree-where
-  "Honey SQL clause matching `collections` and all of their descendants."
+(defn- subtree-expr
+  "Matches `collections` and all of their descendants."
   [collections]
   (into [:or [:in :id (map :id collections)]]
         (for [collection collections]
@@ -232,7 +305,7 @@
 (defn subtree-collection-ids
   "The IDs of `collections` and all of their descendants."
   [collections]
-  (t2/select-pks-set :model/Collection {:where (subtree-where collections)}))
+  (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
 
 (defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
@@ -240,7 +313,7 @@
   (t2/select-pks-set :model/Collection
                      {:where [:and
                               [:= :is_remote_synced true]
-                              (subtree-where collections)]}))
+                              (subtree-expr collections)]}))
 
 (defn mark-subtree-remote-synced!
   "Mark `collections` and all of their descendants as remote-synced."
@@ -249,7 +322,7 @@
              :set    {:is_remote_synced true}
              :where  [:and
                       [:= :is_remote_synced false]
-                      (subtree-where collections)]}))
+                      (subtree-expr collections)]}))
 
 (defn unmark-collections-remote-synced!
   "Mark the Collections with `collection-ids` as not remote-synced."
@@ -260,15 +333,15 @@
 
 ;;; ------------------------------------------------ RemoteSyncObject ------------------------------------------------
 
-(defn- contents-rso-where
-  "Honey SQL clause matching the RemoteSyncObject rows of `collection-ids` and of their contents."
+(defn- contents-rso-expr
+  "Matches the RemoteSyncObject rows of `collection-ids` and of their contents."
   [collection-ids]
   [:or
    [:and [:= :model_type "Collection"] [:in :model_id collection-ids]]
    [:in :model_collection_id collection-ids]])
 
-(defn- rso-keys-where
-  "Honey SQL clause matching the RemoteSyncObject rows of the `[{:model_type :model_id}]` `rows`."
+(defn- rso-keys-expr
+  "Matches the RemoteSyncObject rows of the `[{:model_type :model_id}]` `rows`."
   [rows]
   (into [:or] (map (fn [{:keys [model_type model_id]}]
                      [:and [:= :model_type model_type] [:= :model_id model_id]]))
@@ -365,7 +438,7 @@
 (defn content-rso-statuses
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
   [collection-ids]
-  (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-where collection-ids)}))
+  (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
 
 (defn removed-content-rso-ids
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their
@@ -374,7 +447,7 @@
   (t2/select-pks-set :model/RemoteSyncObject
                      {:where [:and
                               [:= :status "removed"]
-                              (contents-rso-where collection-ids)]}))
+                              (contents-rso-expr collection-ids)]}))
 
 (defn insert-rso!
   "Insert the RemoteSyncObject `row`."
@@ -450,7 +523,7 @@
 (defn delete-rsos-of-keys!
   "Delete the RemoteSyncObjects of the `[{:model_type :model_id}]` `rows`."
   [rows]
-  (t2/delete! :model/RemoteSyncObject {:where (rso-keys-where rows)}))
+  (t2/delete! :model/RemoteSyncObject {:where (rso-keys-expr rows)}))
 
 (defn delete-all-rsos!
   "Delete every RemoteSyncObject."

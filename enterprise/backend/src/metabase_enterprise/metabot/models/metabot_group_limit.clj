@@ -26,7 +26,7 @@
    Returns nil if the user has any groups with a null (unlimited) limit"
   [user-id]
   (:max_usage
-   (metabot.db/user-max-usage-row user-id)))
+   (metabot.db/max-usage-for-user user-id)))
 
 (defn set-group-limit!
   "Sets or removes the limit for a specific group. Pass nil to remove (unlimited).

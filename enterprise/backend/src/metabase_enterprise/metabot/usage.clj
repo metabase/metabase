@@ -106,12 +106,12 @@
         start      (period-start)]
     (case limit-type
       :tokens
-      (quot (or (:sum (metabot.db/usage-token-sum-row start user-id tenant-id))
+      (quot (or (:sum (metabot.db/usage-token-sum start user-id tenant-id))
                 0)
             1000000)
 
       :messages
-      (:cnt (metabot.db/usage-message-count-row start user-id tenant-id)))))
+      (:cnt (metabot.db/usage-message-count start user-id tenant-id)))))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."

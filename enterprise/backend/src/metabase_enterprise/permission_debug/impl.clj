@@ -181,38 +181,12 @@
      (cond
        native?
        ;; native queries are blocked if _any_ table in the database is blocked (or limited for download perms)
-       (permission-debug.db/query-rows {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-                                        :from [[:metabase_table :blocked]]
-                                        :join [[(perms/select-tables-and-groups-granting-perm
-                                                 {:user-id user-id
-                                                  :is-superuser? false}
-                                                 permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
-                                               [:metabase_database :db] [:= :blocked.db_id :db.id]
-                                               [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
-                                        :where [:and [:= :blocked.db_id (:database_id card)]
-                                                [:not
-                                                 [:in :blocked.id (perms/visible-table-filter-select
-                                                                   :id
-                                                                   {:user-id user-id
-                                                                    :is-superuser? false}
-                                                                   permissions-granting)]]]})
+       (permission-debug.db/blocked-tables-in-database user-id (:database_id card)
+                                                       permissions-blocking permissions-granting)
 
        (seq query-tables)
-       (permission-debug.db/query-rows {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-                                        :from [[:metabase_table :blocked]]
-                                        :join [[(perms/select-tables-and-groups-granting-perm
-                                                 {:user-id user-id
-                                                  :is-superuser? false}
-                                                 permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
-                                               [:metabase_database :db] [:= :blocked.db_id :db.id]
-                                               [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
-                                        :where [:and [:in :blocked.id query-tables]
-                                                [:not
-                                                 [:in :blocked.id (perms/visible-table-filter-select
-                                                                   :id
-                                                                   {:user-id user-id
-                                                                    :is-superuser? false}
-                                                                   permissions-granting)]]]})
+       (permission-debug.db/blocked-tables-among user-id query-tables permissions-blocking permissions-granting)
+
        :else
        nil)
      (map (juxt (juxt :db_name :schema :table_name) :group_name))

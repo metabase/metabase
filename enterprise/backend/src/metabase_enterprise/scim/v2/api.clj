@@ -261,11 +261,11 @@
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
-      (when (scim.db/user-email-exists? (u/lower-case-en email))
+      (when (scim.db/user-email-exists? email)
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
                        (scim.db/insert-user! mb-user)
-                       (-> (scim.db/scim-user-by-email (u/lower-case-en email))
+                       (-> (scim.db/scim-user-by-email email)
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
@@ -461,7 +461,7 @@
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
-      (when (scim.db/group-name-exists? (u/lower-case-en group-name))
+      (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
         (let [new-group (scim.db/insert-group! {:name group-name})]

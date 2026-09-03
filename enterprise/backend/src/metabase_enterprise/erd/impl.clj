@@ -82,16 +82,6 @@
   [:id :db_id :name :display_name :schema :is_published :collection_id
    :description :owner_user_id :owner_email :visibility_type])
 
-(defn- schema-clause
-  "The rest of the database API treats a blank schema name as the union of nil
-   and empty-string schemas. Keep that convention here too."
-  [schema]
-  (if (= schema "")
-    [:or
-     [:= :schema nil]
-     [:= :schema ""]]
-    [:= :schema schema]))
-
 (defn- index-by-id [xs]
   (into {} (map (juxt :id identity)) xs))
 
@@ -99,18 +89,14 @@
   "Fetch readable, active tables in `database-id`.
    Optional `table-ids` restricts by IDs; optional `schema` restricts by schema.
    `schema=\"\"` matches both nil and empty-string schemas."
-  [database-id & {:keys [table-ids schema] :as opts}]
+  [database-id & {:keys [table-ids] :as opts}]
   (if (and (contains? opts :table-ids) (empty? table-ids))
     []
-    (let [where (cond-> [:and
-                         [:= :db_id database-id]
-                         [:= :active true]]
-                  (contains? opts :table-ids) (conj [:in :id table-ids])
-                  (contains? opts :schema)    (conj (schema-clause schema)))]
+    (do
       (perms/prime-table-perms-cache (if (contains? opts :table-ids)
                                        {:table-ids (set table-ids)}
                                        {:db-ids #{database-id}}))
-      (->> (erd.db/tables-where table-select-columns where)
+      (->> (erd.db/active-tables-in-database table-select-columns database-id opts)
            (filter mi/can-read?)))))
 
 (defn- readable-table-ids
