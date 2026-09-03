@@ -6,6 +6,7 @@
   end time and automatically set the user's password to expire when the grant expires."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.schema :as schema]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.util :as u]
@@ -71,16 +72,16 @@
                       {:status-code 400})))
     (u/prog1 (auth-identity/generate-reset-token user-id)
       (t2/with-transaction [_]
-        (let [user (t2/select-one :model/User user-id)
+        (let [user (support-access-grants.db/user user-id)
               auth-identity {:user_id user-id
                              :provider "support-access-grant"
                              :provider_id (:email user)
                              :expires_at grant-ends-at
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
-          (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant")]
-            (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
-            (t2/insert! :model/AuthIdentity auth-identity)))))))
+          (if-let [auth-identity-id (support-access-grants.db/support-access-auth-identity-id user-id)]
+            (support-access-grants.db/update-auth-identity! auth-identity-id auth-identity)
+            (support-access-grants.db/insert-auth-identity! auth-identity)))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
@@ -104,6 +105,6 @@
       (log/infof "Setting password expiration for user %s to %s based on support access grant"
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
-        (t2/update! :model/AuthIdentity (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
+        (support-access-grants.db/update-auth-identity! (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
         (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at}))))
   result)

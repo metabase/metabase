@@ -2,9 +2,9 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
@@ -13,12 +13,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
-  (when (t2/exists? :model/FieldValues :field_id (u/the-id field))
+  (when (sync.db/field-values-exist? (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -37,9 +36,7 @@
   Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from loading every Field
   into memory and issuing a warehouse request per field."
   [table limit]
-  (t2/select :model/Field
-             :table_id (u/the-id table), :active true, :visibility_type "normal"
-             {:order-by [[:id :asc]] :limit limit}))
+  (sync.db/normal-fields-for-table (u/the-id table) limit))
 
 (defn- warn-too-many-fields!
   "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
@@ -62,7 +59,7 @@
 
   Tables that fail any check fall back to the per-field path."
   [table]
-  (let [database (t2/select-one :model/Database :id (:db_id table))
+  (let [database (sync.db/database (:db_id table))
         engine   (:engine database)]
     (and (isa? driver/hierarchy engine :sql)
          (driver.u/supports? engine :nested-queries database)
@@ -168,7 +165,7 @@
       (let [fvs-map  (field-values/batched-get-latest-full-field-values (map u/the-id eligible))
             by-table (group-by :table_id eligible)]
         (transduce (map (fn [[table-id table-fields]]
-                          (let [table (t2/select-one :model/Table :id table-id)]
+                          (let [table (sync.db/table table-id)]
                             (sync-fields-for-table! table table-fields fvs-map))))
                    (completing (partial merge-with +))
                    empty-counts
@@ -237,10 +234,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
+                               (sync.db/table-database-ids table-ids))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (t2/select-pk->fn :is_on_demand 'Database
-                                                 :id [:in (set (vals table-id->db-id))]))]
+                               (sync.db/database-on-demand-flags (set (vals table-id->db-id))))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
@@ -260,9 +256,7 @@
                  (->> field-ids
                       (partition-all *on-demand-select-batch-size*)
                       (mapcat (fn [batch]
-                                (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
-                                            :semantic_type :visibility_type :table_id :has_field_values]
-                                           :id [:in batch])))))
+                                (sync.db/fields-for-field-values batch)))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
         on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
     (when (seq on-demand-fields)
@@ -273,15 +267,10 @@
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [conditions [:field_id   (:id field)
-                      :type       [:in field-values/advanced-field-values-types]
-                      :created_at [:< ((requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
-                                       (mdb/db-type)
-                                       :%now
-                                       (- (t/as field-values/advanced-field-values-max-age :days))
-                                       :day)]]
-          rows-count (apply t2/count :model/FieldValues conditions)]
-      (apply t2/delete! :model/FieldValues conditions)
+    (let [types        field-values/advanced-field-values-types
+          max-age-days (t/as field-values/advanced-field-values-max-age :days)
+          rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
+      (sync.db/delete-advanced-field-values-before! (:id field) types max-age-days)
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!

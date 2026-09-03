@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.query-plan.transcript :as transcript]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -43,14 +44,14 @@
   ([instance]
    (mi/can-read? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (t2/select-one [:model/ExplorationThread :exploration_id] :id pk)]
+   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
      (mi/can-read? :model/Exploration (:exploration_id thread)))))
 
 (defmethod mi/can-write? :model/ExplorationThread
   ([instance]
    (mi/can-write? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (t2/select-one [:model/ExplorationThread :exploration_id] :id pk)]
+   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]
@@ -58,11 +59,7 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (t2/hydrate
-               (t2/select :model/ExplorationThreadTimeline
-                          :exploration_thread_id [:in (map :id threads)]
-                          {:order-by [[:position :asc] [:id :asc]]})
-               :timeline))
+              (t2/hydrate (explorations.db/thread-timelines-for-threads (map :id threads)) :timeline))
    :id
    {:default []}))
 
@@ -71,13 +68,6 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (t2/hydrate
-               (t2/select :model/ExplorationQuery
-                          :exploration_thread_id [:in (map :id threads)]
-                          {:order-by [[:position :asc] [:id :asc]]})
-               :interestingness_score
-               :contextual_interestingness_score
-               :row_count
-               :segment_name))
+              (t2/hydrate (explorations.db/queries-for-threads (map :id threads)) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
    :id
    {:default []}))

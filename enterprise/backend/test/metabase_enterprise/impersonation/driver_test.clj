@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.test :as qp]
@@ -1227,6 +1228,14 @@
           (is (some? thrown) "expected validate-impersonated-query* to throw")
           (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
           (is (re-find #"single select statement" (ex-message thrown))))))))
+
+(deftest ^:parallel impersonated-query-placeholder-cast-test
+  (let [sql "SELECT (?::date - bill_date::date) AS diff FROM some_table"
+        query (lib/native-query meta/metadata-provider sql)
+        out-sql (-> (driver/validate-impersonated-query :postgres query)
+                    (get-in [:stages 0 :native]))]
+    (is (string? out-sql))
+    (is (re-find #"\?" out-sql) "the placeholder must survive into the re-emitted SQL")))
 
 (deftest ^:parallel validate-impersonated-query-keys-on-allow-write-flag-test
   (testing "validate-impersonated-query* derives read-vs-write from *impersonation-allow-write?*"

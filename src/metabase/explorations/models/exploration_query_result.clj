@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.explorations.composite :as composite]
+   [metabase.explorations.db :as explorations.db]
    [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
@@ -72,9 +73,8 @@
   full stored_result row (creator/db/blob/query) or nil when no result row exists yet (query
   still pending/errored)."
   [eq-id]
-  (when-let [sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                     :exploration_query_id eq-id)]
-    (t2/select-one :model/StoredResult :id sr-id)))
+  (when-let [sr-id (explorations.db/query-result-stored-result-id eq-id)]
+    (explorations.db/stored-result sr-id)))
 
 (defn- deserialize-stored-result
   "Inverse of [[qp/do-with-serialization]] for a stored_result's
@@ -104,11 +104,9 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (t2/select-one :model/ExplorationQuery :id eq-id)
-                                                :segment_name))
-           eqr       (api/check-404 (t2/select-one :model/ExplorationQueryResult
-                                                   :exploration_query_id eq-id))
-           sr        (api/check-404 (t2/select-one :model/StoredResult :id (:stored_result_id eqr)))
+     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
+           eqr       (api/check-404 (explorations.db/query-result eq-id))
+           sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
            qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
    eq-ids))
@@ -168,8 +166,7 @@
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
-                        (t2/select-one [:model/Card :name :description :display :visualization_settings]
-                                       :id card-id))
+                        (explorations.db/card-presentation card-id))
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]
@@ -185,19 +182,18 @@
       (t2/with-transaction [_conn]
         (let [stored-result-id (if single?
                                  (:id first-sr)
-                                 (first (t2/insert-returning-pks!
-                                         :model/StoredResult
-                                         {:result_data   composite-bytes
-                                          :creator_id    creator-id
-                                          :database_id   (or (:database_id first-sr)
-                                                             (-> dataset-query :database))
-                                          :dataset_query dataset-query
-                                          ;; `composite/combine` refreshed :row_count to the
-                                          ;; combined row set's size.
-                                          :row_count     (:row_count composite-qp)
-                                          ;; Without this the read gate denies the composite to
-                                          ;; every non-superuser. See [[composite-data-access-token]].
-                                          :data_access_token (composite-data-access-token eq-results)})))
+                                 (explorations.db/insert-stored-result!
+                                  {:result_data   composite-bytes
+                                   :creator_id    creator-id
+                                   :database_id   (or (:database_id first-sr)
+                                                      (-> dataset-query :database))
+                                   :dataset_query dataset-query
+                                   ;; `composite/combine` refreshed :row_count to the
+                                   ;; combined row set's size.
+                                   :row_count     (:row_count composite-qp)
+                                   ;; Without this the read gate denies the composite to
+                                   ;; every non-superuser. See [[composite-data-access-token]].
+                                   :data_access_token (composite-data-access-token eq-results)}))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))
@@ -214,8 +210,8 @@
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
-          (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
+          (explorations.db/insert-stored-result-use! {:stored_result_id stored-result-id :card_id card-id})
           (when-not single?
             (doseq [{:keys [sr]} eq-results]
-              (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id})))
+              (explorations.db/insert-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))

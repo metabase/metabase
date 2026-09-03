@@ -22,6 +22,8 @@
   (walk/postwalk
    (fn [x]
      (if (symbol? x)
+       ;; macro schemas can contain symbols from any module
+       #_{:clj-kondo/ignore [:metabase/modules]}
        (try @(requiring-resolve x)
             (catch Exception _ x)) x))
    form))

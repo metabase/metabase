@@ -223,6 +223,7 @@ config:
     llm-connection-timeout-ms: 10000
     llm-deepseek-api-base-url: https://api.deepseek.com
     llm-deepseek-api-key: null
+    llm-fast-mode: false
     llm-google-api-base-url: https://aiplatform.googleapis.com
     llm-google-location: null
     llm-google-oauth-access-token: null
@@ -380,6 +381,7 @@ config:
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
     use-native-pivot-tables: false
+    use-tenants: false
     user-visibility: all
     warehouse-allowed-networks: null
 ```
