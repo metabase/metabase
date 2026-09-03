@@ -303,15 +303,29 @@
               (t2/query {:update table, :set {column (encrypt-bytes-fn decrypted)}, :where [:= :id id]}))))
         (t2/reducible-select [table :id [column :value]])))
 
-(defn- warn-encrypted-at-startup!
-  "Warn that `n` values stored unencrypted in `column` (as `table.column`) were encrypted at startup, when `n` is
-  positive."
-  [column n]
-  (when (pos? n)
-    (log/warnf (str "Encrypted %d value(s) in %s that were stored unencrypted. This is expected once after an upgrade "
-                    "or after adding MB_ENCRYPTION_SECRET_KEY; if it repeats on every start, another Metabase version "
-                    "is writing to this database.")
-               n column)))
+(defn legacy-unencrypted-value?
+  "Whether `value`, read from an encrypted-at-rest string column, is legacy plaintext: MB_ENCRYPTION_SECRET_KEY is set
+  and `value` is a string that does not decrypt with it (under `opts`, e.g. `:aad`), so a previous version of Metabase
+  must have stored it unencrypted."
+  ([value]
+   (legacy-unencrypted-value? value nil))
+  ([value opts]
+   (and (encryption/default-encryption-enabled?)
+        (string? value)
+        (not (encryption/decryptable-string? value opts)))))
+
+(defn legacy-unencrypted-bytes?
+  "[[legacy-unencrypted-value?]] for a `^bytes` column."
+  [^bytes value]
+  (and (encryption/default-encryption-enabled?)
+       (some? value)
+       (not (encryption/possibly-encrypted-bytes? value))))
+
+(defn- handle-legacy-unencrypted-values!
+  "What happens when `n` legacy values that a previous version of Metabase stored unencrypted are found in `where` (a
+  `table.column` or a migration name), before they are encrypted: for now a warning."
+  [where n]
+  (log/warnf "Encrypting %d legacy value(s) in %s that a previous version of Metabase stored unencrypted." n where))
 
 (defn encrypt-plaintext-columns!
   "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup: the one-shot
@@ -327,26 +341,25 @@
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [_conn]
       (doseq [[table column] encrypted-string-columns]
-        (let [encrypted (atom 0)]
-          (run! (fn [{:keys [id value]}]
-                  (when (and (string? value)
-                             (not (encryption/decryptable-string? value)))
-                    (swap! encrypted inc)
-                    (t2/query {:update table, :set {column (encryption/encrypt value)}, :where [:= :id id]})))
-                (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]}))
-          (warn-encrypted-at-startup! (str (name table) "." (name column)) @encrypted)))
+        (let [plaintext (filterv (comp legacy-unencrypted-value? :value)
+                                 (t2/select [table :id [column :value]] {:where [:!= column nil]}))]
+          (when (seq plaintext)
+            (handle-legacy-unencrypted-values! (str (name table) "." (name column)) (count plaintext))
+            (doseq [{:keys [id value]} plaintext]
+              (t2/query {:update table, :set {column (encryption/encrypt value)}, :where [:= :id id]})))))
       ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
       (let [encrypt-setting-fn (encrypt-setting nil)
-            encrypted          (atom 0)]
-        (run! (fn [{:keys [key value_with_aad]}]
-                (when (and (string? value_with_aad)
-                           (not (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad key)})))
-                  (swap! encrypted inc)
-                  (t2/query {:update :setting
-                             :set    {:value_with_aad (encrypt-setting-fn value_with_aad key)}
-                             :where  [:= :key key]})))
-              (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))
-        (warn-encrypted-at-startup! "setting.value_with_aad" @encrypted)))))
+            plaintext          (filterv (fn [{:keys [key value_with_aad]}]
+                                          (legacy-unencrypted-value? value_with_aad
+                                                                     {:aad (mdb.setting/setting-aad key)}))
+                                        (t2/select [:setting :key :value_with_aad]
+                                                   {:where [:!= :value_with_aad nil]}))]
+        (when (seq plaintext)
+          (handle-legacy-unencrypted-values! "setting.value_with_aad" (count plaintext))
+          (doseq [{:keys [key value_with_aad]} plaintext]
+            (t2/query {:update :setting
+                       :set    {:value_with_aad (encrypt-setting-fn value_with_aad key)}
+                       :where  [:= :key key]})))))))
 
 (defn- do-encryption
   "Encrypt or decrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.

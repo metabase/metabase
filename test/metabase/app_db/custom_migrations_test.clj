@@ -2744,7 +2744,7 @@
           (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
           (mt/with-log-messages-for-level [messages :warn]
             (migrate!)
-            (is (=? [{:level :warn, :message "EncryptApiKeys encrypted 1 row(s) in api_key that were stored unencrypted."}]
+            (is (=? [{:level :warn, :message "Encrypting 1 legacy value(s) in EncryptApiKeys on api_key that a previous version of Metabase stored unencrypted."}]
                     (filter #(re-find #"EncryptApiKeys" (:message %)) (messages)))))
           (testing "plaintext key is encrypted and decrypts to the original hash"
             (is (encryption/decryptable-string? (raw-key plain-id)))
