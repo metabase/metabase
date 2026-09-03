@@ -9,6 +9,7 @@
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
    [metabase.api.common :as api]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as img]
@@ -17,8 +18,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.markdown :as markdown]
-   [toucan2.core :as t2]))
+   [metabase.util.markdown :as markdown]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,8 +82,8 @@
 (defn- render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
-  (let [user              (t2/select-one :model/User)
-        dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
+  (let [user              (channel.db/any-user)
+        dashboard         (channel.db/dashboard dashboard-id)
         dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr

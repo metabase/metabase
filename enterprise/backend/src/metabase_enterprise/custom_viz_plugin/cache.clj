@@ -15,15 +15,14 @@
    [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
-   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.files :as u.files]
    [metabase.util.http :as u.http]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
    (java.nio.file.attribute FileAttribute)))
@@ -202,7 +201,7 @@
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
       (when-not (u.files/exists? dir)
-        (when-let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
+        (when-let [bundle-bytes (custom-viz-plugin.db/plugin-bundle id)]
           (let [actual-hash (bytes-hash bundle-bytes)]
             (when-not (= actual-hash bundle_hash)
               (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
@@ -238,16 +237,15 @@
   "Persist a validated bundle for an existing plugin row, evict stale on-disk
    caches, and return the refreshed row."
   [{:keys [id]} validated]
-  (t2/update! :model/CustomVizPlugin id (derived-columns validated))
+  (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin/select-one-non-blob :id id))
+  (custom-viz-plugin.db/non-blob-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
    the inserted row."
   [identifier validated]
-  (t2/insert-returning-instance!
-   :model/CustomVizPlugin
+  (custom-viz-plugin.db/insert-plugin!
    (merge {:identifier identifier
            :enabled    true}
           (derived-columns validated))))
@@ -418,14 +416,14 @@
   [id dev-bundle-url]
   (let [url (not-empty dev-bundle-url)]
     (some-> url (validate-url! "Dev bundle URL"))
-    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
+    (custom-viz-plugin.db/update-plugin! id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-    (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+    (not-empty (custom-viz-plugin.db/plugin-dev-bundle-url id))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 
