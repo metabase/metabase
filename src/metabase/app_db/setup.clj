@@ -17,6 +17,7 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.honey-sql-2]
@@ -241,6 +242,17 @@
   (migrate! data-source (if auto-migrate? :up :print))
   (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
+(defn- migrate-settings!
+  "Run [[mdb.setting/migrate-settings!]] once the migrations have, in an encryption state where every row of the
+  database can be read: a caller that skips [[mdb.encryption/check-encryption]] (`enable-encryption`, `copy!`) can get
+  here with rows the key in hand cannot decrypt, and those are left for it to sort out. Here rather than at
+  application startup because every entry point that migrates the app DB comes through [[setup-db!]], and several
+  never reach `metabase.core.core/init!` -- `migrate up`, the serialization commands, `reset-password`, the
+  encryption commands -- and a JVM that skipped the repair would read every setting as nil."
+  [db-state]
+  (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
+    (mdb.setting/migrate-settings!)))
+
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
@@ -276,6 +288,7 @@
            (when manage-encryption-state?
              (mdb.encryption/check-encryption db-state))
            (run-schema-migrations! data-source auto-migrate?)
+           (migrate-settings! db-state)
            (when manage-encryption-state?
              (mdb.encryption/record-encryption-state! db-state))))))
    :done))
