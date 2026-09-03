@@ -12,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -835,6 +836,16 @@
                                     [2 "Small Marble Shoes"]
                                     [3 "Synergistic Granite Chair"]]}
                           (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
+
+(deftest rescan-values-reports-scan-failure-test
+  (testing "POST /api/field/:id/rescan_values"
+    (testing "reports a failed scan rather than answering success — a failed scan leaves the cached
+              FieldValues untouched, so there is otherwise no trace of it (GHY-2937)"
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:has_field_values "list"}
+        (with-redefs [field-values/distinct-values (constantly nil)]
+          (is (=? {:message #"Failed to scan field values.*"}
+                  (mt/user-http-request :crowberto :post 500
+                                        (format "field/%d/rescan_values" (mt/id :venues :price))))))))))
 
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
