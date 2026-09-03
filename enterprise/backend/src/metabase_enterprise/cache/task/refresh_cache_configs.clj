@@ -103,17 +103,30 @@
                      (take *parameterized-queries-to-rerun-per-card*))))
              vals)))
 
+(defn- started-after
+  "Cutoff of the safety check that keeps us from scanning all of query_execution: a query not executed at all in the
+  last month (including cache hits) is not refreshed again."
+  []
+  (duration-ago {:duration 30 :unit "days"}))
+
+(defn- duration-scopes
+  "The `{:model :model-id :rerun-cutoff}` scopes of the duration `cache-configs`."
+  [cache-configs]
+  (for [{:keys [model model_id config]} cache-configs]
+    {:model model, :model-id model_id, :rerun-cutoff (duration-ago config)}))
+
+(defn duration-queries-to-rerun-honeysql
+  "Honey SQL of [[cache.db/duration-queries-to-rerun]] for `cache-configs`, kept for the tests that inspect it."
+  [cache-configs parameterized?]
+  (cache.db/duration-queries-to-rerun-honeysql (duration-scopes cache-configs) (started-after) parameterized?))
+
 (defn- duration-queries-to-rerun
   []
   (let [cache-configs (cache.db/duration-cache-configs)]
     (when (seq cache-configs)
-      (let [scopes                (for [{:keys [model model_id config]} cache-configs]
-                                    {:model model, :model-id model_id, :rerun-cutoff (duration-ago config)})
-            ;; This is a safety check so that we don't scan all of query_execution -- if a query has not been
-            ;; executed at all in the last month (including cache hits) we won't bother refreshing it again.
-            started-after         (duration-ago {:duration 30 :unit "days"})
-            base-queries          (cache.db/duration-queries-to-rerun scopes started-after false)
-            parameterized-queries (cache.db/duration-queries-to-rerun scopes started-after true)]
+      (let [scopes                (duration-scopes cache-configs)
+            base-queries          (cache.db/duration-queries-to-rerun scopes (started-after) false)
+            parameterized-queries (cache.db/duration-queries-to-rerun scopes (started-after) true)]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 
 (defn- clear-caches-for-queries!
@@ -142,14 +155,24 @@
       (count refresh-defs))
     0))
 
+(defn scheduled-base-query-to-rerun-honeysql
+  "Honey SQL of [[cache.db/scheduled-base-query-to-rerun]] for `card-id`, kept for the tests that inspect it."
+  [card-id]
+  (cache.db/scheduled-base-query-to-rerun-honeysql card-id (started-after)))
+
+(defn scheduled-parameterized-queries-to-rerun-honeysql
+  "Honey SQL of [[cache.db/scheduled-parameterized-queries-to-rerun]] for `card-id`, kept for the tests that inspect
+  it."
+  [card-id rerun-cutoff]
+  (cache.db/scheduled-parameterized-queries-to-rerun-honeysql card-id
+                                                              rerun-cutoff
+                                                              *parameterized-queries-to-rerun-per-card*))
+
 (defn- scheduled-queries-to-rerun
   "Returns a list containing all of the parameterized query definitions that we should preemptively rerun for a given
   card that uses :schedule caching."
   [card-id rerun-cutoff]
-  (let [;; Was the query executed at least once in the last month? This is a safety check so that we don't scan all
-        ;; of query_execution -- if a query has not been executed at all in the last month (including cache hits) we
-        ;; won't bother refreshing it again.
-        base-query (cache.db/scheduled-base-query-to-rerun card-id (duration-ago {:duration 30 :unit "days"}))
+  (let [base-query (cache.db/scheduled-base-query-to-rerun card-id (started-after))
         parameterized-queries (cache.db/scheduled-parameterized-queries-to-rerun card-id
                                                                                  rerun-cutoff
                                                                                  *parameterized-queries-to-rerun-per-card*)]

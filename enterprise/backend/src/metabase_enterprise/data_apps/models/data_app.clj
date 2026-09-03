@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -39,6 +40,16 @@
   [app]
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
+
+(defn select-one-non-blob
+  "Like `t2/select-one` on `:model/DataApp`, but excludes the bundle blob."
+  [& conditions]
+  (apply data-apps.db/non-blob-data-app-matching conditions))
+
+(defn select-non-blob
+  "Like `t2/select` on `:model/DataApp`, but excludes the bundle blob."
+  [& conditions]
+  (apply data-apps.db/non-blob-data-apps-matching conditions))
 
 ;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
 ;; endpoints mean reaching a read check already implies authentication. See the
