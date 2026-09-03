@@ -113,17 +113,10 @@
 
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup card cols]
+  [card cols]
   {:row
-   (for [maybe-remapped-col cols
-         :when              (table-data/show-in-table? maybe-remapped-col)
-         :let               [col (if (:remapped_to maybe-remapped-col)
-                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                   maybe-remapped-col)
-                             col-name (column-name card col)]
-         ;; If this column is remapped from another, it's already
-         ;; in the output and should be skipped
-         :when              (not (:remapped_from maybe-remapped-col))]
+   (for [col      (table-data/visible-columns cols)
+         :let     [col-name (column-name card col)]]
      (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
        (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
        col-name))})
@@ -152,7 +145,7 @@
    (let [remapping-lookup (table-data/create-remapping-lookup cols)
          row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row remapping-lookup card cols)
+      (query-results->header-row card cols)
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
@@ -232,7 +225,10 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
-        filtered-cols               (filter table-data/show-in-table? ordered-cols)
+        ;; Must be the same column list `query-results->header-row` produces: `render-table`
+        ;; indexes the header titles, the column list and the colour-lookup keys against the
+        ;; rendered rows positionally, so they all have to agree (#71069).
+        filtered-cols               (table-data/visible-columns ordered-cols)
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table

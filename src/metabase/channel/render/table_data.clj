@@ -26,6 +26,30 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
+(defn visible-columns
+  "The columns a rendered table actually shows, in result order:
+
+   - columns the `visible?` predicate rejects are dropped (defaults to [[show-in-table?]])
+   - a column with `:remapped_to` is replaced by the column it points at, so an FK renders its
+     human-readable value rather than the raw id
+   - the remap target itself is then dropped, since it has already been emitted in the source
+     column's slot
+
+  Every list that is later indexed against a rendered row must be derived from this, or the
+  two fall out of alignment -- see `metabase.channel.render.table/render-table-head`, which
+  zips the header titles against the header row positionally (#71069)."
+  ([cols] (visible-columns cols show-in-table?))
+  ([cols visible?]
+   (let [remapping-lookup (create-remapping-lookup cols)]
+     (into []
+           (comp (filter visible?)
+                 (remove :remapped_from)
+                 (map (fn [col]
+                        (if (:remapped_to col)
+                          (nth cols (get remapping-lookup (:name col)))
+                          col))))
+           cols))))
+
 (defn prepare-table-data
   "Prepare query results for table rendering.
    - Filters out columns the `visible?` predicate rejects (defaults to [[show-in-table?]])
