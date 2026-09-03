@@ -826,8 +826,8 @@
    ;; Clj mode
    [:dbms-version    {:optional true} [:maybe :map]]
    [:details         {:optional true} :map]
-   [:engine          {:optional true} :keyword]
-   [:features        {:optional true} [:set :keyword]]
+   [:engine          {:optional true} [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
+   [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]
    [:is-attached-dwh {:optional true} :boolean]
    [:settings        {:optional true} [:maybe :map]]])
