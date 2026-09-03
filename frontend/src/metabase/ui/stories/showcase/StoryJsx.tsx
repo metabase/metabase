@@ -1,4 +1,7 @@
 import { Text } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+
+import { useStoryTextColor } from "./context";
 
 type JsxTokenType = "punctuation" | "tag" | "attribute" | "value" | "plain";
 
@@ -51,13 +54,16 @@ export function tokenizeJsx(code: string): JsxToken[] {
   return tokens;
 }
 
-const TOKEN_COLOR: Record<JsxTokenType, string> = {
-  punctuation: "var(--mb-color-text-secondary)",
-  tag: "var(--mb-color-text-primary)",
+const getTokenColors = (
+  primary: ColorName,
+  secondary: ColorName,
+): Record<JsxTokenType, string> => ({
+  punctuation: `var(--mb-color-${secondary})`,
+  tag: `var(--mb-color-${primary})`,
   attribute: "var(--mb-color-core-blue-saturated)",
   value: "var(--mb-color-core-green-saturated)",
-  plain: "var(--mb-color-text-primary)",
-};
+  plain: `var(--mb-color-${primary})`,
+});
 
 interface StoryJsxProps {
   children: string;
@@ -65,12 +71,17 @@ interface StoryJsxProps {
 
 /** Monospace JSX with light syntax highlighting (tags, props, values). */
 export function StoryJsx({ children }: StoryJsxProps) {
+  const tokenColor = getTokenColors(
+    useStoryTextColor("primary"),
+    useStoryTextColor("secondary"),
+  );
+
   return (
     <Text ff="monospace" size="sm" fw={500} style={{ whiteSpace: "pre-wrap" }}>
       {tokenizeJsx(children).map((token, index) => (
         <span
           key={`${index}-${token.value}`}
-          style={{ color: TOKEN_COLOR[token.type] }}
+          style={{ color: tokenColor[token.type] }}
         >
           {token.value}
         </span>
