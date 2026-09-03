@@ -256,6 +256,18 @@ describe("QueryBuilder > timeline events", () => {
     );
   });
 
+  it("saving an unrelated change to a question with a previously recorded selection tracks nothing", async () => {
+    await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+      "timeline.excluded_timeline_event_ids": [RC1.id],
+    });
+
+    await triggerVisualizationQueryChange();
+    await saveQuestion();
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
   it("re-showing a timeline keeps events outside the chart's range", async () => {
     const store = await setupWithTimelines(EVENTS_OFF);
 

@@ -14,6 +14,7 @@ import {
   getDashcardData,
   getDashcardDataMap,
   getDashcards,
+  getSelectedTabId,
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type {
@@ -27,10 +28,10 @@ import {
   getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
-import { isTimelineEventInRange } from "metabase/viz-core";
 import type {
   DashCardId,
-  TimelineEvent,
+  DashboardCard,
+  DashboardTabId,
   TimelineEventId,
   TimelineEventsVisibility,
 } from "metabase-types/api";
@@ -41,7 +42,6 @@ import {
   isDashCardDataLoaded,
 } from "./utils";
 
-const NO_EVENTS: TimelineEvent[] = [];
 const NO_EVENT_IDS: TimelineEventId[] = [];
 
 const createShallowEqualResultSelector = createSelectorCreator({
@@ -89,11 +89,13 @@ export const getIsTimelineEventsDashCard = createCachedSelector(
     xAxis != null,
 )((_state, dashcardId) => dashcardId);
 
-export const getDashCardVisibleTimelineEvents = createCachedSelector(
+export const getDashCardVisibleTimelineEventIds = createCachedSelector(
   [getTransformedTimelines, getDashCardTimelineEventsVisibility],
-  (timelines, visibility): TimelineEvent[] => {
-    const events = resolveVisibleTimelineEvents({ timelines, visibility });
-    return events.length > 0 ? events : NO_EVENTS;
+  (timelines, visibility): TimelineEventId[] => {
+    const ids = resolveVisibleTimelineEvents({ timelines, visibility }).map(
+      (event) => event.id,
+    );
+    return ids.length > 0 ? ids : NO_EVENT_IDS;
   },
 )({
   keySelector: (_state, dashcardId) => dashcardId,
@@ -114,12 +116,26 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
+const isDashCardOnSelectedTab = (
+  dashcard: DashboardCard,
+  selectedTabId: DashboardTabId | null,
+) =>
+  !selectedTabId ||
+  dashcard.dashboard_tab_id === selectedTabId ||
+  dashcard.dashboard_tab_id === null;
+
 export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
-  [getCurrentDashcards, getDashcardDataMap, (state: State) => state],
-  (dashcards, dashcardDataMap, state) =>
+  [
+    getCurrentDashcards,
+    getSelectedTabId,
+    getDashcardDataMap,
+    (state: State) => state,
+  ],
+  (dashcards, selectedTabId, dashcardDataMap, state) =>
     dashcards
       .filter(
         (dashcard) =>
+          isDashCardOnSelectedTab(dashcard, selectedTabId) &&
           canDashCardDisplayTimelineEvents(dashcard) &&
           (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
             getIsTimelineEventsDashCard(state, dashcard.id)),
@@ -148,15 +164,3 @@ export const getDashboardTimelineEventsAggregate = createSelector(
       ),
     ),
 );
-
-export const getHasVisibleTimelineEvents = (state: State) =>
-  getTimelineEventsDashCardIds(state).some((dashcardId) => {
-    const xAxis = getDashCardTimeseriesXAxis(state, dashcardId);
-    if (xAxis?.domain == null) {
-      return false;
-    }
-    const { domain, interval } = xAxis;
-    return getDashCardVisibleTimelineEvents(state, dashcardId).some((event) =>
-      isTimelineEventInRange(event, domain, interval),
-    );
-  });

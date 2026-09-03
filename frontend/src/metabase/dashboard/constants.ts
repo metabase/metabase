@@ -40,7 +40,11 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   isNavigatingBackToDashboard: false,
   slowCards: {},
   sidebar: { props: {} },
-  timelineEvents: { overrides: {}, selection: null },
+  timelineEvents: {
+    overrides: {},
+    selection: null,
+    hasTrackedEventsShown: false,
+  },
   missingActionParameters: null,
   autoApplyFilters: {
     toastId: null,

@@ -75,6 +75,7 @@ import type {
   SeriesCard,
   SingleSeries,
   TimelineEvent,
+  TimelineEventsVisibility,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -174,6 +175,8 @@ type VisualizationOwnProps = {
   hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility | null;
+  onTimelineEventsShown?: (timelineEvents: TimelineEvent[]) => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -321,6 +324,10 @@ class Visualization extends PureComponent<
       !_.isEqual(props.settings, state._lastProps?.settings) ||
       !_.isEqual(props.timelineEvents, state._lastProps?.timelineEvents) ||
       !_.isEqual(
+        props.timelineEventsVisibility,
+        state._lastProps?.timelineEventsVisibility,
+      ) ||
+      !_.isEqual(
         props.selectedTimelineEventIds,
         state._lastProps?.selectedTimelineEventIds,
       ) ||
@@ -340,6 +347,7 @@ class Visualization extends PureComponent<
           "rawSeries",
           "settings",
           "timelineEvents",
+          "timelineEventsVisibility",
           "selectedTimelineEventIds",
           "enableEntityNavigation",
         ]),
@@ -733,12 +741,14 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
+      timelineEventsVisibility,
       totalNumGridCols,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
       onSelectTimelineEvents,
       onSeeAllEvents,
+      onTimelineEventsShown,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -1006,6 +1016,8 @@ class Visualization extends PureComponent<
                       showTitle={!!showTitle}
                       tableHeaderHeight={tableHeaderHeight}
                       timelineEvents={timelineEvents}
+                      timelineEventsVisibility={timelineEventsVisibility}
+                      onTimelineEventsShown={onTimelineEventsShown}
                       totalNumGridCols={totalNumGridCols}
                       visualizationIsClickable={this.visualizationIsClickable}
                       width={width}
