@@ -14,8 +14,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource)
-   (java.sql Connection DatabaseMetaData DriverManager)
+   (java.sql Connection DatabaseMetaData)
    (javax.sql DataSource)))
 
 (deftest ^:parallel ConnectionOptions-test
@@ -314,7 +313,7 @@
       ;; take the dataset creation and sync queries before anything is counted
       (venues-rows 1)
       (let [cancels (atom 0)]
-        ;; returning false keeps the cancelation from discarding the pooled connection, which is asserted separately
+        ;; the stub reports that no cancelation was issued, so nothing downstream acts on one
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/cancel-statement! (fn [_driver _stmt]
                                                                          (swap! cancels inc)
                                                                          false)]
@@ -326,46 +325,3 @@
             (reset! cancels 0)
             (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
-
-(def ^:private raw-connection-to-string-method
-  (.getMethod Object "toString" (make-array Class 0)))
-
-(defn- raw-connection-identity
-  "Identify the physical Connection behind a c3p0 proxy, to tell a recycled connection from a freshly acquired one."
-  [^C3P0ProxyConnection conn]
-  (.rawConnectionOperation conn
-                           raw-connection-to-string-method
-                           C3P0ProxyConnection/RAW_CONNECTION
-                           (make-array Object 0)))
-
-(deftest discard-pooled-connection-test
-  (testing "discarding closes the physical Connection, so c3p0 destroys it at check-in rather than recycling it"
-    (with-open [ds (doto (ComboPooledDataSource.)
-                     (.setJdbcUrl "jdbc:h2:mem:discard-pooled-connection-test;DB_CLOSE_DELAY=-1")
-                     (.setInitialPoolSize 1)
-                     (.setMinPoolSize 1)
-                     (.setMaxPoolSize 1))]
-      (letfn [(checked-out-identity []
-                (with-open [conn (.getConnection ds)]
-                  (raw-connection-identity conn)))]
-        (let [before (checked-out-identity)]
-          (testing "a plain check-in/check-out cycle hands back the same physical Connection"
-            (is (= before (checked-out-identity))))
-          (with-open [conn (.getConnection ds)]
-            (#'sql-jdbc.execute/discard-pooled-connection! conn))
-          (testing "after discarding, the next checkout is a different physical Connection"
-            (is (not= before (checked-out-identity)))))))))
-
-(deftest discard-pooled-connection-leaves-unpooled-connection-alone-test
-  (testing "a Connection with no pool behind it has no next query to poison, so it is left open"
-    (with-open [conn (DriverManager/getConnection "jdbc:h2:mem:discard-unpooled-test;DB_CLOSE_DELAY=-1")]
-      (#'sql-jdbc.execute/discard-pooled-connection! conn)
-      (is (not (.isClosed conn))))))
-
-(deftest discarded-connection-does-not-break-the-query-that-discarded-it-test
-  (testing "the ResultSet and Statement still close cleanly after their Connection has been discarded"
-    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
-      ;; stopping at the limit leaves the statement producing, which is what triggers the cancel-and-discard
-      (is (= 4 (count (venues-rows 4))))
-      (testing "and the pool replaces it, so the next query still runs"
-        (is (= 4 (count (venues-rows 4))))))))

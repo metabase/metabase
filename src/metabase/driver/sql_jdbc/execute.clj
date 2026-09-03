@@ -31,7 +31,7 @@
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection PooledDataSource)
+   (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -835,6 +835,21 @@
   TODO: vertica is here only to find out whether it flakes because of cancelations. It should be removed afterwards!"
   #{:vertica})
 
+(defmulti cancelation-poisons-connection?
+  "Whether canceling a Statement leaves this driver's Connection unfit for the next query, so that it must be thrown
+  away rather than returned to the pool.
+
+  Canceling abandons a result set the server is still producing, and the pool cannot clear what that leaves behind:
+  c3p0 resets `autoCommit`/`readOnly`/holdability on check-in, not driver-level wire state. A driver whose cancelation
+  leaves nothing pending on the wire should keep the default of `false`."
+  {:added "0.65.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod cancelation-poisons-connection? :default
+  [_driver]
+  false)
+
 (defn- cancel-statement!
   "Cancel `stmt` on the DBMS side. Returns whether a cancelation was actually issued."
   [driver ^Statement stmt]
@@ -849,38 +864,6 @@
     (catch Throwable e
       (log/infof "Statement cancelation failed: %s" (ex-message e))
       false)))
-
-(def ^:private raw-connection-close-method
-  (.getMethod Connection "close" (make-array Class 0)))
-
-(defn- discard-pooled-connection!
-  "Close the physical Connection behind a c3p0 proxy, so the pool destroys it on check-in and acquires a fresh one
-  rather than handing this one to the next query.
-
-  Canceling a Statement abandons a result set the server is still producing, which can leave protocol state pending on
-  the connection that the pool does not clear: c3p0 resets `autoCommit`/`readOnly`/holdability on check-in, not
-  driver-level wire state. On SQL Server `.cancel` sends an out-of-band TDS attention packet whose acknowledgement is
-  not drained before check-in, and it surfaces later as `The result set is closed.` while an unrelated query is reading
-  rows on the recycled connection.
-
-  A non-pooled Connection has no next query to poison, so it is left alone."
-  [^Connection conn]
-  (when (instance? C3P0ProxyConnection conn)
-    (try
-      (.rawConnectionOperation ^C3P0ProxyConnection conn
-                               raw-connection-close-method
-                               C3P0ProxyConnection/RAW_CONNECTION
-                               (make-array Object 0))
-      (catch Throwable e
-        (log/debugf "Discarding pooled connection after statement cancelation failed: %s" (ex-message e))))
-    ;; Closing the raw Connection is invisible to c3p0: `rawConnectionOperation` reports nothing back to the pool, and
-    ;; the check-in reset only reads properties that a driver may answer from memory once closed — Hive's
-    ;; `getAutoCommit` is a bare `return true` — so on those drivers the pool hands the dead Connection to the next
-    ;; query. Any *proxied* call routes its exception into c3p0, which then tests the physical Connection and destroys
-    ;; it when the test fails. `createStatement` is that call: JDBC requires it to throw on a closed Connection.
-    (try
-      (.close (.createStatement conn))
-      (catch Throwable _))))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
@@ -902,7 +885,9 @@
         :stream?   (or (download? (-> outer-query :info :context))
                        (= :table-rows-sample (-> outer-query :info :context)))}
        (fn [^Connection conn]
-         (let [discard-conn? (volatile! false)]
+         ;; whether a cancelation was issued is only knowable inside the Statement's scope, but the Connection can
+         ;; only be dealt with once the Statement and ResultSet are closed, so it is carried out past both
+         (let [canceled? (volatile! false)]
            (try
              (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                          ^ResultSet rs (try
@@ -935,17 +920,17 @@
                       ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                       ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                       ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
-                      ;; An exhausted ResultSet has nothing left to cancel, and the cancelation is itself what forces the
-                      ;; pooled connection to be thrown away, so skip both when the rows simply ran out.
+                      ;; An exhausted ResultSet has nothing left to cancel.
                       (finally
                         (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
-                          (when (cancel-statement! driver stmt)
-                            (vreset! discard-conn? true)))))))
-             ;; the ResultSet and Statement must be closed before the physical Connection goes away: on ClickHouse
-             ;; and Presto their `.close` round-trips to the server and throws once the connection is gone
+                          (vreset! canceled? (cancel-statement! driver stmt)))))))
+             ;; `with-open` has closed the ResultSet and Statement by the time this runs, which is required: on
+             ;; ClickHouse and Presto their `.close` round-trips to the server and throws once the Connection is gone.
+             ;; Discarding is safe here because this Connection was acquired for this query alone -- see
+             ;; [[do-with-resolved-connection]] for the cases where a Connection instead belongs to the caller.
              (finally
-               (when @discard-conn?
-                 (discard-pooled-connection! conn))))))))))
+               (when (and @canceled? (cancelation-poisons-connection? driver))
+                 (sql-jdbc.conn/discard-pooled-connection! conn))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
