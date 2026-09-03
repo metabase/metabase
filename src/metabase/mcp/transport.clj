@@ -355,14 +355,24 @@
                 ;; nil, which `keep` silently drops (a malformed message vanishing rather than being answered), and
                 ;; an object missing `method` reaches dispatch as method-not-found. The `-32600` carries a null id:
                 ;; §5 requires it when the request can't be parsed, even if a malformed object happens to carry one.
-                ;; A `notifications/initialized` notification and an unknown method with no id dispatch to nil and
-                ;; stay out of the response array; a known method with no id still executes and — contra JSON-RPC
-                ;; §4.1, which says a notification gets no reply — answers with `"id": null`.
+                ;; A message carrying no `id` is a NOTIFICATION (§4.1) and gets no reply, whatever it
+                ;; dispatches to. It still executes — a notification is a request the client is not waiting on,
+                ;; not one to ignore — but its result is dropped rather than answered. Distinct from the
+                ;; malformed case above, which does reply with a null id: §5 reserves that for a message that
+                ;; could not be parsed, and using it for a well-formed notification invents a response to
+                ;; something nobody is listening for.
+                notification?   (fn [msg] (and (map? msg) (not (contains? msg :id))))
                 handle-msg      (fn [msg]
-                                  (if (and (map? msg) (string? (:method msg)))
-                                    (dispatch-request dispatch-method-fn msg session-id (:token-scopes request)
-                                                      request-context eval-session-id)
-                                    (jsonrpc-error nil -32600 "Invalid request")))
+                                  (cond
+                                    (not (and (map? msg) (string? (:method msg))))
+                                    (jsonrpc-error nil -32600 "Invalid request")
+
+                                    :else
+                                    (let [response (dispatch-request dispatch-method-fn msg session-id
+                                                                     (:token-scopes request) request-context
+                                                                     eval-session-id)]
+                                      (when-not (notification? msg)
+                                        response))))
                 responses       (into [] (keep handle-msg) messages)]
             (cond
               (empty? responses)

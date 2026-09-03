@@ -640,6 +640,43 @@
 
 ;;; ------------------------------------------------------ SSE -----------------------------------------------------
 
+(deftest notifications-get-no-response-test
+  (testing "JSON-RPC 2.0 §4.1: a message with no `id` is a notification and MUST NOT be answered. A known
+            method sent without an id used to execute AND reply with `\"id\": null` — the server inventing a
+            response to something the client is not listening for, and a shape §5 reserves for a request that
+            could not be parsed at all."
+    (let [session-id (initialize!)]
+      (testing "a known method as a notification executes silently and yields 202 with an empty body"
+        (let [response (mcp-request {:jsonrpc "2.0" :method "ping"} {"mcp-session-id" session-id})]
+          (is (= 202 (:status response)))
+          (is (str/blank? (str (:body response))))))
+      (testing "the same method WITH an id is answered as before — this must not silence real requests"
+        (let [response (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})]
+          (is (= 200 (:status response)))
+          (is (= 1 (get-in response [:body :id])))))
+      (testing "a notification for an unknown method is also silent, rather than a method-not-found reply"
+        (is (= 202 (:status (mcp-request {:jsonrpc "2.0" :method "no/such/method"}
+                                         {"mcp-session-id" session-id})))))
+      (testing "in a batch, notifications drop out and only the real requests are answered"
+        (let [response (mcp-request [{:jsonrpc "2.0" :method "ping"}
+                                     (jsonrpc-request "ping" {} 7)
+                                     {:jsonrpc "2.0" :method "notifications/initialized"}]
+                                    {"mcp-session-id" session-id})]
+          (is (= 200 (:status response)))
+          (is (= [7] (mapv :id (:body response))))))
+      (testing "a batch of nothing but notifications is a 202, not an empty array"
+        (let [response (mcp-request [{:jsonrpc "2.0" :method "ping"}
+                                     {:jsonrpc "2.0" :method "notifications/initialized"}]
+                                    {"mcp-session-id" session-id})]
+          (is (= 202 (:status response)))
+          (is (str/blank? (str (:body response))))))
+      (testing "a malformed element still answers with a null id — §5 requires that for something that could
+                not be parsed, which is a different case from a well-formed notification"
+        (let [response (mcp-request [{:jsonrpc "2.0" :no-method-here true}]
+                                    {"mcp-session-id" session-id})]
+          (is (= 200 (:status response)))
+          (is (= [-32600] (mapv #(get-in % [:error :code]) (:body response)))))))))
+
 (deftest sse-post-response-test
   (testing "GHY-4337: a client that accepts text/event-stream gets its responses framed as SSE events"
     (let [session-id (initialize!)
