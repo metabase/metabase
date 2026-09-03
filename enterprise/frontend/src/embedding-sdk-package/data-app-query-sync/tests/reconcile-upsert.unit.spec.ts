@@ -66,6 +66,12 @@ describe("query reconciliation upserts", () => {
       if (pathname === "/api/card/35" && method === "PUT") {
         return jsonResponse({ id: 35 });
       }
+      if (
+        pathname === `/api/apps/${slug}/table-dependencies` &&
+        method === "PUT"
+      ) {
+        return jsonResponse({ name: slug, table_ids: [1] });
+      }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
@@ -123,6 +129,12 @@ describe("query reconciliation upserts", () => {
       }
       if (pathname === "/api/card/80" && method === "PUT") {
         return jsonResponse({ id: 80 });
+      }
+      if (
+        pathname === `/api/apps/${slug}/table-dependencies` &&
+        method === "PUT"
+      ) {
+        return jsonResponse({ name: slug, table_ids: [1] });
       }
 
       throw new Error(`Unexpected ${method} ${pathname}`);

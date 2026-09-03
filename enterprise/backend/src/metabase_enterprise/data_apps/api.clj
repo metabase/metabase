@@ -11,6 +11,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -66,6 +67,7 @@
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id [:maybe ms/PositiveInt]]
    [:permission_group_id    [:maybe ms/PositiveInt]]
+   [:table_ids       [:sequential ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -112,6 +114,27 @@
    [:dataset_query ms/Map]
    [:table_ids [:sequential ms/PositiveInt]]
    [:metrics [:sequential MetricResponse]]])
+
+(def ^:private TableDependenciesRequest
+  [:map {:closed true}
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
+
+(def ^:private PermissionWarningsRequest
+  [:map {:closed true}
+   [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+
+(def ^:private MissingTable
+  [:map {:closed true}
+   [:id ms/PositiveInt]
+   [:name ms/NonBlankString]
+   [:schema [:maybe :string]]
+   [:database_id ms/PositiveInt]
+   [:database_name ms/NonBlankString]])
+
+(def ^:private PermissionWarning
+  [:map {:closed true}
+   [:user_id ms/PositiveInt]
+   [:missing_tables [:sequential MissingTable]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -218,6 +241,36 @@
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
+
+(api.macros/defendpoint :put ["/:slug/table-dependencies" :slug slug-regex] :- DataAppResponse
+  "Store the tables used by the resources from a successful data app resource synchronization."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {table-ids :table_ids} :- TableDependenciesRequest]
+  (api/check-superuser)
+  (let [app       (api/check-404 (data-app/select-one-non-blob :name slug))
+        table-ids (vec (sort table-ids))]
+    (api/check-400 (= (set table-ids)
+                      (if (seq table-ids)
+                        (t2/select-pks-set :model/Table :id [:in table-ids])
+                        #{}))
+                   (tru "One or more tables do not exist."))
+    (t2/update! :model/DataApp :id (:id app) {:table_ids table-ids})
+    (data-app/select-one-non-blob :id (:id app))))
+
+(api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
+  :- [:sequential PermissionWarning]
+  "Return warnings for users who cannot access every table used by a data app."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {user-ids :user_ids} :- PermissionWarningsRequest]
+  (api/check-superuser)
+  (let [app   (api/check-404 (data-app/select-one-non-blob :name slug))
+        users (t2/select [:model/User :id :is_superuser :tenant_id] :id [:in user-ids])]
+    (api/check-404 (= (count users) (count user-ids)))
+    (api/check-400 (every? (comp nil? :tenant_id) users)
+                   (tru "Tenant users cannot be added to data apps."))
+    (data-app.user-access/permission-warnings (:table_ids app) users)))
 
 (defn- referenced-metrics
   "Return direct metric references."

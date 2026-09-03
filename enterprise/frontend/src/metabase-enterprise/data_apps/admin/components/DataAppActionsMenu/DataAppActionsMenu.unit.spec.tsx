@@ -57,7 +57,10 @@ describe("DataAppActionsMenu", () => {
     expect(menuItems[0]).toHaveTextContent("View resources");
     expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
     expect(menuItems[1]).toHaveTextContent("Manage users");
-    expect(menuItems[1]).toHaveAttribute("href", "/admin/people/groups/9");
+    expect(menuItems[1]).toHaveAttribute(
+      "href",
+      "/admin/settings/apps/sales/users",
+    );
     expect(menuItems[2]).toHaveTextContent("Disable");
   });
 

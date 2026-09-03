@@ -8,6 +8,7 @@ interface AddRowProps {
   isValid: boolean;
   placeholder?: string;
   ariaLabel?: string;
+  submitLabel?: string;
   onKeyDown?: (event: React.KeyboardEvent) => void;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onDone: () => void;
@@ -20,6 +21,7 @@ export const AddRow = ({
   isValid,
   placeholder,
   ariaLabel,
+  submitLabel = t`Add`,
   onKeyDown,
   onChange,
   onDone,
@@ -56,7 +58,7 @@ export const AddRow = ({
       disabled={!isValid}
       onClick={onDone}
     >
-      {t`Add`}
+      {submitLabel}
     </Button>
   </Flex>
 );

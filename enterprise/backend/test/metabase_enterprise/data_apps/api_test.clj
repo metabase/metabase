@@ -203,6 +203,78 @@
         (is (= #{orders-id products-id}
                (set (:table_ids response))))))))
 
+(deftest superuser-can-store-table-dependencies-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (let [table-ids [(mt/id :venues) (mt/id :orders)]]
+        (is (= (sort table-ids)
+               (:table_ids
+                (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                      {:table_ids (reverse table-ids)}))))
+        (is (= (sort table-ids)
+               (t2/select-one-fn :table_ids :model/DataApp :name "demo")))
+        (is (= []
+               (:table_ids
+                (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                      {:table_ids []}))))))))
+
+(deftest non-superuser-cannot-store-table-dependencies-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "apps/demo/table-dependencies"
+                                   {:table_ids [(mt/id :venues)]}))))))
+
+(deftest user-permission-warnings-test
+  (mt/with-premium-features #{:data-apps-preview :advanced-permissions :sandboxes}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Sandbox]
+      (mt/with-no-data-perms-for-all-users!
+        (create-app!)
+        (let [{app-group-id :permission_group_id}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
+              allowed-table-id (mt/id :venues)
+              missing-table-id (mt/id :orders)
+              user-id          (mt/user->id :rasta)]
+          (testing "an app with no synchronized dependencies has no warnings"
+            (is (= []
+                   (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                         {:user_ids [user-id]}))))
+          (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
+                                {:table_ids [allowed-table-id missing-table-id]})
+          (perms/add-user-to-group! user-id app-group-id)
+          (perms/set-table-permission! app-group-id
+                                       missing-table-id
+                                       :perms/view-data
+                                       :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group)
+                                       allowed-table-id
+                                       :perms/view-data
+                                       :unrestricted)
+          (testing "returns only users who lack access from a non-data-app group"
+            (is (=? [{:user_id user-id
+                      :missing_tables [{:id missing-table-id
+                                        :name "Orders"
+                                        :database_id (mt/id)}]}]
+                    (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                          {:user_ids [user-id (mt/user->id :crowberto)]}))))
+          (testing "sandboxed access is adequate"
+            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                           :model/Sandbox _ {:group_id group-id :table_id missing-table-id}]
+              (perms/add-user-to-group! user-id group-id)
+              (is (= []
+                     (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
+                                           {:user_ids [user-id]}))))))))))
+
+(deftest non-superuser-cannot-read-user-permission-warnings-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "apps/demo/user-permission-warnings"
+                                   {:user_ids [(mt/user->id :rasta)]}))))))
+
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
