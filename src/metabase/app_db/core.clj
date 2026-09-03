@@ -37,6 +37,7 @@
 (p/import-vars
  [mdb.connection
   application-db
+  audit-read-data-source
   data-source
   db-type
   do-before-commit

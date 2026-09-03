@@ -773,7 +773,48 @@
             (is (= 1 (.getInitialPoolSize pool-config)))))
         (finally
           (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
-          (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db)))))))
+          (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))
+          (DataSources/destroy ^javax.sql.DataSource (:audit-read-data-source app-db)))))))
+
+(deftest audit-read-data-source-pool-construction-test
+  (testing "with :create-pool? true, the Audit DB path gets its own (smaller) c3p0 pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-pool-construction-test")
+          app-db      (mdb.connection/application-db :h2 data-source :create-pool? true)]
+      (try
+        (let [^PoolBackedDataSource main  (:data-source app-db)
+              ^PoolBackedDataSource audit (:audit-read-data-source app-db)]
+          (is (instance? PoolBackedDataSource audit))
+          (is (not (identical? main audit)))
+          (is (= "metabase-h2-audit-read" (.getDataSourceName audit)))
+          (let [^WrapperConnectionPoolDataSource pool-config (.getConnectionPoolDataSource audit)]
+            (is (= 5 (.getMaxPoolSize pool-config)))
+            (is (= 1 (.getMinPoolSize pool-config)))
+            (is (= 1 (.getInitialPoolSize pool-config)))))
+        (finally
+          (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
+          (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))
+          (DataSources/destroy ^javax.sql.DataSource (:audit-read-data-source app-db))))))
+  (testing "the audit pool is built over the audit-read identity when one is supplied"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-identity-test")
+          audit-ds    (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-identity-test-audit")
+          app-db      (mdb.connection/application-db :h2 data-source
+                                                     :create-pool? true
+                                                     :audit-read-data-source audit-ds)]
+      (try
+        (let [^PoolBackedDataSource audit (:audit-read-data-source app-db)]
+          (is (identical? audit-ds
+                          (.getNestedDataSource ^WrapperConnectionPoolDataSource
+                           (.getConnectionPoolDataSource audit)))))
+        (finally
+          (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
+          (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))
+          (DataSources/destroy ^javax.sql.DataSource (:audit-read-data-source app-db)))))))
+
+(deftest audit-read-data-source-no-pool-test
+  (testing "with :create-pool? false, the audit data source is just the raw data source itself"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-no-pool-test")
+          app-db      (mdb.connection/application-db :h2 data-source)]
+      (is (identical? data-source (:audit-read-data-source app-db))))))
 
 (deftest quartz-data-source-rejects-pre-pooled-test
   (testing ":create-pool? true with an already-pooled data-source throws instead of silently sharing one pool"

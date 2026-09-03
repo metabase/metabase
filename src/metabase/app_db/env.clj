@@ -17,9 +17,9 @@
   3. As a JDBC connection string (`MB_DB_CONNECTION_URI`) with username (`MB_DB_USER`) and/or password (`MB_DB_PASS`)
      passed separately. Support for this was added in Metabase 0.43.0 -- see #20122.
 
-  This namespace exposes the vars [[db-type]] and [[data-source]] based on the aforementioned environment variables.
-  Normally you should use the equivalent functions in [[metabase.app-db.connection]] which can be overridden rather than
-  using this namespace directly."
+  This namespace exposes the vars [[db-type]], [[data-source]] and [[audit-read-data-source]] based on the
+  aforementioned environment variables. Normally you should use the equivalent functions
+  in [[metabase.app-db.connection]] which can be overridden rather than using this namespace directly."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -98,7 +98,36 @@
      mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id mb-db-aws-iam)
     (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
 
-;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using environment variables.
+;;;; [[env->audit-read-DataSource]]
+
+(defn- audit-read-credential
+  "The identity `MB_DB_AUDIT_READ_*` configures for the Audit DB path, or `nil` when the operator configured none.
+  Only the identity differs from the app-DB one: host, port, database, SSL and `MB_DB_AWS_IAM` are shared, since both
+  connect to the same physical database. The password is optional -- under AWS IAM and Azure managed identity there
+  isn't one."
+  [{:keys [mb-db-audit-read-user mb-db-audit-read-pass mb-db-audit-read-azure-managed-identity-client-id]}]
+  (when (or (seq mb-db-audit-read-user)
+            (seq mb-db-audit-read-azure-managed-identity-client-id))
+    {:mb-db-user                             mb-db-audit-read-user
+     :mb-db-pass                             mb-db-audit-read-pass
+     :mb-db-azure-managed-identity-client-id mb-db-audit-read-azure-managed-identity-client-id}))
+
+(defn- env->audit-read-DataSource
+  "[[javax.sql.DataSource]] the Audit DB path should connect through, or `default` when no separate identity applies."
+  ^javax.sql.DataSource [db-type env-vars ^javax.sql.DataSource default]
+  (if-let [credential (audit-read-credential env-vars)]
+    (if (= db-type :h2)
+      ;; an H2 app DB is an embedded file with no user and no password (see [[broken-out-details]]), so the connecting
+      ;; process is implicitly the DB admin and a restricted identity cannot exist
+      (do
+        (log/warn (str "Warning: MB_DB_AUDIT_READ_USER is set but the application database is H2, which has no users."
+                       " Usage analytics will connect on the application database connection."))
+        default)
+      (env->DataSource db-type (merge env-vars credential)))
+    default))
+
+;;;; exports: [[db-type]], [[db-file]], [[data-source]] and [[audit-read-data-source]] created using environment
+;;;; variables.
 
 (defmulti ^:private env-defaults
   {:arglists '([db-type])}
@@ -135,7 +164,11 @@
     :mb-db-pass                             (config/config-str :mb-db-pass)
     :mb-db-azure-managed-identity-client-id (config/config-str :mb-db-azure-managed-identity-client-id)
     :mb-db-aws-iam                          (config/config-bool :mb-db-aws-iam)
-    :mb-db-ssl-cert                         (config/config-str :mb-db-ssl-cert)}
+    :mb-db-ssl-cert                         (config/config-str :mb-db-ssl-cert)
+    :mb-db-audit-read-user                  (config/config-str :mb-db-audit-read-user)
+    :mb-db-audit-read-pass                  (config/config-str :mb-db-audit-read-pass)
+    :mb-db-audit-read-azure-managed-identity-client-id
+    (config/config-str :mb-db-audit-read-azure-managed-identity-client-id)}
    (env-defaults db-type)))
 
 (def env
@@ -201,3 +234,16 @@
 (def ^javax.sql.DataSource data-source
   "A [[javax.sql.DataSource]] ultimately derived from the environment variables."
   (env->DataSource db-type env))
+
+(def ^javax.sql.DataSource audit-read-data-source
+  "A [[javax.sql.DataSource]] for the Audit DB path -- the usage-analytics queries that run against the application
+  database -- derived from `MB_DB_AUDIT_READ_USER` and friends.
+
+  When those are unset this is [[data-source]] itself, so the Audit DB path keeps using the app-DB credential. It
+  still gets its own connection pool either way
+  (see [[metabase.app-db.connection-pool-setup/audit-connection-pool-data-source]]), so audit queries stop competing
+  with application queries for slots -- but only a restricted identity adds a privilege boundary. See
+  `docs/installation-and-operation/configuring-application-database.md`.
+
+  Normally you want [[metabase.app-db.connection/audit-read-data-source]], which is pooled and can be rebound."
+  (env->audit-read-DataSource db-type env data-source))

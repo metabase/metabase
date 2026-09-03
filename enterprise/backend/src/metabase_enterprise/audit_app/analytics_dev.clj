@@ -14,7 +14,6 @@
    [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.db :as audit-app.db]
-   [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
@@ -245,7 +244,7 @@
                          (and (.contains (.getPath file) (str "/databases/" canonical-db-filename "/"))
                               (or (= (.getName file) (str canonical-db-filename ".yaml"))
                                   (some #(.contains (.getPath file) (str "/tables/" %))
-                                        audit-ee.permissions/audit-db-view-names)))))]
+                                        audit/audit-view-names)))))]
     (let [relative-path (str/replace (.getPath file)
                                      (str (.getPath (io/file export-dir)) "/")
                                      "")

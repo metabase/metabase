@@ -2,11 +2,13 @@
   (:require
    [metabase.audit-app.impl]
    [metabase.audit-app.models.audit-log]
+   [metabase.audit-app.purview]
    [metabase.audit-app.settings]
    [potemkin :as p]))
 
 (comment metabase.audit-app.impl/keep-me
          metabase.audit-app.models.audit-log/keep-me
+         metabase.audit-app.purview/keep-me
          metabase.audit-app.settings/keep-me)
 
 (p/import-vars
@@ -21,6 +23,8 @@
  [metabase.audit-app.models.audit-log
   model-details
   model-name]
+ [metabase.audit-app.purview
+  audit-view-names]
  [metabase.audit-app.settings
   analytics-dev-mode
   last-analytics-checksum

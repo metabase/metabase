@@ -128,6 +128,60 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; exclude those extensions in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though the latter is the file that Metabase will create).
 
+## Separate credentials for usage analytics
+
+[Usage analytics](../usage-and-performance-tools/usage-analytics.md) reads the application database through a set of read-only `v_*` views. By default those queries run on the same credentials as the rest of Metabase, which means an expensive usage analytics question can hold connections that application code needs, and nothing at the database level stops that path from reading tables outside the views.
+
+You can give usage analytics its own credentials with `MB_DB_AUDIT_READ_USER` and `MB_DB_AUDIT_READ_PASS`:
+
+```sh
+export MB_DB_AUDIT_READ_USER=metabase_audit_read
+export MB_DB_AUDIT_READ_PASS=<password>
+```
+
+Everything else - host, port, database name, SSL settings, and `MB_DB_AWS_IAM` - is shared with your main application database connection. Both connections go to the same database; only the user differs. Under AWS IAM or Azure managed identity there is no password, so set `MB_DB_AUDIT_READ_USER` alone (or `MB_DB_AUDIT_READ_AZURE_MANAGED_IDENTITY_CLIENT_ID` for Azure).
+
+These variables are optional. If you leave them unset, Metabase starts normally and usage analytics uses your main application database credentials - the same behavior as previous versions. Usage analytics gets its own connection pool either way, so it never competes with application code for connections. Set `MB_AUDIT_DB_MAX_CONNECTION_POOL_SIZE` to change its size (default 5).
+
+### Creating the role in PostgreSQL
+
+Metabase does not create database roles. Run this as a user that can create roles, replacing the password:
+
+```sql
+CREATE ROLE metabase_audit_read WITH LOGIN NOINHERIT PASSWORD '<password>'
+  NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION;
+GRANT CONNECT ON DATABASE metabase TO metabase_audit_read;
+GRANT USAGE ON SCHEMA public TO metabase_audit_read;
+ALTER ROLE metabase_audit_read SET default_transaction_read_only = on;
+GRANT SELECT ON v_agent_api_calls,
+                v_ai_usage_log,
+                v_alerts,
+                v_audit_log,
+                v_content,
+                v_dashboardcard,
+                v_databases,
+                v_fields,
+                v_group_members,
+                v_mcp_tool_calls,
+                v_metabot_conversations,
+                v_metabot_messages,
+                v_query_log,
+                v_subscriptions,
+                v_tables,
+                v_task_runs,
+                v_tasks,
+                v_tenants,
+                v_users,
+                v_view_log TO metabase_audit_read;
+```
+
+A PostgreSQL view runs with the privileges of whoever owns it, so granting `SELECT` on the views is enough - the role never needs to read `core_user`, `metabase_database`, or any other underlying table.
+
+Two things to know before you rely on this:
+
+- **Upgrades drop and recreate these views, and PostgreSQL drops their grants along with them.** Re-run the `GRANT SELECT` statement after upgrading Metabase, or usage analytics questions will start failing with permission errors. Metabase does not re-apply the grants for you.
+- **MySQL, MariaDB, and H2 don't support this.** The MySQL versions of these views run with the privileges of the caller rather than the owner, so a role granted only the views can't read them. H2 application databases have no users at all. On all three, setting `MB_DB_AUDIT_READ_USER` gets you a separate connection pool but no privilege boundary.
+
 ## Migrating from H2
 
 If you've started out using the default, H2 database, but you want to preserve the content you've created and move to a production application database, Metabase provides limited support for [migrating from H2 to PostgreSQL](migrating-from-h2.md).

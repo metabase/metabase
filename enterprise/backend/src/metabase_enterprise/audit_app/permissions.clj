@@ -12,30 +12,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
-(def audit-db-view-names
-  "Used for giving granular permissions into the audit db. Instead of granting permissions to
-   all of the audit db, we query the audit db using the names of each view that starts with v_."
-  #{"v_audit_log"
-    "v_content"
-    "v_dashboardcard"
-    "v_group_members"
-    "v_subscriptions"
-    "v_users"
-    "v_alerts"
-    "v_databases"
-    "v_fields"
-    "v_query_log"
-    "v_tables"
-    "v_tenants"
-    "v_tasks"
-    "v_task_runs"
-    "v_view_log"
-    "v_metabot_conversations"
-    "v_metabot_messages"
-    "v_ai_usage_log"
-    "v_mcp_tool_calls"
-    "v_agent_api_calls"})
-
 (defenterprise check-audit-db-permissions
   "Performs a number of permission checks to ensure that a query on the Audit database can be run.
    Causes for rejection are:
@@ -58,7 +34,7 @@
                       outer-query)))
     (qp.store/with-metadata-provider database-id
       (doseq [table-id table-ids]
-        (when-not (audit-db-view-names
+        (when-not (audit/audit-view-names
                    (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
                           outer-query)))))))
@@ -74,7 +50,7 @@
       (let [create-queries-value (case tyype
                                    (:read :write) :query-builder
                                    :none  :no)
-            view-tables         (audit-app.db/tables-of-database-named audit/audit-db-id audit-db-view-names)]
+            view-tables         (audit-app.db/tables-of-database-named audit/audit-db-id audit/audit-view-names)]
         (doseq [table view-tables]
           (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))
         (cond-> changes

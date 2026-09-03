@@ -462,7 +462,7 @@
         (or (:is-audit db)
             (and (audit-app/analytics-dev-mode)
                  (get-in db [:details :is-audit-dev])))
-        {:datasource (driver-api/data-source)}
+        {:datasource (driver-api/audit-read-data-source)}
 
         (get-in db [:details :is-audit-dev])
         (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")

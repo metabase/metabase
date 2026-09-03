@@ -222,3 +222,31 @@
                               (mdb.connection-pool-setup/quartz-connection-pool-data-source :h2 pre-pooled)))
         (finally
           (DataSources/destroy pre-pooled))))))
+
+(deftest audit-connection-pool-data-source-test
+  (testing "the audit pool is named distinctly and defaults to maxPoolSize 5"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-pool-default-size-test")
+          pool        (mdb.connection-pool-setup/audit-connection-pool-data-source :h2 data-source)]
+      (try
+        (is (= "metabase-h2-audit-read" (.getDataSourceName pool)))
+        (is (= 5 (.getMaxPoolSize ^WrapperConnectionPoolDataSource (.getConnectionPoolDataSource pool))))
+        (finally
+          (DataSources/destroy pool)))))
+  (testing "MB_AUDIT_DB_MAX_CONNECTION_POOL_SIZE overrides the audit pool's max size"
+    (mt/with-temp-env-var-value! [mb-audit-db-max-connection-pool-size 3]
+      (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-pool-env-size-test")
+            pool        (mdb.connection-pool-setup/audit-connection-pool-data-source :h2 data-source)]
+        (try
+          (is (= 3 (.getMaxPoolSize ^WrapperConnectionPoolDataSource (.getConnectionPoolDataSource pool))))
+          (finally
+            (DataSources/destroy pool)))))))
+
+(deftest audit-connection-pool-rejects-pre-pooled-test
+  (testing "an already-pooled data-source is rejected -- the audit pool must be distinct from the main pool"
+    (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:audit-pool-reject-pooled-test")
+          pre-pooled  (DataSources/pooledDataSource ^javax.sql.DataSource data-source)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already-pooled"
+                              (mdb.connection-pool-setup/audit-connection-pool-data-source :h2 pre-pooled)))
+        (finally
+          (DataSources/destroy pre-pooled))))))

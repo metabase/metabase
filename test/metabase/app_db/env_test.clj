@@ -51,3 +51,45 @@
             (testing db-type
               (is (partial= {:mb-db-port 3307}
                             (#'mdb.env/env* db-type))))))))))
+
+(deftest audit-read-data-source-test
+  (let [app-db-env {:mb-db-host "localhost", :mb-db-port 5432, :mb-db-dbname "metabase"
+                    :mb-db-user "metabase", :mb-db-pass "app-pass"}
+        default    (mdb.data-source/broken-out-details->DataSource
+                    :postgres {:host "localhost", :port 5432, :db "metabase"
+                               :user "metabase", :password "app-pass"})]
+    (testing "with no audit-read identity configured, usage analytics uses the app-DB data source"
+      (is (identical? default
+                      (#'mdb.env/env->audit-read-DataSource :postgres app-db-env default))))
+    (testing "MB_DB_AUDIT_READ_USER/PASS swap only the identity; host, port and database are inherited"
+      (is (= (mdb.data-source/broken-out-details->DataSource
+              :postgres {:host "localhost", :port 5432, :db "metabase", :ssl-cert nil
+                         :user "metabase_audit_read", :password "audit-pass"})
+             (#'mdb.env/env->audit-read-DataSource
+              :postgres
+              (assoc app-db-env
+                     :mb-db-audit-read-user "metabase_audit_read"
+                     :mb-db-audit-read-pass "audit-pass")
+              default))))
+    (testing "the same identity swap applies to a connection URI, so AWS IAM URL rewriting is not bypassed"
+      (is (= (mdb.data-source/raw-connection-string->DataSource
+              "jdbc:postgresql://localhost:5432/metabase" "metabase_audit_read" "audit-pass" nil true)
+             (#'mdb.env/env->audit-read-DataSource
+              :postgres
+              {:mb-db-connection-uri   "postgres://localhost:5432/metabase"
+               :mb-db-user             "metabase"
+               :mb-db-pass             "app-pass"
+               :mb-db-aws-iam          true
+               :mb-db-audit-read-user  "metabase_audit_read"
+               :mb-db-audit-read-pass  "audit-pass"}
+              default))))
+    (testing "an audit-read user with no password is meaningful -- AWS IAM and Azure supply no password"
+      (is (= (mdb.data-source/broken-out-details->DataSource
+              :postgres {:host "localhost", :port 5432, :db "metabase", :ssl-cert nil
+                         :user "metabase_audit_read", :password nil})
+             (#'mdb.env/env->audit-read-DataSource
+              :postgres (assoc app-db-env :mb-db-audit-read-user "metabase_audit_read") default))))
+    (testing "H2 has no users, so an audit-read identity can't apply"
+      (is (identical? default
+                      (#'mdb.env/env->audit-read-DataSource
+                       :h2 (assoc app-db-env :mb-db-audit-read-user "metabase_audit_read") default))))))

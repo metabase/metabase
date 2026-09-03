@@ -30,6 +30,13 @@
                              ;; this is just `data-source` itself. Access it via [[quartz-data-source]], which
                              ;; respects `lock` below.
                              ^javax.sql.DataSource quartz-data-source
+                             ;; Dedicated (smaller) connection pool for the Audit DB path, which queries the
+                             ;; application database for internal analytics. Separate so that user-authored audit
+                             ;; content can't saturate the main pool, and so audit connections are identifiable. Only
+                             ;; a distinct *credential* when the operator configured one. Created without pooling
+                             ;; (`:create-pool?` false) this is just `data-source` itself. Access it via
+                             ;; [[audit-read-data-source]], which respects `lock` below.
+                             ^javax.sql.DataSource audit-read-data-source
                              ;; used by [[metabase.app-db.setup-db!]] and [[metabase.app-db.db-is-set-up?]] to record whether
                              ;; the usual setup steps have been performed (i.e., running Liquibase and Clojure-land data
                              ;; migrations).
@@ -78,32 +85,45 @@
 
   Options:
 
-  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database (plus a
-    dedicated Quartz pool -- see [[metabase.app-db.connection-pool-setup/quartz-connection-pool-data-source]]).
+  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database (plus
+    dedicated Quartz and Audit DB pools -- see
+    [[metabase.app-db.connection-pool-setup/quartz-connection-pool-data-source]] and
+    [[metabase.app-db.connection-pool-setup/audit-connection-pool-data-source]]).
     Default: `false`. Requires an unpooled `data-source`: passing an already-pooled one throws. You should only do
     this for application DBs that are expected to be long-lived; for test DBs that will be destroyed at the end of
-    the test it's hardly worth it."
-  ^ApplicationDB [db-type data-source & {:keys [create-pool?], :or {create-pool? false}}]
+    the test it's hardly worth it.
+
+  * `:audit-read-data-source` -- unpooled [[javax.sql.DataSource]] for the Audit DB path. Defaults to `data-source`,
+    i.e. the Audit DB path connects on the app-DB credential; pass a restricted identity to give it a privilege
+    boundary. Either way it gets its own pool when `:create-pool?` is true."
+  ^ApplicationDB [db-type data-source & {:keys [create-pool? audit-read-data-source]
+                                         :or   {create-pool? false}}]
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
   {:pre [(#{:h2 :mysql :postgres} db-type)
          (instance? javax.sql.DataSource data-source)]}
-  (map->ApplicationDB
-   {:db-type     db-type
-    :data-source (if create-pool?
-                   (connection-pool-setup/connection-pool-data-source db-type data-source)
-                   data-source)
-    :quartz-data-source (if create-pool?
-                          (connection-pool-setup/quartz-connection-pool-data-source db-type data-source)
-                          data-source)
-    :status      (atom initial-db-status)
-    ;; for memoization purposes. See [[unique-identifier]] for more information.
-    :id          (swap! application-db-counter inc)
-    :lock        (ReentrantReadWriteLock.)}))
+  (let [audit-data-source (or audit-read-data-source data-source)]
+    (map->ApplicationDB
+     {:db-type     db-type
+      :data-source (if create-pool?
+                     (connection-pool-setup/connection-pool-data-source db-type data-source)
+                     data-source)
+      :quartz-data-source (if create-pool?
+                            (connection-pool-setup/quartz-connection-pool-data-source db-type data-source)
+                            data-source)
+      :audit-read-data-source (if create-pool?
+                                (connection-pool-setup/audit-connection-pool-data-source db-type audit-data-source)
+                                audit-data-source)
+      :status      (atom initial-db-status)
+      ;; for memoization purposes. See [[unique-identifier]] for more information.
+      :id          (swap! application-db-counter inc)
+      :lock        (ReentrantReadWriteLock.)})))
 
 (def ^:dynamic ^ApplicationDB *application-db*
   "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance
   with [[application-db]]."
-  (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+  (application-db mdb.env/db-type mdb.env/data-source
+                  :create-pool? true
+                  :audit-read-data-source mdb.env/audit-read-data-source))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
@@ -127,29 +147,43 @@
   ^javax.sql.DataSource []
   (.data-source *application-db*))
 
+(defn- lock-respecting-data-source
+  "Wrap `data-source` so that acquiring a connection takes `lock`'s read lock, the way connections acquired through
+  the [[ApplicationDB]] itself do. That lets the testing API block new connections while restoring the app DB."
+  ^javax.sql.DataSource [^ReentrantReadWriteLock lock ^javax.sql.DataSource data-source]
+  (reify javax.sql.DataSource
+    (getConnection [_]
+      (try
+        (.. lock readLock lock)
+        (.getConnection data-source)
+        (finally
+          (.. lock readLock unlock))))
+    (getConnection [_ user password]
+      (try
+        (.. lock readLock lock)
+        (.getConnection data-source user password)
+        (finally
+          (.. lock readLock unlock))))))
+
 (defn quartz-data-source
   "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the current [[*application-db*]]'s
-  dedicated Quartz connection pool (or its regular data source if it was created without pooling).
-
-  Like connections acquired through the [[ApplicationDB]] itself, acquiring a connection through this takes the
-  application DB's read lock, so the testing API can block new connections while restoring the app DB."
+  dedicated Quartz connection pool (or its regular data source if it was created without pooling)."
   ^javax.sql.DataSource []
-  (let [^ApplicationDB app-db            *application-db*
-        ^ReentrantReadWriteLock lock     (.lock app-db)
-        ^javax.sql.DataSource data-source (.quartz-data-source app-db)]
-    (reify javax.sql.DataSource
-      (getConnection [_]
-        (try
-          (.. lock readLock lock)
-          (.getConnection data-source)
-          (finally
-            (.. lock readLock unlock))))
-      (getConnection [_ user password]
-        (try
-          (.. lock readLock lock)
-          (.getConnection data-source user password)
-          (finally
-            (.. lock readLock unlock)))))))
+  (let [^ApplicationDB app-db *application-db*]
+    (lock-respecting-data-source (.lock app-db) (.quartz-data-source app-db))))
+
+(defn audit-read-data-source
+  "Get a [[javax.sql.DataSource]] for the Audit DB path -- the internal-analytics queries that run against the
+  application database through the `is_audit` [[metabase.warehouses.models.database]] row. Backed by the current
+  [[*application-db*]]'s dedicated audit pool (or its regular data source if it was created without pooling).
+
+  This is the only place the Audit DB path should obtain a connection from: everything reaching the app DB under an
+  audit query is expected to come through here, so `grep` finds the whole surface. Whether it is a *restricted*
+  identity depends on whether the operator configured `MB_DB_AUDIT_READ_USER` -- see
+  [[metabase.app-db.env/audit-read-data-source]]."
+  ^javax.sql.DataSource []
+  (let [^ApplicationDB app-db *application-db*]
+    (lock-respecting-data-source (.lock app-db) (.audit-read-data-source app-db))))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
