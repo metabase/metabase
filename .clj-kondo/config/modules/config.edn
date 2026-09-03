@@ -142,7 +142,6 @@
            metabase.activity-feed.core
            metabase.activity-feed.init}
    :uses #{api
-           app-db
            batch-processing
            collections
            config
@@ -1779,7 +1778,11 @@
            metabase.public-sharing.validation}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Dashboard
+                    :model/Document}}
 
   public-sharing-rest
   {:team "UX West"
@@ -2795,7 +2798,10 @@
            query-permissions
            util}
    :model-exports #{:model/ViewLog}
-   :model-imports #{:model/Card :model/Dashboard :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Document
+                    :model/Table}}
 
   warehouse-schema
   {:team "UX West"
@@ -3180,7 +3186,8 @@
    :uses #{api
            content-verification
            util
-           enterprise/api}}
+           enterprise/api}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/core
   {:team "DevEx"
