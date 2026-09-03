@@ -465,8 +465,10 @@
                             {:measures [{:id         measure-id
                                          :name       "Sum of big totals"
                                          :table-id   (meta/id :orders)
-                                         :definition (-> (lib/query mp2 orders)
-                                                         (lib/aggregate (lib/sum-where total (lib.metadata/segment mp2 outer-segment-id))))}]})
+                                         :definition (lib/aggregate
+                                                      (lib/query mp2 orders)
+                                                      (lib/sum-where total
+                                                                     (lib.metadata/segment mp2 outer-segment-id)))}]})
           query            (-> (lib/query mp orders)
                                (lib/aggregate (lib.metadata/measure mp measure-id)))]
       (is (= {:table   #{(meta/id :orders)}
