@@ -856,9 +856,11 @@
   `sql-primary?` + GS applicability) uses the caller's `rff`; other flows use the default rff for
   comparison only. Returns the primary flow's success value or rethrows its exception.
 
-  Logs a per-flow timing summary at INFO so CI logs surface which flow was slow and by how much when a
+  Logs a per-flow timing summary at WARN so CI logs surface which flow was slow and by how much when a
   mismatch or timeout occurs on some environment (e.g. Presto CI). Format: `pivot-parity {:driver ..
-  :primary .. :outcomes {<flow> {:elapsed-ms .. :ok? ..}}}`."
+  :primary .. :outcomes {<flow> {:elapsed-ms .. :ok? .. :cause [..]}}}`. `:cause` is the ex-message chain
+  (root cause first) — populated only for failing flows so a Presto `Socket closed` after the JDBC
+  polling budget shows up plainly instead of the QP's wrapping `Error preparing statement` text."
   [query rff sql-primary?]
   (let [skip-gs?        (or (query-has-window-fn-aggregation? query)
                             (not (driver-supports-grouping-sets? query)))
@@ -869,12 +871,18 @@
         flows           (cond-> [:multi-query :union-all]
                           (not skip-gs?) (conj :grouping-sets))
         outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
-        divergent-pairs (divergent-pivot-pairs outcomes)]
-    (log/infof "pivot-parity %s"
+        divergent-pairs (divergent-pivot-pairs outcomes)
+        cause-chain     (fn [^Throwable t]
+                          (loop [t t, acc []]
+                            (if t (recur (.getCause t) (conj acc (.getMessage t))) acc)))]
+    (log/warnf "pivot-parity %s"
                (pr-str {:driver  (:engine (query-database query))
                         :primary primary-flow
-                        :flows   (update-vals outcomes (fn [o] {:elapsed-ms (:elapsed-ms o)
-                                                                :ok?        (nil? (:throwable o))}))
+                        :flows   (update-vals outcomes
+                                              (fn [{:keys [throwable elapsed-ms]}]
+                                                (cond-> {:elapsed-ms elapsed-ms
+                                                         :ok?        (nil? throwable)}
+                                                  throwable (assoc :cause (cause-chain throwable)))))
                         :divergent-pairs divergent-pairs}))
     (when (seq divergent-pairs)
       (*on-parity-mismatch* {:outcomes outcomes, :divergent-pairs divergent-pairs}))
