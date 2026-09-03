@@ -23,11 +23,9 @@ export function TemplateTagsSidebar({
     (database) => database.is_sample,
   )?.id;
 
-  // The template-tag editor fires several query mutations within a single event
-  // handler (e.g. switching a variable's type updates both the tag and its
-  // value-source config). React props don't update between those synchronous
-  // calls, so we track the latest query in a ref and compose each change on top
-  // of it; otherwise the second `onChangeQuery` would clobber the first.
+  // Switching a variable's type calls setTemplateTag and setTemplateTagConfig within one event handler.
+  // React props don't update between those synchronous calls,
+  // so each change is composed on top of the latest query held in this ref.
   const latestQueryRef = useRef(query);
   latestQueryRef.current = query;
 
