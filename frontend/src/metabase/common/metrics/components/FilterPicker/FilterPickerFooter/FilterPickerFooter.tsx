@@ -22,7 +22,7 @@ export function FilterPickerFooter({
   children,
 }: FilterPickerFooterProps) {
   return (
-    <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
+    <Flex className={S.FilterFooterRoot} p="lg" justify="space-between">
       {onClear ? (
         <Button variant="subtle" c="text-secondary" onClick={onClear}>
           {t`Clear`}

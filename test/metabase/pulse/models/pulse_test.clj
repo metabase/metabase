@@ -561,3 +561,42 @@
                                          {:cards         [(assoc card :include_xls true)]
                                           :dashboard_id  nil
                                           :collection_id nil}))))))))))
+
+(deftest maybe-filter-pulses-recipients-cross-tenant-test
+  ;; Tenants are enterprise-only: :model/Tenant is not on the OSS classpath, so guard the body out
+  ;; of OSS builds entirely (with-premium-features only flips the flag, it does not load EE code).
+  (mt/when-ee-evailable
+   (testing "GHY-4140: for a non-superuser, the recipient filter drops other-tenant users but
+            keeps same-tenant users. The comparison must deref *current-user* (an atom); reading
+            :tenant_id off the atom itself is always nil, which wrongly drops every tenant user."
+     (mt/with-premium-features #{:tenants}
+       (mt/with-temp [:model/Tenant {tenant-id :id}       {:name "GHY4140 T1" :slug "ghy4140-t1"}
+                      :model/Tenant {other-tenant-id :id} {:name "GHY4140 T2" :slug "ghy4140-t2"}
+                      :model/User   {caller-id :id}       {:tenant_id tenant-id}
+                      :model/User   {same-id :id}         {:tenant_id tenant-id}
+                      :model/User   {other-id :id}        {:tenant_id other-tenant-id}
+                      :model/User   {internal-id :id}     {}]
+         ;; Production recipient maps come from the :recipients hydration, which selects only
+         ;; id/email/name fields — no :tenant_id — so the recipients here carry ids only. The
+         ;; filter must work on that shape, which is why it looks tenant membership up from the
+         ;; app DB instead of reading it off the map.
+         (let [pulses [{:channels [{:recipients [{:id same-id}
+                                                 {:id other-id}
+                                                 {:id internal-id}
+                                                 {:email "ext@example.com"}]}]}]]
+           (mt/with-current-user caller-id
+             (let [kept (-> (models.pulse/maybe-filter-pulses-recipients pulses)
+                            first :channels first :recipients)]
+               (testing "same-tenant Metabase user survives"
+                 (is (some #(= same-id (:id %)) kept)))
+               (testing "other-tenant Metabase user is redacted"
+                 (is (not (some #(= other-id (:id %)) kept))))
+               (testing "an internal (tenantless) user is redacted too: a tenant caller sees only its own tenant"
+                 (is (not (some #(= internal-id (:id %)) kept))))
+               (testing "raw email recipient is always preserved"
+                 (is (some #(= "ext@example.com" (:email %)) kept)))))
+           (testing "a caller with no tenant sees recipients unfiltered, as before tenants existed"
+             (mt/with-current-user internal-id
+               (is (= [{:id same-id} {:id other-id} {:id internal-id} {:email "ext@example.com"}]
+                      (-> (models.pulse/maybe-filter-pulses-recipients pulses)
+                          first :channels first :recipients)))))))))))

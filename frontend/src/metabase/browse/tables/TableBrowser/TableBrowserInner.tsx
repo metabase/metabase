@@ -63,7 +63,7 @@ export const TableBrowserInner = ({
 
   return (
     <>
-      <Flex align="center" pt="md" pr="sm" pb="sm">
+      <Flex align="center" pt="lg" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -72,7 +72,7 @@ export const TableBrowserInner = ({
           ]}
         />
       </Flex>
-      <BrowseGrid pt="lg">
+      <BrowseGrid pt="xl">
         {tables.map((table) => (
           <TableBrowserItem
             key={table.id}

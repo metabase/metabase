@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -20,9 +21,7 @@
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
-   (let [snippets (t2/select :model/NativeQuerySnippet
-                             :archived archived
-                             {:order-by [[:%lower.name :asc]]})]
+   (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -39,7 +38,7 @@
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
   [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
+  (-> (api/read-check (native-query-snippets.db/snippet id))
       (t2/hydrate :creator :is_remote_synced)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -53,7 +52,7 @@
   (get-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
+  (when (native-query-snippets.db/snippet-name-exists? snippet-name)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
@@ -77,13 +76,13 @@
                  :name          name
                  :collection_id collection_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
-    (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
+    (api/check-500 (native-query-snippets.db/insert-snippet! snippet))))
 
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (t2/select-one :model/NativeQuerySnippet :id id)
+  (let [snippet     (native-query-snippets.db/snippet id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})
@@ -93,7 +92,7 @@
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
       (t2/with-transaction [_conn]
-        (t2/update! :model/NativeQuerySnippet id changes)
+        (native-query-snippets.db/update-snippet! id changes)
         (collections/check-for-remote-sync-update snippet)))
     (get-native-query-snippet id)))
 

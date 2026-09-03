@@ -56,13 +56,13 @@ const ChartSettingsWidget = ({
         [FormS.FormField]: isFormField,
         [S.inline]: inline && !hidden,
       })}
-      mb="lg"
+      mb="xl"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
       style={style}
     >
       {title && (
-        <Group align="center" gap="xs" mb={inline && !hidden ? 0 : "sm"}>
+        <Group align="center" gap="xxs" mb={inline && !hidden ? 0 : "sm"}>
           <Text
             component="label"
             fw="bold"

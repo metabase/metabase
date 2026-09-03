@@ -93,7 +93,7 @@ describe("scenarios > data apps > admin management", () => {
 //     cy.visit("/admin/settings/apps");
 //
 //     H.main().within(() => {
-//       cy.findByText("Build apps on your data").should("be.visible");
+//       cy.findByText("Build custom data apps").should("be.visible");
 //       cy.findByText("Try for free").should("be.visible");
 //     });
 //   });
@@ -129,7 +129,7 @@ describe("scenarios > data apps > no token (OSS)", { tags: "@OSS" }, () => {
       cy.findByText("The page you asked for couldn't be found.").should(
         "be.visible",
       );
-      cy.findByText("Build apps on your data").should("not.exist");
+      cy.findByText("Build custom data apps").should("not.exist");
     });
   });
 });

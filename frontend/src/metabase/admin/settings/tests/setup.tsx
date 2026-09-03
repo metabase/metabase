@@ -87,7 +87,10 @@ export const enterpriseRoutes: RouteMap = {
 };
 
 export const premiumRoutes: RouteMap = {
-  saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
+  saml: {
+    path: "/authentication/saml",
+    testPattern: /Configure your identity provider/i,
+  },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
 };
 
