@@ -1,9 +1,13 @@
 (ns metabase.mcp.v2.tools.content
   "The v2 MCP `get_content` tool: a batched, typed fetch over every content type an agent can
-   hold a `{type, id}` pair for. Each item is scope-checked, resolved (numeric id or entity_id),
-   read-checked, and projected through the shared concise/detailed machinery with per-type
-   `include` sections. Items are fault-isolated: one bad id, denied read, or teaching error
-   becomes that item's `{type, id, error}` object and never sinks the rest of the batch.
+   hold a `{type, id}` pair for. Each item is resolved (numeric id or entity_id), read-checked, and
+   projected through the shared concise/detailed machinery with per-type `include` sections. Items
+   are fault-isolated: one bad id, denied read, or teaching error becomes that item's
+   `{type, id, error}` object and never sinks the rest of the batch.
+
+   The scope gate is the tool's alone — one `agent:content:read` check at the registry boundary,
+   covering every type. The per-entity read scopes these types once needed folded into it in
+   GHY-4225, so there is deliberately no per-type scope here.
 
    Per-type notes:
    - question/model/metric ride one Card fetch; `definition` returns the stored `dataset_query`
@@ -414,10 +418,12 @@
 
 (def ^:private type->spec
   "Per-type dispatch, co-located. Each entry carries the fetch fn (`:fetch`, id-or-eid ->
-   permission-checked row), the extra runtime `:scope` the type needs on top of the tool's base
-   `agent:resource:read`, and the `:includes` sections it supports (section name -> a
+   permission-checked row) and the `:includes` sections it supports (section name -> a
    `(row -> fragment)` builder). `:proj` (the projection key) defaults to `(keyword type)` and is
-   only spelled out when it differs — a model reads with the question projection."
+   only spelled out when it differs — a model reads with the question projection.
+
+   No entry carries a scope: every type here is gated by the tool's single `agent:content:read`
+   check (see the ns docstring)."
   {"question"     {:fetch #(fetch-card :question %)
                    :includes {"definition" card-definition-include "fields" fields-include}}
    "model"        {:proj :question   :fetch #(fetch-card :model %)
