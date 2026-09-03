@@ -4,12 +4,16 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
    (liquibase.changelog ChangeSet)))
@@ -227,3 +231,35 @@
                         {:delete [:field]
                          :from   [[:metabase_field :field]]
                          :where  [:= :field.id 0]}))))))
+
+(deftest setup-db-leaves-settings-alone-without-their-key-test
+  (testing "setup-db! fills in setting.details, except in an encryption state where the rows cannot be read"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (let [ciphertext (encryption-test/with-secret-key "ABCDEFGH12345678"
+                         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+                         (t2/insert! :model/Setting {:key "site-name", :value "Sad Can"})
+                         (t2/select-one-fn :value_with_aad :setting :key "site-name"))]
+        (is (encryption/possibly-encrypted-string? ciphertext))
+        (testing "with no key the state is :missing-key, and a repair would only wrap the ciphertext as a value"
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
+          (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+
+(deftest encryption-check-status-falls-back-to-value-test
+  (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (is (= :valid (mdb/encryption-check-status)))
+        (testing "an authenticated value left under a key a rotation on an older version has since replaced"
+          (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
+            (t2/update! :setting :key "encryption-check"
+                        {:value_with_aad (encryption/encrypt (str (random-uuid))
+                                                             {:secret-key old-key
+                                                              :aad        (mdb.setting/setting-aad "encryption-check")})})
+            (is (= :valid (mdb/encryption-check-status)))))
+        (testing "the unencrypted marker an older version's remove-encryption writes to value alone"
+          (t2/update! :setting :key "encryption-check" {:value "unencrypted"})
+          (is (= :absent (mdb/encryption-check-status))))))))
