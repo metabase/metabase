@@ -18,7 +18,16 @@ on:
         description: "Scope"
         required: true
         type: choice
-        options: [smoke, full, "all (EXPENSIVE)"]
+        options:
+          - smoke
+          - full
+          - embarrassing-plain
+          - embarrassing-human
+          - embarrassing-all
+          - goldens-plain
+          - goldens-human
+          - goldens-all
+          - "all (EXPENSIVE)"
         default: smoke
       sample:
         description: "Sample (0 = full suite)"
