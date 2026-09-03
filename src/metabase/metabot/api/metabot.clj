@@ -58,6 +58,7 @@
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
         (metabot.db/update-metabot! id metabot-updates)
+        ;; test
         ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
         ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
         (metabot.suggested-prompts-refresh/schedule-refresh! id))
