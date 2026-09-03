@@ -1,11 +1,15 @@
 (ns metabase.cmd.enable-encryption-test
+  "Requires `metabase.cloud-migration.models.cloud-migration` so that its read-only-mode guard on Toucan DML is
+  installed here as it is in production; without it a regression of `enable-encryption!` onto Toucan DML passes."
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.enable-encryption :refer [enable-encryption!]]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -13,6 +17,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment cloud-migration/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -27,6 +33,13 @@
 (defn- restart! []
   (reset! (:status mdb.connection/*application-db*) ::not-set-up)
   (mdb/setup-db! :create-sample-content? false))
+
+(defn- restore-cache-now!
+  "Restore the Setting cache unconditionally, as `restore-cache-if-needed!` does in a fresh JVM; in the shared test JVM
+  its once-a-minute throttle is often already spent by another application DB, which would mask the failure."
+  [& _]
+  (setting.cache/restore-cache!)
+  true)
 
 (deftest cmd-enable-encryption-errors-when-failed-test
   (mt/with-dynamic-fn-redefs [enable-encryption! #(throw (Exception. "err"))
@@ -61,3 +74,16 @@
         (testing "running it with a different key than the database was encrypted with aborts"
           (encryption-test/with-secret-key "key2"
             (is (thrown-with-msg? Exception #"encrypted with a different key" (enable-encryption!)))))))))
+
+(deftest enable-encryption!-does-not-trip-the-read-only-mode-guard-test
+  (testing "enabling encryption on an instance set up without a key survives the cloud-migration guard reading `read-only-mode` through an empty settings cache"
+    (encryption-test/with-secret-key nil
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db! :create-sample-content? true)
+        (setting/set! :admin-email "admin@example.com")
+        (is (= "admin@example.com" (raw-value "admin-email")))
+        (encryption-test/with-secret-key "key1"
+          (mt/with-dynamic-fn-redefs [setting.cache/restore-cache-if-needed! restore-cache-now!]
+            (enable-encryption!))
+          (is (encryption/decryptable-string? (raw-value "admin-email")))
+          (is (= "admin@example.com" (t2/select-one-fn :value :model/Setting :key "admin-email"))))))))
