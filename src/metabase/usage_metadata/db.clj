@@ -74,6 +74,15 @@
   [bucket-date]
   (t2/delete! :model/SourceDimensionDaily :bucket_date [:< bucket-date]))
 
+(defn dimension-rollup-field-ids-before
+  "The set of field ids appearing in owned SourceDimensionDaily rollup rows bucketed before
+  `bucket-date`."
+  [bucket-date]
+  (t2/select-fn-set :field_id :model/SourceDimensionDaily
+                    :bucket_date    [:< bucket-date]
+                    :ownership_mode [:in ["direct" "projected"]]
+                    :field_id       [:not= nil]))
+
 (defn delete-dimension-rollups-for-day!
   "Delete the SourceDimensionDaily rollup rows bucketed on `bucket-date`."
   [bucket-date]
@@ -218,3 +227,25 @@
   "The id, Database id, query, and schema of the unarchived metric Cards."
   []
   (t2/select [:model/Card :id :database_id :dataset_query :card_schema] :type "metric" :archived false))
+
+(defn dimension-breakout-counts
+  "The `:field_id` and summed breakout `:total_count` of every owned SourceDimensionDaily rollup row
+  with a field, grouped by field, instance-wide."
+  []
+  (t2/select [:model/SourceDimensionDaily :field_id [[:sum :count] :total_count]]
+             {:where    [:and
+                         [:in :ownership_mode ["direct" "projected"]]
+                         [:not= :field_id nil]]
+              :group-by [:field_id]}))
+
+(defn interestingness-scoring-fields-reducible
+  "Reducible Fields with `field-ids`, selecting only the columns the dimension-interestingness scorer
+  reads."
+  [field-ids]
+  (t2/reducible-select [:model/Field :id :fingerprint :semantic_type :base_type] :id [:in field-ids]))
+
+(defn update-fields-dimension-interestingness!
+  "Set `dimension_interestingness` to `score-expr` (a value or Honey SQL expression) on the Fields with
+  `field-ids`."
+  [field-ids score-expr]
+  (t2/update! :model/Field {:id [:in field-ids]} {:dimension_interestingness score-expr}))

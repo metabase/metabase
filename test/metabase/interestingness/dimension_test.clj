@@ -164,6 +164,35 @@
   (testing "low percent-blank doesn't trigger the penalty"
     (is (>= (dim/text-structure {:fingerprint {:type {:type/Text {:percent-blank 0.1 :average-length 10}}}}) 0.7))))
 
+;;; -------------------------------------------------- usage --------------------------------------------------
+
+(deftest ^:parallel usage-test
+  (testing "no usage data returns nil (no signal)"
+    (is (nil? (dim/usage {})))
+    (is (nil? (dim/usage {:usage {}}))))
+  (testing "field never broken out returns nil (no signal)"
+    (is (nil? (dim/usage {:usage {:breakout-count 0 :baseline-breakout-count 1000}}))))
+  (testing "no instance baseline to scale against returns nil (no signal)"
+    (is (nil? (dim/usage {:usage {:breakout-count 50}})))
+    (is (nil? (dim/usage {:usage {:breakout-count 50 :baseline-breakout-count 0}}))))
+  (testing "a dimension at the p95 baseline scores 1.0"
+    (is (= 1.0 (dim/usage {:usage {:breakout-count 5000 :baseline-breakout-count 5000}}))))
+  (testing "a dimension above the p95 baseline (top ~5%) is clamped to 1.0"
+    (is (= 1.0 (dim/usage {:usage {:breakout-count 50000 :baseline-breakout-count 5000}}))))
+  (testing "a less-used dimension scores between neutral and the baseline"
+    (let [score (dim/usage {:usage {:breakout-count 50 :baseline-breakout-count 100000}})]
+      (is (< 0.5 score 1.0))))
+  (testing "score is monotonic in usage for a fixed baseline"
+    (let [base 100000
+          s1   (dim/usage {:usage {:breakout-count 1 :baseline-breakout-count base}})
+          s100 (dim/usage {:usage {:breakout-count 100 :baseline-breakout-count base}})
+          s10k (dim/usage {:usage {:breakout-count 10000 :baseline-breakout-count base}})]
+      (is (< s1 s100 s10k))))
+  (testing "self-calibrating: the same raw count scores higher on a quieter instance"
+    (let [busy  (dim/usage {:usage {:breakout-count 500 :baseline-breakout-count 1000000}})
+          quiet (dim/usage {:usage {:breakout-count 500 :baseline-breakout-count 1000}})]
+      (is (< busy quiet)))))
+
 ;;; -------------------------------------------------- dimension-interestingness --------------------------------------------------
 
 (deftest ^:parallel dimension-interestingness-test
@@ -229,7 +258,7 @@
 
 (def ^:private representative-fields
   "A spread of fields hitting every scorer branch: hard-zero gate, no-fingerprint,
-   temporal, numeric, text, and all-nil-signal."
+   temporal, numeric, text, breakout usage, and all-nil-signal."
   [{:semantic-type :type/PK}
    {:semantic-type :type/Category}
    {}
@@ -243,7 +272,10 @@
                                          :mode-fraction 0.2 :top-3-fraction 0.4}}}}
    {:fingerprint {:global {:distinct-count 12 :nil% 0.0}
                   :type   {:type/Text {:average-length 8 :top-3-fraction 0.5 :percent-blank 0.0
-                                       :mode-fraction 0.3}}}}])
+                                       :mode-fraction 0.3}}}}
+   {:semantic-type :type/Category
+    :fingerprint   {:global {:distinct-count 15 :nil% 0.0}}
+    :usage         {:breakout-count 5000 :baseline-breakout-count 20000}}])
 
 (defn- reference-score
   "Independent weighted-average reference (shares no code with [[impl/score-only]]):

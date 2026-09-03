@@ -1,11 +1,18 @@
 (ns metabase.sync.analyze.interestingness-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase.interestingness.core :as interestingness]
    [metabase.interestingness.dimension :as dim]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.sync.interface :as i]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.usage-metadata.core :as usage-metadata]
+   [metabase.usage-metadata.models.source-dimension-daily]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; Smoke tests for the canonical weight profiles. The sync step itself is verified
 ;;; end-to-end via `automagic_dashboards` integration tests (which fingerprint + score
@@ -32,6 +39,37 @@
                                                       :latest "2024-12-31"}}}})]
     (is (>= result 0.7))))
 
+(def ^:private fingerprint
+  {:global {:distinct-count 15 :nil% 0.0}
+   :type   {:type/Text {:average-length 8 :percent-blank 0.0}}})
+
+(deftest score-fields!-incorporates-usage-test
+  ;; Re-fingerprinting a field re-runs scoring; that must refresh the fingerprint-driven scorers
+  ;; *without* discarding the accumulated breakout-usage signal.
+  (mt/with-temp [:model/Database            db    {}
+                 :model/Table               table {:db_id (:id db)}
+                 :model/Field               field {:table_id            (:id table)
+                                                   :semantic_type       :type/Category
+                                                   :base_type           :type/Text
+                                                   :fingerprint         fingerprint
+                                                   :fingerprint_version i/*latest-fingerprint-version*
+                                                   :last_analyzed       nil}
+                 :model/SourceDimensionDaily _    {:source_type    :table
+                                                   :source_id      (:id table)
+                                                   :ownership_mode :direct
+                                                   :field_id       (:id field)
+                                                   :temporal_unit  nil
+                                                   :binning        nil
+                                                   :bucket_date    (t/local-date 2026 4 15)
+                                                   :count          100000}]
+    (let [usage-less-score (interestingness/dimension-interestingness field)]
+      (testing "a re-fingerprinted, heavily-broken-out field scores above its usage-less baseline"
+        (let [{:keys [counts baseline]} (usage-metadata/breakout-usage)]
+          (is (= {:fields-scored 1 :fields-failed 0}
+                 (sync.interestingness/score-fields! table counts baseline))))
+        (is (> (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))
+               usage-less-score))))))
+
 (deftest score-missing-leftovers-backfills-null-scores-test
   (testing "the leftovers pass scores fields whose dimension_interestingness is still NULL"
     (mt/with-temp [:model/Database database {}
@@ -39,11 +77,11 @@
                    :model/Field    field    {:table_id (:id table)}]
       (is (nil? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
       (is (= {:fields-scored 1 :fields-failed 0}
-             (#'sync.interestingness/score-missing-leftovers! database)))
+             (#'sync.interestingness/score-missing-leftovers! database {} 0)))
       (is (some? (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))))
       (testing "once scored, the field is no longer selected"
         (is (= {:fields-scored 0 :fields-failed 0}
-               (#'sync.interestingness/score-missing-leftovers! database)))))))
+               (#'sync.interestingness/score-missing-leftovers! database {} 0)))))))
 
 (deftest score-missing-leftovers-does-not-retry-failed-fields-test
   (testing "a field whose scoring attempt failed is not re-attempted by later leftovers passes in this process"
@@ -55,8 +93,8 @@
                                                                   (swap! calls inc)
                                                                   (throw (ex-info "boom" {})))]
           (is (= {:fields-scored 0 :fields-failed 1}
-                 (#'sync.interestingness/score-missing-leftovers! database)))
+                 (#'sync.interestingness/score-missing-leftovers! database {} 0)))
           (is (= 1 @calls))
           (is (= {:fields-scored 0 :fields-failed 0}
-                 (#'sync.interestingness/score-missing-leftovers! database)))
+                 (#'sync.interestingness/score-missing-leftovers! database {} 0)))
           (is (= 1 @calls) "the failed field should be skipped, not re-scored on every sync"))))))

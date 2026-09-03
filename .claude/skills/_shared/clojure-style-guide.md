@@ -117,12 +117,29 @@ Only `(:import java.time.X)` when interop with a Java method genuinely needs the
     (t2/insert! :model/Prompt prompts)))
 ```
 
+**Map literals: one entry per line unless trivial, values aligned:**
+
+Multi-key map literals belong one key/value per line with the values column-aligned — not crammed onto one line.
+A trivial 1–2 key map (`{:status 200}`) can stay inline.
+
+```clojure
+;; bad — multi-key literal on one line
+{:cutoff-day cutoff-day :pruned-dimension-fields pruned-fields}
+
+;; good — one entry per line, values aligned on the longest key
+{:cutoff-day              cutoff-day
+ :pruned-dimension-fields pruned-fields}
+```
+
+When you edit one entry of an already-aligned map (add/rename a key), re-align **every** row, not just the lines you touched — a half-aligned map is its own review comment.
+
 ## Tests
 
 **Organization:**
 
 - Break large tests into separate `deftest` forms for logically separate test cases
 - Test names should end in `-test` or `-test-<number>`
+- Hoist loop-invariant / fixed data out of `doseq`/`for`/`reduce` bodies into the enclosing `let`. A constant map or vector rebuilt on every iteration belongs above the loop, computed once.
 
 **Performance:**
 
@@ -344,27 +361,32 @@ Organized by **problem you're solving**, not by namespace.
 
 *Authors: prefer the right column. Reviewers: flag the left column in PRs.*
 
-| You wrote                                                            | Reach for                            | When NOT to                                                       |
-| -------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------- |
-| `(vec (keep f xs))`                                                  | `(u/keepv f xs)`                     | —                                                                 |
-| `(let [x (...)] (side-effect!) x)`                                   | `(u/prog1 (...) (side-effect!))`     | — (`<>` anaphor binds the result)                                 |
-| `(into {} (map (juxt k identity)) xs)`                               | `(u/index-by k xs)`                  | —                                                                 |
-| `(into {} (map (juxt k vf)) xs)`                                     | `(u/index-by k vf xs)`               | —                                                                 |
-| `#(compare %2 %1)`                                                   | `u/reverse-compare`                  | —                                                                 |
-| `(:col (t2/select-one [Model :col] …))`                              | `(t2/select-one-fn :col Model …)`    | —                                                                 |
-| `(or (:k m) default)`                                                | `(:k m default)`                     | **The value can be present-but-nil** (hydrated DB null, etc.)     |
-| `(let [x (...)] (if x then else))`                                   | `(if-let [x (...)] then else)`       | —                                                                 |
-| `(filter #(= :a (:type %)) coll)` + same for `:b` …                  | `(group-by :type coll)` then dispatch | —                                                                 |
-| `(->> xs (map f) (remove g) (mapv h))`                               | `(into [] (comp (map f) (remove g) (map h)) xs)` | when readability of the threading wins                  |
-| nested `let` / `if` / `if-let`                                       | `b/cond` with `:let`                 | a 2-level nest may be clearer as-is                               |
-| `(let [{:keys [k]} arg] …)` as first form of body                    | destructure in the arg list           | when the destructure also references something computed in `let` |
-| `(or (:k m) (get m (name k)))` per field                             | normalize once: `(update-keys m keyword)` then plain `:k` | when you genuinely need both shapes per-field             |
+| You wrote                                                                  | Reach for                                                 | When NOT to                                                      |
+|----------------------------------------------------------------------------|-----------------------------------------------------------|------------------------------------------------------------------|
+| `(vec (keep f xs))`                                                        | `(u/keepv f xs)`                                          | —                                                                |
+| `(let [x (...)] (side-effect!) x)`                                         | `(u/prog1 (...) (side-effect!))`                          | — (`<>` anaphor binds the result)                                |
+| `(into {} (map (juxt k identity)) xs)`                                     | `(u/index-by k xs)`                                       | —                                                                |
+| `(into {} (map (juxt k vf)) xs)`                                           | `(u/index-by k vf xs)`                                    | —                                                                |
+| `#(compare %2 %1)`                                                         | `u/reverse-compare`                                       | —                                                                |
+| `(:col (t2/select-one [Model :col] …))`                                    | `(t2/select-one-fn :col Model …)`                         | —                                                                |
+| `(or (:k m) default)`                                                      | `(:k m default)`                                          | **The value can be present-but-nil** (hydrated DB null, etc.)    |
+| `(let [x (...)] (if x then else))`                                         | `(if-let [x (...)] then else)`                            | —                                                                |
+| `(filter #(= :a (:type %)) coll)` + same for `:b` …                        | `(group-by :type coll)` then dispatch                     | —                                                                |
+| `(->> xs (map f) (remove g) (mapv h))`                                     | `(into [] (comp (map f) (remove g) (map h)) xs)`          | when readability of the threading wins                           |
+| nested `let` / `if` / `if-let`                                             | `b/cond` with `:let`                                      | a 2-level nest may be clearer as-is                              |
+| `(let [{:keys [k]} arg] …)` as first form of body                          | destructure in the arg list                               | when the destructure also references something computed in `let` |
+| `(or (:k m) (get m (name k)))` per field                                   | normalize once: `(update-keys m keyword)` then plain `:k` | when you genuinely need both shapes per-field                    |
+| `(into #{} (keep :col) (t2/select [Model [[:distinct :col]]] {:where …}))` | `(t2/select-fn-set :col Model :a … :b …)`                 | —                                                                |
+| `(reduce (fn [m x] (update m (kf x) (fnil conj []) (vf x))) {} xs)`        | `(u/group-by kf vf xs)`                                   | —                                                                |
+| `(into {} xf (t2/select [Model …] …))` then immediately fold it            | `(into {} xf (t2/reducible-select [Model …] …))`          | when you reuse the realized rows more than once                  |
+| `{:a 1 :b 2 :c 3}` (multi-key literal on one line)                         | one key/value per line, values aligned                    | a trivial 1–2 key map (`{:status 200}`)                          |
 
 ## `metabase.util` (commonly aliased `[metabase.util :as u]`)
 
 Sequences / collections:
 - `(u/keepv f coll)` — like `keep` but returns a vector (eager).
-- `(u/index-by kf coll)` / `(u/index-by kf vf coll)` — `{(kf x) (vf x)}` map.
+- `(u/index-by kf coll)` / `(u/index-by kf vf coll)` — `{(kf x) (vf x)}` map (one value per key — last wins).
+- `(u/group-by kf coll)` / `(u/group-by kf vf coll)` — like `clojure.core/group-by`, but the 3-arity maps each grouped element through `vf` first: `{(kf x) [(vf x) …]}`. Replaces the hand-rolled `(reduce (fn [m x] (update m (kf x) (fnil conj []) (vf x))) {} xs)`.
 
 Strings (locale-safe):
 - `(u/lower-case-en s)`, `(u/upper-case-en s)` — DO use these instead of `clojure.string/lower-case`/`upper-case` whenever the result feeds into matching/comparison; the locale-default versions break on Turkish `i`.
@@ -390,9 +412,15 @@ The full `metabase.util.cljc` is ~1300 lines — when in doubt, grep it.
 
 Single-field reads (avoids fetching whole rows):
 - `(t2/select-one-fn :col Model :id 123)` — projection-friendly: when `f` is a keyword, only that column is fetched. Use instead of `(:col (t2/select-one [Model :col] …))`.
-- `(t2/select-fn-set f Model & conditions)` — set of `(f row)` values.
+- `(t2/select-fn-set f Model & conditions)` — set of `(f row)` values. Reach for this instead of hand-rolling `(into #{} (keep :col) (t2/select … {:where …}))` — the set already dedupes, so you don't need `:distinct` either.
 - `(t2/select-fn-vec f Model & conditions)` — vector of `(f row)` values.
 - `(t2/select-pks-set Model & conditions)` — set of PKs.
+
+Streaming reads (avoids realizing the whole result):
+- `(t2/reducible-select [Model :col …] & conditions)` — a reducible you fold with `reduce`/`transduce`/`into`. Use instead of `t2/select` when you immediately reduce the rows into something smaller (a map, a count, a set) — it streams instead of holding every row in memory.
+
+Conditions — prefer kv-args over a HoneySQL `{:where …}`:
+- `(t2/select Model :a 1, :b [:in xs], :c [:< n], :d [:not= nil])` — the trailing key/value pairs cover equality, `:in`, comparisons, and `:not=`. Reach for these before dropping to `{:where [:and …]}`; only use an explicit `:where` (or `:group-by`/`:order-by` map) when the kv form can't express it (e.g. `:or`, joins, aggregates).
 
 Existence / counts:
 - `(t2/exists? Model & conditions)` → boolean.
@@ -503,6 +531,10 @@ Other useful map ops:
 - **`(double (:k m 0.0))` on a hydrated DB column** — present-but-nil NPEs. Use `(double (or (:k m) 0.0))`.
 - **`defmulti` with every impl on one page** — extension story is a fiction. Use a private lookup map + a private fn.
 - **`(pos? (count xs))` to test a lazy `xs` for non-emptiness** — `count` forces the whole seq into memory. Use `(seq xs)`. (Rebuilding the seq — `(map f xs)` twice — is the only thing that recomputes; a bound seq caches.)
+- **Transducing/reducing the output of `t2/select`** — that already realized every row into a vector. Use `t2/reducible-select` as the source so the fold streams.
+- **Hand-rolled `(into #{} (keep :col) (t2/select [Model [[:distinct :col]]] {:where …}))`** — `(t2/select-fn-set :col Model …)` with kv-arg conditions; the set dedupes for you.
+- **Re-running a global/full-scan query per row, per field, or per table** — compute the instance-wide thing **once** at the top of the operation and thread it (the value, or a `{id v}` map) through the loop. A function that does an aggregate scan with no scoping argument is a smell when called inside `map`/`reduce`/`doseq`.
+- **Multi-key map literal jammed onto one line** — one key/value per line, values aligned (see "Map literals" above). Trivial 1–2 key maps may stay inline.
 - **Plain `with-redefs` on a `defn` var in a test** — not parallel-safe; the kondo hook will warn. Use `mt/with-dynamic-fn-redefs`.
 - **`(Thread/sleep N)` in an async test** — flake source #1. `(deref p timeout-ms ::timeout)` and assert `not= ::timeout`.
 - **Hand-rolled `(str/split host #":")` for origin/host comparison** — mis-handles IPv6. Use `mw.security/parse-url` (or `try-parse-url` for client-controlled input).
