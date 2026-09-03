@@ -798,41 +798,49 @@
 
 (deftest transform-visibility-is-superuser-only-test
   (testing "this pipeline dropped remove-unreadable-transforms and relies instead on the transform
-            search spec's `:visibility :superuser`, which the engine applies when it narrows a
-            context to its applicable models. That protection only holds if this pipeline hands the
-            engine the caller's real superuser status — so pin the narrowing: the engine is asked
-            for transforms when the caller is an admin, and never when they are not. If this goes
-            red, the removed post-filter is load-bearing again.
+            search spec's `:visibility :superuser`. Pin the narrowing: the engine is asked for
+            transforms when the caller is a superuser, and never when they are not. If this goes red,
+            the removed post-filter is load-bearing again.
             The visibility rule itself is covered by metabase.search.filter-test."
-    (mt/with-premium-features #{:transforms-basic}
-      ;; `api/*is-superuser?*` is bound explicitly rather than inferred from the test user:
-      ;; `visible-to?` reads exactly this var, and taking it straight from the ambient user made the
-      ;; test environment-dependent — it passed on H2 but on the MySQL/MariaDB EE shards the admin
-      ;; case saw #{"dashboard"}, so the positive control failed and the assertions proved nothing.
-      ;; Pinning the input is also what the assertion is actually about: that this pipeline
-      ;; propagates the caller's superuser status into the search context, whatever it is.
-      (let [models-for (fn [superuser?]
-                         (let [captured (atom nil)]
-                           (mt/with-test-user :crowberto
-                             (binding [api/*is-superuser?* superuser?]
-                               (mt/with-dynamic-fn-redefs [search-core/ranked-results
-                                                           (fn [context]
-                                                             (reset! captured (:models context))
-                                                             [])]
-                                 (search/search {:term-queries ["anything"]
-                                                 :entity-types ["transform" "dashboard"]}))))
-                           @captured))]
-        (testing "a superuser's search reaches the engine with transforms in scope"
-          (let [models (models-for true)]
-            (is (contains? models "transform"))
-            (is (contains? models "dashboard")
-                "sanity: the positive control really did reach the engine")))
-        (testing "a non-superuser's search never asks the engine for transforms"
-          (let [models (models-for false)]
-            (is (not (contains? models "transform")))
-            (is (contains? models "dashboard")
-                "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))
-
+    ;; Two environment inputs are pinned rather than inherited, because leaving either to the ambient
+    ;; environment is what made this test pass on H2 while failing on the MySQL/MariaDB EE shards —
+    ;; there the positive control failed, so every assertion here was proving nothing.
+    ;;
+    ;; 1. `transforms-enabled`: its getter falls back to a cloud-token check when unset. The in-place
+    ;;    engine drops transform for EVERYONE when `enabled-transform-source-types` is empty
+    ;;    ((empty? enabled-types) (disj "transform") in search/in_place/filter.clj) — a gate the appdb
+    ;;    path has no equivalent of.
+    ;; 2. The engine: appdb and in-place gate transforms by different code, and MySQL/MariaDB fall
+    ;;    back to in-place because the app DB cannot hold the search index. Running both here means
+    ;;    the shard's engine choice can no longer decide whether this test means anything.
+    (mt/with-temporary-setting-values [transforms-enabled true]
+      (mt/with-premium-features #{:transforms-basic}
+        (search.tu/with-appdb-search-and-legacy-search
+          ;; `api/*is-superuser?*` is bound explicitly rather than inferred from the test user, which
+          ;; resolves it through a SELECT on the shared user row. Both engines read exactly this var
+          ;; to gate transforms, and pinning it is what the assertion is about: that this pipeline
+          ;; propagates the caller's superuser status, not where that status came from.
+          (let [models-for (fn [superuser?]
+                             (let [captured (atom nil)]
+                               (mt/with-test-user :crowberto
+                                 (binding [api/*is-superuser?* superuser?]
+                                   (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                               (fn [context]
+                                                                 (reset! captured (:models context))
+                                                                 [])]
+                                     (search/search {:term-queries ["anything"]
+                                                     :entity-types ["transform" "dashboard"]}))))
+                               @captured))]
+            (testing "a superuser's search reaches the engine with transforms in scope"
+              (let [models (models-for true)]
+                (is (contains? models "transform"))
+                (is (contains? models "dashboard")
+                    "sanity: the positive control really did reach the engine")))
+            (testing "a non-superuser's search never asks the engine for transforms"
+              (let [models (models-for false)]
+                (is (not (contains? models "transform")))
+                (is (contains? models "dashboard")
+                    "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))))
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}
