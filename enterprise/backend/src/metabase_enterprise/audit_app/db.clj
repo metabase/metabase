@@ -4,8 +4,6 @@
   (:require
    [toucan2.core :as t2]))
 
-;;; ---------------------------------------------------- Databases ----------------------------------------------------
-
 (defn audit-database
   "The audit Database, or nil."
   []
@@ -46,8 +44,6 @@
   [database-id]
   (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" database-id "/%")]}))
 
-;;; ------------------------------------------------ Tables and Fields ------------------------------------------------
-
 (defn tables-of-database-named
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id table-names]
@@ -64,26 +60,27 @@
   (t2/exists? :model/Table :db_id database-id :schema "public" :active true))
 
 (defn table-ids-to-downcase
-  "The `:id` rows of the Metabase-managed Tables of the Database with `database-id` that have no lower-cased
-  counterpart yet."
+  "The IDs of the Metabase-managed Tables of the Database with `database-id` that have no lower-cased counterpart
+  yet."
   [database-id]
-  (t2/query {:select [:table.id]
-             :from   [[(t2/table-name :model/Table) :table]]
-             :where  [:and [:= :table.db_id database-id]
-                      ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
-                      [:not= :table.name "DATABASECHANGELOG"]
-                      [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
-                      [:not [:like :table.name "QRTZ_%"]]
-                      [:not [:exists ^:allow-subquery {:select [1]
-                                                       :from   [[(t2/table-name :model/Table) :self_table]]
-                                                       :where  [:and
-                                                                [:= :self_table.db_id :table.db_id]
-                                                                [:or
-                                                                 [:= :self_table.schema [:lower :table.schema]]
-                                                                 [:and
-                                                                  [:= :self_table.schema "public"]
-                                                                  [:= :table.schema nil]]]
-                                                                [:= :self_table.name [:lower :table.name]]]}]]]}))
+  (mapv :id
+        (t2/query {:select [:table.id]
+                   :from   [[(t2/table-name :model/Table) :table]]
+                   :where  [:and [:= :table.db_id database-id]
+                            ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
+                            [:not= :table.name "DATABASECHANGELOG"]
+                            [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
+                            [:not [:like :table.name "QRTZ_%"]]
+                            [:not [:exists ^:allow-subquery {:select [1]
+                                                             :from   [[(t2/table-name :model/Table) :self_table]]
+                                                             :where  [:and
+                                                                      [:= :self_table.db_id :table.db_id]
+                                                                      [:or
+                                                                       [:= :self_table.schema [:lower :table.schema]]
+                                                                       [:and
+                                                                        [:= :self_table.schema "public"]
+                                                                        [:= :table.schema nil]]]
+                                                                      [:= :self_table.name [:lower :table.name]]]}]]]})))
 
 (defn downcase-tables!
   "Move the Tables with `table-ids` to the `public` schema and lower-case their names."
@@ -91,28 +88,29 @@
   (t2/update! :model/Table :id [:in table-ids] {:schema "public" :name [:lower :name]}))
 
 (defn field-ids-to-downcase
-  "The `:id` rows of the Fields of the Metabase-managed Tables of the Database with `database-id` that have no
+  "The IDs of the Fields of the Metabase-managed Tables of the Database with `database-id` that have no
   lower-cased counterpart yet."
   [database-id]
-  (t2/query {:select     [:field.id]
-             :from       [[(t2/table-name :model/Field) :field]]
-             :inner-join [[(t2/table-name :model/Table) :table]
-                          [:= :table.id :field.table_id]]
-             :where      [:and [:= :table.db_id database-id]
-                          [:not= :table.name "DATABASECHANGELOG"]
-                          [:not [:like :table.name "QRTZ_%"]]
-                          [:not [:exists ^:allow-subquery {:select     [1]
-                                                           :from       [[(t2/table-name :model/Field) :self_field]]
-                                                           :inner-join [[(t2/table-name :model/Table) :self_table]
-                                                                        [:= :self_table.id :self_field.table_id]]
-                                                           :where      [:and
-                                                                        [:= :self_table.db_id :table.db_id]
-                                                                        [:or
-                                                                         [:= :self_table.schema [:lower :table.schema]]
-                                                                         [:and
-                                                                          [:= :self_table.schema "public"]
-                                                                          [:= :table.schema nil]]]
-                                                                        [:= :self_field.name [:lower :field.name]]]}]]]}))
+  (mapv :id
+        (t2/query {:select     [:field.id]
+                   :from       [[(t2/table-name :model/Field) :field]]
+                   :inner-join [[(t2/table-name :model/Table) :table]
+                                [:= :table.id :field.table_id]]
+                   :where      [:and [:= :table.db_id database-id]
+                                [:not= :table.name "DATABASECHANGELOG"]
+                                [:not [:like :table.name "QRTZ_%"]]
+                                [:not [:exists ^:allow-subquery {:select     [1]
+                                                                 :from       [[(t2/table-name :model/Field) :self_field]]
+                                                                 :inner-join [[(t2/table-name :model/Table) :self_table]
+                                                                              [:= :self_table.id :self_field.table_id]]
+                                                                 :where      [:and
+                                                                              [:= :self_table.db_id :table.db_id]
+                                                                              [:or
+                                                                               [:= :self_table.schema [:lower :table.schema]]
+                                                                               [:and
+                                                                                [:= :self_table.schema "public"]
+                                                                                [:= :table.schema nil]]]
+                                                                              [:= :self_field.name [:lower :field.name]]]}]]]})))
 
 (defn downcase-fields!
   "Lower-case the names of the Fields with `field-ids`."
@@ -155,8 +153,6 @@
   [table-id]
   (t2/select [:model/Field :id :name] :table_id table-id))
 
-;;; ------------------------------------------------------ Cards ------------------------------------------------------
-
 (defn card-result-metadata-reducible
   "Reducible raw `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`."
   [database-id]
@@ -178,8 +174,6 @@
   "Apply `changes` to the Card with `card-id`."
   [card-id changes]
   (t2/update! :model/Card card-id changes))
-
-;;; --------------------------------------------------- Other models ---------------------------------------------------
 
 (defn first-superuser
   "The `:id` and `:email` of the oldest superuser, or nil."

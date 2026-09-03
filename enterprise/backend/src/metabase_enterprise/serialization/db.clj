@@ -20,9 +20,9 @@
   (t2/select-pks-set model {:where [:in :id ids]}))
 
 (defn instance-exists?
-  "Whether an instance of `model` whose `pk-column` is `id` exists."
-  [model pk-column id]
-  (t2/exists? model pk-column id))
+  "Whether an instance of `model` whose primary key is `id` exists."
+  [model id]
+  (t2/exists? model (first (t2/primary-keys model)) id))
 
 (defn root-collections-for-user
   "The top-level non-analytics Collections that are not personal or belong to the User with `user-id`."

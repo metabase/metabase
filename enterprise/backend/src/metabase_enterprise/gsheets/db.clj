@@ -14,8 +14,8 @@
   []
   (t2/select-one :model/Database :is_attached_dwh true))
 
-(defn setting-row
-  "The Setting row with `setting-key`, or nil."
+(defn setting
+  "The Setting with `setting-key`, or nil."
   [setting-key]
   (t2/select-one :model/Setting :key setting-key))
 

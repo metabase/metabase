@@ -509,7 +509,7 @@
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
                 conditions (export-conditions spec)
-                local-count (apply remote-sync.db/count-matching model-key (into [] cat conditions))
+                local-count (remote-sync.db/count-where model-key conditions)
                 synced-count (remote-sync.db/rso-count-of-type model-type)]
             (and (pos? local-count)
                  (> local-count synced-count))))
@@ -1116,11 +1116,9 @@
           model-keys (fn [ids] (into #{} (map (fn [id] [model-type id])) ids))]
       (case export-scope
         :root-only
-        (model-keys (apply remote-sync.db/ids-matching model-key
-                           :collection_id nil
-                           (into [] cat conditions)))
+        (model-keys (remote-sync.db/ids-where model-key (assoc conditions :collection_id nil)))
         :all
-        (model-keys (apply remote-sync.db/ids-matching model-key (into [] cat conditions)))
+        (model-keys (remote-sync.db/ids-where model-key conditions))
         nil))))
 
 (defmethod query-export-roots :published-table [_] nil)
@@ -1133,9 +1131,7 @@
       :all
       (into #{}
             (map (fn [id] [model-type id]))
-            (if archived-key
-              (remote-sync.db/ids-matching model-key archived-key false)
-              (remote-sync.db/ids-matching model-key)))
+            (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
       nil)))
 
 (defmethod query-export-roots :default [_] nil)

@@ -88,6 +88,13 @@
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
 
+(deftest nonexistent-snippet-perms-test
+  (testing "checking perms for a nonexistent Snippet ID throws instead of silently allowing root-collection access"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-test-user :rasta
+        (is (thrown? Exception (mi/can-read? :model/NativeQuerySnippet Integer/MAX_VALUE)))
+        (is (thrown? Exception (mi/can-write? :model/NativeQuerySnippet Integer/MAX_VALUE)))))))
+
 ;;; ------------------------------------------- Remote Sync Read-Only Mode Tests -------------------------------------------
 
 (deftest remote-sync-read-only-write-perms-test

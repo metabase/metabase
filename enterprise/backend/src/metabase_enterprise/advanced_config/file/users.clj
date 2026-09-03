@@ -35,7 +35,7 @@
 
 (defn- select-user
   [email]
-  (advanced-config.db/user-columns-by-email (vec (cons :model/User user/admin-or-self-visible-columns)) email))
+  (advanced-config.db/user-columns-by-email user/admin-or-self-visible-columns email))
 
 (defn- init-from-config-file!
   [user]

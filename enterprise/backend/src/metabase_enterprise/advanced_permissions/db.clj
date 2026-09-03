@@ -1,6 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.db
   "Application database queries for the advanced-permissions module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))

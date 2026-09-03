@@ -4,8 +4,6 @@
   (:require
    [toucan2.core :as t2]))
 
-;;; ---------------------------------------------------- Sandboxes ----------------------------------------------------
-
 (defn sandbox
   "The Sandbox with `sandbox-id`, or nil."
   [sandbox-id]
@@ -75,8 +73,6 @@
   "Delete the Sandboxes with `sandbox-ids`."
   [sandbox-ids]
   (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
-
-;;; --------------------------------------------------- Other models ---------------------------------------------------
 
 (defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."

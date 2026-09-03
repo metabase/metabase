@@ -6,8 +6,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
-;;; ---------------------------------------------------- Run rows ----------------------------------------------------
-
 (defn run
   "The ReplacementRun with `run-id`, or nil."
   [run-id]
@@ -55,8 +53,6 @@
                :is_active nil
                :end_time  :%now
                :message   "Timed out by metabase"}))
-
-;;; ----------------------------------------------- Replaced entities -----------------------------------------------
 
 (defn cards-with-ids
   "The Cards with `ids`."

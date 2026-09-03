@@ -5,8 +5,6 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------ Tables and Fields ------------------------------------------------
-
 (defn table
   "The Table with `table-id`, or nil."
   [table-id]
@@ -64,8 +62,6 @@
   [field-ids]
   (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
 
-;;; ------------------------------------------------------ Undo ------------------------------------------------------
-
 (defn- scope-and-user-expr
   [scope user-id]
   [:and
@@ -118,10 +114,10 @@
   [batch-num scope]
   (t2/delete! :model/Undo :batch_num [:>= batch-num] :scope scope :undone true))
 
-(defn insert-undo-rows!
-  "Insert the Undo `rows`."
-  [rows]
-  (t2/insert! :model/Undo rows))
+(defn insert-undos!
+  "Insert the Undo `undos`."
+  [undos]
+  (t2/insert! :model/Undo undos))
 
 (defn mark-batch-undone!
   "Set the undone flag of the Undo batch `batch-num` to `undone?`."

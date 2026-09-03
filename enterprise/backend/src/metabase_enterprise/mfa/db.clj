@@ -41,12 +41,13 @@
 (defn- user-list-where
   "Where clause of the admin user lists: enrolled users (deliberately unfiltered beyond the enrollment itself, so
   deactivated users appear and an admin can still remove their enrollment) or unenrolled active personal users,
-  optionally narrowed by a name or email `search` the way the People page searches."
+  optionally narrowed by a name or email `search` the way the People page searches. Uses untable-qualified
+  `:%lower.x` columns since `.` in `:%lower.x` splits on the column name, not a table qualifier — fine here
+  because neither list query joins."
   [enrolled? search]
   (cond-> [:and (if enrolled? confirmed-totp-exists unenrolled-user-where)]
     (not (str/blank? search))
     (conj (let [pattern (h2x/like-substring search)]
-            ;; `:%lower.x` splits on `.` and so cannot be table-qualified — fine here because neither list query joins.
             [:or
              [:like :%lower.first_name pattern]
              [:like :%lower.last_name  pattern]

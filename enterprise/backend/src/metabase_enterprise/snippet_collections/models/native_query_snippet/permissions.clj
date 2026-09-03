@@ -24,7 +24,7 @@
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([_model id]
-   (can-read? {:collection_id (snippet-collections.db/snippet-collection-id id)})))
+   (can-read? (snippet-collections.db/snippet-with-collection-id id))))
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
@@ -36,7 +36,7 @@
     (has-parent-collection-perms? snippet :write)
     (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
   ([_model id]
-   (can-write? {:collection_id (snippet-collections.db/snippet-collection-id id)})))
+   (can-write? (snippet-collections.db/snippet-with-collection-id id))))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"

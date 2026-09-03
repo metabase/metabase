@@ -1,29 +1,27 @@
 (ns metabase-enterprise.remote-sync.db
   "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
-  and transactions."
+  additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase.collections.core :as collections]
    [toucan2.core :as t2]))
 
-;;; ------------------------------------------------ Spec-driven queries ------------------------------------------------
-;;; The sync specs describe their models as data (Toucan conditions and removal clauses), so these take the model
-;;; and the assembled conditions from the spec machinery.
+(defn eligible-children
+  "The instances of `model-key` whose `fk` column equals `model-id`, additionally matching `conditions` (a map of
+  column to value or Toucan 2 operator-vector value, or nil for none)."
+  [model-key fk model-id conditions]
+  (apply t2/select model-key fk model-id (mapcat identity conditions)))
 
-(defn instances-matching
-  "The instances of `model` matching the Toucan 2 `conditions`."
-  [model & conditions]
-  (apply t2/select model conditions))
+(defn ids-where
+  "The IDs of the instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
+  operator-vector value, or nil for every instance)."
+  [model-key conditions]
+  (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
-(defn ids-matching
-  "The IDs of the instances of `model` matching the Toucan 2 `conditions`."
-  [model & conditions]
-  (apply t2/select-fn-set :id model conditions))
-
-(defn count-matching
-  "The number of instances of `model` matching the Toucan 2 `conditions`."
-  [model & conditions]
-  (apply t2/count model conditions))
+(defn count-where
+  "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
+  operator-vector value, or nil for every instance)."
+  [model-key conditions]
+  (apply t2/count model-key (mapcat identity conditions)))
 
 (defn- removal-condition-exprs
   "Turns a spec's removal-conditions map into `:where` fragments: an `:entity_id` entry whose value is an
@@ -86,8 +84,6 @@
   (t2/select-fn-vec :name model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
                                      :limit limit}))
 
-;;; ------------------------------------------------- Synced entities -------------------------------------------------
-
 (defn instance
   "The instance of `model` with `id`, or nil."
   [model id]
@@ -123,7 +119,8 @@
 
 (defn- tracking-select-parts
   "The SELECT/FROM/JOIN joining a `model-key` instance (Field, Segment, or Measure) to its Table for sync tracking,
-  plus the `alias` its own table is joined under (so callers can address its `:id` and `:entity_id` columns)."
+  plus the `alias` its own table is joined under (so callers can address its `:id` and `:entity_id` columns).
+  Segment and Measure share alias \"s\" — both are looked up the same way by [[tracking-details-by-entity-ids]]."
   [model-key]
   (case model-key
     :model/Field   {:alias  "f"
@@ -134,7 +131,6 @@
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
                     :join   [[:metabase_table :t] [:= :s.table_id :t.id]]}
-    ;; Measure uses alias "s" too because the batch entity-id lookup below hardcodes it.
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
@@ -224,8 +220,6 @@
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
-
-;;; ---------------------------------------------------- Collections ----------------------------------------------------
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."
@@ -330,8 +324,6 @@
   (t2/query {:update (t2/table-name :model/Collection)
              :set    {:is_remote_synced false}
              :where  [:in :id collection-ids]}))
-
-;;; ------------------------------------------------ RemoteSyncObject ------------------------------------------------
 
 (defn- contents-rso-expr
   "Matches the RemoteSyncObject rows of `collection-ids` and of their contents."
@@ -529,8 +521,6 @@
   "Delete every RemoteSyncObject."
   []
   (t2/delete! :model/RemoteSyncObject))
-
-;;; ------------------------------------------------- RemoteSyncTask -------------------------------------------------
 
 (defn task
   "The RemoteSyncTask with `task-id`, or nil."

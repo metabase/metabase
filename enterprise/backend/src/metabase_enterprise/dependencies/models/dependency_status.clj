@@ -62,8 +62,7 @@
   Returns full entity objects. Prioritizes stale over outdated.
   Uses Java time (not DB time) so tests with [[mt/with-clock]] work correctly."
   [entity-type batch-size]
-  (dependencies.db/instances-for-dependency-calculation (deps.dependency-types/dependency-type->model entity-type)
-                                                        entity-type
+  (dependencies.db/instances-for-dependency-calculation entity-type
                                                         batch-size
                                                         models.dependency/current-dependency-analysis-version
                                                         (t/offset-date-time)))

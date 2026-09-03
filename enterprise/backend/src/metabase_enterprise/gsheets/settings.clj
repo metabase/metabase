@@ -123,6 +123,6 @@
             (or
              ;; This NEEDS to be up to date between instances on a cluster, so:
              ;; we are going around the settings cache:
-             (some-> (gsheets.db/setting-row "gsheets") :value json/decode+kw migrate-gsheet-value)
+             (some-> (gsheets.db/setting "gsheets") :value json/decode+kw migrate-gsheet-value)
              (u/prog1 gsheets.constants/not-connected
                (setting/set-value-of-type! :json :gsheets <>)))))

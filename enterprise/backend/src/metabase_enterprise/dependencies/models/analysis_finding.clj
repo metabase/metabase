@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -88,7 +87,4 @@
   or stale AnalysisFindings.
   Prioritizes stale entities (stale=true) over outdated version entities."
   [entity-type batch-size]
-  (dependencies.db/instances-for-analysis (deps.dependency-types/dependency-type->model entity-type)
-                                          entity-type
-                                          batch-size
-                                          *current-analysis-finding-version*))
+  (dependencies.db/instances-for-analysis entity-type batch-size *current-analysis-finding-version*))

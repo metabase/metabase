@@ -1,6 +1,6 @@
 (ns metabase-enterprise.advanced-config.db
   "Application database queries for the advanced-config module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
@@ -41,7 +41,7 @@
 (defn user-columns-by-email
   "The `columns` of the User with `email`, or nil."
   [columns email]
-  (t2/select-one columns :email email))
+  (t2/select-one (into [:model/User] columns) :email email))
 
 (defn insert-user!
   "Insert `user` and return the new instance."
@@ -66,7 +66,7 @@
 (defn insert-database!
   "Insert `database` and return the new instance."
   [database]
-  (first (t2/insert-returning-instances! :model/Database database)))
+  (t2/insert-returning-instance! :model/Database database))
 
 (defn update-database!
   "Apply `changes` to the Database with `database-id`."

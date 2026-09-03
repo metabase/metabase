@@ -1,6 +1,6 @@
 (ns metabase-enterprise.sso.db
   "Application database queries for the sso module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so no other namespace in the module runs a query itself."
   (:require
    [toucan2.core :as t2]))
 

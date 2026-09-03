@@ -6,8 +6,6 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-;;; ---------------------------------------------- Metabot permissions ----------------------------------------------
-
 (defn- default-group-ids
   "The IDs of the groups visible only in simple mode: All Users and, on tenant instances, All tenant users."
   []
@@ -48,7 +46,7 @@
   [group-id perm-type]
   (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
 
-(defn set-permission-value!
+(defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
   [group-id perm-type perm-value]
   (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
@@ -62,8 +60,6 @@
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
   [advanced?]
   (t2/delete! :model/MetabotPermissions {:where [:not (visible-groups-expr advanced?)]}))
-
-;;; ------------------------------------------------- Usage limits -------------------------------------------------
 
 (defn group-limits
   "Every MetabotGroupLimit, in group order."
@@ -127,8 +123,6 @@
   [tenant-id]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
 
-;;; --------------------------------------------------- Usage log ---------------------------------------------------
-
 (defn insert-usage-log!
   "Insert the AiUsageLog `row`."
   [row]
@@ -159,8 +153,6 @@
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
   [cutoff]
   (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
-
-;;; -------------------------------------------------- Other models --------------------------------------------------
 
 (defn transform
   "The Transform with `transform-id`, or nil."

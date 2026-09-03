@@ -215,7 +215,7 @@
 ;;; `entity_type`/`entity_id`/`sort_key` rows, then page and count that union. These private helpers build the
 ;;; per-entity-type SELECT and the pieces (joins, extra filters, sort expression) that make it up.
 
-(defn personal-root-collection-ids
+(defn- personal-root-collection-ids
   "The IDs of the personal Collections."
   []
   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
@@ -386,10 +386,14 @@
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
   `query-type` (`:unreferenced` or `:breaking`) items of `entity-type`, restricted to `card-types`, `search-text`,
   and `include-personal-collections?`, visible to the user described by `user-id`, `is-superuser?`, and
-  `is-data-analyst?`, with `sort-column`'s expression selected as `:sort_key`."
+  `is-data-analyst?`, with `sort-column`'s expression selected as `:sort_key`. Throws when `user-id` is missing,
+  since the visibility restriction must always be applied."
   [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst?] :as params}]
+  (when-not user-id
+    (throw (ex-info "dependency-item-select requires a user-id so the visibility restriction is always applied"
+                    {:query-type query-type :entity-type entity-type})))
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        visible (when user-id {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?})
+        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
         default-visible-restriction {:visible visible}
         ;; The item's own visibility check includes archived items when listing what's breaking other entities,
         ;; so dependencies broken by an archived source still surface; nothing else is affected by this.
@@ -415,7 +419,8 @@
   `entity-types`, `card-types` (applied only to `:card` entities), `search-text` (nil for none), and
   `include-personal-collections?`; sorted by `sort-column` (`:name`, `:location`, `:dependents-errors`, or
   `:dependents-with-errors`) in `sort-direction`, skipping `offset` and returning up to `limit`. Entities are
-  restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
+  restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`; throws
+  when `user-id` is missing."
   [{:keys [entity-types sort-direction offset limit] :as params}]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
@@ -427,7 +432,7 @@
 
 (defn dependency-item-count
   "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
-  and limit)."
+  and limit); throws when `user-id` is missing."
   [{:keys [entity-types] :as params}]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
@@ -468,19 +473,19 @@
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
 (defn instances
-  "The instances of `model` with `ids`."
-  [model ids]
-  (t2/select model :id [:in ids]))
+  "The instances of the entity type `entity-type` with `ids`."
+  [entity-type ids]
+  (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
 
 (defn instances-with-columns
-  "The `columns` of the instances of `model` with `ids`."
-  [model columns ids]
-  (t2/select (into [model] columns) :id [:in ids]))
+  "The `columns` of the instances of the entity type `entity-type` with `ids`."
+  [entity-type columns ids]
+  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id [:in ids]))
 
 (defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil."
-  [model columns id]
-  (t2/select-one (into [model] columns) :id id))
+  "The `columns` of the instance of the entity type `entity-type` with `id`, or nil."
+  [entity-type columns id]
+  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns) :id id))
 
 (defn card
   "The Card with `card-id`, or nil."
@@ -609,11 +614,11 @@
   (t2/exists? :model/DependencyStatus :terminal false :next_retry_at [:not= nil]))
 
 (defn instances-for-dependency-calculation
-  "Up to `batch-size` instances of `model` (of dependency type `entity-type`) without a DependencyStatus, or whose
-  status is stale or below `current-version`, is not terminal, and whose retry time has passed at `now`; stale
-  ones first."
-  [model entity-type batch-size current-version now]
-  (let [table-name     (t2/table-name model)
+  "Up to `batch-size` instances of the entity type `entity-type` without a DependencyStatus, or whose status is
+  stale or below `current-version`, is not terminal, and whose retry time has passed at `now`; stale ones first."
+  [entity-type batch-size current-version now]
+  (let [model          (deps.dependency-types/dependency-type->model entity-type)
+        table-name     (t2/table-name model)
         id-field       (keyword (name table-name) "id")
         table-wildcard (keyword (name table-name) "*")]
     (t2/select model
@@ -673,10 +678,11 @@
   (t2/count :model/AnalysisFinding :stale true))
 
 (defn instances-for-analysis
-  "Up to `batch-size` instances of `model` (of dependency type `entity-type`) whose AnalysisFinding is stale,
-  missing, or below `current-version`; stale ones first, then the longest unanalyzed."
-  [model entity-type batch-size current-version]
-  (let [table-name     (t2/table-name model)
+  "Up to `batch-size` instances of the entity type `entity-type` whose AnalysisFinding is stale, missing, or below
+  `current-version`; stale ones first, then the longest unanalyzed."
+  [entity-type batch-size current-version]
+  (let [model          (deps.dependency-types/dependency-type->model entity-type)
+        table-name     (t2/table-name model)
         id-field       (keyword (name table-name) "id")
         table-wildcard (keyword (name table-name) "*")]
     (t2/select model

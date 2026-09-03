@@ -28,8 +28,6 @@
   [api-key]
   (t2/insert-returning-instance! :model/ApiKey api-key))
 
-;;; ------------------------------------------------------- Users -------------------------------------------------------
-
 (defn- personal-user-expr
   [email]
   [:and [:= :type "personal"]
@@ -90,8 +88,6 @@
               :where (into [:and [:in :user_id user-ids]]
                            (map (fn [group-id] [:not= :pg.id group-id]))
                            excluded-group-ids)}))
-
-;;; ------------------------------------------------------ Groups ------------------------------------------------------
 
 (defn- manageable-group-expr
   [excluded-group-ids group-name]

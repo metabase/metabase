@@ -4,7 +4,9 @@
   (:require
    [toucan2.core :as t2]))
 
-(defn snippet-collection-id
-  "The `:collection_id` of the NativeQuerySnippet with `id`, or nil."
+(defn snippet-with-collection-id
+  "The `:collection_id` of the NativeQuerySnippet with `id`, or nil if no such NativeQuerySnippet exists. Unlike a
+  bare column lookup, this distinguishes a missing snippet (nil) from one filed under the root collection
+  (`{:collection_id nil}`)."
   [id]
-  (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id))
+  (t2/select-one [:model/NativeQuerySnippet :collection_id] :id id))

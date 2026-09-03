@@ -94,10 +94,10 @@
   ;; has different syntax on different appdbs
   (let [table-ids-to-update (audit-app.db/table-ids-to-downcase audit-db-id)]
     (when (seq table-ids-to-update)
-      (audit-app.db/downcase-tables! (map :id table-ids-to-update))))
+      (audit-app.db/downcase-tables! table-ids-to-update)))
   (let [field-ids-to-update (audit-app.db/field-ids-to-downcase audit-db-id)]
     (when (seq field-ids-to-update)
-      (audit-app.db/downcase-fields! (map :id field-ids-to-update))))
+      (audit-app.db/downcase-fields! field-ids-to-update)))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]

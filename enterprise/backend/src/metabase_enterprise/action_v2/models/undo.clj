@@ -82,7 +82,7 @@
   (let [scope (serialize-scope scope)]
     (t2/with-transaction [_conn]
       (let [next-batch-num (next-sequence! "undo_batch_num")]
-        (action-v2.db/insert-undo-rows!
+        (action-v2.db/insert-undos!
          (for [[table-id table-updates] table-id->row-pk->values
                [row-pk values] table-updates]
            (merge {:batch_num  next-batch-num

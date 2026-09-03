@@ -196,7 +196,7 @@
           filter (cascade-filter child-spec)]
       (if eligible?
         ;; Eligible branch: query actual entities and create RSOs for eligible children
-        (doseq [child (apply remote-sync.db/instances-matching (:model-key child-spec) (into [fk model-id] cat filter))]
+        (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed

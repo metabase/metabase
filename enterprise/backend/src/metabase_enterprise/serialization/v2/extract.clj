@@ -10,8 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +86,7 @@
       [model-name resolved-id]
       (throw (missing-target-error model-name "entity ID" id)))
     (let [model (keyword "model" model-name)]
-      (when-not (serialization.db/instance-exists? model (first (t2/primary-keys model)) id)
+      (when-not (serialization.db/instance-exists? model id)
         (throw (missing-target-error model-name "ID" id)))
       target)))
 

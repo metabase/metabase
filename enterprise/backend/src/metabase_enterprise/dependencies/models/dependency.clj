@@ -196,11 +196,10 @@
                     group-nodes)]
     (into {}
           (mapcat (fn [[node-type ids]]
-                    (let [model (deps.dependency-types/dependency-type->model node-type)]
-                      (mapv (fn [entity]
-                              [[node-type (:id entity)]
-                               (is-native-entity? node-type entity)])
-                            (dependencies.db/instances model ids)))))
+                    (mapv (fn [entity]
+                            [[node-type (:id entity)]
+                             (is-native-entity? node-type entity)])
+                          (dependencies.db/instances node-type ids))))
           grouped)))
 
 (defn transitive-mbql-dependents

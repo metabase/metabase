@@ -17,7 +17,8 @@
   (t2/update! :model/Database database-id {:details details}))
 
 (defn set-table-schemas!
-  "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet."
+  "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet, overwriting any
+  stale schema they already have."
   [database-id schema]
   (t2/query-one {:update (t2/table-name :model/Table)
                  :set    {:schema schema}

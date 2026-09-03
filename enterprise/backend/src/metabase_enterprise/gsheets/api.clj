@@ -256,7 +256,7 @@
   []
   (or (gsheets)
       (do (log/warn "CACHE MISS ON GSHEETS")
-          (some-> (gsheets.db/setting-row "gsheets")
+          (some-> (gsheets.db/setting "gsheets")
                   :value
                   json/decode+kw))))
 

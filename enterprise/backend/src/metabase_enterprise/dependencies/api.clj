@@ -288,9 +288,8 @@
   (into {}
         (mapcat (fn [[entity-type entity-ids]]
                   (when (seq entity-ids)
-                    (let [model (deps.dependency-types/dependency-type->model entity-type)
-                          fields (entity-select-fields entity-type)]
-                      (->> (dependencies.db/instances-with-columns model fields entity-ids)
+                    (let [fields (entity-select-fields entity-type)]
+                      (->> (dependencies.db/instances-with-columns entity-type fields entity-ids)
                            (hydrate-entities entity-type)
                            (map (fn [entity]
                                   [[entity-type (:id entity)] entity])))))))
@@ -595,9 +594,8 @@
         total (dependencies.db/dependency-item-count item-params)
         usages (node-usages downstream-graph all-ids)
         fetch-entity (fn [entity-type entity-id]
-                       (let [model (deps.dependency-types/dependency-type->model entity-type)
-                             fields (entity-select-fields entity-type)]
-                         (dependencies.db/instance-with-columns model fields entity-id)))
+                       (let [fields (entity-select-fields entity-type)]
+                         (dependencies.db/instance-with-columns entity-type fields entity-id)))
         data (into []
                    (keep (fn [[entity-type entity-id]]
                            (when-let [entity (fetch-entity entity-type entity-id)]

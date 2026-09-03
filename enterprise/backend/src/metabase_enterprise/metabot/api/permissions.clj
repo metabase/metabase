@@ -79,7 +79,7 @@
       (let [perm-type-kw  (keyword perm_type)
             perm-value-kw (keyword perm_value)]
         (if (metabot.db/permission-exists? group_id perm-type-kw)
-          (metabot.db/set-permission-value! group_id perm-type-kw perm-value-kw)
+          (metabot.db/update-permission-value! group_id perm-type-kw perm-value-kw)
           (metabot.db/insert-permission! {:group_id   group_id
                                           :perm_type  perm-type-kw
                                           :perm_value perm-value-kw})))))

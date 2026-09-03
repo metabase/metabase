@@ -36,20 +36,20 @@
   "The newest-first SupportAccessGrantLogs, optionally narrowed to `ticket-number` and `user-id` and excluding revoked
   grants unless `include-revoked?`, paged by `limit` and `offset`."
   [include-revoked? ticket-number user-id limit offset]
-  (t2/select :model/SupportAccessGrantLog
-             (cond-> {:limit    limit
-                      :offset   offset
-                      :order-by [[:created_at :desc]]}
-               (grants-where include-revoked? ticket-number user-id)
-               (assoc :where (grants-where include-revoked? ticket-number user-id)))))
+  (let [where (grants-where include-revoked? ticket-number user-id)]
+    (t2/select :model/SupportAccessGrantLog
+               (cond-> {:limit    limit
+                        :offset   offset
+                        :order-by [[:created_at :desc]]}
+                 where (assoc :where where)))))
 
 (defn grant-count
   "The number of SupportAccessGrantLogs [[grants-page]] would page through."
   [include-revoked? ticket-number user-id]
-  (t2/count :model/SupportAccessGrantLog
-            (cond-> {}
-              (grants-where include-revoked? ticket-number user-id)
-              (assoc :where (grants-where include-revoked? ticket-number user-id)))))
+  (let [where (grants-where include-revoked? ticket-number user-id)]
+    (t2/count :model/SupportAccessGrantLog
+              (cond-> {}
+                where (assoc :where where)))))
 
 (defn insert-grant!
   "Insert `grant` and return the new instance."
