@@ -13,8 +13,6 @@
    [clout.core :as clout]
    [java-time.api :as t]
    [malli.core :as mc]
-   [malli.transform :as mtx]
-   [malli.util :as mut]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -22,7 +20,6 @@
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -330,19 +327,8 @@
   [schema]
   (into #{} (map name) (some-> schema mc/explicit-keys)))
 
-(def ^:private lenient-decode-transformer
-  "The request decode pipeline minus its final strip step, so undeclared keys survive to be reported.
-  Mirrors the private `decode-transformer` in `metabase.api.macros`; if that gains a step, this drifts."
-  (mtx/transformer
-   (mtx/string-transformer)
-   (mtx/json-transformer)
-   (mtx/default-value-transformer)
-   {:name :api}
-   {:name :normalize}))
-
 (def ^:private endpoint-param-specs
-  "One spec per endpoint here, for [[matching-endpoint]] to select from. An endpoint that declares no body
-  schema gets `[:map]`, which closes to reject every body key.
+  "One spec per endpoint here, for [[matching-endpoint]] to select from.
 
   A `delay` because `ns-routes` reads namespace metadata the `defendpoint` forms below append to as they
   expand. `*ns*` is captured outside it: inside, it would resolve at deref time to whichever namespace is
@@ -354,8 +340,7 @@
                ;; the same two values `api.macros/ns-handler-map` compiles its own routes from
                :route  (clout/route-compile (get-in info [:form :route :path])
                                             (get-in info [:form :route :regexes] {}))
-               :query  (declared-query-param-names (get-in info [:form :params :query :schema]))
-               :body   (get-in info [:form :params :body :schema] [:map])})
+               :query  (declared-query-param-names (get-in info [:form :params :query :schema]))})
             (vals (api.macros/ns-routes nmspace))))))
 
 (defn- matching-endpoint
@@ -373,20 +358,6 @@
               spec))
           @endpoint-param-specs)))
 
-(defn- body-params
-  "`request`'s body param map, or nil when it carries none -- a non-map body is not a param map. Replicates
-  the private `api.macros/request-body`, and so can drift from it: form params first, keywordized because
-  `wrap-params` leaves them string-keyed, else the JSON body `mw.json/wrap-json-body` already keywordized.
-
-  `:multipart-params` is not covered. Multipart middleware is attached per endpoint by
-  `api.macros/middleware-forms` and runs inside the endpoint handler, after this one, so the parts are not
-  visible yet."
-  [request]
-  (let [body (or (some-> (not-empty (:form-params request)) (update-keys keyword))
-                 (:body request))]
-    (when (map? body)
-      body)))
-
 (defn- undeclared-query-params
   "`{param \"unexpected query parameter\"}` for each of `ks` that `declared` does not contain."
   [declared ks]
@@ -395,40 +366,17 @@
               (map (fn [k] [(keyword k) "unexpected query parameter"])))
         ks))
 
-(defn- undeclared-body-keys
-  "An error entry for every key of `body` that `schema` does not declare, nested keys included and reported
-  at their location -- `{:xs [{:a 1, :zz 2}]}` against `[:map [:xs [:sequential [:map [:a :int]]]]]` gives
-  `{:xs {:zz \"unexpected body parameter\"}}`, index segments dropped as `api.macros/invalid-params-errors`
-  drops them.
-
-  Only `:malli.core/extra-key` errors count; a wrong-typed value passes through for the endpoint's own
-  validation to reject in its normal shape. A map the schema leaves open (`{:closed false}`, e.g. `ms/Map`)
-  keeps its extra keys, since `mut/closed-schema` does not close it.
-
-  Two costs. The body is decoded here and again by the endpoint -- free today, since every endpoint here is
-  a GET binding no body. And `mut/closed-schema` runs on the first request, so a schema it cannot close is
-  a 500 there rather than a load error; no `try` around it, because skipping the check on failure is the
-  silent fail-open this middleware exists to prevent."
-  [schema body]
-  (let [decode  (mr/cached ::lenient-body-decoder schema
-                           #(mc/decoder schema lenient-decode-transformer))
-        explain (mr/cached ::extra-body-key-explainer schema
-                           #(mr/explainer (mut/closed-schema (mc/schema schema))))]
-    (reduce (fn [errors {:keys [in]}]
-              (assoc-in errors (vec (remove integer? in)) "unexpected body parameter"))
-            {}
-            (filter #(= :malli.core/extra-key (:type %))
-                    (:errors (explain (decode body)))))))
-
 (def ^:private ^{:arglists '([handler])} +reject-undeclared-params
-  "400s a request carrying a query or body param the endpoint it routes to does not declare. `defendpoint`
-  decodes before it validates and its decode transformer ends in `strip-extra-keys-transformer`, so an
-  undeclared key is deleted before any schema sees it -- `?sort-colum=asc` would otherwise answer 200 with
-  unsorted results, indistinguishable from a filter that matched nothing.
+  "400s a request carrying a query param the endpoint it routes to does not declare. `defendpoint` decodes
+  before it validates and its decode transformer ends in `strip-extra-keys-transformer`, so an undeclared
+  key is deleted before any schema sees it -- `?sort-colum=asc` would otherwise answer 200 with unsorted
+  results, indistinguishable from a filter that matched nothing.
 
-  A request no endpoint matches passes through for the router to 404. An endpoint declaring no schema for
-  a param type rejects every param of it; an empty body has no keys and passes. Body keys are checked at
-  every level, query params only at the top, which is all they have -- see [[undeclared-body-keys]].
+  A request no endpoint matches passes through for the router to 404. An endpoint declaring no query
+  schema rejects every query param.
+
+  Request bodies are not checked. Every endpoint here is a GET binding no body, so there is nothing to
+  check them against; a body-bearing endpoint added later would need that arm.
 
   `limit`/`offset` are in no allowlist. `handle-paging` removes them from `:query-params` only when at
   least one parses as a long, so a well-formed `?limit=5` never reaches here, while `?limit=abc` does and
@@ -436,11 +384,9 @@
   (routes.common/wrap-middleware-for-open-api-spec-generation
    (fn [handler]
      (fn [request respond raise]
-       (when-let [{:keys [query body]} (matching-endpoint request)]
-         (when-let [errors (not-empty
-                            (merge (undeclared-query-params query (keys (:query-params request)))
-                                   (some->> (body-params request) (undeclared-body-keys body))))]
-           (throw (ex-info "Invalid parameters" {:status-code 400, :errors errors}))))
+       (when-let [{:keys [query]} (matching-endpoint request)]
+         (when-let [errors (not-empty (undeclared-query-params query (keys (:query-params request))))]
+           (throw (ex-info "Invalid query parameters" {:status-code 400, :errors errors}))))
        (handler request respond raise)))))
 
 (api.macros/defendpoint :get "/stale"

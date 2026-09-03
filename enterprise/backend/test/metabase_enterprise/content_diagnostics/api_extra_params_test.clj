@@ -1,5 +1,5 @@
 (ns metabase-enterprise.content-diagnostics.api-extra-params-test
-  "Undeclared query and body params are rejected rather than silently stripped. `defendpoint` decodes
+  "Undeclared query params are rejected rather than silently stripped. `defendpoint` decodes
   before it validates, so without the namespace's `+reject-undeclared-params` middleware a typo like
   `sort-colum` is dropped and the caller gets a 200 with unsorted results. The audience gate lives in
   `api-test`; this suite only exercises param handling, always as an authorized caller."
@@ -7,10 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.api :as cd.api]
-   [metabase.test :as mt]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (java.io ByteArrayInputStream)))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,35 +96,8 @@
           (is (= {:limit "unexpected query parameter"}
                  (:errors (mt/user-http-request :crowberto :get 400 endpoint :limit "abc")))))))))
 
-(deftest ^:parallel undeclared-body-param-is-rejected-test
-  (testing "a body param 400s: no endpoint here declares a body, so its body allowlist is empty"
-    ;; These are GETs, but the stack parses a JSON body on any method, so the body arm is reachable
-    ;; end-to-end. `+auth` and the audience gate both run outside this check, so a 400 here means the
-    ;; caller got past them.
-    (mt/with-premium-features #{:content-diagnostics}
-      (doseq [endpoint endpoints]
-        (testing endpoint
-          (is (= {:whoops "unexpected body parameter"}
-                 (:errors (mt/user-http-request :crowberto :get 400 endpoint {:whoops 1}))))))))
-  (testing "query and body params are reported together"
-    (mt/with-premium-features #{:content-diagnostics}
-      (is (= {:oops   "unexpected query parameter"
-              :whoops "unexpected body parameter"}
-             (:errors (mt/user-http-request :crowberto :get 400 "ee/content-diagnostics/stale"
-                                            {:whoops 1} :oops "1"))))))
-  (testing "a key undeclared in both places is reported once, as the body's"
-    ;; `merge` puts the body errors last, so they win. Pinned because nothing else states which source
-    ;; arbitrates, and a later reordering would drop the query occurrence silently.
-    (mt/with-premium-features #{:content-diagnostics}
-      (is (= {:whoops "unexpected body parameter"}
-             (:errors (mt/user-http-request :crowberto :get 400 "ee/content-diagnostics/stale"
-                                            {:whoops 1} :whoops "1"))))))
-  (testing "an empty body carries no params and is accepted"
-    (mt/with-premium-features #{:content-diagnostics}
-      (is (some? (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/stale" {}))))))
-
 ;;; ---------------------------------------------- unit coverage ----------------------------------------
-;;; The route matcher and the body extractor, exercised directly against synthetic requests.
+;;; The route matcher, exercised directly against synthetic requests.
 
 (deftest ^:parallel declared-query-param-names-test
   (testing "the top-level declared keys, as strings"
@@ -142,9 +112,7 @@
             :let                      [path (str "/" (last (str/split endpoint #"/")))]]
       (testing path
         (let [spec (#'cd.api/matching-endpoint {:request-method :get, :path-info path})]
-          (is (contains? (:query spec) (name param)))
-          (testing "no endpoint here declares a body, so its body schema is the closed-empty fallback"
-            (is (= [:map] (:body spec))))))))
+          (is (contains? (:query spec) (name param)))))))
   (testing "`:compojure/path` wins over `:path-info` when set, as in `api.macros/find-matching-handler`"
     (is (contains? (:query (#'cd.api/matching-endpoint {:request-method :get
                                                         :path-info      "/stale"
@@ -155,21 +123,6 @@
   (testing "the method has to match too"
     (is (nil? (#'cd.api/matching-endpoint {:request-method :post, :path-info "/stale"})))))
 
-(deftest ^:parallel body-params-test
-  (testing "a parsed JSON body map is already keywordized"
-    (is (= {:a 1, :b 2} (#'cd.api/body-params {:body {:a 1, :b 2}}))))
-  (testing "form params win over the body and are keywordized, mirroring `api.macros/request-body`"
-    (is (= {:form 1} (#'cd.api/body-params {:form-params {"form" 1}, :body {:json 2}}))))
-  (testing "empty form params fall through to the body"
-    (is (= {:json 2} (#'cd.api/body-params {:form-params {}, :body {:json 2}}))))
-  (testing "an unparsed InputStream body is not a param map"
-    (with-open [body (ByteArrayInputStream. (.getBytes "{\"a\":1}" "UTF-8"))]
-      (is (nil? (#'cd.api/body-params {:body body})))))
-  (testing "a JSON array body is not a param map"
-    (is (nil? (#'cd.api/body-params {:body [{:a 1}]}))))
-  (testing "no body at all"
-    (is (nil? (#'cd.api/body-params {})))))
-
 (deftest ^:parallel undeclared-query-params-test
   (testing "the query param keys `declared` does not contain"
     (is (= {:c "unexpected query parameter"}
@@ -177,46 +130,3 @@
   (testing "nothing undeclared"
     (is (= {} (#'cd.api/undeclared-query-params #{"a"} ["a"])))
     (is (= {} (#'cd.api/undeclared-query-params #{"a"} nil)))))
-
-;;; ------------------------------------------ nested body checking -------------------------------------
-;;; No endpoint in this namespace declares a body schema, so every case below is unit-level, against
-;;; synthetic schemas. The end-to-end body coverage above only exercises the no-declared-body-schema
-;;; fallback (`[:map]`, which rejects every key).
-
-(def ^:private nested-schema
-  [:map
-   [:a :int]
-   [:xs [:sequential [:map
-                      [:b :int]
-                      [:deep [:map [:c :int]]]]]]])
-
-(deftest ^:parallel undeclared-body-keys-test
-  (testing "a top-level undeclared key"
-    (is (= {:zz "unexpected body parameter"}
-           (#'cd.api/undeclared-body-keys nested-schema {:a 1, :zz 2, :xs []}))))
-  (testing "an undeclared key inside a sequence element is reported at its path, index dropped"
-    (is (= {:xs {:zz "unexpected body parameter"}}
-           (#'cd.api/undeclared-body-keys nested-schema {:a 1, :xs [{:b 1, :zz 2, :deep {:c 1}}]}))))
-  (testing "an undeclared key several levels down"
-    (is (= {:xs {:deep {:zz "unexpected body parameter"}}}
-           (#'cd.api/undeclared-body-keys nested-schema
-                                          {:a 1, :xs [{:b 1, :deep {:c 1, :zz 2}}]}))))
-  (testing "a fully declared body has no errors"
-    (is (= {} (#'cd.api/undeclared-body-keys nested-schema
-                                             {:a 1, :xs [{:b 1, :deep {:c 1}}]}))))
-  (testing "a wrong-typed declared value is left to the endpoint's own validation, not rejected here"
-    ;; Only `:malli.core/extra-key` errors are kept; everything else passes through so `defendpoint`
-    ;; produces its normal 400 in its normal shape.
-    (is (= {} (#'cd.api/undeclared-body-keys nested-schema {:a "not-an-int", :xs []}))))
-  (testing "an explicitly open sub-map passes an arbitrary bag of keys through"
-    ;; `mut/closed-schema` leaves `{:closed false}` maps alone, which is how `ms/Map` opts out.
-    (is (= {} (#'cd.api/undeclared-body-keys
-               [:map [:a :int] [:settings ms/Map]]
-               {:a 1, :settings {:anything 1, :at-all 2}}))))
-  (testing "no declared body schema means every key is undeclared, and an empty body is fine"
-    (is (= {:zz "unexpected body parameter"} (#'cd.api/undeclared-body-keys [:map] {:zz 1})))
-    (is (= {} (#'cd.api/undeclared-body-keys [:map] {}))))
-  (testing "a declared key survives the lenient decode rather than being reported as undeclared"
-    ;; The decode step keeps undeclared keys but must still recognize declared ones; a string "1" for an
-    ;; `:int` is decoded, not flagged.
-    (is (= {} (#'cd.api/undeclared-body-keys [:map [:a :int]] {:a "1"})))))
