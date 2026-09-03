@@ -12,7 +12,11 @@ import type {
   ConversationDetail,
   ConversationFeedback,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import { createMockUser } from "metabase-types/api/mocks";
+import type {
+  GroupListQuery,
+  ListUserMembershipsResponse,
+} from "metabase-types/api";
+import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
@@ -106,10 +110,14 @@ function createConversation(
   };
 }
 
-function setup(conversation: ConversationDetail) {
+function setup(
+  conversation: ConversationDetail,
+  groups: GroupListQuery[] = [],
+  memberships: ListUserMembershipsResponse = {},
+) {
   setupMetabotConversationEndpoint(conversation);
-  setupGroupsEndpoint([]);
-  setupPermissionMembershipEndpoint({});
+  setupGroupsEndpoint(groups);
+  setupPermissionMembershipEndpoint(memberships);
   return renderWithProviders(
     <Route
       path="/conversations/:convoId"
@@ -401,5 +409,36 @@ describe("ConversationDetailPage", () => {
     expect(
       screen.queryByTestId("tool-call-details-sidebar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("links each of the user's groups to the usage page filtered by that group", async () => {
+    const group = createMockGroup({
+      id: 42,
+      name: "Analysts",
+      magic_group_type: null,
+    });
+    setup(
+      {
+        ...createConversation([userMessage("u1", null, "hi")]),
+        user: {
+          id: 7,
+          first_name: "Ada",
+          last_name: "Lovelace",
+          tenant_id: null,
+        },
+      },
+      [group],
+      { 7: [{ user_id: 7, group_id: group.id, membership_id: 1 }] },
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Analysts/ }),
+    );
+
+    expect(screen.getByText("View a group's usage")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Analysts/ })).toHaveAttribute(
+      "href",
+      `${Urls.monitorAiAuditingUsage()}?group=42`,
+    );
   });
 });
