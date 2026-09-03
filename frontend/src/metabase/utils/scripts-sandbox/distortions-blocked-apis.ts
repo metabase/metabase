@@ -112,6 +112,14 @@ for (const eventType of GLOBAL_BLOCKED_EVENT_TYPES) {
   const handler = `on${eventType}`;
   block(setter(Document.prototype, handler), `Document.set ${handler}`);
   block(setter(window, handler), `window.set ${handler}`);
+  block(
+    setter(HTMLBodyElement.prototype, handler),
+    `HTMLBodyElement.set ${handler}`,
+  );
+  block(
+    setter(HTMLFrameSetElement.prototype, handler),
+    `HTMLFrameSetElement.set ${handler}`,
+  );
 }
 
 // Referrer — URL of the page that linked here, which can leak internal

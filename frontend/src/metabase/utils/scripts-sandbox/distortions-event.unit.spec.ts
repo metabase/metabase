@@ -1,10 +1,9 @@
 import { makeSandboxDistortionCallback } from "./distortions";
 import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
 
-type WindowHandlerSetter = Extract<keyof Window, `on${string}`>;
-type DocumentHandlerSetter = Extract<keyof Document, `on${string}`>;
+type HandlerSetterOf<T> = Extract<keyof T, `on${string}`>;
 
-const WINDOW_HANDLER_SETTERS: readonly WindowHandlerSetter[] = [
+const WINDOW_HANDLER_SETTERS: readonly HandlerSetterOf<Window>[] = [
   "onkeydown",
   "onkeyup",
   "onkeypress",
@@ -16,7 +15,7 @@ const WINDOW_HANDLER_SETTERS: readonly WindowHandlerSetter[] = [
   "onstorage",
 ];
 
-const DOCUMENT_HANDLER_SETTERS: readonly DocumentHandlerSetter[] = [
+const DOCUMENT_HANDLER_SETTERS: readonly HandlerSetterOf<Document>[] = [
   "onkeydown",
   "onkeyup",
   "onkeypress",
@@ -27,14 +26,48 @@ const DOCUMENT_HANDLER_SETTERS: readonly DocumentHandlerSetter[] = [
   "oncut",
 ];
 
-function getSetterOf(target: object, key: string) {
+const BODY_HANDLER_SETTERS: readonly HandlerSetterOf<HTMLBodyElement>[] = [
+  "onstorage",
+];
+
+const FRAMESET_HANDLER_SETTERS: readonly HandlerSetterOf<HTMLFrameSetElement>[] =
+  ["onstorage"];
+
+const SETTER_TARGETS = [
+  {
+    name: "window instance",
+    target: window,
+    receiver: window,
+    setters: WINDOW_HANDLER_SETTERS,
+  },
+  {
+    name: "Document.prototype",
+    target: Document.prototype,
+    receiver: document,
+    setters: DOCUMENT_HANDLER_SETTERS,
+  },
+  {
+    name: "HTMLBodyElement.prototype",
+    target: HTMLBodyElement.prototype,
+    receiver: document.createElement("body"),
+    setters: BODY_HANDLER_SETTERS,
+  },
+  {
+    name: "HTMLFrameSetElement.prototype",
+    target: HTMLFrameSetElement.prototype,
+    receiver: document.createElement("frameset"),
+    setters: FRAMESET_HANDLER_SETTERS,
+  },
+];
+
+function setterOf(target: object, key: string) {
   return Object.getOwnPropertyDescriptor(target, key)?.set;
 }
 
-function getBlockedHandlerSettersOn(target: object) {
+function blockedHandlerSettersOn(target: object) {
   return [...GLOBAL_BLOCKED_EVENT_TYPES]
     .map((type) => `on${type}`)
-    .filter((handler) => getSetterOf(target, handler))
+    .filter((handler) => setterOf(target, handler))
     .sort();
 }
 
@@ -50,7 +83,7 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
 
   it("distorts the Document.cookie setter (reference boundary)", () => {
     const distort = makeSandboxDistortionCallback("plugin 1");
-    const cookieSetter = getSetterOf(Document.prototype, "cookie");
+    const cookieSetter = setterOf(Document.prototype, "cookie");
     if (!cookieSetter) {
       throw new Error("expected a Document.cookie setter");
     }
@@ -58,50 +91,29 @@ describe("scripts-sandbox global event-handler setter distortions", () => {
     expect(distort(cookieSetter)).not.toBe(cookieSetter);
   });
 
-  it("lists every blocked event type that has a handler setter on the window instance", () => {
-    expect([...WINDOW_HANDLER_SETTERS].sort()).toEqual(
-      getBlockedHandlerSettersOn(window),
-    );
-  });
+  describe.each(SETTER_TARGETS)(
+    "$name",
+    ({ name, target, receiver, setters }) => {
+      it("lists every blocked event type that has a handler setter here", () => {
+        expect([...setters].sort()).toEqual(blockedHandlerSettersOn(target));
+      });
 
-  it("lists every blocked event type that has a handler setter on Document.prototype", () => {
-    expect([...DOCUMENT_HANDLER_SETTERS].sort()).toEqual(
-      getBlockedHandlerSettersOn(Document.prototype),
-    );
-  });
+      it.each(setters)(
+        "replaces the %s setter with a distortion that refuses the assignment",
+        (handler) => {
+          const distort = makeSandboxDistortionCallback("plugin 1");
+          const handlerSetter = setterOf(target, handler);
+          if (!handlerSetter) {
+            throw new Error(`expected a ${handler} setter on ${name}`);
+          }
 
-  it.each(WINDOW_HANDLER_SETTERS)(
-    "replaces the window.%s instance setter with a distortion that refuses the assignment",
-    (handler) => {
-      const distort = makeSandboxDistortionCallback("plugin 1");
-      const handlerSetter = getSetterOf(window, handler);
-      if (!handlerSetter) {
-        throw new Error(`expected a ${handler} setter on the window instance`);
-      }
+          const distorted = distort(handlerSetter);
+          expect(distorted).not.toBe(handlerSetter);
 
-      const distorted = distort(handlerSetter);
-      expect(distorted).not.toBe(handlerSetter);
-
-      expect(() => distorted.call(window, () => {})).toThrow(
-        /blocked API call/,
-      );
-    },
-  );
-
-  it.each(DOCUMENT_HANDLER_SETTERS)(
-    "replaces the Document.prototype.%s setter with a distortion that refuses the assignment",
-    (handler) => {
-      const distort = makeSandboxDistortionCallback("plugin 1");
-      const handlerSetter = getSetterOf(Document.prototype, handler);
-      if (!handlerSetter) {
-        throw new Error(`expected a ${handler} setter on Document.prototype`);
-      }
-
-      const distorted = distort(handlerSetter);
-      expect(distorted).not.toBe(handlerSetter);
-
-      expect(() => distorted.call(document, () => {})).toThrow(
-        /blocked API call/,
+          expect(() => distorted.call(receiver, () => {})).toThrow(
+            /blocked API call/,
+          );
+        },
       );
     },
   );
