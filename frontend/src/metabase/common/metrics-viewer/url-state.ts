@@ -1,3 +1,5 @@
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
+import * as Urls from "metabase/urls";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import type {
   MathOperator,
@@ -272,4 +274,37 @@ export function decodeState(hash: string): SerializedMetricsViewerPageState {
     console.warn("Failed to decode metrics viewer URL state:", err);
     return emptyState();
   }
+}
+
+export interface ExploreMetricDimensionOptions {
+  metricId: number;
+  dimensionId: string;
+  dimensionType: DimensionType;
+  displayType: MetricsViewerDisplayType;
+  label?: string;
+}
+
+export function exploreMetricDimensionUrl({
+  metricId,
+  dimensionId,
+  dimensionType,
+  displayType,
+  label,
+}: ExploreMetricDimensionOptions): string {
+  const state: SerializedMetricsViewerPageState = {
+    formulaEntities: [{ type: "metric", id: metricId }],
+    dimensionBreakouts: [
+      {
+        id: dimensionId,
+        type: dimensionType,
+        label: label ?? null,
+        display: displayType,
+        definitions: [{ slotIndex: 0, dimensionId }],
+      },
+    ],
+    selectedDimensionBreakoutId: dimensionId,
+  };
+
+  const hash = encodeState(state);
+  return hash ? Urls.metricsViewer(hash) : Urls.exploreMetric(metricId);
 }
