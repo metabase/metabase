@@ -27,6 +27,7 @@ import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
+import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
 import { getVisualizationComponent } from "metabase/visualizations";
@@ -65,15 +66,16 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Card,
   CardId,
   Dashboard,
   DashboardCard,
   IconName,
   RawSeries,
   Series,
+  SeriesCard,
   SingleSeries,
   TimelineEvent,
+  VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
@@ -110,11 +112,18 @@ type ForwardedRefProps = {
 };
 
 type OnChangeCardAndRunOpts = {
-  nextCard: Card;
-  previousCard: Card;
+  nextCard: SeriesCard;
+  previousCard: SeriesCard;
   objectId?: number;
   drillName?: string;
 };
+
+type VisualizationRawSeries = (
+  | SingleSeries
+  | {
+      card: SeriesCard | VirtualCard;
+    }
+)[];
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
@@ -154,12 +163,7 @@ type VisualizationOwnProps = {
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   editSummary?: () => void;
-  rawSeries?: (
-    | SingleSeries
-    | {
-        card: Card;
-      }
-  )[];
+  rawSeries?: VisualizationRawSeries;
   visualizerRawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
@@ -433,7 +437,7 @@ class Visualization extends PureComponent<
 
   private static getQuestionForCard(
     metadata: Metadata | undefined,
-    card: Card | undefined,
+    card: SeriesCard | undefined,
   ) {
     return !!card && !!metadata ? new Question(card, metadata) : undefined;
   }
@@ -448,12 +452,7 @@ class Visualization extends PureComponent<
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
-    rawSeries: (
-      | SingleSeries
-      | {
-          card: Card;
-        }
-    )[] = [],
+    rawSeries: VisualizationRawSeries = [],
     visualizerRawSeries: RawSeries = [],
     isRawTable = false,
     getExtraDataForClick: (
@@ -475,6 +474,9 @@ class Visualization extends PureComponent<
       rawSeries,
       visualizerRawSeries,
     );
+    if (!isQuestionCard(card)) {
+      return [];
+    }
     const question = Visualization.getQuestionForCard(metadata, card);
     const modeInstance = Visualization.getMode(mode, question);
 
@@ -551,12 +553,7 @@ class Visualization extends PureComponent<
   private static findCardById(
     cardId?: CardId | null,
     dashcard?: DashboardCard,
-    rawSeries: (
-      | SingleSeries
-      | {
-          card: Card;
-        }
-    )[] = [],
+    rawSeries: VisualizationRawSeries = [],
     visualizerRawSeries: RawSeries = [],
   ) {
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
@@ -625,17 +622,21 @@ class Visualization extends PureComponent<
     const { dashcard, rawSeries, visualizerRawSeries, onChangeCardAndRun } =
       this.props;
 
-    onChangeCardAndRun?.({
-      previousCard: Visualization.findCardById(
-        nextCard?.id,
-        dashcard,
-        rawSeries,
-        visualizerRawSeries,
-      ),
-      nextCard,
-      objectId,
-      drillName,
-    });
+    const previousCard = Visualization.findCardById(
+      nextCard?.id,
+      dashcard,
+      rawSeries,
+      visualizerRawSeries,
+    );
+
+    if (isQuestionCard(previousCard)) {
+      onChangeCardAndRun?.({
+        previousCard,
+        nextCard,
+        objectId,
+        drillName,
+      });
+    }
   };
 
   onRender = ({ warnings = [] }: { warnings?: string[] } = {}) => {
@@ -698,6 +699,7 @@ class Visualization extends PureComponent<
       isPreviewing,
       isRawTable,
       isQueryBuilder,
+      isStandaloneQuestion,
       isRunning,
       isSettings,
       isShowingDetailsOnlyColumns,
@@ -851,11 +853,17 @@ class Visualization extends PureComponent<
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isLoadingHeaderEnabled = !(
+      visualization && visualization.noLoadingHeader
+    );
 
     const hasHeader =
       (showTitle &&
         hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
+        ((loading && isLoadingHeaderEnabled) ||
+          error ||
+          noResults ||
+          isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
 
     // We can't navigate a user to a particular card from a visualizer viz,
@@ -976,6 +984,7 @@ class Visualization extends PureComponent<
                       isPreviewing={isPreviewing}
                       isRawTable={isRawTable}
                       isQueryBuilder={!!isQueryBuilder}
+                      isStandaloneQuestion={!!isStandaloneQuestion}
                       isSettings={!!isSettings}
                       isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                       scrollToLastColumn={scrollToLastColumn}

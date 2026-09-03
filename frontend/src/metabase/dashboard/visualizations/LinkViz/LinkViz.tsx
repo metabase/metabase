@@ -8,8 +8,7 @@ import { fillParametersInText } from "metabase/dashboard/visualizations/paramete
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { useSelector } from "metabase/redux";
 import { Popover, TextInput } from "metabase/ui";
-import { modelToUrl } from "metabase/urls";
-import { getUrlTarget } from "metabase/visualizations/lib/open-url";
+import { getUrlTarget, modelToUrl } from "metabase/urls";
 import type {
   Dashboard,
   LinkCardSettings,

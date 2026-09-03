@@ -28,7 +28,7 @@ export function QueryDefinition({
   const filters = Lib.filters(query, STAGE_INDEX);
 
   return (
-    <Flex className={className} gap="md" wrap="wrap">
+    <Flex className={className} gap="lg" wrap="wrap">
       {filters.map((filter, filterIndex) => (
         <FilterPill key={filterIndex}>
           {Lib.displayInfo(query, STAGE_INDEX, filter).displayName}

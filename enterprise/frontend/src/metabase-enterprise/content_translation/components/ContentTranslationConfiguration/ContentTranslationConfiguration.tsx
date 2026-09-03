@@ -187,7 +187,7 @@ export const ContentTranslationConfiguration = () => {
             </Text>
           )}
           {!!uploadErrorMessages.length && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text role="alert" c="feedback-negative">
                 {ngettext(
                   msgid`We couldn't upload the file due to this error:`,
@@ -361,7 +361,7 @@ const UploadForm = ({
           </Group>
         }
         activeLabel={
-          <Group gap="md" role="alert">
+          <Group gap="lg" role="alert">
             <Loader size="xs" opacity=".8" />
             <Text c="inherit">{t`Uploading dictionary…`}</Text>
           </Group>

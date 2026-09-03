@@ -7,8 +7,8 @@ import {
 } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
+import { metadataHydrationMiddleware } from "metabase/metadata-store";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
-import { metadataHydrationMiddleware } from "metabase/redux/entities/hydration";
 import type { State } from "metabase/redux/store";
 
 // Each app passes its own reducer map, so per-slice types can't be known here.

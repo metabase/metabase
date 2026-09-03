@@ -114,7 +114,7 @@ export const TimelineEventChip = ({
       offset={POPOVER_OFFSET}
       openDelay={50}
       closeDelay={POPOVER_CLOSE_DELAY_MS}
-      shadow="md"
+      shadow="sm"
       classNames={{ dropdown: S.bridgeDropdown }}
     >
       <HoverCard.Target>
