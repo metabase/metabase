@@ -8,6 +8,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    ;; Registers the :transform projection the write echo projects through.
    [metabase.mcp.v2.tools.content :as tools.content]
@@ -291,6 +293,111 @@
               (is (= "mcp_from_handle" (-> result :target :name)))
               (finally
                 (t2/delete! :model/Transform :id (:id result)))))))))
+
+;;; ----------------------------------------------- Query handles --------------------------------------------------
+
+(defn- mint-handle!
+  "Mint a query_handle for `serialized-query` straight into the handle store, the way an execute
+   tool does — reproducing the pMBQL → JSON → string-valued map round-trip the save path has to
+   survive. Deferred-tests ledger: when the `execute_sql`/`execute_query` tools land, the
+   `#_`-disabled tests in this namespace cover the same ground through the whole tool path; these
+   stay as the store-level pin, so the handle branch is never left uncovered."
+  [session-id serialized-query]
+  (v2.queries/mint-query-handle! session-id (mt/user->id :crowberto)
+                                 (v2.queries/encode-serialized-query serialized-query)))
+
+(defn- venues-handle-query
+  "The serialized MBQL 5 an execute_query handle carries — `:database` included, which the execute
+   pipeline guarantees and `resolve-target` reads to derive the target database."
+  []
+  {:lib/type "mbql/query"
+   :database (mt/id)
+   :stages   [{:lib/type "mbql.stage/mbql" :source-table (mt/id :venues)}]})
+
+(defn- native-handle-query
+  "The serialized native query an `execute_sql` handle carries."
+  []
+  (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1 AS n")))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest transform-write-create-from-query-handle-test
+  (testing "GHY-4240: a query_handle is the other query source — the agent runs a query, then saves
+            exactly what ran, without restating the query"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/Transform :model/McpQueryHandle]
+          (let [session-id (str (random-uuid))
+                handle     (mint-handle! session-id (venues-handle-query))
+                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                    {:method       "create"
+                                                     :name         "From a handle"
+                                                     :query_handle handle
+                                                     :target       {:name "mcp_from_handle" :schema (venues-schema)}}
+                                                    session-id))
+                stored     (t2/select-one :model/Transform :id (:id result))]
+            (is (= "mbql" (:source_type result)))
+            (testing "the handle's query is what got stored, normalized to what a transform holds"
+              (is (= (mt/id :venues) (-> stored :source :query :stages first :source-table))))
+            (testing "and the target follows the handle's database"
+              (is (= {:type "table" :schema (venues-schema) :name "mcp_from_handle" :database (mt/id)}
+                     (:target result))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest transform-write-native-query-handle-test
+  (testing "GHY-4240: a native handle — the shape execute_sql mints — saves as a native transform, and
+            deliberately does NOT re-demand the agent:sql:run scope: minting the handle already passed
+            that gate and the kill switch, so re-checking here would make execute_sql's own handles
+            unsaveable. Contrast transform-write-native-definition-gates-test, where an inline native
+            `definition` has passed no gate yet and so must pass both."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/Transform :model/McpQueryHandle]
+          (let [session-id (str (random-uuid))
+                handle     (mint-handle! session-id (native-handle-query))
+                result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                    {:method       "create"
+                                                     :name         "From a SQL handle"
+                                                     :query_handle handle
+                                                     :target       {:name "mcp_from_sql_handle" :schema (venues-schema)}}
+                                                    session-id))]
+            (is (= "native" (:source_type result)))
+            (is (= :native (t2/select-one-fn :source_type :model/Transform :id (:id result))))
+            (testing "and the SQL that ran is the SQL that got stored"
+              (is (= "SELECT 1 AS n"
+                     (-> (t2/select-one-fn :source :model/Transform :id (:id result))
+                         :query :stages first :native))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest transform-write-update-from-query-handle-test
+  (testing "GHY-4240: a query_handle works on update too, so an agent can re-run a query and save the
+            corrected version over an existing transform — which here also retypes it mbql -> native"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-model-cleanup [:model/McpQueryHandle]
+          (mt/with-temp [:model/Transform {id :id} (temp-transform-defaults "mcp_handle_swap")]
+            (let [session-id (str (random-uuid))
+                  handle     (mint-handle! session-id (native-handle-query))
+                  result     (tool-result (call-tool! :crowberto write-scopes "transform_write"
+                                                      {:method "update" :id id :query_handle handle}
+                                                      session-id))]
+              (is (= "native" (:source_type result)))
+              (is (= :native (t2/select-one-fn :source_type :model/Transform :id id)))
+              (testing "and the fields the call didn't name are untouched"
+                (is (= "mcp_handle_swap" (-> result :target :name)))
+                (is (= (venues-schema) (-> result :target :schema)))))))))))
+
+(deftest transform-write-unknown-query-handle-test
+  (testing "GHY-4240: a handle the caller doesn't own (or that has expired) is a teaching error naming
+            the recovery, not the sanitized internal error a raw lookup miss would produce"
+    (with-transforms
+      (with-target-db-support
+        (let [error (tool-error (write! {:method       "create"
+                                         :name         "no such handle"
+                                         :query_handle (str (random-uuid))
+                                         :target       {:name "mcp_no_handle" :schema (venues-schema)}}))]
+          (is (re-find #"Query handle not found" error))
+          (is (re-find #"run the query again" error))
+          (is (zero? (t2/count :model/Transform :name "no such handle"))))))))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
