@@ -36,7 +36,7 @@ export function AddDevCustomVizForm() {
       <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         {({ values }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <FormTextInput
                 name="devBundleUrl"
                 label={t`Dev server URL`}

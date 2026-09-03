@@ -100,8 +100,8 @@ export function MetricDimensionGrid({
   }
 
   return (
-    <Flex direction="column" gap="lg" flex={1}>
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+    <Flex direction="column" gap="xl" flex={1}>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
         {cards.map((card) => (
           <MetricDimensionCard
             key={card.dimensionId}
@@ -171,7 +171,7 @@ function MetricDimensionCard({
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
       <Stack h="100%">
-        <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
+        <Text fw="bold" size="md" truncate="end" px="lg" pt="sm">
           {t`By ${dimension.label}`}
         </Text>
         <div className={S.chartArea}>
@@ -218,7 +218,7 @@ function buildSingleSeries(
 
 function DimensionGridSkeleton({ count }: { count: number }) {
   return (
-    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
       {Array.from({ length: count }, (_, index) => (
         <Paper key={index} withBorder shadow="none" className={S.skeletonCard}>
           <ChartSkeleton display="bar" />

@@ -5,6 +5,8 @@ import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
 import {
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -16,7 +18,6 @@ import {
   FormErrorMessage,
   FormProvider,
   FormRadioGroup,
-  FormSection,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
@@ -25,7 +26,7 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/settings";
-import { Box, Divider, Flex, Group, Radio, Stack } from "metabase/ui";
+import { Box, Flex, Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 import { useUpdateLdapMutation } from "../api/ldap";
@@ -92,9 +93,13 @@ export const SettingsLdapForm = () => {
       >
         {({ dirty }) => (
           <Form>
-            <SettingsSection>
-              <FormSection title={"Server settings"}>
-                <Stack gap="md">
+            <Stack gap="xl">
+              <SettingsSection
+                title={t`Server settings`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-host"
                     label={t`LDAP host`}
@@ -119,7 +124,7 @@ export const SettingsLdapForm = () => {
                     )}
                     description={null}
                   >
-                    <Group mt={"xs"}>
+                    <Group mt={"xxs"}>
                       <Radio value="none" label={t`None`} />
                       <Radio
                         value="ssl"
@@ -146,10 +151,13 @@ export const SettingsLdapForm = () => {
                     )}
                   />
                 </Stack>
-              </FormSection>
-              <Divider />
-              <FormSection title={"User schema"}>
-                <Stack gap="md">
+              </SettingsSection>
+              <SettingsSection
+                title={t`User schema`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-user-base"
                     placeholder="ou=users,dc=example,dc=org"
@@ -168,10 +176,13 @@ export const SettingsLdapForm = () => {
                     )}
                   />
                 </Stack>
-              </FormSection>
-              <Divider />
-              <FormSection title={"Attributes"}>
-                <Stack gap="md">
+              </SettingsSection>
+              <SettingsSection
+                title={t`Attributes`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
+                <Stack gap="lg">
                   <FormTextInput
                     name="ldap-attribute-email"
                     label={t`Email attribute`}
@@ -197,10 +208,13 @@ export const SettingsLdapForm = () => {
                     )}
                   />
                 </Stack>
-              </FormSection>
-              <Divider />
-              <FormSection title={"Group schema"}>
-                <Stack gap="md">
+              </SettingsSection>
+              <SettingsSection
+                title={t`Group mapping`}
+                titleProps={SETTINGS_CARD_TITLE_PROPS}
+                stackProps={SETTINGS_CARD_STACK_PROPS}
+              >
+                <Stack gap="lg">
                   <GroupMappingsWidget
                     isFormik
                     setting={{ key: "ldap-group-sync" }}
@@ -221,7 +235,7 @@ export const SettingsLdapForm = () => {
                   />
                   <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
                 </Stack>
-              </FormSection>
+              </SettingsSection>
               <Flex justify="end" gap="1rem">
                 <Box>
                   <FormErrorMessage />
@@ -232,7 +246,7 @@ export const SettingsLdapForm = () => {
                   variant="filled"
                 />
               </Flex>
-            </SettingsSection>
+            </Stack>
           </Form>
         )}
       </FormProvider>

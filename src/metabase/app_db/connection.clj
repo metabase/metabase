@@ -24,6 +24,12 @@
 
 (p/defrecord+ ApplicationDB [^clojure.lang.Keyword db-type
                              ^javax.sql.DataSource data-source
+                             ;; Dedicated (smaller) connection pool for the Quartz JDBC job store, so job-store
+                             ;; operations can't be starved by application code saturating the main pool. When the
+                             ;; ApplicationDB is created without pooling (`:create-pool?` false, e.g. for test DBs)
+                             ;; this is just `data-source` itself. Access it via [[quartz-data-source]], which
+                             ;; respects `lock` below.
+                             ^javax.sql.DataSource quartz-data-source
                              ;; used by [[metabase.app-db.setup-db!]] and [[metabase.app-db.db-is-set-up?]] to record whether
                              ;; the usual setup steps have been performed (i.e., running Liquibase and Clojure-land data
                              ;; migrations).
@@ -72,9 +78,11 @@
 
   Options:
 
-  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database if
-    `data-source` is not already a pooled data source. Default: `false`. You should only do this for application DBs
-    that are expected to be long-lived; for test DBs that will be destroyed at the end of the test it's hardly worth it."
+  * `:create-pool?` -- whether to create a c3p0 connection pool data source for this application database (plus a
+    dedicated Quartz pool -- see [[metabase.app-db.connection-pool-setup/quartz-connection-pool-data-source]]).
+    Default: `false`. Requires an unpooled `data-source`: passing an already-pooled one throws. You should only do
+    this for application DBs that are expected to be long-lived; for test DBs that will be destroyed at the end of
+    the test it's hardly worth it."
   ^ApplicationDB [db-type data-source & {:keys [create-pool?], :or {create-pool? false}}]
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
   {:pre [(#{:h2 :mysql :postgres} db-type)
@@ -84,6 +92,9 @@
     :data-source (if create-pool?
                    (connection-pool-setup/connection-pool-data-source db-type data-source)
                    data-source)
+    :quartz-data-source (if create-pool?
+                          (connection-pool-setup/quartz-connection-pool-data-source db-type data-source)
+                          data-source)
     :status      (atom initial-db-status)
     ;; for memoization purposes. See [[unique-identifier]] for more information.
     :id          (swap! application-db-counter inc)
@@ -115,6 +126,30 @@
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
   (.data-source *application-db*))
+
+(defn quartz-data-source
+  "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the current [[*application-db*]]'s
+  dedicated Quartz connection pool (or its regular data source if it was created without pooling).
+
+  Like connections acquired through the [[ApplicationDB]] itself, acquiring a connection through this takes the
+  application DB's read lock, so the testing API can block new connections while restoring the app DB."
+  ^javax.sql.DataSource []
+  (let [^ApplicationDB app-db            *application-db*
+        ^ReentrantReadWriteLock lock     (.lock app-db)
+        ^javax.sql.DataSource data-source (.quartz-data-source app-db)]
+    (reify javax.sql.DataSource
+      (getConnection [_]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source)
+          (finally
+            (.. lock readLock unlock))))
+      (getConnection [_ user password]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source user password)
+          (finally
+            (.. lock readLock unlock)))))))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -153,6 +188,57 @@
 ;; Once set it stays set. Clearing it correctly would mean tracking the depth that failed: a sibling scope rolling
 ;; back to its own, later savepoint does not discard an earlier scope's writes.
 (def ^:private ^:dynamic *rollback-required* nil)
+
+;; Open savepoints in creation order, each with whether its scope has finished. Shared by the tree, including threads
+;; that inherit its bindings. Releasing a savepoint destroys every later one, so a scope may only release once no
+;; later scope is still running; a sibling thread's early release would otherwise leave that scope nothing to release
+;; or roll back to, and on postgres the failed release aborts the transaction.
+(def ^:private ^:dynamic *open-savepoints* nil)
+
+(defn- set-savepoint! [^java.sql.Connection connection]
+  (let [open *open-savepoints*]
+    (locking open
+      (let [savepoint (.setSavepoint connection)]
+        (swap! open conj {:savepoint savepoint, :finished? false})
+        savepoint))))
+
+(defn- rollback-to-savepoint!
+  "Roll back to `savepoint` and forget it and everything after it, which no longer exists."
+  [^java.sql.Connection connection savepoint]
+  (let [open *open-savepoints*]
+    (locking open
+      (try
+        (.rollback connection savepoint)
+        (finally
+          (swap! open (fn [entries]
+                        (into [] (take-while #(not (identical? (:savepoint %) savepoint)) entries)))))))))
+
+(defn- release-finished-savepoints!
+  "Mark `savepoint` finished and release the earliest savepoint with no unfinished successor, which frees the later
+  finished ones with it."
+  [^java.sql.Connection connection savepoint]
+  (let [open *open-savepoints*]
+    (locking open
+      (let [entries (swap! open (fn [entries]
+                                  (mapv #(cond-> % (identical? (:savepoint %) savepoint) (assoc :finished? true))
+                                        entries)))
+            first-releasable (loop [i (count entries)]
+                               (cond
+                                 (zero? i)                               0
+                                 (not (:finished? (nth entries (dec i)))) i
+                                 :else                                   (recur (dec i))))]
+        (when (< first-releasable (count entries))
+          ;; copy rather than keep the subvec view of the discarded entries
+          (reset! open (into [] (subvec entries 0 first-releasable)))
+          (try
+            (.releaseSavepoint connection (:savepoint (nth entries first-releasable)))
+            (catch Throwable e
+              ;; Either the savepoint is already gone -- DDL commits implicitly on H2 and MySQL -- or, on postgres,
+              ;; the transaction is already aborted because a scope swallowed a SQL error. Nothing to undo either
+              ;; way, but the aborted case is worth surfacing: postgres silently turns the outermost commit into a
+              ;; rollback, so this is the only signal that the tree's writes and after-commit callbacks are about to
+              ;; diverge.
+              (log/warnf "Failed to release savepoint: %s" (ex-message e)))))))))
 
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
@@ -233,7 +319,7 @@
                                    (log/warnf "Failed to roll back transaction: %s"
                                               (ex-message rollback-e)))))]
     (letfn [(thunk []
-              (let [savepoint      (.setSavepoint connection)
+              (let [savepoint      (set-savepoint! connection)
                     before-count   (some-> *before-commit-callbacks* deref count)
                     after-count    (some-> *after-commit-callbacks* deref count)
                     state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
@@ -245,7 +331,7 @@
                           (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
                           ;; Restore the state even if rollback throws. An outer scope must not see state from this one.
                           (try
-                            (.rollback connection savepoint)
+                            (rollback-to-savepoint! connection savepoint)
                             (catch Throwable rollback-e
                               ;; The writes remain pending. No enclosing scope may commit them.
                               ;; A vanished savepoint still counts as a rollback failure. DDL committing implicitly,
@@ -331,7 +417,13 @@
                           (rollback-after-error! txn-e)))
 
                       :else
-                      [result false])))))]
+                      (do
+                        ;; The nested scope succeeded, so release its savepoint rather than leave it open until the
+                        ;; outermost commit destroys it. On postgres each open savepoint is a live subtransaction that
+                        ;; every row-visibility check walks, so a long pipeline of nested transactions slows to a
+                        ;; crawl. Releasing is not committing: an enclosing rollback still undoes the released work.
+                        (release-finished-savepoints! connection savepoint)
+                        [result false]))))))]
       ;; Avoid toggling autocommit when the connection is already in a transaction.
       (if (.getAutoCommit connection)
         (try
@@ -420,6 +512,7 @@
                     *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
                     *transaction-state*       (if outermost? (atom {}) *transaction-state*)
                     *rollback-required*       (if outermost? (atom false) *rollback-required*)
+                    *open-savepoints*         (if outermost? (atom []) *open-savepoints*)
                     *after-commit-callbacks*  callbacks]
             (do-transaction connection rollback-only f))]
       (when (and outermost? committed?)

@@ -257,10 +257,10 @@ const TreemapChartComponent = ({
       h="100%"
       display="flex"
       style={{ flexDirection: "column" }}
-      gap={isCompact ? "md" : 28}
+      gap={isCompact ? "lg" : 28}
     >
       {breadcrumb && formatters && (
-        <Box px={isDashboard ? "md" : "xl"} pt={isDashboard ? 12 : 24}>
+        <Box px={isDashboard ? "lg" : "xxl"} pt={isDashboard ? 12 : 24}>
           <TreemapBreadcrumb
             groupLabel={breadcrumb.groupLabel}
             value={formatters.value(breadcrumb.value)}

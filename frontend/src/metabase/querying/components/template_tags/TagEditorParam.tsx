@@ -406,7 +406,7 @@ class TagEditorParamInner extends Component<
         {parametersAreUserVisible && parameter && isTemporalUnit && (
           <>
             <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
-            <Box mb="xl">
+            <Box mb="xxl">
               <TemporalUnitSettings
                 parameter={parameter}
                 onChangeTemporalUnits={(newTemporalUnits) => {
