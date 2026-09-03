@@ -42,11 +42,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.visit("/embedding/security");
 
       mainPage().within(() => {
-        // The hub's banner passes an onClick, so UpsellCta renders a button
-        // rather than an anchor -- the upgrade URL is no longer in the DOM.
-        cy.findByRole("button", { name: "Try Metabase Pro" }).should(
-          "be.visible",
-        );
+        cy.findByRole("link", { name: "Try Metabase Pro" })
+          .should("have.attr", "href")
+          .and(
+            "eq",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
+          );
       });
     });
 
