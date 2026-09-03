@@ -240,7 +240,12 @@ describe("remote_sync utils", () => {
             collection: { id: 7, name: "Finance" },
             remedy: {
               type: "collection",
-              collection: { id: 7, name: "Finance", personal: false },
+              collection: {
+                id: 7,
+                name: "Finance",
+                type: null,
+                personal: false,
+              },
             },
             used_by: [],
           },
@@ -264,7 +269,12 @@ describe("remote_sync utils", () => {
             // Same top-level remedy as the card above, reached from a different collection.
             remedy: {
               type: "collection",
-              collection: { id: 7, name: "Finance", personal: false },
+              collection: {
+                id: 7,
+                name: "Finance",
+                type: null,
+                personal: false,
+              },
             },
             used_by: [],
           },
@@ -282,11 +292,11 @@ describe("remote_sync utils", () => {
     describe("getRequiredCollections", () => {
       it("flattens remedies across every failure and dedupes by id", () => {
         expect(getRequiredCollections(FAILURES)).toEqual([
-          { id: 7, name: "Finance", personal: false },
+          { id: 7, name: "Finance", type: null, personal: false },
         ]);
       });
 
-      it("ignores library and non-actionable remedies", () => {
+      it("ignores a Library-less remedy, and non-actionable ones", () => {
         const libraryOnly = [
           {
             collection: { id: 14, name: "Marketing" },
@@ -316,7 +326,12 @@ describe("remote_sync utils", () => {
                 name: "Draft",
                 remedy: {
                   type: "collection" as const,
-                  collection: { id: 5, name: "Nick's stuff", personal: true },
+                  collection: {
+                    id: 5,
+                    name: "Nick's stuff",
+                    type: null,
+                    personal: true,
+                  },
                 },
                 used_by: [],
               },
@@ -325,7 +340,7 @@ describe("remote_sync utils", () => {
         ];
 
         expect(getRequiredCollections(personal)).toEqual([
-          { id: 5, name: "Nick's stuff", personal: true },
+          { id: 5, name: "Nick's stuff", type: null, personal: true },
         ]);
       });
     });
@@ -336,7 +351,7 @@ describe("remote_sync utils", () => {
       name: "Seats over time",
       remedy: {
         type: "collection",
-        collection: { id: 7, name: "Finance", personal: false },
+        collection: { id: 7, name: "Finance", type: null, personal: false },
       },
       used_by: [],
     };
@@ -346,7 +361,7 @@ describe("remote_sync utils", () => {
       name: "Draft",
       remedy: {
         type: "collection",
-        collection: { id: 5, name: "Personal", personal: true },
+        collection: { id: 5, name: "Personal", type: null, personal: true },
       },
       used_by: [],
     };
@@ -368,10 +383,27 @@ describe("remote_sync utils", () => {
       remedy: { type: "none" },
       used_by: [],
     };
-    const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
+    // The Library is an ordinary collection, so a snippet points at it like any other remedy.
+    const LIBRARY_DEPENDENCY: RemoteSyncIneligibleDependency = {
       model: "snippet",
       id: 4,
       name: "active_users",
+      remedy: {
+        type: "collection",
+        collection: {
+          id: 2,
+          name: "Library",
+          type: "library",
+          personal: false,
+        },
+      },
+      used_by: [],
+    };
+    // ...unless the instance has no Library yet, leaving nothing to name.
+    const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
+      model: "snippet",
+      id: 5,
+      name: "monthly_cutoff",
       remedy: { type: "library" },
       used_by: [],
     };
@@ -389,15 +421,24 @@ describe("remote_sync utils", () => {
         );
       });
 
-      it("is library when a dependency needs the Library", () => {
+      it("is library-missing when a snippet has no Library to point at", () => {
         expect(
           getBlockedReason(
             failureWith(SYNCABLE_DEPENDENCY, SNIPPET_DEPENDENCY),
           ),
-        ).toBe("library");
+        ).toBe("library-missing");
       });
 
-      it("ranks root content above the Library, since it can't be synced at all", () => {
+      // Once a Library exists the snippet carries an ordinary collection remedy, like anything else.
+      it("is linked-collections when a snippet points at an existing Library", () => {
+        expect(
+          getBlockedReason(
+            failureWith(SYNCABLE_DEPENDENCY, LIBRARY_DEPENDENCY),
+          ),
+        ).toBe("linked-collections");
+      });
+
+      it("ranks root content above a missing Library, since it can't be synced at all", () => {
         expect(
           getBlockedReason(failureWith(SNIPPET_DEPENDENCY, ROOT_DEPENDENCY)),
         ).toBe("unsyncable-content");
@@ -421,7 +462,13 @@ describe("remote_sync utils", () => {
         expect(
           getRequiredCollectionRows(failureWith(SYNCABLE_DEPENDENCY)),
         ).toEqual([
-          { id: 7, name: "Finance", personal: false, syncable: true },
+          {
+            id: 7,
+            name: "Finance",
+            type: null,
+            personal: false,
+            syncable: true,
+          },
         ]);
       });
 
@@ -429,7 +476,28 @@ describe("remote_sync utils", () => {
         expect(
           getRequiredCollectionRows(failureWith(PERSONAL_DEPENDENCY)),
         ).toEqual([
-          { id: 5, name: "Personal", personal: true, syncable: false },
+          {
+            id: 5,
+            name: "Personal",
+            type: null,
+            personal: true,
+            syncable: false,
+          },
+        ]);
+      });
+
+      // The type is what lets the row show the Library's own icon rather than a plain folder.
+      it("makes the Library actionable, carrying its collection type", () => {
+        expect(
+          getRequiredCollectionRows(failureWith(LIBRARY_DEPENDENCY)),
+        ).toEqual([
+          {
+            id: 2,
+            name: "Library",
+            type: "library",
+            personal: false,
+            syncable: true,
+          },
         ]);
       });
 
@@ -437,7 +505,13 @@ describe("remote_sync utils", () => {
         expect(
           getRequiredCollectionRows(failureWith(UNRESOLVED_DEPENDENCY)),
         ).toEqual([
-          { id: 9, name: "Dangling", personal: false, syncable: false },
+          {
+            id: 9,
+            name: "Dangling",
+            type: null,
+            personal: false,
+            syncable: false,
+          },
         ]);
       });
 
@@ -447,6 +521,7 @@ describe("remote_sync utils", () => {
             {
               id: "root",
               name: "Our analytics",
+              type: null,
               personal: false,
               syncable: false,
             },
@@ -460,17 +535,24 @@ describe("remote_sync utils", () => {
             failureWith(SYNCABLE_DEPENDENCY, ROOT_DEPENDENCY),
           ),
         ).toEqual([
-          { id: 7, name: "Finance", personal: false, syncable: true },
+          {
+            id: 7,
+            name: "Finance",
+            type: null,
+            personal: false,
+            syncable: true,
+          },
           {
             id: "root",
             name: "Our analytics",
+            type: null,
             personal: false,
             syncable: false,
           },
         ]);
       });
 
-      it("is empty when only the Library is implicated", () => {
+      it("is empty when the instance has no Library to switch on", () => {
         expect(
           getRequiredCollectionRows(failureWith(SNIPPET_DEPENDENCY)),
         ).toEqual([]);

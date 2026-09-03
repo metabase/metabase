@@ -20,6 +20,8 @@ const SOURCE_COLLECTION_NAME = "Dependency Source";
 const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
+const SNIPPET_NAME = "active_users";
+const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
 
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
@@ -691,6 +693,42 @@ describe("Remote Sync", () => {
           H.modal().should("not.exist");
         });
       });
+
+      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+        createSnippetDependencyFixture().then(({ blocked }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal().then((interception) => {
+            const body: RemoteSyncDependencyErrorResponse =
+              interception.response?.body;
+            const [failure] = body.errors.collections;
+
+            expect(failure.collection.id).to.eq(blocked.id);
+            expect(failure.dependencies).to.have.length(1);
+            expect(failure.dependencies[0].model).to.eq("snippet");
+            expect(failure.dependencies[0].name).to.eq(SNIPPET_NAME);
+            expect(failure.dependencies[0].remedy).to.deep.equal({
+              type: "library",
+            });
+          });
+
+          H.modal().within(() => {
+            cy.findByText("Couldn’t sync selected collection").should(
+              "be.visible",
+            );
+            cy.findByText(/sync with the Library/).should("be.visible");
+            cy.findByRole("switch").should("not.exist");
+
+            cy.button("Close").click();
+          });
+
+          H.modal().should("not.exist");
+        });
+      });
     });
   });
 
@@ -1172,6 +1210,30 @@ const createDependentQuestion = (
     query: { "source-table": `card__${sourceQuestionId}` },
     collection_id: collectionId,
   });
+
+const createSnippetDependencyFixture = () =>
+  H.createSnippet({ name: SNIPPET_NAME, content: "1 = 1" }).then(
+    ({ body: snippet }) =>
+      createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+        H.createNativeQuestion({
+          name: SNIPPET_QUESTION_NAME,
+          collection_id: blocked.id,
+          native: {
+            query: `select 1 where {{snippet: ${SNIPPET_NAME}}}`,
+            "template-tags": {
+              [`snippet: ${SNIPPET_NAME}`]: {
+                id: "6c1b2f34-5d6e-4a7b-8c9d-0e1f2a3b4c5d",
+                type: "snippet",
+                name: `snippet: ${SNIPPET_NAME}`,
+                "display-name": `Snippet: ${SNIPPET_NAME}`,
+                "snippet-id": snippet.id,
+                "snippet-name": SNIPPET_NAME,
+              },
+            },
+          },
+        }).then(() => ({ snippet, blocked })),
+      ),
+  );
 
 // Two collections that each depend on a question in a third, so syncing either alone is refused.
 const createDependencyFixture = () =>

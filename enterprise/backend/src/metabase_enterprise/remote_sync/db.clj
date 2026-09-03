@@ -234,9 +234,9 @@
   (t2/select :model/Collection :id [:in collection-ids]))
 
 (defn collections-by-id
-  "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
+  "A map of ID to the ID, name, type, location, and personal owner of the Collections with `collection-ids`."
   [collection-ids]
-  (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in collection-ids]))
+  (t2/select-pk->fn identity [:model/Collection :id :name :type :location :personal_owner_id] :id [:in collection-ids]))
 
 (defn collection-sync-states
   "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."

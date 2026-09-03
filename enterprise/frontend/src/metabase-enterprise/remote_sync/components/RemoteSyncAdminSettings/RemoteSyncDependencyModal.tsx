@@ -3,6 +3,7 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   Accordion,
   Anchor,
@@ -17,7 +18,6 @@ import {
   Text,
 } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
-import { getIconForVisualizationType } from "metabase/viz-core";
 import type {
   CollectionSyncPreferences,
   RemoteSyncDependencyFailure,
@@ -124,7 +124,19 @@ const RequiredCollectionRowItem = ({
   syncedCollections,
   onToggle,
 }: RequiredCollectionRowItemProps) => {
+  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
   const syncableId = isSyncableRow(row) ? row.id : null;
+  const isSynced = syncableId != null && !!syncedCollections[syncableId];
+  // Same inputs CollectionSyncRow gives it, so a row reads the same here as in the settings list.
+  // `location` because a remedy is always top-level, which is where a personal one earns its icon.
+  const icon = getIcon({
+    model: "collection",
+    type: row.type,
+    is_personal: row.personal,
+    location: "/",
+    is_remote_synced: isSynced,
+    is_library_root: row.type === "library",
+  });
 
   return (
     <Accordion.Item value={String(row.id)} mt="sm">
@@ -138,10 +150,7 @@ const RequiredCollectionRowItem = ({
       >
         <Accordion.Control>
           <Group gap="sm">
-            <Icon
-              name={row.personal ? "person" : "collection"}
-              c="text-secondary"
-            />
+            <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
             <Text fw="medium">{row.name}</Text>
           </Group>
         </Accordion.Control>
@@ -151,7 +160,7 @@ const RequiredCollectionRowItem = ({
           <Group gap="sm" wrap="nowrap">
             <Switch
               size="sm"
-              checked={!!syncedCollections[syncableId]}
+              checked={isSynced}
               onChange={(event) =>
                 onToggle(syncableId, event.currentTarget.checked)
               }
@@ -170,8 +179,8 @@ const RequiredCollectionRowItem = ({
             bg="background-secondary"
             className={S.contentRow}
           >
-            <Text flex="1 0 0" fz="sm">{t`Data`}</Text>
-            <Text flex="1 0 0" fz="sm">{t`Dependent`}</Text>
+            <Text className={S.cell} fz="sm">{t`Item`}</Text>
+            <Text className={S.cell} fz="sm">{t`Used By`}</Text>
           </Group>
           {dependencies.map((dependency) => (
             <Group
@@ -180,15 +189,18 @@ const RequiredCollectionRowItem = ({
               className={S.contentRow}
               key={`${dependency.model}-${dependency.id}`}
             >
-              <Group flex="1 0 0" gap="sm">
-                {dependency.display && (
-                  <Icon
-                    name={getIconForVisualizationType(dependency.display).name}
-                  />
-                )}
+              <Group className={S.cell} gap="sm" wrap="nowrap">
+                <Icon
+                  name={
+                    getIcon({
+                      model: dependency.model,
+                      display: dependency.display,
+                    }).name
+                  }
+                />
                 <Ellipsified>{dependency.name}</Ellipsified>
               </Group>
-              <Ellipsified flex="1 0 0">
+              <Ellipsified className={S.cell}>
                 {dependency.used_by.map((used) => used.name).join(", ")}
               </Ellipsified>
             </Group>

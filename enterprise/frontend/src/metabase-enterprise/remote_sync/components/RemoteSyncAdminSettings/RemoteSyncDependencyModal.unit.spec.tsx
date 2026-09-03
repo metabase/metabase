@@ -23,7 +23,7 @@ const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
   display: "bar",
   remedy: {
     type: "collection",
-    collection: { ...REQUIRED_COLLECTION, personal: false },
+    collection: { ...REQUIRED_COLLECTION, type: null, personal: false },
   },
   used_by: [{ model: "dashboard", id: 7, name: "Q3 Review" }],
 };
@@ -35,7 +35,7 @@ const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
   collection: REQUIRED_COLLECTION,
   remedy: {
     type: "collection",
-    collection: { id: 5, name: "Nick's stuff", personal: true },
+    collection: { id: 5, name: "Nick's stuff", type: null, personal: true },
   },
   used_by: [],
 };
@@ -50,11 +50,23 @@ const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
   used_by: [],
 };
 
-// The backend sends no id for the Library, so there is nothing to switch on.
-const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
+const LIBRARY_COLLECTION = { id: 2, name: "Library" };
+const LIBRARY_DEPENDENCY: RemoteSyncIneligibleDependency = {
   model: "snippet",
   id: 3,
   name: "active_users",
+  remedy: {
+    type: "collection",
+    collection: { ...LIBRARY_COLLECTION, type: "library", personal: false },
+  },
+  used_by: [],
+};
+
+// ...unless the instance has no Library yet, leaving nothing to switch on.
+const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
+  model: "snippet",
+  id: 4,
+  name: "monthly_cutoff",
   remedy: { type: "library" },
   used_by: [],
 };
@@ -283,12 +295,61 @@ describe("RemoteSyncDependencyModal", () => {
     },
   );
 
-  it("explains a Library blocker, which has nothing to switch on", async () => {
+  it("offers the Library as a switchable row, like any other collection", async () => {
+    await setupRefusedSave({ body: createRefusal(LIBRARY_DEPENDENCY) });
+
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByLabelText(`Sync ${LIBRARY_COLLECTION.name}`),
+    );
+    await dismiss(modal);
+    await save();
+
+    await waitFor(async () => {
+      expect(await getSettingsPuts()).toHaveLength(2);
+    });
+
+    const [, retry] = await getSettingsPuts();
+    expect(retry.body).toHaveProperty("collections", {
+      [BLOCKED_COLLECTION.id]: true,
+      [LIBRARY_COLLECTION.id]: true,
+    });
+  });
+
+  it.each([
+    [
+      "a personal collection",
+      PERSONAL_DEPENDENCY,
+      /Nick's stuff/,
+      "person icon",
+    ],
+    [
+      "the Library",
+      LIBRARY_DEPENDENCY,
+      new RegExp(LIBRARY_COLLECTION.name),
+      "repository icon",
+    ],
+  ])(
+    "icons %s by what kind of collection it is",
+    async (_label, dependency, name, expectedIcon) => {
+      await setupRefusedSave({ body: createRefusal(dependency) });
+
+      const modal = await screen.findByRole("dialog");
+      const row = within(modal).getByRole("button", { name });
+
+      expect(within(row).getByRole("img")).toHaveAttribute(
+        "aria-label",
+        expectedIcon,
+      );
+    },
+  );
+
+  it("explains a Library blocker with nothing to switch on, when there is no Library yet", async () => {
     await setupRefusedSave({ body: createRefusal(SNIPPET_DEPENDENCY) });
 
     const modal = await screen.findByRole("dialog");
     expect(
-      within(modal).getByText(/sync with the Library/),
+      within(modal).getByText(/Create the Library in Data Studio/),
     ).toBeInTheDocument();
     expect(within(modal).queryAllByRole("switch")).toHaveLength(0);
   });

@@ -42,3 +42,8 @@
 .contentRow:not(:last-of-type) {
   border-bottom: 1px solid var(--mb-color-border);
 }
+
+.cell {
+  flex: 1 1 0;
+  min-width: 0;
+}

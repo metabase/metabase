@@ -214,24 +214,35 @@
                 (:display card) (assoc :display (:display card)))))
           entities)))
 
+(defn- remedy-collection
+  "The collection a remedy points at, as clients need it: enough to name the row, switch it on, and pick
+  the same icon the collection would get anywhere else."
+  [collection]
+  {:id       (:id collection)
+   :name     (:name collection)
+   :type     (:type collection)
+   :personal (some? (:personal_owner_id collection))})
+
 (defn- sync-remedy
-  "What an admin would have to sync for `dep` to be covered: a specific top-level collection, or the
-  Library for models whose eligibility keys on it (snippets) rather than on their own collection.
-  `:none` when the dependency lives outside any collection."
-  [{:keys [model instance]} collections top-levels]
+  "What an admin would have to sync for `dep` to be covered: a specific top-level collection, or
+  `:library` for models whose eligibility keys on the Library (snippets) on an instance that hasn't got
+  one yet — there being no collection to name. The Library itself is an ordinary top-level collection,
+  so once it exists it is reported as one. `:none` when the dependency lives outside any collection."
+  [{:keys [model instance]} collections top-levels library]
   (let [top (some->> (:collection_id instance)
                      (get collections)
                      top-level-ancestor-id
                      (get top-levels))]
     (cond
       (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
-      {:type :library}
+      (if library
+        {:type       :collection
+         :collection (remedy-collection library)}
+        {:type :library})
 
       top
       {:type       :collection
-       :collection {:id       (:id top)
-                    :name     (:name top)
-                    :personal (some? (:personal_owner_id top))}}
+       :collection (remedy-collection top)}
 
       :else
       {:type :none})))
@@ -267,21 +278,44 @@
                                                    entities)))]
     (mapv #(mapv described (referencing-entities %)) deps)))
 
+(defn- dependency-key
+  "Identity of a dependency in the traversal's own terms, which is how [[referencing-entities]] names it."
+  [{:keys [model id]}]
+  [model id])
+
+(defn- subsumed-dependency?
+  "Whether reporting `dep` would tell an admin nothing new: everything that reaches it is itself an
+  ineligible dependency whose remedy is the same, so the row that fixes it is already on screen. Click
+  behaviour pointing at an unsynced dashboard drags in every card that dashboard holds, and those cards
+  are covered by syncing the dashboard's collection. A referrer with a *different* remedy doesn't
+  subsume — that one needs its own row, or the next save is refused for a reason never shown."
+  [dep remedies]
+  (when-let [referrers (seq (referencing-entities dep))]
+    (let [remedy (get remedies (dependency-key dep))]
+      ;; Referrers outside `remedies` are eligible content, so they never subsume.
+      (every? #(= remedy (get remedies %)) referrers))))
+
 (defn- describe-dependencies
   "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
   lives in, the entities that reference it, and the collection (or the Library) that would have to be
-  synced to cover it."
+  synced to cover it. Dependencies the traversal only reached through another one with the same remedy
+  are dropped — see [[subsumed-dependency?]]."
   [deps]
   (let [collections (collections-by-id (map (comp :collection_id :instance) deps))
-        top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))]
+        top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))
+        ;; Resolved once for the whole refusal rather than per snippet dependency.
+        library     (collections/library-collection)
+        remedies    (zipmap (map dependency-key deps)
+                            (map #(sync-remedy % collections top-levels library) deps))
+        reported    (into [] (remove #(subsumed-dependency? % remedies)) deps)]
     (mapv (fn [described used-by {:keys [instance] :as dep}]
             (merge described
-                   {:remedy  (sync-remedy dep collections top-levels)
+                   {:remedy  (get remedies (dependency-key dep))
                     :used_by used-by}
                    (dependency-collection instance collections)))
-          (describe-entities deps)
-          (describe-used-by deps)
-          deps)))
+          (describe-entities reported)
+          (describe-used-by reported)
+          reported)))
 
 (defn- describe-dependents
   "Renders [[collections/remote-synced-dependents]] for the API. Each dependent arrives as a path map like

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
   Collection,
+  CollectionType,
   IconName,
   RemoteSyncDependencyEntity,
   RemoteSyncDependencyFailure,
@@ -201,6 +202,8 @@ export const ROOT_COLLECTION_ROW_ID = "root";
 export type RequiredCollectionRow = {
   id: number | typeof ROOT_COLLECTION_ROW_ID;
   name: string;
+  /** Drives the icon, so the Library and friends read the same here as in the settings list. */
+  type: CollectionType;
   personal: boolean;
   syncable: boolean;
 };
@@ -218,16 +221,18 @@ const getUnsyncableRows = (
       if (collection === undefined) {
         return [];
       }
+      // The dependency only tells us where it lives, not what kind of collection that is.
       return collection === null
         ? [
             {
               id: ROOT_COLLECTION_ROW_ID,
               name: t`Our analytics`,
+              type: null,
               personal: false,
               syncable: false,
             },
           ]
-        : [{ ...collection, personal: false, syncable: false }];
+        : [{ ...collection, type: null, personal: false, syncable: false }];
     });
 
   return [...new Map(rows.map((row) => [row.id, row])).values()];
@@ -236,9 +241,10 @@ const getUnsyncableRows = (
 export const getRequiredCollectionRows = (
   failures: RemoteSyncDependencyFailure[],
 ): RequiredCollectionRow[] => [
-  ...getRequiredCollections(failures).map(({ id, name, personal }) => ({
+  ...getRequiredCollections(failures).map(({ id, name, type, personal }) => ({
     id,
     name,
+    type,
     personal,
     syncable: !personal,
   })),
@@ -296,7 +302,7 @@ export const getRowDependencies = (
 export type BlockedReason =
   | "personal-content"
   | "unsyncable-content"
-  | "library"
+  | "library-missing"
   | "linked-collections";
 
 // Ordered so content that can't be synced at all outranks content that can.
@@ -309,8 +315,8 @@ export const getBlockedReason = (
   if (requiresContentMove(failures)) {
     return "unsyncable-content";
   }
-  if (requiresLibrarySync(failures)) {
-    return "library";
+  if (isBlockedByMissingLibrary(failures)) {
+    return "library-missing";
   }
   return "linked-collections";
 };
@@ -327,7 +333,9 @@ const isBlockedByPersonalContent = (
     ),
   );
 
-const requiresLibrarySync = (
+// A `library` remedy is the backend saying this instance has no Library at all — once one exists a
+// snippet points at it as an ordinary collection remedy, like anything else.
+const isBlockedByMissingLibrary = (
   failures: RemoteSyncDependencyFailure[],
 ): boolean =>
   failures.some((failure) =>
@@ -354,8 +362,8 @@ export const getBlockedMessage = (
       return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
     case "unsyncable-content":
       return t`Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue.`;
-    case "library":
-      return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue.`;
+    case "library-missing":
+      return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue.`;
     case "linked-collections":
       return t`Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well.`;
   }
