@@ -119,7 +119,7 @@
    :display                mi/transform-keyword
    :embedding_params       mi/transform-json
    :query_type             mi/transform-keyword
-   :result_metadata        mi/transform-result-metadata
+   :result_metadata        (mi/transform-encrypted mi/transform-result-metadata)
    :visualization_settings mi/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings

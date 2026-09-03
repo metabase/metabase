@@ -154,9 +154,10 @@
   (t2/select [:model/Field :id :name] :table_id table-id))
 
 (defn card-result-metadata-reducible
-  "Reducible raw `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`."
+  "Reducible `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`. Selected through the
+  model, not the raw table, so `result_metadata` is decrypted at rest and comes back parsed."
   [database-id]
-  (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id database-id))
+  (t2/reducible-select [:model/Card :id :card_schema :result_metadata] :database_id database-id))
 
 (defn cards-of-table
   "The Cards on the Table with `table-id`."

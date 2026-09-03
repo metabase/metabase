@@ -11,6 +11,8 @@
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms.query-test-util :as query-test-util]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (deftest source-database-id-set-test
@@ -260,3 +262,30 @@
                     (is (mi/can-read? stored))
                     (is (mi/can-write? stored))
                     (is (mi/can-create? :model/Transform body))))))))))))
+
+(deftest last-checkpoint-value-is-encrypted-at-rest-test
+  (testing "the checkpoint watermark is read out of the source table, so it is encrypted like the other warehouse data"
+    (encryption-test/with-secret-key "transform-checkpoint-encryption-test-key"
+      (mt/with-temp [:model/Transform {transform-id :id} {:name   "Watermarked"
+                                                          :source {:type "query"
+                                                                   :query (lib/native-query (mt/metadata-provider) "select 1")}}]
+        (t2/update! :model/Transform transform-id {:last_checkpoint_value "2026-08-27T00:00:00Z"})
+        (let [raw (:last_checkpoint_value (t2/query-one {:select [:last_checkpoint_value]
+                                                         :from   [:transform]
+                                                         :where  [:= :id transform-id]}))]
+          (is (encryption/possibly-encrypted-string? raw)
+              "stored encrypted")
+          (is (= "2026-08-27T00:00:00Z"
+                 (t2/select-one-fn :last_checkpoint_value :model/Transform :id transform-id))
+              "and reads back through the model"))))))
+
+(deftest last-checkpoint-value-reads-plaintext-test
+  (testing "rows written before the column was encrypted still read, since the backfill may not have reached them"
+    (mt/with-temp [:model/Transform {transform-id :id} {:name   "Legacy watermark"
+                                                        :source {:type "query"
+                                                                 :query (lib/native-query (mt/metadata-provider) "select 1")}}]
+      (t2/query-one {:update :transform
+                     :set    {:last_checkpoint_value "1234"}
+                     :where  [:= :id transform-id]})
+      (encryption-test/with-secret-key "transform-checkpoint-encryption-test-key"
+        (is (= "1234" (t2/select-one-fn :last_checkpoint_value :model/Transform :id transform-id)))))))

@@ -27,10 +27,10 @@
   (cond-> v
     (instance? Blob v) blob->bytes))
 
-;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, or the encrypted-text/EDN
-;; transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key only requires decrypting
-;; the raw value with the current key and re-encrypting the resulting string. We list raw table names (not models) so
-;; this also works for enterprise models that aren't loaded in every edition.
+;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, `mi/transform-encrypted`, or
+;; the encrypted-text/EDN transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key
+;; only requires decrypting the raw value with the current key and re-encrypting the resulting string. We list raw
+;; table names (not models) so this also works for enterprise models that aren't loaded in every edition.
 (def ^:private encrypted-string-columns
   [[:metabase_database :details]
    [:metabase_database :settings]
@@ -48,7 +48,12 @@
    [:action :public_uuid]
    [:document :public_uuid]
    [:notification_recipient :details]
-   [:pulse_channel :details]])
+   [:pulse_channel :details]
+   ;; warehouse-derived, encrypted at rest since v64. `metabase_field.fingerprint` and `metabase_fieldvalues` are
+   ;; deliberately not encrypted: both are far too many rows to rewrite synchronously (see #80081).
+   [:report_card :result_metadata]
+   [:user_parameter_value :value]
+   [:transform :last_checkpoint_value]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
@@ -303,6 +308,29 @@
               (t2/query {:update table, :set {column (encrypt-bytes-fn decrypted)}, :where [:= :id id]}))))
         (t2/reducible-select [table :id [column :value]])))
 
+(defn encrypt-value
+  "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op.
+  An empty string is left as-is: `maybe-encrypt` returns nil for it, which would null the column.
+
+  Decrypts to decide, rather than matching on shape: `last_checkpoint_value` is a raw warehouse watermark, and one
+  shaped like base64 (a hex digest, say) would otherwise be mistaken for ciphertext and left in the clear for good."
+  [v]
+  (if (or (empty? v) (encryption/decryptable-string? v))
+    v
+    (encryption/maybe-encrypt v)))
+
+(defn rewrite-columns!
+  "Apply `f` to every non-null value in `columns` (`[table column]` pairs), writing back only what it changed."
+  [columns f]
+  (doseq [[table column] columns]
+    (run! (fn [{:keys [id value]}]
+            (let [v (f value)]
+              (when (not= v value)
+                (t2/query {:update table :set {column v} :where [:= :id id]}))))
+          (t2/reducible-query {:select [:id [column :value]]
+                               :from   [table]
+                               :where  [:!= column nil]}))))
+
 (defn encrypt-plaintext-columns!
   "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup: the one-shot
   encryption backfill migrations cannot be relied on to have done this -- run without MB_ENCRYPTION_SECRET_KEY (the
@@ -346,6 +374,7 @@
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
+        ;; a rotation that skipped a column would leave it under the old key, unreadable once that key is gone
         (doseq [[table column] encrypted-string-columns]
           (reencrypt-encrypted-column! table column encrypt-str-fn
                                        (and (= check-status :valid)

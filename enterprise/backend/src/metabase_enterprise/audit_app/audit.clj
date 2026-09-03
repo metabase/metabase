@@ -17,7 +17,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -101,16 +100,15 @@
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
+  ;; not `t2/update! :model/Card` — that would re-run metadata inference
   (t2/with-connection [^java.sql.Connection conn]
     (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
       (reduce
-       (fn [_ card]
-         (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
-           (let [fixed-metadata (for [col result-metadata]
-                                  (update col :name u/upper-case-en))
-                 json-metadata  (json/encode fixed-metadata)]
-             (.setString stmt 1 json-metadata)
-             (.setInt stmt 2 (:id card))
+       (fn [_ {:keys [id result_metadata]}]
+         (when (seq result_metadata)
+           (let [encrypt (get-in (t2/transforms :model/Card) [:result_metadata :in])]
+             (.setString stmt 1 (encrypt (mapv #(update % :name u/upper-case-en) result_metadata)))
+             (.setInt stmt 2 id)
              (.addBatch stmt))))
        nil
        (audit-app.db/card-result-metadata-reducible audit-db-id))

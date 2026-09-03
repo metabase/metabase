@@ -3159,3 +3159,44 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest assert-key-set-for-decryption!-test
+  (testing "the rollback leg of EncryptDwhDerivedColumns refuses when the column is encrypted and no key is set.
+            `maybe-decrypt-accepting-plaintext` is a silent no-op without the key, so rolling back would report
+            success and leave ciphertext v63 reads as JSON, and the downgrade docs omit MB_ENCRYPTION_SECRET_KEY"
+    (mt/with-temp [:model/Card card {}]
+      ;; base64 decoding to 64 bytes: the shape of the shortest real ciphertext. the guard only checks shape.
+      (let [ciphertext (str (apply str (repeat 86 "a")) "==")]
+        (t2/query {:update :report_card
+                   :set    {:result_metadata ciphertext}
+                   :where  [:= :id (u/the-id card)]})
+        (with-redefs [encryption/default-secret-key nil]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"MB_ENCRYPTION_SECRET_KEY is not set"
+                                (#'custom-migrations/assert-key-set-for-decryption!))))
+        (testing "and stays quiet once a key is set"
+          (with-redefs [encryption/default-secret-key (byte-array 64)]
+            (is (nil? (#'custom-migrations/assert-key-set-for-decryption!)))))))))
+
+(deftest encrypt-dwh-derived-columns-test
+  (testing "v64.2026-08-28T00:00:00: forward encrypts the warehouse-derived columns, rollback hands them back as
+            plaintext an older version can read"
+    (impl/test-migrations ["v64.2026-08-28T00:00:00"] [migrate!]
+      (let [plaintext (json/encode [{:name "total" :base_type "type/Float"}])
+            stored    (fn [id] (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                                :from   [:report_card]
+                                                                :where  [:= :id id]})))]
+        (encryption-test/with-secret-key "encrypt-dwh-derived-columns-key"
+          (let [user-id (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+                db-id   (:id (new-instance-with-default :metabase_database))
+                card-id (:id (new-instance-with-default :report_card {:creator_id      user-id
+                                                                      :database_id     db-id
+                                                                      :entity_id       (u/generate-nano-id)
+                                                                      :result_metadata plaintext}))]
+            (migrate!)
+            (testing "forward encrypts it in place"
+              (is (not= plaintext (stored card-id)))
+              (is (= plaintext (encryption/maybe-decrypt (stored card-id)))))
+            (when (not= driver/*driver* :mysql) ; rollback flakes on mysql, see metabase#37434
+              (migrate! :down 63)
+              (testing "rollback puts it back in the clear"
+                (is (= plaintext (stored card-id)))))))))))
