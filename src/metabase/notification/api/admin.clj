@@ -22,18 +22,14 @@
   `last_send_status=failing` corresponds to the Failing tab — notifications whose most recent
   send tick (rolled up across all channels) had at least one channel failure."
   (:require
-   [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
-   [metabase.models.interface :as mi]
    [metabase.notification.api.notification :as notification-api]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -125,8 +121,7 @@
     (into #{}
           (comp (filter #(some-> % :details :value u/lower-case-en (= lower-email)))
                 (map :notification_handler_id))
-          (t2/reducible-select [:model/NotificationRecipient :notification_handler_id :details]
-                               :type :notification-recipient/raw-value))))
+          (notification.db/raw-value-recipients-reducible))))
 
 (defn- notification-ids-with-recipient-email
   "Notification IDs whose recipients (user or raw-value) match `email` exactly. One SQL query
@@ -134,253 +129,8 @@
   recipients via a pre-resolved set of handler IDs from an in-memory scan."
   [email]
   (let [lower-email     (u/lower-case-en email)
-        raw-handler-ids (handler-ids-with-raw-value-matching email)
-        user-clause     [:and
-                         [:= :nr.type "notification-recipient/user"]
-                         [:= [:lower :cu.email] lower-email]]
-        where-clause    (if (seq raw-handler-ids)
-                          [:or user-clause [:in :notification_handler.id raw-handler-ids]]
-                          user-clause)]
-    (t2/select-fn-set
-     :notification_id (t2/table-name :model/NotificationHandler)
-     {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
-                  [:= :nr.notification_handler_id :notification_handler.id]]
-      :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
-      :where     where-clause})))
-
-(defn- query-where-clause
-  "WHERE clause for the fuzzy `?query=` filter. Substring ILIKE OR'd across card name and creator
-  first/last/email. Recipient branches were removed in the design iteration — recipients stay as
-  the structured `?recipient_email=` filter."
-  [query]
-  (let [wildcard (h2x/like-substring query)]
-    [:or
-     [:like [:lower :c.name]        wildcard]
-     [:like [:lower :cu.first_name] wildcard]
-     [:like [:lower :cu.last_name]  wildcard]
-     [:like [:lower :cu.email]      wildcard]]))
-
-(def ^:private run-lookback-days
-  "How far back to consider alert-type TaskRuns / TaskHistory rows when computing run summaries."
-  90)
-
-(defn- lookback-cutoff []
-  (h2x/add-interval-honeysql-form (mdb/db-type) (mi/now) (- run-lookback-days) :day))
-
-(defn- latest-run-per-notification
-  "Honey.sql subquery: one row per notification with its most recent terminal alert-type TaskRun
-  (status :success / :failed / :abandoned) within [[run-lookback-days]]. Excludes :started in-flight
-  runs (they shouldn't surface as a `last_check`) and runs with no `notification_id` (unattributable,
-  e.g. created before that column existed). Uses
-  `ROW_NUMBER() OVER (PARTITION BY notification_id ORDER BY started_at DESC)`."
-  []
-  ^:allow-subquery
-  {:select [:id :notification_id :status :started_at :ended_at]
-   :from   [[^:allow-subquery
-             {:select [:id :notification_id :status :started_at :ended_at
-                       [[:over [[:row_number]
-                                ^:allow-subquery
-                                {:partition-by [:notification_id]
-                                 :order-by     [[:started_at :desc]]}]]
-                        :rn]]
-              :from   [:task_run]
-              :where  [:and
-                       [:= :run_type run-type-alert]
-                       [:is-not :notification_id nil]
-                       [:in :status terminal-statuses]
-                       [:> :started_at (lookback-cutoff)]]}
-             :sub]]
-   :where  [:= :sub.rn 1]})
-
-(defn- latest-send-tick-per-notification
-  "Honey.sql subquery: one row per notification summarising the LATEST tick that had channel-send
-  attempts within [[run-lookback-days]]. The inner subquery ranks each notification's runs that have
-  a channel-send child by `started_at DESC` and keeps rank=1; the outer computes `has_failure` with
-  a correlated EXISTS rather than GROUP BY + SUM, to stay H2/Postgres/MySQL compatible.
-
-  Result columns:
-    - `:notification_id` — join key used by base-list-query
-    - `:id`          — task_run.id of the latest send tick (for looking up channel-send error msg)
-    - `:started_at`  — the tick's started_at (for sort + `:last_send.at`)
-    - `:has_failure` — true if any channel-send in the tick failed"
-  []
-  (let [lookback (lookback-cutoff)]
-    ^:allow-subquery
-    {:select [:lr.notification_id
-              [:lr.run_id          :id]
-              [:lr.tick_started_at :started_at]
-              ;; Boolean CASE, read back in Clojure — same pattern as
-              ;; `metabase.search.in-place.legacy/bookmark-col`. `has-failure?` runs it through
-              ;; `bit->boolean` to absorb the MySQL/MariaDB bit-vs-boolean JDBC quirk.
-              [[:case
-                [:exists ^:allow-subquery
-                 {:select [[1]]
-                  :from   [[:task_history :tf]]
-                  :where  [:and
-                           [:= :tf.run_id :lr.run_id]
-                           [:= :tf.task task-channel-send]
-                           [:= :tf.status "failed"]]}]
-                true
-                :else false]
-               :has_failure]]
-     :from   [[^:allow-subquery
-               {:select [:tr2.notification_id
-                         [:tr2.id         :run_id]
-                         [:tr2.started_at :tick_started_at]
-                         [[:over [[:row_number]
-                                  ^:allow-subquery
-                                  {:partition-by [:tr2.notification_id]
-                                   :order-by     [[:tr2.started_at :desc]]}]]
-                          :rn]]
-                :from   [[:task_run :tr2]]
-                :where  [:and
-                         [:= :tr2.run_type run-type-alert]
-                         [:is-not :tr2.notification_id nil]
-                         [:in :tr2.status terminal-statuses]
-                         [:> :tr2.started_at lookback]
-                         ;; only keep runs that actually had channel-send rows
-                         [:exists ^:allow-subquery
-                          {:select [[1]]
-                           :from   [[:task_history :tx]]
-                           :where  [:and
-                                    [:= :tx.run_id :tr2.id]
-                                    [:= :tx.task task-channel-send]]}]]}
-               :lr]]
-     :where [:= :lr.rn 1]}))
-
-(def ^:private sort-column->order-by
-  "Maps the public `sort_column` enum to the SQL expression used in `ORDER BY`. Uses raw
-  expressions rather than the SELECT aliases because H2 does not resolve aliases inside
-  expressions. Whitelist; values outside this map are rejected by the `::sort-column` malli enum
-  upstream."
-  {:id           :notification.id
-   :last_send    :ls.started_at
-   :last_check   :lc.started_at
-   :card_name    :c.name
-   :creator_name [:coalesce :cu.last_name :cu.first_name :cu.email]
-   :updated_at   :notification.updated_at})
-
-(defn- channel-exists
-  "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has at least one
-  handler whose channel_type is IN `channels`. Accepts either a single string or a vector of
-  strings (OR semantics across multiple channel types). Subquery instead of JOIN so the outer
-  query needs no `DISTINCT`."
-  [channels]
-  (let [channels (if (sequential? channels) channels [channels])]
-    [:exists
-     ^:allow-subquery
-     {:select [[1]]
-      :from   [(t2/table-name :model/NotificationHandler)]
-      :where  [:and
-               [:= :notification_handler.notification_id :notification.id]
-               [:in :notification_handler.channel_type channels]]}]))
-
-(defn- list-where-clauses
-  "Optional WHERE clauses for the list/detail query, returned as data (a seq with inactive filters
-  elided) so `base-list-query` can `(reduce sql.helpers/where ...)` them onto the query."
-  [{:keys [active creator_id creator_active creatorless card_id recipient_email channel
-           last_send_status last_check_status query]}]
-  (keep
-   identity
-   [(when (some? active)         [:= :notification.active active])
-    (when (some? creator_active) [:= :cu.is_active creator_active])
-    ;; `creatorless` = true:  no creator at all, OR a deactivated creator (both are "creatorless")
-    ;; `creatorless` = false: has a live (active) creator
-    ;; [:= col nil] is IS NULL and [:is-not col nil] is IS NOT NULL per HoneySQL 2 semantics.
-    (when (true? creatorless)
-      [:or [:= :notification.creator_id nil] [:= :cu.is_active false]])
-    (when (false? creatorless)
-      [:and [:is-not :notification.creator_id nil] [:= :cu.is_active true]])
-    (when creator_id    [:= :notification.creator_id creator_id])
-    (when card_id       [:= :nc.card_id card_id])
-    (when (seq channel) (channel-exists channel))
-    (when last_send_status
-      (case last_send_status
-        :successful [:= :ls.has_failure false]
-        :failing    [:= :ls.has_failure true]))
-    ;; `last_check` is the whole-run rollup (success/failed/abandoned), so it's a superset of
-    ;; `last_send`: it catches query failures and heartbeat-abandoned runs that never reached the
-    ;; channel-send step, not just delivery failures. The Failing tab filters on this.
-    (when last_check_status
-      (case last_check_status
-        :successful [:= :lc.status "success"]
-        :failing    [:in :lc.status ["failed" "abandoned"]]))
-    (when recipient_email
-      (let [ids (notification-ids-with-recipient-email recipient_email)]
-        ;; No recipient matched → an always-false predicate so the page comes back empty. We use
-        ;; the truthy `[:= 1 0]` (renders `WHERE 1 = 0`) rather than `false`/`nil`, which the
-        ;; `keep identity` above would elide — turning "no matches" into "no filter".
-        (if (seq ids) [:in :notification.id ids] [:= 1 0])))
-    (when-not (str/blank? query) (query-where-clause query))]))
-
-(defn- base-list-query
-  "Select notifications plus run-summary columns, card name, and creator name computed inline.
-
-  When `skip-run-joins?` is true (detail path only), the `lc`/`ls` window subqueries and their
-  select columns are omitted — the detail endpoint overwrites `last_check`/`last_send` from
-  per-notification histories anyway, so those joins are pure waste on that path."
-  [{:keys [skip-run-joins?] :as filters}]
-  (reduce
-   sql.helpers/where
-   (cond-> {:select (cond-> [:notification.id
-                             :notification.active
-                             :notification.creator_id
-                             :notification.created_at
-                             :notification.updated_at
-                             :notification.payload_type
-                             :notification.payload_id
-                             [:c.name                                           :card_name]
-                             [:cu.is_active                                     :creator_is_active]
-                             [[:coalesce :cu.last_name :cu.first_name :cu.email] :creator_name]]
-                      (not skip-run-joins?)
-                      (into [[:lc.id                                            :lc_id]
-                             [:lc.status                                        :lc_status]
-                             [:lc.started_at                                    :lc_started_at]
-                             [:ls.id                                            :ls_id]
-                             [:ls.started_at                                    :ls_started_at]
-                             [:ls.has_failure                                   :ls_has_failure]]))
-            :from   [:notification]
-            ;; A `notification/card` row with no payload_id is orphaned — it has no card, so
-            ;; every card-derived column is null and it can't be managed here. Exclude it.
-            :where  [:and
-                     [:= :notification.payload_type "notification/card"]
-                     [:is-not :notification.payload_id nil]]}
-
-     ;; These joins are always present regardless of the path.
-     true
-     (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
-         (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
-         (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
-
-     ;; Window subquery joins — skipped on the detail path (see docstring). Keyed by notification_id
-     ;; so each notification gets exactly its own latest run, not the card's (which would bleed
-     ;; across every notification sharing the card).
-     (not skip-run-joins?)
-     (-> (sql.helpers/left-join [(latest-run-per-notification)       :lc] [:= :lc.notification_id :notification.id])
-         (sql.helpers/left-join [(latest-send-tick-per-notification) :ls] [:= :ls.notification_id :notification.id])))
-   (list-where-clauses filters)))
-
-(defn- order-by-clauses
-  "Resolve `sort_column` + `sort_direction` (both already malli-validated enums) into an
-  honeysql `:order-by` vector. Pushes nulls last unconditionally — H2/Postgres/MySQL all default
-  to NULLS-FIRST under DESC. Always tie-breaks on `notification.id desc` so paging is stable."
-  [sort-column sort-direction]
-  (let [col (sort-column->order-by sort-column)
-        dir (or sort-direction :desc)]
-    [[[:case [:= col nil] 1 :else 0] :asc]
-     [col dir]
-     [:notification.id :desc]]))
-
-(defn- list-query
-  [{:keys [sort_column sort_direction] :as filters}]
-  (assoc (base-list-query (dissoc filters :sort_column :sort_direction))
-         :order-by (order-by-clauses (or sort_column :last_send) sort_direction)))
-
-(defn- count-query
-  [filters]
-  (-> (list-query filters)
-      (assoc :select [[[:count :notification.id] :count]])
-      (dissoc :order-by)))
+        raw-handler-ids (handler-ids-with-raw-value-matching email)]
+    (notification.db/handler-notification-ids-for-email lower-email raw-handler-ids)))
 
 (defn- coerce-run-status
   "Map a task_run/task_history `:status` keyword to the public `::run-status` enum.
@@ -433,25 +183,7 @@
   CASE is a no-op when `task-name` is supplied — all candidate rows share the same `:task`."
   [task-name run-ids]
   (when (seq run-ids)
-    (->> (t2/select :model/TaskHistory
-                    {:select [:run_id :task_details]
-                     :from   [[^:allow-subquery
-                               {:select [:run_id :task_details
-                                         [[:over [[:row_number]
-                                                  ^:allow-subquery
-                                                  {:partition-by [:run_id]
-                                                   :order-by     [[[:case
-                                                                    [:= :task task-notification-send] 0
-                                                                    :else                             1] :asc]
-                                                                  [:ended_at :desc]]}]]
-                                          :rn]]
-                                :from   [:task_history]
-                                :where  (cond-> [:and
-                                                 [:in :run_id run-ids]
-                                                 [:in :status ["failed" "abandoned"]]]
-                                          task-name (conj [:= :task task-name]))}
-                               :sub]]
-                     :where  [:= :sub.rn 1]})
+    (->> (notification.db/latest-failed-task-history task-notification-send run-ids task-name)
          (into {} (map (juxt :run_id (comp :message :task_details)))))))
 
 (defn- has-failure?
@@ -505,13 +237,12 @@
 
 (defn- list-notifications
   "Single SQL query for the page; one extra query for failed-run error messages on that page."
-  [{:keys [limit offset] :as filters}]
-  (let [base-filters (dissoc filters :limit :offset)
-        page-rows    (t2/select :model/Notification
-                                (assoc (list-query base-filters)
-                                       :limit  limit
-                                       :offset offset))
-        total        (or (:count (t2/query-one (count-query base-filters))) 0)
+  [{:keys [limit offset recipient_email] :as filters}]
+  (let [base-filters (cond-> (-> filters (dissoc :limit :offset :recipient_email))
+                       recipient_email
+                       (assoc :recipient_notification_ids (notification-ids-with-recipient-email recipient_email)))
+        page-rows    (notification.db/admin-notifications-page base-filters limit offset)
+        total        (or (notification.db/admin-notifications-count base-filters) 0)
         decorated    (-> page-rows
                          decorate-runs
                          models.notification/hydrate-notification)]
@@ -599,14 +330,11 @@
   "Up to `:result-limit` most-recent terminal alert TaskRuns for `notification-id`, newest first, as
   `::run-summary` maps. Attributed directly via `task_run.notification_id`."
   [notification-id & {:keys [result-limit] :or {result-limit 10}}]
-  (let [runs       (t2/select [:model/TaskRun :id :status :started_at]
-                              {:where    [:and
-                                          [:= :run_type run-type-alert]
-                                          [:= :notification_id notification-id]
-                                          [:in :status terminal-statuses]
-                                          [:> :started_at (lookback-cutoff)]]
-                               :order-by [[:started_at :desc] [:id :desc]]
-                               :limit    result-limit})
+  (let [runs       (notification.db/terminal-alert-runs run-type-alert
+                                                        notification-id
+                                                        terminal-statuses
+                                                        (notification.db/admin-lookback-cutoff)
+                                                        result-limit)
         failed-ids (into #{} (keep (fn [{:keys [id status]}]
                                      (when (#{:failed :abandoned} status) id))
                                    runs))
@@ -633,31 +361,17 @@
                         :status   (if (some #(= :failing (:status %)) channel-entries) :failing :successful)
                         :error    (some :error channel-entries)
                         :channels channel-entries}))))
-        (t2/reducible-select :model/TaskHistory
-                             {:select   [:th.run_id :th.task_details :th.status
-                                         [:tr.started_at :run_started_at]]
-                              :from     [[:task_history :th]]
-                              :join     [[:task_run :tr] [:= :tr.id :th.run_id]]
-                              :where    [:and
-                                         [:= :tr.run_type        run-type-alert]
-                                         [:= :tr.notification_id notification-id]
-                                         [:= :th.task            task-channel-send]
-                                         [:> :tr.started_at      (lookback-cutoff)]]
-                              ;; tr.id tie-breaks runs sharing a started_at so partition-by run_id
-                              ;; keeps each run's rows adjacent.
-                              :order-by [[:tr.started_at :desc] [:tr.id :desc]]
-                              ;; safety cap; the (take result-limit) over partition-by run_id
-                              ;; normally closes the cursor first.
-                              :limit    500})))
+        (notification.db/channel-send-history-reducible run-type-alert
+                                                        notification-id
+                                                        task-channel-send
+                                                        (notification.db/admin-lookback-cutoff))))
 
 (defn- get-notification-detail
   "Fetch a single card-type notification with `:last_check`, `:last_send`, `:check_history`, and
   `:send_history`, each attributed to THIS notification via `task_run.notification_id`. Returns nil
   for a missing or non-card notification."
   [id]
-  (when-let [row (t2/select-one :model/Notification
-                                (-> (base-list-query {:skip-run-joins? true})
-                                    (sql.helpers/where [:= :notification.id id])))]
+  (when-let [row (notification.db/admin-notification-detail-row id)]
     (let [decorated     (-> (models.notification/hydrate-notification [row])
                             first
                             splice-creator-active)
@@ -698,15 +412,10 @@
     ;; before-update hook checks before permitting a `creator_id` change. (Harmless for the
     ;; archive action, whose update-map never touches creator_id.)
     (t2/with-transaction [_conn]
-      (let [before (-> (t2/select :model/Notification
-                                  :id           [:in ids]
-                                  :payload_type :notification/card)
+      (let [before (-> (notification.db/card-notifications ids)
                        models.notification/hydrate-notification
                        vec)]
-        (t2/update! :model/Notification
-                    :id           [:in ids]
-                    :payload_type :notification/card
-                    update-map)
+        (notification.db/update-card-notifications! ids update-map)
         before))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
@@ -724,7 +433,7 @@
   (api/check-superuser)
   (let [update-map (action->update-map action creator_id)
         before     (bulk-update! update-map notification_ids)
-        after      (->> (t2/select :model/Notification :id [:in (mapv :id before)])
+        after      (->> (notification.db/notifications-by-id (mapv :id before))
                         models.notification/hydrate-notification
                         (m/index-by :id))]
     (doseq [b    before

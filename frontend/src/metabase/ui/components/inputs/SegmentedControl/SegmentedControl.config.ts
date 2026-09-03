@@ -41,14 +41,14 @@ function getPadding(
 ): string {
   if (fullWidth) {
     if (size === "sm") {
-      return `${theme.spacing.xs} ${theme.spacing.sm}`;
+      return `${theme.spacing.xxs} ${theme.spacing.sm}`;
     }
 
-    return `${theme.spacing.sm} ${theme.spacing.md}`;
+    return `${theme.spacing.sm} ${theme.spacing.lg}`;
   }
 
   if (size === "sm") {
-    return theme.spacing.xs;
+    return theme.spacing.xxs;
   }
 
   return theme.spacing.sm;

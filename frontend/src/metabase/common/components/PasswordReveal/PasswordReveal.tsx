@@ -23,7 +23,7 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
       label={t`Temporary password`}
       labelProps={{ htmlFor: inputId }}
     >
-      <Flex gap="md" align="center" wrap="nowrap">
+      <Flex gap="lg" align="center" wrap="nowrap">
         <PasswordInput
           id={inputId}
           value={password}

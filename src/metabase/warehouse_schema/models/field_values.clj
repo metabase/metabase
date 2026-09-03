@@ -42,6 +42,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -146,13 +147,12 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)
-              :type     [:in advanced-field-values-types]))
+  (warehouse-schema.db/delete-field-values-of-types! (u/the-id field-or-id) advanced-field-values-types))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (t2/delete! :model/FieldValues :field_id (u/the-id field-or-id)))
+  (warehouse-schema.db/delete-field-values-for-field! (u/the-id field-or-id)))
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
@@ -237,8 +237,7 @@
            (t/after? (:last_used_at field-values)
                      cutoff)
            ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
-           (t/after? (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
-                                       {:where [:= :field_id (:field_id field-values)]})
+           (t/after? (warehouse-schema.db/field-values-last-used-at (:field_id field-values))
                      cutoff))))))
 
 (defn field-should-have-field-values?
@@ -246,7 +245,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values :preview_display] :id field-id)
+      (recur (or (warehouse-schema.db/field-values-eligibility field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -415,7 +414,7 @@
                                      (mapcat rest)
                                      (map :id))]
     (when (seq to-delete-fv-ids)
-      (t2/delete! :model/FieldValues :id [:in to-delete-fv-ids]))
+      (warehouse-schema.db/delete-field-values! to-delete-fv-ids))
     (update-vals fvs-grouped-by-field-id first)))
 
 (defn- get-latest-field-values
@@ -423,7 +422,7 @@
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (-> (t2/select :model/FieldValues :field_id field-id :type type :hash_key hash)
+  (-> (warehouse-schema.db/field-values-of-type field-id type hash)
       delete-duplicates-and-return-latest!
       (get field-id)))
 
@@ -447,7 +446,7 @@
   (delete-duplicates-and-return-latest!
    (when (seq field-ids)
      (mapcat (fn [batch]
-               (t2/select :model/FieldValues :field_id [:in batch] :type :full :hash_key nil))
+               (warehouse-schema.db/full-field-values-for-fields batch))
              (partition-all *fv-select-batch-size* field-ids)))))
 
 (defn persist-field-values!
@@ -496,11 +495,11 @@
       :else
       (do
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (t2/update! :model/FieldValues (u/the-id existing-fv)
-                    (m/remove-vals nil?
-                                   {:has_more_values       has-more-values
-                                    :values                values
-                                    :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        (warehouse-schema.db/update-field-values! (u/the-id existing-fv)
+                                                  (m/remove-vals nil?
+                                                                 {:has_more_values       has-more-values
+                                                                  :values                values
+                                                                  :human_readable_values (fixup-human-readable-values existing-fv values)}))
         ::fv-updated))))
 
 (defn create-or-update-full-field-values!
@@ -660,10 +659,10 @@
 
              (do
                (when existing
-                 (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
+                 (warehouse-schema.db/touch-field-values! (:id existing)))
                (get-latest-full-field-values field-id)))))
         (do
-          (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
+          (warehouse-schema.db/touch-field-values! (:id existing))
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

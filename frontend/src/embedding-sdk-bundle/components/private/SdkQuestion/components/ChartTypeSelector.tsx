@@ -30,7 +30,7 @@ export const ChartTypeSelector = ({
   return (
     <ChartTypeSettings
       w="20rem"
-      p="xl"
+      p="xxl"
       h="100%"
       className={CS.overflowYScroll}
       {...stackProps}

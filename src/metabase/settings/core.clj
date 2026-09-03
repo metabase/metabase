@@ -104,7 +104,6 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
-  migrate-encrypted-settings!
   obfuscate-value
   obfuscated-value?
   read-setting
@@ -116,6 +115,7 @@
   set-value-of-type!
   setting-env-map-name
   string->boolean
+  unreadable-user-settings-key
   user-facing-value
   user-readable-values-map
   uuid-nonce-base

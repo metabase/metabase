@@ -84,21 +84,21 @@ const UserProfileForm = ({
                   label={t`First name`}
                   placeholder={t`Johnny`}
                   nullable
-                  mb="md"
+                  mb="lg"
                 />
                 <FormTextInput
                   name="last_name"
                   label={t`Last name`}
                   placeholder={t`Appleseed`}
                   nullable
-                  mb="md"
+                  mb="lg"
                 />
                 <FormTextInput
                   name="email"
                   type="email"
                   label={t`Email`}
                   placeholder="nicetoseeyou@email.com"
-                  mb="md"
+                  mb="lg"
                 />
               </>
             )}
@@ -111,7 +111,7 @@ const UserProfileForm = ({
                 description={
                   <CommunityLocalizationNotice isAdminView={false} />
                 }
-                mb="md"
+                mb="lg"
               />
             </div>
             <FormSubmitButton
@@ -138,8 +138,8 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
 
 const ColorSchemeSwitcher = () => {
   return (
-    <Box mb="md">
-      <Text mt="xs" fw="bold">
+    <Box mb="lg">
+      <Text mt="xxs" fw="bold">
         {t`Theme`}
       </Text>
 

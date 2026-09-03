@@ -1,13 +1,13 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
+   [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
-   [metabase.warehouses.models.database :as database]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.models.database :as database]))
 
 (defenterprise current-user-can-write-field?
   "Enterprise version. Returns a boolean whether the current user can write the given field.
@@ -16,7 +16,7 @@
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (advanced-permissions.db/table (:table_id instance)))]
     (and (remote-sync/table-editable? table)
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
@@ -91,8 +91,7 @@
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
-  (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
-                    :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
+  (advanced-permissions.db/group-manager? api/*current-user-id* (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
@@ -172,23 +171,11 @@
   (if (empty? db-ids)
     {}
     (let [all-users-group-id (u/the-id (perms/all-users-group))
-          blocked-db-ids     (t2/select-fn-set :db_id :model/DataPermissions
-                                               :perm_type :perms/view-data
-                                               :perm_value :blocked
-                                               :group_id all-users-group-id
-                                               :db_id [:in db-ids]
-                                               {:select-distinct [:db_id]})
-          impersonation-db-ids (t2/select-fn-set :db_id :model/ConnectionImpersonation
-                                                 :group_id all-users-group-id
-                                                 :db_id [:in db-ids])
+          blocked-db-ids     (advanced-permissions.db/blocked-database-ids-for-group all-users-group-id db-ids)
+          impersonation-db-ids (advanced-permissions.db/impersonated-database-ids-for-group all-users-group-id db-ids)
           sandbox-db-ids     (into #{}
                                    (map :db_id)
-                                   (t2/query {:select [[:t.db_id :db_id]]
-                                              :from   [[(t2/table-name :model/Sandbox) :s]]
-                                              :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]
-                                              :where  [:and
-                                                       [:= :s.group_id all-users-group-id]
-                                                       [:in :t.db_id db-ids]]}))
+                                   (advanced-permissions.db/sandboxed-database-ids-for-group all-users-group-id db-ids))
           blocked-dbs        (into (or blocked-db-ids #{})
                                    (concat impersonation-db-ids sandbox-db-ids))]
       (zipmap db-ids (map #(if (blocked-dbs %) :blocked :unrestricted) db-ids)))))
@@ -199,15 +186,9 @@
   [group-ids]
   (if (empty? group-ids)
     {}
-    (let [blocked-group-ids   (t2/select-fn-set :group_id :model/DataPermissions
-                                                :perm_type :perms/view-data
-                                                :perm_value :blocked
-                                                :group_id [:in group-ids]
-                                                {:select-distinct [:group_id]})
-          impersonation-group-ids (t2/select-fn-set :group_id :model/ConnectionImpersonation
-                                                    :group_id [:in group-ids])
-          sandbox-group-ids   (t2/select-fn-set :group_id :model/Sandbox
-                                                :group_id [:in group-ids])
+    (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
+          impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
+          sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
           blocked-groups      (into (or blocked-group-ids #{})
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
@@ -220,20 +201,10 @@
     {}
     ;; We don't check for connection impersonations here, because impersonations are set at the
     ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
-    (let [blocked-group-ids (t2/select-fn-set :group_id :model/DataPermissions
-                                              :db_id db-id
-                                              :perm_type :perms/view-data
-                                              :perm_value :blocked
-                                              :group_id [:in group-ids]
-                                              {:select-distinct [:group_id]})
+    (let [blocked-group-ids (advanced-permissions.db/blocked-group-ids-for-database db-id group-ids)
           sandbox-group-ids (into #{}
                                   (map :group_id)
-                                  (t2/query {:select [[:s.group_id :group_id]]
-                                             :from   [[(t2/table-name :model/Sandbox) :s]]
-                                             :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
-                                             :where  [:and
-                                                      [:in :s.group_id group-ids]
-                                                      [:= :t.db_id db-id]]}))
+                                  (advanced-permissions.db/sandboxed-group-ids-for-database db-id group-ids))
           blocked-groups    (into (or blocked-group-ids #{})
                                   sandbox-group-ids)]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
