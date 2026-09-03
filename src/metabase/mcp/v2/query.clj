@@ -161,6 +161,33 @@
       (first terms)
       (apply lib/or terms))))
 
+(def ^:private keyset-marker
+  "Option key stamped on a filter clause this namespace minted, so the next page can supersede its
+   predecessor instead of stacking a dead predicate beside it.
+
+   Superseding is sound, not merely tidy: every row the new predicate admits lies strictly past a
+   boundary row that itself satisfied the old one, so the new predicate implies the old and
+   dropping it cannot widen the result. It is an optimization all the same — the marker rides in a
+   clause's options map, which no schema declares, so should Lib ever start stripping undeclared
+   option keys the predicates would simply accumulate again as they did before, with the same
+   results and a larger query."
+  ::keyset)
+
+(defn- minted-keyset?
+  [clause]
+  (and (vector? clause) (true? (get-in clause [1 keyset-marker]))))
+
+(defn- supersede-previous-keyset
+  "`query`'s last stage with the keyset predicates this namespace minted removed, so the caller can
+   add the current page's in their place. Filters the caller wrote are untouched."
+  [query]
+  (lib/update-query-stage
+   query -1
+   (fn [stage]
+     (if-let [kept (not-empty (into [] (remove minted-keyset?) (:filters stage)))]
+       (assoc stage :filters kept)
+       (dissoc stage :filters)))))
+
 (def ^:private exact-temporal-units
   "Truncation units at or coarser than a second. A value truncated this far renders without
    sub-second digits, so the emitted string parses back to exactly the value that was compared."
@@ -200,6 +227,12 @@
   "The serialized next-page query for `resolved-query` given the truncated page's `last-row`
    (and the run's `result-cols` metadata, used to locate the projected columns in the row), or
    nil when no gap-free cursor can be built.
+
+   The page's keyset filter supersedes the previous page's rather than joining it: each is
+   stamped with [[keyset-marker]], and a stamped predicate on the target stage is dropped before
+   the new one goes on. Left to accumulate they would grow the stored query, the emitted `WHERE`,
+   and the warehouse's planning cost linearly with page depth, all of them dead — see
+   [[keyset-marker]] for why dropping them cannot change the result.
 
    An unaggregated last stage takes the order and keyset filter in place — the filter applies
    before the stage's own limit, so an embedded limit still yields exactly the next page. An
@@ -255,7 +288,9 @@
                                                   specs)
                                           base)]
                         (-> with-order
-                            (lib/filter (keyset-filter-clause target-cols specs values))
+                            supersede-previous-keyset
+                            (lib/filter (-> (keyset-filter-clause target-cols specs values)
+                                            (assoc-in [1 keyset-marker] true)))
                             lib/prepare-for-serialization)))))))))))))
 
 (defn with-total-order

@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.queries :as queries]
    [metabase.mcp.v2.query :as q]
@@ -196,6 +197,76 @@
           ;; fan-out refusal follows the source through instead of blanket-refusing every card.
           (testing "GHY-4142: sourcing a join-free saved question is not a fan-out"
             (is (false? (#'q/fan-out-join? (mp) (sourcing plain-id))))))))))
+
+(defn- page-chain
+  "Page `serialized` through [[next-page-query]] `n` times at `page-size` rows a page, returning the
+   serialized query for each page, starting with `serialized` itself. The boundary handed to
+   [[next-page-query]] is the last row of the served page, the way a truncated tool response
+   reports it — the run itself is not capped, so an aggregated stage stays free of the `:limit`
+   that would (rightly) refuse the cursor. Stops early if the result runs out or a page mints
+   nothing."
+  [serialized n page-size]
+  (loop [query serialized, acc [serialized]]
+    (if (>= (count acc) n)
+      acc
+      (let [[rows cols] (run-rows+cols (lib/query (mp) query))]
+        (if (< (count rows) page-size)
+          acc
+          (if-let [nxt (#'q/next-page-query query cols (nth rows (dec page-size)))]
+            (recur nxt (conj acc nxt))
+            acc))))))
+
+(defn- last-stage-filters [serialized]
+  (:filters (last (:stages serialized))))
+
+(deftest next-page-query-replaces-the-previous-keyset-test
+  ;; GHY-4363: each page's keyset predicate supersedes the last one — every row it admits is
+  ;; strictly past a boundary the previous predicate already admitted. Appending instead of
+  ;; replacing leaves a chain of dead predicates that grows linearly and without bound: the
+  ;; stored handle payload, the emitted WHERE, and the warehouse's parse/plan cost all grow with
+  ;; page depth, on a query whose meaning never changes.
+  (mt/with-current-user (mt/user->id :rasta)
+    (testing "GHY-4363: an unaggregated chain carries exactly one keyset predicate at every depth"
+      (let [pages (page-chain (q/with-total-order
+                                (lib/prepare-for-serialization (lib/limit (orders-query) 2)))
+                              6 2)]
+        (is (= 6 (count pages)) "the chain must actually reach depth 6 for this to prove anything")
+        (is (= [0 1 1 1 1 1] (mapv (comp count last-stage-filters) pages)))))
+    (testing "GHY-4363: an aggregated chain carries exactly one on its appended stage too"
+      (let [aggregated (-> (orders-query)
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib.metadata/field (mp) (mt/id :orders :user_id)))
+                           lib/prepare-for-serialization
+                           q/with-total-order)
+            pages      (page-chain aggregated 5 3)]
+        (is (= 5 (count pages)))
+        (is (= [0 1 1 1 1] (mapv (comp count last-stage-filters) pages)))))))
+
+(deftest next-page-query-keeps-caller-filters-test
+  ;; GHY-4363: only the predicate this namespace minted may be superseded. A filter the caller
+  ;; wrote has to survive every page verbatim and keep being applied — dropping it would widen the
+  ;; result past what the caller asked for.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [total-col   (lib.metadata/field (mp) (mt/id :orders :total))
+          caller      (-> (orders-query)
+                          (lib/filter (lib/> total-col 50))
+                          (lib/limit 2)
+                          lib/prepare-for-serialization
+                          q/with-total-order)
+          caller-clause (first (last-stage-filters caller))
+          pages       (page-chain caller 5 2)]
+      (is (= 5 (count pages)) "the chain must actually reach depth 5 for this to prove anything")
+      (testing "GHY-4363: the caller's filter stays, and only one keyset rides alongside it"
+        (is (= [1 2 2 2 2] (mapv (comp count last-stage-filters) pages)))
+        (doseq [page (rest pages)]
+          (is (some #(lib.equality/= caller-clause %) (last-stage-filters page))
+              "the caller's own clause must survive verbatim")))
+      (testing "GHY-4363: and it is still enforced — no page returns a row the caller excluded"
+        (doseq [page pages]
+          (let [[rows cols] (run-rows+cols (lib/query (mp) page))
+                idx         (col-index cols "TOTAL")]
+            (is (seq rows))
+            (is (every? #(> (nth % idx) 50) rows))))))))
 
 (deftest next-page-cursor-pages-without-gaps-or-dups-test
   ;; Proves the keyset seek is correct across page boundaries: for a unique-key (PK) source, paging
