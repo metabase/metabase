@@ -50,16 +50,16 @@ import { getScrollBarSize } from "metabase/utils/dom";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
-import {
-  getTableCellClickedObject,
-  getTableClickedObjectRowData,
-  getTableHeaderClickedObject,
-} from "metabase/visualizations/lib/table";
-import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import {
+  getColumnExtent,
+  getTableCellClickedObject,
+  getTableClickedObjectRowData,
+  getTableHeaderClickedObject,
+} from "metabase/viz-core";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";

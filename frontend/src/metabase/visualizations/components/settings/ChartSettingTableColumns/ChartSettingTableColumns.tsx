@@ -3,26 +3,11 @@ import { t } from "ttag";
 
 import { FieldPanel } from "metabase/querying/fields/components/FieldPanel";
 import { Button } from "metabase/ui";
+import type { ChartSettingTableColumnsProps } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  DatasetColumn,
-  TableColumnOrderSetting,
-} from "metabase-types/api";
 
 import { TableColumnPanel } from "./TableColumnPanel";
-import type { EditWidgetData } from "./types";
 import { canEditQuery } from "./utils";
-
-export type ChartSettingTableColumnsProps = {
-  value: TableColumnOrderSetting[];
-  columns: DatasetColumn[];
-  question?: Question;
-  isShowingDetailsOnlyColumns: boolean;
-  getColumnName: (column: DatasetColumn) => string;
-  onChange: (value: TableColumnOrderSetting[], question?: Question) => void;
-  onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
-};
 
 export const ChartSettingTableColumns = ({
   value,

@@ -17,8 +17,8 @@ import {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
@@ -336,7 +336,7 @@ export function LinkedEntityPicker({
             value: String(tab.id),
           }))}
           label={t`Select a dashboard tab`}
-          mt="md"
+          mt="lg"
           value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
         />

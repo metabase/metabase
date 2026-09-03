@@ -10,8 +10,7 @@ import {
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
-
-import type { ChartSettingWidgetProps } from "./types";
+import type { ChartSettingWidgetProps } from "metabase/viz-core";
 
 const ALLOWED_CHARS = new Set([
   "0",

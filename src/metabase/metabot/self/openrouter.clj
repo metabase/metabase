@@ -41,7 +41,7 @@
       503 (tru "OpenRouter service is unavailable")
       (tru "OpenRouter API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "OpenRouter models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/v1/models` catalog.
   Mirrors the models whitelisted for the direct anthropic and openai providers; note that

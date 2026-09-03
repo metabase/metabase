@@ -13,7 +13,7 @@
 
 (defsetting ee-embedding-provider
   (deferred-tru "The registered embedding provider to use")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "ai-service"
   :type :string
@@ -70,7 +70,7 @@
 
 (defsetting ee-embedding-service-base-url
   (deferred-tru "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy).")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default    nil
   :export?    false

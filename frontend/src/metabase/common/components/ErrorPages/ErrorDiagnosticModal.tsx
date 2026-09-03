@@ -47,8 +47,8 @@ export const ErrorDiagnosticModal = ({
   if (loading || !errorInfo) {
     return (
       <Modal opened onClose={onClose}>
-        <Stack align="center" justify="center" mb="lg">
-          <Text w="bold" color="text-secondary" mb="sm">
+        <Stack align="center" justify="center" mb="xl">
+          <Text fw="bold" color="text-secondary" mb="sm">
             {c(
               "loading message indicating that we are gathering debugging information to aid in providing technical support",
             ).t`Gathering diagnostic information...`}
@@ -88,7 +88,8 @@ export const ErrorDiagnosticModal = ({
 
   const handleSlackSubmit = async (values: Record<string, any>) => {
     setIsSlackSending(true);
-    const { description, ...diagnosticSelections } = values;
+    // attribution is the backend's job; the form only says whether the report should name the reporter
+    const { description, reporter, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
       (key) => diagnosticSelections[key],
@@ -96,6 +97,7 @@ export const ErrorDiagnosticModal = ({
     const selectedInfo = {
       ..._.pick(errorInfo, ...selectedKeys),
       description,
+      reporter: Boolean(reporter),
     };
 
     try {
@@ -130,7 +132,7 @@ export const ErrorDiagnosticModal = ({
   if (isSubmissionComplete) {
     return (
       <Modal opened onClose={onClose} size={550}>
-        <Stack gap="sm" align="center" py="xl">
+        <Stack gap="sm" align="center" py="xxl">
           <MetabotLogo
             variant="bug"
             alt={c(
@@ -144,7 +146,7 @@ export const ErrorDiagnosticModal = ({
           <Text ta="center" c="text-secondary">
             {t`Bug report submitted successfully.`}
           </Text>
-          <Button mt="xl" onClick={onClose}>{t`Close`}</Button>
+          <Button mt="xxl" onClick={onClose}>{t`Close`}</Button>
         </Stack>
       </Modal>
     );
@@ -182,7 +184,7 @@ export const ErrorDiagnosticModalTrigger = () => {
 
   return (
     <ErrorBoundary>
-      <Stack justify="center" my="lg">
+      <Stack justify="center" my="xl">
         <Button
           leftSection={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
@@ -265,10 +267,10 @@ export const ErrorExplanationModal = ({
       opened={isModalOpen}
       onClose={onClose}
     >
-      <Text my="md">
+      <Text my="lg">
         {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
-      <Text my="md">
+      <Text my="lg">
         {t`If the error persists, you can download diagnostic information`}
       </Text>
       <Flex justify="flex-end">

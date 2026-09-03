@@ -4,6 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
+   [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.macros :as api.macros]
@@ -143,22 +144,14 @@
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private user-cols
-  "Required columns when fetching users for SCIM."
-  [:id :first_name :last_name :email :locale :is_active :entity_id])
-
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
-                                                             {:from [[:permissions_group_membership :pgm]]
-                                                              :join [[:permissions_group :pg] [:= :pg.id :group_id]]
-                                                              :where [:and
-                                                                      [:in :user_id (map u/the-id users)]
-                                                                      [:not= :pg.id (:id (perms/all-users-group))]
-                                                                      [:not= :pg.id (:id (perms/admin-group))]]}))
+    (let [user-id->memberships (group-by :user_id (scim.db/user-group-memberships (map u/the-id users)
+                                                                                  [(:id (perms/all-users-group))
+                                                                                   (:id (perms/admin-group))]))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -204,16 +197,15 @@
 (mu/defn ^:private get-user-by-entity-id
   "Fetches a user by entity ID, or throws a 404"
   [entity-id]
-  (or (t2/select-one (cons :model/User user-cols)
-                     :entity_id entity-id
-                     {:where [:= :type "personal"]})
+  (or (scim.db/scim-user-by-entity-id entity-id)
       (throw-scim-error 404 "User not found")))
 
-(defn- ^:private user-filter-clause
+(defn- ^:private user-filter-email
+  "The lower-cased email a `userName eq` `filter-parameter` selects."
   [filter-parameter]
   (let [[_ match] (re-matches #"^userName eq \"(.*)\"$" filter-parameter)]
     (if match
-      [:= :%lower.email (u/lower-case-en match)]
+      (u/lower-case-en match)
       (throw-scim-error 400 (format "Unsupported filter parameter: %s" filter-parameter)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -232,18 +224,13 @@
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
-          where-clause   [:and [:= :type "personal"]
-                          (when filter-param (user-filter-clause filter-param))]
-          users          (t2/select (cons :model/User user-cols)
-                                    {:where    where-clause
-                                     :limit    limit
-                                     :offset   offset
-                                     :order-by [[:id :asc]]})
+          lower-email    (when filter-param (user-filter-email filter-param))
+          users          (scim.db/scim-users lower-email limit offset)
           hydrated-users (t2/hydrate users :scim_user_group_memberships)
           results-count  (count hydrated-users)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
-                          :totalResults (t2/count :model/User {:where where-clause})
+                          :totalResults (scim.db/scim-user-count lower-email)
                           :startIndex   (inc offset)
                           :itemsPerPage items-per-page
                           :Resources    (map mb-user->scim hydrated-users)}]
@@ -274,12 +261,11 @@
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
-      (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
+      (when (scim.db/user-email-exists? email)
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (t2/insert! :model/User mb-user)
-                       (-> (t2/select-one (cons :model/User user-cols)
-                                          :email (u/lower-case-en email))
+                       (scim.db/insert-user! mb-user)
+                       (-> (scim.db/scim-user-by-email email)
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
@@ -289,7 +275,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
    _query-params
    scim-user :- SCIMUser]
   (with-prometheus-counters
@@ -300,9 +287,8 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (t2/update! :model/User (u/the-id current-user) updates)
-            (let [user (-> (t2/select-one (cons :model/User user-cols)
-                                          :entity_id id)
+            (scim.db/update-user! (u/the-id current-user) updates)
+            (let [user (-> (scim.db/scim-user-by-entity-id id)
                            mb-user->scim)]
               (scim-response user)))
           (catch Exception e
@@ -359,7 +345,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (t2/update! :model/User (u/the-id user) updates)
+        (scim.db/update-user! (u/the-id user) updates)
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))
@@ -368,19 +354,12 @@
 ;;; |                                              Group operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private group-cols
-  "Required columns when fetching groups for SCIM."
-  [:name :id :entity_id])
-
 (mi/define-batched-hydration-method add-scim-group-members
   :scim_group_members
   "Add to each `group` a list of :members where each item is a map with 2 keys [:email :entity_id]."
   [groups]
   (when (seq groups)
-    (let [group-id->members (group-by :group_id (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
-                                                           {:from [[:permissions_group_membership :pgm]]
-                                                            :join [[:core_user :u] [:= :u.id :pgm.user_id]]
-                                                            :where [:in :pgm.group_id (map u/the-id groups)]}))
+    (let [group-id->members (group-by :group_id (scim.db/group-members (map u/the-id groups)))
           group->member     (fn [member] (select-keys member [:email :entity_id]))]
       (for [group groups]
         (assoc group :members (->> (group-id->members (u/the-id group))
@@ -391,12 +370,7 @@
   "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
   static and cannot be managed via SCIM."
   [entity-id]
-  (or (t2/select-one (cons :model/PermissionsGroup group-cols)
-                     :entity_id entity-id
-                     {:where
-                      [:and
-                       [:not= :id (:id (perms/all-users-group))]
-                       [:not= :id (:id (perms/admin-group))]]})
+  (or (scim.db/scim-group-by-entity-id entity-id [(:id (perms/all-users-group)) (:id (perms/admin-group))])
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -413,11 +387,12 @@
    :displayName (:name group)
    :meta        {:resourceType "Group"}})
 
-(defn- group-filter-clause
+(defn- group-filter-name
+  "The group name a `displayName eq` `filter-parameter` selects."
   [filter-parameter]
   (let [[_ match] (re-matches #"^displayName eq \"(.*)\"$" filter-parameter)]
     (if match
-      [:= :name match]
+      match
       (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
                                                       :status-code 400})))))
 
@@ -438,19 +413,13 @@
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
-          where-clause   [:and
-                          [:not= :id (:id perms/all-users-group)]
-                          [:not= :id (:id perms/admin-group)]
-                          (when filter-param (group-filter-clause filter-param))]
-          groups         (t2/select (cons :model/PermissionsGroup group-cols)
-                                    {:where    where-clause
-                                     :limit    limit
-                                     :offset   offset
-                                     :order-by [[:id :asc]]})
+          excluded-ids   [(:id perms/all-users-group) (:id perms/admin-group)]
+          group-name     (when filter-param (group-filter-name filter-param))
+          groups         (scim.db/scim-groups excluded-ids group-name limit offset)
           results-count  (count groups)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
-                          :totalResults (t2/count :model/PermissionsGroup {:where where-clause})
+                          :totalResults (scim.db/scim-group-count excluded-ids group-name)
                           :startIndex   (inc offset)
                           :itemsPerPage items-per-page
                           :Resources    (map mb-group->scim groups)}]
@@ -473,7 +442,7 @@
   "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
   any existing members."
   [group-id user-entity-ids]
-  (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
+  (let [user-ids (scim.db/user-ids-by-entity-ids user-entity-ids)]
     (when-let [memberships (not-empty (map
                                        (fn [user-id] {:group group-id :user user-id})
                                        user-ids))]
@@ -492,10 +461,10 @@
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
-      (when (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name))
+      (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]
+        (let [new-group (scim.db/insert-group! {:name group-name})]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -509,7 +478,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
    _query-params
    scim-group :- SCIMGroup]
   (with-prometheus-counters
@@ -517,7 +487,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
+          (scim.db/update-group! (u/the-id group) {:name group-name})
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -535,5 +505,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (t2/delete! :model/PermissionsGroup (u/the-id group))
+      (scim.db/delete-group! (u/the-id group))
       (scim-response nil 204))))

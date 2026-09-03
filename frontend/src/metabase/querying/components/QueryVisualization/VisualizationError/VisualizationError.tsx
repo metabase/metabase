@@ -147,14 +147,14 @@ export function VisualizationError({
     return (
       <Box className={cx(className, CS.overflowAuto)}>
         <Flex direction="column" justify="center" align="center" mih="100%">
-          <Flex align="center" mb="md">
+          <Flex align="center" mb="lg">
             <Icon className={VisErrorS.QueryErrorIcon} name="warning" />
             <Box
               className={VisErrorS.QueryErrorTitle}
             >{t`An error occurred in your query`}</Box>
           </Flex>
           <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
-          <Flex align="center" my="md" gap="md">
+          <Flex align="center" my="lg" gap="lg">
             {isSql && showMetabaseLinks && (
               <ExternalLink
                 className={VisErrorS.QueryErrorLink}

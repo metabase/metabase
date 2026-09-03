@@ -357,57 +357,6 @@ describe("issue 45410", () => {
     });
   });
 });
-describe("issue 26861", { tags: "@skip" }, () => {
-  const filter = {
-    id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
-    name: "filter",
-    "display-name": "Filter",
-    type: "dimension",
-    dimension: ["field", ORDERS.CREATED_AT, null],
-    "widget-type": "date/all-options",
-    default: null,
-  };
-
-  const nativeQuery = {
-    name: "26861",
-    native: {
-      query: "select * from orders where {{filter}} limit 2",
-      "template-tags": {
-        filter,
-      },
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
-  });
-
-  it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
-    H.filterWidget().click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclude…").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Days of the week…").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tuesday").click();
-
-    cy.button("Update filter").click();
-    // In all other places in application, POST /api/dataset fires immediately after "Update filter"
-    // A part of this bug is that we have to manually run the query so the next step will fail
-    cy.wait("@dataset");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("CREATED_AT excludes Tuesday");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("117.03").should("not.exist");
-  });
-});
 
 describe("issue 27123", () => {
   const questionDetails = {

@@ -20,11 +20,12 @@ import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getPieDimensions } from "metabase/visualizations/shared/settings/pie";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type DimensionsWidgetProps,
+  getOptionFromColumn,
+  getPieDimensions,
+} from "metabase/viz-core";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
-import type { RawSeries } from "metabase-types/api";
 
 import Styles from "./DimensionsWidget.module.css";
 import { PieRowsPicker } from "./PieRowsPicker";
@@ -84,13 +85,6 @@ const THREE_RING_SETTING_TITLES = [
   MIDDLE_RING_TITLE,
   OUTER_RING_TITLE,
 ];
-
-export type DimensionsWidgetProps = {
-  rawSeries: RawSeries;
-  settings: ComputedVisualizationSettings;
-  onChangeSettings: (newSettings: ComputedVisualizationSettings) => void;
-  onShowWidget: (widget: any, ref: any) => void;
-};
 
 export function DimensionsWidget({
   rawSeries,

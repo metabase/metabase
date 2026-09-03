@@ -5,13 +5,11 @@ import { t } from "ttag";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { isNotNull } from "metabase/utils/types";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Database as DatabaseType,
+  Database,
   PermissionEntityId,
+  PermissionsDatabase,
 } from "metabase-types/api";
 
 import type { RawDataRouteParams } from "../../types";
@@ -20,8 +18,9 @@ import {
   getSchemaEntityId,
   getTableEntityId,
 } from "../../utils/data-entity-id";
-import { getDatabase } from "../../utils/metadata";
+import { getDatabaseSchemas } from "../../utils/metadata";
 
+import { getPermissionsDatabase, getPermissionsDatabases } from "./databases";
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 
 export type DataTreeNodeItem = {
@@ -53,13 +52,11 @@ const getRouteParams = (
 const getSchemaId = (name: string) => `schema:${name}`;
 const getTableId = (id: string | number) => `table:${id}`;
 
-const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
-  const entities = metadata
-    .databasesList({ savedQuestions: false })
-    // Unjustified type cast. FIXME
-    .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
-    // Unjustified type cast. FIXME
-    .filter((db) => !(db as DatabaseType).router_database_id)
+const getDatabasesSidebar = (databases: Database[]): DataSidebarProps => {
+  const entities = databases
+    .filter((db) => !db.is_saved_questions)
+    .filter((db) => !PLUGIN_AUDIT.isAuditDb(db))
+    .filter((db) => !db.router_database_id)
     .map((database) => ({
       id: database.id,
       name: database.name,
@@ -75,7 +72,7 @@ const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
 };
 
 const getTablesSidebar = (
-  database: Database,
+  database: PermissionsDatabase,
   schemaName?: string,
   tableId?: string,
 ): DataSidebarProps => {
@@ -87,27 +84,28 @@ const getTablesSidebar = (
     selectedId = getSchemaId(schemaName);
   }
 
-  let entities = database
-    .getSchemas()
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const schemas = getDatabaseSchemas(database);
+
+  let entities = schemas
+    .toSorted((a, b) => a.name.localeCompare(b.name))
     .map<DataTreeNodeItem>((schema) => {
       return {
         id: getSchemaId(schema.name),
         name: schema.name,
         entityId: getSchemaEntityId(schema),
         icon: "folder" as const,
-        children: (schema.tables ?? [])
-          .sort((a, b) => a.displayName().localeCompare(b.displayName()))
+        children: schema.tables
+          .toSorted((a, b) => a.display_name.localeCompare(b.display_name))
           .map((table) => ({
             id: getTableId(table.id),
             entityId: getTableEntityId(table),
-            name: table.displayName(),
+            name: table.display_name,
             icon: "table" as const,
           })),
       };
     });
 
-  const shouldIncludeSchemas = database.schemasCount() > 1;
+  const shouldIncludeSchemas = schemas.length > 1;
   if (!shouldIncludeSchemas && entities[0]?.children != null) {
     entities = entities[0]?.children;
   }
@@ -121,12 +119,24 @@ const getTablesSidebar = (
   };
 };
 
+const getSidebarDatabase = (
+  state: State,
+  props: { params: RawDataRouteParams },
+) =>
+  getPermissionsDatabase(
+    state,
+    props.params.databaseId != null
+      ? parseInt(props.params.databaseId)
+      : undefined,
+  );
+
 export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
   createSelector(
-    getMetadataWithHiddenTables,
+    getPermissionsDatabases,
+    getSidebarDatabase,
     getRouteParams,
     getIsLoadingDatabaseTables,
-    (metadata, params, isLoading) => {
+    (databases, database, params, isLoading) => {
       if (isLoading) {
         return null;
       }
@@ -134,10 +144,12 @@ export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
       const { databaseId, schemaName, tableId } = params;
 
       if (databaseId == null) {
-        return getDatabasesSidebar(metadata);
+        return getDatabasesSidebar(databases);
       }
 
-      const database = getDatabase(metadata, parseInt(databaseId));
+      if (database == null) {
+        return null;
+      }
 
       return getTablesSidebar(database, schemaName, tableId);
     },

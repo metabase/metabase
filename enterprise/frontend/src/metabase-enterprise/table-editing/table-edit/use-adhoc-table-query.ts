@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo } from "react";
 
+import { getMetadata } from "metabase/metadata-store";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";
 import { useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

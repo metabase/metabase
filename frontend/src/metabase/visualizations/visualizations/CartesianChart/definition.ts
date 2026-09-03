@@ -1,29 +1,26 @@
 import _ from "underscore";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_COLORS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
   LEGEND_SETTINGS,
   LINE_SETTINGS,
+  SERIES_SETTING_KEY,
   SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
+  TIMELINE_EVENTS_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import {
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
-} from "metabase/visualizations/lib/settings/validation";
-import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type {
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Series,
@@ -127,4 +124,5 @@ export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
     ...LEGEND_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   };

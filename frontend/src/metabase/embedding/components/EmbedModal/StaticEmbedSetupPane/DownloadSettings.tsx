@@ -22,7 +22,7 @@ export const DashboardDownloadSettings = ({
 
   return (
     <DisplayOptionSection title={t`Downloads`}>
-      <Stack gap="md" mt="md">
+      <Stack gap="lg" mt="lg">
         <Switch
           label={t`Export to PDF`}
           labelPosition="left"

@@ -230,20 +230,23 @@
 
   to find the plugin manifests in the jar."
   [pattern]
-  (let [jar-url (URL. (str "jar:file:" (get-jar-path) "!/"))]
-    (with-open [fs (jar-file-system-from-url jar-url)]
-      (let [matcher (.getPathMatcher fs pattern)
-            root    (.getPath fs "/" (into-array String []))
-            files   (atom [])]
-        (Files/walkFileTree root
-                            (proxy [java.nio.file.SimpleFileVisitor] []
-                              (preVisitDirectory [dir _attrs]
-                                (if (or (str/starts-with? (str dir) "/metabase")
-                                        (= (str "/") (str dir)))
-                                  java.nio.file.FileVisitResult/CONTINUE
-                                  java.nio.file.FileVisitResult/SKIP_SUBTREE))
-                              (visitFile [file _attrs]
-                                (when (.matches matcher file)
-                                  (swap! files conj file))
-                                java.nio.file.FileVisitResult/CONTINUE)))
-        (into [] (map #(.toUri ^Path %) @files))))))
+  ;; Open the jar via a Path, not a jar:file: URL — [[get-jar-path]] returns the decoded filesystem path, and
+  ;; stuffing that back into a URL string breaks URL->URI conversion when the path contains a space. The Path-based
+  ;; overload also bypasses NIO's global URI-keyed filesystem cache, so closing it here can't clobber a filesystem
+  ;; some other consumer obtained via FileSystems/getFileSystem.
+  (with-open [fs (nio-fs (get-jar-path))]
+    (let [matcher (.getPathMatcher fs pattern)
+          root    (.getPath fs "/" (into-array String []))
+          files   (atom [])]
+      (Files/walkFileTree root
+                          (proxy [java.nio.file.SimpleFileVisitor] []
+                            (preVisitDirectory [dir _attrs]
+                              (if (or (str/starts-with? (str dir) "/metabase")
+                                      (= (str "/") (str dir)))
+                                java.nio.file.FileVisitResult/CONTINUE
+                                java.nio.file.FileVisitResult/SKIP_SUBTREE))
+                            (visitFile [file _attrs]
+                              (when (.matches matcher file)
+                                (swap! files conj file))
+                              java.nio.file.FileVisitResult/CONTINUE)))
+      (into [] (map #(.toUri ^Path %) @files)))))

@@ -89,7 +89,7 @@ export const BreadcrumbsTestComponent = () => {
     .exhaustive();
 
   return (
-    <Stack p="md" gap="sm">
+    <Stack p="lg" gap="sm">
       <div data-testid="breadcrumbs-container">
         <SdkBreadcrumbs />
       </div>

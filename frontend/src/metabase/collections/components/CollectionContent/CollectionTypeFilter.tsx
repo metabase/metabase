@@ -58,7 +58,7 @@ export function CollectionTypeFilter({
       opened={opened}
       onDismiss={close}
       position="bottom-end"
-      shadow="md"
+      shadow="sm"
       returnFocus
     >
       <Indicator
@@ -83,7 +83,7 @@ export function CollectionTypeFilter({
         aria-labelledby={headingId}
         data-testid="collection-type-filter-popover"
       >
-        <Stack gap="md" px="1.25rem" py="md" miw="11rem">
+        <Stack gap="lg" px="1.25rem" py="lg" miw="11rem">
           <Text id={headingId} fw="bold">
             {t`Filter by type`}
           </Text>

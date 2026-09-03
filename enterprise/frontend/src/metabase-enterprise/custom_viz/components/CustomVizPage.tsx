@@ -162,7 +162,7 @@ export function CustomVizPage({ params }: Props) {
       </Stack>
       <SettingsSection>
         <Box
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           data-testid="custom-viz-settings-form"
         >
@@ -174,7 +174,7 @@ export function CustomVizPage({ params }: Props) {
             {({ dirty }) => (
               <Form>
                 <Stack gap="40px">
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <Title order={2}>
                       {isEdit && plugin
                         ? t`Replace bundle for ${plugin.display_name}`

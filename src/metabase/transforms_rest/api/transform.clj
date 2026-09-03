@@ -10,6 +10,7 @@
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
+   [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
@@ -199,7 +200,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
-  (let [id->transform (t2/select-pk->fn identity :model/Transform)
+  (let [id->transform (transforms-rest.db/transforms-by-id)
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
@@ -285,7 +286,7 @@
   [{:keys [run-id]} :- [:map
                         [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
+  (let [run (api/check-404 (transforms-rest.db/transform-run run-id))]
     (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
         transforms-base.u/present-run)))
 
@@ -339,7 +340,7 @@
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (t2/update! :model/Transform id {:last_checkpoint_value nil})
+  (transforms-rest.db/reset-checkpoint! id)
   nil)
 
 (defn- check-feature-and-lock!

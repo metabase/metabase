@@ -6,6 +6,7 @@
    [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    ;; allowed (for now) since sandboxing needs to manipulate legacy metadata
@@ -32,9 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -216,7 +215,7 @@
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (t2/update! :model/Card card-id {:result_metadata cols}))
+                (sandbox.db/set-card-result-metadata! card-id cols))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

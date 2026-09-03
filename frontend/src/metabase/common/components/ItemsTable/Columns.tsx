@@ -81,7 +81,6 @@ export const Columns = {
       <ColumnHeader>
         <BulkSelectWrapper>
           <Checkbox
-            size="sm"
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
             onChange={hasUnselected ? onSelectAll : onSelectNone}

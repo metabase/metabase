@@ -103,7 +103,12 @@
         [:model/User {id :id} {}]
         (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
         (is (= {"foo" "bar"}
-               (t2/select-one-fn :login_attributes :model/User :id id)))))))
+               (t2/select-one-fn :login_attributes :model/User :id id)))))
+    (testing "404 for API-key pseudo-users; attributes cannot be set on them (UXW-4240)"
+      (mt/with-temp [:model/User {id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})))
+        (is (nil? (t2/select-one-fn :login_attributes :model/User :id id)))))))
 
 (deftest attributes-endpoint-includes-jwt-attributes-test
   (testing "GET /api/mt/user/attributes includes keys from jwt_attributes"

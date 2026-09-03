@@ -70,11 +70,6 @@ const baseConfig = {
     "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
-     * Imports which are only applicable to the embedding sdk.
-     * As we use SDK components in new iframe embedding, we need to import them here.
-     **/
-    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/utils/noop.ts",
-    /**
      * Docs snippets are loaded as raw text (asset/source) in rspack.
      * In Jest, mock them as plain strings.
      */

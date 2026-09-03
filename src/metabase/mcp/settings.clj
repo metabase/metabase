@@ -56,13 +56,51 @@
   :export?    true
   :doc        false)
 
+(defsetting mcp-v2-disabled-tools
+  (deferred-tru "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call.")
+  :type       :csv
+  :default    []
+  :visibility :admin
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :doc        false)
+
+(def ^:private ^:const default-query-handle-ttl-hours
+  "Default for [[mcp-query-handle-ttl-hours]]. One source, referenced by both the setting's `:default`
+   and its getter's fallback, so the two can't drift."
+  24)
+
+(defsetting mcp-query-handle-ttl-hours
+  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  ;; `:positive-integer` rather than `:integer`: the GC deletes handles created before `now - ttl`,
+  ;; so 0 puts the cutoff at *now* and clears the whole table on the next run, and a negative takes
+  ;; handles minted seconds ago. The type guards the read path too, which a `:setter` cannot —
+  ;; env vars are read straight through `get-raw-value` and never pass through one.
+  :type       :positive-integer
+  :default    default-query-handle-ttl-hours
+  :visibility :internal
+  :export?    false
+  :doc        false
+  ;; The read predicate yields nil for a stored non-positive rather than falling back to the
+  ;; default, and the GC would then `(long nil)`. Fall back here, as `attachment-table-row-limit`
+  ;; does for the same reason.
+  :getter     (fn []
+                ;; `get-raw-value` rethrows a parse failure (e.g. MB_MCP_QUERY_HANDLE_TTL_HOURS=forever),
+                ;; which would kill the GC task on every run — an unreadable value means the default,
+                ;; same as a non-positive one.
+                (or (try
+                      (setting/get-value-of-type :positive-integer :mcp-query-handle-ttl-hours)
+                      (catch Exception _ nil))
+                    default-query-handle-ttl-hours)))
+
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
   :type       :csv
   :default    []
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defn- strip-scheme
@@ -105,7 +143,7 @@
   :default    ""
   :visibility :admin
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter
   :setter     #'-mcp-apps-cors-custom-origins!)
 

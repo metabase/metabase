@@ -4,13 +4,12 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import React, { useCallback } from "react";
-import type { Root } from "react-dom/client";
+import { type Root, createRoot } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
 import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
 import { createMeasurementContainer } from "metabase/utils/measure-container";
-import { renderRoot, unmountRoot } from "metabase/utils/react-compat";
 import { isNotNull } from "metabase/utils/types";
 
 import { DataGridThemeProvider } from "./use-table-theme";
@@ -90,7 +89,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         onMeasured(measuredColumnSizingMap);
 
         setTimeout(() => {
-          unmountRoot(measureRootTree, measureRoot);
+          measureRootTree?.unmount();
           document.body.removeChild(measureRoot);
         }, 0);
       };
@@ -167,7 +166,8 @@ export const useMeasureColumnWidths = <TData, TValue>(
         ? measurementRenderWrapper(wrappedContent)
         : wrappedContent;
 
-      measureRootTree = renderRoot(content, measureRoot);
+      measureRootTree = createRoot(measureRoot);
+      measureRootTree.render(content);
     },
     [table, columnsOptions, theme, measurementRenderWrapper],
   );

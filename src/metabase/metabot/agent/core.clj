@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api-scope.core :as api-scope]
@@ -14,6 +15,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
@@ -203,6 +205,15 @@
               (= (:finish-reason %) "length"))
         parts))
 
+(defn- terminal-error-message
+  "Message from a tool failure no retry can fix (a permission denial), or nil if there was none."
+  [parts]
+  (some (fn [part]
+          (when (and (= (:type part) :tool-output)
+                     (get-in part [:result :terminal-error?]))
+            (not-empty (get-in part [:result :output]))))
+        parts))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations terminal-tools parts]
@@ -299,12 +310,18 @@
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
     (fn [mem {:keys [chart-id query-id chart-type query]}]
+      ;; Merge onto whatever's already at this chart-id rather than replacing it
+      ;; outright. A chart seeded from viewing context (or written earlier this
+      ;; same turn by the tool itself, see edit-chart-tool) can carry
+      ;; :image_base_64/:timeline_events/:chart_config that the tool-output's
+      ;; structured-output doesn't know about; a full replace would drop them.
       (memory/set-chart mem
                         chart-id
-                        {:chart_id chart-id
-                         :query_id query-id
-                         :queries [query]
-                         :visualization_settings {:chart_type chart-type}})))
+                        (merge (get-in mem [:state :charts chart-id])
+                               {:chart_id chart-id
+                                :query_id query-id
+                                :queries [query]
+                                :visualization_settings {:chart_type chart-type}}))))
    memory
    parts))
 
@@ -394,6 +411,10 @@
   "Create chart structure from chart-config"
   [id {:keys [query timeline_events] :as chart-config}]
   {:chart_id id
+   ;; `id` is the same viewing-context item id seed-state stores this chart's query
+   ;; under; reusing it as :query_id lets edit_chart carry a query-id through (see
+   ;; extract-charts below) instead of leaving charts seeded this way uncaptured.
+   :query_id id
    :queries [query]
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
@@ -490,6 +511,11 @@
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
 
+(defn- terminal-error-text-part
+  "Tool results are not rendered in the conversation, so a terminal error needs assistant text."
+  [message]
+  {:type :text, :id (str (random-uuid)), :text message})
+
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
 
@@ -566,24 +592,37 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          (cond
-            (reduced? result')
-            ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-            (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+          ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
+          (let [terminal-error (when (:required-tool-call? profile)
+                                 (terminal-error-message parts))]
+            (cond
+              (reduced? result')
+              ;; consumer signalled early termination (e.g. client disconnect / cancellation)
+              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
 
-            (should-continue? iteration max-iter terminal-tools parts)
-            (assoc loop-state :result result' :iteration (inc iteration))
+              terminal-error
+              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
+                (if (reduced? result'')
+                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
+                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
+                      (assoc loop-state
+                             :status :done
+                             :finish-reason :terminal-error
+                             :result (rf result'' (final-state-part @memory-atom))))))
 
-            :else
-            (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-              (if (= reason :length)
-                (log/warn "Agent loop complete" {:iterations iteration :reason reason})
-                (log/info "Agent loop complete" {:iterations iteration :reason reason}))
-              (assoc loop-state
-                     :status :done
-                     ;; surfaced so run-agent-loop can record it on the turn span
-                     :finish-reason reason
-                     :result (rf result' (final-state-part @memory-atom))))))))))
+              (should-continue? iteration max-iter terminal-tools parts)
+              (assoc loop-state :result result' :iteration (inc iteration))
+
+              :else
+              (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+                (if (= reason :length)
+                  (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                  (log/info "Agent loop complete" {:iterations iteration :reason reason}))
+                (assoc loop-state
+                       :status :done
+                       ;; surfaced so run-agent-loop can record it on the turn span
+                       :finish-reason reason
+                       :result (rf result' (final-state-part @memory-atom)))))))))))
 
 ;;; Public API
 
@@ -651,7 +690,9 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
-  (let [profile-id         (:profile-id opts)
+  (let [opts               (m/update-existing-in opts [:context :capabilities]
+                                                 capabilities/enforce-permissions)
+        profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
         perms              (or scope/*current-user-metabot-permissions*

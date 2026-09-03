@@ -3,13 +3,9 @@ import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import type {
-  AdminPathKey,
-  DraftDashboardSubscription,
-  State,
-} from "metabase/redux/store";
+import type { AdminPathKey, State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DraftDashboardSubscription } from "metabase-types/api";
 
 import type {
   SnippetSidebarContext,

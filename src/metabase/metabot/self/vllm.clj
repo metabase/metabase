@@ -379,21 +379,25 @@
   "List the models the connection's vLLM server is serving. Pass-through: there is nothing to
   whitelist, and `display_name` falls back to the served id.
 
-  `:probe?` additionally runs [[preflight!]], and reports the model it exercised as `:probed-model`
-  for the connect path to adopt, along with the `:learned-config` the probe determined. Reserved for
-  the connect and edit paths — a tool-call probe on every model listing would stall the admin picker
-  behind a full prefill."
+  `:probe?` additionally runs [[preflight!]], and reports what it determined as `:learned-config`,
+  for the connect path to store on the connection: whether the model reasons, and the model it
+  exercised, which the connect path adopts as the one to run on. Reserved for the connect and edit
+  paths — a tool-call probe on every model listing would stall the admin picker behind a full
+  prefill. On edit, a `:proposed-model` is re-probed only while the server still advertises it;
+  otherwise the normal candidate selection chooses a replacement."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy? model probe?]}]
-   (let [auth    (vllm-auth credentials ai-proxy?)
-         entries (list-all-models auth)
-         probed  (when probe?
-                   (preflight! auth entries model))]
+  ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
+   (let [auth     (vllm-auth credentials ai-proxy?)
+         entries  (list-all-models auth)
+         proposed (when (some #(= proposed-model (:id %)) entries)
+                    proposed-model)
+         probed   (when probe?
+                    (preflight! auth entries (or model proposed)))]
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}
-       probed (assoc :probed-model   (:model probed)
-                     :learned-config {reasoning-config-key (str (:reasoning? probed))})))))
+       probed (assoc :learned-config {reasoning-config-key (str (:reasoning? probed))
+                                      :probed-model        (:model probed)})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 

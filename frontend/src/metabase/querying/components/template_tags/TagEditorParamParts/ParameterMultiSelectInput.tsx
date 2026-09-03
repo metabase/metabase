@@ -33,10 +33,10 @@ export function ParameterMultiSelectInput({
         value={getIsMultiSelect(parameter).toString()}
         onChange={(value) => onChangeMultiSelect(value === "true")}
       >
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Radio
             label={
-              <Group gap="xs">
+              <Group gap="xxs">
                 {t`Multiple values`}
                 {tag.type !== "dimension" && <ParameterMultiSelectHelpInfo />}
               </Group>
@@ -61,7 +61,7 @@ function ParameterMultiSelectHelpInfo() {
         />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Box p="md" maw="24rem">
+        <Box p="lg" maw="24rem">
           <Text>
             {jt`Most of the time you’ll want to use this with an ${(
               <Code key="in" bg="background_page-tertiary">

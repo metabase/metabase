@@ -4,6 +4,7 @@ export const createMockExplorationsState = (
   opts?: Partial<ExplorationsState>,
 ): ExplorationsState => {
   return {
+    highlightedComment: null,
     ...opts,
   };
 };

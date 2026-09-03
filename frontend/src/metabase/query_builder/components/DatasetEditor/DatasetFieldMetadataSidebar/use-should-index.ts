@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import _ from "underscore";
 
-import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
-import { fieldHasIndex } from "metabase/query_builder/model-indexes/utils";
 import type { Field } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import type { FieldWithMaybeIndex } from "../../../model-indexes/actions";
+import { fieldHasIndex } from "../../../model-indexes/utils";
 
 type UseShouldIndexParams = {
   field: Pick<FieldWithMaybeIndex, "name" | "field_ref" | "should_index">;

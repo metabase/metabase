@@ -74,7 +74,7 @@ export function ManageCustomVizPage() {
           <Title order={1} style={{ height: "2.5rem" }}>
             {t`Custom visualizations`}
           </Title>
-          <Group gap="xs">
+          <Group gap="xxs">
             <Button
               component={Link}
               to={Urls.customVizAdd()}
@@ -111,7 +111,7 @@ export function ManageCustomVizPage() {
       </Stack>
 
       {isLoading && (
-        <Flex justify="center" p="xl">
+        <Flex justify="center" p="xxl">
           <Loader />
         </Flex>
       )}
@@ -120,11 +120,11 @@ export function ManageCustomVizPage() {
         <Group
           align="center"
           bd="1px solid var(--mb-color-border-neutral)"
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           justify="center"
           mih="15rem"
-          p="xl"
+          p="xxl"
         >
           <Text c="text-disabled">{t`You don't have any custom visualizations.`}</Text>
         </Group>
@@ -133,7 +133,7 @@ export function ManageCustomVizPage() {
       {repoPlugins && repoPlugins.length > 0 && (
         <Box
           bd="1px solid var(--mb-color-border-neutral)"
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           className={S.pluginList}
           style={{

@@ -25,6 +25,8 @@ runs:
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
       run: | # bash
+        source "${{ github.action_path }}/kondo-ratchets.sh"
+
         git config --global user.email "metabase-bot@metabase.com"
         git config --global user.name "Metabase bot"
 
@@ -34,7 +36,7 @@ runs:
         git checkout ${TARGET_BRANCH}
         git fetch --all
         git checkout -b ${BACKPORT_BRANCH}
-        git cherry-pick ${COMMIT} || true
+        cherry_pick_backport "${COMMIT}"
 
         CONFLICT_LIST=$(git ls-files -u)
 
@@ -46,10 +48,7 @@ runs:
           echo "has-conflicts=true" >> "$GITHUB_OUTPUT"
 
           # Add a shell script for resolving conflicts
-          echo "git reset HEAD~1" > ./backport.sh
-          echo "rm ./backport.sh" >> ./backport.sh
-          echo "git cherry-pick ${COMMIT}" >> ./backport.sh
-          echo "echo 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'" >> ./backport.sh
+          write_backport_script "${COMMIT}"
           chmod +x ./backport.sh
           git add ./backport.sh
           git commit -m "Add backport resolution script"
@@ -73,7 +72,7 @@ runs:
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 v${TARGET_VERSION} backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
         if [ "$CONFLICTS" -gt 0 ]; then
           PR_ARGS+=(--draft)
         fi

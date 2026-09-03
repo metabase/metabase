@@ -12,12 +12,12 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { getMetadata } from "metabase/metadata-store";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";

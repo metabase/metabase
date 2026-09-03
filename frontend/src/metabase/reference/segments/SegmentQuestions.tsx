@@ -1,18 +1,18 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { useListCardsQuery } from "metabase/api";
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useQuestionListQuery } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -62,36 +62,32 @@ const SegmentQuestionsInner = ({
   metadata,
 }: SegmentQuestionsInnerProps) => {
   const {
-    data = [],
+    data: cards = [],
     isLoading,
     error,
-  } = useQuestionListQuery({
-    // Unjustified type cast. FIXME
-    query: { f: "using_segment" as any, model_id: segment.id },
-  });
+  } = useListCardsQuery({ f: "using_segment", model_id: segment.id });
 
   return (
     <div style={style} className={CS.full}>
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
-        type="questions"
         headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
         {() =>
-          data.length > 0 ? (
+          cards.length > 0 ? (
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
-                {data.map(
-                  (question) =>
-                    question.id() &&
-                    question.displayName() && (
+                {cards.map(
+                  (card) =>
+                    card.id &&
+                    card.name && (
                       <ListItem
-                        key={question.id()}
-                        name={question.displayName() ?? ""}
-                        description={getDescription(question)}
-                        url={Urls.card(question.card())}
-                        icon={visualizations.get(question.display())?.iconName}
+                        key={card.id}
+                        name={card.name}
+                        description={getDescription(card)}
+                        url={Urls.card(card)}
+                        icon={visualizations.get(card.display)?.iconName}
                       />
                     ),
                 )}

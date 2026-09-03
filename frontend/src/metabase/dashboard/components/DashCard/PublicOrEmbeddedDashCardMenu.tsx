@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -7,14 +6,14 @@ import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownl
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { getMetadata } from "metabase/metadata-store";
 import { useSelector, useStore } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardCard, Dataset } from "metabase-types/api";
 
+import { DashCardMenuButton } from "./DashCardMenu/DashCardMenuButton";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 
 type PublicOrEmbeddedDashCardMenuProps = {
@@ -66,16 +65,10 @@ export const PublicOrEmbeddedDashCardMenu = ({
       trapFocus
     >
       <Menu.Target>
-        <ActionIcon
-          size="xs"
-          className={cx({
-            [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-          })}
+        <DashCardMenuButton
           onClick={toggle}
           data-testid="public-or-embedded-dashcard-menu"
-        >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        />
       </Menu.Target>
 
       <Menu.Dropdown>

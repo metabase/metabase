@@ -42,7 +42,7 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
 
   return (
     <ClauseStep>
-      <Flex gap="md" align="center">
+      <Flex gap="lg" align="center">
         {match({ isFetching, count })
           .with({ isFetching: true }, () => <Loader />)
           .with({ isFetching: false, count: P.nonNullable }, () => (

@@ -15,7 +15,7 @@ interface FormattedLoginItem extends UserLoginHistoryItem {
 }
 
 const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
-  <Card px="md" py="sm" my="md" radius="md" withBorder>
+  <Card px="lg" py="sm" my="lg" radius="sm" withBorder>
     <Flex align="flex-start">
       <div>
         <Label>
@@ -43,7 +43,7 @@ const LoginHistoryGroup = ({
   items: FormattedLoginItem[];
   date: string;
 }) => (
-  <Box py="md">
+  <Box py="lg">
     <Label>{date}</Label>
     <div>
       {items.map((item) => (

@@ -51,8 +51,8 @@
                           (tree-seq coll? seq exported)))))))))
 
 (deftest get-transform-details-source-permission-test
-  (testing "the tool refuses a transform whose stored query the user cannot run, even though
-           query access to one table in the database passes the transform read check"
+  (testing "the tool refuses a transform whose stored query the user cannot run, even with query
+           access to another table in its database"
     (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Orders Rollup"
@@ -64,10 +64,8 @@
             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
             (mt/with-current-user (mt/user->id :rasta)
-              (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-                (is (str/includes? output "name=\"Orders Rollup\""))
-                (is (not (str/includes? output "<query>")))
-                (is (not (str/includes? output "ORDERS")))))
+              (is (=? {:status-code 403 :output "You don't have permissions to do that."}
+                      (agent-transforms/get-transform-details-tool {:transform_id transform-id}))))
             (testing "and the query renders once the source table is granted"
               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
@@ -94,7 +92,7 @@
       (mt/with-full-data-perms-for-all-users!
         (mt/with-data-analyst-role! (mt/user->id :rasta)
           (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card       {card-id :id, entity-id :entity_id}
+                         :model/Card       {card-id :id}
                          {:collection_id collection-id
                           :database_id   (mt/id)
                           :dataset_query (lib/query (mt/metadata-provider)
@@ -105,10 +103,9 @@
                                    :query (lib/query (mt/metadata-provider)
                                                      (lib.metadata/card (mt/metadata-provider) card-id))}}]
             (mt/with-current-user (mt/user->id :rasta)
-              (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-                (is (str/includes? output "name=\"Private source Card\""))
-                (is (not (str/includes? output entity-id)))
-                (is (not (str/includes? output "<query>")))))))))))
+              (let [{:keys [output status-code]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+                (is (= 403 status-code))
+                (is (= "You don't have permissions to do that." output))))))))))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 

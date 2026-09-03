@@ -9,7 +9,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { getAllowedIframeAttributes } from "metabase/visualizations/lib/iframe";
+import { getAllowedIframeAttributes } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";

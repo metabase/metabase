@@ -13,8 +13,10 @@ import {
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/visualizations/lib/data_grid";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  columnSettings,
+} from "metabase/viz-core";
 import {
   getFieldRefForComparison,
   migratePivotColumnSplitSetting,

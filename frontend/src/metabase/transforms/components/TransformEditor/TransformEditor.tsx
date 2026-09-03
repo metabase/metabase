@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
+import { getMetadata } from "metabase/metadata-store";
 import {
   QueryEditor,
   type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type {
   Database,

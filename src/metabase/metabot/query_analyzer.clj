@@ -8,10 +8,10 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 ;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
 (def ^:private quotes "\"`")
@@ -67,13 +67,10 @@
   ([db-id table]
    (table-reference db-id nil table))
   ([db-id schema table]
-   (t2/select-one :model/QueryTable
-                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                   :from   [[(t2/table-name :model/Table) :t]]
-                   :where  [:and
-                            [:= :t.db_id db-id]
-                            (table-query {:schema (some-> schema name)
-                                          :table (name table)})]})))
+   (metabot.db/query-table-reference-where [:and
+                                            [:= :t.db_id db-id]
+                                            (table-query {:schema (some-> schema name)
+                                                          :table (name table)})])))
 
 (defn- strip-redundant-table-refs
   "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
@@ -103,12 +100,9 @@
   (consolidate-tables
    tables
    (when (seq tables)
-     (t2/select :model/QueryTable
-                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                 :from   [[(t2/table-name :model/Table) :t]]
-                 :where  [:and
-                          [:= :t.db_id db-id]
-                          (into [:or] (map table-query tables))]}))))
+     (metabot.db/query-table-references-where [:and
+                                               [:= :t.db_id db-id]
+                                               (into [:or] (map table-query tables))]))))
 
 (defn- tables-via-sql-tools
   "Returns a set of table identifiers that (may) be referenced in the given card's query.

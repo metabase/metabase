@@ -8,74 +8,10 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID, PRODUCTS } =
-  SAMPLE_DATABASE;
+const { PRODUCTS_ID, PEOPLE_ID, PRODUCTS } = SAMPLE_DATABASE;
 const { nocollection } = USERS;
 
 const PG_DB_ID = 2;
-
-// NOTE: This issue wasn't specifically related to PostgreSQL. We simply needed to add another DB to reproduce it.
-describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        1: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder-and-native",
-        },
-        [PG_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "no",
-        },
-      },
-    });
-
-    cy.updateCollectionGraph({
-      [ALL_USERS_GROUP]: { root: "read" },
-    });
-
-    H.withDatabase(
-      PG_DB_ID,
-      ({ ORDERS_ID }) =>
-        H.createQuestion({
-          name: "Q1",
-          query: { "source-table": ORDERS_ID },
-          database: PG_DB_ID,
-        }),
-
-      H.createNativeQuestion({
-        name: "Q2",
-        native: { query: "SELECT * FROM ORDERS" },
-        database: PG_DB_ID,
-      }),
-    );
-  });
-
-  ["QB", "Native"].forEach((test) => {
-    it(`${test.toUpperCase()} version:\n should be able to select question (from "Saved Questions") which belongs to the database user doesn't have data-permissions for (metabase#13347)`, () => {
-      cy.signIn("none");
-
-      H.startNewQuestion();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-
-      if (test === "QB") {
-        cy.findByText("Q1").click();
-      } else {
-        cy.findByText("Q2").click();
-      }
-
-      cy.wait("@dataset", { timeout: 5000 });
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("37.65");
-    });
-  });
-});
 
 describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -149,46 +85,6 @@ describe("postgres > user > query", { tags: "@external" }, () => {
         });
       });
     });
-  });
-});
-
-describe("issue 17777", { tags: "@skip" }, () => {
-  function hideTables(tables) {
-    cy.request("PUT", "/api/table", {
-      ids: tables,
-      visibility_type: "hidden",
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    hideTables([ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID]);
-  });
-
-  it("should still be able to set permissions on individual tables, even though they are hidden in data model (metabase#17777)", () => {
-    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Permissions for the All Users group");
-    cy.findByTextEnsureVisible("Sample Database").click();
-
-    cy.location("pathname").should(
-      "eq",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
-    );
-
-    cy.findByTestId("permission-table").within(() => {
-      cy.findByText("Orders");
-      cy.findByText("Products");
-      cy.findByText("Reviews");
-      cy.findByText("People");
-    });
-
-    cy.findAllByText("No self-service").first().click();
-
-    H.popover().contains("Unrestricted");
   });
 });
 

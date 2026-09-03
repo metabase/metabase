@@ -7,7 +7,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
@@ -150,13 +150,13 @@ const TableSectionBase = ({
   };
 
   return (
-    <Stack data-testid="table-section" gap={0} pb="lg" px="lg" {...props}>
+    <Stack data-testid="table-section" gap={0} pb="xl" px="xl" {...props}>
       <Stack
         className={S.header}
-        gap="lg"
+        gap="xl"
         pb={12}
         pos="sticky"
-        pt="lg"
+        pt="xl"
         top={0}
         bg="background_page-secondary"
       >
@@ -190,7 +190,7 @@ const TableSectionBase = ({
 
         <Group
           align="center"
-          gap="md"
+          gap="lg"
           justify="space-between"
           miw={0}
           wrap="nowrap"
@@ -199,7 +199,7 @@ const TableSectionBase = ({
 
           <Group
             flex="1"
-            gap="md"
+            gap="lg"
             justify="flex-end"
             miw={0}
             ref={buttonsContainerRef}
@@ -249,7 +249,7 @@ const TableSectionBase = ({
         </Group>
       </Stack>
 
-      <Stack gap="lg">
+      <Stack gap="xl">
         <Stack gap={12}>
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 

@@ -5,16 +5,16 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { color } from "metabase/ui/colors";
-import {
-  loadVisualizationComponents,
-  registerVisualization,
-} from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import {
+  loadVisualizationComponents,
+  registerVisualization,
+} from "metabase/viz-core";
 import type {
   RawSeries,
   Settings,

@@ -2,11 +2,11 @@
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [metabase.models.interface :as mi]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.task-history.core :as task-history]
    [metabase.util.cron :as u.cron]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,7 +48,7 @@
   Only supports HTTP channels for now, returns a map with type key for slack and email"
   [{channel-type :channel_type :as pulse-channel}]
   (if (= :http (keyword channel-type))
-    (t2/select-one :model/Channel :id (:channel_id pulse-channel))
+    (pulse.db/channel (:channel_id pulse-channel))
     {:type (keyword "channel" (name channel-type))}))
 
 (defn- get-notification-handler
@@ -149,7 +149,7 @@
   ;; with-task-run is a no-op if already nested (e.g., from scheduler)
   (task-history/with-task-run (some-> (pulse->task-run-info pulse)
                                       (assoc :auto-complete (not async?)))
-    (let [dashboard (t2/select-one :model/Dashboard :id dashboard_id)
+    (let [dashboard (pulse.db/dashboard dashboard_id)
           pulse     (-> (mi/instance :model/Pulse pulse)
                         ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                         ;; to fetch the Pulse.

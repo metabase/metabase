@@ -4,21 +4,15 @@ import _ from "underscore";
 import { formatNullable } from "metabase/utils/formatting";
 import {
   ChartSettingsError,
+  type ComputedVisualizationSettings,
   MinRowsError,
-} from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import {
+  type VisualizationDefinition,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/visualizations/types";
+  metricSetting,
+} from "metabase/viz-core";
 import {
   type DatasetData,
   type RawSeries,

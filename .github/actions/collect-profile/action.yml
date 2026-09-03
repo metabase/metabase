@@ -18,6 +18,10 @@ runs:
   steps:
     # Unlike a JUnit failure report, these run on a green build too — a suite that passes slowly is
     # exactly what profiling is for.
+    #
+    # `awk 'NR<=25'` rather than `head -25`: the runner ignores SIGPIPE, so `head` exiting early
+    # leaves `sort` with an EPIPE write error and `pipefail` fails the step. `|| true` covers `grep`
+    # finding no junit files.
     - name: Summarize test wall times
       if: ${{ inputs.profiled == 'true' }}
       continue-on-error: true
@@ -28,18 +32,21 @@ runs:
           echo '```'
           grep -h '<testsuite' target/junit/*.xml 2>/dev/null \
             | sed -E 's|.*<testsuite name="([^"]*)" time="([^"]*)".*|\2 \1|' \
-            | sort -rn | head -25
+            | sort -rn | awk 'NR<=25' || true
           echo '```'
           echo "### Slowest tests (seconds)"
           echo '```'
           grep -h '<testcase' target/junit/*.xml 2>/dev/null \
             | sed -E 's|.*classname="([^"]*)" name="([^"]*)" time="([^"]*)".*|\3 \1/\2|' \
-            | sort -rn | head -25
+            | sort -rn | awk 'NR<=25' || true
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
 
     # Only the rendered flamegraph is kept: the raw collapsed stacks it was built from run to
     # hundreds of MB on a long suite, and are reproducible locally from the same test selection.
+    #
+    # The info-level test log rides along on a green profiled run too. The failure-only log artifact
+    # the test jobs upload is not written when nothing failed, which is exactly the run being profiled.
     - name: Upload profile
       if: ${{ inputs.profiled == 'true' }}
       continue-on-error: true
@@ -49,5 +56,6 @@ runs:
         path: |
           target/clj-async-profiler/results/*flamegraph.html
           target/junit/*.xml
+          logs/test-log.json
         retention-days: 14
         if-no-files-found: warn

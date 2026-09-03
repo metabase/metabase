@@ -407,6 +407,7 @@ describe("scenarios > data studio > library > metrics", () => {
       H.selectDropdown()
         .findByRole("option", { name: /Duration/ })
         .click();
+      H.fillCacheDuration(24);
       H.modal().findByTestId("strategy-form-submit-button").click();
 
       cy.wait("@updateCacheConfig");

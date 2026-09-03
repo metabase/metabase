@@ -89,6 +89,11 @@ const ldapAuth = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsLdapForm"
   ).then(({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }));
 
+const domainsSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DomainsSettingsPage"
+  ).then(({ DomainsSettingsPage }) => ({ Component: DomainsSettingsPage }));
+
 const remoteSyncSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/RemoteSyncSettingsPage"
@@ -198,27 +203,28 @@ export const getSettingsRoutes = (
       <Route path="authentication/2fa" element={<IsAdmin />}>
         <Route
           path="enrolled"
-          element={<PLUGIN_MULTI_FACTOR_AUTH.EnrolledUsersPage />}
+          lazy={PLUGIN_MULTI_FACTOR_AUTH.enrolledUsersPage}
         />
         <Route
           path="unenrolled"
-          element={<PLUGIN_MULTI_FACTOR_AUTH.UnenrolledUsersPage />}
+          lazy={PLUGIN_MULTI_FACTOR_AUTH.unenrolledUsersPage}
         />
       </Route>
       <Route path="authentication/google" lazy={googleAuth} />
       <Route path="authentication/ldap" lazy={ldapAuth} />
       <Route
         path="authentication/saml"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsSAMLForm}
       />
       <Route
         path="authentication/jwt"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsJWTForm}
       />
       <Route
         path="authentication/oidc"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsOIDCForm}
       />
+      <Route path="domains" lazy={domainsSettings} />
       <Route path="remote-sync" lazy={remoteSyncSettings} />
       <Route path="maps" lazy={mapsSettings} />
       <Route path="localization" lazy={localizationSettings} />
@@ -249,7 +255,7 @@ export const getSettingsRoutes = (
       <Route path="uploads" lazy={uploadSettings} />
       <Route
         path="python-runner"
-        element={<PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage />}
+        lazy={PLUGIN_TRANSFORMS_PYTHON.pythonRunnerSettingsPage}
       />
       <Route path="public-sharing" lazy={publicSharingSettings} />
       <Route path="license" lazy={licenseSettings} />

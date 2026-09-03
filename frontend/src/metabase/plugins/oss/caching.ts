@@ -165,10 +165,8 @@ export const getPerformanceTabMetadata = () =>
 
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
-  // Unjustified type cast. FIXME
-  StrategyFormLauncherPanel: PluginPlaceholder as any,
-  // Unjustified type cast. FIXME
-  GranularControlsExplanation: PluginPlaceholder as any,
+  // The placeholder renders nothing and accepts the EE page component's (empty) props
+  DatabaseCachingEditor: PluginPlaceholder as ComponentType,
   SidebarCacheSection:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,

@@ -6,12 +6,15 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel format-current-time-test
   (testing "formats time from context with timezone"
@@ -315,7 +318,8 @@
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test
   (testing "table viewing context includes measures and segments when present"
-    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+    (mt/with-dynamic-fn-redefs [resources-tools/check-table-resource-database (constantly nil)
+                                entity-details/get-table-details
                                 (fn [{:keys [table-id with-measures? with-segments?]}]
                                   ;; Verify that with-measures? and with-segments? are requested
                                   (is (true? with-measures?) "should request measures")
@@ -344,7 +348,8 @@
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test-2
   (testing "model viewing context includes measures and segments when present"
-    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+    (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database (constantly nil)
+                                entity-details/get-table-details
                                 (fn [{:keys [model-id with-measures? with-segments?]}]
                                   (is (true? with-measures?) "should request measures for model")
                                   (is (true? with-segments?) "should request segments for model")
@@ -370,7 +375,8 @@
 
 (deftest ^:parallel format-entity-includes-measures-and-segments-test-3
   (testing "table viewing context omits measures/segments sections when none exist"
-    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+    (mt/with-dynamic-fn-redefs [resources-tools/check-table-resource-database (constantly nil)
+                                entity-details/get-table-details
                                 (fn [{:keys [entity-id]}]
                                   {:structured-output
                                    {:id entity-id
@@ -426,6 +432,53 @@
                     {:user_is_viewing [{:type "table" :id (mt/id :orders)}]})]
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
+
+(deftest format-entity-rejects-destination-database-table-test
+  (testing "a table on a destination (routed) database in the viewing context is not surfaced with its
+            real details -- a destination database is a routing internal, not a resource users should
+            reach directly (see check-resource-database)"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}]
+        ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
+        ;; `with-temp :model/Table` trips a different guard. Insert it directly, like
+        ;; `read-destination-backed-entities-return-errors-test` does for the read_resource tool.
+        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:db_id      destination-id
+                                                 :name       "destination-table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
+          (with-redefs [mi/can-read? (constantly true)]
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "table" :id table-id}]})]
+              (is (not (str/includes? result "destination-table"))))))))))
+
+(deftest format-entity-rejects-destination-database-card-test
+  (testing "a model/question/metric on a destination (routed) database in the viewing context is not
+            surfaced with its real details"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}      {}
+                     :model/Database {destination-id :id} {:router_database_id router-id}
+                     :model/Card     {model-id :id}       {:name "Destination Model" :type :model
+                                                           :database_id destination-id}
+                     :model/Card     {question-id :id}    {:name "Destination Question" :type :question
+                                                           :database_id destination-id}
+                     :model/Card     {metric-id :id}      {:name "Destination Metric" :type :metric
+                                                           :database_id destination-id}]
+        (with-redefs [mi/can-read? (constantly true)]
+          (testing "model"
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "model" :id model-id}]})]
+              (is (not (str/includes? result "Destination Model")))))
+          (testing "question"
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "question" :id question-id}]})]
+              (is (not (str/includes? result "Destination Question")))))
+          (testing "metric"
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "metric" :id metric-id}]})]
+              (is (not (str/includes? result "Destination Metric"))))))))))
 
 (deftest ^:parallel format-user-context-with-legacy-query-test
   (let [lq {:database 1111
@@ -533,12 +586,12 @@
                                        :perms/manage-table-metadata :yes)
           (mt/with-test-user :rasta
             (is (not (mi/can-query? :model/Database (mt/id))))
-            (is (user-context/exportable-query? query)))))
+            (is (query-export/exportable-query? query)))))
       (testing "and not exportable when the card is not readable"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-no-data-perms-for-all-users!
             (mt/with-test-user :rasta
-              (is (not (user-context/exportable-query? query))))))))))
+              (is (not (query-export/exportable-query? query))))))))))
 
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"

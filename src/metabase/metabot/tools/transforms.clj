@@ -4,7 +4,7 @@
   Python transform tools use defenterprise (return nil/error in OSS, real impl in EE)."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
@@ -103,11 +103,14 @@
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
   (try
-    (add-output {:structured_output (user-context/transform-with-exportable-source
+    (add-output {:structured_output (query-export/transform-with-exportable-source
                                      (transforms/get-transform transform_id))}
                 format-transform-details-output)
     (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
+      (if (= 403 (:status-code (ex-data e)))
+        ;; A permission refusal is an answer for the agent, not a tool failure -- relay the standard message.
+        {:output (ex-message e) :status-code 403}
+        (metabot.tools.u/handle-agent-error e)))))
 
 (def ^:private python-lib-schema
   [:map {:closed true} [:path :string]])
@@ -180,7 +183,7 @@
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
   For replace mode, provide new_content with the complete SQL."
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           database_id source_tables]}
+           database_id]}
    :- write-transform-sql-schema]
   (try
     (let [result (add-output
@@ -191,7 +194,6 @@
                     :transform_name transform_name
                     :transform_description transform_description
                     :database_id database_id
-                    :source_tables source_tables
                     :memory-atom shared/*memory-atom*
                     :context (shared/current-context)})
                   format-transform-write-output)
@@ -264,7 +266,7 @@
                        "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
                        "You MUST provide this argument when modifying the source tables of an existing transform "
                        "or when creating a new transform. DO NOT guess or make up table IDs, use the "
-                       "search_tables tool to find the correct table IDs first.")}
+                       "`search` tool to find the correct table IDs first.")}
     [:sequential
      [:map
       [:alias :string]

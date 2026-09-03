@@ -1,6 +1,7 @@
 (ns metabase.sso.common-test
   (:require
    [clojure.test :refer :all]
+   ;; redefs clojure.tools.logging/log* to capture log calls; util.log macros bottom out there
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [metabase.permissions.core :as perms]

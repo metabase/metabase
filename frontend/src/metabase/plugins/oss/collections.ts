@@ -81,7 +81,7 @@ const getDefaultPluginCollections = () => ({
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): React.ReactNode[] => [],
-  useGetIcon: useGetIconBase,
+  useGetIcon: () => useGetIconBase(),
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items,

@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { State } from "metabase/redux/store";

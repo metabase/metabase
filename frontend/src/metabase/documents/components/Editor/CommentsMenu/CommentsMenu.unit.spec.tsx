@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
 import { Route } from "metabase/router";
 
 import { CommentsMenu } from "./CommentsMenu";
@@ -10,13 +11,15 @@ function setup(initialRoute: string) {
     <Route
       path="*"
       element={
-        <CommentsMenu
-          active={false}
-          childTargetId="block-123"
-          show
-          style={defaultStyle}
-          unresolvedCommentsCount={0}
-        />
+        <DocumentEditorHostProvider>
+          <CommentsMenu
+            active={false}
+            childTargetId="block-123"
+            show
+            style={defaultStyle}
+            unresolvedCommentsCount={0}
+          />
+        </DocumentEditorHostProvider>
       }
     />,
     { withRouter: true, initialRoute },

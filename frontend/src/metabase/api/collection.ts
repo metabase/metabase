@@ -1,4 +1,3 @@
-import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
   CollectionItemModel,
@@ -27,7 +26,6 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const getCollectionItemTagModels = (
   models: ListCollectionItemsRequest["models"],
@@ -83,10 +81,6 @@ export const collectionApi = Api.injectEndpoints({
         ),
         { type: "collection", id: `${id}-items` },
       ],
-      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
-        [ObjectUnionSchema],
-        (response) => response.data,
-      ),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
