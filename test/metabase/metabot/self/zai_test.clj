@@ -115,22 +115,6 @@
                    {:choices [{:delta {} :finish_reason "stop"}]
                     :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
 
-(deftest ^:parallel zai-reasoning-deltas-forwarded-test
-  (testing "GLM-5.3 reasoning_content deltas are forwarded as reasoning parts ahead of the text"
-    (is (=? [{:type :start}
-             {:type :reasoning :text "Let me think about 2+2."}
-             {:type :text :text "4"}
-             {:type :usage}]
-            (into [] (comp (zai/zai->aisdk-chunks-xf "glm-5.3")
-                           (self.core/aisdk-xf))
-                  [{:id      "20260723-3"
-                    :model   "glm-5.3"
-                    :choices [{:delta {:role "assistant" :reasoning_content "Let me think"}}]}
-                   {:choices [{:delta {:reasoning_content " about 2+2."}}]}
-                   {:choices [{:delta {:content "4"}}]}
-                   {:choices [{:delta {} :finish_reason "stop"}]
-                    :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
-
 (deftest ^:parallel zai-whole-tool-call-conv-test
   (testing "a tool call arriving whole in one delta (tool_stream false) is mapped correctly"
     (is (=? [{:type :start}

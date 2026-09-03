@@ -77,19 +77,13 @@
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000}
    "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000}
-   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576
-                                      :surface-reasoning? true}
+   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576}})
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
   [model]
   (get-in supported-models [model :context-window]))
-
-(defn reasoning-model?
-  "Whether `model` streams reasoning back to us that we surface."
-  [model]
-  (true? (get-in supported-models [model :surface-reasoning?])))
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -141,11 +135,9 @@
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
   OpenRouter streams the generic Chat Completions dialect; see
-  [[chat-completions/chat-completions->aisdk-chunks-xf]]. Reasoning deltas are forwarded for
-  [[reasoning-model?]] models and dropped otherwise."
-  ([] (openrouter->aisdk-chunks-xf nil))
-  ([model]
-   (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? (reasoning-model? model)})))
+  [[chat-completions/chat-completions->aisdk-chunks-xf]]."
+  []
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 ;;; HTTP request
 
@@ -264,6 +256,5 @@
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
-  (let [{:keys [model] :or {model "anthropic/claude-haiku-4.5"}} (first args)
-        raw (apply openrouter-raw args)]
-    (eduction (openrouter->aisdk-chunks-xf model) raw)))
+  (let [raw (apply openrouter-raw args)]
+    (eduction (openrouter->aisdk-chunks-xf) raw)))

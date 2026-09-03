@@ -187,13 +187,11 @@
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-supports-reasoning-test
-  (testing "only models that stream reasoning back to us report support"
+  (testing "only anthropic and openai models that stream reasoning report support"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
                        (connection "bedrock" "bedrock")
-                       (connection "google" "google")
-                       (connection "zai" "zai")
-                       (connection "openrouter" "openrouter")]
+                       (connection "google" "google")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -203,12 +201,7 @@
                ;; google serves both wire families; only its Claude models stream reasoning back
                "google/anthropic/claude-sonnet-4-6"         true
                "google/anthropic/claude-haiku-4-5@20251001" false
-               "google/google/gemini-3.5-flash"             false
-               ;; GLM-5.3 always reasons and we surface it; GLM-5.2 predates reasoning display
-               "zai/glm-5.3"                                true
-               "zai/glm-5.2"                                false
-               "openrouter/z-ai/glm-5.3"                    true
-               "openrouter/z-ai/glm-5.2"                    false}]
+               "google/google/gemini-3.5-flash"             false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))

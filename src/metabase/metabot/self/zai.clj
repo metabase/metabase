@@ -37,18 +37,13 @@
 (def supported-models
   "Z.AI models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576 :surface-reasoning? true}
+  {"glm-5.3" {:display-name "GLM-5.3" :context-window 1048576}
    "glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."
   [model]
   (get-in supported-models [model :context-window]))
-
-(defn reasoning-model?
-  "Whether `model` streams reasoning back to us that we surface."
-  [model]
-  (true? (get-in supported-models [model :surface-reasoning?])))
 
 (defn- supported-model?
   "Whether a `/models` catalog entry is one of the [[supported-models]]."
@@ -146,15 +141,12 @@
          "network_error" "error"))
 
 (defn zai->aisdk-chunks-xf
-  "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks.
-  Reasoning deltas are forwarded for [[reasoning-model?]] models and dropped otherwise."
-  ([] (zai->aisdk-chunks-xf nil))
-  ([model]
-   (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? (reasoning-model? model)})))
+  "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks."
+  []
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 (defn zai
   "Call the Z.AI Chat Completions API, return AISDK stream."
   [& args]
-  (let [{:keys [model] :or {model default-model}} (first args)
-        raw (apply zai-raw args)]
-    (eduction (zai->aisdk-chunks-xf model) raw)))
+  (let [raw (apply zai-raw args)]
+    (eduction (zai->aisdk-chunks-xf) raw)))

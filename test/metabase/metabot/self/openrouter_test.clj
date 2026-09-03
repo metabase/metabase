@@ -177,30 +177,6 @@
                              (self.core/aisdk-xf))
                     raw-chunks))))))
 
-(deftest ^:parallel openrouter-reasoning-deltas-forwarded-for-glm-53-test
-  (let [chunks [{:id      "gen-1"
-                 :model   "z-ai/glm-5.3"
-                 :choices [{:delta {:role "assistant" :reasoning "Let me think"}}]}
-                {:choices [{:delta {:reasoning " about 2+2."}}]}
-                {:choices [{:delta {:content "4"}}]}
-                {:choices [{:delta {} :finish_reason "stop"}]
-                 :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}]]
-    (testing "GLM-5.3 reasoning deltas are forwarded as reasoning parts ahead of the text"
-      (is (=? [{:type :start}
-               {:type :reasoning :text "Let me think about 2+2."}
-               {:type :text :text "4"}
-               {:type :usage}]
-              (into [] (comp (openrouter/openrouter->aisdk-chunks-xf "z-ai/glm-5.3")
-                             (self.core/aisdk-xf))
-                    chunks))))
-    (testing "the same stream from a model we don't surface reasoning for produces only text"
-      (is (=? [{:type :start}
-               {:type :text :text "4"}
-               {:type :usage}]
-              (into [] (comp (openrouter/openrouter->aisdk-chunks-xf "z-ai/glm-5.2")
-                             (self.core/aisdk-xf))
-                    chunks))))))
-
 (deftest ^:parallel openrouter-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
