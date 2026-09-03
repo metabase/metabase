@@ -805,20 +805,30 @@
             red, the removed post-filter is load-bearing again.
             The visibility rule itself is covered by metabase.search.filter-test."
     (mt/with-premium-features #{:transforms-basic}
-      (let [models-for (fn [user]
+      ;; `api/*is-superuser?*` is bound explicitly rather than inferred from the test user:
+      ;; `visible-to?` reads exactly this var, and taking it straight from the ambient user made the
+      ;; test environment-dependent — it passed on H2 but on the MySQL/MariaDB EE shards the admin
+      ;; case saw #{"dashboard"}, so the positive control failed and the assertions proved nothing.
+      ;; Pinning the input is also what the assertion is actually about: that this pipeline
+      ;; propagates the caller's superuser status into the search context, whatever it is.
+      (let [models-for (fn [superuser?]
                          (let [captured (atom nil)]
-                           (mt/with-test-user user
-                             (mt/with-dynamic-fn-redefs [search-core/ranked-results
-                                                         (fn [context]
-                                                           (reset! captured (:models context))
-                                                           [])]
-                               (search/search {:term-queries ["anything"]
-                                               :entity-types ["transform" "dashboard"]})))
+                           (mt/with-test-user :crowberto
+                             (binding [api/*is-superuser?* superuser?]
+                               (mt/with-dynamic-fn-redefs [search-core/ranked-results
+                                                           (fn [context]
+                                                             (reset! captured (:models context))
+                                                             [])]
+                                 (search/search {:term-queries ["anything"]
+                                                 :entity-types ["transform" "dashboard"]}))))
                            @captured))]
-        (testing "an admin's search reaches the engine with transforms in scope"
-          (is (contains? (models-for :crowberto) "transform")))
+        (testing "a superuser's search reaches the engine with transforms in scope"
+          (let [models (models-for true)]
+            (is (contains? models "transform"))
+            (is (contains? models "dashboard")
+                "sanity: the positive control really did reach the engine")))
         (testing "a non-superuser's search never asks the engine for transforms"
-          (let [models (models-for :rasta)]
+          (let [models (models-for false)]
             (is (not (contains? models "transform")))
             (is (contains? models "dashboard")
                 "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))
