@@ -35,17 +35,16 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
-import { StaticGoalValueInput } from "../StaticGoalValueInput";
-import { ICON_BUTTON_SIZE } from "../constants";
-import { useResolvedGoalValue } from "../use-resolved-goal-value";
-
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
+import { StaticGoalValueInput } from "./StaticGoalValueInput";
+import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
+import { useResolvedGoalValue } from "./use-resolved-goal-value";
 import { getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;

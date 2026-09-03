@@ -35,8 +35,6 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import { SegmentBoundInput } from "../SegmentBoundInput";
-
 import { GoalValueInput } from "./GoalValueInput";
 
 const DATA = createMockDatasetData({
@@ -270,7 +268,7 @@ describe("GoalValueInput", () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
     fetchMock.post("path:/api/dataset", 500);
     renderWithProviders(
-      <SegmentBoundInput
+      <GoalValueInput
         aria-label="Min"
         data={DATA}
         datasetQuery={DATASET_QUERY}
@@ -301,7 +299,7 @@ describe("GoalValueInput", () => {
       },
     });
     renderWithProviders(
-      <SegmentBoundInput
+      <GoalValueInput
         aria-label="Min"
         data={createMockDatasetData({
           ...DATA,
