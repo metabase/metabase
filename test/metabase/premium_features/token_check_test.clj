@@ -57,8 +57,9 @@
     (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
                                                          (swap! call-count inc)
                                                          (case @response
-                                                           :error (throw (ex-info "kaboom" {:ka :boom}))
-                                                           :500   {:status 500}))]
+                                                           :error     (throw (ex-info "kaboom" {:ka :boom}))
+                                                           :500       {:status 500}
+                                                           :400-empty {:status 400}))]
       (testing "For timeouts, 5XX errors, etc. we don't cache the result"
         (dotimes [_ 5] (token-check/check-token checker token))
         (is (= 5 @call-count)))
@@ -66,12 +67,53 @@
         (reset! call-count 0)
         (reset! response :500)
         (dotimes [_ 5] (token-check/check-token checker token))
-        (is (= 5 @call-count))))))
+        (is (= 5 @call-count)))
+      (testing "A 4XX with no body is not a real answer from the store — treated as transient, not cached"
+        (reset! call-count 0)
+        (reset! response :400-empty)
+        (dotimes [_ 5] (token-check/check-token checker token))
+        (is (= 5 @call-count))
+        (is (= {:valid         false
+                :canonical?    false
+                :status        "Unable to validate token"
+                :error-details "Token validation provided no response."}
+               (token-check/check-token checker token)))))))
 
 (deftest not-found-test
   (mt/with-log-level :fatal
     (is (=? {:valid false, :status "Token does not exist."}
             (token-check/check-token (tu/random-token))))))
+
+(deftest expired-token-status-is-authoritative-test
+  (testing "a 403 with a body is a real answer from the store: stored faithfully, marked canonical (EMB-2341)"
+    (let [token   (tu/random-token)
+          status  {:valid      false
+                   :status     "Token is expired."
+                   :features   ["sso" "snippet-collections" "database-routing"]
+                   :plan-alias "pro-self-hosted"
+                   :trial      false
+                   :valid-thru "2026-08-25T12:00:00Z"}
+          checker (binding [token-check/*customize-checker* true]
+                    (token-check/make-checker {:local-ttl (t/seconds 5)
+                                               :soft-ttl  (t/hours 12)
+                                               :hard-ttl  (t/hours 36)}))]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 403 :body (json/encode status)})]
+          (is (= (assoc status :canonical? true)
+                 (token-check/check-token checker token))))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
+(deftest token-features-honors-valid-test
+  (testing "*token-features* returns no features when the token status is not valid, even if features are present"
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+      (mt/with-dynamic-fn-redefs [token-check/check-token (fn [_token] {:valid      false
+                                                                        :canonical? true
+                                                                        :status     "Token is expired."
+                                                                        :features   ["sso"]})]
+        (is (= #{} (token-check/*token-features*)))
+        (is (false? (token-check/has-feature? :sso)))
+        (is (false? (token-check/canonically-has-feature? :sso)))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is in local cache"
