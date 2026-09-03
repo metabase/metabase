@@ -220,7 +220,7 @@ jobs:
             -f "inputs[scope]=$SCOPE" \
             -f "inputs[surfaces]=all" \
             -f "inputs[sample]=$SAMPLE" \
-            -f "inputs[label]=$LABEL" \
+            -f "inputs[label]="" \
             -f "inputs[evals_branch]=$EVALS_BRANCH" \
             -f "inputs[comment_id]=$COMMENT_ID"
 
