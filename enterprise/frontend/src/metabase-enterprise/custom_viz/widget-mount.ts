@@ -5,7 +5,7 @@ import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { clonePluginValue } from "./clone-plugin-value";
+import { copyPluginValue } from "./copy-plugin-value";
 import { toHostSettings } from "./plugin-view";
 
 // What the plugin's setting widget receives: the SDK base props + whatever setting definition's `getProps` adds.
@@ -24,7 +24,8 @@ type WidgetMountWithPlugin = WidgetMount<CustomVizSettingWidgetProps> & {
 
 /**
  * Wrap a plugin-supplied function-shaped widget in a host-allocated
- * `WidgetMount` tagged with its plugin. Props are translated on the way in.
+ * `WidgetMount` tagged with its plugin. Props are translated on the way in,
+ * and what the widget writes is copied so the host never holds sandbox objects.
  */
 export function wrapPluginWidget(
   pluginWidget: WidgetMount<PluginWidgetProps>,
@@ -61,11 +62,14 @@ function toPluginWidgetProps(
   return {
     ...extraProps,
     id,
-    value: clonePluginValue(value),
-    onChange: (value) => onChange(value),
+    value: structuredClone(value),
+    onChange: (value) => onChange(copyPluginValue(value)),
     onChangeSettings: (settings) =>
       onChangeSettings(
-        toHostSettings(isObject(settings) ? settings : {}, prefix),
+        toHostSettings(
+          copyPluginValue(isObject(settings) ? settings : {}),
+          prefix,
+        ),
       ),
   };
 }

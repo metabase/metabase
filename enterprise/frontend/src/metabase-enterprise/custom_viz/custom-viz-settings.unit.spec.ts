@@ -259,6 +259,59 @@ describe("sanitizePluginSettings", () => {
       },
     );
 
+    it.each(["getDefault", "getValue"])(
+      "copies what %s returns into the host",
+      (name) => {
+        const { context } = setupMount();
+        const pluginValue = ["count"];
+
+        const sanitized = sanitizePluginSettings(
+          {
+            columns: definePluginSetting({
+              widget: "input",
+              [name]: () => new Proxy(pluginValue, {}),
+            }),
+          },
+          context,
+        );
+        const result = getCallback(
+          getHostDefinition(sanitized, `${PREFIX}columns`),
+          name,
+        )(SERIES, SETTINGS, {});
+
+        expect(result).toEqual(pluginValue);
+        expect(result).not.toBe(pluginValue);
+        expect(() => structuredClone(result)).not.toThrow();
+      },
+    );
+
+    it("copies the props getProps returns and keeps the plugin's callbacks", () => {
+      const { context } = setupMount();
+      const options = [{ name: "Count", value: "count" }];
+      const onFormat = () => "formatted";
+
+      const sanitized = sanitizePluginSettings(
+        {
+          columns: definePluginSetting({
+            widget: "input",
+            getProps: () => new Proxy({ options, onFormat }, {}),
+          }),
+        },
+        context,
+      );
+      const props = getCallback(
+        getHostDefinition(sanitized, `${PREFIX}columns`),
+        "getProps",
+      )(SERIES, SETTINGS, {});
+
+      expect(props).toEqual({ options, onFormat });
+      if (!isObject(props)) {
+        throw new Error("Expected props");
+      }
+      expect(props.options).not.toBe(options);
+      expect(props.onFormat).toBe(onFormat);
+    });
+
     it("calls getSection without arguments", () => {
       const { context } = setupMount();
       const getSection = jest.fn(() => "Display");

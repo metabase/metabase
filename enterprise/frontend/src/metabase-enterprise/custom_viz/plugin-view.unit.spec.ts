@@ -154,15 +154,6 @@ describe("toPluginSettings", () => {
     expect(getEntry.call(lookup, "a")).toBe(1);
   });
 
-  it("keeps a plugin setting whose value arrives as a membrane proxy", () => {
-    const pluginSettings = toPluginSettings(
-      { [`${PREFIX}columns`]: new Proxy(["count"], {}) },
-      PREFIX,
-    );
-
-    expect(pluginSettings.columns).toEqual(["count"]);
-  });
-
   it("exposes column as a callable whose results can't poison the host", () => {
     const columnSettings = { prefix: "$" };
     const settings = { column: () => columnSettings };

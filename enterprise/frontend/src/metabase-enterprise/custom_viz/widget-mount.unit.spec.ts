@@ -174,27 +174,30 @@ describe("wrapPluginWidget", () => {
     expect(pluginWidget.mock.calls[0][1].value).toBeUndefined();
   });
 
-  it("copies a value that arrives as a membrane proxy instead of throwing", () => {
-    const pluginWidget = jest.fn<
-      WidgetMountHandle<WidgetProps>,
-      Parameters<WidgetMount>
-    >(() => ({ update: jest.fn(), unmount: jest.fn() }));
+  it("copies the value a widget writes so the host never holds a sandbox object", () => {
+    const { mountedProps, onChange } = setup();
     const pluginValue = ["count"];
 
-    wrapPluginWidget(
-      pluginWidget,
-      PLUGIN,
-      PREFIX,
-    )(document.createElement("div"), {
-      id: `${PREFIX}columns`,
-      value: new Proxy(pluginValue, {}),
-      onChange: jest.fn(),
-      onChangeSettings: jest.fn(),
-    });
+    getCallback(mountedProps, "onChange")(new Proxy(pluginValue, {}));
 
-    const mountedValue = pluginWidget.mock.calls[0][1].value;
-    expect(mountedValue).toEqual(pluginValue);
-    expect(mountedValue).not.toBe(pluginValue);
+    const [written] = onChange.mock.calls[0];
+    expect(written).toEqual(pluginValue);
+    expect(written).not.toBe(pluginValue);
+    expect(() => structuredClone(written)).not.toThrow();
+  });
+
+  it("copies the settings a widget writes", () => {
+    const { mountedProps, onChangeSettings } = setup();
+    const pluginValue = ["count"];
+
+    getCallback(
+      mountedProps,
+      "onChangeSettings",
+    )(new Proxy({ columns: pluginValue }, {}));
+
+    const [written] = onChangeSettings.mock.calls[0];
+    expect(written).toEqual({ [`${PREFIX}columns`]: pluginValue });
+    expect(written[`${PREFIX}columns`]).not.toBe(pluginValue);
   });
 
   it("delegates unmount", () => {
