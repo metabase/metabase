@@ -8,12 +8,17 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(def ^:private text-type             #{:type/Text})
-(def ^:private int-or-text-type      #{:type/Integer :type/Text})
-(def ^:private text-or-bool-type     #{:type/Text :type/Boolean})
-(def ^:private temporal-or-text-type #{:type/Temporal :type/Text})
-(def ^:private number-type           #{:type/Number})
-(def ^:private any-type              #{:type/*})
+;; `:type/IPAddress` (Postgres `inet`, ClickHouse `IPv4`/`IPv6`) and `:type/Structured` (JSON, XML, Postgres `macaddr`,
+;; `cidr`) are base types that do not descend from `:type/Text`, so the text rules that should see them list them.
+(def ^:private text-type                 #{:type/Text})
+(def ^:private text-or-structured-type   #{:type/Text :type/Structured})
+(def ^:private telemetry-text-type       #{:type/Text :type/IPAddress :type/Structured})
+(def ^:private int-or-text-type          #{:type/Integer :type/Text})
+(def ^:private text-or-bool-type         #{:type/Text :type/Boolean})
+(def ^:private temporal-or-text-type     #{:type/Temporal :type/Text})
+(def ^:private temporal-int-or-text-type #{:type/Temporal :type/Integer :type/Text})
+(def ^:private number-type               #{:type/Number})
+(def ^:private any-type                  #{:type/*})
 
 (defn- name->tokens
   "Lowercased tokens of a physical column or table name, split on `_`, `-`, `.`, whitespace, and camelCase
@@ -42,12 +47,12 @@
       "oauth_token" "id_token" "reset_token" "verification_token" "device_token" "bearer" "jwt"
       "otp" "totp" "credential" "credentials" "security_answer" "recovery_code" "recovery_codes" "backup_codes"
       "connection_string"}
-    text-type :SEC_KEY]
+    text-or-structured-type :SEC_KEY]
    ;; SYS_TELEMETRY: infrastructure identifiers and machine telemetry.
    [#{"ip" "ip_address" "ip_addr" "ipaddress" "ipv4" "ipv6" "client_ip" "remote_ip" "remote_addr" "source_ip"
       "src_ip" "dest_ip" "dst_ip" "server_ip" "host_ip" "mac_address" "mac_addr" "macaddress" "hostname" "host_name"
       "user_agent" "useragent" "device_fingerprint" "browser_fingerprint"}
-    text-type :SYS_TELEMETRY]
+    telemetry-text-type :SYS_TELEMETRY]
    [#{"device_id" "imei" "imsi" "iccid" "serial_number" "session_id" "trace_id" "span_id" "request_id"
       "correlation_id"}
     int-or-text-type :SYS_TELEMETRY]
@@ -57,7 +62,7 @@
       "vaccination" "vaccine" "blood_type" "medical_history" "medical_condition" "health_condition" "mental_health"
       "therapy" "dosage" "lab_result" "lab_results" "treatment_plan" "clinical_notes" "chief_complaint" "hiv"
       "hiv_status" "patient" "medical_record"}
-    text-type :PHI]
+    text-or-structured-type :PHI]
    [#{"patient_id" "mrn" "npi" "insurance_id" "insurance_number" "rx_number" "rx_id"}
     int-or-text-type :PHI]
    [#{"bmi" "blood_pressure" "heart_rate" "glucose" "cholesterol"}
@@ -85,10 +90,10 @@
       "drivers_licence" "dl_number" "license_plate" "licence_plate" "plate_number" "vin" "tax_id" "taxpayer_id"
       "tin" "itin" "ein" "sin_number" "aadhaar" "aadhar"}
     any-type :PII]
-   [#{"dob" "of_birth" "birth_date" "birthdate" "birthday" "birth_day" "birth_place" "birth_city" "birth_country"}
+   [#{"of_birth" "birth_date" "birthdate" "birthday" "birth_day" "birth_place" "birth_city" "birth_country"}
     temporal-or-text-type :PII]
-   [#{"birth_year"}
-    int-or-text-type :PII]
+   [#{"dob" "birth_year"}
+    temporal-int-or-text-type :PII]
    [#{"first_name" "firstname" "last_name" "lastname" "full_name" "fullname" "surname" "given_name" "middle_name"
       "maiden_name" "family_name" "forename" "username" "user_name" "customer_name" "employee_name" "contact_name"
       "person_name" "recipient_name" "sender_name"
@@ -109,7 +114,10 @@
    [#{"salary" "salaries" "compensation" "wage" "wages" "bonus" "payroll" "pay_rate" "hourly_rate" "annual_income"
       "revenue" "profit" "margin" "gross_margin" "net_income" "operating_income" "ebitda" "cost_basis" "forecast"
       "budget" "contract_value" "deal_size" "deal_value"}
-    number-type :BIZ_CONF]])
+    number-type :BIZ_CONF]
+   [#{"salary_band" "salary_grade" "salary_range" "pay_band" "pay_grade" "pay_scale" "compensation_band"
+      "compensation_tier" "compensation_grade" "wage_band"}
+    int-or-text-type :BIZ_CONF]])
 
 ;; Tuples of `[regex set-of-valid-base-types category]` matched with `re-find` against the whole lowercased name.
 ;; Reserved for true substrings that tokenizing misses (`ssn4`, `passportno`, `cardcvv`); keep short.
@@ -123,7 +131,9 @@
    [#"birthda"         temporal-or-text-type :PII]
    [#"email"           text-type             :PII]])
 
-;; Semantic types that imply a category regardless of table. Consulted with `isa?` so descendants match.
+;; Semantic types that imply a category regardless of table. Consulted with `isa?` so descendants match. Also
+;; consulted against the base type when it is itself a semantic type (`:type/IPAddress` is both), since sync
+;; never sets `semantic_type` for those columns.
 (def ^:private semantic-type->category
   {:type/Email     :PII
    :type/Birthdate :PII
@@ -210,11 +220,14 @@
                    (re-find pattern lower-name))]
     category))
 
-(defn- semantic-matches [semantic-type entity-type]
-  (when semantic-type
+(defn- semantic-matches [semantic-type base-type entity-type]
+  (let [types (cond-> #{}
+                semantic-type                  (conj semantic-type)
+                (isa? base-type :Semantic/*)   (conj base-type))]
     (for [[st category] (cond-> semantic-type->category
                           (= :entity/UserTable entity-type) (merge user-table-semantic-type->category))
-          :when (isa? semantic-type st)]
+          t types
+          :when (isa? t st)]
       category)))
 
 (defn- fingerprint-matches [fingerprint base-type]
@@ -252,7 +265,7 @@
   (let [tokens (name->tokens field-name)]
     (->> (concat (token-matches tokens base_type)
                  (stem-matches (u/lower-case-en field-name) base_type)
-                 (semantic-matches semantic_type entity_type)
+                 (semantic-matches semantic_type base_type entity_type)
                  (fingerprint-matches fingerprint base_type)
                  (booster-matches tokens table-name))
          (sort-by precedence)

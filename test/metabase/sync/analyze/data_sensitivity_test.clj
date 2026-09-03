@@ -186,6 +186,39 @@
                   (t2/select-one :model/TaskHistory :db_id (mt/id) :task "classify-data-sensitivity"
                                  {:order-by [[:id :desc]]}))))))))
 
+(mt/defdataset inet-columns
+  [["connections"
+    [{:field-name "client_ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}
+     {:field-name "addr", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
+    [[[:raw "'192.168.1.1'::inet"] [:raw "'10.4.4.15'::inet"]]]]])
+
+(deftest scan-postgres-inet-columns-test
+  (mt/test-driver :postgres
+    (testing "inet columns sync as :type/IPAddress base and semantic type and are labeled SYS_TELEMETRY whatever their name"
+      (mt/dataset inet-columns
+        (let [field-ids (t2/select-pks-set :model/Field :table_id (mt/id :connections) :name [:in ["client_ip" "addr"]])]
+          (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity nil})
+          (is (= #{[:type/IPAddress :type/IPAddress]}
+                 (t2/select-fn-set (juxt :base_type :semantic_type) :model/Field :id [:in field-ids])))
+          (sync/scan-data-sensitivity! (mt/db))
+          (is (= {"client_ip" :SYS_TELEMETRY "addr" :SYS_TELEMETRY}
+                 (t2/select-fn->fn :name :data_sensitivity :model/Field :id [:in field-ids]))))))))
+
+(deftest scan-non-text-base-types-test
+  (testing "IPAddress and JSON base types with no semantic type, as ClickHouse and MySQL sync them, are labeled from the base type"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "connections"}
+                   :model/Field    ip    {:table_id (:id table) :name "client_ip" :base_type :type/IPAddress}
+                   :model/Field    addr  {:table_id (:id table) :name "addr" :base_type :type/IPAddress}
+                   :model/Field    creds {:table_id (:id table) :name "credentials" :base_type :type/JSON}
+                   :model/Field    meta  {:table_id (:id table) :name "metadata" :base_type :type/JSON}]
+      (is (= {:fields-scanned 4 :fields-labeled 3 :fields-failed 0}
+             (sync.data-sensitivity/scan-data-sensitivity! table)))
+      (is (= :SYS_TELEMETRY (label ip)))
+      (is (= :SYS_TELEMETRY (label addr)))
+      (is (= :SEC_KEY (label creds)))
+      (is (= :PUBLIC (label meta))))))
+
 (deftest scan-single-table-test
   (mt/with-temp [:model/Database db     {}
                  :model/Table    users  {:db_id (:id db) :name "app_users"}

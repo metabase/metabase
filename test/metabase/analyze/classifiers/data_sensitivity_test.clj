@@ -88,6 +88,34 @@
     (is (= :PHI (infer "patient" :type/Text)))
     (is (nil? (infer "patient_count" :type/Integer)))))
 
+(deftest ^:parallel non-text-base-types-test
+  (testing "IPAddress and Structured base types, which are not descendants of :type/Text, match the text rules that list them"
+    (is (= :SYS_TELEMETRY (infer "client_ip" :type/IPAddress)))
+    (is (= :SYS_TELEMETRY (infer "mac_address" :type/Structured)))
+    (is (= :SEC_KEY       (infer "credentials" :type/JSON)))
+    (is (= :SEC_KEY       (infer "password" :type/XML)))
+    (is (= :PHI           (infer "medical_history" :type/JSON))))
+  (testing "an IPAddress base type implies SYS_TELEMETRY whatever the column is named"
+    (is (= :SYS_TELEMETRY (infer "foo" :type/IPAddress))))
+  (testing "rules that stay text-only do not match structured columns"
+    (is (nil? (infer "home_address" :type/JSON)))
+    (is (nil? (infer "source_code" :type/JSON)))
+    (is (nil? (infer "settings" :type/JSON)))))
+
+(deftest ^:parallel integer-and-band-variants-test
+  (testing "dob matches as an integer as well as a date or text"
+    (is (= :PII (infer "dob" :type/Integer)))
+    (is (= :PII (infer "dob" :type/Date)))
+    (is (= :PII (infer "dob" :type/Text)))
+    (is (nil? (infer "dob" :type/Boolean)))
+    (is (nil? (infer "birthday" :type/Integer))))
+  (testing "salary and compensation bands match as text or integer codes while bare salary stays numeric-only"
+    (is (= :BIZ_CONF (infer "salary_band" :type/Text)))
+    (is (= :BIZ_CONF (infer "compensation_tier" :type/Text)))
+    (is (= :BIZ_CONF (infer "pay_grade" :type/Integer)))
+    (is (nil? (infer "salary" :type/Text)))
+    (is (nil? (infer "salary_currency" :type/Text)))))
+
 (deftest ^:parallel false-positives-test
   (testing "names that share a substring or token with a rule but are not sensitive return nil"
     (doseq [[field-name base-type]
