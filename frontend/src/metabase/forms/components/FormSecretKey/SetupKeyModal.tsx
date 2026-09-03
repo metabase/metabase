@@ -70,7 +70,7 @@ export const SecretKeyModal = ({
       closeOnClickOutside={false}
       closeOnEscape={false}
     >
-      <Stack gap="lg" mt="md">
+      <Stack gap="xl" mt="lg">
         <Text>
           {t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}
         </Text>
