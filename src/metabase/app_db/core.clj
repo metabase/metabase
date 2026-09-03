@@ -72,6 +72,7 @@
 
  [metabase.app-db.query
   compile
+  current-timestamp-string
   isa
   join
   qualify

@@ -24,6 +24,7 @@
    [honey.sql :as sql]
    [metabase.app-db.format :as app-db.format]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -119,6 +120,14 @@
                 (app-db.format/format-sql (first sql-args))
                 (pr-str (rest sql-args)))
     sql-args))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
+  for the `settings-last-updated` marker that instances compare against each other."
+  ^String [db-type]
+  ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
+  (let [cast-form (h2x/cast (if (= db-type :mysql) :char :text) (h2x/current-datetime-honeysql-form db-type))]
+    (-> (t2/query-one {:select [[cast-form :timestamp]]}) :timestamp)))
 
 ;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
 (defn query
