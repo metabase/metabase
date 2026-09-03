@@ -529,7 +529,7 @@
   See [[detached-fetch!]]."
   (atom {}))
 
-(def ^:private fetch-max-age-ms
+(def ^:dynamic *fetch-max-age-ms*
   "How long a detached fetch may run before it is canceled, and how long a caller will wait on one.
 
   Only a fetch wedged outside the query processor can reach this: the warehouse query itself is
@@ -546,7 +546,7 @@
   what this endpoint promises its callers, and that is a decision of its own."
   (* 60 60 1000))
 
-(def ^:private max-in-flight-fetches
+(def ^:dynamic *max-in-flight-fetches*
   "Ceiling on the registry, independent of whatever else happens to bound it.
 
   Callers park on their fetch, so the number in flight is today limited by the request thread pool
@@ -571,7 +571,7 @@
   (deliver (:promise entry) result))
 
 (defn- sweep-stalled-fetches!
-  "Cancel every fetch that has outlived [[fetch-max-age-ms]] and fail whoever is waiting on it.
+  "Cancel every fetch that has outlived [[*fetch-max-age-ms*]] and fail whoever is waiting on it.
 
   A fetch clears its own registry entry, so this fires only when that failed or when the work is
   genuinely wedged. It completes the entries rather than merely forgetting them: callers park on the
@@ -581,13 +581,13 @@
   []
   (let [swept (atom 0)]
     (doseq [[cache-key {:keys [timer future-ref] :as entry}] @in-flight-fetches
-            :when (> (u/since-ms timer) fetch-max-age-ms)]
+            :when (> (u/since-ms timer) *fetch-max-age-ms*)]
       (some-> @future-ref future-cancel)
       (complete-fetch! cache-key entry
                        {:error (ex-info (tru "Timed out fetching field values.") {:cache-key cache-key})})
       (swap! swept inc))
     (when (pos? @swept)
-      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" @swept fetch-max-age-ms))))
+      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" @swept *fetch-max-age-ms*))))
 
 (defn- claim-fetch!
   "Register `entry` for `cache-key` and return whichever entry is registered once we are done, or
@@ -599,7 +599,7 @@
   [cache-key entry]
   (-> (swap! in-flight-fetches (fn [m]
                                  (if (or (contains? m cache-key)
-                                         (>= (count m) max-in-flight-fetches))
+                                         (>= (count m) *max-in-flight-fetches*))
                                    m
                                    (assoc m cache-key entry))))
       (get cache-key)))
@@ -622,7 +622,7 @@
         this  (or (claim-fetch! cache-key entry)
                   (throw (ex-info (tru "Too many field values fetches are already running. Please try again shortly.")
                                   {:status-code   503
-                                   :max-in-flight max-in-flight-fetches})))]
+                                   :max-in-flight *max-in-flight-fetches*})))]
     (when (identical? this entry)
       ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with its
       ;; promise undelivered is worse than a leak: every later caller for that key parks on it
@@ -642,12 +642,12 @@
         ;; shutting down, and the registry entry is already in place by then
         (catch Throwable e
           (complete-fetch! cache-key entry {:error e}))))
-    (let [{:keys [value error] :as result} (deref (:promise this) fetch-max-age-ms ::timed-out)]
+    (let [{:keys [value error] :as result} (deref (:promise this) *fetch-max-age-ms* ::timed-out)]
       (cond
         (= result ::timed-out)
         (throw (ex-info (tru "Timed out waiting for field values.")
                         {:status-code 503
-                         :timeout-ms  fetch-max-age-ms}))
+                         :timeout-ms  *fetch-max-age-ms*}))
 
         error
         (throw error)

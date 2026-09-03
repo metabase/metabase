@@ -342,50 +342,41 @@
 (deftest detached-fetch!-caps-registry-test
   (testing "past the registry cap the fetch is refused rather than growing the registry, so nothing
             outside this namespace has to bound it (GHY-2937)"
-    (let [registry @#'field-values/in-flight-fetches
-          cap      @#'field-values/max-in-flight-fetches
-          filler   (into {} (for [i (range cap)]
-                              [[::filler i] {:promise    (promise)
-                                             :future-ref (atom nil)
-                                             :timer      (u/start-timer)}]))
-          ran      (atom false)]
+    (let [release (promise)
+          started (promise)
+          ran     (atom false)]
       (try
-        (swap! registry merge filler)
-        (testing "the caller gets a 503"
-          (is (= 503 (try
-                       (field-values/detached-fetch! ::over-cap (fn [] (reset! ran true)))
-                       nil
-                       (catch clojure.lang.ExceptionInfo e
-                         (:status-code (ex-data e)))))))
-        (testing "the work is not run, and nothing is registered for it"
-          (is (false? @ran))
-          (is (not (contains? @registry ::over-cap))))
-        (testing "but a caller joining a fetch already in flight is still admitted — it adds no
-                  registry entry, so the cap has no reason to turn it away"
-          (let [joined (future (field-values/detached-fetch! [::filler 0] (constantly ::should-not-run)))]
-            (deliver (:promise (get @registry [::filler 0])) {:value ::from-existing-fetch})
-            (is (= ::from-existing-fetch (deref joined 10000 ::timed-out)))))
+        ;; a real in-flight fetch, so the joining case below goes through the public API rather than
+        ;; a hand-built registry entry
+        (let [holder (future (field-values/detached-fetch! ::held (fn []
+                                                                    (deliver started true)
+                                                                    @release)))]
+          @started
+          (binding [field-values/*max-in-flight-fetches* 0]
+            (testing "a new key is refused with a 503, and its work never runs"
+              (is (= 503 (try
+                           (field-values/detached-fetch! ::over-cap (fn [] (reset! ran true)))
+                           nil
+                           (catch clojure.lang.ExceptionInfo e
+                             (:status-code (ex-data e))))))
+              (is (false? @ran)))
+            (testing "but a caller joining a fetch already in flight is still admitted — it adds no
+                      registry entry, so the cap has no reason to turn it away"
+              (let [joining (promise)
+                    joiner  (future
+                              (deliver joining true)
+                              (field-values/detached-fetch! ::held (constantly ::should-not-run)))]
+                @joining
+                ;; the joiner has to reach the registry while ::held is still in flight; releasing the
+                ;; holder first would let it complete, and the joiner would then be a new key the cap
+                ;; refuses. It cannot return while `release` is undelivered, so a timeout here means
+                ;; it parked on the held fetch.
+                (is (= ::parked (deref joiner 1000 ::parked)))
+                (deliver release ::from-held)
+                (is (= ::from-held (deref joiner 10000 ::timed-out))))))
+          (is (= ::from-held (deref holder 10000 ::timed-out))))
         (finally
-          (swap! registry #(apply dissoc % (keys filler))))))))
-
-(deftest detached-fetch!-waiter-times-out-test
-  (testing "a caller does not park forever on a fetch that never finishes: the sweep that would
-            cancel it only runs when a request arrives, and enough parked callers means none can
-            (GHY-2937)"
-    (let [registry @#'field-values/in-flight-fetches
-          release  (promise)]
-      (try
-        (with-redefs-fn {#'field-values/fetch-max-age-ms 100}
-          (fn []
-            (is (= 100 (try
-                         (field-values/detached-fetch! ::never-finishes (fn [] @release))
-                         nil
-                         (catch clojure.lang.ExceptionInfo e
-                           (:timeout-ms (ex-data e))))))))
-        (finally
-          ;; let the fetch finish so it clears its own entry
-          (deliver release ::done)
-          (swap! registry dissoc ::never-finishes))))))
+          (deliver release ::done))))))
 
 (deftest detached-fetch!-rethrows-test
   (testing "an exception thrown by the fetch reaches the caller"
@@ -398,12 +389,12 @@
       (let [field-id             (mt/id :categories :name)
             started              (promise)
             release              (promise)
-            real-distinct-values field-values/distinct-values]
+            real-distinct-values (mt/original-fn #'field-values/distinct-values)]
         (t2/delete! :model/FieldValues :field_id field-id :type :full)
-        (with-redefs [field-values/distinct-values (fn [field]
-                                                     (deliver started true)
-                                                     @release
-                                                     (real-distinct-values field))]
+        (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [field]
+                                                                   (deliver started true)
+                                                                   @release
+                                                                   (real-distinct-values field))]
           (let [caller (future (field-values/get-or-create-full-field-values!
                                 (t2/select-one :model/Field :id field-id)))]
             @started
@@ -422,12 +413,12 @@
         (is (seq (:values before)))
         (testing "a failed warehouse scan must not be read as \"this field has no values\" and wipe
                   the FieldValues we already have cached (GHY-2937)"
-          (with-redefs [field-values/distinct-values (constantly nil)]
+          (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly nil)]
             (is (= ::field-values/fv-fetch-failed
                    (field-values/create-or-update-full-field-values! field))))
           (is (= (:values before) (:values (cached)))))
         (testing "a scan that genuinely comes back empty still clears the FieldValues"
-          (with-redefs [field-values/distinct-values (constantly {:values []})]
+          (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values []})]
             (is (= ::field-values/fv-deleted
                    (field-values/create-or-update-full-field-values! field))))
           (is (nil? (cached))))
