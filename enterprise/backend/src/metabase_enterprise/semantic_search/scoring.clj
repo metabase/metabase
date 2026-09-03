@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.app-db.core :as mdb]
@@ -14,8 +15,7 @@
    [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [next.jdbc.result-set :as jdbc.rs]))
 
 ;;
 ;; index-based scorers: these scorers only rely on columns in the search index in the pgvector db
@@ -234,7 +234,7 @@
       (->> (search-index-query search-results-to-score)
            (search.scoring/with-scores search-ctx appdb-scorers)
            maybe-join-bookmarks
-           t2/query
+           semantic-search.db/query-rows
            (update-with-appdb-scores weights (keys appdb-scorers) search-results)
            (sort-by :score >)
            vec))))

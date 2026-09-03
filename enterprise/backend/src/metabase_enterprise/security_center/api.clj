@@ -2,6 +2,7 @@
   "API endpoints for Security Center advisories."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.schema :as security-center.schema]
@@ -13,8 +14,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.util.concurrent ExecutorService RejectedExecutionException
                          SynchronousQueue ThreadPoolExecutor ThreadPoolExecutor$AbortPolicy
@@ -69,8 +69,7 @@
   "List all security advisories with match status."
   []
   (api/check-superuser)
-  (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
-                               :acknowledged_by_user)]
+  (let [advisories (security-center.db/hydrate-acknowledged-by-user (security-center.db/advisories-newest-first))]
     {:last_checked_at (settings/security-center-last-synced-at)
      :advisories      (mapv advisory-response advisories)}))
 
@@ -84,7 +83,7 @@
   "Acknowledge a security advisory. Stops repeat notifications."
   [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
-  (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
+  (let [advisory (security-center.db/advisory-by-advisory-id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 

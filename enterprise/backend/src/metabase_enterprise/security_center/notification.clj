@@ -10,6 +10,7 @@
    as a recipient when set, but only if `security-center-email-recipients`
    targets the admin group (i.e. \"Send to all instance admins\" is on)."
   (:require
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
@@ -19,8 +20,7 @@
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +59,7 @@
    recipients are used."
   [configured-recipients]
   (let [raw         (or configured-recipients [])
-        configured  (or (some-> (not-empty raw) (t2/hydrate :recipients-detail))
+        configured  (or (some-> (not-empty raw) security-center.db/hydrate-recipients-detail)
                         [])
         admin-email (system/admin-email)]
     (if (and admin-email (sends-to-all-admins? raw))
@@ -168,8 +168,7 @@
      (try
        (notification/send-notification! notif :notification/sync? true)
        (track-notification-sent! notif triggered-from "success")
-       (t2/update! :model/SecurityAdvisory (:id advisory)
-                   {:last_notified_at (mi/now)})
+       (security-center.db/update-advisory! (:id advisory) {:last_notified_at (mi/now)})
        (catch Exception e
          (track-notification-sent! notif triggered-from "failure")
          (throw e))))))

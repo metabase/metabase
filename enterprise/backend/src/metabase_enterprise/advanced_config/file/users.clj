@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-config.file.users
   (:require
    [clojure.spec.alpha :as s]
+   [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface
     :as advanced-config.file.i]
    [metabase.auth-identity.core :as auth-identity]
@@ -34,7 +35,7 @@
 
 (defn- select-user
   [email]
-  (t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) :email email))
+  (advanced-config.db/user-columns-by-email (vec (cons :model/User user/admin-or-self-visible-columns)) email))
 
 (defn- init-from-config-file!
   [user]
@@ -48,14 +49,14 @@
                        (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
                        (let [new-user (update user :login_attributes
                                               #(merge % (:login_attributes existing-user)))]
-                         (t2/update! :model/User (:id existing-user) new-user))
+                         (advanced-config.db/update-user! (:id existing-user) new-user))
                        (:id existing-user))
                      ;; create a new user. If they are the first non-internal User, force them to be an admin.
                      (let [user (cond-> user
                                   (not (setup/has-user-setup)) (assoc :is_superuser true))]
                        (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
                        (log/info (u/colorize :green "Creating new User"))
-                       (u/the-id (t2/insert-returning-instance! :model/User user))))]
+                       (u/the-id (advanced-config.db/insert-user! user))))]
       ;; passwords live in the AuthIdentity, not on the User row
       (auth-identity/set-password! user-id password))))
 
