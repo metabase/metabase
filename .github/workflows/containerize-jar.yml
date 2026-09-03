@@ -25,6 +25,10 @@ on:
         default: false
       build-args:
         type: string
+      platforms:
+        description: Platforms the image is built for.
+        type: string
+        default: linux/amd64,linux/arm64
   workflow_dispatch:
     inputs:
       edition:
@@ -54,6 +58,10 @@ on:
         description: Whether this is a release artifact (uses metabase-release- prefix)
         type: boolean
         default: false
+      platforms:
+        description: Platforms the image is built for.
+        type: string
+        default: linux/amd64,linux/arm64
 
 jobs:
   containerize:
@@ -122,7 +130,7 @@ jobs:
       uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         context: bin/docker/.
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ inputs.platforms }}
         network: host
         tags: ${{ steps.image.outputs.full_image }}
         no-cache: true

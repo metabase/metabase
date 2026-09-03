@@ -50,6 +50,7 @@ runs:
       uses: actions/github-script@v9
       env:
         REGISTRY: ${{ inputs.registry }}
+        OWNER: ${{ vars.DOCKERHUB_OWNER }}
         REPO: ${{ inputs.repo }}
         TAG: ${{ inputs.tag }}
         BRANCH: ${{ inputs.branch }}
@@ -58,7 +59,7 @@ runs:
         AWS_REGION: ${{ inputs.aws-region }}
       with:
         script: | # js
-          const { REGISTRY, BRANCH, EDITION, AWS_ACCOUNT_ID, AWS_REGION } = process.env;
+          const { REGISTRY, OWNER, BRANCH, EDITION, AWS_ACCOUNT_ID, AWS_REGION } = process.env;
 
           let tag = process.env.TAG;
           if (!tag) {
@@ -82,7 +83,7 @@ runs:
             }
             repo = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${name}`;
           } else if (REGISTRY === 'docker') {
-            repo = `metabase/${name}`;
+            repo = `${OWNER}/${name}`;
           } else {
             core.setFailed(`Unknown registry "${REGISTRY}", expected "docker" or "ecr".`);
             return;
