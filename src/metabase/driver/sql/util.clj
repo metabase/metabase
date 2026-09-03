@@ -219,7 +219,7 @@
   This function fixes that by removing whitespace from matching double-curly brace substrings."
   [sql]
   (when (string? sql)
-    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+    (let [rgx #"\{\s*\{[^\{\}]+\}\s*\}"]
       (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
 
 (def dialects
