@@ -17,6 +17,7 @@ import {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
+  validateGoalReferences,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
@@ -72,6 +73,7 @@ const cartesianChartAdditions: CartesianChartAdditions = {
     validateBreakoutSeriesCount(series, settings);
     validateChartDataSettings(settings);
     validateStacking(settings);
+    validateGoalReferences(series, settings);
   },
 
   hasEmptyState: true,

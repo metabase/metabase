@@ -10,6 +10,7 @@ import {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
+  validateGoalReferences,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -124,6 +125,7 @@ export const ROW_CHART_DEFINITION: VisualizationDefinition = {
     validateBreakoutSeriesCount(series, settings);
     validateChartDataSettings(settings);
     validateStacking(settings);
+    validateGoalReferences(series, settings);
   },
 };
 

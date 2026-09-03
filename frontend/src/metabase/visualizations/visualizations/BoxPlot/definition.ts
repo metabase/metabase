@@ -6,7 +6,10 @@ import {
   BOXPLOT_SETTINGS,
   GRAPH_AXIS_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
-import { validateChartDataSettings } from "metabase/visualizations/lib/settings/validation";
+import {
+  validateChartDataSettings,
+  validateGoalReferences,
+} from "metabase/visualizations/lib/settings/validation";
 import {
   getDefaultSize,
   getMinSize,
@@ -43,10 +46,11 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   },
 
   checkRenderable: (
-    _series: RawSeries,
+    series: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
     validateChartDataSettings(settings);
+    validateGoalReferences(series, settings);
   },
 
   settings: {
