@@ -2,8 +2,6 @@
   "Application database queries for the custom-viz-plugin module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   ;; loads the model definition and its transforms
-   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [toucan2.core :as t2]))
 
 (def ^:private non-blob-columns
