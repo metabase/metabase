@@ -4,12 +4,12 @@ import type {
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
 import { cardIsEquivalent } from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata-store";
+import { selectQuestionFromCard } from "metabase/metadata-store";
 import { loadCard } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getCardAfterVisualizationClick } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -62,12 +62,12 @@ export const runQuestionOnNavigateSdk =
     }
 
     // Optimistic update the UI before we re-fetch the query metadata.
-    onQuestionChange(new Question(nextCard, getMetadata(getState())));
+    onQuestionChange(selectQuestionFromCard(getState(), nextCard));
 
     await dispatch(loadMetadataForCard(nextCard, { token }));
 
     const state = await runQuestionQuerySdk({
-      question: new Question(nextCard, getMetadata(getState())),
+      question: selectQuestionFromCard(getState(), nextCard),
       originalQuestion,
       parameterValues,
       signal,
