@@ -289,11 +289,11 @@ function isSetBoundUnresolved(
   );
 }
 
-function toResolvedSegment<TBounds extends ResolvedBounds>(
+function toResolvedSegment<TBound extends number | null>(
   segment: GoalSegment,
-  bounds: TBounds,
+  bounds: { min: TBound; max: TBound },
   getColor: ColorGetter,
-): ResolvedGoalSegmentWithBounds<TBounds["min"]> {
+): ResolvedGoalSegmentWithBounds<TBound> {
   return {
     color: getSegmentColor(segment, getColor),
     label: segment.label,
