@@ -14,6 +14,8 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -100,7 +102,6 @@
               :lib/metadata metabase.lib.field-test/grandparent-parent-child-metadata-provider
               :database     (meta/id)
               :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid (str (random-uuid))}
                               :source-table (meta/id :venues)}]}
              -1
              a-field-clause))]
@@ -1689,3 +1690,68 @@
              (lib.field.resolution/resolve-field-ref
               query -1
               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000" :base-type :type/Text} "CATEGORY_5000"]))))))
+
+(deftest ^:parallel resolve-old-model-metadata-correctly-test
+  (testing "Resolve fields from old model metadata (saved in ~55 or older) that is missing modern lib keys correctly (#65532)"
+    (let [mp    (as-> meta/metadata-provider $mp
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [(let [query    (-> (-> (lib/query $mp (lib.metadata/table $mp (meta/id :orders)))
+                                                   (lib/with-fields [(lib.metadata/field $mp (meta/id :orders :id))]))
+                                               (lib/join (-> (lib/join-clause (lib.metadata/table $mp (meta/id :products)))
+                                                             (lib/with-join-fields [(lib.metadata/field $mp (meta/id :products :id))]))))
+                                  ;; simulate metadata as saved by 55
+                                  metadata (into []
+                                                 (keep (fn [col]
+                                                         (-> col
+                                                             (assoc :name (:lib/deduplicated-name col))
+                                                             (dissoc :lib/source-column-alias
+                                                                     :lib/desired-column-alias
+                                                                     :lib/deduplicated-name
+                                                                     :lib/original-name)
+                                                             (cond->
+                                                              (= (:display-name col) "Products → ID")
+                                                               (assoc :display-name "[RENAMED]")))))
+                                                 (lib.metadata.result-metadata/returned-columns query))]
+                              {:id              1
+                               :type            :model
+                               :dataset-query   query
+                               :result-metadata metadata})]})
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [{:id             2
+                             :dataset-query  (lib/query $mp (lib.metadata/card $mp 1))
+                             :source-card-id 1}]}))
+          query (lib/normalize
+                 ::lib.schema/query
+                 {:database     (meta/id)
+                  :lib/type     :mbql/query
+                  :lib/metadata mp
+                  :stages       [(-> (lib/query-stage (:dataset-query (lib.metadata/card mp 1)) 0)
+                                     (assoc :qp/stage-is-from-source-card 1))
+                                 (-> (lib/query-stage (:dataset-query (lib.metadata/card mp 2)) 0)
+                                     (dissoc :source-card)
+                                     (assoc :qp/stage-had-source-card     1
+                                            :qp/stage-is-from-source-card 2))]})]
+      (is (=? {:base-type                 :type/BigInteger
+               :display-name              "[RENAMED]"
+               :id                        (meta/id :products :id)
+               :semantic-type             :type/PK
+               :table-id                  (meta/id :products)
+               :visibility-type           :normal
+               :lib/card-id               1
+               :lib/original-join-alias   "Products"
+               :lib/original-name         "ID_2"
+               :lib/type                  :metadata/column}
+              (lib/metadata query -1
+                            (#'lib.field.resolution/additional-metadata-from-source-card
+                             query
+                             -1
+                             (lib/normalize
+                              ::lib.schema.metadata/column
+                              {:lib/type                :metadata/column
+                               :lib/source              :source/previous-stage
+                               :id                      (meta/id :products :id)
+                               :name                    "Products__ID"
+                               :lib/source-column-alias "Products__ID"
+                               :base-type               :type/Integer}))))))))
