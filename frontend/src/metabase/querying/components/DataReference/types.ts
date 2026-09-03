@@ -13,8 +13,8 @@ import { QuestionPane } from "./QuestionPane";
 import { SchemaPane } from "./SchemaPane";
 import { TablePane } from "./TablePane";
 
-// The library pane is rendered from PLUGIN_LIBRARY.DataReferenceLibraryPane
-// (see DataReference), so it is intentionally absent from PANES.
+// The library pane is rendered from PLUGIN_DATA_REFERENCE.LibraryPane (see DataReference),
+// so it is intentionally absent from PANES.
 export const PANES = {
   database: DatabasePane, // lists schemas, tables and models of a database
   schema: SchemaPane, // lists tables of a schema
