@@ -4,16 +4,20 @@ import _ from "underscore";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Stack, Text, Tooltip } from "metabase/ui";
 import {
+  GoalFailedState,
+  GoalResolvingState,
+} from "metabase/visualizations/components/GoalResolutionState";
+import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
+import { useResolvedOpenEndedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import {
   compactifyValue,
   getColor,
   getTooltipContent,
 } from "metabase/visualizations/lib/scalar_utils";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   VisualizationPassThroughProps,
@@ -22,7 +26,10 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
-import { SCALAR_CHART_DEFINITION } from "./definition";
+import {
+  SCALAR_CHART_DEFINITION,
+  getUnresolvedSegmentsMessage,
+} from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
 
 const PADDING = 32;
@@ -46,11 +53,8 @@ function ScalarComponent(
   const scalarRef = useRef<HTMLDivElement>(null);
 
   const {
-    series: [
-      {
-        data: { cols, rows },
-      },
-    ],
+    className,
+    series: [{ card, data }],
     settings,
     visualizationIsClickable,
     onVisualizationClick,
@@ -61,13 +65,35 @@ function ScalarComponent(
     fontFamily,
     rawSeries,
   } = props;
+  const { cols, rows } = data;
 
-  if (rawSeries.length > 1) {
+  const isMultiSeries = rawSeries.length > 1;
+  const goalSegments = useResolvedOpenEndedGoalSegments(
+    card.dataset_query,
+    data,
+    isMultiSeries ? undefined : settings["scalar.segments"],
+  );
+
+  if (isMultiSeries) {
     return (
       <TransformedVisualization
         transformSeries={scalarToBarTransform}
         originalProps={props}
         VisualizationComponent={BarChart}
+      />
+    );
+  }
+
+  if (goalSegments.status === "resolving") {
+    return <GoalResolvingState className={className} height={height} />;
+  }
+
+  if (goalSegments.status === "failed") {
+    return (
+      <GoalFailedState
+        className={className}
+        height={height}
+        message={getUnresolvedSegmentsMessage()}
       />
     );
   }
@@ -86,12 +112,8 @@ function ScalarComponent(
     jsx: true,
   };
 
-  const segments = settings["scalar.segments"]?.filter((segment) =>
-    segmentIsValid(segment, { allowOpenEnded: true }),
-  );
-
-  const color = getColor(value, segments);
-  const tooltipContent = getTooltipContent(segments);
+  const color = getColor(value, goalSegments.segments);
+  const tooltipContent = getTooltipContent(goalSegments.segments);
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,

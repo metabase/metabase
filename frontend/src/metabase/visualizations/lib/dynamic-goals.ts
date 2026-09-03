@@ -33,12 +33,19 @@ export type GoalData = Pick<
   "cols" | "rows" | "referenced_entities"
 >;
 
-export type ResolvedGoalSegment = {
+type ResolvedGoalSegmentWithBounds<TBound> = {
   color: string;
   label?: string;
-  min: number;
-  max: number;
+  min: TBound;
+  max: TBound;
 };
+
+export type ResolvedGoalSegment = ResolvedGoalSegmentWithBounds<number>;
+
+// A null bound was left empty in the settings; at least one bound is always set.
+export type ResolvedOpenEndedGoalSegment = ResolvedGoalSegmentWithBounds<
+  number | null
+>;
 
 export type GoalRefErrorReason =
   | "query-failed"
@@ -257,27 +264,71 @@ export function getGoalValuesFromVizSettings(
   });
 }
 
+type ResolvedBounds = { min: number | null; max: number | null };
+
+function resolveBounds(data: GoalData, segment: GoalSegment): ResolvedBounds {
+  return {
+    min: resolveGoalValue(data, segment.min).value,
+    max: resolveGoalValue(data, segment.max).value,
+  };
+}
+
+function isClosed(
+  bounds: ResolvedBounds,
+): bounds is { min: number; max: number } {
+  return bounds.min != null && bounds.max != null && segmentIsValid(bounds);
+}
+
+function isSetBoundUnresolved(
+  segment: GoalSegment,
+  bounds: ResolvedBounds,
+): boolean {
+  return (
+    (segment.min != null && bounds.min == null) ||
+    (segment.max != null && bounds.max == null)
+  );
+}
+
+function toResolvedSegment<TBounds extends ResolvedBounds>(
+  segment: GoalSegment,
+  bounds: TBounds,
+  getColor: ColorGetter,
+): ResolvedGoalSegmentWithBounds<TBounds["min"]> {
+  return {
+    color: getSegmentColor(segment, getColor),
+    label: segment.label,
+    min: bounds.min,
+    max: bounds.max,
+  };
+}
+
 export function resolveGoalSegments(
   data: GoalData,
   segments: GoalSegment[] | undefined,
   getColor: ColorGetter = color,
 ): ResolvedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
-    const min = resolveGoalValue(data, segment.min).value;
-    const max = resolveGoalValue(data, segment.max).value;
+    const bounds = resolveBounds(data, segment);
 
-    if (min == null || max == null || !segmentIsValid({ min, max })) {
-      return [];
-    }
+    return isClosed(bounds)
+      ? [toResolvedSegment(segment, bounds, getColor)]
+      : [];
+  });
+}
 
-    return [
-      {
-        color: getSegmentColor(segment, getColor),
-        label: segment.label,
-        min,
-        max,
-      },
-    ];
+// An empty bound stays open; a bound that is set must still resolve to a number.
+export function resolveOpenEndedGoalSegments(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
+): ResolvedOpenEndedGoalSegment[] {
+  return validGoalSegments(segments).flatMap((segment) => {
+    const bounds = resolveBounds(data, segment);
+
+    return isSetBoundUnresolved(segment, bounds) ||
+      !segmentIsValid(bounds, { allowOpenEnded: true })
+      ? []
+      : [toResolvedSegment(segment, bounds, getColor)];
   });
 }
 

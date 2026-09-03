@@ -589,6 +589,10 @@ export type VisualizationSettingsDefinitions = {
     SmartScalarComparisonWidgetProps
   >;
   "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.segments"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentsEditorProps
+  >;
   "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
   scale?: DatasetColumnSettingDefinition<Value, Props>;
   "scatter.bubble"?: SeriesSettingDefinition<Value, Props>;

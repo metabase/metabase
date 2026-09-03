@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { hasFailedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
@@ -9,6 +10,9 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import type { DatasetData } from "metabase-types/api/dataset";
+
+export const getUnresolvedSegmentsMessage = () =>
+  t`Couldn't load a value one of this chart's color ranges depends on.`;
 
 export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Number`,
@@ -23,8 +27,10 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     return rows.length === 1 && cols.length === 1;
   },
 
-  checkRenderable() {
-    // scalar can always be rendered, nothing needed here
+  checkRenderable([{ data }], settings) {
+    if (hasFailedGoalReferences(data, settings["scalar.segments"])) {
+      throw new Error(getUnresolvedSegmentsMessage());
+    }
   },
 
   settings: {
@@ -55,8 +61,10 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
         marginLeft: 0,
         marginRight: 0,
       }),
-      getProps: () => ({
+      getProps: ([{ card, data }]) => ({
         canRemoveAll: true,
+        data,
+        datasetQuery: card.dataset_query,
       }),
     },
     ...columnSettings({

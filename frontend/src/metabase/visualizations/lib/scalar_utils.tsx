@@ -1,12 +1,9 @@
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import type { ResolvedOpenEndedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
-import type {
-  ColumnSettings,
-  RowValue,
-  ScalarSegment,
-} from "metabase-types/api";
+import type { ColumnSettings, RowValue } from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -47,34 +44,31 @@ export function compactifyValue(
 
 const DEFAULT_COLOR = color("text-primary");
 
-const isFiniteNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-
-const getSegmentBounds = ({ min, max }: ScalarSegment) => ({
-  min: isFiniteNumber(min) ? min : -Infinity,
-  max: isFiniteNumber(max) ? max : Infinity,
+const getSegmentBounds = ({ min, max }: ResolvedOpenEndedGoalSegment) => ({
+  min: min ?? -Infinity,
+  max: max ?? Infinity,
 });
 
-const formatSegmentRange = ({ min, max }: ScalarSegment) => {
-  const hasMin = isFiniteNumber(min);
-  const hasMax = isFiniteNumber(max);
-
-  if (hasMin && hasMax) {
+const formatSegmentRange = ({ min, max }: ResolvedOpenEndedGoalSegment) => {
+  if (min != null && max != null) {
     return `${min} - ${max}`;
   }
 
-  if (hasMin) {
+  if (min != null) {
     return `≥ ${min}`;
   }
 
-  if (hasMax) {
+  if (max != null) {
     return `≤ ${max}`;
   }
 
   return "";
 };
 
-export function getColor(_value: RowValue, segments?: ScalarSegment[]) {
+export function getColor(
+  _value: RowValue,
+  segments?: ResolvedOpenEndedGoalSegment[],
+) {
   const value = parseFloat(String(_value));
 
   if (!segments || segments.length === 0 || Number.isNaN(value)) {
@@ -92,7 +86,7 @@ export function getColor(_value: RowValue, segments?: ScalarSegment[]) {
   return segment.color;
 }
 
-export function getTooltipContent(segments?: ScalarSegment[]) {
+export function getTooltipContent(segments?: ResolvedOpenEndedGoalSegment[]) {
   if (!segments || segments.length === 0) {
     return null;
   }
@@ -100,19 +94,19 @@ export function getTooltipContent(segments?: ScalarSegment[]) {
   return (
     <table style={{ borderSpacing: "0.75rem 0.25rem" }}>
       <tbody>
-        {segments.map(({ color, min, max, label }: ScalarSegment, index) => (
+        {segments.map((segment, index) => (
           <tr key={index}>
             <td>
-              <ColorPill color={color} pillSize="xsmall" />
+              <ColorPill color={segment.color} pillSize="xsmall" />
             </td>
             <td>
               <Text c="inherit" lh="md">
-                {formatSegmentRange({ min, max, color, label })}
+                {formatSegmentRange(segment)}
               </Text>
             </td>
             <td>
               <Text c="inherit" lh="md">
-                {label}
+                {segment.label}
               </Text>
             </td>
           </tr>

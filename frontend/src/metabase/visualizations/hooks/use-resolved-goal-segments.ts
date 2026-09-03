@@ -1,8 +1,10 @@
 import {
   type ResolvedGoalSegment,
+  type ResolvedOpenEndedGoalSegment,
   getUnansweredGoalEntities,
   hasFailedGoalReferences,
   resolveGoalSegments,
+  resolveOpenEndedGoalSegments,
 } from "metabase/visualizations/lib/dynamic-goals";
 import type {
   DatasetData,
@@ -12,16 +14,51 @@ import type {
 
 import { useAnsweredGoalData } from "./use-answered-goal-data";
 
-export type GoalSegmentsState =
+type GoalSegmentsResolution<TSegment> =
   | { status: "resolving" }
   | { status: "failed" }
-  | { status: "resolved"; segments: ResolvedGoalSegment[] };
+  | { status: "resolved"; segments: TSegment[] };
+
+export type GoalSegmentsState = GoalSegmentsResolution<ResolvedGoalSegment>;
+
+export type OpenEndedGoalSegmentsState =
+  GoalSegmentsResolution<ResolvedOpenEndedGoalSegment>;
 
 export function useResolvedGoalSegments(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): GoalSegmentsState {
+  return useResolvedGoalSegmentsWith(
+    datasetQuery,
+    data,
+    segments,
+    resolveGoalSegments,
+  );
+}
+
+export function useResolvedOpenEndedGoalSegments(
+  datasetQuery: DatasetQuery | undefined,
+  data: DatasetData,
+  segments: GoalSegment[] | undefined,
+): OpenEndedGoalSegmentsState {
+  return useResolvedGoalSegmentsWith(
+    datasetQuery,
+    data,
+    segments,
+    resolveOpenEndedGoalSegments,
+  );
+}
+
+function useResolvedGoalSegmentsWith<TSegment>(
+  datasetQuery: DatasetQuery | undefined,
+  data: DatasetData,
+  segments: GoalSegment[] | undefined,
+  resolve: (
+    data: DatasetData,
+    segments: GoalSegment[] | undefined,
+  ) => TSegment[],
+): GoalSegmentsResolution<TSegment> {
   const answered = useAnsweredGoalData(
     datasetQuery,
     data,
@@ -32,23 +69,13 @@ export function useResolvedGoalSegments(
     return answered;
   }
 
-  return getGoalSegmentsState(answered.data, segments);
-}
-
-// No further fetch happens past this point, so an unanswered reference counts as failed.
-function getGoalSegmentsState(
-  data: DatasetData,
-  segments: GoalSegment[] | undefined,
-): GoalSegmentsState {
+  // No further fetch happens past this point, so an unanswered reference counts as failed.
   if (
-    getUnansweredGoalEntities(data, segments).length > 0 ||
-    hasFailedGoalReferences(data, segments)
+    getUnansweredGoalEntities(answered.data, segments).length > 0 ||
+    hasFailedGoalReferences(answered.data, segments)
   ) {
     return { status: "failed" };
   }
 
-  return {
-    status: "resolved",
-    segments: resolveGoalSegments(data, segments),
-  };
+  return { status: "resolved", segments: resolve(answered.data, segments) };
 }
