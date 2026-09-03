@@ -9,7 +9,8 @@
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.kondo-ratchet :as kondo-ratchet]))
+   [dev.kondo-ratchet :as kondo-ratchet]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -714,3 +715,32 @@
         "untouched budgets (:same, :cfg-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
          ignores left; the empty unlimited policy (:empty) is kept and warned about")))
+
+(deftest ^:parallel shrink-summary-test
+  (is (= (str "{:a                      2 => 1\n"
+              " :config/unused-import   4 => 0\n"
+              " :z                     10 => 3}")
+         (kondo-ratchet/shrink-summary
+          {:ignore-counts {:a 2, :same 1, :unlimited :unlimited, :z 10}
+           :config-counts {:same 2, :unused-import 4}
+           :comment-exempt #{:a}}
+          {:ignore-counts {:a 1, :raised 2, :same 1, :unlimited :unlimited, :z 3}
+           :config-counts {:same 2}
+           :comment-exempt #{}})))
+  (is (= "{}" (kondo-ratchet/shrink-summary {:ignore-counts {:a 1}}
+                                            {:ignore-counts {:a 2}}))
+      "increases and non-count policy changes aren't reported"))
+
+(deftest ^:synchronized shrink-pr-body-test
+  (let [before {:ignore-counts {:case-symbol-test 2}}
+        after  {:ignore-counts {:case-symbol-test 1}}
+        body   #(mt/with-dynamic-fn-redefs [rand-nth (constantly %)]
+                  (kondo-ratchet/shrink-pr-body before after "https://example.test/run/1"))]
+    (is (str/includes? (body ["# still our problem" ". fixed, so no longer our problem"])
+                       "{:case-symbol-test  2 => 1}"))
+    (is (str/includes? (body ["# stubborn lint" ". lint successfully rolled"])
+                       "# stubborn lint\n  . lint successfully rolled"))
+    (is (str/includes? (body ["# TODO" ". TODONE"])
+                       "# TODO\n  . TODONE"))
+    (is (str/includes? (body ["# still our problem" ". fixed, so no longer our problem"])
+                       "[`./bin/mage kondo-ratchets-shrink`](https://example.test/run/1)"))))
