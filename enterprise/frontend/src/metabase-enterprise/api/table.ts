@@ -10,7 +10,7 @@ import { idTag, invalidateTags, tag } from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getTablePublishingInfo: builder.query<TablePublishingInfo, TableId>({
+    getTablePublishingInfo: builder.query<TablePublishingInfo | null, TableId>({
       query: (tableId) => ({
         method: "GET",
         url: `/api/ee/data-studio/table/${tableId}/publishing-info`,

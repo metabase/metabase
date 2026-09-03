@@ -156,40 +156,34 @@
 
 (def ^:private PublishingInfo
   [:map {:closed true}
-   [:published_at [:maybe ms/TemporalInstant]]
+   [:published_at ms/TemporalInstant]
    [:published_by [:maybe PublishingUser]]])
-
-(def ^:private unavailable-publishing-info
-  {:published_at nil
-   :published_by nil})
 
 (defn- publishing-info
   [table-id]
-  (if-let [{:keys [timestamp topic], user-id :user_id}
-           (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
-                          :topic [:in [:table-publish :table-unpublish]]
-                          :model "Table"
-                          :model_id table-id
-                          {:order-by [[:timestamp :desc] [:id :desc]]})]
-    (if (= topic :table-publish)
+  (when-let [{:keys [timestamp topic], user-id :user_id}
+             ;; An unpublish event invalidates older publishing details if table state is restored without a new event.
+             (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
+                            :topic [:in [:table-publish :table-unpublish]]
+                            :model "Table"
+                            :model_id table-id
+                            {:order-by [[:timestamp :desc] [:id :desc]]})]
+    (when (= topic :table-publish)
       {:published_at timestamp
        :published_by (when user-id
                        (some-> (t2/select-one [:model/User :id :first_name :last_name :email] user-id)
-                               (select-keys [:id :common_name])))}
-      unavailable-publishing-info)
-    unavailable-publishing-info))
+                               (select-keys [:id :common_name])))})))
 
-(api.macros/defendpoint :get "/:id/publishing-info" :- PublishingInfo
-  "Return the latest publishing event for a published table."
+(api.macros/defendpoint :get "/:id/publishing-info" :- [:maybe PublishingInfo]
+  "Return the latest valid publishing information for a published table, or no content when unavailable."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
    _request]
   (api/check-data-analyst)
   (let [table (api/read-check :model/Table id)]
-    (if (:is_published table)
-      (publishing-info id)
-      unavailable-publishing-info)))
+    (when (:is_published table)
+      (publishing-info id))))
 
 (defn- can-publish?
   "Publishing a table means that it's now query-able by a new set of people. So we should not allow you to publish a

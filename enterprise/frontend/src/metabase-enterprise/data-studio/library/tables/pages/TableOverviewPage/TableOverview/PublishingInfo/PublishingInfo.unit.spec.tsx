@@ -25,7 +25,7 @@ function setup({
   isError = false,
 }: {
   isPublished?: boolean;
-  publishingInfo?: TablePublishingInfo;
+  publishingInfo?: TablePublishingInfo | null;
   isError?: boolean;
 } = {}) {
   const table = createMockTable({ is_published: isPublished });
@@ -70,12 +70,7 @@ describe("PublishingInfo", () => {
   });
 
   it("does not show publishing information when there is no publishing event", async () => {
-    setup({
-      publishingInfo: {
-        published_at: null,
-        published_by: null,
-      },
-    });
+    setup({ publishingInfo: null });
 
     await act(async () => {
       await fetchMock.callHistory.flush(true);

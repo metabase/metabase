@@ -40,12 +40,12 @@ export function setupUnpublishTablesEndpointError() {
 
 export function setupTablePublishingInfoEndpoint(
   tableId: TableId,
-  response: TablePublishingInfo,
+  response: TablePublishingInfo | null,
 ) {
   fetchMock.removeRoute(TABLE_PUBLISHING_INFO_ROUTE);
   fetchMock.get(
     `path:/api/ee/data-studio/table/${tableId}/publishing-info`,
-    response,
+    response ?? { status: 204 },
     { name: TABLE_PUBLISHING_INFO_ROUTE },
   );
 }

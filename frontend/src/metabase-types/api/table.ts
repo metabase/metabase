@@ -89,7 +89,7 @@ export type TableOwner = Pick<
 >;
 
 export type TablePublishingInfo = {
-  published_at: string | null;
+  published_at: string;
   published_by: Pick<UserInfo, "id" | "common_name"> | null;
 };
 

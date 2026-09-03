@@ -122,12 +122,11 @@
                                   :common_name "Crowberto Corv"}}
                   (mt/user-http-request :crowberto :get 200
                                         (format "ee/data-studio/table/%d/publishing-info" table-id))))))
-      (testing "returns unavailable publishing information when there is no event"
+      (testing "returns no content when there is no publishing event"
         (mt/with-temp [:model/Table {table-id :id} {:is_published true}]
-          (is (= {:published_at nil, :published_by nil}
-                 (mt/user-http-request :crowberto :get 200
-                                       (format "ee/data-studio/table/%d/publishing-info" table-id))))))
-      (testing "returns unavailable publishing information when the latest lifecycle event is an unpublish"
+          (is (nil? (mt/user-http-request :crowberto :get 204
+                                          (format "ee/data-studio/table/%d/publishing-info" table-id))))))
+      (testing "returns no content when the latest lifecycle event is an unpublish"
         (mt/with-temp [:model/Table {table-id :id} {:is_published true}
                        :model/AuditLog _ {:topic     :table-publish
                                           :model     "Table"
@@ -139,9 +138,12 @@
                                           :model_id  table-id
                                           :user_id   (mt/user->id :crowberto)
                                           :timestamp newer-timestamp}]
-          (is (= {:published_at nil, :published_by nil}
-                 (mt/user-http-request :crowberto :get 200
-                                       (format "ee/data-studio/table/%d/publishing-info" table-id)))))))))
+          (is (nil? (mt/user-http-request :crowberto :get 204
+                                          (format "ee/data-studio/table/%d/publishing-info" table-id))))))
+      (testing "returns no content for an unpublished table"
+        (mt/with-temp [:model/Table {table-id :id} {:is_published false}]
+          (is (nil? (mt/user-http-request :crowberto :get 204
+                                          (format "ee/data-studio/table/%d/publishing-info" table-id)))))))))
 
 (deftest publish-tables-goes-through-toucan-hooks-test
   (testing "publish/unpublish update via the Toucan pipeline, so model hooks fire"

@@ -14,7 +14,7 @@ export function PublishingInfo({ table }: PublishingInfoProps) {
     skip: !table.is_published,
   });
 
-  if (!table.is_published || publishingInfo?.published_at == null) {
+  if (!table.is_published || publishingInfo == null) {
     return null;
   }
 
