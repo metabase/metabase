@@ -20,7 +20,7 @@
               {:type :text :text "Hi there!"}])))))
 
 (deftest ^:parallel parts->cc-messages-drops-reasoning-test
-  (testing "without a replay hook — every dialect but Mistral — reasoning parts are dropped,
+  (testing "without a replay hook — every dialect but Mistral and Moonshot — reasoning parts are dropped,
            not turned into empty user messages"
     (is (=? [{:role "user" :content "Hello"}
              {:role "assistant" :content "Hi there!"}]
@@ -72,6 +72,43 @@
               [{:type :text :text "Hi"}
                {:type :tool-input :id "c1" :function "f" :arguments {}}]
               {:reasoning-part->message think-hook}))))))
+
+(deftest ^:parallel parts->cc-messages-top-level-reasoning-hook-test
+  ;; the Moonshot-shaped replay channel: reasoning rides as a top-level :reasoning_content
+  ;; sibling of :content/:tool_calls rather than as a content chunk
+  (let [top-level-hook (fn [part] {:role "assistant" :content "" :reasoning_content (:text part)})]
+    (testing "a hook message's :reasoning_content lands on the round's merged assistant message"
+      (is (= [{:role "user" :content "q"}
+              {:role              "assistant"
+               :content           ""
+               :tool_calls        [{:id "c1" :type "function" :function {:name "f" :arguments "{}"}}]
+               :reasoning_content "thinking"}]
+             (chat-completions/parts->cc-messages
+              [{:role :user :content "q"}
+               {:type :reasoning :id "r1" :text "think"}
+               {:type :reasoning :id "r1" :text "ing"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}]
+              {:reasoning-part->message top-level-hook}))))
+    (testing "multiple reasoning blocks in one assistant group join in part order"
+      ;; the wire has a single :reasoning_content field per message, so order is the only
+      ;; fidelity available — reasoning emitted after a tool call joins after, not before
+      (is (= [{:role              "assistant"
+               :content           "answer"
+               :tool_calls        [{:id "c1" :type "function" :function {:name "f" :arguments "{}"}}]
+               :reasoning_content "firstsecond"}]
+             (chat-completions/parts->cc-messages
+              [{:type :reasoning :id "r1" :text "first"}
+               {:type :tool-input :id "c1" :function "f" :arguments {}}
+               {:type :reasoning :id "r2" :text "second"}
+               {:type :text :text "answer"}]
+              {:reasoning-part->message top-level-hook}))))
+    (testing "a lone reasoning part passes through as the hook's own message"
+      ;; a reasoning-only assistant message is a shape Moonshot itself never emits; unprobed
+      ;; whether the API accepts it — pinned so a change here is deliberate
+      (is (= [{:role "assistant" :content "" :reasoning_content "alone"}]
+             (chat-completions/parts->cc-messages
+              [{:type :reasoning :id "r1" :text "alone"}]
+              {:reasoning-part->message top-level-hook}))))))
 
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
@@ -312,7 +349,7 @@
 
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
-    ;; Reasoning is not replayable over Chat Completions, so it is dropped rather than surfaced as text.
+    ;; Without `:forward-reasoning?` reasoning deltas are dropped rather than surfaced as text.
     ;; An empty-string `content` between blocks must not open a text block either — that would close
     ;; the tool call that follows it.
     (is (= [:start :tool-input-start :tool-input-delta :tool-input-available :usage]

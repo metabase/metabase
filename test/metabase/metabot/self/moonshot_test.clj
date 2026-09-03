@@ -51,16 +51,31 @@
 
 (deftest ^:parallel request-body-max-tokens-test
   (testing "max-tokens passes through"
+    ;; a capped k2.6 chat call would share this budget with thinking (reasoning_content counts
+    ;; toward max_tokens); unreachable today — the only :max-tokens producer also sets :schema,
+    ;; which disables k2.6's thinking
     (is (= 128 (:max_tokens (moonshot/moonshot-request-body {:model      "kimi-k2.6"
                                                              :input      [{:role :user :content "hi"}]
                                                              :max-tokens 128}))))))
 
-(deftest ^:parallel request-body-disables-thinking-test
-  (testing "thinking is disabled on models that can disable it"
-    ;; `tool_choice "required"` is rejected while thinking is on, and reasoning tokens are billed and then
-    ;; discarded — we drop `reasoning_content`.
+(deftest ^:parallel request-body-thinking-switch-test
+  (testing "kimi-k2.6's thinking switch follows the path"
+    ;; enabled only where reasoning renders; disabled on the structured path, under a forced tool
+    ;; choice (k2.6 rejects `tool_choice "required"` while thinking is on — probe-derived,
+    ;; BOT-1929), and with :reasoning? false. thinking.keep stays at its default null — see the
+    ;; hook note in moonshot-request-body.
+    (are [expected opts] (= expected (:thinking (moonshot/moonshot-request-body
+                                                 (assoc opts
+                                                        :model "kimi-k2.6"
+                                                        :input [{:role :user :content "hi"}]))))
+      {:type "enabled"}  {}
+      {:type "enabled"}  {:tools [(metabot.tu/get-time-tool)]}
+      {:type "disabled"} {:tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+      {:type "disabled"} {:schema {:type "object" :properties {:title {:type "string"}}}}
+      {:type "disabled"} {:reasoning? false}))
+  (testing "an off-whitelist model keeps the safe disable"
     (is (= {:type "disabled"}
-           (:thinking (moonshot/moonshot-request-body {:model "kimi-k2.6"
+           (:thinking (moonshot/moonshot-request-body {:model "kimi-k9"
                                                        :input [{:role :user :content "hi"}]})))))
   (testing "no thinking parameter is sent for a thinking-only model"
     ;; kimi-k3 reports `supports_thinking_type: "only"` and would reject `{:type "disabled"}`. It accepts
@@ -71,6 +86,79 @@
     (testing "including when it is reached as the default model"
       (is (not (contains? (moonshot/moonshot-request-body {:input [{:role :user :content "hi"}]})
                           :thinking))))))
+
+(deftest ^:parallel request-body-reasoning-effort-test
+  (testing "reasoning_effort is sent exactly for whitelisted reasoning models, per path"
+    ;; kimi-k3 always thinks — "max" pins the documented server default on the chat path; "low" is the
+    ;; best-effort floor everywhere reasoning is never rendered. k2.6 gets `thinking` instead; the two
+    ;; keys must never ride together (k3 rejects `thinking`; reasoning_effort is explicitly not
+    ;; supported on k2.6). A forced tool_choice keeps k3 at "max" — k3 accepts required+thinking, and
+    ;; the guard row pins that the k2.6 forced-tool-choice disable stayed k2.6-scoped.
+    (are [expected opts] (let [body (moonshot/moonshot-request-body opts)]
+                           (and (= expected (:reasoning_effort body))
+                                (not (and (contains? body :reasoning_effort)
+                                          (contains? body :thinking)))))
+      "max" {:model "kimi-k3" :input [{:role :user :content "hi"}]}
+      "max" {:model "kimi-k3" :input [{:role :user :content "hi"}]
+             :tools [(metabot.tu/get-time-tool)]}
+      "max" {:model "kimi-k3" :input [{:role :user :content "hi"}]
+             :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+      "low" {:model "kimi-k3" :input [{:role :user :content "hi"}] :reasoning? false}
+      "low" {:model "kimi-k3" :input [{:role :user :content "hi"}]
+             :schema {:type "object" :properties {:title {:type "string"}}}}
+      nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]}
+      nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]
+             :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+      nil   {:model "kimi-k2.6" :input [{:role :user :content "hi"}]
+             :schema {:type "object" :properties {:title {:type "string"}}}})))
+
+(deftest ^:parallel request-body-schema-floors-max-tokens-test
+  (testing "a structured call on a thinking-only model gets its max_tokens cap floored"
+    ;; k3 bills thinking and the forced tool call against one budget — a small cap risks a `length`
+    ;; finish before the tool call is emitted (the conversation-title path sends 512).
+    (let [schema {:type "object" :properties {:title {:type "string"}}}]
+      (are [expected opts] (= expected (:max_tokens (moonshot/moonshot-request-body opts)))
+        2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
+        4096 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 4096}
+        nil  {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
+        512  {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512}
+        512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}))))
+
+(deftest ^:parallel request-body-replays-reasoning-test
+  (let [reasoning-round [{:role :user :content "q"}
+                         {:type :reasoning :id "r1" :text "think "}
+                         {:type :reasoning :id "r1" :text "hard"}
+                         {:type :tool-input :id "c1" :function "f" :arguments {:x 1}}
+                         {:type :tool-output :id "c1" :result {:output "ok"}}
+                         {:type :reasoning :id "r2" :text "more"}
+                         {:type :text :text "answer"}]]
+    (testing "in-turn reasoning replays as reasoning_content on each round's assistant message"
+      ;; Moonshot requires the complete assistant message back as-is, including reasoning_content —
+      ;; https://platform.kimi.ai/docs/guide/use-thinking-models
+      (is (=? [{:role "user" :content "q"}
+               {:role              "assistant"
+                :content           ""
+                :tool_calls        [{:id "c1"}]
+                :reasoning_content "think hard"}
+               {:role "tool" :tool_call_id "c1" :content "ok"}
+               {:role "assistant" :content "answer" :reasoning_content "more"}]
+              (:messages (moonshot/moonshot-request-body {:model "kimi-k3" :input reasoning-round})))))
+    (testing "the replay strips with the gate: structured path and :reasoning? false"
+      (are [opts] (not-any? :reasoning_content
+                            (:messages (moonshot/moonshot-request-body
+                                        (assoc opts :model "kimi-k3" :input reasoning-round))))
+        {:schema {:type "object" :properties {:title {:type "string"}}}}
+        {:reasoning? false}))
+    (testing "k2.6 never replays, even though it is whitelisted"
+      ;; its thinking.keep stays at the default null, under which the server ignores replayed
+      ;; reasoning_content — see the hook note in moonshot-request-body
+      (is (not-any? :reasoning_content
+                    (:messages (moonshot/moonshot-request-body {:model "kimi-k2.6"
+                                                                :input reasoning-round})))))
+    (testing "an off-whitelist model never replays"
+      (is (not-any? :reasoning_content
+                    (:messages (moonshot/moonshot-request-body {:model "kimi-k9"
+                                                                :input reasoning-round})))))))
 
 (deftest ^:parallel request-body-prompt-cache-key-test
   (testing "a :prompt-cache-key is forwarded as prompt_cache_key, absent otherwise"
@@ -134,6 +222,32 @@
               (into [] (comp (moonshot/moonshot->aisdk-chunks-xf)
                              (self.core/aisdk-xf))
                     chunks))))))
+
+(deftest ^:parallel moonshot-reasoning-conv-test
+  (testing "reasoning_content deltas stream as a reasoning block ahead of the text"
+    ;; No captured kimi-k3 stream exists yet — chunk shapes follow the official streaming example
+    ;; (flat `delta.reasoning_content`, always ahead of content:
+    ;; https://platform.kimi.ai/docs/guide/use-thinking-models); verify against a live capture once
+    ;; Moonshot credentials exist. The empty-string opener chunk must not open a reasoning block.
+    (let [chunks [{:id      "chatcmpl-synthetic-k3"
+                   :model   "kimi-k3"
+                   :choices [{:index 0 :delta {:role "assistant" :content ""} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content ""} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content "Let me think"} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:reasoning_content " about it"} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {:content "Answer"} :finish_reason nil}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "stop"}]}
+                  {:choices [] :usage {:prompt_tokens 10 :completion_tokens 50 :total_tokens 60}}]]
+      (testing "chunk stream: :start first, then one reasoning block, then text"
+        (is (= [:start :reasoning-start :reasoning-delta :reasoning-delta :reasoning-end
+                :text-start :text-delta :text-end :usage]
+               (into [] (comp (moonshot/moonshot->aisdk-chunks-xf) (map :type)) chunks))))
+      (testing "through the full pipeline: one reasoning part ahead of the text"
+        (is (=? [{:type :start}
+                 {:type :reasoning :text "Let me think about it"}
+                 {:type :text :text "Answer"}
+                 {:type :usage}]
+                (into [] (comp (moonshot/moonshot->aisdk-chunks-xf) (self.core/aisdk-xf)) chunks)))))))
 
 (deftest ^:parallel moonshot-tool-call-conv-test
   (testing "a streamed tool call preceded by reasoning deltas produces one tool-input and no text block"

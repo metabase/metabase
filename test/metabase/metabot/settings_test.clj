@@ -196,7 +196,8 @@
                        (connection "zai" "zai")
                        (connection "openrouter" "openrouter")
                        (connection "google" "google")
-                       (connection "mistral" "mistral")]
+                       (connection "mistral" "mistral")
+                       (connection "moonshot" "moonshot")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -231,7 +232,11 @@
                "google/google/gemini-2.5-flash"             false
                "mistral/mistral-medium-3-5"                 true
                ;; catalog aliases are not resolved — see mistral/reasoning-model?
-               "mistral/mistral-medium-latest"              false}]
+               "mistral/mistral-medium-latest"              false
+               "moonshot/kimi-k3"                           true
+               "moonshot/kimi-k2.6"                         true
+               ;; thinking-capable but excluded from supported-models — see moonshot/reasoning-model?
+               "moonshot/kimi-k2.7-code"                    false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))

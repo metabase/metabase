@@ -49,6 +49,14 @@
                            (if (and (< 1 (count group))
                                     (= "assistant" (:role (first group))))
                              (let [tool-calls (into [] (mapcat :tool_calls) group)
+                                   ;; :reasoning_content exists on a member only when the replay
+                                   ;; hook of [[parts->cc-messages]] minted it — today only
+                                   ;; Moonshot, whose dialect replays reasoning as a top-level
+                                   ;; sibling of :content (see
+                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]).
+                                   ;; Joined in part order: the wire has a single field per
+                                   ;; message, so order is the only fidelity available.
+                                   reasoning  (apply str (keep :reasoning_content group))
                                    ;; Vector (chunk-array) content exists only when the reasoning
                                    ;; replay hook of [[parts->cc-messages]] produced it — today
                                    ;; only Mistral's think chunks. Every other provider's members
@@ -62,7 +70,8 @@
                                                 (->> group (keep :content) (str/join "")))]
                                ;; :content should be always there, even if empty/nil
                                [(cond-> {:role "assistant" :content content}
-                                  (seq tool-calls) (assoc :tool_calls tool-calls))])
+                                  (seq tool-calls)      (assoc :tool_calls tool-calls)
+                                  (not-empty reasoning) (assoc :reasoning_content reasoning))])
                              group))))
         messages))
 
@@ -73,8 +82,8 @@
   carrier; replaying one think chunk per part costs ~3 prompt tokens of wrapper
   apiece (measured on Mistral, 2026-09-01), so a block must replay as one part.
   Runs only when a dialect passes [[parts->cc-messages]] a replay hook — today
-  Mistral alone, the one Chat Completions dialect that defines a reasoning replay
-  channel."
+  Mistral (think chunks) and Moonshot (top-level `reasoning_content`), the two
+  Chat Completions dialects that define a reasoning replay channel."
   [parts]
   (into []
         (comp (partition-by (fn [p] (if (= :reasoning (:type p)) [:reasoning (:id p)] :other)))
@@ -107,11 +116,13 @@
                   ;; reasoning, so by default it drops here — this arm returns nil for
                   ;; every provider that doesn't pass a hook. A dialect that defines a
                   ;; channel passes :reasoning-part->message, a fn from a coalesced
-                  ;; :reasoning part to a replayed assistant message (or nil); today only
-                  ;; Mistral does (think chunks — see
-                  ;; [[metabase.metabot.self.mistral/think-message]]). Z.AI and vLLM
-                  ;; define no such channel yet; when they grow one, each gets its own
-                  ;; hook fn here rather than more shared code.
+                  ;; :reasoning part to a replayed assistant message (or nil); today
+                  ;; Mistral (think chunks — see
+                  ;; [[metabase.metabot.self.mistral/think-message]]) and Moonshot
+                  ;; (top-level reasoning_content — see
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) do. Z.AI and
+                  ;; vLLM define no such channel yet; when they grow one, each gets its
+                  ;; own hook fn here rather than more shared code.
                   :reasoning   (when reasoning-part->message
                                  (reasoning-part->message part))
                   :text        {:role "assistant" :content (:text part)}
