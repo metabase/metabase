@@ -5,7 +5,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Center, Loader, Text } from "metabase/ui";
+import {
+  GoalFailedState,
+  GoalResolvingState,
+} from "metabase/visualizations/components/GoalResolutionState";
 import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -146,20 +149,16 @@ function GaugeComponent({
   });
 
   if (goalSegments.status === "resolving") {
-    return (
-      <Center className={className} h={heightProp}>
-        <Loader />
-      </Center>
-    );
+    return <GoalResolvingState className={className} height={heightProp} />;
   }
 
   if (goalSegments.status === "failed") {
     return (
-      <Center className={className} h={heightProp} px="md">
-        <Text c="text-secondary" ta="center">
-          {t`Couldn't load a value one of this gauge's ranges depends on.`}
-        </Text>
-      </Center>
+      <GoalFailedState
+        className={className}
+        height={heightProp}
+        message={t`Couldn't load a value one of this gauge's ranges depends on.`}
+      />
     );
   }
 
