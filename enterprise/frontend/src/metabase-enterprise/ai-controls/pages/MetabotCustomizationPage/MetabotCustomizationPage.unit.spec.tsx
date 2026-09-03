@@ -5,7 +5,6 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
-  setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -31,7 +30,6 @@ function setup({
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
-  setupUpdateSettingsEndpoint();
 
   // Seed the store state too: without it, the render harness seeds the
   // settings bootstrap with *defaults*, and assertions can run against the
@@ -82,22 +80,18 @@ describe("MetabotCustomizationPage", () => {
     expect(preview).toHaveAttribute("src", "data:image/png;base64,abc123");
   });
 
-  it("turns illustrations back on when the custom icon is removed", async () => {
-    setup({
-      metabotIcon: "data:image/png;base64,abc123",
-      showIllustrations: false,
-    });
+  it("shows the illustrations toggle when illustrations are off, even with the default icon", async () => {
+    setup({ showIllustrations: false });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Remove custom icon/ }),
+    const toggle = await screen.findByRole("switch", {
+      name: /Show Metabot illustrations/,
+    });
+    await userEvent.click(toggle);
+
+    const call = fetchMock.callHistory.lastCall(
+      "path:/api/setting/metabot-show-illustrations",
+      { method: "PUT" },
     );
-
-    const call = fetchMock.callHistory.lastCall("path:/api/setting", {
-      method: "PUT",
-    });
-    expect(await call?.request?.json()).toEqual({
-      "metabot-icon": null,
-      "metabot-show-illustrations": true,
-    });
+    expect(await call?.request?.json()).toEqual({ value: true });
   });
 });
