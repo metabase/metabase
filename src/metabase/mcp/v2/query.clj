@@ -265,7 +265,12 @@
             (when positions
               (when-let [specs (order-by-specs query ret-cols)]
                 (when (= [] (tiebreaker-specs resolved-query query ret-cols (into #{} (map :idx) specs)))
-                  (let [values      (mapv #(nth last-row (nth positions (:idx %))) specs)
+                  (let [;; read post-`js-int-to-string?`, so an integer past 2^53 arrives here as a
+                        ;; string and goes into the predicate as one. It compiles numerically all the
+                        ;; same: the QP's `wrap-value-literals` types the bare literal from the column
+                        ;; and `auto-parse-filter-values` parses it, both above the driver layer.
+                        ;; Pinned by `large-integer-boundary-paging-test`.
+                        values      (mapv #(nth last-row (nth positions (:idx %))) specs)
                         ;; a remapped column can't be a cursor key (the remap middleware rewrites an
                         ;; order-by on it to sort by the display value, so the executed order and the
                         ;; keyset predicate — which compares raw values — would disagree: a gap), and

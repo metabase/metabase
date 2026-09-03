@@ -18,6 +18,7 @@
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
 
@@ -102,6 +103,21 @@
   [{:keys [cols rows]}]
   (let [idx (col-index cols "ID")]
     (mapv #(nth % idx) rows)))
+
+(tx/defdataset big-ids
+  "Key values straddling the JS-safe integer boundary, 2^53-1 = 9007199254740991. Every
+   execute_query run carries `js-int-to-string?`, which renders anything past that boundary as a
+   STRING rather than a number, so these rows exercise a cursor boundary that arrives as text
+   while the column it is compared against stays numeric. The first two rows sit at or below the
+   boundary and page as ordinary numbers; the rest cross it."
+  [["big_ids"
+    [{:field-name "big_id" :base-type :type/BigInteger}]
+    [[9007199254740989]
+     [9007199254740991]
+     [9007199254740993]
+     [9007199254740995]
+     [9007199254740997]
+     [9007199254741001]]]])
 
 ;;; ------------------------------------------------ Happy paths ---------------------------------------------------
 
@@ -369,6 +385,38 @@
           (is (= (* page-size n-pages) (count uids)))
           (is (apply < uids) "strictly increasing => no boundary repeats and no groups skipped")
           (is (= (count uids) (count (distinct uids)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest large-integer-boundary-paging-test
+  ;; GHY-4363: the cursor boundary is read straight out of the row that was served, and
+  ;; `js-int-to-string?` has already turned any integer past 2^53-1 into a string by then — so the
+  ;; minted predicate really does compare a numeric column against a string literal. It compiles
+  ;; correctly only because the query processor re-types it on the way in:
+  ;; `wrap-value-literals` gives the bare literal the column's effective type and
+  ;; `auto-parse-filter-values` parses it back to a bigint, both above the driver layer, so every
+  ;; driver sees a number. That dependency is invisible from the cursor code and nothing else
+  ;; pins it — pin it here, across the threshold, in one exact chain.
+  (mt/dataset big-ids
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [sid   (str (random-uuid))
+              query {:lib/type "mbql/query"
+                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                 :source-table (table-name-ref :big_ids)
+                                 :order-by     [["asc" {} (field-name-ref :big_ids :big_id)]]}]}
+              seen  (loop [args {:query query :row_limit 2}, acc [], pages 0]
+                      (let [body (payload (call! sid args))
+                            idx  (col-index (:cols body) "BIG_ID")
+                            acc' (into acc (map #(nth % idx) (:rows body)))]
+                        (if (or (>= pages 10) (not (:next_cursor body)))
+                          acc'
+                          (recur {:cursor (:next_cursor body) :row_limit 2} acc' (inc pages)))))]
+          (testing "GHY-4363: every row is served exactly once across a boundary that crosses 2^53"
+            ;; compared as strings: the rows below the boundary come back as numbers and the ones
+            ;; past it as strings, which is the whole point.
+            (is (= ["9007199254740989" "9007199254740991" "9007199254740993"
+                    "9007199254740995" "9007199254740997" "9007199254741001"]
+                   (mapv str seen)))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest remapped-column-paging-test
