@@ -460,23 +460,25 @@
   [collection-id :- [:maybe ms/PositiveInt]
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
-  (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model '[Card Dashboard Pulse Document]]
-                       (api.db/shift-collection-positions! model collection-id position-update-clause plus-or-minus)))]
+  (let [models '[Card Dashboard Pulse Document]]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)
              old-position)
-        (update-fn! :-  [:> old-position])
+        (doseq [model models]
+          (api.db/shift-collection-positions-after! model collection-id old-position :-))
 
         (and new-position (nil? old-position))
-        (update-fn! :+ [:>= new-position])
+        (doseq [model models]
+          (api.db/shift-collection-positions-from! model collection-id new-position :+))
 
         (> new-position old-position)
-        (update-fn! :- [:between old-position new-position])
+        (doseq [model models]
+          (api.db/shift-collection-positions-between! model collection-id old-position new-position :-))
 
         (< new-position old-position)
-        (update-fn! :+ [:between new-position old-position])))))
+        (doseq [model models]
+          (api.db/shift-collection-positions-between! model collection-id new-position old-position :+))))))
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"

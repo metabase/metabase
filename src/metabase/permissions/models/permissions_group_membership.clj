@@ -172,8 +172,8 @@
                                               [(conj uids user-id)
                                                (conj gids group-id)])
                                             [#{} #{}]))
-          group-id->tenant? (comp boolean (permissions.db/group-tenant-flags group-ids))
-          user-id->tenant? (comp some? (permissions.db/user-tenant-ids user-ids))
+          group-id->tenant? (update-vals (permissions.db/group-tenant-flags group-ids) boolean)
+          user-id->tenant? (update-vals (permissions.db/user-tenant-ids user-ids) some?)
 
           bad-user-group-pairs (->> (keys user-id-group-id->is-group-manager?)
                                     (keep (fn [[user-id group-id]]

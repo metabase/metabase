@@ -31,13 +31,11 @@
    [medley.core :as m]
    [metabase.activity-feed.db :as activity-feed.db]
    [metabase.batch-processing.core :as grouper]
-   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -114,9 +112,8 @@
 (defn- ids-to-prune-for-user+model [user-id model context]
   (activity-feed.db/recent-view-ids-to-prune (rv-model->db-model model)
                                              user-id
-                                             (h2x/literal (name context))
-                                             (when-let [card-type (rv-model->card-type model)]
-                                               [:= :rc.type (h2x/literal card-type)])
+                                             (name context)
+                                             (rv-model->card-type model)
                                              *recent-views-stored-per-user-per-model*))
 
 (defn- overflowing-model-buckets [user-id context]
@@ -434,48 +431,11 @@
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
   (let [db-models (rv-models->db-models models)]
-    (activity-feed.db/recent-views-with-card-type {:select    [:rv.* [:rc.type :card_type]]
-                                                   :from      [[:recent_views :rv]]
-                                                   :where     [:and
-                                                               [:= :rv.user_id user-id]
-                                                               [:in :rv.context (map query-context->recent-context context)]
-                                                               (when (seq db-models)
-                                                                 [:in :rv.model db-models])
-                                                               ;; Additionally filter by card type to distinguish questions/models/metrics
-                                                               (let [card-types (keep rv-model->card-type models)]
-                                                                 (when (seq card-types)
-                                                                   [:or
-                                                                    [:!= :rv.model "card"]
-                                                                    [:in :rc.type (map h2x/literal card-types)]]))
-                                                               ;; include non-collections, or collections without a namespace/type.
-                                                               [:or
-                                                                [:= :coll.id nil]
-                                                                [:and
-                                                                 ;; trash collection is never returned
-                                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
-                                                                 ;; collections in a different namespace can't interact with collections
-                                                                 ;; in the normal NULL namespace.
-                                                                 [:= nil :coll.namespace]
-                                                                 ;; exclude instance analytics for selects
-                                                                 (when (contains? (set context) :selections)
-                                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
-                                                               ;; exploration documents are accessible only through their owning Exploration;
-                                                               ;; hide them from recents to match search and collection-listing behavior.
-                                                               [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
-                                                   :left-join [[:report_card :rc]
-                                                               [:and
-                                                                ;; only want to join on card_type if it's a card
-                                                                [:= :rv.model "card"]
-                                                                [:= :rc.id :rv.model_id]]
-                                                               [:collection :coll]
-                                                               [:and
-                                                                [:= :rv.model "collection"]
-                                                                [:= :coll.id :rv.model_id]]
-                                                               [:document :doc]
-                                                               [:and
-                                                                [:= :rv.model "document"]
-                                                                [:= :doc.id :rv.model_id]]]
-                                                   :order-by  [[:rv.timestamp :desc]]})))
+    (activity-feed.db/recent-views-with-card-type user-id
+                                                  (map query-context->recent-context context)
+                                                  db-models
+                                                  (keep rv-model->card-type models)
+                                                  (contains? (set context) :selections))))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))

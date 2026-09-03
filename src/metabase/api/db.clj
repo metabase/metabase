@@ -14,10 +14,26 @@
   [entity id & conditions]
   (apply t2/select-one entity :id id conditions))
 
-(defn shift-collection-positions!
+(defn shift-collection-positions-after!
   "Add or subtract (`plus-or-minus`) one from the collection position of the `model` rows in the Collection with
-  `collection-id` whose position matches the Honey SQL `position-clause`."
-  [model collection-id position-clause plus-or-minus]
+  `collection-id` positioned after `position`."
+  [model collection-id position plus-or-minus]
   (t2/update! model {:collection_id       collection-id
-                     :collection_position position-clause}
+                     :collection_position [:> position]}
+              {:collection_position [plus-or-minus :collection_position 1]}))
+
+(defn shift-collection-positions-from!
+  "Add or subtract (`plus-or-minus`) one from the collection position of the `model` rows in the Collection with
+  `collection-id` positioned at or after `position`."
+  [model collection-id position plus-or-minus]
+  (t2/update! model {:collection_id       collection-id
+                     :collection_position [:>= position]}
+              {:collection_position [plus-or-minus :collection_position 1]}))
+
+(defn shift-collection-positions-between!
+  "Add or subtract (`plus-or-minus`) one from the collection position of the `model` rows in the Collection with
+  `collection-id` positioned between `lower` and `upper` inclusive."
+  [model collection-id lower upper plus-or-minus]
+  (t2/update! model {:collection_id       collection-id
+                     :collection_position [:between lower upper]}
               {:collection_position [plus-or-minus :collection_position 1]}))

@@ -26,7 +26,8 @@
   "`collection-id → {:authority_level :location :type}` for the given ids."
   [coll-ids]
   (when (seq coll-ids)
-    (metabot.db/collection-curation-info-by-id coll-ids)))
+    (update-vals (metabot.db/collection-curation-info-by-id coll-ids)
+                 #(select-keys % [:authority_level :location :type]))))
 
 (defn- root-collection-type-of
   [coll-id->info coll-id]

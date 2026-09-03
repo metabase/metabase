@@ -2,6 +2,7 @@
   "Application database queries for the actions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (defn hydrate-creator
@@ -9,13 +10,13 @@
   [actions]
   (t2/hydrate actions :creator))
 
-(defn unarchived-models-in-collections
-  "The unarchived model Cards matching the Honey SQL `collection-clause`."
-  [collection-clause]
+(defn unarchived-models-visible-to-user
+  "The unarchived model Cards in Collections the current user can read."
+  []
   (t2/select :model/Card {:where [:and
                                   [:= :type "model"]
                                   [:= :archived false]
-                                  collection-clause]}))
+                                  (collection/visible-collection-filter-clause)]}))
 
 (defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

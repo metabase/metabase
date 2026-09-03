@@ -7,7 +7,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -45,7 +44,7 @@
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
                    ;; action permission keyed off of model permission
-                   (actions-rest.db/unarchived-models-in-collections (collection/visible-collection-filter-clause)))]
+                   (actions-rest.db/unarchived-models-visible-to-user))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
