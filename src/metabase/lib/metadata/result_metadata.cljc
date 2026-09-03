@@ -317,7 +317,8 @@
                               ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
                               (= (:lib/deduplicated-name col) (:lib/original-name col))
                               (not (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/name))))
-                     (string? id-or-name))
+                     (string? id-or-name)
+                     (not= (:lib/source col) :source/expressions))
                 [tag (dissoc opts :base-type) (:id col)]
 
                 (pos-int? id-or-name)
@@ -412,6 +413,22 @@
             col))
         cols))
 
+(defn- remove-field-ids-from-expressions
+  "Strip the `:id`/`:table-id` that [[metabase.lib.expression/metadata-method]] propagates onto a plain-field
+  expression's metadata (#70233) before it ends up in *persisted* results metadata.
+
+  That propagation only exists to let numeric `:field` ID refs resolve against the expression later in the *same*
+  query. It must not survive into a Card's saved `result_metadata`: once a Card is used as the source table for
+  another query, its columns come back with `:lib/source :source/card`, not `:source/expressions`, so none of the
+  'this is actually an expression' special-casing applies anymore -- the column just looks like an ordinary
+  Field-backed column that happens to share an `:id` with whatever Field the expression wrapped, which confuses
+  downstream ref-building and display-name resolution."
+  [cols]
+  (mapv (fn [col]
+          (cond-> col
+            (= (:lib/source col) :source/expressions) (dissoc :id :table-id)))
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -432,6 +449,7 @@
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
+           remove-field-ids-from-expressions
            (add-converted-timezone query)
            (remove-implicit-join-aliases query)
            add-legacy-source
