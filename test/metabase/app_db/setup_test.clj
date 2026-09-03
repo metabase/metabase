@@ -6,6 +6,7 @@
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
@@ -249,15 +250,15 @@
   (testing "a setting row written by a version without value_with_aad is reported once and then filled in"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (is (not (mdb.setting/unmigrated-settings?)))
+      (is (not (mdb.db/unmigrated-settings?)))
       (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
-      (is (mdb.setting/unmigrated-settings?))
+      (is (mdb.db/unmigrated-settings?))
       (reset! (:status mdb.connection/*application-db*) ::not-set-up)
       (mt/with-log-messages-for-level [messages :warn]
         (mdb/setup-db! :create-sample-content? false)
         (is (=? [{:level :warn, :message #"(?s)Some settings were saved by an older version of Metabase.*"}]
                 (filter #(re-find #"older version" (:message %)) (messages)))))
-      (is (not (mdb.setting/unmigrated-settings?)))
+      (is (not (mdb.db/unmigrated-settings?)))
       (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
 
 (deftest encryption-check-status-falls-back-to-value-test

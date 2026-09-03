@@ -6,6 +6,7 @@
   the model never does: the `settings-last-updated` marker and the `encryption-check` sentinel."
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase.app-db.db :as mdb.db]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
@@ -16,15 +17,6 @@
 (def ^{:arglists '(^bytes [setting-key])} setting-aad
   "The additional authenticated data a setting's value is encrypted under: `setting.<key>`."
   (memoize (fn ^bytes [setting-key] (codecs/to-bytes (str "setting." setting-key)))))
-
-(def ^:private unmigrated-settings-where
-  [:and [:= :value_with_aad nil] [:not= :value nil] [:not= :value ""]])
-
-(defn unmigrated-settings?
-  "Whether any setting row still has a `value` but no `value_with_aad`, i.e. was written by a version predating the
-  column and has not been filled in by [[migrate-settings!]] yet."
-  []
-  (t2/exists? :setting {:where unmigrated-settings-where}))
 
 (defn migrate-settings!
   "Give every setting row that has no `value_with_aad` one, from the legacy `value` column beside it, stored the way
@@ -43,12 +35,10 @@
   []
   (let [filled (atom 0)]
     (t2/with-transaction [_conn]
-      (doseq [{:keys [key value]} (t2/select :setting {:where unmigrated-settings-where, :for :update})
+      (doseq [{:keys [key value]} (mdb.db/unmigrated-settings)
               :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
               :when (some? plain)]
         (swap! filled inc)
-        (t2/query {:update :setting
-                   :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (setting-aad key)})}
-                   :where  [:= :key key]})))
+        (mdb.db/update-setting-values! key nil (encryption/maybe-encrypt plain {:aad (setting-aad key)}))))
     (when (pos? @filled)
       (log/infof "Filled in the authenticated value of %d setting(s) from their value." @filled))))

@@ -32,7 +32,7 @@
           (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
           (mt/with-log-messages-for-level [messages :warn]
             (mdb/encrypt-plaintext-columns!)
-            (is (=? [{:level :warn, :message #"Encrypting \d+ legacy value\(s\) in notification_recipient\.details that a previous version of Metabase stored unencrypted\."}]
+            (is (=? [{:level :warn, :message #"Encrypting legacy values in notification_recipient\.details that a previous version of Metabase stored unencrypted\."}]
                     (filter #(re-find #"notification_recipient" (:message %)) (messages)))
                 "the heal warns about the column it had to encrypt"))
           (let [healed (recipient-details)]

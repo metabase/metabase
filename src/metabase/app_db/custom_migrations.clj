@@ -193,38 +193,6 @@
 ;;; |                                           Quartz Scheduler Helpers                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- legacy-unencrypted-value?
-  "Mirrors [[metabase.app-db.encryption/legacy-unencrypted-value?]]: `value` is a string that MB_ENCRYPTION_SECRET_KEY,
-  which is set, does not decrypt, so a previous version of Metabase stored it unencrypted."
-  [value]
-  (and (encryption/default-encryption-enabled?)
-       (string? value)
-       (not (encryption/decryptable-string? value))))
-
-(defn- legacy-unencrypted-bytes?
-  "Mirrors [[metabase.app-db.encryption/legacy-unencrypted-bytes?]] for a `^bytes` column."
-  [^bytes value]
-  (and (encryption/default-encryption-enabled?)
-       (some? value)
-       (not (encryption/possibly-encrypted-bytes? value))))
-
-(defn- handle-legacy-unencrypted-values!
-  "Mirrors [[metabase.app-db.encryption/handle-legacy-unencrypted-values!]]: what happens when `n` legacy values that a
-  previous version of Metabase stored unencrypted are found in `title` (a migration name and table), before they are
-  encrypted: for now a warning."
-  [title n]
-  (log/warnf "Encrypting %d legacy value(s) in %s that a previous version of Metabase stored unencrypted." n title))
-
-(defn- encrypt-legacy-rows!
-  "Encrypt with `encrypt-row!` every row of `rows` whose `plaintext?` says a previous version of Metabase stored it
-  unencrypted, handing them to [[handle-legacy-unencrypted-values!]] first under `title` (the
-  migration name and table). `rows` must be realized: reducing a reducible query closes the migration's connection."
-  [title plaintext? encrypt-row! rows]
-  (let [plaintext (filterv plaintext? rows)]
-    (when (seq plaintext)
-      (handle-legacy-unencrypted-values! title (count plaintext))
-      (run! encrypt-row! plaintext))))
-
 (define-migration DeleteAbandonmentEmailTask
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
@@ -755,20 +723,19 @@
                                                     [:like :object "%join-alias%"]]}))))
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
-  (let [rows        (t2/select :metabase_database {:select [:id :settings :options]
-                                                   :where  [:and
-                                                            [:not= :options ""]
-                                                            [:not= :options "{}"]
-                                                            [:not= :options nil]]})
-        plaintext   (count (filter (comp legacy-unencrypted-value? :settings) rows))
-        update-one! (fn [{:keys [id settings options]}]
-                      (t2/query {:update :metabase_database
-                                 :set    {:settings (encrypted-json-in (merge (encrypted-json-out settings)
-                                                                              (json-out options true)))}
-                                 :where  [:= :id id]}))]
-    (when (pos? plaintext)
-      (handle-legacy-unencrypted-values! "MigrateDatabaseOptionsToSettings on metabase_database.settings" plaintext))
-    (run! update-one! rows))
+  (let [update-one! (fn [{:keys [id settings options]}]
+                      (let [settings     (encrypted-json-out settings)
+                            options      (json-out options true)
+                            new-settings (encrypted-json-in (merge settings options))]
+                        (t2/query {:update :metabase_database
+                                   :set    {:settings new-settings}
+                                   :where  [:= :id id]})))]
+    (run! update-one! (t2/reducible-query {:select [:id :settings :options]
+                                           :from   [:metabase_database]
+                                           :where  [:and
+                                                    [:not= :options ""]
+                                                    [:not= :options "{}"]
+                                                    [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
                         (let [settings (encrypted-json-out settings)
                               options  (json-out options true)]
@@ -1800,10 +1767,7 @@
   (pulse-to-notification/migrate-alerts!))
 
 (define-reversible-migration MigrateClickHouseDetailsToMultiDB
-  (let [rows        (t2/select :metabase_database {:select [:id :details]
-                                                   :where  [:= :engine "clickhouse"]})
-        plaintext   (count (filter (comp legacy-unencrypted-value? :details) rows))
-        update-one! (fn [{:keys [id details]}]
+  (let [update-one! (fn [{:keys [id details]}]
                       (let [decrypted-details (encrypted-json-out details)
                             scan-all-databases? (boolean (:scan-all-databases decrypted-details))
                             db-filters-type (if scan-all-databases? "all" "inclusion")
@@ -1820,9 +1784,9 @@
                         (t2/query {:update :metabase_database
                                    :set    {:details encrypted-details}
                                    :where  [:= :id id]})))]
-    (when (pos? plaintext)
-      (handle-legacy-unencrypted-values! "MigrateClickHouseDetailsToMultiDB on metabase_database.details" plaintext))
-    (run! update-one! rows))
+    (run! update-one! (t2/reducible-query {:select [:id :details]
+                                           :from   [:metabase_database]
+                                           :where  [:= :engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
                         (let [decrypted-details (encrypted-json-out details)
                               new-details (dissoc decrypted-details
@@ -2282,29 +2246,13 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
-(define-migration EncryptAuthIdentityCredentials
-  (when (encryption/default-encryption-enabled?)
-    (encrypt-legacy-rows! "EncryptAuthIdentityCredentials on auth_identity"
-                          (comp legacy-unencrypted-value? :credentials)
-                          (fn [{:keys [id credentials]}]
-                            (t2/query {:update :auth_identity
-                                       :set    {:credentials (encryption/encrypt credentials)}
-                                       :where  [:= :id id]}))
-                          (t2/query {:select [:id :credentials]
-                                     :from   [:auth_identity]
-                                     :where  [:!= :credentials nil]}))))
+;; The Encrypt* migrations below are no-ops: `metabase.app-db.encryption/encrypt-plaintext-columns!` encrypts these
+;; columns on every startup, which a one-shot migration cannot be relied on to do (see its docstring). Their rollbacks
+;; still decrypt, so that a downgrade lands on the plaintext the older version reads.
+(define-migration EncryptAuthIdentityCredentials)
 
 (define-reversible-migration EncryptApiKeys
-  (when (encryption/default-encryption-enabled?)
-    (encrypt-legacy-rows! "EncryptApiKeys on api_key"
-                          (comp legacy-unencrypted-value? :key)
-                          (fn [{:keys [id] k :key}]
-                            (t2/query {:update :api_key
-                                       :set    {:key (encryption/encrypt k)}
-                                       :where  [:= :id id]}))
-                          (t2/query {:select [:id :key]
-                                     :from   [:api_key]
-                                     :where  [:!= :key nil]})))
+  nil
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [id] k :key}]
             (when (encryption/decryptable-string? k)
@@ -2315,33 +2263,10 @@
                                :from   [:api_key]
                                :where  [:!= :key nil]}))))
 
-(defn encrypt-settings
-  "Encrypt at rest the plaintext value of every setting in `setting-keys`, so the strict decrypting read of an
-  `:encryption :when-encryption-key-set` setting accepts it. A value already encrypted with the current key (e.g. by a
-  key rotation, which re-encrypts every setting) is left untouched -- decided by decrypting it, never by its shape,
-  since plaintext can look like ciphertext (see [[metabase.util.encryption/possibly-encrypted-string?]]). A blank value
-  is encrypted too, since a strict read would reject it as plaintext. No-op without an encryption key. Use it as the
-  forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]].
-
-  `setting-keys` must be exactly the settings whose stored value could be plaintext as of the release the migration
-  ships in: the ones whose `:encryption` went from `:no` to `:when-encryption-key-set` in it, or whose rows predate
-  their encryption (see [[encrypted-setter-none-settings-v58]])."
-  [setting-keys]
-  (when (encryption/default-encryption-enabled?)
-    (encrypt-legacy-rows! "encrypt-settings on setting"
-                          (comp legacy-unencrypted-value? :value)
-                          (fn [{:keys [key value]}]
-                            (t2/query {:update :setting
-                                       :set    {:value (encryption/encrypt value)}
-                                       :where  [:= :key key]}))
-                          (t2/query {:select [:key :value]
-                                     :from   [:setting]
-                                     :where  [:and [:in :key setting-keys] [:!= :value nil]]}))))
-
 (defn decrypt-settings
-  "Reverse of [[encrypt-settings]]: store the plaintext value of every setting in `setting-keys` that is encrypted with
-  the current key, so a downgraded version that reads them as `:encryption :no` still sees them. Plaintext values,
-  including ones that merely look like ciphertext, are left untouched."
+  "Store the plaintext value of every setting in `setting-keys` that is encrypted with the current key, so a downgraded
+  version that reads them as `:encryption :no` still sees them. Plaintext values, including ones that merely look like
+  ciphertext, are left untouched. The reverse body of a migration that marked existing settings as encrypted."
   [setting-keys]
   (when (encryption/default-encryption-enabled?)
     (run! (fn [{:keys [key value]}]
@@ -2355,11 +2280,9 @@
 
 (def ^:private encrypted-settings-v58
   "Every registered setting stored in the setting table that is encrypted at rest as of v58: the ones whose
-  `:encryption` went from `:no` to `:when-encryption-key-set` in v58, and the previously-encrypted ones, whose rows
-  can still be plaintext from the era when encryption was write-time only. Settings with `:setter :none` are listed
-  separately in [[encrypted-setter-none-settings-v58]]; rows for settings that no longer exist are left alone.
-  Settings that are neither secret nor integrity-critical are deliberately absent -- they are `:encryption :no`, and
-  the startup reconcile decrypts any row of theirs this migration encrypted before they were reclassified.
+  `:encryption` went from `:no` to `:when-encryption-key-set` in v58, and the previously-encrypted ones. The rollback
+  of `EncryptSettingsV58` decrypts exactly these; rows for settings that no longer exist are left alone. Settings that
+  are neither secret nor integrity-critical are deliberately absent -- they are `:encryption :no`.
   `encrypt-settings-test` checks this list against the registry."
   ["admin-email" "ai-service-base-url" "allowed-iframe-hosts"
    "api-key" "csp-img-allowed-hosts" "custom-geojson"
@@ -2408,34 +2331,13 @@
    "subscription-allowed-domains"])
 
 (define-reversible-migration EncryptSettingsV58
-  (encrypt-settings encrypted-settings-v58)
+  nil
   (decrypt-settings encrypted-settings-v58))
 
-(def ^:private encrypted-setter-none-settings-v58
-  "The `:setter :none` settings that are encrypted at rest: each is either a secret or a value whose integrity
-  decides who gets access (`setup-token` creates the first admin, `support-access-grant-email` drives creation of a
-  support superuser, `site-uuid-for-unsubscribing-url` salts unsubscribe URLs, `mcp-embedding-signing-secret` signs
-  embedding tokens, `tracing-endpoint` decides where telemetry is sent). Their rows can be plaintext from before they
-  were encrypted, which the strict read rejects -- and since the settings cache restores the whole table at once, one
-  such row took every setting down with it. `encrypt-setter-none-settings-test` checks these names are listed."
-  ["mcp-embedding-signing-secret" "setup-token" "site-uuid-for-unsubscribing-url"
-   "support-access-grant-email" "tracing-endpoint"])
-
-(define-migration EncryptSetterNoneSettingsV58
-  (encrypt-settings encrypted-setter-none-settings-v58))
+(define-migration EncryptSetterNoneSettingsV58)
 
 (define-reversible-migration EncryptPublicUuids
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:report_card :report_dashboard :action :document]]
-      (encrypt-legacy-rows! (str "EncryptPublicUuids on " (name table))
-                            (comp legacy-unencrypted-value? :public_uuid)
-                            (fn [{:keys [id public_uuid]}]
-                              (t2/query {:update table
-                                         :set    {:public_uuid (encryption/encrypt public_uuid)}
-                                         :where  [:= :id id]}))
-                            (t2/query {:select [:id :public_uuid]
-                                       :from   [table]
-                                       :where  [:!= :public_uuid nil]}))))
+  nil
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:report_card :report_dashboard :action :document]]
       (run! (fn [{:keys [id public_uuid]}]
@@ -2448,17 +2350,7 @@
                                  :where  [:!= :public_uuid nil]})))))
 
 (define-reversible-migration EncryptNotificationAndPulseChannelDetails
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:notification_recipient :pulse_channel]]
-      (encrypt-legacy-rows! (str "EncryptNotificationAndPulseChannelDetails on " (name table))
-                            (comp legacy-unencrypted-value? :details)
-                            (fn [{:keys [id details]}]
-                              (t2/query {:update table
-                                         :set    {:details (encryption/encrypt details)}
-                                         :where  [:= :id id]}))
-                            (t2/query {:select [:id :details]
-                                       :from   [table]
-                                       :where  [:!= :details nil]}))))
+  nil
   (when (encryption/default-encryption-enabled?)
     (doseq [table [:notification_recipient :pulse_channel]]
       (run! (fn [{:keys [id details]}]
@@ -2470,41 +2362,4 @@
                                  :from   [table]
                                  :where  [:!= :details nil]})))))
 
-(def ^:private encrypt-remaining-columns-v58
-  "Encrypted-at-rest string columns that predate any backfill: pre-v53 encryption was write-time only, and the
-  v53-v62 startup auto-encrypt and pre-v63 key rotation covered only `metabase_database.details`, `setting`, and
-  `secret`, so an upgraded database can hold a mix of plaintext and encrypted rows within one of these columns.
-  Columns newer than v58 (`metabase_database.write_data_details` and later) are not listed: they do not exist yet
-  when this changeset runs on an older database."
-  [[:metabase_database :details]
-   [:metabase_database :settings]
-   [:core_user :settings]
-   [:channel :details]])
-
-(defn- secret-value->bytes ^bytes [v]
-  (cond
-    (bytes? v)                  v
-    (instance? java.sql.Blob v) (.getBytes ^java.sql.Blob v 0 (.length ^java.sql.Blob v))
-    :else                       nil))
-
-(define-migration EncryptRemainingColumns
-  (when (encryption/default-encryption-enabled?)
-    (doseq [[table column] encrypt-remaining-columns-v58]
-      (encrypt-legacy-rows! (str "EncryptRemainingColumns on " (name table) "." (name column))
-                            (comp legacy-unencrypted-value? :value)
-                            (fn [{:keys [id value]}]
-                              (t2/query {:update table
-                                         :set    {column (encryption/maybe-encrypt value)}
-                                         :where  [:= :id id]}))
-                            (t2/query {:select [:id [column :value]]
-                                       :from   [table]
-                                       :where  [:!= column nil]})))
-    (encrypt-legacy-rows! "EncryptRemainingColumns on secret.value"
-                          (comp legacy-unencrypted-bytes? secret-value->bytes :value)
-                          (fn [{:keys [id value]}]
-                            (t2/query {:update :secret
-                                       :set    {:value (encryption/maybe-encrypt-bytes (secret-value->bytes value))}
-                                       :where  [:= :id id]}))
-                          (t2/query {:select [:id :value]
-                                     :from   [:secret]
-                                     :where  [:!= :value nil]}))))
+(define-migration EncryptRemainingColumns)
