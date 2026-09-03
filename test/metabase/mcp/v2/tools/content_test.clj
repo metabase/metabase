@@ -2,11 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content :as tools.content]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -758,20 +760,114 @@
             removed, and mints a fresh random id for every computed pair with no persisted mapping, so
             two reads of an unchanged metric disagree."
     (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
                                                 :dataset_query (venues-count-query)}]
-      (mt/with-test-user :crowberto
-        (let [computed (:dimensions (content-one {:items [{:type "metric" :id metric-id}]
-                                                  :include ["dimensions"]}))
-              ;; curate: persist a single dimension, the shape sync-dimensions! writes
-              curated  (vec (take 1 computed))]
-          (is (seq computed) "the metric must compute at least one dimension for this to prove anything")
-          (t2/update! :model/Card metric-id {:dimensions curated})
-          (let [row  (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
+      ;; Curate through the persisted set, not through `get_content`'s output: the tool returns the
+      ;; encoded wire shape the endpoints return, which the model's `:dimensions` transform will not
+      ;; take back. Reading the fixture out of the tool under test would also make this test agree
+      ;; with whatever shape the tool happens to emit.
+      (metrics/sync-dimensions! :metadata/metric metric-id)
+      (let [seeded (t2/select-one-fn :dimensions :model/Card :id metric-id)]
+        (is (seq seeded) "the metric must seed at least one dimension for this to prove anything")
+        (t2/update! :model/Card metric-id {:dimensions (vec (take 1 seeded))})
+        (mt/with-test-user :crowberto
+          (let [row   (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
                 again (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
-            (is (= (count curated) (count (:dimensions row)))
+            (is (= 1 (count (:dimensions row)))
                 "the curated set is not auto-extended back to every computed pair")
             (is (= (:dimensions row) (:dimensions again))
                 "and two reads of an unchanged metric agree — no freshly minted ids")))))))
+
+(defn- rest-dimensions
+  "The `dimensions`/`dimension_mappings` pair `GET /api/<route>/:id` returns."
+  [route id]
+  (select-keys (mt/user-http-request :crowberto :get 200 (str route "/" id))
+               [:dimensions :dimension_mappings]))
+
+(defn- mcp-dimensions
+  "The same pair from `get_content`'s `dimensions` include."
+  [type id]
+  (select-keys (mt/with-test-user :crowberto
+                 (content-one {:items [{:type type :id id}] :include ["dimensions"]}))
+               [:dimensions :dimension_mappings]))
+
+(defn- without-generated-ids
+  "`dimensions` with the generated dimension ids stripped. An entity whose dimensions have never
+   been persisted mints a fresh random id per computed pair, so two independent reads of one
+   legitimately disagree on ids (and on the `lib/uuid`s in the mapping targets keyed to them) while
+   every other part of the shape must still match."
+  [pair]
+  (mapv #(dissoc % :id) (:dimensions pair)))
+
+(defn- without-clause-uuids
+  "`pair` with the MBQL `:lib/uuid` clause identifiers stripped. A mapping target rebuilt by
+   `reconcile-dimensions-and-mappings` — the path measures take on every load — carries the same
+   field ref under a freshly minted clause uuid each time, so the uuids differ between two reads
+   that agree on everything that identifies the column."
+  [pair]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid)) pair))
+
+(deftest get-content-dimensions-match-the-rest-endpoint-test
+  (testing "GHY-4140: the `dimensions` include documents itself as returning the same
+            `dimensions`/`dimension_mappings` pair `GET /api/metric/:id` and `GET /api/measure/:id`
+            return, but nothing ever compared the two. Each block reads through MCP BEFORE REST:
+            a REST read seeds and persists dimensions as a side effect, so reading it first would
+            paper over any divergence on the not-yet-seeded path."
+    (testing "a metric nobody has opened yet"
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (venues-count-query)}]
+        (let [mcp  (mcp-dimensions "metric" metric-id)
+              rest (rest-dimensions "metric" metric-id)]
+          (testing "names its keys the way the endpoint does, not in the internal kebab shape"
+            (is (= (into (sorted-set) (mapcat keys) (:dimensions rest))
+                   (into (sorted-set) (mapcat keys) (:dimensions mcp)))))
+          (testing "reports the seeded set — own-table and explicitly-joined columns — rather than
+                    every FK-reachable column"
+            (is (= (sort (map :name (:dimensions rest)))
+                   (sort (map :name (:dimensions mcp))))))
+          (testing "and every dimension matches but for the ids neither side has persisted yet"
+            (is (= (without-generated-ids rest)
+                   (without-generated-ids mcp)))))))
+    (testing "a metric with a dimension whose column disappeared"
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (venues-count-query)}]
+        ;; Seed, then retarget one mapping at a column of an unrelated table so the next sync marks
+        ;; its dimension `:status/orphaned` — the setup `metabase.metrics.api-dimension-test` uses.
+        (metrics/sync-dimensions! :metadata/metric metric-id)
+        (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id metric-id)
+              orphan-id (:id (first dimensions))]
+          (t2/update! :model/Card metric-id
+                      {:dimension_mappings (mapv #(cond-> %
+                                                    (= orphan-id (:dimension-id %))
+                                                    (assoc-in [:target 2] (mt/id :users :name)))
+                                                 dimension_mappings)})
+          (metrics/sync-dimensions! :metadata/metric metric-id)
+          (let [mcp  (mcp-dimensions "metric" metric-id)
+                rest (rest-dimensions "metric" metric-id)]
+            (testing "drops it, because the endpoint drops it unless asked for it"
+              (is (not (contains? (into #{} (map :id) (:dimensions mcp)) orphan-id))))
+            (testing "and the pair matches outright"
+              (is (= rest mcp)))))))
+    (testing "a measure"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "M1"
+                                                      :table_id   (mt/id :venues)
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :definition (measure-definition (lib/count))}]
+        ;; Seed first so the generated dimension ids are persisted and both reads reconcile against
+        ;; the same set — this block is here for the encoded wire shape, not the unseeded path.
+        (metrics/sync-dimensions! :metadata/measure measure-id)
+        (let [mcp  (mcp-dimensions "measure" measure-id)
+              rest (rest-dimensions "measure" measure-id)]
+          (testing "the pair matches outright"
+            (is (= (without-clause-uuids rest)
+                   (without-clause-uuids mcp)))))))))
 
 (deftest question-projection-is-canonical-test
   (testing "GHY-4140: there is one :question projection, carrying get_content's enrichments, so

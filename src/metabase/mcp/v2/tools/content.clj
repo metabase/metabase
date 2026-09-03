@@ -154,9 +154,15 @@
     (when-let [computed (metrics/compute-dimensions metadata-type (:id row))]
       (let [fresh (-> (t2/select-one model :id (:id row))
                       (merge computed)
-                      metrics/filter-dimensions-for-user)]
-        (u/remove-nils {:dimensions         (vec (:dimensions fresh))
-                        :dimension_mappings (not-empty (vec (:dimension_mappings fresh)))})))))
+                      metrics/filter-dimensions-for-user
+                      ;; Both endpoints drop orphaned dimensions unless asked for them; an agent
+                      ;; that grouped by one would be querying a column that no longer exists.
+                      metrics/without-orphaned-dimensions)]
+        ;; Encoded the way the endpoints encode them — snake_case keys and qualified type strings.
+        ;; The internal shape is kebab-case and carries `:lib/source`, which no other field in this
+        ;; tool's output uses and which the REST wire shape has never exposed.
+        {:dimensions         (metrics/->api-dimensions (:dimensions fresh))
+         :dimension_mappings (metrics/->api-dimension-mappings (:dimension_mappings fresh))}))))
 
 ;;; -------------------------------------------------- collection --------------------------------------------------
 
