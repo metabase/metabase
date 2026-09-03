@@ -1197,6 +1197,17 @@
   behavior accordingly."
   false)
 
+(def ^:dynamic ^{:added "0.65.0"} *compile-as-standalone-statement*
+  "Whether the native query being compiled will be executed as-is, as a standalone statement. This is bound to `true`
+  when compiling a query the QP is about to run, or when converting a question to native for a user to look at. It is
+  `false` (the default) whenever the compiled query is going to be spliced into some larger query or statement, e.g. a
+  card referenced from a native query via `{{#123}}`, a `CREATE TABLE ... AS` for a persisted model or a transform, or
+  a `SELECT * FROM (...) LIMIT 0` metadata probe.
+
+  Drivers can use this to emit syntax that is only valid at the top level of a statement, e.g. `WITH` clauses for
+  multi-stage queries (see [[metabase.driver.sql.query-processor/use-ctes-for-stages?]])."
+  false)
+
 (defmulti splice-parameters-into-native-query
   "Deprecated and unused in 0.51.0+; multimethod declaration left here so drivers implementing it can still compile
   until we remove this method completely in 0.54.0 or later.
