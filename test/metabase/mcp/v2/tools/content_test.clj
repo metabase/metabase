@@ -149,8 +149,11 @@
           (is (nil? (:error row)))
           (is (= [{:id tab-id :name "Tab 1"}] (:tabs row)))
           (testing "each parameter names the dashcards it is wired to"
-            (is (= [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]
-                   (:parameters row))))
+            (let [expected [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]]
+              (is (= expected (:parameters row)))
+              (is (= expected
+                     (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                                :include ["parameters"]}))))))
           (testing "one summary row per dashcard, with the card reference resolved"
             (is (= [{:id dc-id :kind "card" :card {:id card-id :name "Embedded"}
                      :dashboard_tab_id tab-id :row 0 :col 0}]
