@@ -21,6 +21,9 @@ export const getNumericGoalValue = (
   return isGoalStaticValue(value) ? value : null;
 };
 
+export const getUnresolvedGoalMessage = () =>
+  t`Couldn't load the value this chart's goal line depends on.`;
+
 export const getChartGoal = (
   settings: VisualizationSettings,
 ): ChartGoal | null => {

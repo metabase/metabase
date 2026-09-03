@@ -6,7 +6,15 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
-import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
+import {
+  GoalFailedState,
+  GoalResolvingState,
+} from "metabase/visualizations/components/GoalResolutionState";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
+import {
+  getChartGoal,
+  getUnresolvedGoalMessage,
+} from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
 import { RowChart as SharedRowChart } from "metabase/visualizations/shared/components/RowChart";
@@ -114,7 +122,18 @@ const RowChartVisualization = ({
     () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
-  const goal = useMemo(() => getChartGoal(settings), [settings]);
+  const goalSettings = useResolvedGoalSettings(
+    card,
+    chartSeries.data,
+    settings,
+  );
+  const goal = useMemo(
+    () =>
+      getChartGoal(
+        goalSettings.status === "resolved" ? goalSettings.settings : settings,
+      ),
+    [goalSettings, settings],
+  );
   const stackOffset = getStackOffset(settings);
   const theme = useRowChartTheme(getFontFamilyValue(fontFamily), isDashboard);
 
@@ -255,6 +274,20 @@ const RowChartVisualization = ({
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
+
+  if (goalSettings.status === "resolving") {
+    return <GoalResolvingState className={className} height={outerHeight} />;
+  }
+
+  if (goalSettings.status === "failed") {
+    return (
+      <GoalFailedState
+        className={className}
+        height={outerHeight}
+        message={getUnresolvedGoalMessage()}
+      />
+    );
+  }
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
