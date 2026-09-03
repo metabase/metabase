@@ -46,19 +46,19 @@ jobs:
       - name: Check for existing EE uberjar
         id: check-ee
         uses: ./.github/actions/fetch-artifact
+        continue-on-error: true
         with:
           commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: ee
-          fail-on-fetch-miss: false
           download: false
 
       - name: Check for existing OSS uberjar
         id: check-oss
         uses: ./.github/actions/fetch-artifact
+        continue-on-error: true
         with:
           commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           edition: oss
-          fail-on-fetch-miss: false
           download: false
 
       - name: Create build matrix
