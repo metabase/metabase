@@ -129,6 +129,10 @@ const baseConfig = {
   testEnvironment: "jest-environment-jsdom",
 };
 
+// Heap measurement specs. They live in the "memory" project only, so the
+// default sharded run never picks them up. See the test-memory script.
+const MEMORY_TEST_PATTERN = "\\.leak\\.unit\\.spec\\.";
+
 /** @type {import('jest').Config} */
 const config = {
   // `addFileAttribute` makes jest-junit emit the source path as a `file`
@@ -150,6 +154,11 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{ts,tsx}",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{ts,tsx}",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{ts,tsx}",
+      ],
+
+      testPathIgnorePatterns: [
+        ...(baseConfig.testPathIgnorePatterns || []),
+        MEMORY_TEST_PATTERN,
       ],
 
       setupFiles: [
@@ -178,7 +187,20 @@ const config = {
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
         "<rootDir>/enterprise/frontend/src/custom-viz",
         "<rootDir>/frontend/lint/tests",
+        MEMORY_TEST_PATTERN,
       ],
+    },
+    {
+      // Heap measurements. They need --expose-gc and a heap nobody else is
+      // touching, so they cannot join the sharded parallel run. See the
+      // test-memory script.
+      ...baseConfig,
+      displayName: "memory",
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/frontend/test/jest-setup-env-core.js",
+      ],
+      testMatch: ["<rootDir>/**/*.leak.unit.spec.{ts,tsx}"],
     },
     {
       displayName: "lint-rules",
