@@ -2,6 +2,7 @@
   "Application database queries for the cloud migration module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
 
 (defn cloud-migration-not-in-states
@@ -24,10 +25,12 @@
   [states]
   (t2/update! :model/CloudMigration {:state [:not-in states]} {:state :cancelled}))
 
-(defn row-count
-  "The number of rows in `table`."
-  [table]
-  (t2/count table))
+(defn quartz-node-count
+  "The number of Quartz scheduler nodes recorded in the app DB."
+  []
+  (t2/count (if (= (mdb/db-type) :postgres)
+              "qrtz_scheduler_state"
+              "QRTZ_SCHEDULER_STATE")))
 
 (defn set-cloud-migration-progress-if-not-in-states!
   "Set the state and progress of the CloudMigration with `id` unless its state is one of `states`, returning the

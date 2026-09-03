@@ -1668,7 +1668,7 @@
       ;; JWT is valid - look up user from the email extracted by the JWT provider
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (agent-api.db/active-user-by-lower-email (u/lower-case-en email)))]
+                      (agent-api.db/active-user-by-email email))]
         (let [scope-entry (-> result :jwt-data (find :scope))]
           (cond-> {:user user}
             scope-entry

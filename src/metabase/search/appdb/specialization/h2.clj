@@ -65,4 +65,4 @@
 
 (defmethod specialization/index-size-estimate :h2
   [table-name]
-  (search.db/row-count table-name))
+  (search.db/index-entry-count table-name))

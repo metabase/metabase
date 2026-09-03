@@ -91,10 +91,7 @@
   Works by checking how many Quartz nodes there are.
   See https://github.com/quartz-scheduler/quartz/issues/733"
   []
-  (>= (cloud-migration.db/row-count (if (= (mdb/db-type) :postgres)
-                                      "qrtz_scheduler_state"
-                                      "QRTZ_SCHEDULER_STATE"))
-      2))
+  (>= (cloud-migration.db/quartz-node-count) 2))
 
 (defn- progress-file-input-stream
   "File input stream that calls on-percent-progress with current read progress as int from 0 to 100."

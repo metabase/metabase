@@ -2,6 +2,7 @@
   "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn collection-breadcrumb-columns
@@ -65,7 +66,7 @@
   [dashboard-id changes]
   (t2/update! :model/Dashboard dashboard-id changes))
 
-(defn active-user-by-lower-email
-  "The active User whose lower-cased email is `lower-case-email`, or nil."
-  [lower-case-email]
-  (t2/select-one :model/User :%lower.email lower-case-email :is_active true))
+(defn active-user-by-email
+  "The active User with `email`, compared case-insensitively, or nil."
+  [email]
+  (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))

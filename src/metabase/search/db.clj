@@ -59,10 +59,10 @@
   [table entries]
   (t2/insert! table entries))
 
-(defn row-count
-  "The number of rows in `table`."
-  [table]
-  (t2/count table))
+(defn index-entry-count
+  "The number of entries in the search index table `index-table`."
+  [index-table]
+  (t2/count index-table))
 
 (defn table-exists?
   "Whether a table named `table-name` exists in the app DB."

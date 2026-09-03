@@ -2,7 +2,6 @@
   "Application database queries for the activity feed module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -15,9 +14,9 @@
               :dataset_query :type :archived :card_schema
               :collection.authority_level [:collection.name :collection_name]
               [:dashboard.name :dashboard_name] :dashboard_id]
-             {:where     [:in (app-db/qualify :model/Card :id) ids]
-              :left-join [:collection [:= :collection.id (app-db/qualify :model/Card :collection_id)]
-                          [:report_dashboard :dashboard] [:= :dashboard.id (app-db/qualify :model/Card :dashboard_id)]]}))
+             {:where     [:in :report_card.id ids]
+              :left-join [:collection [:= :collection.id :report_card.collection_id]
+                          [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]}))
 
 (defn recent-dashboards
   "The recently viewed Dashboards with `ids`, with their Collection names."
@@ -26,8 +25,8 @@
               :id :name :collection_id :description
               :archived
               :collection.authority_level [:collection.name :collection_name]]
-             {:where     [:in (app-db/qualify :model/Dashboard :id) ids]
-              :left-join [:collection [:= :collection.id (app-db/qualify :model/Dashboard :collection_id)]]}))
+             {:where     [:in :report_dashboard.id ids]
+              :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
 
 (defn recent-tables
   "The recently viewed Tables with `ids`, with their Database names and sync status."
@@ -37,8 +36,8 @@
               :display_name [:metabase_database.initial_sync_status :initial-sync-status]
               [:visibility_type :visibility_type]
               [:metabase_database.name :database-name]]
-             {:where     [:in (app-db/qualify :model/Table :id) ids]
-              :left-join [:metabase_database [:= :metabase_database.id (app-db/qualify :model/Table :db_id)]]}))
+             {:where     [:in :metabase_table.id ids]
+              :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
 (defn recent-dashboard-and-table-views
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
@@ -72,10 +71,10 @@
   [limit]
   (t2/select [:model/QueryExecution
               [:%min.executor_id :user_id]
-              [(app-db/qualify :model/QueryExecution :card_id) :model_id]
+              [:query_execution.card_id :model_id]
               [:%count.* :cnt]
               [:%max.started_at :max_ts]]
-             {:group-by [(app-db/qualify :model/QueryExecution :card_id) :context]
+             {:group-by [:query_execution.card_id :context]
               :where    [:and
                          [:= :context (h2x/literal :question)]]
               :order-by [[:max_ts :desc]]
