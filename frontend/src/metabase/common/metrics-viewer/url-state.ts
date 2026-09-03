@@ -305,6 +305,5 @@ export function exploreMetricDimensionUrl({
     selectedDimensionBreakoutId: dimensionId,
   };
 
-  const hash = encodeState(state);
-  return hash ? Urls.metricsViewer(hash) : Urls.exploreMetric(metricId);
+  return Urls.metricsViewer(encodeState(state));
 }
