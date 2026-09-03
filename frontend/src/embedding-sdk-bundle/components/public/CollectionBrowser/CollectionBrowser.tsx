@@ -165,17 +165,17 @@ export const CollectionBrowserInner = ({
   const { isBreadcrumbEnabled: isGlobalBreadcrumbEnabled, reportLocation } =
     useSdkBreadcrumbs();
 
-  const isAtVirtualRoot = isAllMode && effectiveCollectionId == null;
+  const isAtAllModeRoot = isAllMode && effectiveCollectionId == null;
 
   const {
-    items: allCollectionsItems,
+    items: allCollections,
     isLoading: isLoadingAllCollections,
     error: allCollectionsError,
-  } = useAllCollectionsItems({ enabled: isAtVirtualRoot });
+  } = useAllCollectionsItems({ enabled: isAtAllModeRoot });
 
   // The virtual root rows are synthesized, so they carry no edit info and cannot
   // be archived. Those columns would render empty for every row.
-  const virtualRootColumnsMap = useMemo(
+  const allModeRootColumnsMap = useMemo(
     () =>
       getVisibleColumnsMap(
         visibleColumns.filter(
@@ -198,7 +198,7 @@ export const CollectionBrowserInner = ({
       return;
     }
 
-    if (isAtVirtualRoot) {
+    if (isAtAllModeRoot) {
       reportLocation({
         type: "all-collections",
         id: "all",
@@ -214,7 +214,7 @@ export const CollectionBrowserInner = ({
   }, [
     isGlobalBreadcrumbEnabled,
     isFetchingCollection,
-    isAtVirtualRoot,
+    isAtAllModeRoot,
     collection,
     reportLocation,
   ]);
@@ -231,11 +231,11 @@ export const CollectionBrowserInner = ({
     );
   }
 
-  if (isAtVirtualRoot && allCollectionsError) {
+  if (isAtAllModeRoot && allCollectionsError) {
     return <SdkError message={t`Failed to load collections`} />;
   }
 
-  if (isAtVirtualRoot && isLoadingAllCollections) {
+  if (isAtAllModeRoot && isLoadingAllCollections) {
     return <SdkLoader />;
   }
 
@@ -258,7 +258,7 @@ export const CollectionBrowserInner = ({
     }
   };
 
-  const onClickVirtualRootItem = (item: CollectionItem) =>
+  const onClickAllModeRootItem = (item: CollectionItem) =>
     onClickItem(withRealCollectionId(item));
 
   const collectionTypes = visibleEntityTypes
@@ -285,10 +285,9 @@ export const CollectionBrowserInner = ({
       : []),
   ];
 
-  const isVirtualRootEmpty =
-    isAtVirtualRoot && allCollectionsItems.length === 0;
+  const isAllModeRootEmpty = isAtAllModeRoot && allCollections.length === 0;
 
-  const visibleVirtualRootItems = allCollectionsItems.slice(
+  const visibleAllModeRootItems = allCollections.slice(
     page * pageSize,
     (page + 1) * pageSize,
   );
@@ -306,7 +305,7 @@ export const CollectionBrowserInner = ({
           />
         ))}
 
-      {isVirtualRootEmpty &&
+      {isAllModeRootEmpty &&
         (EmptyContentComponent ? (
           <EmptyContentComponent />
         ) : (
@@ -316,22 +315,22 @@ export const CollectionBrowserInner = ({
           />
         ))}
 
-      {isAtVirtualRoot && !isVirtualRootEmpty && (
+      {isAtAllModeRoot && !isAllModeRootEmpty && (
         <Box w="100%" data-testid="all-collections-list">
           <ItemsTable
-            items={visibleVirtualRootItems}
-            visibleColumnsMap={virtualRootColumnsMap}
-            onClick={onClickVirtualRootItem}
+            items={visibleAllModeRootItems}
+            visibleColumnsMap={allModeRootColumnsMap}
+            onClick={onClickAllModeRootItem}
           />
 
-          {allCollectionsItems.length > pageSize && (
+          {allCollections.length > pageSize && (
             <Group justify="flex-end" my="md">
               <PaginationControls
                 showTotal
                 page={page}
                 pageSize={pageSize}
-                total={allCollectionsItems.length}
-                itemsLength={visibleVirtualRootItems.length}
+                total={allCollections.length}
+                itemsLength={visibleAllModeRootItems.length}
                 onNextPage={handleNextPage}
                 onPreviousPage={handlePreviousPage}
               />
@@ -340,7 +339,7 @@ export const CollectionBrowserInner = ({
         </Box>
       )}
 
-      {!isAtVirtualRoot && (
+      {!isAtAllModeRoot && (
         <CollectionItemsTable
           collectionId={effectiveCollectionId ?? undefined}
           onClick={onClickItem}
