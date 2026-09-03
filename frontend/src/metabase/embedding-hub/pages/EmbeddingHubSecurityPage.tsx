@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { EmbeddedResources } from "metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources";
 import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddedResources } from "metabase/embedding/settings/EmbeddedResources";
 import { EmbeddingMethodsCard } from "metabase/embedding/settings/EmbeddingMethodsCard";
 import { EmbeddingSecretKeyWidget } from "metabase/embedding/settings/EmbeddingSecretKeyWidget";
 import { CorsInputWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget";

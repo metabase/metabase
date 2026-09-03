@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import { EmbeddingHubPermissionsBasePath } from "metabase/admin/permissions/components/EmbeddingHubPermissionsBasePath";
+import { PermissionsBasePath } from "metabase/common/components/PermissionsBasePath/PermissionsBasePath";
 import { Box, Stack, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 const TAB_LABEL_INSET = "2.5rem";
 
@@ -24,7 +25,7 @@ export function EmbeddingHubPermissionsPage() {
 
       {/* The editor scrolls internally, so it needs a shrinkable flex child. */}
       <Box style={{ flex: 1, minHeight: 0 }}>
-        <EmbeddingHubPermissionsBasePath />
+        <PermissionsBasePath basePath={Urls.embeddingHubPermissions()} />
       </Box>
     </Stack>
   );

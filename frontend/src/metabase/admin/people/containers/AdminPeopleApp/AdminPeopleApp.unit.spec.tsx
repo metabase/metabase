@@ -1,6 +1,6 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
 import { createTenantsRouteGuard } from "metabase/admin/utils";
+import { UpsellTenants } from "metabase/common/components/upsells/UpsellTenants";
 import {
   createMockAdminAppState,
   createMockAdminState,

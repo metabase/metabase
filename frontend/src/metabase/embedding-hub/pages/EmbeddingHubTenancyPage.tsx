@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { usePermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { usePermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   resetTenantsBasePath,
