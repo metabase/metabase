@@ -14,6 +14,7 @@ import {
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -36,6 +37,7 @@ import { LegacyPermissionsModal } from "../LegacyPermissionsModal/LegacyPermissi
 import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
+import S from "./PermissionsPageLayout.module.css";
 import { PermissionsTabs } from "./PermissionsTabs";
 
 export type PermissionsPageTab =
@@ -139,7 +141,11 @@ export function PermissionsPageLayout({
 
         <TabsContainer>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
-          <ToolbarButtonsContainer>
+          <ToolbarButtonsContainer
+            className={
+              isEmbeddingHubPermissions() ? S.hubToolbarButtons : undefined
+            }
+          >
             {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}

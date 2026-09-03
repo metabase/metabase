@@ -9,6 +9,8 @@ import { Button } from "metabase/ui";
 
 import { PermissionsConfirm } from "../PermissionsConfirm";
 
+import S from "./PermissionsEditBar.module.css";
+
 interface PermissionsEditBarProps {
   diff?: PermissionsGraphDiff;
   isDirty: boolean;
@@ -44,6 +46,7 @@ export function PermissionsEditBar({
     <>
       <EditBar
         admin={!isEmbeddingHub}
+        className={isEmbeddingHub ? S.hubEditBar : undefined}
         title={t`You've made changes to permissions.`}
         buttons={[cancelButton, saveButton]}
       />
