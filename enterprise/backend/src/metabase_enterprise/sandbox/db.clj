@@ -136,15 +136,20 @@
   [table-id field-names]
   (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
 
+(def ^:private card-select-id-and-schema-fields
+  [:model/Card :id :dataset_query :result_metadata :card_schema
+   :type :database_id :dimensions :dimension_mappings])
+
 (defn cards-by-id
   "A map of Card ID to the query, result metadata, and schema of the Cards with `card-ids`."
   [card-ids]
-  (t2/select-pk->fn identity [:model/Card :id :dataset_query :result_metadata :card_schema] :id [:in card-ids]))
+  (t2/select-pk->fn identity card-select-id-and-schema-fields
+                    :id [:in card-ids]))
 
 (defn cards-result-metadata
   "The `:id`, `:result_metadata`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids]
-  (t2/select [:model/Card :id :result_metadata :card_schema] :id [:in card-ids]))
+  (t2/select card-select-id-and-schema-fields :id [:in card-ids]))
 
 (defn card-result-metadata
   "The result metadata of the Card with `card-id`."
@@ -155,7 +160,9 @@
   "The `:id`, `:dataset_query`, `:database_id`, and `:card_schema` of the Cards Sandboxes are built on."
   []
   (t2/select :model/Card
-             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema]
+             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
+                       ;; required alongside :card_schema for the Card schema upgrade
+                       :c.type :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]

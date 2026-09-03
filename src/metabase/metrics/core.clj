@@ -220,7 +220,7 @@
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
   [database-id]
-  (doseq [{:keys [id dimensions]} (metrics.db/metric-cards-for-database database-id)
+  (doseq [{:keys [id dimensions]} (metrics.db/raw-metric-cards-for-database database-id)
           :when (empty? dimensions)]
     (try
       (sync-dimensions! :metadata/metric id)

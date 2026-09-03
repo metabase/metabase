@@ -76,7 +76,8 @@
 (defn unarchived-models-for-table
   "The id, query, and schema of the unarchived model Cards of the Table with `table-id`."
   [table-id]
-  (t2/select [:model/Card :id :dataset_query :card_schema]
+  (t2/select [:model/Card :id :dataset_query :card_schema :type :database_id
+              :result_metadata :dimensions :dimension_mappings]
              :table_id table-id
              :type     :model
              :archived false))

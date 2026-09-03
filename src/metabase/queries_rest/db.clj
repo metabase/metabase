@@ -145,7 +145,8 @@
   "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in
   `new-collection-id-or-nil`."
   [card-ids new-collection-id-or-nil]
-  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema]
+  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type :database_id
+              :result_metadata :dimensions :dimension_mappings]
              {:where [:and [:in :id card-ids]
                       [:or [:not= :collection_id new-collection-id-or-nil]
                        (when new-collection-id-or-nil
