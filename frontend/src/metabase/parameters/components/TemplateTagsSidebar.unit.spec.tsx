@@ -78,7 +78,7 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
   );
 };
 
-describe("TemplateTagsSidebar help", () => {
+describe("TemplateTagsSidebar", () => {
   it("hides the 'Try it' examples when the sample database can't be used, e.g. in transforms (metabase#78037)", async () => {
     setup({ canUseSampleDatabase: false });
 
