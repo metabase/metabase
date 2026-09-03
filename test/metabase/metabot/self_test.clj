@@ -89,8 +89,9 @@
               (#'self/parse-provider-model "metabase/openrouter/anthropic/claude-haiku-4-5"))))
     (testing "throws when the string names no configured connection"
       (doseq [model-ref ["no-slash" "" "/leading-slash" "nonexistent/some-model"]]
-        (is (thrown-with-msg? Exception #"No LLM provider connection named"
-                              (#'self/parse-provider-model model-ref)))))))
+        (let [e (is (thrown-with-msg? Exception #"No LLM provider connection named"
+                                      (#'self/parse-provider-model model-ref)))]
+          (is (= :llm-not-configured (:error-code (ex-data e)))))))))
 
 (deftest ^:parallel resolve-adapter-test
   (testing "resolves known providers to adapter functions"

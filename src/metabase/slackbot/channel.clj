@@ -100,7 +100,7 @@
   [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}
    {:keys [tool-name->friendly
            make-streaming-ai-request collect-viz-blocks feedback-blocks post-viz-error!
-           make-viz-prefetch-callback cancel-prefetched-viz!]}]
+           make-viz-prefetch-callback cancel-prefetched-viz! error-message]}]
   (let [{:keys [on-text on-tool-start set-status! current-text]}
         (make-channel-callbacks client {:channel              channel
                                         :thread-ts            thread-ts
@@ -173,7 +173,6 @@
         (cancel-prefetched-viz! prefetched-viz)
         (log/errorf "[slackbot] Error in channel response: %s" (ex-message e))
         (set-status! nil)
-        (let [res (slackbot.client/post-thread-reply client message-ctx
-                                                     "Something went wrong. Please try again.")]
+        (let [res (slackbot.client/post-thread-reply client message-ctx (error-message (ex-data e)))]
           (when-not (:ok res)
             (log/errorf "[slackbot] channel error post-message failed: %s" (:error res))))))))

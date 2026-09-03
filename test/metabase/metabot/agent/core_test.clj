@@ -1073,6 +1073,11 @@
                               (check! :slackbot {:permission/metabot :no})))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :embedding_next {:permission/metabot :no}))))
+      (testing "the 403 carries only the permission-denied tag and status, so the
+                exception middleware keeps the body a plain message"
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                                      (check! :slackbot {:permission/metabot :no})))]
+          (is (= {:status-code 403 :type :metabot/permission-denied} (ex-data e)))))
       (testing "metabot :yes allows non-gated profiles"
         (is (nil? (check! :internal {:permission/metabot :yes})))
         (is (nil? (check! :slackbot {:permission/metabot :yes})))
