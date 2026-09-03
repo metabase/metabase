@@ -758,6 +758,24 @@
                       mt/rows
                       ffirst))))))))
 
+(deftest convert-timezone-date-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "a DATE column should not be shifted by the report timezone when it's not part of the expression (#27186)"
+        (mt/with-report-timezone-id! "Asia/Ho_Chi_Minh"
+          (let [mp    (mt/metadata-provider)
+                times-table (lib.metadata/table mp (mt/id :times))
+                d     (lib.metadata/field mp (mt/id :times :d))
+                base  (-> (lib/query mp times-table)
+                          (lib/expression "expr" (lib/convert-timezone d "UTC" "UTC")))
+                query (-> base
+                          (lib/with-fields [d (lib/expression-ref base "expr")])
+                          (lib/order-by d)
+                          (lib/limit 2))]
+            (is (= [["2004-03-19T00:00:00+07:00" "2004-03-19T00:00:00Z"]
+                    ["2008-06-20T00:00:00+07:00" "2008-06-20T00:00:00Z"]]
+                   (mt/rows (qp/process-query query))))))))))
+
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/with-report-timezone-id! "UTC"
