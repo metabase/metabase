@@ -77,8 +77,8 @@
     :valid   - a key is set and the sentinel decrypts to a UUID with it, so the key is correct
     :invalid - the sentinel exists but does not decrypt (wrong or unset key, corruption)
     :absent  - no sentinel: a `setting` table that does not exist yet (before migrations on a fresh database), no
-               row, or the plaintext \"unencrypted\" marker (inserted by the v53 migration, and written back when
-               the database is decrypted) -- an explicit statement of the same thing a missing row means
+               row, or the plaintext \"unencrypted\" marker (written when the database is decrypted, and inserted by
+               versions before 58 on a new database) -- an explicit statement of the same thing a missing row means
 
   Read raw, from the legacy `value` column: this runs before migrations, and `value` is the one column every version
   writes the sentinel to."

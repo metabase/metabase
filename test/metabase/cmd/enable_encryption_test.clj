@@ -39,12 +39,11 @@
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
         (t2/insert! :model/Setting {:key "enable-encryption-test-setting", :value "plain value"})
-        ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
-        (is (= "unencrypted" (raw-value "encryption-check")))
+        (is (nil? (raw-value "encryption-check")))
         (encryption-test/with-secret-key "key1"
           (testing "startup refuses until the command has been run"
             (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`" (restart!)))
-            (is (= "unencrypted" (raw-value "encryption-check"))))
+            (is (nil? (raw-value "encryption-check"))))
           (testing "the command encrypts everything and writes the sentinel"
             (enable-encryption!)
             (is (encryption/decryptable-string? (raw-value "encryption-check")))

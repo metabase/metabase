@@ -138,8 +138,7 @@
           (mdb/setup-db! :create-sample-content? true)
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
-            ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
-            (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+            (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
             (is (= 1 (t2/count :model/QueryCache)))
             (testing "Adding a key to an existing instance refuses to start rather than encrypting on its own"
@@ -147,7 +146,7 @@
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                 (is (thrown-with-msg? Exception #"already contains data.*run `enable-encryption`"
                                       (mdb/setup-db! :create-sample-content? false)))
-                (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
+                (is (nil? (t2/select-one-fn :value "setting" :key "encryption-check")))
                 (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
                 (is (= 1 (t2/count :model/QueryCache)))
                 (testing "after `enable-encryption` the database is encrypted and starts"

@@ -9,9 +9,7 @@
    [toucan2.core :as t2]))
 
 (def ^:private unmigrated-settings-where
-  "A setting row a version predating `value_with_aad` wrote; the `encryption-check` sentinel is not one, whatever its
-  columns say -- the encryption tooling writes it whole itself."
-  [:and [:= :value_with_aad nil] [:not= :value nil] [:not= :value ""] [:not= :key "encryption-check"]])
+  [:and [:= :value_with_aad nil] [:not= :value nil] [:not= :value ""]])
 
 (defn setting-value
   "The legacy `value` of the setting row with `setting-key`, or nil."
@@ -29,13 +27,12 @@
   (t2/select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))
 
 (defn unmigrated-settings?
-  "Whether any setting row other than the `encryption-check` sentinel has a non-blank `value` but no `value_with_aad`."
+  "Whether any setting row has a non-blank `value` but no `value_with_aad`."
   []
   (t2/exists? :setting {:where unmigrated-settings-where}))
 
 (defn unmigrated-settings
-  "Every setting row other than the `encryption-check` sentinel with a non-blank `value` but no `value_with_aad`, locked
-  for update."
+  "Every setting row with a non-blank `value` but no `value_with_aad`, locked for update."
   []
   (t2/select :setting {:where unmigrated-settings-where, :for :update}))
 

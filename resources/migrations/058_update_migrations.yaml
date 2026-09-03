@@ -1659,6 +1659,21 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.MigratePasswordAuthToAuthIdentity"
 
+  - changeSet:
+      id: v58.2026-09-03T00:00:03
+      author: ranquild
+      comment: >-
+        Retire v53.2024-12-27T17:33:54, which inserted the plaintext "unencrypted" encryption-check marker on every new
+        database; the encryption tooling writes the sentinel itself, whole, and reads a missing row the same way.
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: DELETE FROM databasechangelog WHERE id = 'v53.2024-12-27T17:33:54';
+        - sql:
+            dbms: mysql,mariadb
+            sql: DELETE FROM `DATABASECHANGELOG` WHERE id = 'v53.2024-12-27T17:33:54';
+      rollback: []
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
