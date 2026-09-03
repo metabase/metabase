@@ -2247,119 +2247,17 @@
   (llm-providers/migrate-down!))
 
 ;; The Encrypt* migrations below are no-ops: `metabase.app-db.encryption/encrypt-plaintext-columns!` encrypts these
-;; columns on every startup, which a one-shot migration cannot be relied on to do (see its docstring). Their rollbacks
-;; still decrypt, so that a downgrade lands on the plaintext the older version reads.
+;; columns on every startup, which a one-shot migration cannot be relied on to do (see its docstring).
 (define-migration EncryptAuthIdentityCredentials)
 
-(define-reversible-migration EncryptApiKeys
-  nil
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id] k :key}]
-            (when (encryption/decryptable-string? k)
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/decrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]
-                               :where  [:!= :key nil]}))))
+(define-migration EncryptApiKeys)
 
-(defn decrypt-settings
-  "Store the plaintext value of every setting in `setting-keys` that is encrypted with the current key, so a downgraded
-  version that reads them as `:encryption :no` still sees them. Plaintext values, including ones that merely look like
-  ciphertext, are left untouched. The reverse body of a migration that marked existing settings as encrypted."
-  [setting-keys]
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [key value]}]
-            (when (encryption/decryptable-string? value)
-              (t2/query {:update :setting
-                         :set    {:value (encryption/decrypt value)}
-                         :where  [:= :key key]})))
-          (t2/reducible-query {:select [:key :value]
-                               :from   [:setting]
-                               :where  [:and [:in :key setting-keys] [:!= :value nil]]}))))
-
-(def ^:private encrypted-settings-v58
-  "Every registered setting stored in the setting table that is encrypted at rest as of v58: the ones whose
-  `:encryption` went from `:no` to `:when-encryption-key-set` in v58, and the previously-encrypted ones. The rollback
-  of `EncryptSettingsV58` decrypts exactly these; rows for settings that no longer exist are left alone. Settings that
-  are neither secret nor integrity-critical are deliberately absent -- they are `:encryption :no`.
-  `encrypt-settings-test` checks this list against the registry."
-  ["admin-email" "ai-service-base-url" "allowed-iframe-hosts"
-   "api-key" "csp-img-allowed-hosts" "custom-geojson"
-   "database-replication-connections" "ee-embedding-provider" "ee-embedding-service-api-key"
-   "ee-embedding-service-base-url" "email-from-address" "email-from-address-override"
-   "email-from-name" "email-reply-to" "email-smtp-host"
-   "email-smtp-host-override" "email-smtp-password" "email-smtp-password-override"
-   "email-smtp-port" "email-smtp-port-override" "email-smtp-security"
-   "email-smtp-security-override" "email-smtp-username" "email-smtp-username-override"
-   "embedding-app-origins-interactive" "embedding-app-origins-sdk" "embedding-secret-key"
-   "google-auth-auto-create-accounts-domain" "google-auth-client-id" "gsheets"
-   "jwt-attribute-email" "jwt-attribute-firstname" "jwt-attribute-groups"
-   "jwt-attribute-lastname" "jwt-attribute-tenant" "jwt-attribute-tenant-attributes"
-   "jwt-group-mappings" "jwt-identity-provider-uri" "jwt-shared-secret"
-   "ldap-attribute-email" "ldap-attribute-firstname" "ldap-attribute-lastname"
-   "ldap-bind-dn" "ldap-group-base" "ldap-group-mappings"
-   "ldap-group-membership-filter" "ldap-host" "ldap-password"
-   "ldap-port" "ldap-sync-user-attributes-blacklist" "ldap-user-base"
-   "ldap-user-filter" "llm-anthropic-api-base-url" "llm-anthropic-api-key"
-   "llm-azure-api-base-url" "llm-azure-api-key" "llm-bedrock-access-key-id"
-   "llm-bedrock-secret-access-key" "llm-bedrock-session-token" "llm-deepseek-api-base-url"
-   "llm-deepseek-api-key" "llm-google-api-base-url" "llm-google-oauth-access-token"
-   "llm-google-service-account-key" "llm-mistral-api-base-url" "llm-mistral-api-key"
-   "llm-moonshot-api-base-url" "llm-moonshot-api-key" "llm-openai-api-base-url"
-   "llm-openai-api-key" "llm-openrouter-api-base-url" "llm-openrouter-api-key"
-   "llm-providers" "llm-proxy-base-url" "llm-vllm-api-base-url"
-   "llm-vllm-api-key" "llm-zai-api-base-url" "llm-zai-api-key"
-   "map-tile-server-url" "mcp-apps-cors-custom-origins" "mcp-apps-cors-enabled-clients"
-   "metabot-chat-system-prompt" "metabot-nlq-system-prompt" "metabot-slack-signing-secret"
-   "metabot-sql-system-prompt" "metaplow-url" "mfa-challenge-signing-key"
-   "migration-dump-file" "notification-link-base-url" "oidc-providers"
-   "premium-embedding-token" "python-runner-api-token" "python-runner-url"
-   "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint" "python-storage-s-3-endpoint"
-   "python-storage-s-3-secret-key" "remote-sync-branch" "remote-sync-token"
-   "remote-sync-url" "report-timezone" "saml-application-name"
-   "saml-attribute-email" "saml-attribute-firstname" "saml-attribute-group"
-   "saml-attribute-lastname" "saml-attribute-tenant" "saml-group-mappings"
-   "saml-identity-provider-certificate" "saml-identity-provider-issuer" "saml-identity-provider-slo-uri"
-   "saml-identity-provider-uri" "saml-keystore-alias" "saml-keystore-password"
-   "saml-keystore-path" "sdk-encryption-validation-key" "search-language"
-   "security-center-email-recipients" "security-center-slack-channel" "session-timeout"
-   "site-url" "slack-app-token" "slack-bug-report-channel"
-   "slack-connect-attribute-team-id" "slack-connect-authentication-mode" "slack-connect-client-id"
-   "slack-connect-client-secret" "slack-files-channel" "snowplow-url"
-   "source-address-header" "store-api-url" "store-url"
-   "subscription-allowed-domains"])
-
-(define-reversible-migration EncryptSettingsV58
-  nil
-  (decrypt-settings encrypted-settings-v58))
+(define-migration EncryptSettingsV58)
 
 (define-migration EncryptSetterNoneSettingsV58)
 
-(define-reversible-migration EncryptPublicUuids
-  nil
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:report_card :report_dashboard :action :document]]
-      (run! (fn [{:keys [id public_uuid]}]
-              (when (encryption/decryptable-string? public_uuid)
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/decrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]})))))
+(define-migration EncryptPublicUuids)
 
-(define-reversible-migration EncryptNotificationAndPulseChannelDetails
-  nil
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:notification_recipient :pulse_channel]]
-      (run! (fn [{:keys [id details]}]
-              (when (encryption/decryptable-string? details)
-                (t2/query {:update table
-                           :set    {:details (encryption/decrypt details)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :details]
-                                 :from   [table]
-                                 :where  [:!= :details nil]})))))
+(define-migration EncryptNotificationAndPulseChannelDetails)
 
 (define-migration EncryptRemainingColumns)

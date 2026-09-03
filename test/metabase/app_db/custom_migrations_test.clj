@@ -2701,62 +2701,6 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
-(deftest encrypt-api-keys-test
-  (testing "v58.2026-08-25T00:00:01 : a no-op forwards (startup encrypts api_key.key), and rollback decrypts the keys"
-    (encryption-test/with-secret-key "encrypt-api-keys-test-key-1234"
-      (impl/test-migrations ["v58.2026-08-25T00:00:01"] [migrate!]
-        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
-              ins-key  (fn [prefix key-str]
-                         (:id (new-instance-with-default :api_key {:name          (str "k-" prefix)
-                                                                   :user_id       user-id
-                                                                   :creator_id    user-id
-                                                                   :updated_by_id user-id
-                                                                   :key           key-str
-                                                                   :key_prefix    prefix})))
-              plain-id (ins-key "mb_plai" "plaintext-bcrypt-hash")
-              enc-str  (encryption/maybe-encrypt "another-bcrypt-hash")
-              enc-id   (ins-key "mb_encr" enc-str)
-              raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
-          (migrate!)
-          (testing "neither row is touched"
-            (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
-            (is (= enc-str (raw-key enc-id))))
-          (testing "rollback decrypts keys back to the plaintext hash so downgraded code can still verify them"
-            (migrate! :down 57)
-            (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
-            (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
-
-(deftest encrypt-settings-test
-  ;; some of the settings are enterprise-only, so they are registered only when the EE namespaces are loaded
-  (testing "a few known encrypted settings are in the migration list"
-    (doseq [k ["email-smtp-password" "ldap-password" "saml-keystore-password" "site-url" "snowplow-url"]]
-      (testing k
-        (is (some #{k} @#'custom-migrations/encrypted-settings-v58)))))
-  (testing "v58.2026-08-28T00:00:00 : a no-op forwards, and rollback decrypts the listed settings, others untouched"
-    (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
-      (impl/test-migrations "v58.2026-08-28T00:00:00" [migrate!]
-        (let [ins!       (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
-              raw        (fn [k] (t2/select-one-fn :value :setting :key k))
-              enc-str    (encryption/maybe-encrypt "https://already.example")
-              ;; base64 of 64 bytes: plaintext with exactly the shape of ciphertext
-              shaped-str (str (apply str (repeat 86 "a")) "==")]
-          (ins! "snowplow-url" "https://plain.example")
-          (ins! "map-tile-server-url" enc-str)
-          (ins! "store-url" shaped-str)
-          (ins! "site-name" "Metabase")
-          (migrate!)
-          (testing "no row is touched"
-            (is (= "https://plain.example" (raw "snowplow-url")))
-            (is (= enc-str (raw "map-tile-server-url")))
-            (is (= shaped-str (raw "store-url")))
-            (is (= "Metabase" (raw "site-name"))))
-          (testing "rollback decrypts the listed encrypted settings back to plaintext, others untouched"
-            (migrate! :down 57)
-            (is (= "https://plain.example" (raw "snowplow-url")))
-            (is (= "https://already.example" (raw "map-tile-server-url")))
-            (is (= shaped-str (raw "store-url")))
-            (is (= "Metabase" (raw "site-name")))))))))
-
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
