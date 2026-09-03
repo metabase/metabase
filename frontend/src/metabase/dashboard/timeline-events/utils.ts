@@ -14,11 +14,12 @@ import type {
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
-const hasTimelineEventsEnabled = (dashcard: QuestionDashboardCard) => {
-  const isEnabled =
-    dashcard.visualization_settings?.["timeline_events.enabled"] ??
-    dashcard.card.visualization_settings?.["timeline_events.enabled"];
-  return isEnabled !== false;
+const areDashCardTimelineEventsEnabled = (dashcard: QuestionDashboardCard) => {
+  const { visualization_settings } = extendCardWithDashcardSettings(
+    dashcard.card,
+    dashcard.visualization_settings,
+  );
+  return visualization_settings?.["timeline_events.enabled"] !== false;
 };
 
 export const shouldDashCardDisplayTimelineEvents = (
@@ -27,7 +28,7 @@ export const shouldDashCardDisplayTimelineEvents = (
   isQuestionDashCard(dashcard) &&
   !isVisualizerDashboardCard(dashcard) &&
   canDisplayTimelineEvents(dashcard.card.display) &&
-  hasTimelineEventsEnabled(dashcard);
+  areDashCardTimelineEventsEnabled(dashcard);
 
 export const isDashCardDataLoaded = (
   dashcard: QuestionDashboardCard,
