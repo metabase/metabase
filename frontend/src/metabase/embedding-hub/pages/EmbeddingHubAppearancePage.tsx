@@ -27,7 +27,7 @@ export function EmbeddingHubAppearancePage() {
 
       {hasSimpleEmbedding && (
         <>
-          <Stack gap="md">
+          <Stack gap="lg">
             <Title order={4}>{t`Themes`}</Title>
 
             <EmbeddingThemeListingApp
@@ -36,7 +36,7 @@ export function EmbeddingHubAppearancePage() {
             />
           </Stack>
 
-          <Stack gap="md">
+          <Stack gap="lg">
             <Title order={4}>{t`Branding elements`}</Title>
 
             <PLUGIN_WHITELABEL.EmbeddedAppearanceSettings />
@@ -52,8 +52,8 @@ export function EmbeddingHubAppearancePage() {
 
 function FullAppAppearanceBanner() {
   return (
-    <Card p="md" bg="background-brand">
-      <Group gap="xs" wrap="nowrap">
+    <Card p="lg" bg="background-brand">
+      <Group gap="xxs" wrap="nowrap">
         <Text c="text-secondary">
           {t`Colors and branding for full-app embedding are based on the appearance settings defined in the`}
         </Text>
