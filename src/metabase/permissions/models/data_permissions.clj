@@ -1380,13 +1380,6 @@
   []
   #{})
 
-(defenterprise active-data-app-group-ids
-  "Ids of the data-app groups whose app still exists (a live `data_app` points at them). A flagged group
-   absent here is stale — its app was removed. OSS has none."
-  metabase-enterprise.data-apps.models.data-app
-  []
-  #{})
-
 ;;; ---------------------------------------- Bulk permission functions ------------------------------------------------
 ;; These functions set permissions for newly-created entities (groups, databases, tables) using batch SQL operations
 ;; instead of per-row mutations. They are intended to be called from within a coarse cluster lock.

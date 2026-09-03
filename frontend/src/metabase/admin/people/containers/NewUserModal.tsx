@@ -33,7 +33,6 @@ export const NewUserModal = ({
   const [createUser] = useCreateUserMutation();
   const { data: groups } = useListPermissionsGroupsQuery({
     tenancy: external ? "external" : "internal",
-    "include-app-groups": true,
   });
 
   const handleSubmit = async (vals: Partial<UserType>) => {

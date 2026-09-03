@@ -42,7 +42,6 @@
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
-  active-data-app-group-ids
   data-app-group-ids
   disable-perms-cache
   download-perms-level

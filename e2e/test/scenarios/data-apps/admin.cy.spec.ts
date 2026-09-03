@@ -51,102 +51,24 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
-  it("hides data-app groups from the default groups endpoint but shows active ones on the Groups page", () => {
+  it("keeps a data app's permission group out of the admin Groups list", () => {
     // Provisioning a data app draft creates its permission group as a side effect.
     cy.request("POST", "/api/apps/orders-app/draft").then(({ body }) => {
-      expect(
-        body.permission_group_id,
-        "the draft provisions a permission group",
-      ).to.be.a("number");
       const dataAppGroupId = body.permission_group_id;
 
-      // The default endpoint (permission-config screens, group pickers) omits data-app groups.
+      // The groups API omits data-app groups.
       cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
         const ids = groups.map((group: { id: number }) => group.id);
         expect(ids).not.to.include(dataAppGroupId);
       });
 
-      // The Groups page opts in and shows the active app group — no "Stale" badge, no row actions.
+      // ...so they never appear on the admin Groups page.
       cy.visit("/admin/people/groups");
-      cy.findByLabelText(`group-${dataAppGroupId}-row`).within(() => {
-        cy.findByText("Data App: orders-app").should("be.visible");
-        cy.findByText("Stale").should("not.exist");
-        cy.findByLabelText("group-action-button").should("not.exist");
-        cy.findByLabelText("Remove Group").should("not.exist");
+      cy.findByTestId("admin-panel").within(() => {
+        cy.findByText("All Users").should("be.visible");
+        cy.findByText("Data App: orders-app").should("not.exist");
       });
     });
-  });
-
-  it("shows a stale data-app group on the Groups page (badged, deletable), hidden by default", () => {
-    const STALE_GROUP = "Data App: orphaned";
-
-    // No product flow leaves a stale group (app gone, group survives), so seed one via a test endpoint.
-    cy.request("POST", "/api/testing/stale-data-app-group", {
-      name: STALE_GROUP,
-    }).then(({ body: staleGroup }) => {
-      // Still hidden from the default endpoint (permission-config screens).
-      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-        const ids = groups.map((group: { id: number }) => group.id);
-        expect(ids).not.to.include(staleGroup.id);
-      });
-
-      cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
-      cy.visit("/admin/people/groups");
-
-      cy.findByLabelText(`group-${staleGroup.id}-row`).within(() => {
-        cy.findByText(STALE_GROUP).should("be.visible");
-        cy.findByText("Stale").should("be.visible");
-        // Shown as plain text, not a link to a detail page.
-        cy.findByRole("link", { name: new RegExp(STALE_GROUP) }).should(
-          "not.exist",
-        );
-        // A direct trash action rather than the "…" menu.
-        cy.findByLabelText("group-action-button").should("not.exist");
-        cy.findByLabelText("Remove Group").click();
-      });
-
-      H.modal().findByRole("button", { name: "Remove group" }).click();
-      cy.wait("@deleteGroup");
-
-      cy.findByLabelText(`group-${staleGroup.id}-row`).should("not.exist");
-    });
-  });
-
-  it("offers an active data-app group in the People-admin group pickers", () => {
-    // Assigning a user to a data app's group grants them app access, so the pickers must list it. One
-    // draft + one beforeEach; each picker check re-visits /admin/people rather than closing overlays.
-    cy.request("POST", "/api/apps/orders-app/draft");
-
-    cy.log("create-user picker");
-    cy.visit("/admin/people");
-    cy.button("Invite someone").click();
-    H.modal().within(() => {
-      cy.findByLabelText(/Email/).type("app-member@example.com");
-      cy.findByRole("combobox", { name: "Groups" }).click();
-    });
-    // The dropdown renders in a portal outside the modal; each group is an option.
-    cy.findByRole("option", { name: "Data App: orders-app" }).should(
-      "be.visible",
-    );
-
-    cy.log("edit-user picker");
-    cy.visit("/admin/people");
-    cy.findAllByLabelText("group-summary")
-      .first()
-      .closest("tr")
-      .within(() => {
-        cy.icon("ellipsis").click();
-      });
-    H.popover().findByText("Edit user").click();
-    H.modal().findByRole("combobox", { name: "Groups" }).click();
-    cy.findByRole("option", { name: "Data App: orders-app" }).should(
-      "be.visible",
-    );
-
-    cy.log("People list group dropdown");
-    cy.visit("/admin/people");
-    cy.findAllByLabelText("group-summary").first().click();
-    H.popover().findByLabelText("Data App: orders-app").should("be.visible");
   });
 
   it("dismisses the promo banner and keeps it hidden across a reload", () => {

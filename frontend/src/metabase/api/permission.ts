@@ -53,11 +53,7 @@ export const permissionApi = Api.injectEndpoints({
     }),
     listPermissionsGroups: builder.query<
       GroupListQuery[],
-      | {
-          tenancy?: "external" | "internal";
-          "include-app-groups"?: boolean;
-        }
-      | undefined
+      { tenancy?: "external" | "internal" } | undefined
     >({
       query: (params) => ({
         method: "GET",

@@ -18,7 +18,6 @@ import {
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
-  Badge,
   Box,
   Button,
   Flex,
@@ -170,34 +169,6 @@ function ActionsPopover({
   );
 }
 
-interface DeleteGroupButtonProps {
-  group: GroupInfo;
-  apiKeys: ApiKey[];
-  onDeleteGroupClicked: (group: GroupInfo) => void;
-}
-
-function DeleteGroupButton({
-  group,
-  apiKeys,
-  onDeleteGroupClicked,
-}: DeleteGroupButtonProps) {
-  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
-
-  return (
-    <>
-      <UnstyledButton aria-label={t`Remove Group`} onClick={openModal}>
-        <Icon c="text-disabled" name="trash" />
-      </UnstyledButton>
-      <DeleteGroupModal
-        opened={modalOpened}
-        apiKeys={apiKeys}
-        onConfirm={() => onDeleteGroupClicked(group)}
-        onClose={closeModal}
-      />
-    </>
-  );
-}
-
 interface EditingGroupRowProps {
   group: GroupInfo;
   textHasChanged: boolean;
@@ -246,21 +217,6 @@ function EditingGroupRow({
 
 function GroupNameCell({ group }: { group: GroupInfo }) {
   const name = getGroupNameLocalized(group);
-  const avatar = <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />;
-
-  // A stale group has no detail page to visit — plain, non-clickable text.
-  if (group.is_stale_data_app_group) {
-    return (
-      <Flex align="center" gap="md">
-        {avatar}
-        <Box component="span" fw={700}>
-          {name}
-        </Box>
-        <Badge color="warning">{t`Stale`}</Badge>
-      </Flex>
-    );
-  }
-
   const membersLink = PLUGIN_TENANTS.isTenantGroup(group)
     ? `/admin/people/tenants/groups/${group.id}`
     : `/admin/people/groups/${group.id}`;
@@ -273,54 +229,11 @@ function GroupNameCell({ group }: { group: GroupInfo }) {
       className={CS.link}
       gap="md"
     >
-      {avatar}
+      <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />
       <Box component="span" fw={700} c="core-brand">
         {name}
       </Box>
     </Flex>
-  );
-}
-
-interface GroupActionsCellProps {
-  group: GroupInfo;
-  apiKeys: ApiKey[];
-  onEditGroupClicked: (group: GroupInfo) => void;
-  onDeleteGroupClicked: (group: GroupInfo) => void;
-}
-
-function GroupActionsCell({
-  group,
-  apiKeys,
-  onEditGroupClicked,
-  onDeleteGroupClicked,
-}: GroupActionsCellProps) {
-  if (group.is_stale_data_app_group) {
-    return (
-      <DeleteGroupButton
-        group={group}
-        apiKeys={apiKeys}
-        onDeleteGroupClicked={onDeleteGroupClicked}
-      />
-    );
-  }
-
-  // Server-managed groups (active data-app + built-in) have no row actions.
-  const isManaged =
-    group.is_data_app_group ||
-    isDefaultGroup(group) ||
-    isAdminGroup(group) ||
-    PLUGIN_TENANTS.isExternalUsersGroup(group);
-  if (isManaged) {
-    return null;
-  }
-
-  return (
-    <ActionsPopover
-      group={group}
-      apiKeys={apiKeys}
-      onEditGroupClicked={onEditGroupClicked}
-      onDeleteGroupClicked={onDeleteGroupClicked}
-    />
   );
 }
 
@@ -345,6 +258,10 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
+  const showActionsButton =
+    !isDefaultGroup(group) &&
+    !isAdminGroup(group) &&
+    !PLUGIN_TENANTS.isExternalUsersGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
   return editing ? (
@@ -365,12 +282,14 @@ function GroupRow({
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
       <Box component="td" ta="end">
-        <GroupActionsCell
-          group={group}
-          apiKeys={apiKeys}
-          onEditGroupClicked={onEditGroupClicked}
-          onDeleteGroupClicked={onDeleteGroupClicked}
-        />
+        {showActionsButton ? (
+          <ActionsPopover
+            group={group}
+            apiKeys={apiKeys}
+            onEditGroupClicked={onEditGroupClicked}
+            onDeleteGroupClicked={onDeleteGroupClicked}
+          />
+        ) : null}
       </Box>
     </tr>
   );

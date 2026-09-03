@@ -220,17 +220,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-(api.macros/defendpoint :post "/stale-data-app-group"
-  "Create a stale data-app group (flagged `is_data_app_group`, with no backing app) so e2e can exercise
-   its badge and deletion on the admin groups page."
-  [_route-params
-   _query-params
-   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
-  (t2/insert-returning-instance! :model/PermissionsGroup {:name name :is_data_app_group true}))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []

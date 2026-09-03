@@ -89,10 +89,3 @@
   :feature :none
   []
   (t2/select-pks-set :model/PermissionsGroup :is_data_app_group true))
-
-(defenterprise active-data-app-group-ids
-  "Group ids a live `data_app` row still points at — the data-app groups whose app has not been removed."
-  :feature :none
-  []
-  (into #{} (keep :permission_group_id)
-        (t2/select [:model/DataApp :permission_group_id] :permission_group_id [:not= nil])))

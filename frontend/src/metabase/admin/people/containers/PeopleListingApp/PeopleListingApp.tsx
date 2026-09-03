@@ -42,7 +42,7 @@ export function PeopleListingApp({
     isLoading,
     error,
   } = useListPermissionsGroupsQuery(
-    { tenancy: "internal", "include-app-groups": true },
+    { tenancy: "internal" },
     { skip: external },
   );
 
