@@ -130,6 +130,59 @@
         (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
         (is (= :PUBLIC (label ssn)))))))
 
+(deftest reset-data-sensitivity-test
+  (mt/with-temp [:model/Database db       {}
+                 :model/Database other-db {}
+                 :model/Table    users    {:db_id (:id db) :name "app_users"}
+                 :model/Table    orders   {:db_id (:id db) :name "orders"}
+                 :model/Table    foreign  {:db_id (:id other-db) :name "app_users"}
+                 :model/Field    ssn      {:table_id (:id users) :name "ssn" :base_type :type/Text}
+                 :model/Field    foo      {:table_id (:id users) :name "foo" :base_type :type/Text}
+                 :model/Field    notes    {:table_id (:id users) :name "notes" :base_type :type/Text}
+                 :model/Field    email    {:table_id (:id users) :name "email" :base_type :type/Text}
+                 :model/Field    total    {:table_id (:id orders) :name "total" :base_type :type/Float}
+                 :model/Field    far      {:table_id (:id foreign) :name "ssn" :base_type :type/Text}]
+    (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+    (t2/insert! :model/FieldUserSettings {:field_id (:id email)})
+    (sync.data-sensitivity/scan-data-sensitivity! db)
+    (sync.data-sensitivity/scan-data-sensitivity! other-db)
+    (is (= [:PII :PUBLIC :PHI :PII :PUBLIC :PII]
+           (map label [ssn foo notes email total far])))
+    (testing "a table scope clears only that table's classifier labels"
+      (is (= 1 (sync.data-sensitivity/reset-data-sensitivity! orders)))
+      (is (nil? (label total)))
+      (is (= :PII (label ssn))))
+    (testing "a database scope clears categories and PUBLIC alike, including fields with a label-less mirror row"
+      (is (= 3 (sync.data-sensitivity/reset-data-sensitivity! db)))
+      (is (= [nil nil nil] (map label [ssn foo email]))))
+    (testing "a label backed by the mirror is human-set and survives"
+      (is (= :PHI (label notes)))
+      (is (= :PHI (mirror-label notes))))
+    (testing "other databases are untouched"
+      (is (= :PII (label far))))
+    (testing "a second reset finds nothing"
+      (is (zero? (sync.data-sensitivity/reset-data-sensitivity! db))))))
+
+(deftest scan-with-reset-relabels-categorized-fields-test
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (:id db) :name "app_users"}
+                 :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}
+                 :model/Field    notes {:table_id (:id table) :name "notes" :base_type :type/Text}]
+    (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+    (sync.data-sensitivity/scan-data-sensitivity! db)
+    (is (= :PII (label ssn)))
+    (with-redefs [analyze/infer-data-sensitivity (constantly :SEC_KEY)]
+      (testing "a forced scan leaves a categorized field on its old label"
+        (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
+        (is (= :PII (label ssn))))
+      (testing "a reset scan recomputes it under the current rules and reports the reset count"
+        (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0 :fields-reset 1}
+               (sync.data-sensitivity/scan-data-sensitivity! db :reset? true)))
+        (is (= :SEC_KEY (label ssn))))
+      (testing "the user's label is neither reset nor rescanned"
+        (is (= :PHI (label notes)))
+        (is (= :PHI (mirror-label notes)))))))
+
 (deftest classification-failure-is-counted-and-retried-test
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (:id db) :name "app_users"}

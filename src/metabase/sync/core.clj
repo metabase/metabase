@@ -25,6 +25,7 @@
   analyze-db!
   analyze-db-explicit!]
  [metabase.sync.analyze.data-sensitivity
+  reset-data-sensitivity!
   scan-data-sensitivity!]
  [metabase.sync.field-values
   update-field-values!
