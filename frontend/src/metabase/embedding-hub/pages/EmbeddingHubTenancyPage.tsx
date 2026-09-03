@@ -126,16 +126,16 @@ function EnableTenancyCard() {
   const [isUserStrategyModalOpen, setIsUserStrategyModalOpen] = useState(false);
 
   return (
-    <Card p="xl" withBorder>
-      <Flex gap="xl" align="center" justify="space-between" wrap="nowrap">
-        <Stack gap="md" maw="30rem">
+    <Card p="xxl" withBorder>
+      <Flex gap="xxl" align="center" justify="space-between" wrap="nowrap">
+        <Stack gap="lg" maw="30rem">
           <Title order={4}>{t`Enable multi-tenant user strategy`}</Title>
 
           <Text c="text-secondary" lh="lg">
             {t`A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer.`}
           </Text>
 
-          <Group gap="lg">
+          <Group gap="xl">
             {/* Opened here rather than routed to: the `.../user-strategy`
                 modal route hangs off the tenants listing, which this page does
                 not render until tenancy is on. */}
@@ -161,12 +161,12 @@ function EnableTenancyCard() {
         <Card
           p={6}
           radius={12}
-          shadow="md"
+          shadow="sm"
           withBorder
           maw="40%"
           visibleFrom="md"
         >
-          <Center w="100%" p="xl">
+          <Center w="100%" p="xxl">
             <Image src={TENANTS_ILLUSTRATION} w="100%" h="auto" alt="" />
           </Center>
         </Card>
