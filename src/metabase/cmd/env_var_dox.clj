@@ -168,12 +168,6 @@
       ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
-(defn- ignores-env-var?
-  "Whether a setting ignores its environment variable, so there is no environment variable to document.
-   Such a setting is still settable in the Admin settings and in a configuration file."
-  [env-var]
-  (false? (:can-read-from-env? env-var)))
-
 (defn- setter-none?
   "Used to remove undocumented settings that lack a setter (`:setter :none`).
    For example, settings that are derived from other settings."
@@ -199,13 +193,13 @@
        (remove setter-none?)))
 
 (defn format-env-var-docs
-  "Preps relevant environment variable docs as a Markdown string."
+  "Preps relevant environment variable docs as a Markdown string. A setting that ignores its environment variable has
+  none to document, but it is still settable in a config file, so that filter belongs here rather than in
+  [[remove-env-vars-we-should-not-document]], which the config file template shares."
   [settings]
-  ;; This filter stays out of `remove-env-vars-we-should-not-document` because the config file
-  ;; generator shares that one, and a setting with no env var is still settable in config.yml.
   (->> settings
        remove-env-vars-we-should-not-document
-       (remove ignores-env-var?)
+       (remove (comp false? :can-read-from-env?))
        (map format-env-var-entry)))
 
 (defn- format-intro
