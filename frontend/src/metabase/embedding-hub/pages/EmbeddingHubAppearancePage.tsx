@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { AppearanceUpsellPage } from "metabase/embedding-hub/upsells";
 import { EmbeddingThemeListingApp } from "metabase/embedding/themes/components/ThemeListing";
+import { AppearanceUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
