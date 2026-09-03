@@ -13,7 +13,8 @@
 
 (defn- create-permission-group! [app]
   (let [group (t2/insert-returning-instance! :model/PermissionsGroup
-                                             :name (resource-name app))]
+                                             :name (resource-name app)
+                                             :is_data_app_group true)]
     (t2/update! :model/DataApp :id (:id app) {:permission_group_id (:id group)})
     group))
 

@@ -169,7 +169,7 @@
     (-> (ordered-groups (request/limit) (request/offset)
                         {:tenancy                       tenancy
                          :manager-user-id               manager-user-id
-                         :tenants-enabled?               (setting/get :use-tenants)
+                         :tenants-enabled?              (setting/get :use-tenants)
                          :advanced-permissions-enabled? (premium-features/enable-advanced-permissions?)})
         (t2/hydrate :member_count)
         (maybe-fix-names))))

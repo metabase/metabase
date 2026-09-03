@@ -73,6 +73,8 @@
                                           :group_id permission_group_id
                                           :db_id (mt/id)
                                           :perm_type perm-type))]
+      (testing "the app group is flagged as a data-app group (its own namespace)"
+        (is (true? (t2/select-one-fn :is_data_app_group :model/PermissionsGroup :id permission_group_id))))
       (testing "the app group is blocked at the database level, granting no data access of its own"
         (is (=? [{:table_id nil, :perm_value :blocked}] (perm :perms/view-data)))
         (testing "view-data :blocked cascades download-results/transforms to :no"
@@ -88,6 +90,15 @@
         (data-app.resources/ensure-resources! app)
         (is (=? [{:table_id nil, :perm_value :no}] (perm :perms/download-results)))
         (is (=? [{:table_id nil, :perm_value :blocked}] (perm :perms/view-data)))))))
+
+(deftest data-app-groups-hidden-from-the-groups-api-test
+  (testing "GET /api/permissions/group never lists data-app groups — they are a server-managed namespace"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"}]
+        (let [{app-group-id :permission_group_id} (data-app.resources/ensure-resources! (create-data-app! "some-app"))
+              listed-ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "permissions/group"))]
+          (is (contains? listed-ids normal-group-id) "a normal group is listed")
+          (is (not (contains? listed-ids app-group-id)) "the data-app group is hidden"))))))
 
 (deftest sso-group-sync-does-not-add-a-user-to-a-data-app-group-test
   (testing "a data app's permission group is server-managed: membership is granted by an admin, not
