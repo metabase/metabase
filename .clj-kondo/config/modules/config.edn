@@ -345,11 +345,12 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO FIXME
+   :api  #{metabase.app-db.cluster-lock
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
+           metabase.app-db.toucan2
            metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader

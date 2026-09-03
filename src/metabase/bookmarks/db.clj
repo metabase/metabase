@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.toucan2 :as t2x]
    [metabase.collections.models.collection :as collection]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -10,7 +11,10 @@
 (defn card-bookmark-exists?
   "Whether the User with `user-id` has a CardBookmark for the Card with `card-id`."
   [card-id user-id]
-  (t2/exists? :model/CardBookmark :card_id card-id :user_id user-id))
+  (t2x/with-params {:card-id card-id, :user-id user-id}
+    (t2/exists? :model/CardBookmark {:where [:and
+                                             [:= :card_id [:param :card-id]]
+                                             [:= :user_id [:param :user-id]]]})))
 
 (defn dashboard-bookmark-exists?
   "Whether the User with `user-id` has a DashboardBookmark for the Dashboard with `dashboard-id`."

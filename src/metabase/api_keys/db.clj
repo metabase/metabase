@@ -2,6 +2,7 @@
   "Application database queries for the API keys module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.toucan2 :as t2x]
    [toucan2.core :as t2]))
 
 (defn unscoped-api-key-count
@@ -53,7 +54,8 @@
 (defn user-type
   "The `:type` of the User with `user-id`, or nil."
   [user-id]
-  (t2/select-one-fn :type :model/User :id user-id))
+  (t2x/with-params {:user-id user-id}
+    (t2/select-one-fn :type :model/User {:where [:= :id [:param :user-id]]})))
 
 (defn deactivate-api-key-user!
   "Deactivate the api-key User with `user-id`."

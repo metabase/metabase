@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.toucan2 :as t2x]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -39,7 +40,10 @@
 (defn auth-identity-for-provider
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id provider]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider))
+  (t2x/with-params {:user-id user-id, :provider provider}
+    (t2/select-one :model/AuthIdentity {:where [:and
+                                                [:= :user_id [:param :user-id]]
+                                                [:= :provider [:param :provider]]]})))
 
 (defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
@@ -64,7 +68,8 @@
 (defn user
   "The User with `user-id`, or nil."
   [user-id]
-  (t2/select-one :model/User :id user-id))
+  (t2x/with-params {:user-id user-id}
+    (t2/select-one :model/User {:where [:= :id [:param :user-id]]})))
 
 (defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
