@@ -371,7 +371,10 @@
      :snippet (set (lib.template-tags/template-tags->snippet-ids tags))}))
 
 (def ^:private entity-kind->metadata-type
-  {:card :metadata/card, :snippet :metadata/native-query-snippet, :segment :metadata/segment, :measure :metadata/measure})
+  {:card    :metadata/card
+   :snippet :metadata/native-query-snippet
+   :segment :metadata/segment
+   :measure :metadata/measure})
 
 (defn- referenced-entity-ids-of-entities
   "One bulk fetch of the `kind` entities with `ids`, then everything they reference directly. Ids the metadata provider
