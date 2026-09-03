@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
-import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
-import { formatValue } from "../../../src/index";
+import {
+  type CustomVisualizationProps,
+  type RowValue,
+  formatValue,
+} from "../../../src/index";
 import type { Settings } from "./types";
 
 export const Visualization = (
@@ -93,10 +96,12 @@ export const Visualization = (
         Hover me
       </div>
       <div data-testid="demo-viz-last-click">
-        Last clicked: {lastClickValue === null ? "none" : lastClickValue}
+        Last clicked:{" "}
+        {lastClickValue === null ? "none" : String(lastClickValue)}
       </div>
       <div data-testid="demo-viz-last-hover">
-        Last hovered: {lastHoverValue === null ? "none" : lastHoverValue}
+        Last hovered:{" "}
+        {lastHoverValue === null ? "none" : String(lastHoverValue)}
       </div>
     </div>
   );
