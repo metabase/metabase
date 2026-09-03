@@ -249,7 +249,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (actions.db/hydrate-fields (actions.db/tables table-ids)))]
+                 (t2/hydrate (actions.db/tables table-ids) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]

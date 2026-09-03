@@ -10,7 +10,8 @@
    [metabase.events.core :as events]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (def ^:private grant-lifecycle-lock
   ::grant-lifecycle)
@@ -46,7 +47,7 @@
                               :grant_start_timestamp now
                               :grant_end_timestamp   grant-end}
           grant              (-> (support-access-grants.db/insert-grant! grant-record)
-                                 support-access-grants.db/hydrate-user-info)
+                                 (t2/hydrate :user_info))
           support-email      (sag.settings/support-access-grant-email)
           support-user       (sag.model/fetch-or-create-support-user!)
           token              (sag.provider/create-support-access-reset! (:id support-user) grant)
@@ -90,7 +91,7 @@
                                               {:revoked_at now
                                                :revoked_by_user_id user-id})
       (-> (support-access-grants.db/grant grant-id)
-          support-access-grants.db/hydrate-user-info))))
+          (t2/hydrate :user_info)))))
 
 (defn expire-ended-grants!
   "Tear down the support user's access once every grant has ended.
@@ -129,7 +130,7 @@
   (let [limit (min (or limit 50) 100)
         offset (or offset 0)
         grants (support-access-grants.db/grants-page include-revoked ticket-number user-id limit offset)
-        grants-with-user-name (support-access-grants.db/hydrate-user-info grants)
+        grants-with-user-name (t2/hydrate grants :user_info)
         total (support-access-grants.db/grant-count include-revoked ticket-number user-id)]
     {:data grants-with-user-name
      :total total
@@ -142,4 +143,4 @@
   Returns the active grant record or nil if no active grant exists."
   []
   (some-> (support-access-grants.db/current-grant)
-          support-access-grants.db/hydrate-user-info))
+          (t2/hydrate :user_info)))

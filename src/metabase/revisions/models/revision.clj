@@ -166,7 +166,7 @@
       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
       (merge (revision-description-info model prev-revision revision))
       ;; add revision user details
-      revisions.db/hydrate-user
+      (t2/hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])
       ;; Filter out irrelevant info
       (dissoc :model :model_id :user_id :object)))

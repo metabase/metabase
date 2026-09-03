@@ -102,8 +102,3 @@
   "Whether a User whose lower-cased email is `lower-case-email` exists."
   [lower-case-email]
   (t2/exists? :model/User :%lower.email lower-case-email))
-
-(defn hydrate-user-group-memberships
-  "Hydrate `:user_group_memberships` onto `user`."
-  [user]
-  (t2/hydrate user :user_group_memberships))

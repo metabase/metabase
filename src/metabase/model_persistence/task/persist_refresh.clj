@@ -22,7 +22,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [potemkin.types :as p])
+   [potemkin.types :as p]
+   [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
    (org.quartz ObjectAlreadyExistsException Trigger)))
@@ -100,7 +101,7 @@
   (try
     (let [error-details       (error-details task-details)
           error-details-by-id (m/index-by :persisted-info-id error-details)
-          persisted-infos     (->> (model-persistence.db/hydrate-card-collection-and-database (model-persistence.db/persisted-infos-by-ids (keys error-details-by-id)))
+          persisted-infos     (->> (t2/hydrate (model-persistence.db/persisted-infos-by-ids (keys error-details-by-id)) [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
       (events/publish-event! :event/persisted-model-refresh-error
                              {:database-id     db-id

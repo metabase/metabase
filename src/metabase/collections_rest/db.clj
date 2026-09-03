@@ -1,6 +1,6 @@
 (ns metabase.collections-rest.db
   "Application database queries for the collections REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
@@ -95,68 +95,6 @@
   "Delete the Collection with `id`."
   [id]
   (t2/delete! :model/Collection :id id))
-
-(defn hydrate
-  "Hydrate the `hydration` keys onto `instances`."
-  [instances hydration]
-  (apply t2/hydrate instances hydration))
-
-(defn hydrate-collection-flags
-  "Hydrate the write, personal, delete, remote-sync, and parent flags onto `collections`."
-  [collections]
-  (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id))
-
-(defn hydrate-can-write
-  "Hydrate `:can_write` onto `collections`."
-  [collections]
-  (t2/hydrate collections :can_write))
-
-(defn hydrate-child-flags
-  "Hydrate the write, restore, delete, remote-sync, and namespace flags onto collection `children`."
-  [children]
-  (t2/hydrate children :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
-
-(defn hydrate-exploration-flags
-  "Hydrate the write, restore, and delete flags onto `explorations`."
-  [explorations]
-  (t2/hydrate explorations :can_write :can_restore :can_delete))
-
-(defn hydrate-effective-parent-and-remote-synced
-  "Hydrate `:effective_parent` and `:is_remote_synced` onto `collections`."
-  [collections]
-  (t2/hydrate collections :effective_parent :is_remote_synced))
-
-(defn hydrate-collection-child-flags
-  "Hydrate the write, location, restore, delete, and shared-tenant flags onto child `collections`."
-  [collections]
-  (t2/hydrate collections :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection))
-
-(defn hydrate-measures
-  "Hydrate `:measures` onto `tables`."
-  [tables]
-  (t2/hydrate tables :measures))
-
-(defn hydrate-collection-detail
-  "Hydrate the parent, locations, ancestors, and permission flags onto `collection`."
-  [collection]
-  (t2/hydrate collection
-              :parent_id
-              :effective_location
-              [:effective_ancestors :can_write]
-              :can_write
-              :is_personal
-              :can_restore
-              :can_delete))
-
-(defn hydrate-in-dashboards
-  "Hydrate `:in_dashboards` onto `cards`."
-  [cards]
-  (t2/hydrate cards :in_dashboards))
-
-(defn hydrate-parent-id
-  "Hydrate `:parent_id` onto `collection`."
-  [collection]
-  (t2/hydrate collection :parent_id))
 
 (defn unarchived-card-collection-types-reducible
   "A reducible of the distinct Collection id and type of the unarchived Cards."

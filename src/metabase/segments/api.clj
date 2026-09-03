@@ -15,7 +15,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays.core :as xrays]))
+   [metabase.xrays.core :as xrays]
+   [toucan2.core :as t2]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -49,11 +50,11 @@
     (let [segment (api/check-500
                    (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
-      (segments.db/hydrate-creator segment))))
+      (t2/hydrate segment :creator))))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (segments.db/segment id))
-      segments.db/hydrate-creator))
+      (t2/hydrate :creator)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -78,7 +79,7 @@
                                                  (segments.db/table-database-ids table-ids))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
-        segments.db/hydrate-creator-and-definition-description)))
+        (t2/hydrate :creator :definition_description))))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate

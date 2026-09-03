@@ -217,11 +217,11 @@
                                                 [:id :asc]))
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
-                   users-rest.db/hydrate-personal-and-tenant-collection-ids
+                   (t2/hydrate :personal_collection_id :tenant_collection_id)
 
                    (or api/*is-superuser?*
                        api/*is-group-manager?*)
-                   users-rest.db/hydrate-group-ids
+                   (t2/hydrate :group_ids)
                    ;; if there is a group_id clause, make sure the list is deduped in case the same user is in
                    ;; multiple groups
                    group_id
@@ -411,7 +411,7 @@
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
       ;; endpoint's response
       (dissoc :type)
-      users-rest.db/hydrate-current-user-details
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions
@@ -434,7 +434,7 @@
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
-      users-rest.db/hydrate-user-group-memberships
+      (t2/hydrate :user_group_memberships)
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -577,7 +577,7 @@
               (perms/remove-user-from-group! id data-analyst-group-id)))))
       (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (users/fetch-user :id id)
-      users-rest.db/hydrate-user-group-memberships))
+      (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |

@@ -15,16 +15,6 @@
   [id]
   (t2/select-one :model/Document :id id :archived false))
 
-(defn hydrate-document-details
-  "Hydrate the creator and the write, delete, restore, and remote-sync flags onto `document`."
-  [document]
-  (t2/hydrate document :creator :can_write :can_delete :can_restore :is_remote_synced))
-
-(defn hydrate-creator-can-write-and-remote-synced
-  "Hydrate `:creator`, `:can_write`, and `:is_remote_synced` onto `documents`."
-  [documents]
-  (t2/hydrate documents :creator :can_write :is_remote_synced))
-
 (defn visible-unarchived-documents
   "The unarchived Documents not attached to an Exploration in the Collections matching the Honey SQL
   `collection-clause`."

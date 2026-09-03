@@ -1,6 +1,6 @@
 (ns metabase.permissions-rest.db
   "Application database queries for the permissions REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -8,16 +8,6 @@
   "The PermissionsGroups selected by the Honey SQL `query`."
   [query]
   (t2/select :model/PermissionsGroup query))
-
-(defn hydrate-member-count
-  "Hydrate `:member_count` onto `groups`."
-  [groups]
-  (t2/hydrate groups :member_count))
-
-(defn hydrate-members
-  "Hydrate `:members` onto `group`."
-  [group]
-  (t2/hydrate group :members))
 
 (defn permissions-group
   "The PermissionsGroup with `id`, or nil."

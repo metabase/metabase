@@ -27,7 +27,7 @@
 
 (defn- notification-name-by-handler-id
   [notification-handler-id]
-  (let [notification (notification.db/hydrate-payload (notification.db/notification-for-handler notification-handler-id))]
+  (let [notification (t2/hydrate (notification.db/notification-for-handler notification-handler-id) :payload)]
     (case (:payload_type notification)
       ;; use the card name
       :notification/card (->> notification :payload :card_id notification.db/card-name)

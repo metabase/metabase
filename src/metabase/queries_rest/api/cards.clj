@@ -31,7 +31,7 @@
   (let [id->card (queries-rest.db/cards-by-id card_ids)]
     (as-> card_ids $
       (mapv id->card $)
-      (queries-rest.db/hydrate-in-dashboards $)
+      (t2/hydrate $ :in_dashboards)
       (mapv (fn [{:keys [id in_dashboards]}]
               {:card_id id :dashboards (map present-dashboard in_dashboards)})
             $))))

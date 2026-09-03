@@ -13,21 +13,6 @@
                                  :description description
                                  :definition  definition))
 
-(defn hydrate-creator
-  "Hydrate `:creator` onto `measure`."
-  [measure]
-  (t2/hydrate measure :creator))
-
-(defn hydrate-creator-and-definition-description
-  "Hydrate `:creator` and `:definition_description` onto `measures`."
-  [measures]
-  (t2/hydrate measures :creator :definition_description))
-
-(defn hydrate-table
-  "Hydrate `:table` onto `measures`."
-  [measures]
-  (t2/hydrate measures :table))
-
 (defn measure
   "The Measure with `id`, or nil."
   [id]

@@ -413,23 +413,3 @@
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
-
-(defn hydrate-effective-location
-  "Hydrate `:effective_location` onto `collection-or-collections`."
-  [collection-or-collections]
-  (t2/hydrate collection-or-collections :effective_location))
-
-(defn hydrate-parent-id
-  "Hydrate `:parent_id` onto `collection-or-collections`."
-  [collection-or-collections]
-  (t2/hydrate collection-or-collections :parent_id))
-
-(defn hydrate-can-restore
-  "Hydrate `:can_restore` onto `collection`."
-  [collection]
-  (t2/hydrate collection :can_restore))
-
-(defn hydrate-collection
-  "Hydrate `:collection` onto `items`."
-  [items]
-  (t2/hydrate items :collection))

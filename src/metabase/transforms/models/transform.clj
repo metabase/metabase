@@ -422,7 +422,7 @@
   (let [table-ids (into #{} (keep :target_table_id) transforms)
         id->table (when (seq table-ids)
                     (m/index-by :id (-> (transforms.db/tables table-ids)
-                                        transforms.db/hydrate-db-and-fields)))]
+                                        (t2/hydrate :db :fields))))]
     (for [transform transforms]
       (assoc transform :table
              (get id->table (:target_table_id transform))))))

@@ -60,7 +60,7 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (explorations.db/hydrate-timeline (explorations.db/thread-timelines-for-threads (map :id threads))))
+              (t2/hydrate (explorations.db/thread-timelines-for-threads (map :id threads)) :timeline))
    :id
    {:default []}))
 
@@ -69,6 +69,6 @@
   (mi/instances-with-hydrated-data
    threads k
    #(group-by :exploration_thread_id
-              (explorations.db/hydrate-query-scores (explorations.db/queries-for-threads (map :id threads))))
+              (t2/hydrate (explorations.db/queries-for-threads (map :id threads)) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
    :id
    {:default []}))

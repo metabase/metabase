@@ -9,7 +9,8 @@
    [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"
@@ -43,7 +44,7 @@
   [{:keys [creator_id dashboard_subscription handlers] :as _notification-info} :- ::notification.payload/Notification]
   (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
     (let [dashboard-id (:dashboard_id dashboard_subscription)
-          dashboard    (notification.db/hydrate-tabs (notification.db/dashboard dashboard-id))
+          dashboard    (t2/hydrate (notification.db/dashboard dashboard-id) :tabs)
           parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))
           attached-ids (attached-card-ids dashboard_subscription)
           only-card-ids (when (attachment-only? handlers)

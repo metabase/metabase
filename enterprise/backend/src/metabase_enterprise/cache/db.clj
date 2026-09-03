@@ -1,6 +1,6 @@
 (ns metabase-enterprise.cache.db
   "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -141,11 +141,6 @@
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
   (t2/select-one :model/Dashboard :id dashboard-id))
-
-(defn hydrate-dashcards
-  "Hydrate `:dashcards` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :dashcards))
 
 (defn cache-configs-ready-to-run
   "The CacheConfigs of `strategy` whose next run is unset or due at `now`."

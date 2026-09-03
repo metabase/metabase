@@ -15,7 +15,8 @@
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.slackbot.api :as slackbot.api]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -188,7 +189,7 @@
                                    :limit    limit
                                    :offset   offset)
                       where (assoc :where where)))]
-    {:data   (->> (metabot-analytics.db/hydrate-user rows)
+    {:data   (->> (t2/hydrate rows :user)
                   hydrate-tool-counts
                   (map row->summary))
      :total  total
@@ -207,7 +208,7 @@
    hydrated as `:user` for display."
   [conversation-id]
   (let [rows (metabot-analytics.db/feedback-for-conversation conversation-id)]
-    (metabot-analytics.db/hydrate-user rows)))
+    (t2/hydrate rows :user)))
 
 (defn- fork-boundary-external-id
   "The `external_id` of the last message copied in from the parent when this
@@ -227,7 +228,7 @@
     (api/check-404 conversation)
     (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
           forked-from  (:forked_from_conversation_id conversation)
-          hydrated     (metabot-analytics.db/hydrate-user conversation)]
+          hydrated     (t2/hydrate conversation :user)]
       {:conversation_id             (:id conversation)
        :created_at                  (:created_at conversation)
        :title                       (:title conversation)

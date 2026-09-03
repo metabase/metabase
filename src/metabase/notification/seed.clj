@@ -227,7 +227,7 @@
   "Hydrate an existing notification row for comparison. Don't use [[models.notification/hydrate-notification]]
    so we can migrate on schema changes."
   [notification]
-  (notification.db/hydrate-notification notification))
+  (t2/hydrate notification :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]

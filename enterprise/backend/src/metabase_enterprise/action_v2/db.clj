@@ -63,11 +63,6 @@
   [field-ids]
   (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
 
-(defn hydrate-form-field-details
-  "Hydrate dimensions, has-field-values, and values onto `fields`."
-  [fields]
-  (t2/hydrate fields :dimensions :has_field_values :values))
-
 ;;; ------------------------------------------------------ Undo ------------------------------------------------------
 
 (defn- scope-and-user-where

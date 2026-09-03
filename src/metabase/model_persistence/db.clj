@@ -54,16 +54,6 @@
                                           [:= :c.type "model"]
                                           [:not :c.archived]]}))
 
-(defn hydrate-creator
-  "Hydrate `:creator` onto `persisted-infos`."
-  [persisted-infos]
-  (t2/hydrate persisted-infos :creator))
-
-(defn hydrate-card-collection-and-database
-  "Hydrate `:card` with its `:collection`, and `:database`, onto `persisted-infos`."
-  [persisted-infos]
-  (t2/hydrate persisted-infos [:card :collection] :database))
-
 (defn insert-persisted-info!
   "Insert the PersistedInfo `row` and return the inserted instance."
   [row]

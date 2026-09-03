@@ -376,11 +376,6 @@
               :from   [[(t2/table-name :model/Table) :t]]
               :where  where}))
 
-(defn hydrate-fields
-  "Hydrate `:fields` onto `tables`."
-  [tables]
-  (t2/hydrate tables :fields))
-
 ;;; ------------------------------------------------- Fields -------------------------------------------------
 
 (defn field
@@ -485,11 +480,6 @@
   (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
                                                    :metabot_chart_id        chart-id}))
 
-(defn hydrate-average-query-time
-  "Hydrate `:average_query_time` onto `card`."
-  [card]
-  (t2/hydrate card :average_query_time))
-
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (defn collection
@@ -575,11 +565,6 @@
   (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :visualization_settings]
              :dashboard_id dashboard-id
              {:order-by [[:row :asc] [:col :asc]]}))
-
-(defn hydrate-dashcards-with-cards
-  "Hydrate `:dashcards` with their `:card` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard [:dashcards :card]))
 
 (defn documents-in-collection
   "The ID, name, Collection ID, and exploration of the unarchived, non-exploration Documents in the Collection with

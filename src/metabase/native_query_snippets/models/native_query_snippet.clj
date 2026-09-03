@@ -129,7 +129,7 @@
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
   (let [non-nil-snippets (remove nil? snippets)
-        snippets-with-collections (native-query-snippets.db/hydrate-collection non-nil-snippets)
+        snippets-with-collections (t2/hydrate non-nil-snippets :collection)
         editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
     (mi/instances-with-hydrated-data
      snippets k

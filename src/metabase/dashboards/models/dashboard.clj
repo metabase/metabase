@@ -215,7 +215,7 @@
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
   (let [dash (-> (dashboards.db/dashboard (u/the-id dashboard-or-id))
-                 dashboards.db/hydrate-dashcards-with-cards)]
+                 (t2/hydrate [:dashcards :card]))]
     (params/dashcards->param-field-ids (:dashcards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
@@ -280,7 +280,7 @@
     ;; metadata (`type/Category`, `source/table-defaults`, ...) that
     ;; `param-target->field-id` later validates against `:metabase.queries.schema/card`.
     (let [dashcards-for-hydration (map #(dissoc % :card) new-dashcards)
-          new-param-field-ids    (params/dashcards->param-field-ids (dashboards.db/hydrate-card dashcards-for-hydration))]
+          new-param-field-ids    (params/dashcards->param-field-ids (t2/hydrate dashcards-for-hydration :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
 (defn- legacy-result-metadata-for-query
@@ -312,7 +312,7 @@
                             :enable_embedding :embedding_params)
                     (assoc :creator_id api/*current-user-id*)))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (dashboards.db/hydrate-card-details card))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- check-dashcard-parameter-mapping-permissions
   [dashcards]
@@ -414,7 +414,7 @@
                                :dashcard     ...
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
-  (let [dashboards-with-cards (dashboards.db/hydrate-dashcards-cards-and-series dashboards)]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard
@@ -507,8 +507,8 @@
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
   ;; expects, then reuse the same walk as deserialization.
   (dashboard-deps true (-> dashboard
-                           dashboards.db/hydrate-dashcards
-                           (update :dashcards dashboards.db/hydrate-series))))
+                           (t2/hydrate :dashcards)
+                           (update :dashcards #(t2/hydrate % :series)))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

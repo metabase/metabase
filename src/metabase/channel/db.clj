@@ -86,11 +86,6 @@
   [dashboard-id]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
 
-(defn hydrate-card
-  "Hydrate `:card` onto `dashcards`."
-  [dashcards]
-  (t2/hydrate dashcards :card))
-
 (defn any-user
   "Some User, or nil."
   []

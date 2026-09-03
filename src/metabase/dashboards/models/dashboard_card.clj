@@ -146,7 +146,7 @@
   "Fetch a single DashboardCard by its ID value."
   [id :- ms/PositiveInt]
   (-> (dashboards.db/dashcard id)
-      dashboards.db/hydrate-series))
+      (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
   "Return the cards which have been added to this dashcard using the 'add series' dashboard feature.
@@ -257,7 +257,7 @@
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
         (-> (dashboards.db/dashcards-by-ids dashboard-card-ids)
-            dashboards.db/hydrate-series)))))
+            (t2/hydrate :series))))))
 
 (defn- cleanup-orphaned-inline-parameters!
   "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.

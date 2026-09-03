@@ -54,7 +54,7 @@
                             {:event        "security_advisory_acknowledged"
                              :event_detail (name (:severity advisory))})
     (-> (security-center.db/advisory (:id advisory))
-        security-center.db/hydrate-acknowledged-by-user)))
+        (t2/hydrate :acknowledged_by_user))))
 
 (defn acknowledge-many!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged

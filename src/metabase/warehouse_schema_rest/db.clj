@@ -1,6 +1,6 @@
 (ns metabase.warehouse-schema-rest.db
   "Application database queries for the warehouse schema REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -30,26 +30,6 @@
   `nfc-path-pattern`, returning the number updated."
   [table-id nfc-path-pattern active?]
   (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
-
-(defn hydrate-dimensions
-  "Hydrate `:dimensions` onto `field`."
-  [field]
-  (t2/hydrate field :dimensions))
-
-(defn hydrate-dimensions-and-has-field-values
-  "Hydrate `:dimensions` and `:has_field_values` onto `field`."
-  [field]
-  (t2/hydrate field :dimensions :has_field_values))
-
-(defn hydrate-table
-  "Hydrate `:table` onto `field`."
-  [field]
-  (t2/hydrate field :table))
-
-(defn hydrate-table-and-db
-  "Hydrate `:table` with its `:db` onto `field`."
-  [field]
-  (t2/hydrate field [:table :db]))
 
 (defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
@@ -100,21 +80,6 @@
   "Apply `changes` to the Table with `table-id`."
   [table-id changes]
   (t2/update! :model/Table table-id changes))
-
-(defn hydrate
-  "Hydrate the `hydration` keys onto `instances`."
-  [instances hydration]
-  (apply t2/hydrate instances hydration))
-
-(defn hydrate-db-pk-field-and-collection
-  "Hydrate `:db`, `:pk_field`, and `:collection` onto `table`."
-  [table]
-  (t2/hydrate table :db :pk_field :collection))
-
-(defn hydrate-fields-dimensions-and-values
-  "Hydrate `:fields` with their targets, dimensions, and field values onto `table`."
-  [table]
-  (t2/hydrate table [:fields [:target :has_field_values] :dimensions :has_field_values]))
 
 (defn database
   "The Database with `database-id`, or nil."

@@ -355,7 +355,7 @@
                                       :left-join join-clause)
         runs            (transforms.db/runs-where query-options)
         root-collection (collection.root/hydrated-root-collection :transforms)]
-    {:data   (->> (transforms.db/hydrate-run-transforms runs)
+    {:data   (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
                   (map #(update % :transform collection.root/hydrate-root-collection root-collection)))
      :limit  limit
      :offset offset

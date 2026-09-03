@@ -97,7 +97,7 @@
                                :invited-user-id new-user-id
                                :source          (or source :admin)})
       (-> (fetch-user :id new-user-id)
-          users.db/hydrate-user-group-memberships))))
+          (t2/hydrate :user_group_memberships)))))
 
 (defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."

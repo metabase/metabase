@@ -83,16 +83,6 @@
   [card-id changes]
   (t2/update! :model/Card card-id changes))
 
-(defn hydrate-can-write
-  "Hydrate `:can_write` onto `instances`."
-  [instances]
-  (t2/hydrate instances :can_write))
-
-(defn hydrate-in-dashboards
-  "Hydrate `:in_dashboards` onto `card`."
-  [card]
-  (t2/hydrate card :in_dashboards))
-
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
 (defn dashcard-counts-by-card
@@ -208,16 +198,6 @@
   "Apply `changes` to the Dashboard with `dashboard-id`."
   [dashboard-id changes]
   (t2/update! :model/Dashboard dashboard-id changes))
-
-(defn hydrate-can-write-and-param-fields
-  "Hydrate `:can_write` and `:param_fields` onto `dashboards`."
-  [dashboards]
-  (t2/hydrate dashboards :can_write :param_fields))
-
-(defn hydrate-dashcards-and-tabs
-  "Hydrate `:dashcards` and `:tabs` with their cards onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :dashcards [:tabs :tab-cards]))
 
 (defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."

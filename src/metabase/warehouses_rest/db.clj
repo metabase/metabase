@@ -1,6 +1,6 @@
 (ns metabase.warehouses-rest.db
   "Application database queries for the warehouses REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -29,11 +29,6 @@
   []
   (t2/select [:model/Database :id :engine]))
 
-(defn hydrate-collection-and-metrics
-  "Hydrate `:collection` and `:metrics` onto `card`."
-  [card]
-  (t2/hydrate card :collection :metrics))
-
 (defn source-query-cards-reducible
   "A reducible of the Cards, with their moderation status, matching the Honey SQL `where` clause, in
   case-insensitive name order."
@@ -58,41 +53,6 @@
   [where]
   (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                               :where where}))
-
-(defn hydrate-router-user-attribute
-  "Hydrate `:router_user_attribute` onto `databases`."
-  [databases]
-  (t2/hydrate databases :router_user_attribute))
-
-(defn hydrate-tables
-  "Hydrate `:tables` onto `database`."
-  [database]
-  (t2/hydrate database :tables))
-
-(defn hydrate-tables-with-fields
-  "Hydrate `:tables` with their `:fields` (and field targets and values) onto `database`."
-  [database]
-  (t2/hydrate database [:tables [:fields [:target :has_field_values] :has_field_values]]))
-
-(defn hydrate-tables-segments-and-metrics
-  "Hydrate `:tables` with their `:segments` and `:metrics` onto `database`."
-  [database]
-  (t2/hydrate database [:tables :segments :metrics]))
-
-(defn hydrate-tables-fields-segments-and-metrics
-  "Hydrate `:tables` with their `:fields`, `:segments`, and `:metrics` onto `database`."
-  [database]
-  (t2/hydrate database [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))
-
-(defn hydrate
-  "Hydrate the `hydration` keys onto `instances`."
-  [instances hydration]
-  (apply t2/hydrate instances hydration))
-
-(defn hydrate-table
-  "Hydrate `:table` onto `fields`."
-  [fields]
-  (t2/hydrate fields :table))
 
 (defn database-exists?
   "Whether a Database with `database-id` exists."

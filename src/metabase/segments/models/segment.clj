@@ -80,7 +80,7 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (let [table (:table (segments.db/hydrate-table instance))]
+   (let [table (:table (t2/hydrate instance :table))]
      (mi/can-read? table)))
   ([_model pk]
    (mi/can-read? (segments.db/segment pk))))
@@ -128,7 +128,7 @@
    then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
    on each segment. This avoids N+1 queries when checking permissions for multiple segments."
   [_model k segments]
-  (let [segments-with-tables (segments.db/hydrate-table (remove nil? segments))
+  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
         ;; Get all unique collection IDs from the hydrated tables
         collection-ids (->> segments-with-tables
                             (keep (comp :collection_id :table))

@@ -9,7 +9,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.secret :as u.secret]))
+   [metabase.util.secret :as u.secret]
+   [toucan2.core :as t2]))
 
 (defn- maybe-expose-key [api-key]
   (if (contains? api-key :unmasked_key)
@@ -20,7 +21,7 @@
   "Takes an ApiKey and hydrates/selects keys as necessary to put it into a standard form for responses"
   [api-key]
   (-> api-key
-      api-keys.db/hydrate-group-and-updated-by
+      (t2/hydrate :group :updated_by)
       (select-keys [:created_at
                     :updated_at
                     :updated_by
@@ -100,7 +101,7 @@
   "Get a list of API keys with the default scope. Non-paginated."
   []
   (api/check-superuser)
-  (let [api-keys (api-keys.db/hydrate-group-and-updated-by (api-keys.db/unscoped-api-keys))]
+  (let [api-keys (t2/hydrate (api-keys.db/unscoped-api-keys) :group :updated_by)]
     (map present-api-key api-keys)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -76,16 +76,6 @@
   [sandbox-ids]
   (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
 
-(defn hydrate-table
-  "Hydrate `:table` onto `sandboxes`."
-  [sandboxes]
-  (t2/hydrate sandboxes :table))
-
-(defn hydrate-card
-  "Hydrate `:card` onto `sandbox`."
-  [sandbox]
-  (t2/hydrate sandbox :card))
-
 ;;; --------------------------------------------------- Other models ---------------------------------------------------
 
 (defn impersonations-for-groups

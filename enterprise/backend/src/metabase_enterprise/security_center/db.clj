@@ -48,13 +48,3 @@
   "A map of ID to the ID, names, and email of the Users with `user-ids`."
   [user-ids]
   (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
-
-(defn hydrate-acknowledged-by-user
-  "Hydrate `:acknowledged_by_user` onto `advisories`."
-  [advisories]
-  (t2/hydrate advisories :acknowledged_by_user))
-
-(defn hydrate-recipients-detail
-  "Hydrate `:recipients-detail` onto `recipients`."
-  [recipients]
-  (t2/hydrate recipients :recipients-detail))

@@ -130,7 +130,7 @@
         hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/tables query) tables
-      (warehouse-schema-rest.db/hydrate tables hydrations)
+      (apply t2/hydrate tables hydrations)
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                           :table-ids (into #{} (map :id) tables)})
           tables)
@@ -162,7 +162,7 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
-        warehouse-schema-rest.db/hydrate-db-pk-field-and-collection
+        (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -216,7 +216,7 @@
     (if changed-field-order?
       (do
         (table/update-field-positions! updated-table)
-        (warehouse-schema-rest.db/hydrate-fields-dimensions-and-values updated-table))
+        (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 ;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?
@@ -384,7 +384,7 @@
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
     (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
-          :let [origin-field (warehouse-schema-rest.db/hydrate-table-and-db origin-field)]
+          :let [origin-field (t2/hydrate origin-field [:table :db])]
           :when (and (-> origin-field :table :active)
                      (mi/can-read? origin-field))
           :let [origin-field (update origin-field :table schema.table/present-table)]]
@@ -393,7 +393,7 @@
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (warehouse-schema-rest.db/hydrate-table (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)))})))
+       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

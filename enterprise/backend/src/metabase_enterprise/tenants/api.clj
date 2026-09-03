@@ -33,7 +33,7 @@
                        [:tenant_collection_id ms/PositiveInt]])
 
 (defn- present-tenants [tenants]
-  (->> (tenants.db/hydrate-member-count tenants)
+  (->> (t2/hydrate tenants :member_count)
        (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id]))))
 
 (defn- present-tenant [tenant]

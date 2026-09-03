@@ -50,26 +50,6 @@
   [user-ids]
   (t2/select-pk->fn :email :model/User, :id [:in user-ids]))
 
-(defn hydrate-can-write
-  "Hydrate `:can_write` onto `pulses`."
-  [pulses]
-  (t2/hydrate pulses :can_write))
-
-(defn hydrate-cards
-  "Hydrate `:cards` onto `pulse`."
-  [pulse]
-  (t2/hydrate pulse :cards))
-
-(defn hydrate-channels-with-recipients
-  "Hydrate `:channels` with their `:recipients` onto `pulse`."
-  [pulse]
-  (t2/hydrate pulse [:channels :recipients]))
-
-(defn hydrate-notification-details
-  "Hydrate the creator, cards, and channels with recipients onto `pulses`."
-  [pulses]
-  (t2/hydrate pulses :creator :cards [:channels :recipients]))
-
 (defn pulse
   "The Pulse with `pulse-id`, or nil."
   [pulse-id]

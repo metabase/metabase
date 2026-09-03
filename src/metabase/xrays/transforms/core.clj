@@ -15,7 +15,8 @@
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]))
+   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]
+   [toucan2.core :as t2]))
 
 (mu/defn- add-bindings :- Bindings
   [bindings     :- Bindings
@@ -191,7 +192,7 @@
    schema :- [:maybe :string]]
   (-> (xrays.db/tables-in-schema db-id schema)
       de/with-domain-entity
-      xrays.db/hydrate-fields))
+      (t2/hydrate :fields)))
 
 (mu/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.

@@ -7,7 +7,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- models-query
   [model ids]
@@ -27,7 +28,7 @@
                           (->> (models-query model (map :model_id views'))
                                (mapv #(assoc % :model model)))))
                       grouped)
-        items (->> (activity-feed.db/hydrate-moderation-reviews items)
+        items (->> (t2/hydrate items :moderation_reviews)
                    (map (fn [{:keys [moderation_reviews] :as item}]
                           (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
                             (assoc item :moderated_status status)))))]
@@ -122,7 +123,7 @@
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
     (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
                         api/check-404
-                        activity-feed.db/hydrate-collection-is-personal)]
+                        (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)
         dashboard
         api/generic-204-no-content))

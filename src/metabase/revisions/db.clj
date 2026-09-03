@@ -55,31 +55,6 @@
   [card-id]
   (t2/select-one :model/Card :id card-id))
 
-(defn hydrate-moderation-reviews-with-moderator
-  "Hydrate `:moderation_reviews` with their moderator details onto `card`."
-  [card]
-  (t2/hydrate card [:moderation_reviews :moderator_details]))
-
-(defn hydrate-dashcards
-  "Hydrate `:dashcards` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :dashcards))
-
-(defn hydrate-series
-  "Hydrate `:series` onto `dashcards`."
-  [dashcards]
-  (t2/hydrate dashcards :series))
-
-(defn hydrate-tabs
-  "Hydrate `:tabs` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :tabs))
-
-(defn hydrate-user
-  "Hydrate `:user` onto `revision`."
-  [revision]
-  (t2/hydrate revision :user))
-
 (defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id]

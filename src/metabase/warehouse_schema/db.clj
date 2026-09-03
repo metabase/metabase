@@ -115,31 +115,6 @@
   [table-id]
   (t2/delete! :model/Field :table_id table-id))
 
-(defn hydrate-table
-  "Hydrate `:table` onto `fields`."
-  [fields]
-  (t2/hydrate fields :table))
-
-(defn hydrate-target
-  "Hydrate `:target` onto `field`."
-  [field]
-  (t2/hydrate field :target))
-
-(defn hydrate-field-details
-  "Hydrate the Table with its Database, has-field-values, dimensions, and name Field onto `field`."
-  [field]
-  (t2/hydrate field [:table :db] :has_field_values :dimensions :name_field))
-
-(defn hydrate-field-list-details
-  "Hydrate has-field-values, dimensions with their human-readable Field, and name Field onto `fields`."
-  [fields]
-  (t2/hydrate fields :has_field_values [:dimensions :human_readable_field] :name_field))
-
-(defn hydrate-field-metadata
-  "Hydrate the FK target with its has-field-values, has-field-values, dimensions, and name Field onto `fields`."
-  [fields]
-  (t2/hydrate fields [:target :has_field_values] :has_field_values :dimensions :name_field))
-
 ;;; -------------------------------------------- FieldUserSettings --------------------------------------------
 
 (defn field-user-settings
@@ -285,20 +260,6 @@
   [table-id changes]
   (t2/update! :model/Table table-id changes))
 
-(defn hydrate-keys
-  "Hydrate `hydration-keys` onto `table`."
-  [table hydration-keys]
-  (apply t2/hydrate table hydration-keys))
-
-(defn hydrate-query-metadata
-  "Hydrate the Fields with their metadata, segments, measures, and metrics onto `tables`."
-  [tables]
-  (t2/hydrate tables
-              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-              :segments
-              :measures
-              :metrics))
-
 (defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."
   [table-ids]
@@ -386,8 +347,3 @@
                                              :limit    1} :r]
                           [:= :r.moderated_item_id :c.id]]
               :where     [:in :c.id card-ids]}))
-
-(defn hydrate-metrics
-  "Hydrate `:metrics` onto `cards`."
-  [cards]
-  (t2/hydrate cards :metrics))

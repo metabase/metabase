@@ -15,7 +15,8 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- effective-children-ids
   "Returns effective children ids for collection."
@@ -56,7 +57,7 @@
     (map annotate rows)))
 
 (defmethod present-model-items :model/Card [_ cards]
-  (->> (stale.db/hydrate-stale-card-details (stale.db/stale-cards (set (map :id cards))))
+  (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
        present-collections
        (map (fn [card]
               (-> card
@@ -75,7 +76,7 @@
            :is_tenant_dashboard (some-> parent-coll collection/shared-tenant-collection?))))
 
 (defmethod present-model-items :model/Dashboard [_ dashboards]
-  (->> (stale.db/hydrate-stale-dashboard-details (stale.db/stale-dashboards (set (map :id dashboards))))
+  (->> (t2/hydrate (stale.db/stale-dashboards (set (map :id dashboards))) :can_write :can_delete :can_restore [:collection :effective_location])
        annotate-dashboard-with-collection-info
        present-collections))
 

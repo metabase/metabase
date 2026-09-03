@@ -22,7 +22,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,7 +56,7 @@
                            limit             (sql.helpers/limit limit)
                            offset            (sql.helpers/offset offset))]
     (as-> (model-persistence.db/persisted-infos query) results
-      (model-persistence.db/hydrate-creator results)
+      (t2/hydrate results :creator)
       (map (fn [{:keys [database_id] :as pi}]
              (assoc pi
                     :schema_name (ddl.i/schema-name {:id database_id} site-uuid-str)

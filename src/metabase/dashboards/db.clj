@@ -112,36 +112,6 @@
   [row]
   (t2/insert-returning-instance! :model/Card row))
 
-(defn hydrate-card
-  "Hydrate `:card` onto `dashcards`."
-  [dashcards]
-  (t2/hydrate dashcards :card))
-
-(defn hydrate-card-details
-  "Hydrate the creator, dashboard count, write flag, and Collection onto `card`."
-  [card]
-  (t2/hydrate card :creator :dashboard_count :can_write :collection))
-
-(defn hydrate-dashcards
-  "Hydrate `:dashcards` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :dashcards))
-
-(defn hydrate-dashcards-with-cards
-  "Hydrate `:dashcards` with their `:card` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard [:dashcards :card]))
-
-(defn hydrate-dashcards-cards-and-series
-  "Hydrate `:dashcards` with their `:card` and `:series` onto `dashboards`."
-  [dashboards]
-  (t2/hydrate dashboards [:dashcards :card :series]))
-
-(defn hydrate-series
-  "Hydrate `:series` onto `dashcards`."
-  [dashcards]
-  (t2/hydrate dashcards :series))
-
 (defn dashcard-serdes-columns
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
   `dashboard-id`."

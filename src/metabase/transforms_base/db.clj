@@ -1,6 +1,6 @@
 (ns metabase.transforms-base.db
   "Application database queries for the transforms base module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -44,11 +44,6 @@
   `conditions`, or nil."
   [database-id schema table-name & conditions]
   (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
-
-(defn hydrate-db
-  "Hydrate `:db` onto `table`."
-  [table]
-  (t2/hydrate table :db))
 
 (defn table
   "The Table with `table-id`, or nil."

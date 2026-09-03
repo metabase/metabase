@@ -1,6 +1,6 @@
 (ns metabase.dashboards-rest.db
   "Application database queries for the dashboards REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -57,31 +57,6 @@
   "Delete the Dashboard with `dashboard-id`."
   [dashboard-id]
   (t2/delete! :model/Dashboard :id dashboard-id))
-
-(defn hydrate
-  "Hydrate the `hydration` keys onto `dashboard`."
-  [dashboard hydration]
-  (apply t2/hydrate dashboard hydration))
-
-(defn hydrate-creator
-  "Hydrate `:creator` onto `dashboards`."
-  [dashboards]
-  (t2/hydrate dashboards :creator))
-
-(defn hydrate-resolved-params
-  "Hydrate `:resolved-params` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :resolved-params))
-
-(defn hydrate-dashcards-cards-and-resolved-params
-  "Hydrate `:dashcards` with their `:card`, and `:resolved-params`, onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard [:dashcards :card] :resolved-params))
-
-(defn hydrate-dashcards-series-cards-and-tabs
-  "Hydrate `:dashcards` with their `:series` and `:card`, and `:tabs`, onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard [:dashcards :series :card] :tabs))
 
 (defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."

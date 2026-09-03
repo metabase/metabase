@@ -6,7 +6,8 @@
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -21,7 +22,7 @@
                   [:or
                    [:like [:lower :term] pattern]
                    [:like [:lower :definition] pattern]]))]
-    {:data (glossary.db/hydrate-creator (glossary.db/glossary-entries where))}))
+    {:data (t2/hydrate (glossary.db/glossary-entries where) :creator)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -42,7 +43,7 @@
     (events/publish-event! :event/glossary-create
                            {:object glossary
                             :user-id api/*current-user-id*})
-    (glossary.db/hydrate-creator glossary)))
+    (t2/hydrate glossary :creator)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -63,7 +64,7 @@
                              {:object glossary
                               :previous-object previous-glossary
                               :user-id api/*current-user-id*})
-      (glossary.db/hydrate-creator glossary))))
+      (t2/hydrate glossary :creator))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

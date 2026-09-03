@@ -19,7 +19,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -902,7 +903,7 @@
         (let [options (cond-> arguments
                         (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
               details (if (int? report-id)
-                        (let [card    (metabot.db/hydrate-average-query-time (metabot.tools.u/get-card report-id))
+                        (let [card    (t2/hydrate (metabot.tools.u/get-card report-id) :average_query_time)
                               mp      (lib-be/application-database-metadata-provider (:database_id card))
                               ;; The select-keys below drops :related_tables and :metrics, so don't compute them. On
                               ;; wide-FK source tables the related-tables cost can be substantial (metabase#76493).

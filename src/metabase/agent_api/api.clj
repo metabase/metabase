@@ -77,7 +77,7 @@
           ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
           ;; drops ancestors the caller can't read. A personal subtree leads with the personal
           ;; collection instead, so drop that root crumb for them.
-          ancestors (cond->> (:effective_ancestors (agent-api.db/hydrate-effective-ancestors coll))
+          ancestors (cond->> (:effective_ancestors (t2/hydrate coll :effective_ancestors))
                       (collection/is-personal-collection-or-descendant-of-one? coll)
                       (remove #(= "root" (:id %))))
           chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))]

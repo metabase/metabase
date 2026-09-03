@@ -6,7 +6,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.schema :as collections.schema]))
+   [metabase.collections.schema :as collections.schema]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,7 +47,7 @@
    _body]
   (if-let [library (collections/library-collection)]
     (-> (api/read-check library)
-        library.db/hydrate-can-write-and-effective-children
+        (t2/hydrate :can_write :effective_children)
         (add-here-and-below)
         (assoc :model "collection"))
     {:data nil}))
@@ -73,7 +74,7 @@
   [_route-params
    _query]
   (let [collections              (-> (select-collections)
-                                     library.db/hydrate-can-write)
+                                     (t2/hydrate :can_write))
         collection-type-ids      (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                                            (update acc (case (keyword card-type)
                                                          :model :dataset

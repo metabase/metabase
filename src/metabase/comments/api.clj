@@ -150,7 +150,7 @@
      :comments []}
     (let [_entity  (api/read-check (type->model target_type) target_id)
           comments (-> (comments.db/comments-for-target target_type target_id)
-                       comments.db/hydrate-creator-and-reactions)]
+                       (t2/hydrate :creator :reactions))]
       ;; The read check above only proves the viewer may see the *target*, and for an exploration
       ;; that is collection permissions alone; the gate is what adjudicates the warehouse values a
       ;; `:context` carries (its dimension values and the `:highlight_label` summarizing them).
@@ -197,7 +197,7 @@
   "Send a notification using only comment id"
   [comment-id]
   (notify-comment! (-> (comments.db/comment-by-id comment-id)
-                       comments.db/hydrate-creator-and-reactions)))
+                       (t2/hydrate :creator :reactions))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -218,7 +218,7 @@
                                                       (= (:target_id <>) target_id)
                                                       (= (:child_target_id <>) child_target_id))
                                                  "Parent comment doesn't belong to the same entity"))
-                         comments.db/hydrate-creator))
+                         (t2/hydrate :creator)))
         comment    (-> (comments.db/insert-comment! {:target_type       target_type
                                                      :target_id         target_id
                                                      :child_target_id   child_target_id
@@ -226,7 +226,7 @@
                                                      :parent_comment_id parent_comment_id
                                                      :content           content
                                                      :creator_id        api/*current-user-id*})
-                       comments.db/hydrate-creator
+                       (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})
@@ -263,7 +263,7 @@
                            not-empty)]
       (comments.db/update-comment! comment-id updates))
     (let [updated-comment (-> (comments.db/comment-by-id comment-id)
-                              comments.db/hydrate-creator-and-reactions)]
+                              (t2/hydrate :creator :reactions))]
       (events/publish-event! :event/comment-update
                              {:object updated-comment
                               :user-id api/*current-user-id*})

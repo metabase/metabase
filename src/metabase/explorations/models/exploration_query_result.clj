@@ -98,7 +98,7 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (explorations.db/hydrate-segment-name (explorations.db/query eq-id)))
+     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
            eqr       (api/check-404 (explorations.db/query-result eq-id))
            sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
            qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]

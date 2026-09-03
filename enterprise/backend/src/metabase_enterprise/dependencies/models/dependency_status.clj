@@ -53,7 +53,7 @@
 (defmethod hydrate-for-deps :default [_ instances] instances)
 
 (defmethod hydrate-for-deps :dashboard [_ instances]
-  (dependencies.db/hydrate instances [:dashcards :series]))
+  (t2/hydrate instances [:dashcards :series]))
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need

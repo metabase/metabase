@@ -226,7 +226,7 @@
           filter-param   (when filter-param (codec/url-decode filter-param))
           lower-email    (when filter-param (user-filter-email filter-param))
           users          (scim.db/scim-users lower-email limit offset)
-          hydrated-users (scim.db/hydrate-scim-user-group-memberships users)
+          hydrated-users (t2/hydrate users :scim_user_group_memberships)
           results-count  (count hydrated-users)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
@@ -246,7 +246,7 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
-        scim.db/hydrate-scim-user-group-memberships
+        (t2/hydrate :scim_user_group_memberships)
         mb-user->scim)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -435,7 +435,7 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
-        scim.db/hydrate-scim-group-members
+        (t2/hydrate :scim_group_members)
         mb-group->scim)))
 
 (defn- update-group-membership
@@ -468,7 +468,7 @@
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
-              scim.db/hydrate-scim-group-members
+              (t2/hydrate :scim_group_members)
               mb-group->scim
               (scim-response 201)))))))
 
@@ -491,7 +491,7 @@
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
-              scim.db/hydrate-scim-group-members
+              (t2/hydrate :scim_group_members)
               mb-group->scim
               scim-response))))))
 

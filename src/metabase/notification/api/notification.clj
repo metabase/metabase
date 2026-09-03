@@ -213,7 +213,7 @@
                                                 (remove current-user?)
                                                 seq)]
         (messages/send-you-were-added-card-notification-email!
-         (update notification :payload notification.db/hydrate-card) recipients-except-creator @api/*current-user*)))))
+         (update notification :payload #(t2/hydrate % :card)) recipients-except-creator @api/*current-user*)))))
 
 (mu/defn create-notification! :- ::models.notification/FullyHydratedNotification
   "Create a notification with permission checks, hydration, email notifications, and event publishing."
@@ -249,7 +249,7 @@
           current-user @api/*current-user*
           old-emails   (all-email-recipients existing-notification)
           new-emails   (all-email-recipients updated-notification)
-          notification (update existing-notification :payload notification.db/hydrate-card)]
+          notification (update existing-notification :payload #(t2/hydrate % :card))]
       (cond
         ;; Notification was just archived - notify all users they were unsubscribed
         (and was-active? (not is-active?))
@@ -365,7 +365,7 @@
       (when (card-notification? <>)
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
-           (update <> :payload notification.db/hydrate-card)
+           (update <> :payload #(t2/hydrate % :card))
            [(:email @api/*current-user*)])))
       (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))

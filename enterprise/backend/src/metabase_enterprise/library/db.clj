@@ -1,6 +1,6 @@
 (ns metabase-enterprise.library.db
   "Application database queries for the library module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -30,13 +30,3 @@
   (t2/reducible-query {:select-distinct [:collection_id :type]
                        :from            [:report_card]
                        :where           [:= :archived false]}))
-
-(defn hydrate-can-write
-  "Hydrate `:can_write` onto `collections`."
-  [collections]
-  (t2/hydrate collections :can_write))
-
-(defn hydrate-can-write-and-effective-children
-  "Hydrate `:can_write` and `:effective_children` onto `collection`."
-  [collection]
-  (t2/hydrate collection :can_write :effective_children))

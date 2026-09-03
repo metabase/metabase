@@ -14,21 +14,6 @@
                                  :description description
                                  :definition  definition))
 
-(defn hydrate-creator
-  "Hydrate `:creator` onto `segment`."
-  [segment]
-  (t2/hydrate segment :creator))
-
-(defn hydrate-creator-and-definition-description
-  "Hydrate `:creator` and `:definition_description` onto `segments`."
-  [segments]
-  (t2/hydrate segments :creator :definition_description))
-
-(defn hydrate-table
-  "Hydrate `:table` onto `segments`."
-  [segments]
-  (t2/hydrate segments :table))
-
 (defn segment
   "The Segment with `id`, or nil."
   [id]

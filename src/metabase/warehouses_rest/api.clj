@@ -211,7 +211,7 @@
      (comp (map (partial mi/do-after-select :model/Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj warehouses-rest.db/hydrate-collection-and-metrics)
+     (completing conj #(t2/hydrate % :collection :metrics))
      []
      (warehouses-rest.db/source-query-cards-reducible
       (into [:and
@@ -336,7 +336,7 @@
       include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
-      true                         warehouses-rest.db/hydrate-router-user-attribute
+      true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
@@ -450,8 +450,8 @@
   (if-not include
     db
     (-> (case include
-          "tables"        (warehouses-rest.db/hydrate-tables db)
-          "tables.fields" (warehouses-rest.db/hydrate-tables-with-fields db))
+          "tables"        (t2/hydrate db :tables)
+          "tables.fields" (t2/hydrate db [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables
@@ -476,7 +476,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         warehouses-rest.db/hydrate-router-user-attribute
+    true                         (t2/hydrate :router_user_attribute)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
@@ -610,8 +610,8 @@
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                ((if skip-fields?
-                  warehouses-rest.db/hydrate-tables-segments-and-metrics
-                  warehouses-rest.db/hydrate-tables-fields-segments-and-metrics)))
+                  #(t2/hydrate % [:tables :segments :metrics])
+                  #(t2/hydrate % [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
         _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
@@ -822,7 +822,7 @@
   (warehouses/get-database id)
   (perms/prime-table-perms-cache {:db-ids #{id}})
   (let [fields (filter mi/can-read? (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
-                                        warehouses-rest.db/hydrate-table))]
+                                        (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
        :name          name
@@ -852,7 +852,7 @@
     (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          warehouses-rest.db/hydrate-table)))))
+                                          (t2/hydrate :table))))))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
@@ -1457,7 +1457,7 @@
                             (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
      (if (seq hydration-keys)
-       (warehouses-rest.db/hydrate filtered-tables hydration-keys)
+       (apply t2/hydrate filtered-tables hydration-keys)
        filtered-tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

@@ -89,7 +89,7 @@
                                                                 :ten-thousand-rows :limited
                                                                 :one-million-rows :full
                                                                 :full :full))) cards))))
-     (pulse.db/hydrate-can-write pulses))))
+     (t2/hydrate pulses :can_write))))
 
 (defn create-pulse-with-perm-checks!
   "Create a new Pulse with permissions checks."
@@ -199,7 +199,7 @@
     (-> pulse
         models.pulse/maybe-filter-pulse-recipients
         models.pulse/maybe-strip-sensitive-metadata
-        pulse.db/hydrate-can-write)))
+        (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients
   "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.

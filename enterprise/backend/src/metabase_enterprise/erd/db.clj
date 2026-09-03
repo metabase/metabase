@@ -1,6 +1,6 @@
 (ns metabase-enterprise.erd.db
   "Application database queries for the erd module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
@@ -24,8 +24,3 @@
   (t2/select :model/Field {:where [:and
                                    [:in :id field-ids]
                                    [:= :active true]]}))
-
-(defn hydrate-owner
-  "Hydrate `:owner` onto `tables`."
-  [tables]
-  (t2/hydrate tables :owner))

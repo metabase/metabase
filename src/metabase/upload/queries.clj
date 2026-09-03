@@ -1,6 +1,6 @@
 (ns metabase.upload.queries
   "Application database queries for the upload module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -100,8 +100,3 @@
   "The Tables with `table-ids`."
   [table-ids]
   (t2/select :model/Table :id [:in table-ids]))
-
-(defn hydrate-db
-  "Hydrate `:db` onto `tables`."
-  [tables]
-  (t2/hydrate tables :db))

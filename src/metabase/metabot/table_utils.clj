@@ -54,8 +54,8 @@
                                                             table-cte (assoc :with table-cte)))
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
-         fill-tables (metabot.db/hydrate-fields fill-tables)
-         priority-tables (metabot.db/hydrate-fields priority-tables)
+         fill-tables (t2/hydrate fill-tables :fields)
+         priority-tables (t2/hydrate priority-tables :fields)
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
      (mapv (fn [{:keys [fields] :as table}]
@@ -246,11 +246,11 @@
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)
-         tables (metabot.db/hydrate-fields tables)]
+         tables (t2/hydrate tables :fields)]
      (format-schema-ddl tables))))
 
 (defn schema-full
   "Returns the DDL for all tables in a database."
   [database-id]
   (let [tables (database-tables database-id)]
-    (format-schema-ddl (metabot.db/hydrate-fields tables))))
+    (format-schema-ddl (t2/hydrate tables :fields))))

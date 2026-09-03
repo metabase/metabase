@@ -24,11 +24,6 @@
   [card-id]
   (t2/select-one [:model/Card :name :description :card_schema], :id card-id))
 
-(defn hydrate-user-group-memberships
-  "Hydrate `:user_group_memberships` onto `user`."
-  [user]
-  (t2/hydrate user :user_group_memberships))
-
 (defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id]

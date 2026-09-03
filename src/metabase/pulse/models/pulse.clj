@@ -115,7 +115,7 @@
    (:card alert)
    ;; otherwise fetch the associated `:cards` (if not already fetched) and then pull the first one out, since Alerts
    ;; can only have one Card
-   (-> (pulse.db/hydrate-cards alert) :cards first)
+   (-> (t2/hydrate alert :cards) :cards first)
    ;; if there's still not a Card, throw an Exception!
    (throw (Exception. (tru "Invalid Alert: Alert does not have a Card associated with it")))))
 
@@ -144,7 +144,7 @@
 
 (defn- current-user-is-recipient?
   [notification]
-  (let [channels (:channels (pulse.db/hydrate-channels-with-recipients notification))
+  (let [channels (:channels (t2/hydrate notification [:channels :recipients]))
         recipient-ids (for [{recipients :recipients} channels
                             recipient recipients]
                         (:id recipient))]
@@ -274,14 +274,14 @@
   "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- (ms/InstanceOf :model/Pulse)]
   (-> notification
-      pulse.db/hydrate-notification-details
+      (t2/hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
 (mu/defn- hydrate-notifications :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
   [notifications :- [:sequential (ms/InstanceOf :model/Pulse)]]
   (as-> notifications <>
-    (pulse.db/hydrate-notification-details <>)
+    (t2/hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
 (mu/defn- notification->pulse :- (ms/InstanceOf :model/Pulse)

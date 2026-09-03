@@ -126,7 +126,7 @@
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
-                              parameters.db/hydrate-has-field-values))))
+                              (t2/hydrate :has_field_values)))))
 
 (methodical/defmethod t2/simple-hydrate [nil :name_field]
   "Not really 100% sure why this is even needed but when we do recursive hydration of `[:target :name_field]` it tries
@@ -192,7 +192,7 @@
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
-                                              parameters.db/hydrate-param-field-details
+                                              (t2/hydrate :has_field_values :name_field [:target :has_field_values :name_field] [:dimensions [:human_readable_field :has_field_values]])
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
@@ -423,7 +423,7 @@
                                  dashcards->param-id->field-ids
                                  param-field-ids->fields)]
             (assoc dashboard k param-fields)))
-        (parameters.db/hydrate-dashcards-with-cards-and-series dashboards)))
+        (t2/hydrate dashboards [:dashcards :card :series])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 CARD-SPECIFIC                                                  |

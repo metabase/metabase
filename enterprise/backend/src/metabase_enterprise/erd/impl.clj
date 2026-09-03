@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
@@ -170,7 +171,7 @@
         neighbor-fields        (fetch-fields-for-tables neighbor-table-ids)
         ;; Batch-hydrate `:owner` once across the whole node set so the
         ;; per-node build doesn't trigger N+1 user lookups.
-        all-tables             (erd.db/hydrate-owner (concat focal-tables neighbor-tables))
+        all-tables             (t2/hydrate (concat focal-tables neighbor-tables) :owner)
         all-fields             (concat focal-fields neighbor-fields)]
     {:tables-by-id       (index-by-id all-tables)
      :fields-by-table    (group-by :table_id all-fields)

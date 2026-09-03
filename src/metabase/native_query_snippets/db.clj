@@ -9,16 +9,6 @@
   [archived]
   (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[:%lower.name :asc]]}))
 
-(defn hydrate-creator-and-remote-synced
-  "Hydrate `:creator` and `:is_remote_synced` onto `snippets`."
-  [snippets]
-  (t2/hydrate snippets :creator :is_remote_synced))
-
-(defn hydrate-collection
-  "Hydrate `:collection` onto `snippets`."
-  [snippets]
-  (t2/hydrate snippets :collection))
-
 (defn snippet
   "The NativeQuerySnippet with `id`, or nil."
   [id]

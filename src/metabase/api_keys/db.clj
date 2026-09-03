@@ -4,21 +4,6 @@
   (:require
    [toucan2.core :as t2]))
 
-(defn hydrate-group-and-updated-by
-  "Hydrate `:group` and `:updated_by` onto `api-keys`."
-  [api-keys]
-  (t2/hydrate api-keys :group :updated_by))
-
-(defn hydrate-user-group-and-updated-by
-  "Hydrate `:user`, `:group`, and `:updated_by` onto `api-key`."
-  [api-key]
-  (t2/hydrate api-key :user :group :updated_by))
-
-(defn hydrate-group
-  "Hydrate `:group` onto `api-key`."
-  [api-key]
-  (t2/hydrate api-key :group))
-
 (defn unscoped-api-key-count
   "The number of ApiKeys without a scope."
   []

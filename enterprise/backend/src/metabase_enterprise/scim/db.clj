@@ -90,11 +90,6 @@
                            (map (fn [group-id] [:not= :pg.id group-id]))
                            excluded-group-ids)}))
 
-(defn hydrate-scim-user-group-memberships
-  "Hydrate `:scim_user_group_memberships` onto `users`."
-  [users]
-  (t2/hydrate users :scim_user_group_memberships))
-
 ;;; ------------------------------------------------------ Groups ------------------------------------------------------
 
 (defn- manageable-group-where
@@ -151,8 +146,3 @@
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
               :where [:in :pgm.group_id group-ids]}))
-
-(defn hydrate-scim-group-members
-  "Hydrate `:scim_group_members` onto `groups`."
-  [groups]
-  (t2/hydrate groups :scim_group_members))

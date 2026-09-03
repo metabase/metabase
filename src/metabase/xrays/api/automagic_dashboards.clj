@@ -26,7 +26,8 @@
    [metabase.xrays.db :as xrays.db]
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -260,7 +261,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (xrays.db/hydrate-table (xrays.db/fields-targeting field-id))]
+    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
       (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]

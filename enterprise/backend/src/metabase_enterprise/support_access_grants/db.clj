@@ -61,11 +61,6 @@
   [grant-id changes]
   (t2/update! :model/SupportAccessGrantLog grant-id changes))
 
-(defn hydrate-user-info
-  "Hydrate `:user_info` onto `grants`."
-  [grants]
-  (t2/hydrate grants :user_info))
-
 (defn user
   "The User with `user-id`, or nil."
   [user-id]

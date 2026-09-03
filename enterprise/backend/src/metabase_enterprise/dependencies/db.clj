@@ -23,11 +23,6 @@
   [where]
   (t2/select :model/AnalysisFindingError {:where where}))
 
-(defn hydrate
-  "Hydrate `hydration-keys` onto `instances`."
-  [instances & hydration-keys]
-  (apply t2/hydrate instances hydration-keys))
-
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
 (defn instances

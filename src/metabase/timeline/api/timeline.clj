@@ -13,7 +13,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -64,7 +65,7 @@
                                               [:archived {:default false} ms/BooleanValue]]]
   (let [timelines (->> (list-timelines archived?)
                        (map collection.root/hydrate-root-collection))]
-    (cond->> (timeline.db/hydrate-creator-collection-and-remote-synced timelines)
+    (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
@@ -80,7 +81,7 @@
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
         timeline (get-timeline id)]
-    (cond-> (timeline.db/hydrate-creator-collection-and-remote-synced timeline)
+    (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
@@ -117,7 +118,7 @@
                                                       :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (timeline.db/set-timeline-events-archived! id archived))
-    (u/prog1 (timeline.db/hydrate-creator-collection-and-remote-synced (timeline.db/timeline id))
+    (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

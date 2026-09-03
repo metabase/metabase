@@ -1,6 +1,6 @@
 (ns metabase-enterprise.metabot-analytics.db
   "Application database queries for the metabot-analytics module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -49,8 +49,3 @@
               :order-by [[:metabot_feedback.created_at :asc]
                          [:metabot_feedback.message_id :asc]
                          [:metabot_feedback.user_id :asc]]}))
-
-(defn hydrate-user
-  "Hydrate `:user` onto `rows`."
-  [rows]
-  (t2/hydrate rows :user))

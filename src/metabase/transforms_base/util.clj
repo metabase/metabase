@@ -33,7 +33,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
@@ -506,7 +507,7 @@
   "Load the `target` table of a transform from the database specified by `database-id`."
   [database-id target & kv-args]
   (some-> (apply transforms-base.db/target-table database-id (:schema target) (:name target) kv-args)
-          transforms-base.db/hydrate-db))
+          (t2/hydrate :db)))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
@@ -527,7 +528,7 @@
                    (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
                      (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
                          (-> (transforms-base.db/table (:id table))
-                             transforms-base.db/hydrate-db))
+                             (t2/hydrate :db)))
                      table)
                    table)]
        (sync/sync-table! table)

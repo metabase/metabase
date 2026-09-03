@@ -84,7 +84,7 @@
    models k
    #(into {}
           (map (juxt :id can-set-cache-policy?))
-          (cache.db/hydrate-collection (remove nil? models)))
+          (t2/hydrate (remove nil? models) :collection))
    :id
    {:default false}))
 

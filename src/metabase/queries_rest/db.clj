@@ -1,6 +1,6 @@
 (ns metabase.queries-rest.db
   "Application database queries for the queries REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -41,11 +41,6 @@
   [user-id]
   (t2/select [:model/CardBookmark :card_id] :user_id user-id))
 
-(defn hydrate-card
-  "Hydrate `:card` onto `bookmarks`."
-  [bookmarks]
-  (t2/hydrate bookmarks :card))
-
 (defn cards-using-model
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in
   case-insensitive name order."
@@ -59,11 +54,6 @@
                                                      [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
                           :where [:and [:= :m.id model-id] [:not :c.archived]]
                           :order-by [[[:lower :c.name] :asc]]}))
-
-(defn hydrate-creator-and-collection
-  "Hydrate `:creator` and `:collection` onto `cards`."
-  [cards]
-  (t2/hydrate cards :creator :collection))
 
 (defn public-cards
   "The name, id, public uuid, and schema of the unarchived Cards that are publicly shared."
@@ -87,41 +77,6 @@
   "The Database id of the Table with `table-id`, or nil."
   [table-id]
   (t2/select-one-fn :db_id :model/Table, :id table-id))
-
-(defn hydrate-card-details
-  "Hydrate the creator, permissions, usage, collection, moderation, and parameter details onto `card`."
-  [card]
-  (t2/hydrate card
-              :based_on_upload
-              :creator
-              :can_write
-              :dashboard_count
-              [:dashboard :moderation_status]
-              :average_query_time
-              :last_query_start
-              :parameter_usage_count
-              :can_restore
-              :can_delete
-              :can_manage_db
-              [:collection :is_personal]
-              [:moderation_reviews :moderator_details]
-              :param_fields
-              :is_remote_synced))
-
-(defn hydrate-persisted-and-can-manage-db
-  "Hydrate `:persisted` and `:can_manage_db` onto the model `card`."
-  [card]
-  (t2/hydrate card :persisted :can_manage_db))
-
-(defn hydrate-in-dashboards
-  "Hydrate `:in_dashboards` onto `cards`."
-  [cards]
-  (t2/hydrate cards :in_dashboards))
-
-(defn hydrate-moderation-reviews-with-moderator
-  "Hydrate `:moderation_reviews` with their moderator details onto `card`."
-  [card]
-  (t2/hydrate card [:moderation_reviews :moderator_details]))
 
 (defn card
   "The Card with `card-id`, or nil."

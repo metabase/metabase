@@ -432,25 +432,25 @@
 (defn- hydrate-entities [entity-type entities]
   (case entity-type
     :card (-> entities
-              (dependencies.db/hydrate :creator :dashboard :document [:collection :is_personal])
+              (t2/hydrate :creator :dashboard :document [:collection :is_personal])
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
-    :table (dependencies.db/hydrate entities :fields :db :transform :owner)
+    :table (t2/hydrate entities :fields :db :transform :owner)
     :transform (-> entities
-                   (dependencies.db/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
+                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
     :dashboard (-> entities
-                   (dependencies.db/hydrate :creator [:collection :is_personal])
+                   (t2/hydrate :creator [:collection :is_personal])
                    (->> (map collection.root/hydrate-root-collection))
                    (revisions/with-last-edit-info :dashboard))
     :document (-> entities
-                  (dependencies.db/hydrate :creator [:collection :is_personal])
+                  (t2/hydrate :creator [:collection :is_personal])
                   (->> (map collection.root/hydrate-root-collection)))
-    :sandbox (dependencies.db/hydrate entities [:table :db :fields])
+    :sandbox (t2/hydrate entities [:table :db :fields])
     :snippet (-> entities
-                 (dependencies.db/hydrate :creator :collection)
+                 (t2/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
-    (:segment :measure) (dependencies.db/hydrate entities :creator [:table :db])))
+    (:segment :measure) (t2/hydrate entities :creator [:table :db])))
 
 (defn- fetch-and-hydrate-nodes
   "Fetches and hydrates entities for the given nodes.

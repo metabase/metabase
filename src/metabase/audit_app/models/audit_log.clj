@@ -80,11 +80,11 @@
 (defmethod model-details :model/User
   [entity event-type]
   (case event-type
-    :user-update               (select-keys (audit-app.db/hydrate-user-group-memberships entity)
+    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
                                              :user_group_memberships :tenant_id])
-    :user-invited              (select-keys (audit-app.db/hydrate-user-group-memberships entity)
+    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
                                             [:groups :first_name :last_name :email
                                              :invite_method :sso_source
                                              :user_group_memberships :tenant_id])

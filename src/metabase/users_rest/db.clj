@@ -1,6 +1,6 @@
 (ns metabase.users-rest.db
   "Application database queries for the users REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -25,26 +25,6 @@
   (t2/query (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                     :from   :core_user}
                    clauses)))
-
-(defn hydrate-personal-and-tenant-collection-ids
-  "Hydrate `:personal_collection_id` and `:tenant_collection_id` onto `users`."
-  [users]
-  (t2/hydrate users :personal_collection_id :tenant_collection_id))
-
-(defn hydrate-group-ids
-  "Hydrate `:group_ids` onto `users`."
-  [users]
-  (t2/hydrate users :group_ids))
-
-(defn hydrate-current-user-details
-  "Hydrate the personal collection, groups, installer, second-user, and tenant collection onto `user`."
-  [user]
-  (t2/hydrate user :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id))
-
-(defn hydrate-user-group-memberships
-  "Hydrate `:user_group_memberships` onto `user`."
-  [user]
-  (t2/hydrate user :user_group_memberships))
 
 (defn user-sso-source
   "The SSO source of the User with `user-id`, or nil."

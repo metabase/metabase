@@ -1,6 +1,6 @@
 (ns metabase.metrics.db
   "Application database queries for the metrics module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -18,11 +18,6 @@
               :order-by [[:name :asc]]
               :limit    limit
               :offset   offset}))
-
-(defn hydrate-collection
-  "Hydrate `:collection` onto `cards`."
-  [cards]
-  (t2/hydrate cards :collection))
 
 (defn metric-card
   "The metric Card with `id`, or nil."

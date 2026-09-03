@@ -107,26 +107,6 @@
   [internal-id]
   (t2/delete! :model/Notification :internal_id internal-id))
 
-(defn hydrate-notification
-  "Hydrate the creator, payload, subscriptions, and handlers with their channel, template, and recipients onto
-  `notification-or-notifications`."
-  [notification-or-notifications]
-  (t2/hydrate notification-or-notifications
-              :creator
-              :payload
-              :subscriptions
-              [:handlers :channel :template [:recipients :recipients-detail]]))
-
-(defn hydrate-payload
-  "Hydrate `:payload` onto `notification`."
-  [notification]
-  (t2/hydrate notification :payload))
-
-(defn hydrate-handler-recipients
-  "Hydrate `:handlers` with their `:recipients` onto `notification`."
-  [notification]
-  (t2/hydrate notification [:handlers :recipients]))
-
 ;;; ------------------------------------------- NotificationCard -------------------------------------------
 
 (defn notification-cards
@@ -153,11 +133,6 @@
   "Delete the NotificationCard with `notification-card-id`."
   [notification-card-id]
   (t2/delete! :model/NotificationCard notification-card-id))
-
-(defn hydrate-card
-  "Hydrate `:card` onto `notification-cards`."
-  [notification-cards]
-  (t2/hydrate notification-cards :card))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
@@ -259,11 +234,6 @@
               :notification_handler_id [:in ^:allow-subquery {:select [:id]
                                                               :from   [:notification_handler]
                                                               :where  [:= :notification_id notification-id]}]))
-
-(defn hydrate-group-members
-  "Hydrate `:permissions_group` with its `:members` onto `recipients`."
-  [recipients]
-  (t2/hydrate recipients [:permissions_group :members]))
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
 
@@ -397,16 +367,6 @@
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(defn hydrate-tabs
-  "Hydrate `:tabs` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :tabs))
-
-(defn hydrate-tab-cards
-  "Hydrate `:tab-cards` onto `tabs`."
-  [tabs]
-  (t2/hydrate tabs :tab-cards))
 
 (defn user-email
   "The email of the User with `user-id`."

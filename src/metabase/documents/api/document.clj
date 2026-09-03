@@ -177,7 +177,7 @@
   publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
   both semantically wrong and an extra, avoidable round-trip."
   [id]
-  (documents.db/hydrate-document-details (documents.db/document id)))
+  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
 
 (defn get-document
   "Get document by id, checking that it exists and the current user can read it, and recording a view.
@@ -242,7 +242,7 @@
   ;; recents, collection items) excludes them too.
   {:items (as-> (documents.db/visible-unarchived-documents (collection/visible-collection-filter-clause)) docs
             (filter mi/can-read? docs)
-            (documents.db/hydrate-creator-can-write-and-remote-synced docs))})
+            (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

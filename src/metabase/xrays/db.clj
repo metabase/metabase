@@ -1,6 +1,6 @@
 (ns metabase.xrays.db
   "Application database queries for the x-rays module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -59,21 +59,6 @@
                             [:> :ts.count 0]
                             [:!= :ts.count :ts.count_pks_and_fks]]]
               :where where}))
-
-(defn hydrate-fields
-  "Hydrate `:fields` onto `tables`."
-  [tables]
-  (t2/hydrate tables :fields))
-
-(defn hydrate-table
-  "Hydrate `:table` onto `fields`."
-  [fields]
-  (t2/hydrate fields :table))
-
-(defn hydrate-field-details
-  "Hydrate the field values, dimensions, and name Field onto `fields`."
-  [fields]
-  (t2/hydrate fields :has_field_values [:dimensions :human_readable_field] :name_field))
 
 (defn field
   "The Field with `field-id`, or nil."

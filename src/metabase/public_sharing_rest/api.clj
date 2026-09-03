@@ -39,7 +39,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [throttle.core :as throttle])
+   [throttle.core :as throttle]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -115,7 +116,7 @@
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (public-sharing-rest.db/public-card card-id))
         combine-parameters-and-template-tags
-        public-sharing-rest.db/hydrate-card-param-fields
+        (t2/hydrate :param_fields)
         keep-param-fields-for-parameters
         remove-card-non-public-columns)))
 
@@ -284,7 +285,7 @@
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id))
-        public-sharing-rest.db/hydrate-public-dashboard
+        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
         keep-param-fields-for-parameters
         params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
@@ -805,7 +806,7 @@
   [document-id]
   (let [document     (-> (api/check-404 (public-sharing-rest.db/public-document document-id))
                          ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
-                         public-sharing-rest.db/hydrate-document-cards)
+                         (t2/hydrate :cards))
         embedded-ids (set (prose-mirror/card-ids document))]
     (-> document
         ;; Filter sensitive fields from all cards before exposing publicly

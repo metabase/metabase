@@ -39,17 +39,6 @@
   [exploration-id]
   (t2/delete! :model/Exploration :id exploration-id))
 
-(defn hydrate-exploration-details
-  "Hydrate the creator, write permission, Collection, Summary document, and threads with their queries and
-  timelines onto `exploration`."
-  [exploration]
-  (t2/hydrate exploration :creator :can_write :collection :document [:threads :queries :timelines]))
-
-(defn hydrate-creator-and-collection
-  "Hydrate `:creator` and `:collection` onto `explorations`."
-  [explorations]
-  (t2/hydrate explorations :creator :collection))
-
 ;;; ------------------------------------------------- Threads -------------------------------------------------
 
 (defn thread
@@ -446,16 +435,6 @@
   [thread-id]
   (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id))
 
-(defn hydrate-segment-name
-  "Hydrate `:segment_name` onto `query`."
-  [query]
-  (t2/hydrate query :segment_name))
-
-(defn hydrate-query-scores
-  "Hydrate the interestingness scores, row count, and segment name onto `queries`."
-  [queries]
-  (t2/hydrate queries :interestingness_score :contextual_interestingness_score :row_count :segment_name))
-
 ;;; ---------------------------------------------- Query results ----------------------------------------------
 
 (defn query-result
@@ -589,11 +568,6 @@
   "Insert the ExplorationThreadTimeline `rows`."
   [rows]
   (t2/insert! :model/ExplorationThreadTimeline rows))
-
-(defn hydrate-timeline
-  "Hydrate `:timeline` onto `thread-timelines`."
-  [thread-timelines]
-  (t2/hydrate thread-timelines :timeline))
 
 ;;; ------------------------------------------------ Documents ------------------------------------------------
 

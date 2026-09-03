@@ -65,7 +65,7 @@
   (as-> (dashboards-rest.db/dashboards (= (keyword filter-option) :archived)
                                        (when (= (keyword filter-option) :mine)
                                          api/*current-user-id*)) <>
-    (dashboards-rest.db/hydrate-creator <>)
+    (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -129,7 +129,7 @@
                  [:moderation_reviews :moderator_details]
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
-        true (dashboards-rest.db/hydrate dashboard)
+        true (apply t2/hydrate dashboard)
         true remove-unreadable-actions))))
 
 (defn- dashcard-card-ids [dashcard]
@@ -970,7 +970,7 @@
   "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
-    (let [{:keys [resolved-params]} (dashboards-rest.db/hydrate-resolved-params (dashboards-rest.db/dashboard-parameters dashboard-id))
+    (let [{:keys [resolved-params]} (t2/hydrate (dashboards-rest.db/dashboard-parameters dashboard-id) :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
       (->> (dashboards-rest.db/unarchived-pulses-for-dashboard dashboard-id)
@@ -993,7 +993,7 @@
   (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
     (let [{dashboard-name        :name
            dashboard-description :description
-           dashboard-creator     :creator} (dashboards-rest.db/hydrate-creator (dashboards-rest.db/dashboard-name-columns dashboard-id))]
+           dashboard-creator     :creator} (t2/hydrate (dashboards-rest.db/dashboard-name-columns dashboard-id) :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
          (bad-pulse-notification-data broken-pulse)
@@ -1027,7 +1027,7 @@
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
-                                               (dashboards-rest.db/hydrate-dashcards-cards-and-resolved-params (dashboards-rest.db/dashboard id)))
+                                               (t2/hydrate (dashboards-rest.db/dashboard id) [:dashcards :card] :resolved-params))
           changes-stats                      (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
@@ -1059,7 +1059,7 @@
                (api/check-not-archived current-dash))
              (let [{current-dashcards :dashcards
                     current-tabs      :tabs
-                    :as               hydrated-current-dash} (dashboards-rest.db/hydrate-dashcards-series-cards-and-tabs current-dash)
+                    :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
                    new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                    dashcards                                 (if (= 1 (count new-tabs))
                                                                (let [single-tab-id (-> new-tabs first :id)]

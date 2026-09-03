@@ -1008,7 +1008,7 @@
 (defn effective-location-path
   "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."
   [collection]
-  (:effective_location (collections.db/hydrate-effective-location collection)))
+  (:effective_location (t2/hydrate collection :effective_location)))
 
 (def ^:private effective-parent-fields
   "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views
@@ -1026,7 +1026,7 @@
   effective location. (i.e. the most recent ancestor the current user has read access to). If :effective_location is not
   present on any collections, it is hydrated as well, as it is needed to compute the effective parent."
   [collections]
-  (let [collections     (collections.db/hydrate-effective-location collections)
+  (let [collections     (t2/hydrate collections :effective_location)
         parent-ids      (->> collections
                              (map :effective_location)
                              (keep location-path->parent-id))
@@ -1654,7 +1654,7 @@
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
   (assert (:archive_operation_id collection))
   (let [archive-operation-id    (:archive_operation_id collection)
-        current-parent-id       (:parent_id (collections.db/hydrate-parent-id collection))
+        current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
         new-parent-id           (if (contains? updates :parent_id)
                                   (:parent_id updates)
                                   current-parent-id)
@@ -1679,7 +1679,7 @@
              (perms-for-unarchiving collection))))
       ;; Restoring to original location, use `can_restore` for a single source of truth
       (api/check-403
-       (:can_restore (collections.db/hydrate-can-restore collection))))
+       (:can_restore (t2/hydrate collection :can_restore))))
     (t2/with-transaction [_conn]
       (collections.db/update-collection! (u/the-id collection)
                                          {:location             new-location
@@ -2339,7 +2339,7 @@
     (let [archived-colls (filter :archived colls)
           ;; Batch: get parent info
           coll-id->parent-id (into {} (map (fn [{:keys [id parent_id]}] [id parent_id])
-                                           (collections.db/hydrate-parent-id archived-colls)))
+                                           (t2/hydrate archived-colls :parent_id)))
           parent-ids (keep val coll-id->parent-id)
           parent-id->archived? (when (seq parent-ids)
                                  (collections.db/collection-archived-flags parent-ids))
@@ -2364,7 +2364,7 @@
                                                 perm-paths))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
-  (for [[{collection :collection} item] (map vector (collections.db/hydrate-collection items) items)]
+  (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
     (assoc item :can_restore (boolean
                               (and
                                ;; the item is archived

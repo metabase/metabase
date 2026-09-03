@@ -5,7 +5,8 @@
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.warehouse-schema.models.field :as field]))
+   [metabase.warehouse-schema.models.field :as field]
+   [toucan2.core :as t2]))
 
 (comment api/keep-me)
 
@@ -29,7 +30,7 @@
         (sandboxing/assert-one-sandbox-per-table sandboxes)
         ;; there should be only one gtap per table and we only need one table here
         ;; see docs in [[metabase.permissions.models.permissions]] for more info
-        (sandbox.db/hydrate-card (first sandboxes))))))
+        (t2/hydrate (first sandboxes) :card)))))
 
 (defn- field->sandbox-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.

@@ -39,21 +39,6 @@
   [collection-id archived]
   (t2/select :model/Timeline :collection_id collection-id :archived archived))
 
-(defn hydrate-creator-collection-and-remote-synced
-  "Hydrate `:creator`, `:collection` (with `:can_write`), and `:is_remote_synced` onto `timelines`."
-  [timelines]
-  (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced))
-
-(defn hydrate-creator-and-collection
-  "Hydrate `:creator` and `:collection` (with `:can_write`) onto `timelines`."
-  [timelines]
-  (t2/hydrate timelines :creator [:collection :can_write]))
-
-(defn hydrate-creator
-  "Hydrate `:creator` onto `events`."
-  [events]
-  (t2/hydrate events :creator))
-
 (defn update-timeline!
   "Apply `changes` to the Timeline with `id`."
   [id changes]

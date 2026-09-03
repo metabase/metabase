@@ -458,7 +458,7 @@
         (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
-  (let [dashboard-id->name (->> (queries.db/hydrate-in-dashboards card)
+  (let [dashboard-id->name (->> (t2/hydrate card :in_dashboards)
                                 :in_dashboards
                                 (remove #(or (= (:id %)
                                                 (:dashboard_id changes))
@@ -908,7 +908,7 @@
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (let [dashboard (queries.db/hydrate-dashcards-and-tabs (queries.db/dashboard dashboard-id))
+  (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]

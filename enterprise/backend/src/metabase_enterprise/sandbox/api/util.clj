@@ -8,7 +8,8 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.users.models.user :as user]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2]))
 
 (defn- enforce-sandbox?
   "Takes all the group-ids a user belongs to and a sandbox, and determines whether the sandbox should be enforced for the user.
@@ -46,7 +47,7 @@
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
-          sandboxes-with-group-ids (sandbox.db/hydrate-table (sandbox.db/user-sandboxes-with-group-ids user-id))
+          sandboxes-with-group-ids (t2/hydrate (sandbox.db/user-sandboxes-with-group-ids user-id) :table)
 
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (sandbox.db/impersonations-for-groups user-group-ids))
@@ -79,7 +80,7 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [sandboxes (sandbox.db/hydrate-table (seq (perms/sandboxes-for-user)))]
+       (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
          (some #(= (get-in % [:table :db_id]) database-id)
                sandboxes))
        ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid

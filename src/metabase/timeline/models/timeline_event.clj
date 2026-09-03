@@ -89,7 +89,7 @@
                               [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
                               [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (timeline.db/hydrate-creator (timeline.db/timeline-events clause))))
+    (t2/hydrate (timeline.db/timeline-events clause) :creator)))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -114,7 +114,7 @@
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
   (let [timelines (timeline.db/timelines-for-collection collection_id false)]
-    (->> (timeline.db/hydrate-creator-and-collection timelines)
+    (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
 ;;;; model

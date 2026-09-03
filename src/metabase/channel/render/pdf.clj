@@ -58,7 +58,8 @@
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
-   [metabase.util.memoize :as memo])
+   [metabase.util.memoize :as memo]
+   [toucan2.core :as t2])
   (:import
    (java.awt Color)
    (java.awt.geom AffineTransform PathIterator)
@@ -1470,7 +1471,7 @@
            dims      (paper-dims paper-key)
            dash      (channel.db/dashboard dashboard-id)
            tabs      (channel.db/dashboard-tabs dashboard-id)
-           dcs       (channel.db/hydrate-card (channel.db/dashcards dashboard-id))
+           dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)

@@ -123,14 +123,14 @@
   (u/prog1 api-key
     (events/publish-event!
      :event/api-key-create
-     {:object  (api-keys.db/hydrate-group-and-updated-by api-key)
+     {:object  (t2/hydrate api-key :group :updated_by)
       :user-id api/*current-user-id*})))
 
 (t2/define-before-update :model/ApiKey
   [{user-id :user_id, :as api-key}]
   (t2/with-transaction [_conn]
     ;; need to hydrate user info BEFORE making changes so we record the correct stuff for audit logging
-    (let [key-before (api-keys.db/hydrate-user-group-and-updated-by (t2/instance :model/ApiKey (t2/original api-key)))]
+    (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
       ;; update the user name associated with this API key if it was created just for this API key.
       (when-let [new-name (:name (t2/changes api-key))]
         (api-keys.db/rename-api-key-user! user-id new-name))
@@ -148,7 +148,7 @@
                    (validate-with-schema ::api-keys.schema/api-key.update))
         (events/publish-event!
          :event/api-key-update
-         {:object          (api-keys.db/hydrate-user-group-and-updated-by (t2/instance :model/ApiKey (t2/current <>)))
+         {:object          (t2/hydrate (t2/instance :model/ApiKey (t2/current <>)) :user :group :updated_by)
           :previous-object key-before
           :user-id         api/*current-user-id*})))))
 
@@ -158,7 +158,7 @@
     (events/publish-event!
      :event/api-key-delete
      {:object  (-> api-key
-                   api-keys.db/hydrate-group)
+                   (t2/hydrate :group))
       :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
     (api-keys.db/deactivate-api-key-user! user-id)))
@@ -238,7 +238,7 @@
                                        :updated_by_id api/*current-user-id*})
       (events/publish-event! :event/api-key-regenerate
                              (let [key-before (-> api-key-before
-                                                  api-keys.db/hydrate-group)]
+                                                  (t2/hydrate :group))]
                                {:object          (-> key-before
                                                      (assoc :key_prefix new-prefix))
                                 :previous-object key-before

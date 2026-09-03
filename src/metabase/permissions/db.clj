@@ -332,11 +332,6 @@
   [query]
   (t2/reducible-query query))
 
-(defn hydrate-collection
-  "Hydrate `:collection` onto `instances`."
-  [instances]
-  (t2/hydrate instances :collection))
-
 ;;; ------------------------------------------------- Users -------------------------------------------------
 
 (defn user-superuser?

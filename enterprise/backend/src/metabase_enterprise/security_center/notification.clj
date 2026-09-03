@@ -20,7 +20,8 @@
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +60,7 @@
    recipients are used."
   [configured-recipients]
   (let [raw         (or configured-recipients [])
-        configured  (or (some-> (not-empty raw) security-center.db/hydrate-recipients-detail)
+        configured  (or (some-> (not-empty raw) (t2/hydrate :recipients-detail))
                         [])
         admin-email (system/admin-email)]
     (if (and admin-email (sends-to-all-admins? raw))

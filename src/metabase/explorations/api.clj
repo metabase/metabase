@@ -221,7 +221,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      explorations.db/hydrate-exploration-details
+      (t2/hydrate :creator :can_write :collection :document [:threads :queries :timelines])
       (update :threads
               #(some->> %
                         (mapv (comp redact-thread-query-errors attach-thread-status))
@@ -810,7 +810,7 @@
   (let [limit  (request/limit)
         offset (request/offset)
         rows   (-> (explorations.db/explorations-where (my-explorations-honeysql api/*current-user-id* limit offset))
-                   explorations.db/hydrate-creator-and-collection)]
+                   (t2/hydrate :creator :collection))]
     {:total  (or (-> rows first :total_count) 0)
      :limit  limit
      :offset offset

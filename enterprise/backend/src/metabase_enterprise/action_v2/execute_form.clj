@@ -5,7 +5,8 @@
    [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (def ^:private strip-namespace-hack (comp keyword name))
 
@@ -93,7 +94,7 @@
         database                    (action-v2.db/database (:db_id table))
         _                           (actions/check-data-editing-enabled-for-database! database)
         fields                      (-> (action-v2.db/active-fields-in-position-order table-id)
-                                        action-v2.db/hydrate-form-field-details)
+                                        (t2/hydrate :dimensions :has_field_values :values))
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration
         column-editable?            (constantly true)
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration

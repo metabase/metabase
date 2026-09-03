@@ -58,16 +58,6 @@
   [card-id]
   (t2/select-one :model/Card :id card-id))
 
-(defn hydrate-resolved-params
-  "Hydrate `:resolved-params` onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard :resolved-params))
-
-(defn hydrate-table
-  "Hydrate `:table` onto `fields`."
-  [fields]
-  (t2/hydrate fields :table))
-
 (defn delete-field-values!
   "Delete the FieldValues with `id`."
   [id]
@@ -82,24 +72,7 @@
              :semantic_type name-type-clause
              :active        true))
 
-(defn hydrate-has-field-values
-  "Hydrate `:has_field_values` onto `fields`."
-  [fields]
-  (t2/hydrate fields :has_field_values))
-
 (defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
   [columns field-ids]
   (t2/select (into [:model/Field] columns) :id [:in field-ids]))
-
-(defn hydrate-param-field-details
-  "Hydrate the field values, name Field, target, and dimensions onto `fields`."
-  [fields]
-  (t2/hydrate fields :has_field_values :name_field
-              [:target :has_field_values :name_field]
-              [:dimensions [:human_readable_field :has_field_values]]))
-
-(defn hydrate-dashcards-with-cards-and-series
-  "Hydrate `:dashcards` with their `:card` and `:series` onto `dashboards`."
-  [dashboards]
-  (t2/hydrate dashboards [:dashcards :card :series]))

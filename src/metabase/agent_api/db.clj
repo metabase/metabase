@@ -1,6 +1,6 @@
 (ns metabase.agent-api.db
   "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -9,11 +9,6 @@
   [collection-id]
   (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
                  collection-id))
-
-(defn hydrate-effective-ancestors
-  "Hydrate `:effective_ancestors` onto `collection`."
-  [collection]
-  (t2/hydrate collection :effective_ancestors))
 
 (defn card
   "The Card with `card-id`, or nil."

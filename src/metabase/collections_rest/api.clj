@@ -116,7 +116,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (collections-rest.db/hydrate-collection-flags collections)
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal/tenant collections we translate the name to user's locale
     (->> (for [collection collections]
@@ -216,7 +216,7 @@
                                              :shallow                        shallow
                                              :collection-id                  collection-id
                                              :include-library?               include-library})
-                        collections-rest.db/hydrate-can-write)]
+                        (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (merge (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
@@ -370,15 +370,14 @@
   [_ _ collection rows]
   (documents/with-content-gate-cache
     (map #(dissoc % :exploration_id)
-         (collections-rest.db/hydrate-child-flags
-          (for [document rows]
-            (-> (t2/instance :model/Document document)
-                (assoc :location (or (when collection
-                                       (collection/children-location collection))
-                                     "/"))
-                (dissoc :namespace)
-                (update :archived api/bit->boolean)
-                (update :archived_directly api/bit->boolean)))))))
+         (t2/hydrate (for [document rows]
+                       (-> (t2/instance :model/Document document)
+                           (assoc :location (or (when collection
+                                                  (collection/children-location collection))
+                                                "/"))
+                           (dissoc :namespace)
+                           (update :archived api/bit->boolean)
+                           (update :archived_directly api/bit->boolean))) :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]
@@ -418,14 +417,13 @@
 
 (defmethod ^:private post-process-collection-children :exploration
   [_ _ collection rows]
-  (collections-rest.db/hydrate-exploration-flags
-   (for [exploration rows]
-     (-> (t2/instance :model/Exploration exploration)
-         (assoc :location (or (when collection
-                                (collection/children-location collection))
-                              "/"))
-         (update :archived api/bit->boolean)
-         (update :archived_directly api/bit->boolean)))))
+  (t2/hydrate (for [exploration rows]
+                (-> (t2/instance :model/Exploration exploration)
+                    (assoc :location (or (when collection
+                                           (collection/children-location collection))
+                                         "/"))
+                    (update :archived api/bit->boolean)
+                    (update :archived_directly api/bit->boolean))) :can_write :can_restore :can_delete))
 
 (def ^:private exploration-recent-edits-subquery
   ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
@@ -669,7 +667,7 @@
                    :collection_namespace
                    [:dashboard :moderation_status]]]
     (as-> (map post-process-card-row rows) $
-      (collections-rest.db/hydrate $ hydration)
+      (apply t2/hydrate $ hydration)
       (cond-> $
         hydrate-based-on-upload upload/model-hydrate-based-on-upload)
       (map post-process-card-row-after-hydrate $))))
@@ -731,7 +729,7 @@
       (assoc :is_tenant_dashboard (collection/shared-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      collections-rest.db/hydrate-child-flags
+      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -886,7 +884,7 @@
 
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
-        (->> (collections-rest.db/hydrate-effective-parent-and-remote-synced descendant-collections)
+        (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
              (reduce (fn [accu {:keys [effective_parent] :as _coll}]
                        (let [parent-id (:id effective_parent)]
                          (conj accu parent-id)))
@@ -923,7 +921,7 @@
             collection/maybe-mark-collection-as-library-root
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
-            collections-rest.db/hydrate-collection-child-flags
+            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
             (dissoc :collection_position :display :moderated_status :icon
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
@@ -934,7 +932,7 @@
   (let [tables (map #(-> (t2/instance :model/Table %)
                          (update :archived api/bit->boolean)) rows)]
     (if (contains? models :measure)
-      (collections-rest.db/hydrate-measures tables)
+      (t2/hydrate tables :measures)
       tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
@@ -1239,7 +1237,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       prep-collection-for-export
-      collections-rest.db/hydrate-collection-detail))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal :can_restore :can_delete)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1270,7 +1268,7 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id]
   (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (collections-rest.db/hydrate-in-dashboards (collections-rest.db/top-level-cards-in-collection collection-id))]
+  (let [all-cards-in-collection (t2/hydrate (collections-rest.db/top-level-cards-in-collection collection-id) :in_dashboards)]
     (filter
      (fn [card]
        (and
@@ -1662,7 +1660,7 @@
                                                                   [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
-  (let [collection-before-update (collections-rest.db/hydrate-parent-id (api/write-check :model/Collection id))]
+  (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))

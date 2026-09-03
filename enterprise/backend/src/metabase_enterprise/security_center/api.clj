@@ -14,7 +14,8 @@
    [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.util.concurrent ExecutorService RejectedExecutionException
                          SynchronousQueue ThreadPoolExecutor ThreadPoolExecutor$AbortPolicy
@@ -69,7 +70,7 @@
   "List all security advisories with match status."
   []
   (api/check-superuser)
-  (let [advisories (security-center.db/hydrate-acknowledged-by-user (security-center.db/advisories-newest-first))]
+  (let [advisories (t2/hydrate (security-center.db/advisories-newest-first) :acknowledged_by_user)]
     {:last_checked_at (settings/security-center-last-synced-at)
      :advisories      (mapv advisory-response advisories)}))
 

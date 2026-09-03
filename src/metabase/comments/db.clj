@@ -13,16 +13,6 @@
                          [:= :target_id target-id]]
               :order-by [[:created_at :asc]]}))
 
-(defn hydrate-creator-and-reactions
-  "Hydrate `:creator` and `:reactions` onto `comments`."
-  [comments]
-  (t2/hydrate comments :creator :reactions))
-
-(defn hydrate-creator
-  "Hydrate `:creator` onto `comment`."
-  [comment]
-  (t2/hydrate comment :creator))
-
 (defn active-user-ids
   "The ids among `user-ids` of active Users, or nil."
   [user-ids]
@@ -107,8 +97,3 @@
   (t2/select :model/CommentReaction
              {:where    [:in :comment_id comment-ids]
               :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]}))
-
-(defn hydrate-user
-  "Hydrate `:user` onto `reactions`."
-  [reactions]
-  (t2/hydrate reactions :user))

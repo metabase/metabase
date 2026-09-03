@@ -24,11 +24,6 @@
   [pk]
   (t2/select-one :model/CacheConfig pk))
 
-(defn hydrate-collection
-  "Hydrate `:collection` onto `instances`."
-  [instances]
-  (t2/hydrate instances :collection))
-
 (defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."
   []

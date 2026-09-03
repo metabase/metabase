@@ -10,7 +10,8 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defn- make-slack-channel
   "Build a pulse channel for Slack delivery."
@@ -25,7 +26,7 @@
   [{:keys [dashboard-id slack-channel schedule]}]
   (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
                           api/read-check
-                          metabot.db/hydrate-dashcards-with-cards)
+                          (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)
                     :when (-> card :id int?)]
                 (-> card

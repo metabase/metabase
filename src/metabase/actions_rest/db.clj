@@ -1,14 +1,9 @@
 (ns metabase.actions-rest.db
   "Application database queries for the actions REST module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
-
-(defn hydrate-creator
-  "Hydrate `:creator` onto `actions`."
-  [actions]
-  (t2/hydrate actions :creator))
 
 (defn unarchived-models-visible-to-user
   "The unarchived model Cards in Collections the current user can read."

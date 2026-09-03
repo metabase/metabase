@@ -14,7 +14,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (mr/def ::measure
   "Schema for a Measure entity as returned from the API."
@@ -54,13 +55,13 @@
     (let [measure (api/check-500
                    (measures.db/insert-measure! api/*current-user-id* name description definition))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
-      (measures.db/hydrate-creator measure))))
+      (t2/hydrate measure :creator))))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
   (api/read-check (measures.db/measure id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (cond-> (-> (measures.db/hydrate-creator (measures.db/measure id))
+  (cond-> (-> (t2/hydrate (measures.db/measure id) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
@@ -92,7 +93,7 @@
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (measures.db/table-database-ids table-ids))
                                     :table-ids table-ids})
-    (->> (measures.db/hydrate-creator-and-definition-description (filterv mi/can-read? measures))
+    (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))
 
 (defn- write-check-and-update-measure!

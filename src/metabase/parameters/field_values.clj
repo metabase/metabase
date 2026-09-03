@@ -8,7 +8,8 @@
    [metabase.parameters.db :as parameters.db]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [toucan2.core :as t2]))
 
 (declare get-or-create-field-values!)
 
@@ -82,7 +83,7 @@
   Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
   [field-ids]
   (let [fields                 (when (seq field-ids)
-                                 (parameters.db/hydrate-table (parameters.db/fields (set field-ids))))
+                                 (t2/hydrate (parameters.db/fields (set field-ids)) :table))
         {normal-fields   false
          advanced-fields true} (group-by requires-advanced-field-value? fields)]
     (merge

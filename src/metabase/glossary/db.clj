@@ -10,11 +10,6 @@
   (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
                                where (assoc :where where))))
 
-(defn hydrate-creator
-  "Hydrate `:creator` onto `entries`."
-  [entries]
-  (t2/hydrate entries :creator))
-
 (defn insert-glossary-entry!
   "Insert the Glossary `row` and return the inserted instance."
   [row]

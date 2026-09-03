@@ -233,7 +233,7 @@
    then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
    on each field. This avoids N+1 queries when checking permissions for multiple fields."
   [_model k fields]
-  (let [fields-with-tables (warehouse-schema.db/hydrate-table (remove nil? fields))
+  (let [fields-with-tables (t2/hydrate (remove nil? fields) :table)
         ;; Get all unique collection IDs from the hydrated tables
         collection-ids (->> fields-with-tables
                             (keep (comp :collection_id :table))
@@ -371,7 +371,7 @@
   distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
   out across tables, such as hydrating `:target` over a dashboard's FK columns."
   [fields]
-  (let [fields (warehouse-schema.db/hydrate-table fields)
+  (let [fields (t2/hydrate fields :table)
         tables (into #{} (keep :table) fields)]
     (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                     :table-ids (into #{} (keep :id) tables)})
@@ -399,7 +399,7 @@
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))
         target-field    (when-let [target-field (and target-field-id (warehouse-schema.db/field target-field-id))]
-                          (when (mi/can-write? (warehouse-schema.db/hydrate-table target-field))
+                          (when (mi/can-write? (t2/hydrate target-field :table))
                             target-field))]
     (assoc field :target target-field)))
 

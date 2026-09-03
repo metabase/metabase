@@ -58,11 +58,6 @@
   [table-ids]
   (t2/select :model/Table :id [:in table-ids]))
 
-(defn hydrate-fields
-  "Hydrate `:fields` onto `tables`."
-  [tables]
-  (t2/hydrate tables :fields))
-
 (defn database
   "The Database with `database-id`, or nil."
   [database-id]

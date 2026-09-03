@@ -172,7 +172,8 @@
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.db :as xrays.db]
-   [metabase.xrays.related :as related]))
+   [metabase.xrays.related :as related]
+   [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -425,7 +426,7 @@
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
       (comp (->> (-> (xrays.db/visible-fields-for-tables (map u/the-id tables))
-                     xrays.db/hydrate-field-details)
+                     (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
                  field/with-targets
                  (map #(assoc % :db db))
                  (group-by :table_id))

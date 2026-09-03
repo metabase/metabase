@@ -40,11 +40,6 @@
              {:where     [:in (app-db/qualify :model/Table :id) ids]
               :left-join [:metabase_database [:= :metabase_database.id (app-db/qualify :model/Table :db_id)]]}))
 
-(defn hydrate-moderation-reviews
-  "Hydrate `:moderation_reviews` onto `items`."
-  [items]
-  (t2/hydrate items :moderation_reviews))
-
 (defn recent-dashboard-and-table-views
   "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
   viewer."
@@ -100,11 +95,6 @@
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
   (t2/select-one :model/Dashboard :id dashboard-id))
-
-(defn hydrate-collection-is-personal
-  "Hydrate `:collection` with its `:is_personal` flag onto `dashboard`."
-  [dashboard]
-  (t2/hydrate dashboard [:collection :is_personal]))
 
 (defn card-document-id
   "The Document id of the Card with `card-id`, or nil."
@@ -234,11 +224,6 @@
               :where [:and
                       [:in :id collection-ids]
                       [:= :archived false]]}))
-
-(defn hydrate-effective-parent
-  "Hydrate `:effective_parent` onto `collections`."
-  [collections]
-  (t2/hydrate collections :effective_parent))
 
 (defn visible-tables-for-recent-views
   "The non-hidden Tables with `table-ids` with their Database name and sync status."

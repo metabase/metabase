@@ -16,7 +16,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
-   [metabase.warehouse-schema.table :as schema.table]))
+   [metabase.warehouse-schema.table :as schema.table]
+   [toucan2.core :as t2]))
 
 ;; This is similar to the function in [[metabase.warehouses-rest.api]], but we want to allow filtering the DBs in case
 ;; of audit database, we don't want to allow users to modify its queries.
@@ -192,7 +193,7 @@
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
                       (queries.db/cards ids))]
-      (queries.db/hydrate-can-write cards))))
+      (t2/hydrate cards :can_write))))
 
 (defn- dashcard->click-behaviors [dashcard]
   (let [viz-settings        (:visualization_settings dashcard)
@@ -206,7 +207,7 @@
   (when (seq dashboard-ids)
     (let [dashboards (->> (queries.db/dashboards dashboard-ids)
                           (filter mi/can-read?))]
-      (queries.db/hydrate-can-write-and-param-fields dashboards))))
+      (t2/hydrate dashboards :can_write :param_fields))))
 
 (defn- batch-fetch-dashboard-links
   [dashcards]

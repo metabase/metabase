@@ -32,7 +32,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as table])
+   [metabase.warehouse-schema.models.table :as table]
+   [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
    (java.io File InputStreamReader Reader)
@@ -988,7 +989,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (upload.queries/hydrate-db (upload.queries/tables table-ids))
+         (->> (t2/hydrate (upload.queries/tables table-ids) :db)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

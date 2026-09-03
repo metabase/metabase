@@ -78,16 +78,6 @@
   [transform-id]
   (t2/delete! :model/Transform transform-id))
 
-(defn hydrate-transform-details
-  "Hydrate the last run, tag IDs, creator, owner, and permissions onto `transforms`."
-  [transforms]
-  (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute))
-
-(defn hydrate-transform-associations
-  "Hydrate the tag IDs, creator, owner, and permissions onto `transform`."
-  [transform]
-  (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute))
-
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
 (defn tag
@@ -303,11 +293,6 @@
   [run-id]
   (t2/update! :model/TransformRun :id run-id {:status "canceling"}))
 
-(defn hydrate-run-transforms
-  "Hydrate the Transform with its Collection and tag IDs onto `runs`."
-  [runs]
-  (t2/hydrate runs [:transform :collection :transform_tag_ids]))
-
 ;;; -------------------------------------------- Run cancelations --------------------------------------------
 
 (defn insert-cancelation-for-active-run!
@@ -436,11 +421,6 @@
   "The Tables with `table-ids`."
   [table-ids]
   (t2/select :model/Table :id [:in table-ids]))
-
-(defn hydrate-db-and-fields
-  "Hydrate `:db` and `:fields` onto `tables`."
-  [tables]
-  (t2/hydrate tables :db :fields))
 
 (defn table-indexes-for-transforms
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."

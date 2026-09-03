@@ -214,21 +214,6 @@
   [user-ids]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
-(defn hydrate-effective-ancestors
-  "Hydrate `:effective_ancestors` onto `collection`."
-  [collection]
-  (t2/hydrate collection :effective_ancestors))
-
-(defn hydrate-effective-parent
-  "Hydrate `:effective_parent` onto `collections`."
-  [collections]
-  (t2/hydrate collections :effective_parent))
-
-(defn hydrate-dashboard-with-moderation-status
-  "Hydrate `:dashboard` with its `:moderation_status` onto `results`."
-  [results]
-  (t2/hydrate results [:dashboard :moderation_status]))
-
 (defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`."
   [card-ids]

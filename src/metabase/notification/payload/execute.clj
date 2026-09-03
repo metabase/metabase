@@ -19,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (defn is-card-empty?
   "Check if the card is empty"
@@ -343,7 +344,7 @@
                              only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
-         (let [tabs               (notification.db/hydrate-tab-cards (notification.db/dashboard-tabs dashboard-id))
+         (let [tabs               (t2/hydrate (notification.db/dashboard-tabs dashboard-id) :tab-cards)
                tabs-with-cards    (->> tabs
                                        (map #(update % :cards keep-dashcards))
                                        (filter #(seq (:cards %))))

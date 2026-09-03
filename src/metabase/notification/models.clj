@@ -78,7 +78,7 @@
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
                                            :notification/card
-                                           (let [notification-cards (notification.db/hydrate-card (notification.db/notification-cards payload-ids))]
+                                           (let [notification-cards (t2/hydrate (notification.db/notification-cards payload-ids) :card)]
                                              (into {} (for [nc notification-cards]
                                                         [[:notification/card (:id nc)] nc])))
                                            {[payload-type nil] nil})))]
@@ -289,7 +289,7 @@
                              (mapv #(assoc % :user (id->user (:user_id %))) recipients))))
       (m/update-existing :notification-recipient/group
                          (fn [recipients]
-                           (notification.db/hydrate-group-members recipients)))
+                           (t2/hydrate recipients [:permissions_group :members])))
       vals
       flatten))
 
@@ -545,7 +545,7 @@
 (defn current-user-is-recipient?
   "Check if the current user is a recipient of a notification."
   [notification]
-  (->> (:handlers (notification.db/hydrate-handler-recipients notification))
+  (->> (:handlers (t2/hydrate notification [:handlers :recipients]))
        (mapcat :recipients)
        (map :user_id)
        distinct
@@ -651,7 +651,7 @@
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
-  (notification.db/hydrate-notification notification-or-notifications))
+  (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
 (mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
   "Find all active card notifications for a given card-id."

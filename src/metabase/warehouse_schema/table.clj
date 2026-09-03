@@ -7,7 +7,8 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,7 +53,7 @@
                          (premium-features/any-transforms-enabled?) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
-        (warehouse-schema.db/hydrate-keys hydration-keys)
+        (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
@@ -74,7 +75,7 @@
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
-           tables (warehouse-schema.db/hydrate-query-metadata tables)
+           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
            excluded-visibility-types (cond-> #{:hidden}
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
@@ -121,7 +122,7 @@
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (warehouse-schema.db/fields ids)
-                                             warehouse-schema.db/hydrate-field-metadata))))
+                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -160,7 +161,7 @@
                                  cards)
         metadata-fields    (if (seq metadata-field-ids)
                              (-> (warehouse-schema.db/fields metadata-field-ids)
-                                 warehouse-schema.db/hydrate-field-metadata
+                                 (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                  (->> (m/index-by :id)))
                              {})]
     (into {}
@@ -237,7 +238,7 @@
                 (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
-          readable-cards (warehouse-schema.db/hydrate-metrics (filter mi/can-read? cards))]
+          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
         ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
         ;; stale data that remained there from a time when the given column was still FK. We assume

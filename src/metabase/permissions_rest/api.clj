@@ -191,7 +191,7 @@
                                              [:= :is_tenant_group nil]]]
                 base-where)]
     (-> (ordered-groups (request/limit) (request/offset) where)
-        permissions-rest.db/hydrate-member-count
+        (t2/hydrate :member_count)
         (maybe-fix-names))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -206,7 +206,7 @@
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
   (api/check-404
    (some-> (permissions-rest.db/permissions-group id)
-           permissions-rest.db/hydrate-members
+           (t2/hydrate :members)
            (maybe-fix-name (setting/get :use-tenants)))))
 
 (api.macros/defendpoint :get "/invite-group-ids"
@@ -345,7 +345,7 @@
     (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
-    (:members (permissions-rest.db/hydrate-members (t2/instance :model/PermissionsGroup {:id group_id})))))
+    (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id}) :members))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

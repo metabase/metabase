@@ -60,7 +60,7 @@
   [current-user-id comment-ids]
   (when (seq comment-ids)
     (let [reactions   (-> (comments.db/reactions-for-comments comment-ids)
-                          comments.db/hydrate-user)
+                          (t2/hydrate :user))
 
           ;; first user comes first if they reacted
           first-or-last (fn [acc user]

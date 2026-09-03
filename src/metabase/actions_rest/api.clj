@@ -15,7 +15,8 @@
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,9 +37,9 @@
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (actions-rest.db/hydrate-creator (actions/select-actions models
-                                                                       :model_id [:in (map :id models)]
-                                                                       :archived false))
+              (t2/hydrate (actions/select-actions models
+                                                  :model_id [:in (map :id models)]
+                                                  :archived false) :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
@@ -59,7 +60,7 @@
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
-      actions-rest.db/hydrate-creator
+      (t2/hydrate :creator)
       api/read-check))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

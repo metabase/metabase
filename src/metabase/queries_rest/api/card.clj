@@ -66,7 +66,7 @@
 (defmethod cards-for-filter-option* :bookmarked
   [_]
   (let [bookmarks (queries-rest.db/card-bookmarks-for-user api/*current-user-id*)]
-    (->> (queries-rest.db/hydrate-card bookmarks)
+    (->> (t2/hydrate bookmarks :card)
          (map :card)
          (remove :archived)
          (sort-by :name))))
@@ -111,7 +111,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
-      queries-rest.db/hydrate-creator-and-collection))
+      (t2/hydrate :creator :collection)))
 
 ;;; -------------------------------------------- List of public or embeddable cards -----------------------------------
 
@@ -190,7 +190,7 @@
     {:name       "hydrate-card-details"
      :attributes {:queries/id card-id}}
     (-> card
-        queries-rest.db/hydrate-card-details
+        (t2/hydrate :based_on_upload :creator :can_write :dashboard_count [:dashboard :moderation_status] :average_query_time :last_query_start :parameter_usage_count :can_restore :can_delete :can_manage_db [:collection :is_personal] [:moderation_reviews :moderator_details] :param_fields :is_remote_synced)
         (update :creator select-keys [:id :first_name :last_name :email :common_name])
         (update :param_fields (fn [param-fields]
                                 (perms/prime-table-perms-cache
@@ -206,7 +206,7 @@
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          ;; can_manage_db determines whether we should enable model persistence settings
-         (queries/model? card) queries-rest.db/hydrate-persisted-and-can-manage-db))))
+         (queries/model? card) (t2/hydrate :persisted :can_manage_db)))))
 
 (defn- get-card
   "Get `Card` with ID."
@@ -246,7 +246,7 @@
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
-                       (:in_dashboards (queries-rest.db/hydrate-in-dashboards card)))]
+                       (:in_dashboards (t2/hydrate card :in_dashboards)))]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 
@@ -259,7 +259,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [card (get-card id)
-        dashboards (:in_dashboards (queries-rest.db/hydrate-in-dashboards card))]
+        dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))
     (map #(dissoc % :collection_id :description :archived) dashboards)))
@@ -661,7 +661,7 @@
         (lib/check-card-overwrite id query)
         (catch clojure.lang.ExceptionInfo e
           (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
-    (let [card-before-update     (queries-rest.db/hydrate-moderation-reviews-with-moderator (api/write-check :model/Card id))
+    (let [card-before-update     (t2/hydrate (api/write-check :model/Card id) [:moderation_reviews :moderator_details])
           card-updates           (maybe-populate-collection-id
                                   card-before-update
                                   (api/updates-with-archived-directly card-before-update card-updates))

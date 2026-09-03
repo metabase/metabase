@@ -148,10 +148,9 @@
                        (cond-> result
                          (= (:model result) "dataset")
                          (assoc :collection_effective_ancestors
-                                (->> (search.db/hydrate-effective-ancestors
-                                      (if (nil? (:collection_id result))
-                                        collection/root-collection
-                                        {:location (:collection_location result)}))
+                                (->> (t2/hydrate (if (nil? (:collection_id result))
+                                                   collection/root-collection
+                                                   {:location (:collection_location result)}) :effective_ancestors)
                                      :effective_ancestors
                                      ;; two pieces for backwards compatibility:
                                      ;; - remove the root collection
@@ -165,7 +164,7 @@
   Keeps search results in order."
   [search-results]
   (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
-        hydrated-colls (search.db/hydrate-effective-parent collections)
+        hydrated-colls (t2/hydrate collections :effective_parent)
         idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
     (map (fn [search-result]
            (if (mi/instance-of? :model/Collection search-result)
@@ -450,7 +449,7 @@
   (update result :pk_ref json/decode))
 
 (defn- hydrate-dashboards [results]
-  (->> (search.db/hydrate-dashboard-with-moderation-status results)
+  (->> (t2/hydrate results [:dashboard :moderation_status])
        (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
        (map #(dissoc % :dashboard_id))))
 

@@ -21,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,7 +56,7 @@
 
 (defn- select-metrics [limit offset]
   (-> (metrics.db/metric-cards-page (queries/visible-metric-cards-where-clause) limit offset)
-      metrics.db/hydrate-collection))
+      (t2/hydrate :collection)))
 
 (api.macros/defendpoint :get "/"
   :- [:map

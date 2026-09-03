@@ -86,11 +86,6 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(defn hydrate-member-count
-  "Hydrate `:member_count` onto `tenants`."
-  [tenants]
-  (t2/hydrate tenants :member_count))
-
 (defn deactivate-tenant-users!
   "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it."
   [tenant-id]

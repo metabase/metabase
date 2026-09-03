@@ -101,7 +101,7 @@
    then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
    on each measure. This avoids N+1 queries when checking permissions for multiple measures."
   [_model k measures]
-  (let [measures-with-tables (measures.db/hydrate-table (remove nil? measures))
+  (let [measures-with-tables (t2/hydrate (remove nil? measures) :table)
         ;; Get all unique collection IDs from the hydrated tables
         collection-ids (->> measures-with-tables
                             (keep (comp :collection_id :table))

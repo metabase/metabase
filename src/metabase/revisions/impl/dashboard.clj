@@ -11,6 +11,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
+   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (def ^:private excluded-columns-for-dashboard-revision
@@ -32,13 +33,13 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (let [dashcards (or (:dashcards dashboard)
-                      (:dashcards (revisions.db/hydrate-dashcards dashboard)))
+                      (:dashcards (t2/hydrate dashboard :dashcards)))
         dashcards (when (seq dashcards)
                     (if (contains? (first dashcards) :series)
                       dashcards
-                      (revisions.db/hydrate-series dashcards)))
+                      (t2/hydrate dashcards :series)))
         tabs  (or (:tabs dashboard)
-                  (:tabs (revisions.db/hydrate-tabs dashboard)))]
+                  (:tabs (t2/hydrate dashboard :tabs)))]
     (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
         (assoc :cards (vec (for [dashboard-card dashcards]
                              (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
@@ -47,7 +48,7 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (->> (revisions.db/hydrate-series (revisions.db/dashcards dashboard-id))
+  (let [current-cards    (->> (t2/hydrate (revisions.db/dashcards dashboard-id) :series)
                               (mapv (fn [dashcard]
                                       (-> (apply dissoc (t2.realize/realize dashcard)
                                                  excluded-columns-for-dashcard-revision)

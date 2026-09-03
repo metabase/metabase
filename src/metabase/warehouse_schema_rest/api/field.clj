@@ -156,7 +156,7 @@
                   [:settings           {:optional true} [:maybe ms/Map]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (warehouse-schema-rest.db/hydrate-dimensions (api/write-check :model/Field id))
+  (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (cond (not (contains? body :coercion_strategy))
@@ -205,7 +205,7 @@
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (-> (warehouse-schema-rest.db/field id)
-                 warehouse-schema-rest.db/hydrate-dimensions-and-has-field-values
+                 (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
       (when (not= effective-type (:effective_type field))

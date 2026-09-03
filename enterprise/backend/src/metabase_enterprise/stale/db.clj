@@ -1,6 +1,6 @@
 (ns metabase-enterprise.stale.db
   "Application database queries for the stale module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module never talks to `toucan2.core` itself."
+  additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [toucan2.core :as t2]))
 
@@ -47,13 +47,6 @@
                :moderated_status]]
              :id [:in card-ids]))
 
-(defn hydrate-stale-card-details
-  "Hydrate the permissions, Collection, dashboard count, and Dashboard with its moderation status onto `cards`."
-  [cards]
-  (t2/hydrate cards
-              :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count
-              [:dashboard :moderation_status]))
-
 (defn stale-dashboards
   "The listing columns of the Dashboards with `dashboard-ids`."
   [dashboard-ids]
@@ -71,11 +64,6 @@
               [nil :location]
               [nil :database_id]]
              :id [:in dashboard-ids]))
-
-(defn hydrate-stale-dashboard-details
-  "Hydrate the permissions and Collection onto `dashboards`."
-  [dashboards]
-  (t2/hydrate dashboards :can_write :can_delete :can_restore [:collection :effective_location]))
 
 (defn query-rows
   "The rows of the Honey SQL `query`."

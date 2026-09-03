@@ -536,11 +536,6 @@
   [cutoff]
   (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff]}))
 
-(defn hydrate-status
-  "Hydrate `:status` onto `task`."
-  [task]
-  (t2/hydrate task :status))
-
 (defn users-by-id
   "A map of User ID to User for `user-ids`."
   [user-ids]
