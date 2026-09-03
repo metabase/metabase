@@ -927,7 +927,7 @@ describe("scenarios > organization > entity picker", () => {
       //Entity picker should grow
       cy.findByRole("dialog", { name: "Select a collection" })
         .should("have.css", "width")
-        .and("eq", "1097px");
+        .and("eq", "1129px");
 
       H.entityPickerModalItem(2, "Second collection").click();
 
