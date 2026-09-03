@@ -159,6 +159,35 @@
             (testing "after reactivation the same token STILL does not authenticate"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))))))))
 
+(deftest resolve-access-token-deactivated-user-test
+  (testing "S1: a still-live token for a user who has since been deactivated does NOT resolve — the shared
+            resolver gates on is_active so the v1 MCP transport (which dispatches straight on :user-id,
+            with no is_active re-check of its own) can't authenticate a deactivated user's bearer token"
+    ;; Deactivates with a raw UPDATE, not `t2/update! :model/User`: the model's before-update hook fires
+    ;; `:event/user-credentials-revoked`, whose handler stamps `revoked_at` on the token and would make the
+    ;; store lookup fail first — the resolver's own is_active gate would never be what this test exercises.
+    ;; The raw UPDATE is exactly the path the gate exists for.
+    ;; Uses :rasta (a shared fixture user) but restores `is_active` and deletes the token in a `finally`,
+    ;; so the deactivation can't leak to sibling tests. A rollback-only transaction does NOT isolate the
+    ;; update from tests running on other connections; a `with-temp` user hits an FK on teardown because the
+    ;; token row still references it.
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (let [user-id (mt/user->id :rasta)
+              token   (str (random-uuid))]
+          (try
+            (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+            (testing "resolves while the user is active"
+              (is (= user-id (:user-id (oauth-server/resolve-access-token token)))))
+            (t2/query {:update :core_user :set {:is_active false} :where [:= :id user-id]})
+            (testing "stops resolving once the user is deactivated"
+              (is (nil? (oauth-server/resolve-access-token token)))
+              (testing "and the token itself was not revoked — the resolver's gate did the refusing"
+                (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token token)))))
+            (finally
+              (t2/query {:update :core_user :set {:is_active true} :where [:= :id user-id]})
+              (t2/delete! :model/OAuthAccessToken :token token))))))))
+
 (deftest bearer-bridge-precedence-test
   (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
     (let [called? (atom false)]

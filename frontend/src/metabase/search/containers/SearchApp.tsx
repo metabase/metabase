@@ -105,7 +105,7 @@ export function SearchApp() {
         {jt`Results for "${searchText}"`}
       </Text>
       <SearchBody justify="center">
-        <SearchControls pb="lg">
+        <SearchControls pb="xl">
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
         </SearchControls>
         <SearchResultContainer>

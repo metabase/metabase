@@ -88,10 +88,10 @@ export function NotificationChannelConfigModal({
       size="lg"
       fullScreen={isSmallScreen}
     >
-      <Stack gap="md" mt="md">
+      <Stack gap="lg" mt="lg">
         <EmailChannelCard isConfigured={isEmailConfigured} />
         <SlackChannelCard isConfigured={isSlackConfigured} />
-        <Flex justify="space-between" gap="md" mt="md">
+        <Flex justify="space-between" gap="lg" mt="lg">
           <Button
             variant="subtle"
             leftSection={<Icon name="mail" />}
@@ -100,7 +100,7 @@ export function NotificationChannelConfigModal({
           >
             {t`Send test notification`}
           </Button>
-          <Group gap="md">
+          <Group gap="lg">
             <Button
               variant="subtle"
               onClick={() => {

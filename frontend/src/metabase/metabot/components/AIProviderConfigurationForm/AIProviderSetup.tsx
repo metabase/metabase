@@ -56,7 +56,7 @@ export function AIProviderSetup({
 
   if (isPickingModel) {
     return (
-      <Stack gap="lg">
+      <Stack gap="xl">
         <LlmModelPicker />
         <Flex justify="end">
           <Button variant="filled" onClick={onDone}>

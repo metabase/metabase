@@ -26,7 +26,7 @@ export const SelectItemWithDescription = forwardRef(
       <SelectItem ref={ref} selected={selected} {...props}>
         {showCheckIcon && <Icon name={selected ? "check" : "empty"} />}
 
-        <Flex direction="column" flex="1" gap="xs">
+        <Flex direction="column" flex="1" gap="xxs">
           <Text c="inherit" fw="bold" lh="1rem">
             {label}
           </Text>

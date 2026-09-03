@@ -7,9 +7,9 @@
    usage into the scorer so the usage signal stays current independent of the sync cadence."
   (:require
    [metabase.interestingness.core :as interestingness]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,11 +22,7 @@
         ;; SUM of an int column comes back as a Long on H2/Postgres but a BigDecimal on
         ;; MySQL/MariaDB — coerce to long so the `:int` return schema holds across app DBs.
         (map (juxt :field_id (comp long :total_count)))
-        (t2/select [:model/SourceDimensionDaily :field_id [[:sum :count] :total_count]]
-                   {:where    [:and
-                               [:in :ownership_mode ["direct" "projected"]]
-                               [:not= :field_id nil]]
-                    :group-by [:field_id]})))
+        (usage-metadata.db/dimension-breakout-counts)))
 
 (defn- percentile
   "Nearest-rank percentile `p` (0..1) of a collection of numbers. Returns nil for an empty coll.
@@ -86,12 +82,12 @@
   `(do-with-breakout-usage (^:once fn* [] ~@body)))
 
 (def ^:dynamic *update-partition-size*
-  "Max number of fields persisted per `t2/update!` call when rescoring. Dynamic for testing."
+  "Max number of fields persisted per bulk update when rescoring. Dynamic for testing."
   1000)
 
 (defn- persist-scores!
   "Persist a `{field-id score}` map of new `dimension_interestingness` scores in chunked,
-   CASE-based bulk updates — one `t2/update!` per partition rather than one per field. Within a
+   CASE-based bulk updates — one update statement per partition rather than one per field. Within a
    chunk, field ids are grouped by score so the CASE emits one branch per distinct score value."
   [score-by-id]
   (doseq [chunk (partition-all *update-partition-size* score-by-id)]
@@ -99,8 +95,7 @@
           case-expr    (into [:case]
                              (mapcat (fn [[score ids]] [[:in :id ids] score]))
                              ids-by-score)]
-      (t2/update! :model/Field {:id [:in (map key chunk)]}
-                  {:dimension_interestingness case-expr}))))
+      (usage-metadata.db/update-fields-dimension-interestingness! (map key chunk) case-expr))))
 
 (mu/defn rescore-dimension-interestingness! :- :int
   "Recompute and persist `metabase_field.dimension_interestingness` for every field that currently
@@ -124,7 +119,6 @@
                                          (interestingness/dimension-interestingness
                                           (assoc field :usage {:breakout-count          n
                                                                :baseline-breakout-count baseline}))])))
-                               (t2/reducible-select [:model/Field :id :fingerprint :semantic_type :base_type]
-                                                    :id [:in field-ids]))]
+                               (usage-metadata.db/interestingness-scoring-fields-reducible field-ids))]
          (persist-scores! score-by-id)))
      (count field-ids))))

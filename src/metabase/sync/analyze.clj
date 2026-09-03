@@ -7,13 +7,13 @@
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.usage-metadata.core :as usage-metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -56,21 +56,12 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (t2/update! :model/Field
-              (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id (:id table)})
-              {:last_analyzed :%now}))
+  (sync.db/mark-incomplete-fields-analyzed-for-table! (:id table) i/*latest-fingerprint-version*))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
-  (t2/update! :model/Field
-              (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:table_id [:in ^:allow-subquery
-                                 {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
-                                  :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
-              {:last_analyzed :%now}))
+  (sync.db/mark-incomplete-fields-analyzed-for-database! (:id database) i/*latest-fingerprint-version*))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
