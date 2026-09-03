@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import {
   QueryEditor,
   type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -51,17 +50,21 @@ export function TransformEditor({
   isEditMode,
   readOnly,
 }: TransformEditorProps) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const query = useMemo(
-    () => Lib.fromJsQueryAndMetadata(metadata, source.query),
-    [source, metadata],
+    () =>
+      Lib.fromJsQuery(getMetadataProvider(source.query.database), source.query),
+    [source, getMetadataProvider],
   );
   const proposedQuery = useMemo(
     () =>
       proposedSource
-        ? Lib.fromJsQueryAndMetadata(metadata, proposedSource.query)
+        ? Lib.fromJsQuery(
+            getMetadataProvider(proposedSource.query.database),
+            proposedSource.query,
+          )
         : undefined,
-    [proposedSource, metadata],
+    [proposedSource, getMetadataProvider],
   );
   const mergedUiOptions = useMemo(
     () => ({ ...getEditorOptions(databases, !isEditMode), ...uiOptions }),

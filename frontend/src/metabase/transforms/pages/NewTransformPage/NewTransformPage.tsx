@@ -14,13 +14,12 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   getInitialUiState,
   loadQueryEditor,
 } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
 import { type Location, useNavigate, useParams } from "metabase/router";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -115,7 +114,7 @@ function NewTransformPageBody({
   } = useSourceState({ initialSource });
   const [name, setName] = useState(suggestedTransform?.name ?? "");
   const [uiState, setUiState] = useState(getInitialUiState);
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
@@ -125,9 +124,14 @@ function NewTransformPageBody({
 
   const validationResult = useMemo(() => {
     return source.type === "query"
-      ? getValidationResult(Lib.fromJsQueryAndMetadata(metadata, source.query))
+      ? getValidationResult(
+          Lib.fromJsQuery(
+            getMetadataProvider(source.query.database),
+            source.query,
+          ),
+        )
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
-  }, [source, metadata]);
+  }, [source, getMetadataProvider]);
 
   const isSavedRef = useRef(false);
 
