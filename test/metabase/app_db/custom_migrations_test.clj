@@ -1947,62 +1947,6 @@
 ;;; 52 tests
 ;;;
 
-(deftest create-sample-content-test
-  (testing "The sample content is created iff *create-sample-content*=true"
-    (doseq [create? [true false]]
-      (testing (str "*create-sample-content* = " create?)
-        (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
-          (binding [custom-migrations/*create-sample-content* create?]
-            (is (false? (sample-content-created?)))
-            (migrate!)
-            (is (= create? (sample-content-created?))))
-          (when (true? create?)
-            (testing "The Examples collection has permissions set to grant read-write access to all users"
-              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
-                (is (partial=
-                     {:collection_id id
-                      :perm_type     :perms/collection-access
-                      :perm_value    :read-and-write}
-                     (t2/select-one :model/Permissions :collection_id id)))))))))))
-
-(deftest create-sample-content-test-2
-  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
-    (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
-      (is (false? (sample-content-created?)))
-      (t2/insert-returning-pks! :metabase_database {:name       "db"
-                                                    :engine     "h2"
-                                                    :created_at :%now
-                                                    :updated_at :%now
-                                                    :details    "{}"})
-      (t2/query {:delete-from :metabase_database})
-      (migrate!)
-      (is (false? (sample-content-created?)))
-      (is (empty? (t2/query "SELECT * FROM metabase_database"))
-          "No database should have been created"))))
-
-(deftest create-sample-content-test-3
-  (testing "The sample content isn't created if a user existed already"
-    (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
-      (is (false? (sample-content-created?)))
-      (t2/insert-returning-pks!
-       :core_user
-       {:first_name    "Rasta"
-        :last_name     "Toucan"
-        :email         "rasta@metabase.com"
-        :password      "password"
-        :password_salt "and pepper"
-        :date_joined   :%now})
-      (migrate!)
-      (is (false? (sample-content-created?))))))
-
-(deftest create-sample-content-effective-type-test
-  (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
-    (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
-      (migrate!)
-      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
-        (is (seq fields))
-        (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
-
 (defn- insert-returning-pk!
   [table record]
   (first (t2/insert-returning-pks! table record)))
@@ -2393,6 +2337,62 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest create-sample-content-test
+  (testing "The sample content is created iff *create-sample-content*=true"
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
+        (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
+          (binding [custom-migrations/*create-sample-content* create?]
+            (is (false? (sample-content-created?)))
+            (migrate!)
+            (is (= create? (sample-content-created?))))
+          (when (true? create?)
+            (testing "The Examples collection has permissions set to grant read-write access to all users"
+              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
+                (is (partial=
+                     {:collection_id id
+                      :perm_type     :perms/collection-access
+                      :perm_value    :read-and-write}
+                     (t2/select-one :model/Permissions :collection_id id)))))))))))
+
+(deftest create-sample-content-test-2
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
+      (is (false? (sample-content-created?)))
+      (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                    :engine     "h2"
+                                                    :created_at :%now
+                                                    :updated_at :%now
+                                                    :details    "{}"})
+      (t2/query {:delete-from :metabase_database})
+      (migrate!)
+      (is (false? (sample-content-created?)))
+      (is (empty? (t2/query "SELECT * FROM metabase_database"))
+          "No database should have been created"))))
+
+(deftest create-sample-content-test-3
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
+      (is (false? (sample-content-created?)))
+      (t2/insert-returning-pks!
+       :core_user
+       {:first_name    "Rasta"
+        :last_name     "Toucan"
+        :email         "rasta@metabase.com"
+        :password      "password"
+        :password_salt "and pepper"
+        :date_joined   :%now})
+      (migrate!)
+      (is (false? (sample-content-created?))))))
+
+(deftest create-sample-content-effective-type-test
+  (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
+    (impl/test-migrations "v58.2026-09-03T00:00:00" [migrate!]
+      (migrate!)
+      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
+        (is (seq fields))
+        (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
