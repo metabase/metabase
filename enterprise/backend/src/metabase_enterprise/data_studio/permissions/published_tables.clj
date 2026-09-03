@@ -2,12 +2,12 @@
   "Enterprise implementation of published table permissions.
   Provides query access to published tables via collection permissions."
   (:require
+   [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defenterprise user-published-table-permission
   "Returns :query-builder permission if table is published and user has collection access.
@@ -15,33 +15,20 @@
   :feature :library
   [user-id perm-type table-id]
   (when (and (= perm-type :perms/create-queries)
-             (t2/exists? :model/Table
-                         {:where [:and
-                                  [:= :id table-id]
-                                  [:= :is_published true]
-                                  (collection/visible-collection-filter-clause
-                                   :collection_id {} {:current-user-id user-id
-                                                      :is-superuser?   (perms/is-superuser? user-id)})]}))
+             (data-studio.db/published-table-visible-to-user? table-id user-id (perms/is-superuser? user-id)))
     :query-builder))
 
 (defenterprise user-has-any-published-table-permission?
   "Returns true if user has access to any published table via collection permissions."
   :feature :library
   []
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+  (data-studio.db/any-published-table-visible?))
 
 (defenterprise user-has-published-table-permission-for-database?
   "Returns true if user has access to any published table in the given database via collection permissions."
   :feature :library
   [database-id]
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :db_id database-id]
-                       [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+  (data-studio.db/published-table-visible-in-database? database-id))
 
 (defenterprise can-access-via-collection?
   "Returns true if the user can access this published table via collection read permissions."

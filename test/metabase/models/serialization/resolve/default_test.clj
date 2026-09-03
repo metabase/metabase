@@ -1,4 +1,4 @@
-(ns metabase.models.serialization.resolve.db-test
+(ns metabase.models.serialization.resolve.default-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
