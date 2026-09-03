@@ -42,7 +42,7 @@ describe("getCustomVizPluginWarningMessage", () => {
         identifier: "acme:viz",
       }),
     ).toBe(
-      `The identifier "acme:viz" is no longer supported and this visualization isn't served to viewers. Delete it and upload the bundle under a new name.`,
+      `The identifier "acme:viz" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
     );
   });
 });

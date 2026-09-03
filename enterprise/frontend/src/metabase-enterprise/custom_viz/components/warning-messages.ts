@@ -28,7 +28,7 @@ export function getCustomVizPluginWarningMessage(
     .with(
       { type: "invalid-identifier" },
       ({ identifier }) =>
-        t`The identifier "${identifier}" is no longer supported and this visualization isn't served to viewers. Delete it and upload the bundle under a new name.`,
+        t`The identifier "${identifier}" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
     )
     .exhaustive();
 }
