@@ -90,7 +90,7 @@ If you want an easier way to embed different views of data for different custome
 This diagram illustrates how an embed gets secured by a signed JWT:
 
 1. **Visitor arrives**: your frontend gets a request to display a Metabase [embedding URL](./static-embedding.md#adding-the-embedding-url-to-your-website).
-2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./guest-embedding.md#how-guest-embedding-works). The signed JWT should encode any query [parameters](./static-embedding-parameters.md) you're using to filter your data.
+2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./guest-embedding.md#how-guest-embedding-works). The signed JWT should encode any [locked parameters](./parameters.md#restrict-data-with-locked-parameters) you're using to filter your data.
 3. **Response**: your Metabase backend returns data based on the query parameters encoded in the signed JWT.
 4. **Success**: your frontend displays the embedded Metabase page with the correct data.
 5. **(Optional) Refresh / Initialize**: if you've configured a [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server), the embed will call that endpoint you've set up for a fresh token the next time the embed needs to make a data request after the current token has expired (like when someone changes the filter value). The embed won't automatically fetch a new token. The endpoint can also serve the first token on load, so you can use the endpoint to revoke access by refusing to issue a new token.
@@ -121,7 +121,7 @@ https://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?st
 | 2          | Basic   | Active |
 | 5          | Premium | Active |
 
-With guest embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the guest embedding URL:
+With guest embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./parameters.md#restrict-data-with-locked-parameters). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the guest embedding URL:
 
 ```plaintext
 https://my-metabase.com/dashboard/your_signed_jwt
@@ -150,7 +150,7 @@ Let's say that we want to expose the Accounts table to our customers, so that cu
 If we want to avoid creating a Metabase login for each of our customers, we'll need:
 
 - An [embeddable dashboard](./static-embedding.md#making-a-question-or-dashboard-embeddable) with the Accounts data.
-- A [locked parameter](./static-embedding-parameters.md) for the Account ID filter.
+- A [locked parameter](./parameters.md#restrict-data-with-locked-parameters) for the Account ID filter.
 - A login flow in our embedding application (the web app where we want to embed Metabase).
 
 The flow might look something like this:

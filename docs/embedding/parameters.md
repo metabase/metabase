@@ -1,82 +1,84 @@
 ---
-title: Modular embedding parameters
-summary: Pass parameter values to embedded dashboards and SQL questions in modular embedding (React SDK and web components).
+title: Embedding parameters
+summary: "Set, control, hide, and lock dashboard filters and SQL variables in embedded dashboards and charts, with web components, the React SDK, or an iframe."
+redirect_from:
+  - /docs/latest/embedding/static-embedding-parameters
+  - /docs/latest/embedding/signed-embedding-parameters
 ---
 
-# Modular embedding parameters
+# Embedding parameters
 
-This page covers how to pass parameter values to embedded dashboards and SQL questions.
+A parameter is a value that changes what data an embedded dashboard or chart shows: a [dashboard filter](../dashboards/filters.md), a [SQL variable or field filter](../questions/native-editor/sql-parameters.md), or a time grouping. Questions built with the query builder don't expose parameters in embeds; to filter one, add it to a dashboard and connect a filter to the card.
 
-The props and attributes here set values that whoever's viewing the embed can still change. To set a value your app controls and nobody can see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.
+For every attribute, prop, event, and value format, check out the [Parameters reference](./parameters-reference.md).
 
-## Modular embedding SDK (React)
+## Choose parameter visibility in the embed wizard
 
-### Pass parameter values to a dashboard
+What the embedding wizard offers under **Parameters** depends on the authentication you pick. With **SSO** authentication, every parameter shows by default, and for each one you can set a default value and choose whether to hide its widget. With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
 
-You can set initial values for embeds (uncontrolled), and optionally keep your app in sync with values as people change them (controlled). You can pick either `initialParameters` and `parameters`, but don't combine them.
+- **Disabled**: no widget, and nobody can set a value.
+- **Editable**: the widget shows, people can change the value, and your page can set a [starting value](#set-starting-values).
+- **Locked**: no widget. Your server sets the value in the signed token. Check out [Restrict data with locked parameters](#restrict-data-with-locked-parameters).
 
-#### `initialParameters` (uncontrolled)
+You can't disable a filter that [always requires a value](../dashboards/filters.md#make-a-filter-or-parameter-required).
 
-Set the filter values once on load. Your app won't know when people change filters in the dashboard. Pick this when you don't need to track those changes.
+## Restrict data with locked parameters
 
-```typescript
-{% include_file "{{ dirname }}/snippets/parameters/dashboards/initial-parameters.tsx" snippet="example" %}
+![Locked parameters](./images/locked-parameters.png)
+
+Say you want each customer to see only their own rows. On an embed with guest authentication, nobody's signed in to your Metabase, so permissions can't scope rows per person. Instead, you can lock the parameter: your server sets the parameter's value in the signed token, and Metabase applies the value before running anything. The viewer can't change the value.
+
+On an SSO embed, you don't need locked parameters. Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
+
+### Lock a parameter
+
+1. Visit the dashboard or question, click the **Share** icon, and select **Embed**.
+2. Under **Parameters**, set the parameter to **Locked**.
+3. Optional: pick a value under **Preview locked parameters**. The wizard writes it into the server code it generates, so you can see the exact format Metabase expects.
+4. Click **Publish**.
+5. On your server, put the value in the `params` object when you sign the token:
+
+```javascript
+// Install via 'npm install jsonwebtoken'
+const jwt = require("jsonwebtoken");
+
+const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
+
+const payload = {
+  resource: { dashboard: 10 },
+  params: {
+    // Keyed by slug. Values are arrays. Set this from your app's session, not from the page.
+    customer_id: [13],
+  },
+  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+};
+
+const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-See [How parameter values are resolved](#how-parameter-values-are-resolved) for null / missing-slug semantics.
+Then pass the token to the component, as the `token` attribute on `<metabase-dashboard>` or the `token` prop on `StaticDashboard` in the SDK, or have the embed fetch it from your server. On a [static embed](./static-embedding.md#adding-the-embedding-url-to-your-website), the token goes in the iframe URL instead. The dashboard shows only customer 13's rows, with no **Customer ID** widget. For fetching and refreshing the token, check out [Guest embeds](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
 
-#### `parameters` + `onParametersChange` (controlled)
+Some notes on locked parameters:
 
-Push values from your app, and observe every applied change via `onParametersChange`. This works like a controlled `<input value onChange>`. Your app holds the source of truth, the dashboard re-renders when the prop changes, and you receive a callback whenever applied values change.
+- **Every token has to include every locked parameter.** Leave out a parameter, and Metabase refuses the request.
+- **A locked value narrows the options in editable widgets.** Lock **State** to Vermont, and an editable **City** filter on the same dashboard only lists Vermont cities (like [linked filters](../dashboards/filters.md#linking-filters)).
+- **Multiple locked parameters combine with AND.** To skip a locked parameter for a given token, pass `[]` as its value.
+- **The key in `params` is the filter's slug.** If you rename a locked dashboard filter, update the key in your server code to match. Locked parameters connected to a [SQL variable](../questions/native-editor/sql-parameters.md) keep the variable's name, so renaming the widget doesn't affect them.
 
-```typescript
-{% include_file "{{ dirname }}/snippets/parameters/dashboards/controlled-parameters.tsx" snippet="example-controlled" %}
-```
+[Params in a signed token](./parameters-reference.md#params-in-a-signed-token) covers the value format, the error messages, and how Metabase treats empty arrays and blank strings.
 
-`onParametersChange` receives the [dashboard parameter change payload](#dashboard-parameter-change-payload).
+## Set starting values
 
-> Don't combine `initialParameters` and `parameters` - pick one. For controlled behavior, only use `parameters`.
+To open an embed with some set-and-forget filters already applied, and let people change them from there, pass starting values keyed by slug.
 
-### Pass parameters to SQL questions
+If instead you want your app to be able to push values, or see when people change a widget's values, use [controlled values](#control-values-from-your-app).
 
-You can pass [parameter](../questions/native-editor/sql-parameters.md) values to SQL questions in the format `{parameter_name: parameter_value}`. You can set initial values for embeds (uncontrolled), and optionally keep your app in sync with values as people change them (controlled).
-
-These props only work with SQL questions, not query-builder questions.
-
-#### `initialSqlParameters` (uncontrolled)
-
-Set the parameter values once on load. Your app won't know when people change parameters in the question. Pick this when you don't need to track those changes.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/parameters/questions/initial-sql-parameters.tsx" snippet="example" %}
-```
-
-See [How parameter values are resolved](#how-parameter-values-are-resolved) for null / missing-slug semantics.
-
-#### `sqlParameters` + `onSqlParametersChange` (controlled)
-
-Push values from your app, and observe every applied change via `onSqlParametersChange`. This works like a controlled `<input value onChange>` - your app holds the source of truth, the question re-renders when the prop changes, and you receive a callback whenever applied values change.
-
-```typescript
-{% include_file "{{ dirname }}/snippets/parameters/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
-```
-
-`onSqlParametersChange` receives the [SQL question parameter change payload](#sql-question-parameter-change-payload).
-
-## Modular embedding (web components)
-
-### Pass parameter values to embedded components
-
-You can set dashboard filters and SQL parameters from your page, push new values at runtime, and listen for applied changes.
-
-#### Seed values once with `initial-parameters` / `initial-sql-parameters`
-
-Set values on mount via attributes. The component reads them once on load and ignores any subsequent changes to the attribute. User widget edits are not reflected back to your page.
+### Web component starting values
 
 ```html
 <metabase-dashboard
   dashboard-id="1"
-  initial-parameters='{"state": "NY"}'
+  initial-parameters='{"state": "NY", "category": ["Gadget", "Gizmo"]}'
 ></metabase-dashboard>
 
 <metabase-question
@@ -85,108 +87,156 @@ Set values on mount via attributes. The component reads them once on load and ig
 ></metabase-question>
 ```
 
-These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
+Changing the attribute after load reloads the embed and discards whatever people had picked.
 
-Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions). See [How parameter values are resolved](#how-parameter-values-are-resolved) for null / missing-slug semantics.
+### React SDK starting values
 
-#### Push values at runtime with `parameters` / `sqlParameters`
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-For controlled behavior, set the JS property on the element instead of the attribute. The component re-renders to apply the new values.
+Dashboards take `initialParameters`:
 
-```html
-<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
-
-<script>
-  const el = document.getElementById("my-dashboard");
-  el.parameters = { state: "NY" };
-</script>
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/initial-parameters.tsx" snippet="example" %}
 ```
 
-The same pattern works for `metabase-question` via the `sqlParameters` property.
+SQL questions take `initialSqlParameters`:
 
-To switch a component back to uncontrolled mode (leaving the last applied values in place), set the property to `undefined`.
-
-#### Clearing parameters
-
-To clear a single parameter, set its value to `null`. This strictly clears the parameter and ignores its default value.
-
-```html
-<script>
-  const el = document.getElementById("my-dashboard");
-  // `null` strictly clears the parameter (ignores its default).
-  el.parameters = { ...el.parameters, state: null };
-</script>
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/questions/initial-sql-parameters.tsx" snippet="example" %}
 ```
 
-To clear every parameter, assign an empty object `{}`.
+## Control values from your app
+
+When your app needs to be the source of truth for filter values, use the controlled props. They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever they change. Use them to [build your own filter widgets](#build-your-own-filter-ui), sync filters with your app's URL, or drive two embeds from one set of controls.
+
+Dashboards take `parameters`; SQL questions take `sql-parameters` (web component) or `sqlParameters` (SDK). Don't combine them with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console (the iframe's console, for web components).
+
+### Web component controlled values
+
+Set the value as an attribute or a JS property. To catch edits people make in Metabase's widgets, listen for `parameters-change` on the element (it doesn't bubble):
 
 ```html
-<script>
-  const el = document.getElementById("my-dashboard");
-  el.parameters = {};
-</script>
-```
-
-#### Observe applied changes with `parameters-change` / `sql-parameters-change`
-
-Listen for events to keep your page in sync with what's actually applied:
-
-```html
-<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
+<metabase-dashboard
+  id="my-dashboard"
+  dashboard-id="1"
+  parameters='{"state": "NY"}'
+></metabase-dashboard>
 
 <script>
   const el = document.getElementById("my-dashboard");
 
+  // Fires on load, when someone changes a widget, and when Metabase
+  // normalizes a value you pushed. `source` says which.
   el.addEventListener("parameters-change", (event) => {
-    const { source, parameters, defaultParameters, lastUsedParameters } =
-      event.detail;
+    const { source, parameters } = event.detail;
     console.log(source, parameters);
   });
+
+  // Push a new value. The embed re-queries without reloading.
+  el.parameters = { state: "CA" };
 </script>
 ```
 
-The `event.detail` carries the [dashboard parameter change payload](#dashboard-parameter-change-payload).
+For a SQL question, use the `sql-parameters` attribute or `sqlParameters` property on `<metabase-question>`, and listen for `sql-parameters-change`.
 
-For SQL questions, listen for `sql-parameters-change` on `<metabase-question>`. Its `event.detail` carries the [SQL question parameter change payload](#sql-question-parameter-change-payload).
+### React SDK controlled values
 
-## How parameter values are resolved
+Pair `parameters` with `onParametersChange`, and keep the values in state:
 
-These rules apply to all four props — `initialParameters` / `parameters` (dashboards) and `initialSqlParameters` / `sqlParameters` (SQL questions) — and to the matching web component attributes (`initial-parameters`, `parameters`, etc.). For each parameter slug:
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/controlled-parameters.tsx" snippet="example-controlled" %}
+```
 
-- **Set a value**: Pass a `string` for a single-option filter, and an array of `string`s for multi-option filters.
-- **Clear a value:** Set to `null`: the parameter is cleared and its default is not used.
-- **Reset to the default value**: Omit a value (or set to `undefined`) and the embed will fall back to the parameter's default (or `null` if it has no default).
+For SQL questions, pair `sqlParameters` with `onSqlParametersChange`:
 
-## Dashboard parameter change payload
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/questions/controlled-sql-parameters.tsx" snippet="example-controlled" %}
+```
 
-Delivered to `onParametersChange` (SDK) and as `event.detail` for the `parameters-change` event (web components).
+You must update your state from the callback. If you don't, the embed snaps back to the values in your prop on the next render, and people's edits disappear.
 
-{% include_file "{{ dirname }}/sdk/api/snippets/ParameterChangePayload.md" snippet="properties" %}
+The [callback's payload](./parameters-reference.md#change-payload) includes the applied values, each parameter's default (handy for a reset button), and a `source` that says why it fired. To clear one filter, pass `null` for its slug; to reset it to its default, leave the slug out. For the full rules, check out [How values resolve](./parameters-reference.md#how-values-resolve).
 
-`source` indicates why the callback fired:
+## Hide parameter widgets
 
-- `initial-state` - first applied snapshot, fired once per dashboard load.
-- `manual-change` - user edited parameters in UI.
-- `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+To hide a parameter's widget without disabling the parameter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK). Both work on dashboards and SQL questions.
 
-## SQL question parameter change payload
+### Web component hidden widgets
 
-Delivered to `onSqlParametersChange` (SDK) and as `event.detail` for the `sql-parameters-change` event (web components).
+```html
+<metabase-dashboard
+  dashboard-id="1"
+  initial-parameters='{"state": "NY"}'
+  hidden-parameters='["state"]'
+></metabase-dashboard>
+```
 
-{% include_file "{{ dirname }}/sdk/api/snippets/SqlParameterChangePayload.md" snippet="properties" %}
+### React SDK hidden widgets
 
-`source` indicates why the callback fired:
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-- `initial-state` - first applied state, fired once per question load.
-- `manual-change` - user edited parameters in UI.
-- `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/hidden-parameters.tsx" snippet="example" %}
+```
 
-## Hide a dashboard filter
+The same prop works on `StaticQuestion` and `InteractiveQuestion`.
 
-To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute (web component) or the `hiddenParameters` prop (SDK).
+You'll mostly want this on an [SSO embed](./introduction.md#components-with-sso-authentication), where every parameter shows by default. On a guest embed, only **Editable** parameters have a widget to hide, and the embed wizard won't generate this attribute for you, so add it by hand.
 
-Hiding filters can be useful when you're embedding a dashboard with SSO authentication, where every filter on the dashboard shows up by default. On a [guest embed](./guest-embedding.md), a filter that you haven't set to **Editable** or **Locked** is already hidden, so there's usually nothing left to hide.
+Hiding a widget doesn't restrict anything: the value is still set from the browser, and anyone can open the console and change it. To restrict what people can query, [lock the parameter](#restrict-data-with-locked-parameters) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
 
-Hiding a filter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.
+## Build your own filter UI
 
-To control a value that people can't see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.
+If Metabase's widgets don't fit your app, hide them and supply your own. How you push values in depends on how the embed authenticates.
+
+### SSO embeds: control the values and hide the widgets
+
+Hold the values in your app with the [controlled props](#control-values-from-your-app), hide Metabase's widgets with `hiddenParameters`, and the embed re-queries whenever your widget updates your state. With web components, that's the `parameters` property plus `hidden-parameters`, as in [Web component controlled values](#web-component-controlled-values). In the SDK:
+
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/custom-filter-ui.tsx" snippet="example" %}
+```
+
+If you'd rather keep Metabase's SQL widgets and only move them, the SDK's `InteractiveQuestion.SqlParametersList` renders them wherever you put it in a [custom layout](./question-reference.md#customize-the-layout-of-an-interactive-chart).
+
+### Guest embeds: lock the parameter and re-sign the token
+
+On a guest embed, lock the parameter and let your widget own it. When someone changes the value, ask your server for a new token signed with the updated `params`, and hand it to the component. The embed re-queries with the new locked value.
+
+```html
+<metabase-dashboard
+  id="my-dashboard"
+  token="INITIAL_SIGNED_TOKEN"
+></metabase-dashboard>
+
+<script>
+  async function onRegionChange(region) {
+    // Your endpoint signs a token with params: { region: [region] }
+    const response = await fetch(`/api/metabase-token?region=${region}`);
+    const { jwt } = await response.json();
+    document.getElementById("my-dashboard").setAttribute("token", jwt);
+  }
+</script>
+```
+
+In the SDK, hold the token in state and pass it to the `token` prop on `StaticDashboard`. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
+
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/guest-locked-token.tsx" snippet="example" %}
+```
+
+Render the first token on the component yourself rather than letting [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) fetch it. An embed that starts without a token fetches one on load, and that token would overwrite the value your widget just set.
+
+## Parameters in iframe embeds
+
+Everything above applies to [modular embeds](./modular-embedding.md). The iframe-based embeds set parameters through the URL instead:
+
+- **[Public links and public embeds](./public-links.md#public-embed-parameters)**: add `?slug=value` to set a filter, and `#hide_parameters=slug` to hide its widget. Anyone can edit the URL, so these don't restrict data.
+- **[Static embeds](./static-embedding.md)**: same token and rules as guest embeds. Set a parameter to **Locked** and pass its value in `params`. Editable parameters get a widget in the iframe, and take starting values from the URL with the same syntax as public embeds.
+- **[Full app embedding](./full-app-embedding.md)**: filter values go in the Metabase URL you load in the iframe, the same way as in Metabase itself.
+
+## Further reading
+
+- [Parameters reference](./parameters-reference.md)
+- [Guest embeds](./guest-embedding.md)
+- [Data isolation methods](../permissions/data-isolation-methods.md)

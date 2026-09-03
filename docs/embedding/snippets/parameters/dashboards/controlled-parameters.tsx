@@ -31,22 +31,4 @@ const ExampleControlled = () => {
   // [<endsnippet example-controlled>]
 };
 
-const ExampleClearOne = () => (
-  // [<snippet example-clear-one>]
-  // Setting a parameter to `null` clears it (ignores the parameter's default).
-  // Missing slugs fall back to `parameter.default ?? null`.
-  <InteractiveDashboard
-    dashboardId={dashboardId}
-    parameters={{ state: null, city: "Austin" }}
-  />
-  // [<endsnippet example-clear-one>]
-);
-
-const ExampleClearAll = () => (
-  // [<snippet example-clear-all>]
-  // Pass an empty object to clear every parameter.
-  <InteractiveDashboard dashboardId={dashboardId} parameters={{}} />
-  // [<endsnippet example-clear-all>]
-);
-
-export { ExampleControlled, ExampleClearOne, ExampleClearAll };
+export { ExampleControlled };

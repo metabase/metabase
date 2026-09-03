@@ -28,7 +28,7 @@ Jump to a SDK quickstart with a sample React application.
 
 ### [Modular embedding components](./components.md)
 
-A map of the components you can embed, with links to each component's docs and its attribute and prop reference.
+A map of the components you can embed, with links to each component's docs.
 
 ### [Embed a dashboard](./dashboard.md)
 
@@ -61,6 +61,14 @@ Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
 ### [Embed an AI chat](./ai-chat.md)
 
 Embed an AI chat with web components or the React SDK, so people can ask questions of their data in natural language.
+
+### [Embedding parameters](./parameters.md)
+
+Set, control, hide, and lock dashboard filters and SQL variables in embedded dashboards and charts, with web components or the React SDK.
+
+### [Parameters reference](./parameters-reference.md)
+
+Every parameter attribute, prop, event, and payload, how values resolve, the value formats each filter type accepts, and the rules for params in a signed token.
 
 ### [Guest embedding](./guest-embedding.md)
 

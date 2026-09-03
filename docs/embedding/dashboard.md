@@ -45,7 +45,7 @@ Three things need to happen: you publish the dashboard embed in Metabase, you pa
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
 5. Click the **Publish** button (publishing only applies to embeds with guest authentication).
 6. Under **Behavior**, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each attribute does. With guest embeds, you can only control whether people can download the data. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. If your dashboard has filters, set each filter to **Editable** or **Locked**, or leave it as **Disabled**. Filters are disabled by default, which hides the filter and blocks both sides from setting it: your server can't pass a value for it in the JWT, and the person viewing can't change it in the UI. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
+7. If your dashboard has filters, set each filter to **Editable** or **Locked**, or leave it as **Disabled**. Filters are disabled by default, which hides the filter and blocks both sides from setting it: your server can't pass a value for it in the JWT, and the person viewing can't change it in the UI. See [Choose parameter visibility in the embed wizard](./parameters.md#choose-parameter-visibility-in-the-embed-wizard).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
@@ -145,7 +145,7 @@ Your endpoint has to return an object with a single `jwt` field. Return anything
 
 Remember to check permissions! With guest authentication, your endpoint is the only thing deciding who gets a token for which dashboard. An endpoint that signs whatever `entityId` it's handed will give anyone signed in to your app a token for any published dashboard.
 
-For more on signing, check out [Locked parameters](./guest-embedding.md#locked-parameters) and the [example token endpoint](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server). To get the signing code from the in-app wizard, set the **Customer** filter to **Locked**. To see the whole thing running, check out our [sample apps](./securing-embeds.md#sample-apps).
+For more on signing, check out [Locked parameters](./parameters.md#restrict-data-with-locked-parameters) and the [example token endpoint](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server). To get the signing code from the in-app wizard, set the **Customer** filter to **Locked**. To see the whole thing running, check out our [sample apps](./securing-embeds.md#sample-apps).
 
 For all modular embeds, you can also set a `locale` in your page-level configuration. Metabase translates its own UI automatically; to translate content strings like dashboard names and filter labels, upload a [translation dictionary](./translations.md).
 
@@ -372,7 +372,7 @@ Say you want to show each customer only their own numbers. How you restrict the 
 
 ### Lock a filter on a guest embed
 
-Embeds with **Guest** authentication can [lock a filter](./guest-embedding.md#locked-parameters). Your app sets the filter's value in the signed token on your server, so the value comes from your app rather than from whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
+Embeds with **Guest** authentication can [lock a filter](./parameters.md#restrict-data-with-locked-parameters). Your app sets the filter's value in the signed token on your server, so the value comes from your app rather than from whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
 
 Unlike a question, which needs a SQL variable to lock onto, any dashboard filter can be locked, including filters wired up to query builder questions. Set the filter to **Locked** in the dashboard's embed settings, then pass its value in the token:
 
@@ -388,7 +388,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-A locked filter also narrows the options in every editable filter on the same dashboard, the way [linked filters](../dashboards/filters.md#linking-filters) do. And if the locked filter feeds a SQL question anywhere on the dashboard, the token can carry only one value for it. See [Locked parameters](./guest-embedding.md#locked-parameters).
+A locked filter also narrows the options in every editable filter on the same dashboard, the way [linked filters](../dashboards/filters.md#linking-filters) do. And if the locked filter feeds a plain variable in a SQL question anywhere on the dashboard, only one value works for it. See [Locked parameters](./parameters.md#restrict-data-with-locked-parameters).
 
 ### Use permissions on an SSO embed
 
@@ -396,11 +396,7 @@ Embeds with **SSO** don't need to lock filters. Since Metabase knows who's viewi
 
 ## Control dashboard filters from your app
 
-To drive a dashboard's filters from your app's own code, set their values from the page. The embedding APIs call these values parameters. See [Modular embedding parameters](./parameters.md) for the props, attributes, and events:
-
-- **Set a starting value** that people can still change, with `initial-parameters` (web component) or `initialParameters` (SDK).
-- **Hold the values in your app**, with `parameters` plus the `parameters-change` event (web component), or `onParametersChange` (SDK). Your app becomes the source of truth for the filter values, which is what lets you build your own filter widgets instead of using Metabase's.
-- **Hide Metabase's filter widgets** with `hidden-parameters` (web component) or `hiddenParameters` (SDK), for when your app supplies the filter UI. See [Hide a dashboard filter](./parameters.md#hide-a-dashboard-filter).
+To drive a dashboard's filters from your app's own code, set their values from the page. The embedding APIs call these values parameters. You can [set starting values](./parameters.md#set-starting-values) that people can still change, [hold the values in your app](./parameters.md#control-values-from-your-app) and get a callback when they change, and [hide Metabase's widgets](./parameters.md#hide-parameter-widgets) when your app supplies [its own filter UI](./parameters.md#build-your-own-filter-ui). Check out [Embedding parameters](./parameters.md) for all of it.
 
 Your app sets these values in the browser, and people can change them, so they don't restrict what anyone can query. To restrict the data itself, see [Show people only their own data](#show-people-only-their-own-data).
 
@@ -548,7 +544,8 @@ On the OSS and Starter plans, Metabase adds a "Powered by Metabase" banner to gu
 - [Embed a chart](./chart.md)
 - [Embed the query builder](./query-builder.md)
 - [Appearance](./appearance.md)
-- [Modular embedding parameters](./parameters.md)
+- [Embedding parameters](./parameters.md)
+- [Parameters reference](./parameters-reference.md)
 - [Translating embeds](./translations.md)
 - [Guest embeds](./guest-embedding.md)
 - [Authentication](./authentication.md)

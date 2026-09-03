@@ -54,7 +54,8 @@ Web components cover the components above. A few features are React-only, becaus
 
 - [Appearance](./appearance.md)
 - [Modular embedding SDK config](./sdk/config.md), for the `MetabaseProvider` props
-- [Modular embedding parameters](./parameters.md)
+- [Embedding parameters](./parameters.md)
+- [Parameters reference](./parameters-reference.md)
 - [Custom visualizations in embeds](./custom-visualizations.md)
 - [Translating embeds](./translations.md)
 - [Authentication](./authentication.md)

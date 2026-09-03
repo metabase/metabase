@@ -10,3 +10,5 @@ const Example = () => (
   />
   // [<endsnippet example>]
 );
+
+export { Example };
