@@ -4,8 +4,8 @@ import type { ParameterId } from "metabase-types/api";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 
 /**
- * The list of native query parameters (template tag values) shown in the top
- * bar. Renders nothing when the consumer did not provide `setParameterValue`.
+ * The list of native query parameters (template tag values). Renders nothing
+ * when the editor context has no `setParameterValue`.
  */
 export function NativeQueryParametersList() {
   const { question, query, setDatasetQuery, setParameterValue } =
