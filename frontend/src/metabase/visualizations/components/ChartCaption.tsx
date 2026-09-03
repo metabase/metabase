@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 
 import type { IconProps } from "metabase/ui";
+import type { DashcardSizeTier } from "metabase/visualizations/lib/dashcard-sizing";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import type {
   RawSeries,
@@ -21,6 +22,7 @@ interface ChartCaptionProps {
   width?: number;
   getHref?: () => string | undefined;
   titleMenuItems?: React.ReactNode;
+  sizeTier?: DashcardSizeTier;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   visualizerRawSeries?: RawSeries;
 }
@@ -36,6 +38,7 @@ const ChartCaption = ({
   getHref,
   width,
   titleMenuItems,
+  sizeTier,
 }: ChartCaptionProps) => {
   const title =
     settings["card.title"] ??
@@ -67,6 +70,8 @@ const ChartCaption = ({
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
       width={width}
       titleMenuItems={titleMenuItems}
+      sizeTier={sizeTier}
+      titleSize={sizeTier?.titleFontSize}
     />
   );
 };

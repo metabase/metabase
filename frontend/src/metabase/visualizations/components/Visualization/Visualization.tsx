@@ -26,7 +26,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconProps } from "metabase/ui";
+import { Box, Flex, type IconProps } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
@@ -37,6 +37,11 @@ import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
+import {
+  type DashcardSizeTier,
+  getSizeTierBodyPadding,
+  getSizeTierHeaderPadding,
+} from "metabase/visualizations/lib/dashcard-sizing";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   type CardSlownessStatus,
@@ -87,11 +92,7 @@ import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
-import {
-  VisualizationActionButtonsContainer,
-  VisualizationHeader,
-  VisualizationRoot,
-} from "./Visualization.styled";
+import S from "./Visualization.module.css";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
@@ -130,6 +131,7 @@ type VisualizationOwnProps = {
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
+  sizeTier?: DashcardSizeTier;
   error?: ReactNode;
   errorIcon?: IconName;
   errorMessageOverride?: string;
@@ -677,6 +679,7 @@ class Visualization extends PureComponent<
       className,
       dashboard,
       dashcard,
+      sizeTier: sizeTierProp,
       dispatch,
       errorIcon,
       errorMessageOverride,
@@ -828,9 +831,9 @@ class Visualization extends PureComponent<
     }
 
     const extra = (
-      <VisualizationActionButtonsContainer>
+      <Flex component="span" align="center">
         {actionButtons}
-      </VisualizationActionButtonsContainer>
+      </Flex>
     );
 
     let { gridSize, gridUnit } = this.props;
@@ -866,6 +869,13 @@ class Visualization extends PureComponent<
           isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
 
+    const sizeTier = visualization?.noSizeTier ? undefined : sizeTierProp;
+    // Visualizations that render their own caption apply the tier themselves.
+    const chartBodyPadding =
+      sizeTier && isHeaderEnabled
+        ? getSizeTierBodyPadding(sizeTier, !!hasHeader)
+        : undefined;
+
     // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
@@ -878,7 +888,9 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <VisualizationRoot
+        <Flex
+          direction="column"
+          h="100%"
           className={className}
           style={style}
           data-testid="visualization-root"
@@ -888,7 +900,15 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <VisualizationHeader>
+            <Box
+              className={S.header}
+              flex="0 0 auto"
+              style={
+                sizeTier
+                  ? { padding: getSizeTierHeaderPadding(sizeTier) }
+                  : undefined
+              }
+            >
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}
@@ -899,11 +919,12 @@ class Visualization extends PureComponent<
                 titleMenuItems={titleMenuItems}
                 width={width}
                 getHref={getHref}
+                sizeTier={sizeTier}
                 onChangeCardAndRun={
                   canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
-            </VisualizationHeader>
+            </Box>
           )}
           {replacementContent ? (
             replacementContent
@@ -936,7 +957,10 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: hasDevWatermark ? "relative" : undefined }}
+                style={{
+                  position: hasDevWatermark ? "relative" : undefined,
+                  padding: chartBodyPadding,
+                }}
               >
                 {/* The same view the card shows while its data loads, so a
                     chunk that arrives after the data does not swap one
@@ -961,6 +985,7 @@ class Visualization extends PureComponent<
                       data={series[0].data} // convenience for single-series visualizations
                       dashboard={dashboard}
                       dashcard={dashcard}
+                      sizeTier={sizeTier}
                       dispatch={dispatch}
                       errorIcon={errorIcon}
                       fontFamily={fontFamily}
@@ -1062,7 +1087,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </VisualizationRoot>
+        </Flex>
       </ErrorBoundary>
     );
   }

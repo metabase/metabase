@@ -59,6 +59,7 @@ type ChartWithLegendProps = {
   isDashboard?: boolean;
   isDocument?: boolean;
   isMetricsViewer?: boolean;
+  padding?: number;
   onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
   forwardedRef?: Ref<HTMLDivElement>;
 };
@@ -81,6 +82,7 @@ const ChartWithLegendInner = ({
   isDashboard,
   isDocument,
   isMetricsViewer,
+  padding = PADDING,
   onToggleSeriesVisibility = () => {},
   forwardedRef,
 }: ChartWithLegendProps) => {
@@ -134,9 +136,9 @@ const ChartWithLegendInner = ({
       )}
       style={{
         ...style,
-        paddingBottom: PADDING,
-        paddingLeft: PADDING,
-        paddingRight: PADDING,
+        paddingBottom: padding,
+        paddingLeft: padding,
+        paddingRight: padding,
       }}
       data-testid="chart-with-legend"
       data-legend-position={layout.type}

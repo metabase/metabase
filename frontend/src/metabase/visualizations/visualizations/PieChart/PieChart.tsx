@@ -182,6 +182,7 @@ function PieChartComponent(props: VisualizationProps) {
       showLegend={showLegend}
       onHoverChange={onHoverChange}
       className={props.className}
+      padding={props.sizeTier ? 0 : undefined}
       chartClassName={S.PieChartContainer}
       gridSize={props.gridSize}
       hovered={props.hovered}

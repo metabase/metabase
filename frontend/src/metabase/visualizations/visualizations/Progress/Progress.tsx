@@ -33,6 +33,7 @@ function ProgressComponent(props: VisualizationProps) {
       },
     ],
     settings,
+    sizeTier,
     onVisualizationClick,
     visualizationIsClickable,
   } = props;
@@ -142,7 +143,7 @@ function ProgressComponent(props: VisualizationProps) {
           CS.flexColumn,
           CS.justifyCenter,
         )}
-        style={{ padding: 10, paddingTop: 0 }}
+        style={sizeTier ? undefined : { padding: 10, paddingTop: 0 }}
       >
         <div
           ref={containerRef}

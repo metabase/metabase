@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 
-import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
+import { Flex } from "metabase/ui";
 import { VisualizationSkeletonCaption } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton.styled";
 
 export type VisualizationSkeletonProps = HTMLAttributes<HTMLDivElement> & {
@@ -17,13 +17,13 @@ export const VisualizationSkeleton = ({
   className,
 }: VisualizationSkeletonProps) => {
   return (
-    <VisualizationRoot className={className}>
+    <Flex direction="column" h="100%" className={className}>
       <VisualizationSkeletonCaption
         name={name}
         description={description}
         actionMenu={actionMenu}
       />
       {children}
-    </VisualizationRoot>
+    </Flex>
   );
 };

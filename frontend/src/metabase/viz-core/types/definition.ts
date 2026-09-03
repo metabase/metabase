@@ -396,6 +396,7 @@ export type VisualizationDefinition = {
   canSavePng?: boolean;
   noHeader?: boolean;
   noLoadingHeader?: boolean;
+  noSizeTier?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;

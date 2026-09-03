@@ -113,6 +113,7 @@ export const SMART_SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   canSavePng: true,
   noHeader: true,
   noLoadingHeader: true,
+  noSizeTier: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),

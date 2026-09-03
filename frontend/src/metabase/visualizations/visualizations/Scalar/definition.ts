@@ -17,6 +17,7 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   canSavePng: false,
   noHeader: true,
   noLoadingHeader: true,
+  noSizeTier: true,
 
   minSize: getMinSize("scalar"),
   defaultSize: getDefaultSize("scalar"),
