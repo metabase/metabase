@@ -2686,32 +2686,50 @@
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
 
 (deftest migrate-password-auth-test
-  (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
-    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
-      ;; Insert users with password auth before migration
-      (t2/query-one {:insert-into :core_user
-                     :values      [{:first_name    "Password"
-                                    :last_name     "User"
-                                    :email         "password@example.com"
-                                    :date_joined   :%now
-                                    :password      "hashed_password"
-                                    :password_salt "salt123"}
-                                   {:first_name    "NoPassword"
-                                    :last_name     "User"
-                                    :email         "nopass@example.com"
-                                    :date_joined   :%now
-                                    :password      nil
-                                    :password_salt nil}]})
-      (migrate!)
-      ;; Verify password user has auth_identity
-      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
-                                      :from   [[:core_user :u]]
-                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
-                                      :where  [:in :u.email ["password@example.com" "nopass@example.com"]]
-                                      :order-by [[:u.id :asc]]})]
-        (is (= [{:first_name "Password" :provider "password"}
-                {:first_name "NoPassword" :provider nil}]
-               results))))))
+  (testing "v58.2026-09-03T00:00:02: password authentication is copied to auth_identity with the credentials encrypted"
+    (encryption-test/with-secret-key "migrate-password-auth-key-1234"
+      (impl/test-migrations ["v58.2025-11-12T00:00:12" "v58.2026-09-03T00:00:02"] [migrate!]
+        (t2/query-one {:insert-into :core_user
+                       :values      [{:first_name    "Password"
+                                      :last_name     "User"
+                                      :email         "password@example.com"
+                                      :date_joined   :%now
+                                      :password      "hashed_password"
+                                      :password_salt "salt123"}
+                                     {:first_name    "NoPassword"
+                                      :last_name     "User"
+                                      :email         "nopass@example.com"
+                                      :date_joined   :%now
+                                      :password      nil
+                                      :password_salt nil}
+                                     {:first_name    "Existing"
+                                      :last_name     "User"
+                                      :email         "existing@example.com"
+                                      :date_joined   :%now
+                                      :password      "other_hash"
+                                      :password_salt "salt456"}]})
+        (t2/query-one {:insert-into :auth_identity
+                       :values      [{:user_id     (t2/select-one-fn :id :core_user :email "existing@example.com")
+                                      :provider    "password"
+                                      :provider_id "existing@example.com"
+                                      :credentials "already-there"
+                                      :created_at  :%now
+                                      :updated_at  :%now}]})
+        (migrate!)
+        (let [results (mdb.query/query {:select    [:u.first_name :a.provider :a.provider_id :a.credentials]
+                                        :from      [[:core_user :u]]
+                                        :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                        :where     [:in :u.email ["password@example.com" "nopass@example.com" "existing@example.com"]]
+                                        :order-by  [[:u.id :asc]]})]
+          (is (=? [{:first_name "Password", :provider "password", :provider_id "password@example.com"}
+                   {:first_name "NoPassword", :provider nil}
+                   {:first_name "Existing", :provider "password", :credentials "already-there"}]
+                  results))
+          (testing "the credentials are stored encrypted and decrypt to the hash and salt"
+            (let [credentials (:credentials (first results))]
+              (is (encryption/decryptable-string? credentials))
+              (is (= {:password_hash "hashed_password", :password_salt "salt123"}
+                     (json/decode+kw (encryption/maybe-decrypt credentials)))))))))))
 
 (deftest migrate-ldap-auth-test-2
   (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"

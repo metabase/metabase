@@ -472,61 +472,6 @@ databaseChangeLog:
             constraintName: fk_session_auth_identity
 
   - changeSet:
-      id: v58.2025-11-12T00:00:11
-      author: edpaget
-      comment: Migrate password authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                LEFT(email, 255),
-                json_build_object('password_hash', password, 'password_salt', password_salt)::text,
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                LEFT(email, 255),
-                json_object('password_hash', password, 'password_salt', password_salt),
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL;
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                LEFT(email, 255),
-                CONCAT('{"password_hash":"', password, '","password_salt":"', password_salt, '"}'),
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'password'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'password';
-
-  - changeSet:
       id: v58.2025-11-12T00:00:12
       author: edpaget
       comment: Migrate LDAP authentication to auth_identity table
@@ -1681,6 +1626,38 @@ databaseChangeLog:
                   remarks: "The setting's value, encrypted under additional authenticated data naming the setting"
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v58.2026-09-03T00:00:00
+      author: ranquild
+      comment: Create the sample content once setting.value_with_aad exists, so example-dashboard-id is stored whole
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.CreateSampleContentV3"
+
+  - changeSet:
+      id: v58.2026-09-03T00:00:01
+      author: ranquild
+      comment: >-
+        Retire v58.2025-11-12T00:00:11, which copied password authentication into auth_identity with the credentials
+        unencrypted; MigratePasswordAuthToAuthIdentity does it encrypted. Removing the record lets a database that has
+        not run it yet skip straight to the replacement, and one that has re-runs nothing.
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: DELETE FROM databasechangelog WHERE id = 'v58.2025-11-12T00:00:11';
+        - sql:
+            dbms: mysql,mariadb
+            sql: DELETE FROM `DATABASECHANGELOG` WHERE id = 'v58.2025-11-12T00:00:11';
+      rollback: []
+
+  - changeSet:
+      id: v58.2026-09-03T00:00:02
+      author: ranquild
+      comment: Migrate password authentication to auth_identity table, with the credentials encrypted at rest
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MigratePasswordAuthToAuthIdentity"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
