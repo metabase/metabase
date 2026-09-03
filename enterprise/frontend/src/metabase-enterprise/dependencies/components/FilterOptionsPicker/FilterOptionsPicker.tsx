@@ -87,7 +87,7 @@ function FilterOptionsPopover({
   onFilterOptionsChange,
 }: FilterOptionsPopoverProps) {
   return (
-    <Box w="20rem" p="md">
+    <Box w="20rem" p="lg">
       <Stack>
         {availableGroupTypes.length > 0 && (
           <TypeFilterPicker

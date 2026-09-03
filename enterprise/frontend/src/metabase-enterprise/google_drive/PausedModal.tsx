@@ -16,8 +16,8 @@ function PausedModal({ onClose }: { onClose: () => void }) {
   const isAdmin = useSelector(getUserIsAdmin);
 
   return (
-    <Modal opened onClose={onClose} padding="xl" withCloseButton={false}>
-      <Stack gap="md" pt="lg" ta="center">
+    <Modal opened onClose={onClose} padding="xxl" withCloseButton={false}>
+      <Stack gap="lg" pt="xl" ta="center">
         <Box component={databaseError} mx="auto" />
         <Text size="lg" fw="bold">
           {t`Couldn't upload the file, storage is full`}
@@ -29,7 +29,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
             : t`Please contact your admin to add more storage.`}
         </Text>
 
-        <Stack w="50%" my="lg" mx="auto">
+        <Stack w="50%" my="xl" mx="auto">
           {isAdmin ? (
             <>
               <Button

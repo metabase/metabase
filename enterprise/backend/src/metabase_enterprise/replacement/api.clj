@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
+   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -12,8 +13,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.schema :as transforms.schema]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -103,7 +103,7 @@
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
   (let [user-id   api/*current-user-id*
-        card      (api/check-404 (t2/select-one :model/Card :id card_id))
+        card      (api/check-404 (replacement.db/card card_id))
         transform (transforms/create-transform!
                    {:name          transform_name
                     :source        {:type  :query
@@ -140,22 +140,20 @@
   [_route-params
    {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (t2/select :model/ReplacementRun
-             (cond-> {:order-by [[:start_time :desc]]}
-               (some? is-active) (assoc :where [:= :is_active is-active]))))
+  (replacement.db/runs is-active))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (or (t2/select-one :model/ReplacementRun :id id)
+  (or (replacement.db/run id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (let [run (t2/select-one :model/ReplacementRun :id id)]
+  (let [run (replacement.db/run id)]
     (when-not run
       (throw (ex-info "Run not found" {:status-code 404})))
     (when-not (:is_active run)

@@ -126,7 +126,7 @@ x.com`
 - [Exported as](../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
 - [Configuration file name](./config-file.md): `allowed-iframe-hosts`
 
-Allowed iframe hosts.
+Allowed iframe hosts. Includes a list of popular hosts by default; set to ' ' to disable the default list.
 
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
@@ -870,7 +870,7 @@ Custom URL for the help link.
 
 Prevent the exception middleware from including stacktraces in responses.
 
-### `MB_HTTP_CHANNEL_HOST_STRATEGY`
+### `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`
 
 - Type: keyword
 - Default: `external-only`
@@ -1239,6 +1239,14 @@ Use SSL, TLS or plain text.
 
 Should we sync user attributes when someone logs in via LDAP?
 
+### `MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`
+
+- Type: csv
+- Default: ``
+- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-allowlist`
+
+Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.
+
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
 - Type: csv
@@ -1254,6 +1262,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 - [Configuration file name](./config-file.md): `ldap-timeout-seconds`
 
 Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
+### `MB_LDAP_TRUST_STORE`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `ldap-trust-store`
+
+Path to a JKS trust store of CA certificates used to validate the LDAP server's TLS certificate. Leave blank to use the JVM default trust store.
 
 ### `MB_LDAP_USER_BASE`
 
@@ -1424,6 +1440,14 @@ Backed by the deepseek connection in the admin AI settings provider list: reads 
 The DeepSeek API Key.
 
 Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_FAST_MODE`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `llm-fast-mode`
+
+Run Metabot in the provider's fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.
 
 ### `MB_LLM_GOOGLE_API_BASE_URL`
 
@@ -1714,6 +1738,18 @@ Options for displaying the illustration on the login page.
 - [Configuration file name](./config-file.md): `login-page-illustration-custom`
 
 The custom illustration for the login page.
+
+### `MB_MAP_TILE_SERVER_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for map tile servers.
+  Options:
+  - allow-private (external + private networks but NOT loopback or link-local)
+  - external-only (only globally routable public addresses)
+  - allow-all (no restrictions).
+  Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
 
 ### `MB_MAP_TILE_SERVER_URL`
 
@@ -2577,6 +2613,10 @@ This URL is used for things like creating links in emails, auth redirects, and i
 This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
         Make sure that the address defined is how Metabase is being accessed.
+        If left unset, Metabase learns this value from the request headers of the first authenticated
+        admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
+        that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
+        `MB_SITE_URL` explicitly.
 
 ### `MB_SLACK_APP_TOKEN`
 
@@ -3412,6 +3452,16 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_QUARTZ_MAX_CONNECTION_POOL_SIZE`
+
+Type: integer<br>
+Default: `5`<br>
+Since: v64.0
+
+Maximum number of connections in the dedicated pool that Metabase's internal task scheduler (Quartz) uses to talk to the application database. This pool is separate from the main application database pool (see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size)), so scheduled tasks can always reach the application database even when the main pool is fully in use.
+
+Scheduler operations are short, so the default is enough for most deployments. Consider raising it only if you run a very large number of scheduled items (subscriptions, alerts, syncs) and see tasks firing late.
 
 ### `MB_SESSION_SECRET_KEY`
 

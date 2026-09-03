@@ -64,7 +64,7 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
   });
 
   return (
-    <SettingsPageWrapper h="100%" mih={0} w="100%" px="xl">
+    <SettingsPageWrapper h="100%" mih={0} w="100%" px="xxl">
       <Breadcrumbs crumbs={[[t`2FA`, AUTHENTICATION_PATH], [title]]} />
 
       <SearchFilter
@@ -91,7 +91,7 @@ export const MfaUsersPage = <TUser extends MfaAdminUser>({
             classNames={{ row: S.staticRow, cell: S.cell }}
             ariaLabel={tableAriaLabel}
             emptyState={
-              <Box p="xl" ta="center">
+              <Box p="xxl" ta="center">
                 <EmptyState
                   title={emptyMessage}
                   illustrationElement={<img src={NoResults} />}

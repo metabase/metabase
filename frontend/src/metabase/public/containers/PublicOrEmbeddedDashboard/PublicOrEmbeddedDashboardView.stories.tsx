@@ -381,7 +381,7 @@ export function ComponentCompatibility() {
           Mantine Tooltip
         </Card>
       </Tooltip>
-      <Popover withArrow shadow="md" opened>
+      <Popover withArrow shadow="sm" opened>
         <Popover.Target>
           <Card withBorder display="inline-block">
             Mantine Popover

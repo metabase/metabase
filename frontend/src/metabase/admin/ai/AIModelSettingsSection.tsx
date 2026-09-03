@@ -15,7 +15,7 @@ export function AIModelSettingsSection({ id }: { id?: string }) {
       title={t`Models`}
       description={t`Pick which model each AI feature runs on. Models come from the providers you've connected.`}
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <LlmModelPicker
           settingKey="llm-metabot-provider"
           label={t`Default model`}

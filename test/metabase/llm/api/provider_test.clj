@@ -8,6 +8,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -27,6 +28,30 @@
   [message]
   (fn [& _]
     (throw (ex-info message {:api-error true :status-code 401}))))
+
+(defn- do-with-another-instances-write!
+  [conns thunk]
+  (let [stale-conns   (get (setting.cache/cache) "llm-providers")
+        stale-updated (setting/cache-last-updated-at)]
+    (assert (some? stale-updated) "the cached settings-last-updated is what the rewind below makes stale")
+    (llm.provider/set-connections! (vec conns))
+    ;; close the once-a-minute window first, so nothing but an explicit forced check can reload the cache and the
+    ;; test is measuring the endpoint rather than a poll that happened to come due
+    (setting/restore-cache-if-needed! :force-check? true)
+    (setting.cache/update-cache! "llm-providers" stale-conns)
+    (setting.cache/update-cache! "settings-last-updated" stale-updated)
+    ;; the cache is process-wide, so a body that leaves it stale hands the staleness to whatever test runs next
+    (try
+      (thunk)
+      (finally
+        (setting.cache/restore-cache!)))))
+
+(defmacro ^:private with-another-instances-write!
+  "Run `body` with `conns` committed to the app DB while this instance's settings cache still holds what it held
+  before — where every instance but the writer sits until its cache next polls, up to a minute later."
+  {:style/indent 1}
+  [conns & body]
+  `(do-with-another-instances-write! ~conns (fn [] ~@body)))
 
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
@@ -1175,3 +1200,33 @@
                    :type   "metabase"
                    :models [{:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
+
+;;; ------------------------------------- Reading another instance's changes ----------------------------------------
+
+(deftest list-providers-sees-another-instances-connection-test
+  (testing "the list an admin is shown is not the one this instance happened to cache a minute ago"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant"})]]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant"})
+                                      (connection "openai" "openai" {:api-key "sk-openai"})]
+        (is (= ["anthropic" "openai"]
+               (map :key (mt/user-http-request :crowberto :get 200 "llm/providers"))))))))
+
+(deftest create-is-not-rejected-by-a-connection-another-instance-deleted-test
+  (testing "a create is allowed or refused on the list in the app DB, not on a stale one that still holds a
+            connection another instance has removed"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")]
+                                         llm-proxy-base-url "https://proxy.example.com"]
+        (with-another-instances-write! []
+          (is (=? {:key "metabase" :type "metabase"}
+                  (mt/user-http-request :crowberto :post 200 "llm/providers" {:type "metabase"}))
+              "the singleton check must not fire on a connection that is already gone"))))))
+
+(deftest update-is-not-rejected-by-a-connection-another-instance-added-test
+  (testing "a connection this instance has not cached yet is still editable"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (with-another-instances-write! [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                {:config {:api-key "sk-ant-rotated"}}))
+        (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))

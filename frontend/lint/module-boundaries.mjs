@@ -103,7 +103,6 @@ const elements = [
     type: "shared",
     name: "upsells",
     pattern: "frontend/src/metabase/common/components/upsells/**",
-    enforceSharedTiers: false,
   }),
   ...[
     "frontend/src/metabase/common/search/**",
@@ -211,7 +210,7 @@ const elements = [
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
-  createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
   // The app-wide mirror of table and field metadata. Separate from
@@ -240,13 +239,6 @@ const elements = [
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "route-guards" }),
-  createElement({
-    type: "shared",
-    name: "schema",
-    pattern: "frontend/src/metabase/schema.ts",
-    mode: "full",
-    enforceSharedTiers: false,
-  }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
@@ -264,7 +256,7 @@ const elements = [
     name: "types",
     pattern: "frontend/src/types/**",
   }),
-  createElement({ type: "shared", name: "urls", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "urls" }),
   createElement({
     type: "shared",
     name: "visualizations",

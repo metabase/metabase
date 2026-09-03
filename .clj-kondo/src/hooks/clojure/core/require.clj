@@ -20,6 +20,23 @@
                                        :message error
                                        :type    :metabase/modules))))))))
 
+(defn- lint-dynamic-require* [node current-ns config]
+  (when (and (not (modules/ignored-namespace? config current-ns))
+             (modules/module current-ns))
+    (hooks/reg-finding! (assoc (meta node)
+                               :message "Module dependency cannot be statically determined from a dynamic require"
+                               :type    :metabase/modules))))
+
+(defn- quoted-require? [node]
+  (or (= (hooks/tag node) :quote)
+      (and (= (hooks/tag node) :list)
+           (let [[x] (:children node)]
+             (and (hooks/token-node? x)
+                  (= (hooks/sexpr x) 'quote))))))
+
+(defn- keyword-node? [node]
+  (keyword? (hooks/sexpr node)))
+
 (defn- unwrap-require [node]
   (case (hooks/tag node)
     ;; some.namespace of some.namespace/some-var
@@ -42,7 +59,11 @@
 
     ;; something like [some.namespace :as whatever]
     :vector
-    (recur (first (:children node)))))
+    (recur (first (:children node)))
+
+    ;; anything else -- e.g. a runtime expression like `(requiring-resolve (:failing-test-var opts))` --
+    ;; has no statically-known namespace
+    nil))
 
 (comment
   (unwrap-require (-> "(requiring-resolve 'metabase.notification.payload.execute/execute-dashboard)"
@@ -51,20 +72,24 @@
                       second)))
 
 (defn- lint-require* [node current-ns config]
-  (let [[_require & args]   (:children node)
-        required-namespaces (->> (keep unwrap-require args)
-                                 ;; `require` runs through `cc/load-libs` which allows
-                                 ;; #{:as :reload :reload-all :require :use :verbose :refer :as-alias}
-                                 ;; as args. If you use a REPL tool that applies clj-kondo linting (e.g., Clojure MCP)
-                                 ;; you may wish to `:reload` or `:reload-all` a namespace. So we shouldn't assume all
-                                 ;; args are keywords:
-                                 (remove keyword?))]
-    (lint* node current-ns config required-namespaces)))
+  (let [[_require & args]    (:children node)
+        ;; Keywords such as `:reload` and `:reload-all` are options, not namespace dependencies.
+        namespace-nodes     (remove keyword-node? args)
+        static-nodes        (filter quoted-require? namespace-nodes)
+        required-namespaces (->> (keep unwrap-require static-nodes)
+                                 (filter simple-symbol?))]
+    (lint* node current-ns config required-namespaces)
+    (when (or (not= (count static-nodes) (count namespace-nodes))
+              (not= (count required-namespaces) (count static-nodes)))
+      (lint-dynamic-require* node current-ns config))))
 
 (defn- lint-requiring-resolve* [node current-ns config]
   (let [[_requiring-resolve symb-node] (:children node)
         required-namespace             (unwrap-require symb-node)]
-    (lint* node current-ns config [required-namespace])))
+    (if (and (quoted-require? symb-node)
+             (simple-symbol? required-namespace))
+      (lint* node current-ns config [required-namespace])
+      (lint-dynamic-require* node current-ns config))))
 
 (defn lint-require [x]
   (lint-require* (:node x) (:ns x) (modules/config x))

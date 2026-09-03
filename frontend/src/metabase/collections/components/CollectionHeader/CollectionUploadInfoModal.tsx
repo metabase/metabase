@@ -21,17 +21,17 @@ export const UploadInfoModal = ({
       padding="2rem"
       styles={{ header: { marginBottom: "1rem" } }}
     >
-      <Stack gap="md" align="center" justify="center">
+      <Stack gap="lg" align="center" justify="center">
         <Text
           component="div"
           px="sm"
-          py="xs"
+          py="xxs"
           fz="md"
           fw={700}
           c="core-brand"
           bg="background_surface-brand-subtle"
           mx="auto"
-          bdrs="sm"
+          bdrs="xs"
         >
           {t`New`}
         </Text>
