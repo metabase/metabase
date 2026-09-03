@@ -54,13 +54,12 @@
 (defn user-type
   "The `:type` of the User with `user-id`, or nil."
   [user-id]
-  (t2x/with-params {:user-id user-id}
-    (t2/select-one-fn :type :model/User {:where [:= :id [:param :user-id]]})))
+  (t2/select-one-fn :type :model/User {:where [:= :id (t2x/param user-id)]}))
 
 (defn deactivate-api-key-user!
   "Deactivate the api-key User with `user-id`."
   [user-id]
-  (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
+  (t2/update! :model/User (t2x/param user-id), :type :api-key, {:is_active false}))
 
 (defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."

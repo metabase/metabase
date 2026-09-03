@@ -11,10 +11,9 @@
 (defn card-bookmark-exists?
   "Whether the User with `user-id` has a CardBookmark for the Card with `card-id`."
   [card-id user-id]
-  (t2x/with-params {:card-id card-id, :user-id user-id}
-    (t2/exists? :model/CardBookmark {:where [:and
-                                             [:= :card_id [:param :card-id]]
-                                             [:= :user_id [:param :user-id]]]})))
+  (t2/exists? :model/CardBookmark {:where [:and
+                                           [:= :card_id (t2x/param card-id)]
+                                           [:= :user_id (t2x/param user-id)]]}))
 
 (defn dashboard-bookmark-exists?
   "Whether the User with `user-id` has a DashboardBookmark for the Dashboard with `dashboard-id`."

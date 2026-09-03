@@ -40,10 +40,9 @@
 (defn auth-identity-for-provider
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id provider]
-  (t2x/with-params {:user-id user-id, :provider provider}
-    (t2/select-one :model/AuthIdentity {:where [:and
-                                                [:= :user_id [:param :user-id]]
-                                                [:= :provider [:param :provider]]]})))
+  (t2/select-one :model/AuthIdentity {:where [:and
+                                              [:= :user_id (t2x/param user-id)]
+                                              [:= :provider (t2x/param provider)]]}))
 
 (defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
@@ -68,8 +67,7 @@
 (defn user
   "The User with `user-id`, or nil."
   [user-id]
-  (t2x/with-params {:user-id user-id}
-    (t2/select-one :model/User {:where [:= :id [:param :user-id]]})))
+  (t2/select-one :model/User {:where [:= :id (t2x/param user-id)]}))
 
 (defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
