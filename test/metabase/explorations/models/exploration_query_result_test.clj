@@ -57,8 +57,8 @@
                                   :estimated-quartiles   {:q1 1.5 :median 2.5 :q3 9.0 :iqr 7.5}}}]})
 
 (def ^:private single-point-stats
-  "A single-point series has no standard deviation. `util/finite->nil` drops the `##NaN` at the
-  source, so nothing non-finite — which JSON cannot represent — ever reaches the column."
+  "A single-point series has no standard deviation. `util/nan->nil` drops the `##NaN` at the source,
+  so nothing non-finite — which JSON cannot represent — ever reaches the column."
   {:chart-type :categorical
    :series     [{:name    "Count"
                  :summary {:min 5.0 :max 5.0 :mean 5.0 :median 5.0 :std-dev nil :range 0.0}}]})

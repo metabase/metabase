@@ -158,9 +158,9 @@
              q3           (:p75 percentiles)
              ;; Shape metrics (weighted)
              wskew        (when (>= n min-shape-metrics-points)
-                            (stats.u/finite->nil (or (weighted-skewness sorted-xs sorted-ys total wmean wstd) ##NaN)))
+                            (stats.u/nan->nil (or (weighted-skewness sorted-xs sorted-ys total wmean wstd) ##NaN)))
              wkurt        (when (>= n min-shape-metrics-points)
-                            (stats.u/finite->nil (or (weighted-kurtosis sorted-xs sorted-ys total wmean wstd) ##NaN)))
+                            (stats.u/nan->nil (or (weighted-kurtosis sorted-xs sorted-ys total wmean wstd) ##NaN)))
              ;; Structural metrics
              max-count    (apply max sorted-ys)
              mode-idx     (.indexOf ^java.util.List sorted-ys max-count)

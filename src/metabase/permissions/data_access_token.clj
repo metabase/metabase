@@ -16,11 +16,6 @@
        :impersonation {db-id    <digest>}   ; absent => not impersonated on that db
        :routing       {db-id    <digest>}}  ; absent => sees the router db (admins / __METABASE_ROUTER__)
 
-  Each dimension is keyed by its target id, so a caller can ask about one target directly —
-  `metabase.metabot.metadata-perms` does exactly that with `(contains? (:sandbox token) table-id)`.
-  JSON has no integer map keys, but that is a storage concern and is handled as one: the transform
-  encodes and decodes against [[token]], restoring the ids on the way out.
-
   Each per-dimension contributor is a `defenterprise` owned by its EE module (OSS => nil, so OSS
   tokens are empty and everyone is compatible). They use `:feature :none` so a sandboxed /
   impersonated / routed user is recognized even if the gating feature flag is momentarily

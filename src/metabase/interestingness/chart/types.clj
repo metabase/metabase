@@ -52,7 +52,6 @@
    [:max number?]
    [:mean number?]
    [:median number?]
-   ;; nil for a single-point series: no deviation to report (see `util/finite->nil`)
    [:std-dev [:maybe number?]]
    [:range number?]])
 
@@ -283,7 +282,6 @@
 (mr/def ::histogram-series-stats
   "Statistics for a single histogram series."
   [:map
-   ;; the series' display name, carried on the entry rather than used as a map key
    [:name :string]
    [:estimated-summary ::histogram-summary]
    [:total-count :int]

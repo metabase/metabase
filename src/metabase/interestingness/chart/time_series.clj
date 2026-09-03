@@ -81,7 +81,7 @@
         end-val (last values-vec)
         mean-val (dfn/mean values)
         std-dev (dfn/standard-deviation values)
-        cv (or (stats.u/finite->nil (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))) 0.0)
+        cv (or (stats.u/nan->nil (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))) 0.0)
         change-pct (stats.u/percentage-change start-val end-val)]
     {:direction (reconcile-direction (slope-to-direction slope mean-val n) change-pct cv)
      :overall-change-pct change-pct
@@ -109,7 +109,7 @@
   [values]
   (let [mean-val (dfn/mean values)
         std-dev (dfn/standard-deviation values)
-        cv (or (stats.u/finite->nil (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))) 0.0)
+        cv (or (stats.u/nan->nil (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))) 0.0)
         values-vec (vec values)
         pct-changes (for [i (range 1 (count values-vec))
                           :let [prev (nth values-vec (dec i))

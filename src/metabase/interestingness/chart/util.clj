@@ -7,13 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn finite->nil :- [:maybe number?]
-  "Pass through a finite number; `##NaN` and the infinities become nil.
-
-  These statistics are persisted as JSON (`exploration_query_result.chart_stats`), and JSON has no
-  non-finite numbers — Jackson quotes them, so a `number?` field would read back as the *string*
-  `\"NaN\"` and blow up the first consumer that does arithmetic on it. Absent is the honest
-  representation anyway: a single-point series has no standard deviation."
+(mu/defn nan->nil :- [:maybe number?]
+  "Convert NaN and infinities to nil, pass through other values: they are as unrepresentable in JSON."
   [x :- number?]
   (when (Double/isFinite (double x))
     x))
@@ -27,7 +22,7 @@
      :max max-val
      :mean (dfn/mean values)
      :median (dfn/median values)
-     :std-dev (finite->nil (dfn/standard-deviation values))
+     :std-dev (nan->nil (dfn/standard-deviation values))
      :range (- max-val min-val)}))
 
 (mu/defn correlation-direction :- ::stats.types/correlation-direction

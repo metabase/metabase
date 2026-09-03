@@ -6,19 +6,18 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ----------------------------------------------- finite->nil ------------------------------------------------------
-
-(deftest ^:parallel finite->nil-test
+(deftest ^:parallel nan->nil-test
   (testing "NaN becomes nil"
-    (is (nil? (stats.u/finite->nil Double/NaN))))
+    (is (nil? (stats.u/nan->nil Double/NaN))))
   (testing "normal numbers pass through"
-    (is (= 42.0 (stats.u/finite->nil 42.0)))
-    (is (= 0.0 (stats.u/finite->nil 0.0)))
-    (is (= -1.5 (stats.u/finite->nil -1.5))))
-  (testing "the infinities become nil too — JSON cannot represent them any more than it can NaN, and
-            these statistics are persisted as JSON"
-    (is (nil? (stats.u/finite->nil Double/POSITIVE_INFINITY)))
-    (is (nil? (stats.u/finite->nil Double/NEGATIVE_INFINITY)))))
+    (is (= 42.0 (stats.u/nan->nil 42.0)))
+    (is (= 0.0 (stats.u/nan->nil 0.0)))
+    (is (= -1.5 (stats.u/nan->nil -1.5))))
+  (testing "the infinities are dropped too, despite the name — as unrepresentable in JSON as NaN.
+            Nothing produces one today (every division that could is zero-guarded), so this pins the
+            guard rather than a live case"
+    (is (nil? (stats.u/nan->nil Double/POSITIVE_INFINITY)))
+    (is (nil? (stats.u/nan->nil Double/NEGATIVE_INFINITY)))))
 
 ;;; -------------------------------------------- compute-summary ---------------------------------------------------
 
