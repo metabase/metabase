@@ -212,7 +212,7 @@
             (testing "Selected FieldValues should be gone"
               (is (= [v3] (get-field-values))))))))))
 
-(deftest ^:parallel table-selectors->filter-test
+(deftest ^:parallel tables-matching-selectors-test
   (testing "data-studio.db/tables-matching-selectors picks out the correct Tables"
     (let [selectors->table-ids (fn [selectors]
                                  (not-empty (set (map :id (data-studio.db/tables-matching-selectors selectors)))))]

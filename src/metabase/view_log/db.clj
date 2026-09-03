@@ -6,9 +6,9 @@
    [toucan2.core :as t2]))
 
 (defn- increment-view-counts-of-model!
+  "Increments `model`'s `view_count` per `count->ids`, via a raw update that bypasses Toucan 2 model hooks
+  (specifically the search-index enqueue on after-update)."
   [model count->ids]
-  ;; A raw update rather than `t2/update!` avoids triggering Toucan 2 model hooks, specifically search-index enqueues
-  ;; on after-update.
   (t2/query {:update (t2/table-name model)
              :set    {:view_count [:+ :view_count (into [:case]
                                                         (mapcat (fn [[cnt ids]]
@@ -48,11 +48,10 @@
 
 (defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
-  `updated_at`."
+  `updated_at`, via a raw update that bypasses Toucan 2 model hooks (specifically the :hook/search-index
+  after-update; the search index can tolerate staleness on this field, catching up on the next re-index cycle or
+  when the dashboard is edited)."
   [dashboard-id->timestamp]
-  ;; A raw update rather than `t2/update!` avoids triggering Toucan 2 model hooks (specifically :hook/search-index
-  ;; after-update). The search index can tolerate staleness on this field: the index will catch up on the next
-  ;; re-index cycle or when the dashboard is edited.
   (t2/query {:update (t2/table-name :model/Dashboard)
              :set    {:last_viewed_at (into [:case]
                                             (mapcat (fn [[id timestamp]]

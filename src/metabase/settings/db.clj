@@ -24,8 +24,8 @@
   [setting-key value]
   (t2/update! :model/Setting :key setting-key {:value value}))
 
-(defn delete-setting-row!
-  "Delete the raw Setting row with `setting-key`."
+(defn delete-setting!
+  "Delete the Setting with `setting-key`, via a raw table delete that bypasses model hooks."
   [setting-key]
   (t2/delete! (t2/table-name :model/Setting) :key setting-key))
 

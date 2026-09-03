@@ -105,11 +105,10 @@
     (throw (premium-features/ee-feature-error (tru "Granular Caching")))
 
     :else
-    (api/check-404 (cache.db/any-with-ids (case model
-                                            "database"  :model/Database
-                                            "dashboard" :model/Dashboard
-                                            "question"  :model/Card)
-                                          ids))))
+    (api/check-404 (case model
+                     "database"  (cache.db/database-with-ids ids)
+                     "dashboard" (cache.db/dashboard-with-ids ids)
+                     "question"  (cache.db/card-with-ids ids)))))
 
 (mr/def ::cache-config-item
   [:map

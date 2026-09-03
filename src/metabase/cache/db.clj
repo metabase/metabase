@@ -4,10 +4,20 @@
   (:require
    [toucan2.core :as t2]))
 
-(defn any-with-ids
-  "A `model` row whose id is in `ids`, or nil."
-  [model ids]
-  (t2/select-one model :id [:in ids]))
+(defn database-with-ids
+  "A Database whose id is in `ids`, or nil."
+  [ids]
+  (t2/select-one :model/Database :id [:in ids]))
+
+(defn dashboard-with-ids
+  "A Dashboard whose id is in `ids`, or nil."
+  [ids]
+  (t2/select-one :model/Dashboard :id [:in ids]))
+
+(defn card-with-ids
+  "A Card whose id is in `ids`, or nil."
+  [ids]
+  (t2/select-one :model/Card :id [:in ids]))
 
 (defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."

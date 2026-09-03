@@ -37,9 +37,7 @@
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (t2/hydrate (actions/select-actions models
-                                                  :model_id [:in (map :id models)]
-                                                  :archived false) :creator)
+              (t2/hydrate (actions/select-actions-for-models models (map :id models)) :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id

@@ -239,23 +239,25 @@
                                       (actions.db/actions-with-id id))
         (contains? opts :entity_id) (actions.db/action-with-entity-id entity_id)
         (and (contains? opts :model_id) (contains? opts :type))
-        (if (sequential? model_id)
-          (actions.db/unarchived-non-http-actions-for-models (second model_id))
-          (actions.db/unarchived-non-http-actions-for-model model_id))
-        (contains? opts :model_id)  (actions.db/unarchived-actions-for-models (second model_id))
+        (actions.db/unarchived-non-http-actions-for-model model_id)
         (contains? opts :type)      (actions.db/actions-of-type type)
         :else                       (throw (ex-info "Unsupported Action query options" {:options options}))))))
+
+(defn- normalize-actions-by-type
+  "Groups `actions` by `:type` and fills in each subtype's sub type information."
+  [actions]
+  (let [{:keys [query http implicit]} (group-by :type actions)
+        query-actions                 (normalize-query-actions query)
+        http-actions                  (normalize-http-actions http)
+        implicit-actions              (normalize-implicit-actions implicit)]
+    (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
 
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
    for implicit actions, use [[select-action]] instead.
    `options` is interpreted by [[select-actions-matching-options]]."
   [& options]
-  (let [{:keys [query http implicit]} (group-by :type (select-actions-matching-options options))
-        query-actions                 (normalize-query-actions query)
-        http-actions                  (normalize-http-actions http)
-        implicit-actions              (normalize-implicit-actions implicit)]
-    (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
+  (normalize-actions-by-type (select-actions-matching-options options)))
 
 (defn unique-field-slugs?
   "Makes sure that if `coll` is indexed by `index-by`, no keys will be in conflict."
@@ -396,14 +398,12 @@
     (:query :http)
     action))
 
-(mu/defn select-actions :- [:maybe [:sequential ::actions.schema/action]]
-  "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the
-   model for implicit actions.
+(defn- enrich-actions-with-implicit-params
+  "Fills in implicit parameters for `actions` and adds the `:database_id` of the model for implicit actions.
 
    Pass in known-models to save a second Card lookup."
-  [known-models & options]
-  (let [actions                       (apply select-actions-without-implicit-params options)
-        implicit-action-model-ids     (set (map :model_id (filter #(= :implicit (:type %)) actions)))
+  [known-models actions]
+  (let [implicit-action-model-ids     (set (map :model_id (filter #(= :implicit (:type %)) actions)))
         implicit-action-models        (if known-models
                                         (->> known-models
                                              (filter #(contains? implicit-action-model-ids (:id %)))
@@ -417,6 +417,37 @@
         field-id->viz-field           (implicit-parameters->viz-fields (vals model-id->implicit-parameters))]
     (for [action actions]
       (enrich-action action model-id->db-id model-id->implicit-parameters field-id->viz-field))))
+
+(mu/defn select-actions :- [:maybe [:sequential ::actions.schema/action]]
+  "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the
+   model for implicit actions.
+
+   Pass in known-models to save a second Card lookup."
+  [known-models & options]
+  (enrich-actions-with-implicit-params known-models (apply select-actions-without-implicit-params options)))
+
+(mu/defn select-actions-for-ids :- [:maybe [:sequential ::actions.schema/action]]
+  "Find the Actions whose `:id` is in `action-ids`, filling in implicit parameters as [[select-actions]] does.
+
+   Pass in known-models to save a second Card lookup."
+  [known-models action-ids]
+  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/actions-with-ids action-ids))))
+
+(mu/defn select-actions-for-models :- [:maybe [:sequential ::actions.schema/action]]
+  "Find the unarchived Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
+   [[select-actions]] does.
+
+   Pass in known-models to save a second Card lookup."
+  [known-models model-ids]
+  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
+
+(mu/defn select-actions-non-http-for-models :- [:maybe [:sequential ::actions.schema/action]]
+  "Find the unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
+   [[select-actions]] does.
+
+   Pass in known-models to save a second Card lookup."
+  [known-models model-ids]
+  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-non-http-actions-for-models model-ids))))
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
@@ -448,7 +479,7 @@
   [_model _k dashcards]
   (let [actions-by-id
         (when-let [action-ids (seq (keep :action_id dashcards))]
-          (->> (select-actions nil :id [:in action-ids])
+          (->> (select-actions-for-ids nil action-ids)
                map-assoc-database-enable-actions
                (m/index-by :id)))]
     (for [dashcard dashcards

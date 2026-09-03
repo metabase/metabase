@@ -158,14 +158,12 @@
   persisted info records pointing to cards that are no longer models, archived cards/models, and all records where the corresponding
   card or database has been permanently deleted."
   []
-  (tracing/with-span :tasks "task.persist.find-deletable" {}
-    (model-persistence.db/deletable-prunable-persisted-infos (persisted-info/prunable-states))))
+  (model-persistence.db/deletable-prunable-persisted-infos (persisted-info/prunable-states)))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
   [database-id]
-  (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id}
-    (model-persistence.db/refreshable-persisted-infos database-id (persisted-info/refreshable-states))))
+  (model-persistence.db/refreshable-persisted-infos database-id (persisted-info/refreshable-states)))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as

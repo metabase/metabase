@@ -49,9 +49,9 @@
   (t2/update! :model/Table :db_id database-id {:schema schema}))
 
 (defn set-database-table-permissions-schema-name!
-  "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`."
+  "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`, via a raw table
+  update because the model's before-update rejects all updates."
   [database-id schema-name]
-  ;; Raw table update: the model's before-update rejects all updates.
   (t2/query {:update (t2/table-name :model/DataPermissions)
              :set    {:schema_name schema-name}
              :where  [:and

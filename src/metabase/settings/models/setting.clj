@@ -880,11 +880,11 @@
             (cond
               (nil? new-value)
               (do
-                (settings.db/delete-setting-row! setting-name)
+                (settings.db/delete-setting! setting-name)
                 ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
-                    (settings.db/delete-setting-row! deprecated-key)
+                    (settings.db/delete-setting! deprecated-key)
                     (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that

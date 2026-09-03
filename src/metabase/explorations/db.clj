@@ -734,15 +734,22 @@
                            :else 1] :asc]
                          [:name :asc]]}))
 
-(defn metric-cards-with-columns
-  "The `columns` of the metric Cards with `card-ids`."
-  [columns card-ids]
-  (t2/select columns :id [:in card-ids] :type "metric"))
+;;; Columns we actually need from `Card` for the two functions below. We deliberately avoid pulling the full row
+;;; (which includes large blobs like `:result_metadata`, `:visualization_settings`, `:parameter_mappings`, etc.) so
+;;; the response stays small and JSON encoding is fast.
+(def ^:private exploration-card-columns
+  [:id :name :description :collection_id :database_id :table_id :type :entity_id
+   :card_schema :dataset_query :dimensions :dimension_mappings])
 
-(defn cards-with-columns
-  "The `columns` of the Cards with `card-ids`."
-  [columns card-ids]
-  (t2/select columns :id [:in card-ids]))
+(defn metric-cards-for-explorations
+  "The exploration-relevant columns of the metric Cards with `card-ids`."
+  [card-ids]
+  (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids] :type "metric"))
+
+(defn cards-for-explorations
+  "The exploration-relevant columns of the Cards with `card-ids`."
+  [card-ids]
+  (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids]))
 
 (defn library-metrics-root-collection
   "The ID and location of the library metrics Collection of `type`, or nil."

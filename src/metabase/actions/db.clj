@@ -89,19 +89,19 @@
   (t2/update! :model/Action action-id changes))
 
 (defn insert-query-action!
-  "Insert the QueryAction `row`."
-  [row]
-  (t2/insert! :model/QueryAction row))
+  "Insert the QueryAction `action`."
+  [action]
+  (t2/insert! :model/QueryAction action))
 
 (defn insert-http-action!
-  "Insert the HTTPAction `row`."
-  [row]
-  (t2/insert! :model/HTTPAction row))
+  "Insert the HTTPAction `action`."
+  [action]
+  (t2/insert! :model/HTTPAction action))
 
 (defn insert-implicit-action!
-  "Insert the ImplicitAction `row`."
-  [row]
-  (t2/insert! :model/ImplicitAction row))
+  "Insert the ImplicitAction `action`."
+  [action]
+  (t2/insert! :model/ImplicitAction action))
 
 (defn update-query-action!
   "Apply `changes` to the QueryAction with `action-id`."
@@ -157,6 +157,11 @@
   "The Actions with `action-id` (usually a single Action, since ids are unique)."
   [action-id]
   (t2/select :model/Action :id action-id))
+
+(defn actions-with-ids
+  "The Actions whose `:id` is in `action-ids`."
+  [action-ids]
+  (t2/select :model/Action :id [:in action-ids]))
 
 (defn unarchived-action-with-id
   "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."

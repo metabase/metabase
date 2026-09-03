@@ -3,6 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn card-database-ids
@@ -99,12 +102,15 @@
     #_else
     nil))
 
-(defn- metadata-where
+(mu/defn- metadata-where :- [:map {:closed true} [:where {:optional true} vector?]]
   "The `:where` map picking out the `metadata-type` rows for `database-id`, narrowed by `metadata-spec`'s `:id`,
   `:name`, `:table-ids`, and `:card-ids` (whichever apply to `metadata-type`), or restricted to active/visible
   rows when none of `:id`/`:name` is given (`:include-sensitive?` controlling whether sensitive columns count
-  as active)."
-  [metadata-type database-id {id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?]}]
+  as active). This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as
+  possible."
+  [metadata-type :- ::lib.metadata.protocols/metadata-type-excluding-database
+   database-id   :- ::lib.schema.id/database
+   {id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?]} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)

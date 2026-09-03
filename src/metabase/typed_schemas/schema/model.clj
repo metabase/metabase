@@ -200,11 +200,7 @@
   [models]
   (let [model-ids (set (map :id models))]
     (try
-      (actions/select-actions
-       models
-       :model_id [:in model-ids]
-       :archived false
-       :type [:not= "http"])
+      (actions/select-actions-non-http-for-models models model-ids)
       (catch Exception exception
         (throw (ex-info (format "Failed to build action schemas for selected models: %s" (ex-message exception))
                         (error-data-with-cause-message

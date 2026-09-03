@@ -26,13 +26,6 @@
    a nil score (didn't score) are kept."
   0.1)
 
-;;; Columns we actually need from `Card`. We deliberately avoid pulling the full row
-;;; (which includes large blobs like `:result_metadata`, `:visualization_settings`,
-;;; `:parameter_mappings`, etc.) so the response stays small and JSON encoding is fast.
-(def ^:private metric-card-cols
-  [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
-
 (defn- library-metrics-collection-ids
   "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
    to the top of the /dimensions response."
@@ -117,7 +110,7 @@
    visualization_settings, dataset_query, etc.) and dominates response size."
   [card-ids]
   (when (seq card-ids)
-    (let [rows   (explorations.db/metric-cards-with-columns (into [:model/Card] metric-card-cols) card-ids)
+    (let [rows   (explorations.db/metric-cards-for-explorations card-ids)
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
@@ -141,7 +134,7 @@
             (metrics/sync-dimensions! :metadata/metric id)
             (catch Throwable e
               (log/warnf e "Failed to sync dimensions for metric card %d" id))))
-        (let [healed (u/index-by :id (explorations.db/cards-with-columns (into [:model/Card] metric-card-cols) broken-ids))]
+        (let [healed (u/index-by :id (explorations.db/cards-for-explorations broken-ids))]
           (mapv #(or (get healed (:id %)) %) cards))))))
 
 (defn- simple-table-query?

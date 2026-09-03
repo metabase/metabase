@@ -22,13 +22,37 @@
                 [:type Models]
                 [:item_id ms/PositiveInt]]])
 
-(def ^:private lookup
-  "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card"        [:model/Card        :model/CardBookmark        :card_id]
-   "dashboard"   [:model/Dashboard   :model/DashboardBookmark   :dashboard_id]
-   "collection"  [:model/Collection  :model/CollectionBookmark  :collection_id]
-   "document"    [:model/Document    :model/DocumentBookmark    :document_id]
-   "exploration" [:model/Exploration :model/ExplorationBookmark :exploration_id]})
+(def ^:private item-model
+  "Lookup map from model as a string to the underlying item model, for read-checks."
+  {"card"        :model/Card
+   "dashboard"   :model/Dashboard
+   "collection"  :model/Collection
+   "document"    :model/Document
+   "exploration" :model/Exploration})
+
+(defn- bookmark-exists? [model id user-id]
+  (case model
+    "card"        (bookmarks.db/card-bookmark-exists? id user-id)
+    "dashboard"   (bookmarks.db/dashboard-bookmark-exists? id user-id)
+    "collection"  (bookmarks.db/collection-bookmark-exists? id user-id)
+    "document"    (bookmarks.db/document-bookmark-exists? id user-id)
+    "exploration" (bookmarks.db/exploration-bookmark-exists? id user-id)))
+
+(defn- insert-bookmark! [model id user-id]
+  (case model
+    "card"        (bookmarks.db/insert-card-bookmark! id user-id)
+    "dashboard"   (bookmarks.db/insert-dashboard-bookmark! id user-id)
+    "collection"  (bookmarks.db/insert-collection-bookmark! id user-id)
+    "document"    (bookmarks.db/insert-document-bookmark! id user-id)
+    "exploration" (bookmarks.db/insert-exploration-bookmark! id user-id)))
+
+(defn- delete-bookmark! [model id user-id]
+  (case model
+    "card"        (bookmarks.db/delete-card-bookmark! id user-id)
+    "dashboard"   (bookmarks.db/delete-dashboard-bookmark! id user-id)
+    "collection"  (bookmarks.db/delete-collection-bookmark! id user-id)
+    "document"    (bookmarks.db/delete-document-bookmark! id user-id)
+    "exploration" (bookmarks.db/delete-exploration-bookmark! id user-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -50,11 +74,10 @@
   [{:keys [model id]} :- [:map
                           [:model Models]
                           [:id    ms/PositiveInt]]]
-  (let [[item-model bookmark-model item-key] (lookup model)]
-    (api/read-check item-model id)
-    (api/check (not (bookmarks.db/bookmark-exists? bookmark-model item-key id api/*current-user-id*))
-               [400 "Bookmark already exists"])
-    (bookmarks.db/insert-bookmark! bookmark-model {item-key id :user_id api/*current-user-id*})))
+  (api/read-check (item-model model) id)
+  (api/check (not (bookmark-exists? model id api/*current-user-id*))
+             [400 "Bookmark already exists"])
+  (insert-bookmark! model id api/*current-user-id*))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -66,9 +89,8 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (let [[_ bookmark-model item-key] (lookup model)]
-    (bookmarks.db/delete-bookmark! bookmark-model api/*current-user-id* item-key id)
-    api/generic-204-no-content))
+  (delete-bookmark! model id api/*current-user-id*)
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
