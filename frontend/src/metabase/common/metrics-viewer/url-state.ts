@@ -276,7 +276,7 @@ export function decodeState(hash: string): SerializedMetricsViewerPageState {
   }
 }
 
-export interface ExploreMetricDimensionOptions {
+interface ExploreMetricDimensionOptions {
   metricId: number;
   dimensionId: string;
   dimensionType: DimensionType;
