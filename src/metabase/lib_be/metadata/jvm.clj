@@ -153,6 +153,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/data_sensitivity
                 :field/database_partitioned
                 :field/database_type
                 :field/description

@@ -308,6 +308,24 @@
 (mr/def ::column.visibility-type
   (into [:enum {:decode/normalize keyword}] column-visibility-types))
 
+(def column-data-sensitivity-types
+  "Possible values for column `:data-sensitivity`, most severe first. The order is the precedence an automated
+  classifier uses when several categories match a single column. `nil` means the column has never been classified;
+  `:PUBLIC` means it was reviewed and found not sensitive."
+  [:SEC_KEY       ; Security Credentials & Secrets
+   :SYS_TELEMETRY ; Infrastructure & System Secrets
+   :PHI           ; Protected Health Information
+   :BIO_GEN       ; Biometric & Genetic Data
+   :PCI_FIN       ; Financial & Payment Card Data
+   :SENS_PERS     ; Special Category Personal Traits
+   :PII           ; Personally Identifiable Information
+   :CORP_IP       ; Intellectual Property & Code
+   :BIZ_CONF      ; Confidential Business Data
+   :PUBLIC])      ; Non-Sensitive / Public Information
+
+(mr/def ::column.data-sensitivity
+  (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
+
 (mr/def ::column.legacy-source
   "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical
   reasons (it is used in a few places in the FE). DO NOT use this in the backend for any purpose, use `:lib/source`
@@ -353,6 +371,7 @@
     [:database-type  {:optional true} [:maybe :string]]
     [:active         {:optional true} :boolean]
     [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
+    [:data-sensitivity {:optional true} [:maybe ::column.data-sensitivity]]
     ;; if this is a field from another table (implicit join), this is the field in the current table that should be
     ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
     ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
