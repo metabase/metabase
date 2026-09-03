@@ -7,7 +7,7 @@ describe("EmptyState", () => {
     render(
       <EmptyState
         title="Nothing to see here"
-        illustration={<div aria-hidden />}
+        illustrationElement={<div aria-hidden />}
       />,
     );
 
@@ -20,7 +20,7 @@ describe("EmptyState", () => {
   });
 
   it("does not render a heading when there is no title", () => {
-    render(<EmptyState illustration={<div aria-hidden />} />);
+    render(<EmptyState illustrationElement={<div aria-hidden />} />);
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 });
