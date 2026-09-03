@@ -1,5 +1,5 @@
 name: AI Benchmark
-run-name: "Evals · ${{ github.event_name == 'pull_request' && 'label' || 'manual' }} · ${{ github.event.pull_request.number || inputs.pr || inputs.ref || github.sha }}"
+run-name: "Evals · ${{ github.event_name == 'pull_request' && github.event.label.name || format('manual · {0}', inputs.scope) }} · ${{ github.event.pull_request.number || inputs.pr || inputs.ref || github.sha }}"
 
 on:
   pull_request:
@@ -38,15 +38,15 @@ on:
         default: main
 
 concurrency:
-  group: evals-dispatch-${{ (github.event.label.name == 'evals/smoke' && github.event.pull_request.number) || github.run_id }}
+  group: evals-dispatch-${{ github.event_name == 'pull_request' && format('{0}-{1}', github.event.pull_request.number, github.event.label.name) || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   prepare:
     if: >-
-      github.event.pull_request.head.repo.full_name == github.repository
-      && github.event_name == 'pull_request'
-      && github.event.label.name == 'evals/smoke'
+      (github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.full_name == github.repository
+        && startsWith(github.event.label.name, 'evals:'))
       || github.event_name == 'workflow_dispatch'
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -55,6 +55,7 @@ jobs:
       ref: ${{ steps.prepare.outputs.ref }}
       scope: ${{ steps.prepare.outputs.scope }}
       sample: ${{ steps.prepare.outputs.sample }}
+      label: ${{ steps.prepare.outputs.label }}
       evals_branch: ${{ steps.prepare.outputs.evals_branch }}
     steps:
       - name: Prepare
@@ -62,6 +63,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           LABEL_PR: ${{ github.event.pull_request.number }}
+          LABEL: ${{ github.event.label.name }}
           INPUT_PR: ${{ inputs.pr }}
           INPUT_REF: ${{ inputs.ref }}
           INPUT_SCOPE: ${{ inputs.scope }}
@@ -71,14 +73,24 @@ jobs:
           set -euo pipefail
           # The two paths are mutually exclusive, and `on:` admits no other trigger.
           if [[ "$EVENT_NAME" == 'pull_request' ]]; then
-            PR="$LABEL_PR"; REF=''; SCOPE='smoke'
-            SAMPLE='5'; EVALS_BRANCH='main'
+            SCOPE="${LABEL#evals:}"
+            case "$SCOPE" in
+              embarrassing-plain|embarrassing-human|embarrassing-all|goldens-plain|goldens-human|goldens-all)
+                SAMPLE='0' ;;
+              smoke|full)
+                SAMPLE='5' ;;
+              *)
+                echo "::error::'${LABEL}' is not a known evals trigger label; add its scope here and to the workflow's \`scope\` options, or remove the label"
+                exit 1 ;;
+            esac
+            PR="$LABEL_PR"; REF=''; EVALS_BRANCH='main'
           else
             PR="$INPUT_PR"; REF="$INPUT_REF"; SCOPE="$INPUT_SCOPE"
             SAMPLE="${INPUT_SAMPLE:-5}"; EVALS_BRANCH="$INPUT_EVALS_BRANCH"
+            LABEL=''   # nothing to consume: a manual dispatch was not triggered by a label
           fi
           # None of these is ever multi-line; a newline would forge extra output entries.
-          for v in PR REF SCOPE SAMPLE EVALS_BRANCH; do
+          for v in PR REF SCOPE SAMPLE LABEL EVALS_BRANCH; do
             if [[ "${!v}" == *$'\n'* ]]; then
               echo "::error::${v} must be a single line"
               exit 1
@@ -89,6 +101,7 @@ jobs:
             echo "ref=$REF"
             echo "scope=$SCOPE"
             echo "sample=$SAMPLE"
+            echo "label=$LABEL"
             echo "evals_branch=$EVALS_BRANCH"
           } >> "$GITHUB_OUTPUT"
 
@@ -102,18 +115,26 @@ jobs:
     steps:
       - name: Comment (building)
         id: post
+        env:
+          SCOPE: ${{ needs.prepare.outputs.scope }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = `🤖 **Evals smoke** — ⏳ building the image… ([logs](${runUrl}))`;
+            const prefix = `🤖 **Evals (${process.env.SCOPE})**`;
+            const body = `${prefix} — ⏳ building the image… ([logs](${runUrl}))`;
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
-            // Drop earlier verdicts first: they describe shas that are no longer head, and a stale
-            // green one reads as this PR passing. The prefix survives eval-run's rewrites.
+            // Drop this scope's earlier verdicts first: they describe shas that are no longer head,
+            // and a stale green one reads as this PR passing. Only this scope's, though — a sibling
+            // scope's comment is a live report on a run still going.
             const existing = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
-            for (const c of existing.filter(c => c.body.startsWith('🤖 **Evals'))) {
+            // The second form is what the single `evals/smoke` trigger wrote before the labels were
+            // split per scope; nothing writes it any more, so this clause is only here to tidy PRs
+            // that predate the split and can go once none are open.
+            const stale = c => c.body.startsWith(prefix) || c.body.startsWith('🤖 **Evals smoke**');
+            for (const c of existing.filter(stale)) {
               await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
             }
             const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
@@ -187,8 +208,11 @@ jobs:
           SHA: ${{ needs.resolve.outputs.sha }}
           SCOPE: ${{ needs.prepare.outputs.scope }}
           SAMPLE: ${{ needs.prepare.outputs.sample }}
+          LABEL: ${{ needs.prepare.outputs.label }}
           COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
         run: |
+          # `label` is the one eval-run consumes once it has taken the run over; empty on a manual
+          # dispatch, where there is nothing to consume.
           gh api repos/metabase/evals/actions/workflows/eval-run.yml/dispatches \
             -f ref="$EVALS_BRANCH" \
             -f "inputs[pr]=$PR" \
@@ -196,16 +220,19 @@ jobs:
             -f "inputs[scope]=$SCOPE" \
             -f "inputs[surfaces]=all" \
             -f "inputs[sample]=$SAMPLE" \
+            -f "inputs[label]=$LABEL" \
             -f "inputs[evals_branch]=$EVALS_BRANCH" \
             -f "inputs[comment_id]=$COMMENT_ID"
 
   finalize:
-    needs: [announce, resolve, image, dispatch]
+    needs: [prepare, announce, resolve, image, dispatch]
     if: always() && needs.announce.result == 'success' && needs.dispatch.result != 'success'
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+      SCOPE: ${{ needs.prepare.outputs.scope }}
+      LABEL: ${{ needs.prepare.outputs.label }}
       NEEDS_JSON: ${{ toJSON(needs) }}
     steps:
       - name: Comment (build/dispatch failed)
@@ -216,9 +243,10 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const cancelled = Object.values(JSON.parse(process.env.NEEDS_JSON))
               .some(j => j.result === 'cancelled');
+            const prefix = `🤖 **Evals (${process.env.SCOPE})**`;
             const body = cancelled
-              ? `🤖 **Evals** — ⚪ cancelled before evals started ([logs](${runUrl}))`
-              : `🤖 **Evals** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
+              ? `${prefix} — ⚪ cancelled before evals started ([logs](${runUrl}))`
+              : `${prefix} — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
             // The replacement run deletes this comment on its way in, so a concurrency cancel can
             // land here with nothing to patch. Losing the stamp is fine; failing the job isn't.
             await github.rest.issues.updateComment({
@@ -231,5 +259,5 @@ jobs:
             await github.rest.issues.removeLabel({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              name: 'evals/smoke',
+              name: process.env.LABEL,
             }).catch(() => {});
