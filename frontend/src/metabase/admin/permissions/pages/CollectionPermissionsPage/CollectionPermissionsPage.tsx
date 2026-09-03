@@ -28,6 +28,7 @@ import {
 } from "../../selectors/collection-permissions";
 import type { PermissionEditorEntity } from "../../types";
 import { assertNumericId } from "../../types";
+import { getPermissionsBasePath } from "../../utils/base-path";
 
 export function CollectionPermissionsPage() {
   const dispatch = useDispatch();
@@ -59,7 +60,7 @@ export function CollectionPermissionsPage() {
   }, [dispatch]);
 
   const navigateToItem = ({ id }: { id: CollectionId }) =>
-    navigate(`/admin/permissions/collections/${id}`);
+    navigate(`${getPermissionsBasePath()}/collections/${id}`);
 
   const handlePermissionChange = useCallback(
     (

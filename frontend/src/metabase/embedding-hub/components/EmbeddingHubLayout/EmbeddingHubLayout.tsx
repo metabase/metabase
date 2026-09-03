@@ -22,6 +22,9 @@ type EmbeddingHubTab = {
   icon: IconName;
   to: string;
   isGated?: boolean;
+  /** The design caps most hub pages at 800px; only a few need the whole
+   * area. See `EmbeddingHubContent`. */
+  fullWidth?: boolean;
 };
 
 export function EmbeddingHubLayout() {
@@ -54,7 +57,15 @@ export function EmbeddingHubLayout() {
       to: Urls.embeddingHubAuthentication(),
       isGated: !hasSsoJwt,
     },
+    {
+      label: t`Permissions`,
+      icon: "key",
+      to: Urls.embeddingHubPermissions(),
+      fullWidth: true,
+    },
   ];
+
+  const currentTab = tabs.find((tab) => isTabSelected(tab, pathname));
 
   const upperNav = (
     <Stack component="nav" gap="0.75rem" aria-label={t`Embedding hub`}>
@@ -94,7 +105,7 @@ export function EmbeddingHubLayout() {
       upperNav={upperNav}
       lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
     >
-      <EmbeddingHubContent>
+      <EmbeddingHubContent fullWidth={currentTab?.fullWidth ?? false}>
         <Outlet />
       </EmbeddingHubContent>
     </AreaLayout>

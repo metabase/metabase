@@ -21,13 +21,26 @@ describe("embedding hub routes", () => {
       "embedding/get-started/sso-setup",
       "embedding/security",
       "embedding/authentication",
+      "embedding/permissions",
+      // Contributed by getAdminPermissionsRoutes(), not declared here.
+      "embedding/permissions/data",
+      "embedding/permissions/data/database",
+      "embedding/permissions/data/database/:databaseId",
+      "embedding/permissions/data/database/:databaseId/table/:tableId",
+      "embedding/permissions/data/database/:databaseId/schema/:schemaName",
+      "embedding/permissions/data/database/:databaseId/schema/:schemaName/table/:tableId",
+      "embedding/permissions/data/group",
+      "embedding/permissions/data/group/:groupId",
+      "embedding/permissions/data/group/:groupId/database/:databaseId",
+      "embedding/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName",
+      "embedding/permissions/collections/:collectionId",
     ]);
   });
 
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    expect(loaders).toHaveLength(6);
+    expect(loaders).toHaveLength(18);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

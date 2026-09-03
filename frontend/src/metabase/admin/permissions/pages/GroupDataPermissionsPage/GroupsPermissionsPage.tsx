@@ -35,9 +35,10 @@ import type {
   RawGroupRouteParams,
 } from "../../types";
 import { parseGroupRouteParams } from "../../types";
+import { getPermissionsBasePath } from "../../utils/base-path";
 import {
-  GROUPS_BASE_PATH,
   getGroupFocusPermissionsUrl,
+  getGroupsBasePath,
 } from "../../utils/urls";
 
 export function GroupsPermissionsPage() {
@@ -61,7 +62,7 @@ export function GroupsPermissionsPage() {
   const groupRouteParams = parseGroupRouteParams(params);
 
   const navigateToItem = (item: ITreeNodeItem) =>
-    navigate(`${GROUPS_BASE_PATH}/${item.id}`);
+    navigate(`${getGroupsBasePath()}/${item.id}`);
 
   const { loading: isLoading } = useAsync(async () => {
     if (groupRouteParams.groupId) {
@@ -78,7 +79,7 @@ export function GroupsPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      navigate(`/admin/permissions/data/${entityType}/`);
+      navigate(`${getPermissionsBasePath()}/data/${entityType}/`);
     },
     [navigate],
   );

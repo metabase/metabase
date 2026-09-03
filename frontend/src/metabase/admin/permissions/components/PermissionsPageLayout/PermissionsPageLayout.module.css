@@ -1,0 +1,13 @@
+/*
+ * Right-aligns the toolbar with the hub's app switcher, which sits
+ * `CONTENT_PADDING_X` (nav/components/AreaLayout/AreaContent.tsx) from the
+ * edge; 0.75rem of that is the button's own padding.
+ *
+ * `:not([data-css-specificity-hack])` rather than a bare class: this needs to
+ * beat `ToolbarButtonsContainer`'s own emotion-generated padding
+ * (PermissionsPageLayout.styled.tsx), which is also single-class specificity,
+ * so source order alone can't be trusted to pick a winner.
+ */
+.hubToolbarButtons:not([data-css-specificity-hack="📐"]) {
+  padding-right: 2.75rem;
+}
