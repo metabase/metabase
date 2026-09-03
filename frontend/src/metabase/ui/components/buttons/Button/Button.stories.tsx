@@ -1,10 +1,11 @@
 import { within } from "@storybook/test";
 import { Fragment } from "react";
 
-import { Badge, Box, Group, Icon, Kbd, Stack, Text } from "metabase/ui";
+import { Badge, Box, Group, Icon, Kbd, Stack } from "metabase/ui";
 import {
   StoryBoard,
   StoryJsx,
+  StoryLabel,
   StorySection,
 } from "metabase/ui/stories/showcase";
 
@@ -336,11 +337,11 @@ const matrixJsx = (variant: string, color: MatrixColor) =>
 
 const BOARD_BACKGROUND = "background_page-primary";
 
-const matrixGridStyle = (columns: number) =>
+const matrixGridStyle = (columns: number, columnGap = "2rem") =>
   ({
     display: "grid",
     gridTemplateColumns: `6rem repeat(${columns}, max-content)`,
-    columnGap: "2rem",
+    columnGap,
     rowGap: "1rem",
     alignItems: "center",
     justifyItems: "start",
@@ -366,15 +367,11 @@ const MatrixSection = ({
     <Box style={matrixGridStyle(sizes.length)}>
       <Box />
       {sizes.map((size) => (
-        <Text key={size} size="sm" c="text-secondary">
-          {size}
-        </Text>
+        <StoryLabel key={size}>{size}</StoryLabel>
       ))}
       {MATRIX_STATES.map((state) => (
         <Fragment key={state}>
-          <Text size="sm" c="text-secondary">
-            {STATE_LABELS[state]}
-          </Text>
+          <StoryLabel>{STATE_LABELS[state]}</StoryLabel>
           {sizes.map((size) => (
             <Button
               key={size}
@@ -489,11 +486,7 @@ export const MatrixCompact = {
 };
 
 const OnDarkTemplate = () => (
-  <StoryBoard
-    title="Button · onDark"
-    padding="2rem"
-    background="tooltip-background"
-  >
+  <StoryBoard title="Button · onDark" padding="2rem" onDark>
     <MatrixSection
       title="Primary"
       variant="on-dark-primary"
@@ -515,27 +508,7 @@ export const MatrixOnDark = {
   parameters: matrixParameters,
 };
 
-const GROUP_ITEM_KINDS = ["text", "icon"] as const;
-type GroupItemKind = (typeof GROUP_ITEM_KINDS)[number];
-
-const GROUP_ITEM_TITLES: Record<GroupItemKind, string> = {
-  text: "Item · text",
-  icon: "Item · icon",
-};
-
-const groupItemJsx = (
-  variant: string,
-  kind: GroupItemKind,
-  color: MatrixColor,
-) => {
-  const props =
-    color === "brand"
-      ? `variant="${variant}"`
-      : `variant="${variant}" color="${MATRIX_COLORS[color]}"`;
-  return kind === "icon"
-    ? `<Button ${props} leftSection={<Icon />} />`
-    : `<Button ${props}>Button</Button>`;
-};
+type GroupItemKind = "text" | "icon";
 
 const groupItemCell = (
   variant: string,
@@ -545,73 +518,6 @@ const groupItemCell = (
   state: MatrixState,
 ) =>
   `${matrixCell(variant, color, size).split("/")[0]}-group-${kind}/${size}/${state}`;
-
-const GroupItemSection = ({
-  variant,
-  kind,
-  color,
-}: {
-  variant: string;
-  kind: GroupItemKind;
-  color: MatrixColor;
-}) => (
-  <StorySection
-    title={GROUP_ITEM_TITLES[kind]}
-    description={<StoryJsx>{groupItemJsx(variant, kind, color)}</StoryJsx>}
-  >
-    <Box style={matrixGridStyle(MATRIX_SIZES.length)}>
-      <Box />
-      {MATRIX_SIZES.map((size) => (
-        <Text key={size} size="sm" c="text-secondary">
-          {size}
-        </Text>
-      ))}
-      {MATRIX_STATES.map((state) => (
-        <Fragment key={state}>
-          <Text size="sm" c="text-secondary">
-            {STATE_LABELS[state]}
-          </Text>
-          {MATRIX_SIZES.map((size) =>
-            kind === "icon" ? (
-              <Button
-                key={size}
-                variant={variant}
-                color={MATRIX_COLORS[color]}
-                size={size}
-                leftSection={<Icon name="chevrondown" />}
-                data-spec-cell={groupItemCell(
-                  variant,
-                  kind,
-                  color,
-                  size,
-                  state,
-                )}
-                {...matrixStateProps(state)}
-              />
-            ) : (
-              <Button
-                key={size}
-                variant={variant}
-                color={MATRIX_COLORS[color]}
-                size={size}
-                data-spec-cell={groupItemCell(
-                  variant,
-                  kind,
-                  color,
-                  size,
-                  state,
-                )}
-                {...matrixStateProps(state)}
-              >
-                Button
-              </Button>
-            ),
-          )}
-        </Fragment>
-      ))}
-    </Box>
-  </StorySection>
-);
 
 const groupJsx = (variant: string, color: MatrixColor) => {
   const props =
@@ -628,33 +534,37 @@ const groupJsx = (variant: string, color: MatrixColor) => {
 
 const GroupSection = ({
   variant,
-  colors,
+  color,
 }: {
   variant: string;
-  colors: readonly MatrixColor[];
+  color: MatrixColor;
 }) => (
   <StorySection
     title="Button.Group"
-    description={<StoryJsx>{groupJsx(variant, colors[0])}</StoryJsx>}
+    description={<StoryJsx>{groupJsx(variant, color)}</StoryJsx>}
   >
     <Box style={matrixGridStyle(MATRIX_SIZES.length)}>
       <Box />
       {MATRIX_SIZES.map((size) => (
-        <Text key={size} size="sm" c="text-secondary">
-          {size}
-        </Text>
+        <StoryLabel key={size}>{size}</StoryLabel>
       ))}
-      {colors.map((color) => (
-        <Fragment key={color}>
-          <Text size="sm" c="text-secondary">
-            {COLOR_TITLES[color].toLowerCase()}
-          </Text>
+      {MATRIX_STATES.map((state) => (
+        <Fragment key={state}>
+          <StoryLabel>{STATE_LABELS[state]}</StoryLabel>
           {MATRIX_SIZES.map((size) => (
             <Button.Group key={size}>
               <Button
                 variant={variant}
                 color={MATRIX_COLORS[color]}
                 size={size}
+                data-spec-cell={groupItemCell(
+                  variant,
+                  "text",
+                  color,
+                  size,
+                  state,
+                )}
+                {...matrixStateProps(state)}
               >
                 Button
               </Button>
@@ -663,6 +573,14 @@ const GroupSection = ({
                 color={MATRIX_COLORS[color]}
                 size={size}
                 leftSection={<Icon name="chevrondown" />}
+                data-spec-cell={groupItemCell(
+                  variant,
+                  "icon",
+                  color,
+                  size,
+                  state,
+                )}
+                {...matrixStateProps(state)}
               />
             </Button.Group>
           ))}
@@ -689,15 +607,7 @@ const GroupMatrix = ({
     background={BOARD_BACKGROUND}
     padding="2rem"
   >
-    {GROUP_ITEM_KINDS.map((kind) => (
-      <GroupItemSection
-        key={kind}
-        variant={variant}
-        kind={kind}
-        color={color}
-      />
-    ))}
-    <GroupSection variant={variant} colors={[color]} />
+    <GroupSection variant={variant} color={color} />
   </StoryBoard>
 );
 
@@ -715,7 +625,7 @@ export const GroupFilled = {
 
 export const GroupLight = {
   name: "Group: Light",
-  render: () => <GroupMatrix variant="light" />,
+  render: () => <GroupMatrix variant="light" color="neutral" />,
   parameters: matrixParameters,
 };
 
@@ -761,8 +671,7 @@ const SECTION_COLUMNS: readonly SectionColumn[] = [
   { key: "compact", variant: "subtle", size: "compact-md", colors: ["brand"] },
 ];
 
-const SECTION_ROWS = ["brand", "negative", "neutral", "disabled"] as const;
-type SectionRow = (typeof SECTION_ROWS)[number];
+const SECTION_ROW_COLORS = ["brand", "negative", "neutral"] as const;
 
 const SECTION_KINDS = [
   {
@@ -791,52 +700,56 @@ const SECTION_KINDS = [
   },
 ] as const;
 
-const sectionRowProps = (row: SectionRow) =>
-  row === "disabled"
-    ? { color: MATRIX_COLORS.brand, disabled: true }
-    : { color: MATRIX_COLORS[row] };
+type SectionKind = (typeof SECTION_KINDS)[number];
 
-const sectionCellExists = (column: SectionColumn, row: SectionRow) =>
-  row === "disabled" || column.colors.includes(row);
+const sectionCell = (
+  column: SectionColumn,
+  color: MatrixColor,
+  kind: SectionKind,
+  state: MatrixState,
+) => {
+  const [variant, size] = matrixCell(column.variant, color, column.size).split(
+    "/",
+  );
+  return `${variant}-${kind.key}/${size}/${state}`;
+};
 
-const SectionKindSection = ({
-  kind,
-}: {
-  kind: (typeof SECTION_KINDS)[number];
-}) => (
+const SectionKindSection = ({ kind }: { kind: SectionKind }) => (
   <StorySection
     title={kind.title}
     description={<StoryJsx>{`<Button ${kind.jsx}>Button</Button>`}</StoryJsx>}
   >
-    <Box style={matrixGridStyle(SECTION_COLUMNS.length)}>
+    <Box style={matrixGridStyle(SECTION_COLUMNS.length, "1rem")}>
       <Box />
       {SECTION_COLUMNS.map((column) => (
-        <Text key={column.key} size="sm" c="text-secondary">
-          {column.key}
-        </Text>
+        <StoryLabel key={column.key}>{column.key}</StoryLabel>
       ))}
-      {SECTION_ROWS.map((row) => (
-        <Fragment key={row}>
-          <Text size="sm" c="text-secondary">
-            {row}
-          </Text>
-          {SECTION_COLUMNS.map((column) =>
-            sectionCellExists(column, row) ? (
-              <Button
-                key={column.key}
-                variant={column.variant}
-                size={column.size}
-                {...sectionRowProps(row)}
-                {...kind.props()}
-              >
-                Button
-              </Button>
-            ) : (
-              <Box key={column.key} />
-            ),
-          )}
-        </Fragment>
-      ))}
+      {SECTION_ROW_COLORS.map((color) =>
+        MATRIX_STATES.map((state) => (
+          <Fragment key={`${color}-${state}`}>
+            <StoryLabel>
+              {color} · {STATE_LABELS[state]}
+            </StoryLabel>
+            {SECTION_COLUMNS.map((column) =>
+              column.colors.includes(color) ? (
+                <Button
+                  key={column.key}
+                  variant={column.variant}
+                  size={column.size}
+                  color={MATRIX_COLORS[color]}
+                  data-spec-cell={sectionCell(column, color, kind, state)}
+                  {...matrixStateProps(state)}
+                  {...kind.props()}
+                >
+                  Button
+                </Button>
+              ) : (
+                <Box key={column.key} />
+              ),
+            )}
+          </Fragment>
+        )),
+      )}
     </Box>
   </StorySection>
 );
@@ -846,7 +759,7 @@ export const Sections = {
     <StoryBoard
       title="Button · sections"
       background={BOARD_BACKGROUND}
-      padding="2rem"
+      padding="1.5rem"
     >
       {SECTION_KINDS.map((kind) => (
         <SectionKindSection key={kind.key} kind={kind} />
