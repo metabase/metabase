@@ -4,6 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -34,9 +36,11 @@
   (t2/select [:model/Database :id :engine]))
 
 (defn source-query-cards-reducible
-  "A reducible of the Cards, with their moderation status, matching the Honey SQL `where` clause, in
-  case-insensitive name order."
-  [where]
+  "A reducible of the Cards of `card-type` (also including \"metric\" Cards) in the Databases with `database-ids`
+  visible to the current user that can be used as source queries, with their moderation status, in case-insensitive
+  name order. `collection-scope` further restricts by collection: `nil` applies no collection restriction, `:root`
+  restricts to Cards with no collection, and a collection of ids restricts to Cards in those collections."
+  [card-type database-ids collection-scope]
   (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                   :result_metadata :type :source_card_id :card_schema
                                   [^:allow-subquery {:select   [:status]
@@ -49,14 +53,41 @@
                                                      :limit    1}
                                    :moderated_status]]
                        :from     [:report_card]
-                       :where    where
+                       :where    [:and
+                                  [:not= :result_metadata nil]
+                                  [:= :archived false]
+                                  [:in :type [(u/qualified-name card-type) "metric"]]
+                                  [:in :database_id database-ids]
+                                  (cond
+                                    (nil? collection-scope)          nil
+                                    (= collection-scope :root)       [:= :collection_id nil]
+                                    :else                            [:in :collection_id collection-scope])
+                                  (collection/visible-collection-filter-clause)]
                        :order-by [[:%lower.name :asc]]}))
 
 (defn databases-where
-  "The Databases matching the Honey SQL `where` clause, in name then engine order."
-  [where]
-  (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
-                              :where where}))
+  "The Databases visible to the user described by `user-info` (a map of `:user-id`/`:is-superuser?`/
+  `:is-data-analyst?`), in name then engine order. Excludes stub Databases and, unless `include-analytics?`, the
+  audit Database. Restricted to Databases routed from `router-database-id` when given, otherwise to non-routed
+  Databases. When `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or
+  edit the metadata of."
+  [user-info filter-by-data-access? router-database-id include-analytics?]
+  (let [base-where [:and
+                    [:= :is_stub false]
+                    (when-not include-analytics?
+                      [:= :is_audit false])
+                    (if router-database-id
+                      [:= :router_database_id router-database-id]
+                      [:= :router_database_id nil])]
+        where      (if filter-by-data-access?
+                     [:and base-where
+                      [:or
+                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
+                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
+                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                     base-where)]
+    (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
+                                :where where})))
 
 (defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -222,9 +253,16 @@
   (t2/select :model/Table :db_id database-id :active true))
 
 (defn active-table-schemas
-  "The schemas of the active Tables of the Database with `database-id` also selected by the Honey SQL `query`."
-  [database-id query]
-  (t2/select-fn-set :schema :model/Table :db_id database-id :active true query))
+  "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
+  `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
+  hidden -- see [[metabase.warehouse-schema.models.table/visibility-types]])."
+  [database-id include-hidden?]
+  (let [clauses (cond-> []
+                  (not include-hidden?) (conj [:= :visibility_type nil]))]
+    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
+                      (merge {:order-by [[:%lower.schema :asc]]}
+                             (when clauses
+                               {:where (into [:and] clauses)})))))
 
 (defn active-tables-in-schema
   "The active Tables in `schema` of the Database with `database-id`, in display name order."

@@ -25,7 +25,7 @@
         (comp (map :id)
               (remove #(= % (collection/trash-collection-id)))
               (filter #(collection/visible-collection-id? % :write)))
-        (collection/descendants-flat collection [:= :archived false])))
+        (collection/descendants-flat collection false)))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not

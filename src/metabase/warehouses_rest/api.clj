@@ -8,7 +8,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -205,7 +204,7 @@
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [card-type :- ::queries.schema/card-type
-   & {:keys [additional-constraints xform], :or {xform identity}}]
+   & {:keys [collection-scope xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select :model/Card))
@@ -214,14 +213,7 @@
      (completing conj #(t2/hydrate % :collection :metrics))
      []
      (warehouses-rest.db/source-query-cards-reducible
-      (into [:and
-             [:not= :result_metadata nil]
-             [:= :archived false]
-             ;; always return metrics for now
-             [:in :type [(u/qualified-name card-type) "metric"]]
-             [:in :database_id ids-of-dbs-that-support-source-queries]
-             (collection/visible-collection-filter-clause)]
-            additional-constraints)))))
+      card-type ids-of-dbs-that-support-source-queries collection-scope))))
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -316,19 +308,8 @@
         user-info {:user-id api/*current-user-id*
                    :is-superuser? (mi/superuser?)
                    :is-data-analyst? api/*is-data-analyst?*}
-        base-where [:and
-                    [:= :is_stub false]
-                    (when-not include-analytics?
-                      [:= :is_audit false])
-                    (if filter-on-router-database-id
-                      [:= :router_database_id router-database-id]
-                      [:= :router_database_id nil])]
-        where-clause (if filter-by-data-access?
-                       [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
-                       base-where)
-        dbs (warehouses-rest.db/databases-where where-clause)
+        dbs (warehouses-rest.db/databases-where user-info filter-by-data-access? filter-on-router-database-id
+                                                include-analytics?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
@@ -1326,10 +1307,6 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))
-        clauses         (cond-> []
-                          ;; a non-nil value means Table is hidden --
-                          ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                          (not include-hidden?) (conj [:= :visibility_type nil]))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
@@ -1342,11 +1319,7 @@
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (warehouses-rest.db/active-table-schemas id
-                                                  (merge
-                                                   {:order-by [[:%lower.schema :asc]]}
-                                                   (when clauses
-                                                     {:where (into [:and] clauses)})))
+    (->> (warehouses-rest.db/active-table-schemas id include-hidden?)
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -1520,9 +1493,9 @@
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
-          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
-                                     [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))])])
+          :collection-scope (if (= schema (schema.table/root-collection-schema-name))
+                              :root
+                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
          (map schema.table/card->virtual-table))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1557,9 +1530,9 @@
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
-          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
-                                     [:= :collection_id nil]
-                                     [:in :collection_id (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))])])
+          :collection-scope (if (= schema (schema.table/root-collection-schema-name))
+                              :root
+                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
          (map schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------

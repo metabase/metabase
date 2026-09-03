@@ -3,7 +3,17 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit-app]
+   [metabase.collections.models.collection :as collection.model]
+   [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(declare collection metabot-metrics-and-models-query root-collections-of-types)
 
 ;;; ------------------------------------------------- Metabot -------------------------------------------------
 
@@ -44,9 +54,32 @@
   [metabot-ids]
   (t2/select :model/MetabotPrompt {:where [:in :metabot_id metabot-ids]}))
 
-(defn prompts-where
-  "The prompt, model, and Card columns of the MetabotPrompts matching the Honey SQL `query`."
-  [query]
+(defn- prompts-for-metabot-query
+  "Honey SQL `:join`/`:where` restricting to MetabotPrompts of the Metabot with `metabot-id` whose Card is within
+  scope, optionally further restricted to Cards of `card-type` or the Card with `card-id`."
+  [metabot-id card-type card-id]
+  (cond-> {:join  [[^:allow-subquery {:select [:id :name :type]
+                                      :from   [[(metabot-metrics-and-models-query metabot-id) :scope]]}
+                    :card]
+                   [:and
+                    [:= :card.id :metabot_prompt.card_id]]]
+           :where [:and
+                   [:= :metabot_prompt.metabot_id metabot-id]]}
+    card-type (update :where conj [:= :card.type card-type])
+    card-id   (update :where conj [:= :card.id card-id])))
+
+(defn- prompt-sample-order-by
+  "A random `:order-by` clause, using the database's native random function."
+  []
+  [[[(case (mdb/db-type)
+       :postgres :random
+       :rand)]]])
+
+(defn prompts
+  "The prompt, model, and Card columns of the MetabotPrompts of the Metabot with `metabot-id` whose Card is within
+  scope, optionally restricted to Cards of `card-type` or the Card with `card-id`, ordered randomly if `sample?` else
+  by Card name, and limited/offset by `limit`/`offset`."
+  [metabot-id card-type card-id sample? limit offset]
   (t2/select [:model/MetabotPrompt
               :id
               :prompt
@@ -55,12 +88,18 @@
               [:card.name :model_name]
               :created_at
               :updated_at]
-             query))
+             (cond-> (prompts-for-metabot-query metabot-id card-type card-id)
+               true   (assoc :order-by (if sample?
+                                         (prompt-sample-order-by)
+                                         [[:card.name :asc] [:id :asc]]))
+               limit  (assoc :limit limit)
+               offset (assoc :offset offset))))
 
-(defn prompt-count-where
-  "The number of MetabotPrompts matching the Honey SQL `query`."
-  [query]
-  (t2/count :model/MetabotPrompt query))
+(defn prompt-count
+  "The number of MetabotPrompts of the Metabot with `metabot-id` whose Card is within scope, optionally restricted to
+  Cards of `card-type` or the Card with `card-id`."
+  [metabot-id card-type card-id]
+  (t2/count :model/MetabotPrompt (prompts-for-metabot-query metabot-id card-type card-id)))
 
 (defn prompt-count-for-metabot
   "The number of MetabotPrompts of the Metabot with `metabot-id`."
@@ -358,36 +397,59 @@
              :active true
              :visibility_type nil))
 
-(defn visible-table-summaries-where
+(defn- current-user-visible-table-clause
+  "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
+  current user for querying."
+  []
+  (let [{table-where-clause :clause table-cte :with}
+        (mi/visible-filter-clause :model/Table
+                                  :id
+                                  {:user-id       api/*current-user-id*
+                                   :is-superuser? api/*is-superuser?*}
+                                  {:perms/view-data      :unrestricted
+                                   :perms/create-queries :query-builder-and-native})]
+    (cond-> {:where table-where-clause}
+      table-cte (assoc :with table-cte))))
+
+(defn visible-table-summaries-for-current-user
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
-  `database-id` matching the Honey SQL `query`."
-  [database-id table-ids query]
+  `database-id` that are visible to the current user for querying."
+  [database-id table-ids]
   (t2/select [:model/Table :id :name :schema :description]
              :db_id database-id
              :id [:in table-ids]
              :active true
              :visibility_type nil
-             query))
+             (current-user-visible-table-clause)))
 
-(defn visible-tables-reducible
-  "Reducible ID, name, schema, and description of the active, unhidden Tables in the Database with `database-id`
-  matching the Honey SQL `query`."
-  [database-id query]
+(def ^:private max-visible-tables-to-consider
+  "Cap on the number of visible Tables fetched for fuzzy table-name matching."
+  10000)
+
+(defn visible-tables-excluding
+  "Reducible ID, name, schema, and description of up to [[max-visible-tables-to-consider]] active, unhidden Tables in
+  the Database with `database-id` that are visible to the current user for querying, excluding `excluded-table-ids`."
+  [database-id excluded-table-ids]
   (t2/reducible-select [:model/Table :id :name :schema :description]
                        :db_id database-id
                        :active true
                        :visibility_type nil
-                       query))
+                       (cond-> (assoc (current-user-visible-table-clause) :limit max-visible-tables-to-consider)
+                         (seq excluded-table-ids)
+                         (update :where (fn [where-clause]
+                                          (if where-clause
+                                            [:and where-clause [:not-in :id excluded-table-ids]]
+                                            [:not-in :id excluded-table-ids]))))))
 
-(defn most-viewed-tables-where
-  "The ID, Database ID, name, schema, and description of the active, unhidden Tables in the Database with
-  `database-id` matching the Honey SQL `query`."
-  [database-id query]
+(defn most-viewed-tables-visible-to-current-user
+  "The ID, Database ID, name, schema, and description of up to `limit` active, unhidden Tables in the Database with
+  `database-id` that are visible to the current user for querying, most viewed first."
+  [database-id limit]
   (t2/select [:model/Table :id :db_id :name :schema :description]
              :db_id database-id
              :active true
              :visibility_type nil
-             query))
+             (assoc (current-user-visible-table-clause) :order-by [[:view_count :desc]] :limit limit)))
 
 (defn table-names
   "Up to `limit` IDs, names, and schemas of the active, unhidden Tables in the Database with `database-id`."
@@ -423,21 +485,60 @@
              :where           [:and [:= :db_id database-id] [:= :active true]]
              :order-by        [[:schema :asc]]}))
 
-(defn query-table-reference-where
-  "The first Table ID, name, and schema matching the Honey SQL `where`, as a query table reference."
-  [where]
+(def ^:private quoted-identifier-chars
+  "Characters that quote a SQL identifier, making its match against a Table name/schema case-sensitive."
+  "\"`")
+
+(defn- quote-stripper
+  [quote-char]
+  (let [doubled (str quote-char quote-char)
+        single  (str quote-char)]
+    #(-> (subs % 1 (dec (count %)))
+         (str/replace doubled single))))
+
+(def ^:private quote-char->stripper
+  (zipmap quoted-identifier-chars (map quote-stripper quoted-identifier-chars)))
+
+(defn- table-part-clause
+  "Exact match for a quoted `value`, case-insensitive match for an unquoted `value`. Case-insensitive matching is not
+  correct for every database (Oracle/Postgres/H2 all treat unquoted identifiers differently), but MySQL is truly
+  case-insensitive, so this caters to the lowest common denominator; identifiers differing only by case are already
+  an anti-pattern, so this leniency is unlikely to cause issues in practice."
+  [field value]
+  (if-let [strip (quote-char->stripper (first value))]
+    [:= field (strip value)]
+    [:= [:lower field] (u/lower-case-en value)]))
+
+(defn- table-match-clause
+  [{:keys [schema table]}]
+  (if-not schema
+    (table-part-clause :t.name table)
+    [:and
+     (table-part-clause :t.name table)
+     (table-part-clause :t.schema schema)]))
+
+(defn query-table-reference
+  "The first Table ID, name, and schema in the Database with `db-id` matching `table` (and `schema`, if given), as a
+  query table reference. Matching is case-insensitive unless `table`/`schema` are quoted with `\"` or `` ` ``."
+  [db-id schema table]
   (t2/select-one :model/QueryTable
                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                   :from   [[(t2/table-name :model/Table) :t]]
-                  :where  where}))
+                  :where  [:and
+                           [:= :t.db_id db-id]
+                           (table-match-clause {:schema schema :table table})]}))
 
-(defn query-table-references-where
-  "The Table IDs, names, and schemas matching the Honey SQL `where`, as query table references."
-  [where]
+(defn query-table-references
+  "The Table IDs, names, and schemas in the Database with `db-id` matching any of `tables` (each a map of `:schema`
+  and `:table`), as query table references. Matching is case-insensitive unless quoted, as in
+  [[query-table-reference]]."
+  [db-id tables]
   (t2/select :model/QueryTable
              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
               :from   [[(t2/table-name :model/Table) :t]]
-              :where  where}))
+              :where  [:and
+                       [:= :t.db_id db-id]
+                       (into [:or] (map table-match-clause) tables)]}))
 
 ;;; ------------------------------------------------- Fields -------------------------------------------------
 
@@ -477,6 +578,71 @@
   "The ID, type, and schema of the Card with `card-id`, or nil."
   [card-id]
   (t2/select-one [:model/Card :id :type :card_schema] :id card-id))
+
+(defn metabot-metrics-and-models-query
+  "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
+  the current user, ignoring analytics content. If the Metabot has `:use_verified_content` enabled, restricts to
+  verified-or-curated content (verified, official-collection, or library-published). `limit`, if given, caps the
+  number of rows."
+  [metabot-id & {:keys [limit]}]
+  (let [metabot-instance       (metabot metabot-id)
+        metabot-collection-id  (:collection_id metabot-instance)
+        use-verified-content?  (:use_verified_content metabot-instance)
+        verified?              (premium-features/has-feature? :content-verification)
+        official?              (premium-features/has-feature? :official-collections)
+        library?               (premium-features/has-feature? :library)
+        ;; ids of collections under a Library-type root; their metrics/models are library-published content
+        library-coll-ids (when library?
+                           (let [roots (root-collections-of-types (mapv name collection.model/library-collection-types))]
+                             (into (set (map :id roots)) (mapcat collection.model/descendant-ids roots))))
+        ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
+        ;; library-published (under a Library root). Each disjunct is gated on its feature.
+        curated-conds (cond-> []
+                        verified? (conj [:= :mr.status "verified"])
+                        official? (conj [:= :collection.authority_level "official"])
+                        (seq library-coll-ids) (conj [:in :report_card.collection_id (vec library-coll-ids)]))
+        ;; Columns are qualified with report_card because the official-collections branch joins
+        ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
+        collection-filter (if metabot-collection-id
+                            (let [metabot-collection (collection metabot-collection-id)
+                                  collection-ids (conj (collection.model/descendant-ids metabot-collection) metabot-collection-id)]
+                              [:in :report_card.collection_id collection-ids])
+                            [:and true])
+        base-query ^:allow-subquery {:select [:report_card.*]
+                                     :from   [[:report_card]]
+                                     :where [:and
+                                             [:!= :report_card.database_id audit-app/audit-db-id]
+                                             collection-filter
+                                             [:in :report_card.type ["metric" "model"]]
+                                             [:= :report_card.archived false]
+                                             (when api/*current-user-id*
+                                               (collection.model/visible-collection-filter-clause :report_card.collection_id))]}]
+    (cond-> base-query
+      verified?
+      (update :left-join (fnil into []) [[:moderation_review :mr] [:and
+                                                                   [:= :mr.moderated_item_id :report_card.id]
+                                                                   [:= :mr.moderated_item_type "card"]
+                                                                   [:= :mr.most_recent true]]])
+
+      official?
+      (update :left-join (fnil into []) [[:collection :collection]
+                                         [:= :collection.id :report_card.collection_id]])
+
+      ;; Prioritize curated content.
+      (seq curated-conds)
+      (assoc :order-by [[[:case (into [:or] curated-conds) [:inline 0] :else [:inline 1]] :asc]])
+
+      ;; Restrict to curated content only when that's desired.
+      (and use-verified-content? (seq curated-conds))
+      (update :where conj (into [:or] curated-conds))
+
+      ;; Setting on but no curation features active → nothing is curated, so return nothing rather than
+      ;; falling through unfiltered to uncurated cards.
+      (and use-verified-content? (empty? curated-conds))
+      (update :where conj [:= [:inline 1] [:inline 0]])
+
+      (integer? limit)
+      (assoc :limit limit))))
 
 (defn cards-where
   "The Cards matching the Honey SQL `query`."
