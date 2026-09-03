@@ -109,6 +109,44 @@ export const Scalar = {
   },
 };
 
+const SCALAR_CARD_SIZES: [number, number][] = [
+  [82, 82],
+  [256, 126],
+  [345, 170],
+  [433, 214],
+  [520, 256],
+  [609, 345],
+];
+
+// the dashboard loading state: no name, one skeleton card per size tier
+export const ScalarSizeTiers = {
+  render: () => (
+    <div
+      style={{
+        display: "flex",
+        gap: 16,
+        alignItems: "flex-start",
+        flexWrap: "wrap",
+        padding: 16,
+      }}
+    >
+      {SCALAR_CARD_SIZES.map(([width, height]) => (
+        <div
+          key={width}
+          style={{
+            width,
+            height,
+            borderRadius: 12,
+            border: "1px solid var(--mb-color-border)",
+          }}
+        >
+          <ChartSkeleton display="scalar" />
+        </div>
+      ))}
+    </div>
+  ),
+};
+
 export const Scatter = {
   render: Template,
 

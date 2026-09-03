@@ -63,7 +63,7 @@ export function getColumns(): TreeTableColumnDef<FieldTreeNode>[] {
             <EntityNameCell
               icon="table"
               name={
-                <Flex align="center" gap="xs">
+                <Flex align="center" gap="xxs">
                   <Text fw="bold">{node.tableName}</Text>{" "}
                   <Text c="text-secondary">({node.fieldCount})</Text>
                 </Flex>

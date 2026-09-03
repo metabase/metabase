@@ -72,7 +72,7 @@ const SlackConnectionStatus = ({
                 />
               </HoverCard.Target>
               <HoverCard.Dropdown>
-                <Stack gap="xs" p="md">
+                <Stack gap="xxs" p="lg">
                   <Text c="text-secondary">{t`Slack Bot OAuth Token`}</Text>
                   <Text fw="bold">{token}</Text>
                 </Stack>
@@ -122,14 +122,14 @@ export const SlackSetup = () => {
   if (!hasCompletedSetup) {
     return (
       <SettingsSection title={t`Create a Slack app and connect to it.`}>
-        <Stack gap="md">
+        <Stack gap="lg">
           <Markdown>
             {t`First, **click the button below** to create your Slack App using the Metabase configuration.`}
           </Markdown>
           <Box>
             <ButtonLink href={`https://api.slack.com${link}`}>
               <span>{t`Create Slack App`}</span>
-              <Icon name="external" opacity={0.7} ml="md" />
+              <Icon name="external" opacity={0.7} ml="lg" />
             </ButtonLink>
           </Box>
           <Markdown>
@@ -146,14 +146,14 @@ export const SlackSetup = () => {
   }
 
   return (
-    <SettingsSection stackProps={{ pt: "lg" }}>
+    <SettingsSection stackProps={{ pt: "xl" }}>
       <Box>
         <SlackConnectionStatus
           isValid={isValid}
           docsUrl={docsUrl}
           token={slackAppToken}
         />
-        <Divider w="calc(100% + 4rem)" ml="-2rem" my="lg" />
+        <Divider w="calc(100% + 4rem)" ml="-2rem" my="xl" />
         <SlackConfiguration />
       </Box>
     </SettingsSection>

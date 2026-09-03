@@ -212,7 +212,7 @@ export function ProviderConnectionForm({
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {match({ isEditing, providerType })
         .with({ isEditing: false, providerType: P.nullish }, () => (
           <ProviderTypePicker
@@ -223,7 +223,7 @@ export function ProviderConnectionForm({
         .with(
           { providerType: { managed: true } },
           ({ providerType: selected }) => (
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <MetabaseAIProviderSetup
                 isConnected={isEditing}
@@ -235,7 +235,7 @@ export function ProviderConnectionForm({
         )
         .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
           <form onSubmit={handleSubmit}>
-            <Stack gap="lg">
+            <Stack gap="xl">
               {!isEditing && <SelectedProvider providerType={selected} />}
               <ProviderConfigFields
                 fields={primaryFields}
@@ -345,7 +345,7 @@ function AdvancedSettings({
   children: ReactNode;
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Button
         type="button"
         variant="subtle"
@@ -360,7 +360,7 @@ function AdvancedSettings({
         {t`Advanced settings`}
       </Button>
       <Collapse in={isOpened}>
-        <Stack gap="lg">{children}</Stack>
+        <Stack gap="xl">{children}</Stack>
       </Collapse>
     </Stack>
   );

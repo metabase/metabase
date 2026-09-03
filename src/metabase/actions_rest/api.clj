@@ -1,12 +1,12 @@
 (ns metabase.actions-rest.api
   "`/api/action/` endpoints."
   (:require
+   [metabase.actions-rest.db :as actions-rest.db]
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -37,20 +37,13 @@
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (t2/hydrate (actions/select-actions models
-                                                  :model_id [:in (map :id models)]
-                                                  :archived false)
-                          :creator)
+              (t2/hydrate (actions/select-actions-for-models models (map :id models)) :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
                    [(api/read-check :model/Card model-id)]
-                   (t2/select :model/Card {:where
-                                           [:and
-                                            [:= :type "model"]
-                                            [:= :archived false]
-                                            ;; action permission keyed off of model permission
-                                            (collection/visible-collection-filter-clause)]}))]
+                   ;; action permission keyed off of model permission
+                   (actions-rest.db/unarchived-models-visible-to-user))]
       (actions-for models))))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
@@ -58,7 +51,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (actions-rest.db/public-actions))
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
@@ -81,7 +74,7 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id}))
-  (t2/delete! :model/Action :id action-id)
+  (actions-rest.db/delete-action! action-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -108,7 +101,7 @@
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (t2/select-one :model/Database :id db-id))))
+       (actions-rest.db/database db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -174,9 +167,7 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (t2/update! :model/Action id
-                             {:public_uuid <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                 (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -195,7 +186,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
+  (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]

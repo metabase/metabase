@@ -7,16 +7,15 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.llm.db :as llm.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
-   [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2])
+   [metabase.warehouse-schema.models.field-values :as field-values])
   (:import
    (java.io StringWriter Writer)))
 
@@ -43,17 +42,6 @@
                  (parse-long id-str)))
          set)))
 
-(defn- table-match-clause
-  "Build a WHERE clause to match a table by name and optionally schema.
-   When schema is present, matches both; otherwise matches just the table name."
-  [{:keys [schema table]}]
-  (let [table-lower (u/lower-case-en table)]
-    (if schema
-      [:and
-       [:= [:lower :name] table-lower]
-       [:= [:lower :schema] (u/lower-case-en schema)]]
-      [:= [:lower :name] table-lower])))
-
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string.
 
@@ -67,15 +55,10 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [driver (t2/select-one-fn :engine :model/Database :id database-id)
+      (let [driver (llm.db/database-engine database-id)
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
-          (let [match-clauses (mapv table-match-clause tables)
-                matched-tables (t2/select :model/Table
-                                          {:where [:and
-                                                   [:= :db_id database-id]
-                                                   [:= :active true]
-                                                   (into [:or] match-clauses)]})]
+          (let [matched-tables (llm.db/active-tables-matching database-id tables)]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
@@ -104,28 +87,14 @@
    Returns a map of table-id -> table record."
   [database-id table-ids]
   (when (seq table-ids)
-    (let [{:keys [clause with]} (mi/visible-filter-clause
-                                 :model/Table :id
-                                 {:user-id       api/*current-user-id*
-                                  :is-superuser? api/*is-superuser?*}
-                                 {:perms/view-data      :unrestricted
-                                  :perms/create-queries :query-builder-and-native})
-          tables (t2/select :model/Table
-                            :id [:in table-ids]
-                            :db_id database-id
-                            :active true
-                            :visibility_type nil
-                            (cond-> {:where clause}
-                              with (assoc :with with)))]
+    (let [tables (llm.db/visible-tables table-ids database-id api/*current-user-id* api/*is-superuser?*)]
       (into {} (map (juxt :id identity)) tables))))
 
 (defn get-accessible-card-ids
   "Return readable, non-archived Card IDs from `card-ids`."
   [card-ids]
   (when (seq card-ids)
-    (->> (t2/select :model/Card
-                    :id [:in card-ids]
-                    :archived false)
+    (->> (llm.db/unarchived-cards card-ids)
          (filter mi/can-read?)
          (map :id)
          set)))
@@ -194,7 +163,7 @@
       (let [;; Grouped by the persisted Field's own table_id, not the caller-supplied column's
             ;; :table-id, consistent with the permission checks elsewhere in this namespace.
             fields (filter field-values/field-should-have-field-values?
-                           (t2/select :model/Field :id [:in field-ids]))
+                           (llm.db/fields field-ids))
             {restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table_id %)) fields)
             capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
         (into {}
@@ -214,8 +183,7 @@
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (let [fields              (t2/select [:model/Field :id :name :table_id]
-                                           :id [:in target-ids])
+      (let [fields              (llm.db/field-names-and-tables target-ids)
             table-ids           (into #{} (map :table_id) fields)
             accessible-tables   (fetch-accessible-tables database-id table-ids)
             sandbox-restricted  (metabot.perms/sandbox-restricted-fields table-ids)]
@@ -247,11 +215,11 @@
                             (filter pos-int?)
                             set)]
     (when (seq missing-fp-ids)
-      (let [fields (t2/select :model/Field :id [:in missing-fp-ids])]
+      (let [fields (llm.db/fields missing-fp-ids)]
         (doseq [field fields]
           ;; Run with admin perms to match behavior during normal sync.
           (request/as-admin (sync/refingerprint-field! field)))
-        (t2/select-pk->fn :fingerprint :model/Field :id [:in missing-fp-ids])))))
+        (llm.db/field-fingerprints missing-fp-ids)))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
 

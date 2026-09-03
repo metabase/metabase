@@ -252,6 +252,18 @@
                          (setting/env-var-name :llm-providers))
                     {:status-code 400}))))
 
+(defn- refresh-settings!
+  "Pull in the setting changes another instance has committed, before reading the connection list.
+
+  The whole list lives in one setting, and settings are cached in process, so an instance only learns about
+  another's edit when its cache next polls — once a minute. Until then it answers a page load with a list that
+  predates the edit, and it decides whether an edit is allowed against that same list: a connection another
+  instance has just deleted still looks present, and the type it belonged to still reports itself as connected.
+
+  Costs the one query that reads `settings-last-updated`, unless something has actually changed."
+  []
+  (setting/restore-cache-if-needed! :force-check? true))
+
 (defn- without-blank-values
   "Drop `config` entries whose value is blank. The form clears a field it hid by sending an empty string — switching
   Google's authentication method blanks the credential the other method used — and a blank left in the stored config
@@ -384,6 +396,7 @@
   "List the configured provider connections, with their secrets masked."
   []
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (mapv connection-response (llm.provider/connections)))
 
 (api.macros/defendpoint :post "/providers"
@@ -398,6 +411,7 @@
                                             [:config {:optional true} [:maybe config-schema]]
                                             [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [provider-type (llm.provider/provider-type type)]
     (api/check-400 provider-type (tru "Unknown provider type {0}." (pr-str type)))
@@ -447,6 +461,7 @@
                                    [:config {:optional true} [:maybe config-schema]]
                                    [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [stored     (llm.provider/stored-connections)
         idx        (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
@@ -480,6 +495,7 @@
   "Delete a provider connection."
   [{conn-key :key} :- [:map [:key connection-key-schema]]]
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (check-connections-not-env-managed!)
   (let [conn (llm.provider/connection conn-key)]
     (api/check-404 conn)
@@ -505,6 +521,7 @@
   connection does not blank out the others."
   []
   (perms/check-has-application-permission :setting)
+  (refresh-settings!)
   (into []
         (pmap connection-models-response (llm.provider/connections))))
 
