@@ -5,7 +5,7 @@ import type { ClickActionsMode } from "metabase/visualizations/types";
 
 import { PublicMode } from "./PublicMode";
 
-export const PublicDashboardMode: QueryClickActionsMode = {
+const PublicDashboardMode: QueryClickActionsMode = {
   ...PublicMode,
   clickActions: [DashboardClickAction],
 };

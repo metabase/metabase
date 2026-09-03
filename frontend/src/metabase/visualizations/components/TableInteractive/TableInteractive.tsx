@@ -483,6 +483,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       question,
       clicked: {
         columnShortcuts: true,
+        extraData: {
+          isRawTable,
+        },
       },
     });
     if (!hasActions) {
@@ -495,7 +498,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         element: e.currentTarget,
       });
     };
-  }, [mode, onVisualizationClick, question, isPivoted]);
+  }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {
