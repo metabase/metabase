@@ -16,12 +16,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; ms/InstanceOf validates Toucan Database instances; lib.schema has no app-db instance schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
@@ -165,12 +167,56 @@
               :errors      {:host (str (deferred-tru "check your host settings"))}}
              cause)))
 
+(def ^:private ^:dynamic *allow-private-connection-hosts*
+  "When true, an `:external-only` [[driver.settings/warehouse-allowed-networks]] policy is enforced as
+  `:allow-private`. Bound only by [[do-with-database-network-policy]]."
+  false)
+
+(defn- effective-warehouse-allowed-networks
+  "[[driver.settings/warehouse-allowed-networks]] as it applies to the connection being validated right now:
+  [[*allow-private-connection-hosts*]] relaxes `:external-only` to `:allow-private`."
+  []
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (if (and *allow-private-connection-hosts* (= policy :external-only))
+      :allow-private
+      policy)))
+
+(defn network-exempt-warehouse?
+  "Whether `database` may sit on a private network under an `:external-only`
+  [[driver.settings/warehouse-allowed-networks]] policy: today only the attached DWH, and only when the token also
+  carries the `:attached-dwh` feature. The flag alone is not enough -- serialization import can set it -- so the
+  exemption is confined to instances whose token vouches that a DWH really was attached.
+
+  `database` may be a Toucan row or a config-file entry (`:is_attached_dwh`) or a Lib metadata
+  database (`:is-attached-dwh` -- and a map that throws on `:snake_case` lookups outside prod, which is why the two
+  shapes are told apart rather than the keys tried in turn)."
+  [database]
+  (boolean (and (if (= (:lib/type database) :metadata/database)
+                  (:is-attached-dwh database)
+                  (:is_attached_dwh database))
+                (premium-features/has-attached-dwh?))))
+
+(defn do-with-database-network-policy
+  "Impl for [[with-database-network-policy]]."
+  [database thunk]
+  (binding [*allow-private-connection-hosts* (network-exempt-warehouse? database)]
+    (thunk)))
+
+(defmacro with-database-network-policy
+  "Run `body` with [[driver.settings/warehouse-allowed-networks]] enforced the way it applies to `database`: a
+  network-exempt warehouse (see [[network-exempt-warehouse?]]) gets `:external-only` relaxed to `:allow-private`,
+  any other database the policy as configured. Wrap this around anything that validates connection hosts on
+  `database`'s behalf."
+  {:style/indent 1}
+  [database & body]
+  `(do-with-database-network-policy ~database (^:once fn* [] ~@body)))
+
 (defn validate-resolved-addresses!
   "Throw when any of the already-resolved `addresses` is disallowed by [[driver.settings/warehouse-allowed-networks]].
   Used by connection transports, such as Mongo's `InetAddressResolver`, that can enforce the policy on the exact
   addresses used to open a socket."
   [addresses]
-  (let [policy (driver.settings/warehouse-allowed-networks)]
+  (let [policy (effective-warehouse-allowed-networks)]
     (when (some #(not (u.http/address-allowed-for-network-policy? policy %)) addresses)
       (throw (blocked-network-address-exception)))))
 
@@ -178,7 +224,7 @@
   "Throw a 400 if `details` would have Metabase open a connection to an address disallowed by
   [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
   [driver details]
-  (let [policy (driver.settings/warehouse-allowed-networks)]
+  (let [policy (effective-warehouse-allowed-networks)]
     (when (not= policy :allow-all)
       (let [hosts (try
                     (hosts-metabase-will-connect-to driver details)
@@ -278,10 +324,20 @@
    accidental coupling between tests."
   (not (or config/is-test? config/is-dev?)))
 
+(defn- check-feature
+  "Ask `driver` whether it supports one feature, degrading to false (with a log line) if it throws. Puts no bound on
+  how long the driver may take -- callers bound it at whatever granularity suits them."
+  [driver feature database]
+  (try
+    (driver/database-supports? driver feature database)
+    (catch Throwable e
+      (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
+      false)))
+
 (defn- supports?* [driver feature database]
   (try
     (u/with-timeout supports?-timeout-ms
-      (driver/database-supports? driver feature database))
+      (check-feature driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -331,10 +387,35 @@
   #{;; used intenrally during the sync process, does not really need to be hydrated
     :metadata/table-writable-check})
 
-(defn- features* [driver database]
+(defn- feature-set
+  "The set of features for which `supported?` returns truthy, minus the ones we never hydrate."
+  [supported?]
   (set (for [feature driver/features
-             :when (and (not (skip-internal-features feature)) (supports? driver feature database))]
+             :when (and (not (skip-internal-features feature)) (supported? feature))]
          feature)))
+
+(defn- features* [driver database]
+  (feature-set #(supports? driver % database)))
+
+(defn- features-timeout-ms
+  "Budget for one batched scan of every feature. Read per call so that rebinding [[supports?-timeout-ms]] moves it too."
+  []
+  (* 4 supports?-timeout-ms))
+
+(defn- features-batched*
+  "Like [[features*]], but bounds the whole scan with a single timeout instead of giving each of the ~90 checks its
+  own. A per-check timeout costs a thread handoff that the check itself does not, and that handoff dominates the scan.
+
+  Only used while [[*memoize-supports?*]] is off. With memoization on, [[memoized-supports?*]] already absorbs the
+  repeat cost, and going around it would change what that cache ends up holding."
+  [driver database]
+  (try
+    (u/with-timeout (features-timeout-ms)
+      (feature-set #(check-feature driver % database)))
+    (catch Throwable _
+      ;; Budget blown, so fall back to the per-feature path: it bounds each check separately and therefore yields
+      ;; exactly what this call would have yielded had it never been batched.
+      (features* driver database))))
 
 (def ^:private memoized-features*
   (memoize/memo
@@ -351,9 +432,10 @@
                 [:map
                  [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
-  (let [database (ensure-lib-database database)
-        f (if *memoize-supports?* memoized-features* features*)]
-    (f driver database)))
+  (let [database (ensure-lib-database database)]
+    (if *memoize-supports?*
+      (memoized-features* driver database)
+      (features-batched* driver database))))
 
 (defn available-drivers
   "Return a set of all currently available drivers."

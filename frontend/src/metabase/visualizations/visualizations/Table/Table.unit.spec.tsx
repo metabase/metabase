@@ -10,11 +10,14 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import {
+  getComputedSettingsForSeries,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
@@ -24,7 +27,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import {
-  createMockCard,
   createMockCategoryColumn,
   createMockColumn,
   createMockDataset,
@@ -197,18 +199,21 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
 });
 
 describe("table.pivot", () => {
-  describe("getHidden", () => {
-    const createMockSeriesWithCols = (cols: string[]): Series => [
-      createMockSingleSeries(
-        createMockCard(),
-        createMockDataset({
-          data: createMockDatasetData({
-            cols: cols.map((name) => createMockColumn({ name })),
-          }),
+  const createMockSeriesWithCols = (
+    cols: string[],
+    visualization_settings: VisualizationSettings = {},
+  ): Series => [
+    createMockSingleSeries(
+      { visualization_settings },
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: cols.map((name) => createMockColumn({ name })),
         }),
-      ),
-    ];
+      }),
+    ),
+  ];
 
+  describe("getHidden", () => {
     const threeCols = createMockSeriesWithCols(["dim1", "dim2", "metric"]);
     const fourCols = createMockSeriesWithCols([
       "dim1",
@@ -221,35 +226,24 @@ describe("table.pivot", () => {
       throw new Error("table.pivot getHidden should be defined");
     }
 
-    it("should be hidden when table.pivot is false and cols.length is not 3", () => {
+    it("should be hidden when cols.length is not 3", () => {
       expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(fourCols, {
-        "table.pivot": false,
-      });
-
-      expect(isHidden).toBe(true);
+      expect(getHidden(fourCols)).toBe(true);
     });
 
-    it("should not be hidden when table.pivot is true, regardless of cols.length", () => {
+    it("should not be hidden when cols.length is 3", () => {
       expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(fourCols, {
-        "table.pivot": true,
-      });
-
-      expect(isHidden).toBe(false);
+      expect(getHidden(threeCols)).toBe(false);
     });
+  });
 
-    it("should not be hidden when cols.length is 3 and table.pivot is false", () => {
-      expect(getHidden).toBeDefined();
+  it("should unpivot when table.pivot is stored true but there are not 3 columns", () => {
+    const series = createMockSeriesWithCols(
+      ["dim1", "dim2", "dim3", "metric"],
+      { "table.pivot": true },
+    );
 
-      const isHidden = getHidden(threeCols, {
-        "table.pivot": false,
-      });
-
-      expect(isHidden).toBe(false);
-    });
+    expect(getComputedSettingsForSeries(series)["table.pivot"]).toBe(false);
   });
 });
 

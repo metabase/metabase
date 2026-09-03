@@ -73,7 +73,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 open it in a text editor, then copy and paste the certificate''s contents here.")
   :feature    :sso-saml
   :audit      :no-value
-  :encryption :no
+  :encryption :when-encryption-key-set
   :setter     (fn [new-value]
                 ;; when setting the idp cert validate that it's something we
                 (when new-value
@@ -344,14 +344,22 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 ;; TODO - maybe we want to add a csv setting type?
 (defsetting ldap-sync-user-attributes-blacklist
   (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "userPassword,dn,distinguishedName"
   :type       :csv
   :audit      :getter)
 
+(defsetting ldap-sync-user-attributes-allowlist
+  (deferred-tru "Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.")
+  :encryption :no
+  :default    ""
+  :type       :csv
+  :export?    false
+  :audit      :getter)
+
 (defsetting ldap-group-membership-filter
   (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "(member={dn})"
   :audit      :getter)
 
@@ -401,6 +409,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting oidc-login-providers
   (deferred-tru "Public-facing list of enabled OIDC providers for the login page.")
+  :encryption :no
   :type       :json
   :default    []
   :feature    :sso-oidc
@@ -430,6 +439,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or OIDC? These integrations use the `/auth/sso` endpoint
   (SAML/JWT) for authorization rather than the normal login form or Google Auth button."
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled-and-configured))))

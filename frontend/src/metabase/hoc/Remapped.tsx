@@ -1,9 +1,8 @@
 import { Component, type ComponentType } from "react";
 
+import { fetchRemapping, getMetadata } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import { fetchRemapping } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 

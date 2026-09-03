@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; renaming metabase.util would touch nearly every namespace
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
@@ -10,7 +11,6 @@
              [clojure.pprint :as pprint]
              ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
-             [metabase.util.http :as u.http]
              [metabase.util.string :as u.str]
              [potemkin :as p]
              [puget.printer]
@@ -83,9 +83,7 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.http
-                        valid-host?]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -188,18 +186,11 @@
       %)
    m))
 
-(defn add-period
-  "Fixes strings that don't terminate in a period; also accounts for strings
-  that end in `:` and triple backticks (e.g., if a string ends in codeblock).
-   Used for formatting docs."
-  [s]
-  (let [text (str s)]
-    (cond
-      (str/blank? text) text
-      (#{\. \? \!} (last text)) text
-      (str/ends-with? text "```") text
-      (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
-      :else (str text "."))))
+(defn trimmed-string
+  "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
+  ^String [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
 
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
@@ -246,40 +237,41 @@
   (subs s 0 (min (count s) n)))
 
 #?(:clj
-   (defn https?
-     "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
+   (defn https-state
+     "Whether the request the frontend client (i.e., browser) made reached us over HTTPS:
 
-     In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
-     request handled by Jetty will be over HTTP."
+       `:https`   - it did: a TLS-terminating proxy said so, or the connection to us is itself TLS
+       `:http`    - it did not
+       `:unknown` - nothing states the transport. Only the client's `Origin` suggests HTTPS, and the client chooses
+                    that freely; it names the page that issued the request rather than the transport the request
+                    arrived on. It is still worth something -- a proxy that terminates TLS but strips the forwarded
+                    headers leaves exactly this trace -- so callers decide what to make of it rather than being
+                    handed a `true` or a `false` that hides the ambiguity. Treat `:unknown` as HTTPS when deciding
+                    whether to *add* protection (marking a cookie `Secure`, say) -- doing that on a request that
+                    turns out to be plaintext costs nothing. Require `:https` when deciding whether to *skip* a
+                    protection, so the client cannot opt out by asserting an `Origin`.
+
+     In many production instances, a reverse proxy such as an ELB or nginx handles SSL termination, so the request
+     Jetty sees is plain HTTP and only the forwarded headers carry the original scheme."
      [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
        :keys                                                                                                [scheme]}]
-     (let [;; Take the first hop of a comma-separated chain (`https, http`), trim, and drop blanks, mirroring
-           ;; `misc/forwarded-scheme`. Branching on the normalized value (not raw presence) lets a blank proto header
-           ;; (e.g. `X-Forwarded-Proto: ""`) fall through to the boolean-style HTTPS indicators below.
+     (let [;; Take the first hop of a comma-separated chain (`https, http`), trim, and drop blanks. Branching on the
+           ;; normalized value (not raw presence) lets a blank proto header (e.g. `X-Forwarded-Proto: ""`) fall
+           ;; through to the boolean-style HTTPS indicators below.
            proto (some-> (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
                          (str/split #",") first str/trim not-empty lower-case-en)
            ssl   (or x-forwarded-ssl front-end-https)]
        (cond
-         ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
+         ;; A proxy told us the scheme directly. Several alternate headers mean the same thing, see
          ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
-         proto
-         (= "https" proto)
-
-         ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Front-End-Https`, which
-         ;; will be set to `on` if the original request was over HTTPS.
-         ssl
-         (= "on" (lower-case-en ssl))
-
-         ;; If none of the above are present, we are most likely not being accessed over a reverse proxy. Still, there's a
-         ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
-         ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
-         origin
-         (str/starts-with? (lower-case-en origin) "https")
-
-         ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
-         ;; front of us), we can look directly at the scheme of the request sent to Jetty.
-         scheme
-         (= scheme :https)))))
+         proto             (if (= "https" proto) :https :http)
+         ;; `X-Forwarded-Ssl`/`Front-End-Https` are `on` when the original request was HTTPS.
+         ssl               (if (= "on" (lower-case-en ssl)) :https :http)
+         ;; No proxy in front of us: the connection we answered is the one the client made.
+         (= scheme :https) :https
+         ;; Plain HTTP to us, but the client says its page was HTTPS. See `:unknown` above.
+         (and origin (str/starts-with? (lower-case-en origin) "https")) :unknown
+         :else             :http))))
 
 (defn regex->str
   "Returns the contents of a regex as a string.
@@ -788,6 +780,7 @@
   (^String [x]
    #?(:clj
       (with-out-str
+        ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
       :cljs-dev
@@ -795,6 +788,7 @@
       ;; default value wastes too much space, 120 is a little easier to read actually.
       (binding [pprint/*print-right-margin* 120]
         (with-out-str
+          ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
       :default
@@ -816,6 +810,7 @@
   `profile` form or 1 for a form inside that."
   0)
 
+;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
@@ -1225,6 +1220,7 @@
      "Return how many milliseconds have elapsed since the given system millisecond time.
      For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
      [start-ms]
+     ;; the sanctioned wall-clock helper: nanoTime timers can't cross process or external-source boundaries
      #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
      (- (System/currentTimeMillis) start-ms)))
 
@@ -1295,6 +1291,7 @@
   #?(:clj
      (reify CollReduce
        (coll-reduce [_ f]
+         ;; this IS the no-init reduce arity; it must delegate without an init
          #_{:clj-kondo/ignore [:reduce-without-init]}
          (let [acc1 (reduce f r1)
                acc2 (reduce f acc1 r2)]

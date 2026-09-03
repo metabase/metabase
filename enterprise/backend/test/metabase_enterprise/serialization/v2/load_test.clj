@@ -61,6 +61,59 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
 
+(defn- cause-chain-messages
+  "Messages of `e` and every exception beneath it, skipping any that have none."
+  [e]
+  ;; `keep`, not `map` - an exception with a nil message would NPE the callers' `re-find` and hide the real failure
+  (into [] (keep ex-message) (take-while some? (iterate ex-cause e))))
+
+(defn- load-failure-messages!
+  "Loads `ingestion`, expecting it to throw, and returns the thrown exception's cause-chain messages."
+  [ingestion]
+  (try
+    (serdes.load/load-metabase! ingestion)
+    ["load-metabase! unexpectedly succeeded"]
+    (catch Exception e
+      (cause-chain-messages e))))
+
+(deftest schema-validation-opt-out-reaches-import-test
+  (testing (str "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION has to travel env var -> Setting -> the binding "
+                "in load-metabase! -> import-mbql. Nothing else covers that chain, so dropping the binding would "
+                "silently disable the opt-out.")
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native with a variable"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db)
+                                               :type     :native
+                                               :native   {:template-tags {"id" {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "id"
+                                                                                :display-name "ID"
+                                                                                :type         :number}}
+                                                          :query         "SELECT 1 WHERE x = {{id}}"}})]
+          (reset! extracted {:db   (serdes/extract-one "Database" {} db)
+                             :coll (serdes/extract-one "Collection" {} coll)
+                             :card (serdes/extract-one "Card" {} card)})))
+      ;; a tag type this version has no representation for - what an export from a newer Metabase that introduced
+      ;; one would look like
+      (let [{:keys [db coll card]} @extracted
+            bad-card  (assoc-in card [:dataset_query :stages 0 :template-tags]
+                                {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
+            ingestion #(ingestion-in-memory [db coll bad-card])
+            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+        (testing "by default the schema check is what refuses the import"
+          (mt/with-empty-h2-app-db!
+            (is (ours? (load-failure-messages! (ingestion))))))
+        (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
+          (mt/with-empty-h2-app-db!
+            (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+              (let [messages (load-failure-messages! (ingestion))]
+                (is (some (partial re-find #"Invalid input.*:template-tags") messages))
+                (is (not (ours? messages)))))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
@@ -694,6 +747,7 @@
                        :database (:id @db1d)}
                       (:definition @msr1d))))))))))
 
+;; full serdes round-trip: source graph, export, load, then cross-check remapped IDs -- one indivisible flow
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
@@ -2058,6 +2112,44 @@
       (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
       (is (= "desc"
              (t2/select-one-fn :description :model/Field (:id f3)))))))
+
+(deftest field-data-sensitivity-round-trip-test
+  (testing "data_sensitivity travels through export and import on both Field and FieldUserSettings"
+    (let [serialized (atom nil)
+          in-db?     (fn [entity] (-> entity :serdes/meta first :id (= "labeled-db")))
+          field-ser  (fn [entities field-name]
+                       (u/seek #(and (in-db? %)
+                                     (-> % :serdes/meta last :model (= "Field"))
+                                     (= field-name (:name %)))
+                               entities))]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "labeled-db")
+                table (ts/create! :model/Table    :name "CONTACTS" :db_id (:id db))
+                email (ts/create! :model/Field    :name "CONTACT_EMAIL" :table_id (:id table) :data_sensitivity :PII)
+                _     (ts/create! :model/Field    :name "CONTACT_ROW"   :table_id (:id table))
+                _     (ts/create! :model/FieldUserSettings :field_id (:id email) :data_sensitivity :PII)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (testing "the labeled Field and its FieldUserSettings both export the label"
+              (is (= :PII (:data_sensitivity (field-ser @serialized "CONTACT_EMAIL"))))
+              (is (= :PII (:data_sensitivity (u/seek #(and (in-db? %)
+                                                           (-> % :serdes/meta last :model (= "FieldUserSettings")))
+                                                     @serialized)))))
+            (testing "the unlabeled Field exports no data_sensitivity key"
+              (is (not (contains? (field-ser @serialized "CONTACT_ROW") :data_sensitivity))))))
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [db-id    (t2/select-one-fn :id :model/Database :name "labeled-db")
+                table-id (t2/select-one-fn :id :model/Table :name "CONTACTS" :db_id db-id)
+                email-id (t2/select-one-fn :id :model/Field :name "CONTACT_EMAIL" :table_id table-id)
+                row-id   (t2/select-one-fn :id :model/Field :name "CONTACT_ROW"   :table_id table-id)]
+            (testing "the label imports back to the keyword on the Field"
+              (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id email-id))))
+            (testing "the label imports back to the keyword on the FieldUserSettings mirror"
+              (is (= :PII (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id email-id))))
+            (testing "the unlabeled field stays nil with no mirror row"
+              (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id row-id)))
+              (is (not (t2/exists? :model/FieldUserSettings :field_id row-id))))))))))
 
 (deftest blank-eid-creates-new-entity-test
   (mt/with-empty-h2-app-db!

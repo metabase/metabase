@@ -1,21 +1,12 @@
-import dayjs from "dayjs";
-import { match } from "ts-pattern";
-
+import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
+import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import {
+  type ComputedVisualizationSettings,
   extractRemappings,
   getVisualizationTransformed,
-} from "metabase/visualizations";
-import {
-  getChartImagePngDataUri,
-  getChartSelector,
-  getChartSvgSelector,
-  getVisualizationSvgDataUri,
-} from "metabase/visualizations/lib/image-exports";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -32,7 +23,7 @@ import {
   getRawSeries,
   getVisibleTimelineEvents,
   getVisualizationSettings,
-} from "../selectors";
+} from "../store/selectors";
 
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
   "type/*": "string",
@@ -177,26 +168,7 @@ function processTimelineEvents(timelineEvents: TimelineEvent[]) {
     .slice(0, 20);
 }
 
-function getVisualizationDataUri(question: Question) {
-  const cardId = question.id();
-  const display = question.card().display;
-
-  const format =
-    // Unjustified type cast. FIXME
-    (CHART_ANALYSIS_RENDER_FORMATS as Record<string, "png" | "svg" | "none">)[
-      display
-    ] ?? ("none" as const);
-
-  return match(format)
-    .with("none", () => undefined)
-    .with("svg", () =>
-      getVisualizationSvgDataUri(getChartSvgSelector({ cardId })),
-    )
-    .with("png", () => getChartImagePngDataUri(getChartSelector({ cardId })))
-    .exhaustive();
-}
-
-const getChartConfigs = async ({
+const getChartConfigs = ({
   question,
   series,
   visualizationSettings,
@@ -206,11 +178,10 @@ const getChartConfigs = async ({
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
-}): Promise<MetabotChartConfig[]> => {
+}): MetabotChartConfig[] => {
   try {
     return [
       {
-        image_base_64: await getVisualizationDataUri(question),
         title: question.displayName(),
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
@@ -271,7 +242,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 
   const chart_configs =
     series != null
-      ? await getChartConfigs({
+      ? getChartConfigs({
           question,
           series,
           visualizationSettings,

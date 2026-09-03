@@ -108,7 +108,7 @@
       :grandchild-data {}
       :should-traverse? true})))
 
-(deftest ^:sequential card-update-updates-child-metadata-test
+(deftest ^:synchronized card-update-updates-child-metadata-test
   (testing "card updates update child card metadata"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -143,7 +143,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id [:in [parent-id child-id grandchild-id]])))))))))
 
-(deftest ^:sequential native-card-update-does-not-update-children-test
+(deftest ^:synchronized native-card-update-does-not-update-children-test
   (testing "native card updates do not update children"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -168,7 +168,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id child-id)))))))))
 
-(deftest ^:sequential model-update-passes-down-new-values-test
+(deftest ^:synchronized model-update-passes-down-new-values-test
   (testing "model updates pass down new result metadata"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -204,7 +204,7 @@
                                        [:model/Card :id :result_metadata :card_schema]
                                        :id [:in [child-id grandchild-id]]))))))))))
 
-(deftest ^:sequential model-update-respects-child-overrides-test
+(deftest ^:synchronized model-update-respects-child-overrides-test
   (testing "model updates respect child metadata edits"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -247,7 +247,7 @@
                                        [:model/Card :id :result_metadata :card_schema]
                                        :id [:in [child-id grandchild-id]]))))))))))
 
-(deftest ^:sequential model-update-stops-recursing-when-child-metadata-is-unchanged-test
+(deftest ^:synchronized model-update-stops-recursing-when-child-metadata-is-unchanged-test
   (testing "model updates stop recursing when they hit a child whose metadata didn't change"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -345,7 +345,7 @@
                   :filter-field-id filter-field-id}))))))
 
 ;; Integration test that a real DB sync triggers re-analysis of an updated table.
-(deftest ^:sequential sync-removed-column-triggers-reanalysis-test
+(deftest ^:synchronized sync-removed-column-triggers-reanalysis-test
   (testing "When sync detects a removed column, re-analyzing the card shows errors"
     (with-syncable-db!
       (fn [{:keys [card-id filter-field-id]}]
@@ -383,7 +383,7 @@
 
 ;; Integration test that a DB sync which doesn't change anything about a table does not trigger re-analysis of all
 ;; cards which depend on that table.
-(deftest ^:sequential sync-without-changes-does-not-trigger-reanalysis-test
+(deftest ^:synchronized sync-without-changes-does-not-trigger-reanalysis-test
   (testing "When sync makes no changes to a table or its fields, the card is not re-analyzed"
     (with-syncable-db!
       (fn [{:keys [card-id db-id filter-field-id table-id]}]

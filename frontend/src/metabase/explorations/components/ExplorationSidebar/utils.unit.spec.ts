@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { dayjs } from "metabase/dayjs";
 import {
   createBlock,
   createExploration,
@@ -13,12 +12,14 @@ import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import type { ExplorationTreeNode, ExplorationTreePage } from "./utils";
 import {
+  EXPLORATION_SUMMARY_TREE_ID,
   getCompactRelativeTime,
   getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   getShimmerDelayStyle,
   isHiddenTreeItem,
+  pickInitialSidebarEntity,
   pickInitialSidebarPage,
 } from "./utils";
 
@@ -73,6 +74,15 @@ function getAllPageIds(
   }
   walk(tree);
   return ids;
+}
+
+function hasSummaryNode(
+  tree: ReturnType<typeof getExplorationSidebarTree>,
+): boolean {
+  return tree.some(
+    (node) =>
+      node.id === EXPLORATION_SUMMARY_TREE_ID || node.data?.type === "document",
+  );
 }
 
 function getFilteredSidebarTree(
@@ -583,42 +593,41 @@ describe("getExplorationSidebarTree sorting", () => {
 });
 
 describe("getExplorationSidebarTree passes BE-computed names through", () => {
-  const DIM_BLOCK_ID = 30;
+  const BLOCK_ID = 30;
 
   it("uses the block's name for the heading and each page's name for sub-items", () => {
-    const signups = createQuery({
+    const country = createQuery({
       id: 1,
-      name: "Signups",
+      name: "Country",
       status: "done",
       interestingness_score: 0.9,
     });
-    const revenue = createQuery({
+    const plan = createQuery({
       id: 2,
-      name: "Revenue",
+      name: "Plan",
       status: "done",
       interestingness_score: 0.8,
     });
 
     const tree = getAllTabExplorationSidebarTree({
-      queries: [signups, revenue],
+      queries: [country, plan],
       blocks: [
         createBlock({
-          id: DIM_BLOCK_ID,
-          type: "dimension",
-          name: "By Country",
+          id: BLOCK_ID,
+          name: "Revenue",
           position: 0,
           pages: [
             createPage({
               id: 10,
-              name: "Signups",
+              name: "Country",
               position: 0,
-              query_ids: [signups.id],
+              query_ids: [country.id],
             }),
             createPage({
               id: 11,
-              name: "Revenue",
+              name: "Plan",
               position: 1,
-              query_ids: [revenue.id],
+              query_ids: [plan.id],
             }),
           ],
         }),
@@ -626,10 +635,10 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
     });
 
     const heading = getMetricHeadings(tree)[0];
-    expect(heading?.name).toBe("By Country");
+    expect(heading?.name).toBe("Revenue");
     expect((heading?.children ?? []).map((child) => child.name)).toEqual([
-      "Signups",
-      "Revenue",
+      "Country",
+      "Plan",
     ]);
   });
 });
@@ -682,6 +691,73 @@ describe("pickInitialSidebarPage", () => {
     });
 
     expect(pickInitialSidebarPage(tree)).toBe("3");
+  });
+});
+
+describe("pickInitialSidebarEntity", () => {
+  const METRIC_A_BLOCK_ID = 10;
+
+  function treeWithSummary(isPlaceholder: boolean) {
+    const done = createQuery({
+      id: 3,
+      name: "Done page",
+      status: "done",
+      interestingness_score: 0.2,
+    });
+    const exploration = createExploration({
+      queries: [done],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({
+              id: 3,
+              name: "Done page",
+              position: 0,
+              query_ids: [done.id],
+            }),
+          ],
+        }),
+      ],
+    });
+    exploration.document = {
+      id: 99,
+      name: "Summary",
+      exploration_id: exploration.id,
+      creator_id: 1,
+      content_type: "application/json+vnd.prose-mirror",
+      is_placeholder: isPlaceholder,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    return {
+      tree: getExplorationSidebarTree(exploration, () => true),
+      document: exploration.document,
+    };
+  }
+
+  it("prefers Summary when is_placeholder is false", () => {
+    const { tree, document } = treeWithSummary(false);
+    expect(pickInitialSidebarEntity(tree, document)).toEqual({
+      type: "summary",
+    });
+  });
+
+  it("falls back to the first page while Summary is still a placeholder", () => {
+    const { tree, document } = treeWithSummary(true);
+    expect(pickInitialSidebarEntity(tree, document)).toEqual({
+      type: "page",
+      id: "3",
+    });
+  });
+
+  it("prepends Summary as the first tree node", () => {
+    const { tree } = treeWithSummary(true);
+    expect(tree[0]?.data?.type).toBe("document");
+    expect(tree[0]?.id).toBe(EXPLORATION_SUMMARY_TREE_ID);
+    expect(tree[0]?.name).toBe("Summary");
   });
 });
 
@@ -944,6 +1020,73 @@ describe("getExplorationSidebarTabsInfo", () => {
           getFilteredSidebarTree(mixedPagesExploration, "discussions"),
         ),
       ).toEqual([]);
+    });
+  });
+
+  describe("summary document visibility", () => {
+    function explorationWithSummary() {
+      const exploration = createExploration({
+        queries: [starredQuery, discussedQuery],
+        blocks: [
+          createBlock({
+            id: BLOCK_ID,
+            name: "Revenue",
+            position: 0,
+            pages: [
+              createPage({
+                id: STARRED_PAGE_ID,
+                name: "Starred",
+                position: 0,
+                query_ids: [starredQuery.id],
+                starred: true,
+              }),
+              createPage({
+                id: DISCUSSED_PAGE_ID,
+                name: "Discussed",
+                position: 1,
+                query_ids: [discussedQuery.id],
+              }),
+            ],
+          }),
+        ],
+      });
+      exploration.document = {
+        id: 99,
+        name: "Summary",
+        exploration_id: exploration.id,
+        creator_id: 1,
+        content_type: "application/json+vnd.prose-mirror",
+        is_placeholder: false,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      };
+      return exploration;
+    }
+
+    it("includes Summary on the All tab", () => {
+      const tree = getFilteredSidebarTree(explorationWithSummary(), "all");
+      expect(hasSummaryNode(tree)).toBe(true);
+      expect(tree[0]?.id).toBe(EXPLORATION_SUMMARY_TREE_ID);
+    });
+
+    it("excludes Summary from the Stars tab", () => {
+      const tree = getFilteredSidebarTree(explorationWithSummary(), "stars");
+      expect(hasSummaryNode(tree)).toBe(false);
+      expect(getAllPageIds(tree)).toEqual([String(STARRED_PAGE_ID)]);
+    });
+
+    it("excludes Summary from the Discussions tab", () => {
+      const exploration = explorationWithSummary();
+      const comments = [
+        createMockComment({
+          target_type: "exploration",
+          target_id: exploration.id,
+          child_target_id: String(DISCUSSED_PAGE_ID),
+        }),
+      ];
+      const tree = getFilteredSidebarTree(exploration, "discussions", comments);
+      expect(hasSummaryNode(tree)).toBe(false);
+      expect(getAllPageIds(tree)).toEqual([String(DISCUSSED_PAGE_ID)]);
     });
   });
 });

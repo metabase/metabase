@@ -111,6 +111,15 @@
    "function_call"  "tool-calls"
    "content_filter" "content-filter"})
 
+(defn- delta-reasoning
+  "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
+  emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
+  other OpenAI-compatible servers still emit the latter, and a self-hosted server's version is the
+  customer's choice."
+  [m]
+  (or (not-empty (:reasoning m))
+      (not-empty (:reasoning_content m))))
+
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
@@ -138,13 +147,21 @@
   would lose their arguments, since neither the start branch (needs `:name`) nor
   the argument-delta branch (needs no `:id`) would fire.
 
-  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]."
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+
+  `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
+  deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
+  :reasoning-end. Opt-in, because whether a provider's reasoning renders at all is
+  a separate question (see `metabot.settings/llm-metabot-supports-reasoning?`) and
+  chunks nothing consumes only add stream volume."
   ([]
-   (chat-completions->aisdk-chunks-xf stop-reasons))
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons {:keys [forward-reasoning?]}]
    (fn [rf]
-     (let [current-type (volatile! nil) ;; :text | :function_call | nil
-           current-id   (volatile! nil) ;; active chunk id (text-id or tool call_id)
+     (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
+           current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
            message-id   (volatile! nil)
            model-name   (volatile! nil)
            payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
@@ -152,6 +169,7 @@
            close!       (fn [result]
                           (u/prog1 (rf result (merge {:type (case @current-type
                                                               :text          :text-end
+                                                              :reasoning     :reasoning-end
                                                               :function_call :tool-input-available)}
                                                      @payload))
                             (vreset! current-type nil)
@@ -172,9 +190,11 @@
                 ;; Empty-string content (common between tool calls) is ignored
                 ;; to avoid spurious text blocks that would close open tools.
                 chunk-type    (cond
-                                (not-empty (:content delta)) :text
-                                (some? tool-call)            :function_call
-                                :else                        nil)
+                                (not-empty (:content delta))  :text
+                                (and forward-reasoning?
+                                     (delta-reasoning delta)) :reasoning
+                                (some? tool-call)             :function_call
+                                :else                         nil)
                 ;; For new tool calls, the id comes from the chunk; for deltas
                 ;; on the same tool, we keep current-id.
                 chunk-id      (or (:id tool-call) @current-id (core/mkid))]
@@ -204,6 +224,18 @@
                    (some? (:content delta)))                   (rf {:type  :text-delta
                                                                     :id    @current-id
                                                                     :delta (:content delta)})
+              ;; Start a new reasoning block
+              (and (= chunk-type :reasoning)
+                   (not= @current-type :reasoning))            (-> (u/prog1
+                                                                     (let [rid (core/mkid)]
+                                                                       (vreset! current-type :reasoning)
+                                                                       (vreset! current-id rid)
+                                                                       (vreset! payload {:id rid})))
+                                                                   (rf (merge {:type :reasoning-start} @payload)))
+              ;; Reasoning delta
+              (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
+                                                                    :id    @current-id
+                                                                    :delta (delta-reasoning delta)})
               ;; Start a new tool call block
               (and (= chunk-type :function_call)
                    (:id tool-call)
@@ -279,11 +311,15 @@
   no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
   renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
 
-  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes."
-  [provider-name res]
-  (let [data (get-in res [:body :data])]
-    (when-not (sequential? data)
-      (throw (ex-info (tru "{0} returned an unexpected model list response" provider-name)
-                      {:api-error  true
-                       :error-code :malformed-model-catalog})))
-    data))
+  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
+
+  `:detail` is a sentence appended to the message, for a provider that has something more specific to say."
+  ([provider-name res] (models-catalog provider-name res nil))
+  ([provider-name res {:keys [detail]}]
+   (let [data (get-in res [:body :data])]
+     (when-not (sequential? data)
+       (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
+                         detail (str ". " detail))
+                       {:api-error  true
+                        :error-code :malformed-model-catalog})))
+     data)))

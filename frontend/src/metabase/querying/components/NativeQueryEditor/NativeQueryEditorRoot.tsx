@@ -85,6 +85,7 @@ export type NativeQueryEditorCoreProps = Omit<
   isResultDirty?: boolean;
   isRunnable?: boolean;
   isRunning?: boolean;
+  isPromptInputOpen?: boolean;
   isShowingDataReference?: boolean;
   isShowingSnippetSidebar?: boolean;
   isShowingTemplateTagsEditor?: boolean;
@@ -98,6 +99,7 @@ export type NativeQueryEditorCoreProps = Omit<
   onOpenModal?: (modalType: QueryModalType) => void;
   onRejectProposed?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
+  onTogglePromptInput?: () => void;
   openDataReferenceAtQuestion?: (id: CardId) => void;
   openSnippetModalWithSelectedText?: () => void;
   placeholder?: string;
@@ -143,6 +145,7 @@ export const NativeQueryEditorRoot = forwardRef<
     insertSnippet,
     isNativeEditorOpen,
     isInitiallyOpen,
+    isPromptInputOpen = false,
     isResultDirty = false,
     isRunnable = false,
     isRunning = false,
@@ -156,6 +159,7 @@ export const NativeQueryEditorRoot = forwardRef<
     onOpenModal,
     onRejectProposed,
     onSetDatabaseId,
+    onTogglePromptInput,
     openDataReferenceAtQuestion,
     openSnippetModalWithSelectedText,
     placeholder,
@@ -310,6 +314,8 @@ export const NativeQueryEditorRoot = forwardRef<
     nativeEditorSelectedText,
     snippets,
     snippetCollections,
+    isPromptInputOpen,
+    onTogglePromptInput,
     isShowingDataReference,
     isShowingSnippetSidebar,
     isShowingTemplateTagsEditor,
@@ -373,9 +379,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
                 <Stack
                   display={readOnly ? "none" : undefined}
-                  gap="md"
+                  gap="lg"
                   justify="flex-end"
-                  p="md"
+                  p="lg"
                 >
                   {proposedQuestion && onRejectProposed && onAcceptProposed && (
                     <>

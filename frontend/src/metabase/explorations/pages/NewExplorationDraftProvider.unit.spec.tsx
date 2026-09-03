@@ -3,7 +3,11 @@ import { useState } from "react";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { makeMockSelection } from "metabase/explorations/test-utils";
-import { getMessages, metabotActions } from "metabase/metabot/state";
+import {
+  getMessages,
+  getMetabotConversationId,
+  metabotActions,
+} from "metabase/metabot/state";
 import { Route } from "metabase/router";
 
 import { NewExplorationDraftProvider } from "./NewExplorationDraftProvider";
@@ -62,12 +66,15 @@ function setup() {
     },
   );
 
+  const draftConversationId = () =>
+    getMetabotConversationId(store.getState(), "explorations");
+
   // stand-in for the request "Create plan" fires just before navigating
   const submitDraftMessage = () =>
     act(() => {
       store.dispatch(
         metabotActions.addUserMessage({
-          agentId: "explorations",
+          conversationId: draftConversationId(),
           id: "draft-1",
           type: "text",
           message: "Why are signups down?",
@@ -75,7 +82,8 @@ function setup() {
       );
     });
 
-  const getDraftMessages = () => getMessages(store.getState(), "explorations");
+  const getDraftMessages = () =>
+    getMessages(store.getState(), draftConversationId());
 
   return {
     router,

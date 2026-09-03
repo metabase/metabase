@@ -12,6 +12,7 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
+import { DebouncedSearchInput } from "metabase/common/components/DebouncedSearchInput";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
@@ -31,7 +32,6 @@ import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
 import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
-import { NotificationsSearchInput } from "../NotificationsSearchInput";
 import { NotificationsTable } from "../NotificationsTable";
 import { NotificationsTabs } from "../NotificationsTabs";
 import {
@@ -334,9 +334,10 @@ export const NotificationsAdminPage = () => {
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
-          <Flex gap="md" align="center">
-            <NotificationsSearchInput
+          <Flex gap="lg" align="center">
+            <DebouncedSearchInput
               value={urlState.query}
+              placeholder={t`Search by question or owner…`}
               onChange={handleSearchChange}
             />
             <NotificationsFilters state={urlState} onChange={patchUrlState} />

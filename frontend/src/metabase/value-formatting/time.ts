@@ -1,5 +1,4 @@
-import type { Dayjs } from "dayjs";
-
+import type { Dayjs } from "metabase/dayjs";
 import {
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,

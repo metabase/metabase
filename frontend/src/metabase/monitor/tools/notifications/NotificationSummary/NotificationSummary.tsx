@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import { FixedSizeIcon, Flex, Stack, Text, Tooltip } from "metabase/ui";
 import type { NotificationRunSummary } from "metabase-types/api";
 
@@ -19,7 +18,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
   }
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <Flex gap="sm" align="center">
         <Tooltip label={dayjs(run.at).fromNow()}>
           <Text size="md" c="text-primary" component="span">
@@ -33,7 +32,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
         )}
       </Flex>
       {!isCompact && isFailing && (
-        <Flex align="center" gap="xs">
+        <Flex align="center" gap="xxs">
           {error && (
             <Text size="sm" c="feedback-negative">
               {error}

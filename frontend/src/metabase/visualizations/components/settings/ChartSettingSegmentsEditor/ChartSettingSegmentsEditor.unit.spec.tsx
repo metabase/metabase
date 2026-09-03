@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen, within } from "__support__/ui";
+import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
-import {
-  ChartSettingSegmentsEditor,
-  type ChartSettingSegmentsEditorProps,
-} from "./ChartSettingSegmentsEditor";
+import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };

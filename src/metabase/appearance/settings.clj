@@ -2,11 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.appearance.db :as appearance.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +59,7 @@
 (defsetting landing-page
   (deferred-tru "Enter a relative URL like /dashboard/1 or /collection/2.")
   :encryption :no
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :default    ""
@@ -245,7 +245,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting landing-page-illustration-custom
   (deferred-tru "The custom illustration for the landing page.")
   :encryption :no
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -325,7 +325,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
   :encryption :no
-  :visibility :public
+  :visibility :authenticated
   :type       :string
   :audit      :getter
   :default   "https://www.metabase.com/help/premium"
@@ -402,7 +402,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :setter     :none
   :getter     (fn []
                 (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
-                  (when (and id (t2/exists? :model/Dashboard :id id :archived false))
+                  (when (and id (appearance.db/unarchived-dashboard-exists? id))
                     id)))
   :doc        false)
 

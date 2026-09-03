@@ -7,9 +7,8 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
-actionlint:
-  - added|modified: ".github/workflows/*.yml"
-  - added|modified: ".github/workflows/*.yaml"
+workflows:
+  - added|modified: ".github/workflows/*.{yml,yaml}"
 
 shared_sources: &shared_sources
   - "src/**/*.cljc"
@@ -65,6 +64,9 @@ frontend_specs: &frontend_specs
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
   - ".github/**/*.unit.spec.*"
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
@@ -113,11 +115,15 @@ backend_sources: &backend_sources
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
-  - ".clj-kondo/**"
+  # The ratchets file drives project_ratchet_checks alone, so the automation PR that lowers the budgets
+  # runs the Project tests job by itself. Patterns are OR-ed, so a separate "!..." entry would match
+  # every other path instead of excluding this one.
+  - ".clj-kondo/{!(ratchets.edn),*/**}"
 
 backend_specs: &backend_specs
   - *shared_specs
   - "test/**"
+  - "dev/test/**"
   - "enterprise/backend/test/**"
   - "test_modules/**"
   - "modules/drivers/*/test/**"
@@ -129,6 +135,45 @@ backend_all: &backend_all
   - *backend_ci
   - *backend_sources
   - *backend_specs
+
+# Project checks have narrower triggers than the backend matrix.
+# Changes to their shared CI entry points exercise every suite; otherwise each
+# suite follows only the files that can affect its result.
+project_tests_infra: &project_tests_infra
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/backend.yml"
+  - ".github/workflows/run-tests.yml"
+  - "bb.edn"
+  - "bin/mage"
+  - "bin/mage.bb"
+  - "mage/src/mage/color.clj"
+  - "mage/src/mage/project_tests.clj"
+  - "mage/src/mage/shell.clj"
+  - "mage/src/mage/util.clj"
+
+project_backend_checks:
+  - *project_tests_infra
+  - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
+  - "modules/**/*.clj"
+  - "modules/**/*.cljc"
+  - "modules/**/*.cljs"
+  - "**deps.edn"
+  - ".clj-kondo/config.edn"
+  - ".clj-kondo/config/modules/config.edn"
+  - ".github/team.json"
+  - "dev/resources/dev/modules_config_test/**"
+
+# Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
+project_ratchet_checks:
+  - ".clj-kondo/ratchets.edn"
+
+project_migration_checks:
+  - *project_tests_infra
+  - "bin/lint-migrations-file/**"
+  - "resources/migrations/**/*.{yaml,yml}"
+  - "src/metabase/app_db/custom_migrations.clj"
+  - "src/metabase/app_db/custom_migrations/**"
 
 sources: &sources
   - *shared_sources
@@ -232,7 +277,15 @@ embedder_plugin:
   - "bin/build/src/build_embedder_plugin.clj"
   - "deps.edn"
   - "modules/embedder/**"
+  - "enterprise/backend/src/metabase_enterprise/data_complexity_score/complexity_embedders.clj"
+  - "enterprise/backend/src/metabase_enterprise/data_complexity_score/settings.clj"
+  - "enterprise/backend/src/metabase_enterprise/data_complexity_score/synonym_source.clj"
+  - "enterprise/backend/src/metabase_enterprise/semantic_search/embedding.clj"
+  - "enterprise/backend/src/metabase_enterprise/semantic_search/settings.clj"
+  - "enterprise/backend/test/metabase_enterprise/semantic_search/appdb_pgvector_mode_test.clj"
+  - "enterprise/backend/test/metabase_enterprise/semantic_search/embedding_test.clj"
   - "src/metabase/embeddings/provider.clj"
+  - "src/metabase/embeddings/startup.clj"
   - "src/metabase/plugins/**"
   - "test/metabase/embeddings/embedder_plugin_artifact_test.clj"
 

@@ -13,6 +13,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved Moonshot connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-moonshot-key-byok" :base-url "https://api.moonshot.ai/v1"})
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; moonshot-request-body tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -194,9 +198,8 @@
 (deftest moonshot-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-byok"
-                                         llm.settings/llm-proxy-base-url   "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
@@ -204,16 +207,22 @@
                      :url     "https://api.moonshot.ai/v1/chat/completions"
                      :headers {"Authorization" "Bearer sk-moonshot-key-byok"}
                      :body    string?}
-                    (moonshot/moonshot-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil]
+                    (moonshot/moonshot-raw {:input       [{:role :user :content "hi"}]
+                                            :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Moonshot API key is set"
+               (moonshot/moonshot-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Moonshot API key is set"
-                 (moonshot/moonshot-raw {:input [{:role :user :content "hi"}]})))))
+                 (moonshot/moonshot-raw {:input       [{:role :user :content "hi"}]
+                                         :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil
-                                             llm.settings/llm-proxy-base-url   nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Moonshot API key is set"
@@ -221,23 +230,37 @@
 
 (deftest moonshot-raw-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Moonshot"
+           (moonshot/moonshot-raw {:model     "kimi-k2.6"
+                                   :input     [{:role :user :content "hi"}]
+                                   :ai-proxy? true}))))))
+
+(deftest moonshot-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key      "sk-moonshot-key-setting"
+                                       llm.settings/llm-moonshot-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/chat/completions"
+                                                          :headers {"Authorization" "Bearer sk-moonshot-key-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for Moonshot"
-             (moonshot/moonshot-raw {:model     "kimi-k2.6"
-                                     :input     [{:role :user :content "hi"}]
-                                     :ai-proxy? true})))))))
+             #"stop"
+             (moonshot/moonshot-raw {:input       [{:role :user :content "hi"}]
+                                     :credentials {:api-key  "sk-moonshot-key-explicit"
+                                                   :base-url "https://explicit.example"}})))))))
 
 (deftest list-models-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for Moonshot"
-             (moonshot/list-models {:ai-proxy? true})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Moonshot"
+           (moonshot/list-models {:ai-proxy? true}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models tests
@@ -247,31 +270,29 @@
   (testing "list-models keeps only whitelisted models, naming them from the whitelist"
     ;; Moonshot catalog entries carry no `:name`, so the display name has nowhere else to come from. The coding
     ;; models in the live catalog are excluded.
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:method  :get
-                                                          :url     "https://api.moonshot.ai/v1/models"
-                                                          :headers {"Authorization" "Bearer sk-moonshot-key-test"}}
-                                                         req))
-                                                 {:status 200
-                                                  :body   {:object "list"
-                                                           :data   [{:id "kimi-k2.7-code" :object "model"}
-                                                                    {:id "kimi-k2.7-code-highspeed" :object "model"}
-                                                                    {:id "kimi-k3" :object "model"}
-                                                                    {:id "kimi-k2.6" :object "model"}]}})]
-        (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}
-                         {:id "kimi-k3" :display_name "Kimi K3"}]}
-               (moonshot/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (=? {:method  :get
+                                                        :url     "https://api.moonshot.ai/v1/models"
+                                                        :headers {"Authorization" "Bearer sk-moonshot-key-byok"}}
+                                                       req))
+                                               {:status 200
+                                                :body   {:object "list"
+                                                         :data   [{:id "kimi-k2.7-code" :object "model"}
+                                                                  {:id "kimi-k2.7-code-highspeed" :object "model"}
+                                                                  {:id "kimi-k3" :object "model"}
+                                                                  {:id "kimi-k2.6" :object "model"}]}})]
+      (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}
+                       {:id "kimi-k3" :display_name "Kimi K3"}]}
+             (moonshot/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-omits-models-the-key-cannot-reach-test
   (testing "a model missing from the per-key catalog is not offered"
     ;; k3's catalog permission group is `staff` where the other models report `moonshot`, so not every account
-    ;; sees it. This is why the static default is k2.6.
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 {:status 200 :body {:data [{:id "kimi-k2.6"}]}})]
-        (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}]}
-               (moonshot/list-models)))))))
+    ;; sees it.
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               {:status 200 :body {:data [{:id "kimi-k2.6"}]}})]
+      (is (= {:models [{:id "kimi-k2.6" :display_name "Kimi K2.6"}]}
+             (moonshot/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -283,15 +304,13 @@
         (is (= {:models []}
                (moonshot/list-models {:credentials {:api-key "sk-moonshot-key-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer sk-moonshot-key-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (moonshot/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Moonshot API key is set"
+           (moonshot/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -303,28 +322,27 @@
 
 (deftest list-models-malformed-catalog-throws-test
   (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
-    (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Moonshot returned an unexpected model list response"
-             (moonshot/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Moonshot returned an unexpected model list response"
+           (moonshot/list-models {:credentials byok-credentials}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error mapping tests
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest error-status-messages-test
-  (mt/with-temporary-setting-values [llm.settings/llm-moonshot-api-key "sk-moonshot-key-test"]
-    (doseq [[status body pattern]
-            [[400 "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"invalid temperature\"}}"
-              #"Moonshot rejected the request"]
-             [401 "{\"error\":{\"type\":\"invalid_authentication_error\",\"message\":\"Invalid Authentication\"}}"
-              #"Moonshot API key expired or invalid"]
-             [404 "{\"error\":{\"type\":\"resource_not_found_error\",\"message\":\"Not found the model\"}}"
-              #"Moonshot API endpoint or model was not found"]]]
-      (testing (str "HTTP " status)
-        (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                   (throw (ex-info (str "clj-http: status " status)
-                                                                   {:status status :body body})))]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo pattern (moonshot/list-models))))))))
+  (doseq [[status body pattern]
+          [[400 "{\"error\":{\"type\":\"invalid_request_error\",\"message\":\"invalid temperature\"}}"
+            #"Moonshot rejected the request"]
+           [401 "{\"error\":{\"type\":\"invalid_authentication_error\",\"message\":\"Invalid Authentication\"}}"
+            #"Moonshot API key expired or invalid"]
+           [404 "{\"error\":{\"type\":\"resource_not_found_error\",\"message\":\"Not found the model\"}}"
+            #"Moonshot API endpoint or model was not found"]]]
+    (testing (str "HTTP " status)
+      (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                                 (throw (ex-info (str "clj-http: status " status)
+                                                                 {:status status :body body})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo pattern
+                              (moonshot/list-models {:credentials byok-credentials})))))))

@@ -132,7 +132,7 @@ export const BranchSwitcher = ({
 
   return (
     <>
-      <Group gap="md" align="center">
+      <Group gap="lg" align="center">
         <Combobox
           store={combobox}
           position="bottom-start"
@@ -199,13 +199,13 @@ export const BranchSwitcher = ({
       {branchMismatch && (
         <Modal
           opened
-          padding="xl"
+          padding="xxl"
           title={t`This view is out of date`}
           withCloseButton={false}
           onClose={() => setBranchMismatch(null)}
         >
-          <Text mt="md">{branchMismatch}</Text>
-          <Group gap="sm" justify="end" mt="xl">
+          <Text mt="lg">{branchMismatch}</Text>
+          <Group gap="sm" justify="end" mt="xxl">
             <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
               {t`Cancel`}
             </Button>

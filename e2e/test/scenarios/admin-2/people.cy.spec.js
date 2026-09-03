@@ -8,12 +8,11 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { sandboxed, normal, admin, nodata, nocollection } = USERS;
+const { normal, admin, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-const { COLLECTION_GROUP } = USER_GROUPS;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TEST_USER = {
   first_name: "Testy",
@@ -25,8 +24,6 @@ const TEST_USER = {
 const adminUserName = H.getFullName(admin);
 const noCollectionUserName = H.getFullName(nocollection);
 const normalUserName = H.getFullName(normal);
-
-const totalUsers = Object.keys(USERS).length;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -889,77 +886,6 @@ describe("scenarios > admin > people > group managers", () => {
 
     removeFirstGroup();
     cy.url().should("match", /\/$/);
-  });
-});
-
-// TODO: remove skip when this issue gets fixed. Initial attempt: https://github.com/metabase/metabase/pull/23825,
-// reverted in https://github.com/metabase/metabase/pull/24760 to fix a security vulnerability.
-describe("issue 23689", { tags: "@skip" }, () => {
-  function findUserByFullName(user) {
-    const { first_name, last_name } = user;
-    return cy.findByText(`${first_name} ${last_name}`);
-  }
-
-  function visitGroupPermissionsPage(groupId) {
-    cy.visit(`/admin/people/groups/${groupId}`);
-    cy.wait("@membership");
-  }
-
-  beforeEach(() => {
-    cy.intercept("GET", "/api/permissions/membership").as("membership");
-
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-
-    visitGroupPermissionsPage(COLLECTION_GROUP);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("3 members");
-
-    findUserByFullName(normal);
-    findUserByFullName(nodata);
-
-    // Make sandboxed user a group manager
-    findUserByFullName(sandboxed)
-      .closest("tr")
-      .findByTestId("user-type-toggle")
-      .click({ force: true });
-
-    // Sanity check instead of waiting for the PUT request
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Manager");
-
-    cy.sandboxTable({
-      table_id: ORDERS_ID,
-      attribute_remappings: {
-        attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-      },
-    });
-
-    cy.signOut();
-    cy.signInAsSandboxedUser();
-  });
-
-  it("sandboxed group manager should see all other members (metabase#23689)", () => {
-    visitGroupPermissionsPage(COLLECTION_GROUP);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("3 members");
-
-    findUserByFullName(sandboxed);
-    findUserByFullName(normal);
-    findUserByFullName(nodata);
-
-    cy.visit("/admin/people");
-    cy.wait("@membership");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${totalUsers} people found`);
-    findUserByFullName(sandboxed);
-    findUserByFullName(normal);
-    findUserByFullName(nodata);
-    findUserByFullName(nocollection);
   });
 });
 

@@ -30,6 +30,7 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
     isRunnable,
     isRunning,
     isResultDirty,
+    isPromptInputOpen,
     isShowingDataReference,
     isShowingTemplateTagsEditor,
     isShowingSnippetSidebar,
@@ -38,6 +39,7 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
     toggleTemplateTagsEditor,
     onOpenModal,
     onFormatQuery,
+    onTogglePromptInput,
   } = useNativeQueryEditorContext();
 
   if (!isNativeEditorOpen || readOnly) {
@@ -54,6 +56,8 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
       isRunnable={isRunnable}
       isRunning={isRunning}
       isResultDirty={isResultDirty}
+      isPromptInputOpen={isPromptInputOpen}
+      onTogglePromptInput={onTogglePromptInput}
       isShowingDataReference={isShowingDataReference}
       isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
       isShowingSnippetSidebar={isShowingSnippetSidebar}

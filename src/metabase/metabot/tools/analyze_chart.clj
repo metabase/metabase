@@ -73,7 +73,6 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
                       {:type ::malformed-chart-config, :series series-name})))))
 
 (mu/defn ^{:tool-name "analyze_chart"
-           :prompt    "analyze_chart"
            :scope     scope/agent-viz-read}
   analyze-chart-tool
   "Compute statistics and generate analysis context for a chart.

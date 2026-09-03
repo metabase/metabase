@@ -49,6 +49,7 @@
     existing calls when practical. Will be unexported when there are no callers left. Docstrings should suggest an
     alternative to calling these functions.
   - **Deprecated:** Stronger than Leak - the function should be removed altogether, not just unexported."
+  ;; remove and ->> have no lib export yet; excluded so the clojure.core versions can't leak into the API
   {:clj-kondo/ignore [:unused-excluded-var]}
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
                             + - * / time abs concat replace ref float])
@@ -1415,6 +1416,7 @@
  [lib.binning
   available-binning-strategies
   binning
+  default-bin-width
   with-binning]
  [metabase.lib.card
   ->card-metadata-columns
@@ -1608,6 +1610,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage

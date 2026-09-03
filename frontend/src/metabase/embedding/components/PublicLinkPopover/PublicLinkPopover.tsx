@@ -1,10 +1,10 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import type { ExportFormat } from "metabase/common/types/export";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Box, Popover, Text, Title } from "metabase/ui";
+import type { ExportFormat } from "metabase-types/api";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
 
@@ -62,7 +62,7 @@ export const PublicLinkPopover = ({
         <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="lg" w="28rem" data-testid="public-link-popover-content">
+        <Box p="xl" w="28rem" data-testid="public-link-popover-content">
           <Title
             order={4}
             c="text-primary"

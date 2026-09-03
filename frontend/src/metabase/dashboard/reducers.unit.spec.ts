@@ -30,6 +30,7 @@ describe("dashboard reducers", () => {
       dashboards: {},
       dashcardData: {},
       dashcards: {},
+      linkTargets: { questions: {}, dashboards: {} },
       isAddParameterPopoverOpen: false,
       isNavigatingBackToDashboard: false,
       editingDashboard: null,

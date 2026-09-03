@@ -60,10 +60,7 @@
   All of these middlewares assume MBQL 5."
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'normalize/normalize-preprocessing-middleware
-   #'qp.perms/remove-permissions-key
-   #'qp.perms/remove-impersonation-keys
-   #'qp.perms/remove-source-card-keys
-   #'qp.perms/remove-persisted-info-native-keys
+   #'qp.perms/remove-internal-keys
    #'qp.perms/record-referenced-card-ids
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
@@ -76,7 +73,6 @@
    #'expand-macros/expand-macros
    #'nest-for-pivot/nest-for-pivot
    #'qp.resolve-referenced/resolve-referenced-card-resources
-   #'qp.perms/remove-namespaced-options
    #'parameters/substitute-parameters
    #'qp.resolve-source-table/resolve-source-tables
    #'qp.auto-bucket-datetimes/auto-bucket-datetimes

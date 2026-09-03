@@ -1,13 +1,10 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import "@xyflow/react/dist/style.css";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
 import "ee-overrides";
-
-import "metabase/utils/dayjs";
 
 // set the locale before loading anything else
 import "metabase/utils/i18n";
@@ -21,7 +18,7 @@ import "metabase/auth/plugins";
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
-import "metabase/utils/csp";
+import "metabase/utils/csp-setup";
 
 import { type Middleware, isAction } from "@reduxjs/toolkit";
 import { DragDropContextProvider } from "react-dnd";
@@ -50,6 +47,7 @@ import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
@@ -107,6 +105,7 @@ function _init(
   });
 
   initializeInteractiveEmbedding(store.dispatch);
+  captureClickModifierKeys();
 
   const rootElement = document.getElementById("root");
   if (!rootElement) {

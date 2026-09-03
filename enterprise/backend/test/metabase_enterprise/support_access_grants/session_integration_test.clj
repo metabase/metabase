@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.support-access-grants.session-integration-test
+(ns ^:synchronized metabase-enterprise.support-access-grants.session-integration-test
   "Tests for session API integration with support access grants.
   Tests the fallback mechanism in /api/session/reset_password and /api/session/password_reset_token_valid
   that tries support-access-grant provider first, then falls back to emailed-secret-password-reset."
@@ -432,3 +432,26 @@
                                                    :provider "password")]
                         (is (some? (:expires_at pw-auth))
                             "Password AuthIdentity should have an expiration from the grant")))))))))))))
+
+(deftest support-grant-session-does-not-outlive-the-grant-test
+  (testing "a session minted from a support access grant stops authenticating once the grant window has passed"
+    (mt/with-temp [:model/User {creator-id :id} {}]
+      (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+        (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-session-expiry@example.com")
+                                    sag.settings/support-access-grant-first-name (constantly "Support")
+                                    sag.settings/support-access-grant-last-name (constantly "User")]
+          (let [grant       (grants/create-grant! creator-id 60 "SUPPORT-SESSION-EXPIRY" "Time-boxed access")
+                session-key (:session_id (mt/client :post 200 "session/reset_password"
+                                                    {:token (:token grant) :password "SupportPass!2468"}))
+                session     (t2/select-one :model/Session :key_hashed (session/hash-session-key session-key))]
+            (testing "the session records the grant's end as its own expires_at"
+              (is (some? (:expires_at session))))
+            (testing "inside the grant window the support session works"
+              (is (true? (:is_superuser (mt/client session-key :get 200 "user/current")))))
+            (testing "past the grant window the support session is rejected"
+              ;; Sessions cannot be updated through the model and the clock cannot be wound forward, so
+              ;; simulate the grant window elapsing by moving expires_at into the past.
+              (t2/query-one {:update (t2/table-name :model/Session)
+                             :set    {:expires_at (t/minus (t/instant) (t/minutes 1))}
+                             :where  [:= :id (:id session)]})
+              (is (= "Unauthenticated" (mt/client session-key :get 401 "user/current"))))))))))

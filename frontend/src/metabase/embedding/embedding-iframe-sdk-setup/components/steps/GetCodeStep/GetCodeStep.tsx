@@ -50,7 +50,7 @@ export const GetCodeStep = () => {
   const showCode = !isGuestEmbed || resource?.enable_embedding;
 
   return (
-    <Stack gap="md" flex={1}>
+    <Stack gap="lg" flex={1}>
       {!isGuestEmbed && <MetabaseAccountCard />}
 
       {showCode ? (

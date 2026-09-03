@@ -64,9 +64,11 @@
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.visualization-settings :as mb.viz]
@@ -75,6 +77,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [toucan2.core :as t2]
@@ -173,7 +176,7 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+    (models.db/pk-by-entity-id model pk eid)))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -501,16 +504,8 @@
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (t2/reducible-select model (cond-> {:where (or where true)}
-                                   order-by (assoc :order-by order-by)))
-      (t2/reducible-select model (cond-> {:where [:and
-                                                  [:or
-                                                   [:in :collection_id collection-set]
-                                                   (when (some nil? collection-set)
-                                                     [:= :collection_id nil])]
-                                                  (when where
-                                                    where)]}
-                                   order-by (assoc :order-by order-by))))))
+      (models.db/entities-reducible model where order-by)
+      (models.db/entities-in-collections-reducible model collection-set where order-by))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)
@@ -683,8 +678,8 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
-    (t2/update! model id ingested)
-    (t2/select-one model pk id)))
+    (models.db/update-entity! model id ingested)
+    (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -705,7 +700,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
+  (models.db/insert-entity! (t2.model/resolve-model (symbol model-name)) ingested))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -789,7 +784,7 @@
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (models.db/entity-by-entity-id model id-str))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
@@ -821,7 +816,7 @@
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
-  (let [colls     (t2/select ['Collection :id :entity_id :location :name])
+  (let [colls     (models.db/collection-paths-columns)
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
@@ -833,10 +828,10 @@
                                                       all-ids)]]
                            [entity_id path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (t2/select ['Dashboard :entity_id :name])]
+                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
-                         (for [{:keys [entity_id name]} (t2/select ['Document :entity_id :name])]
+                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
      :dashboards  dashboards
@@ -847,17 +842,17 @@
 ;;; These wrapper functions delegate to the current resolver (set by [[with-cache]]).
 ;;; When no resolver is bound, they fall back to the database-backed resolver.
 
-;; TODO: `requiring-resolve` is needed here because resolve.db requires this ns
-;; (for `generate-path`, `field-hierarchy`, `lookup-by-id`, `recursively-find-field-q`).
-;; Moving those into resolve.db (or a shared utils ns) would break the cycle and
-;; let us require resolve.db directly.
+;; TODO: `requiring-resolve` is needed here because resolve.default requires this ns
+;; (for `generate-path`, `field-hierarchy`, `lookup-by-id`).
+;; Moving those into resolve.default (or a shared utils ns) would break the cycle and
+;; let us require resolve.default directly.
 (defn- export-resolver []
   (or resolve/*export-resolver*
-      @(requiring-resolve 'metabase.models.serialization.resolve.db/default-export-resolver)))
+      @(requiring-resolve 'metabase.models.serialization.resolve.default/default-export-resolver)))
 
 (defn- import-resolver []
   (or resolve/*import-resolver*
-      @(requiring-resolve 'metabase.models.serialization.resolve.db/default-import-resolver)))
+      @(requiring-resolve 'metabase.models.serialization.resolve.default/default-import-resolver)))
 
 ;;; ## General foreign keys
 
@@ -1009,29 +1004,7 @@
   "Returns the field hierarchy (field + parents) for a field ID. Used by resolvers."
   [id]
   (reverse
-   (t2/select :model/Field
-              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
-                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [[:metabase_field :mf]]
-                                                                                 :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                                                                 :where  [:= :id id]}
-                                                               ^:allow-subquery {:from   [[:metabase_field :pf]]
-                                                                                 :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                                                                 :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
-               :from           [:parents]
-               :select         [:name :table_id]})))
-
-(defn recursively-find-field-q
-  "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
-
-  `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
-  [table-id [field & rest]]
-  (when field
-    ^:allow-subquery {:from   [:metabase_field]
-                      :select [:id]
-                      :where  [:and
-                               [:= :table_id table-id]
-                               [:= :name field]
-                               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
+   (models.db/field-hierarchy-rows id)))
 
 ;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
 ;; database and table exporters above. Fields are unbounded in number (millions on large
@@ -1270,7 +1243,34 @@
     (m :guard map?)
     (import-mbql-map m)))
 
-(defn- normalize-imported [x]
+;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+(def ^:dynamic *skip-schema-validation?*
+  "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
+  false)
+
+(defn- validate-imported-query!
+  "Throws when `query` is a full MBQL 5 query that this instance's query schema rejects. Anything else - bare refs,
+  the MBQL fragments inside visualization settings, legacy MBQL 4 queries - is left alone."
+  [query]
+  (when (and (= (:lib/type query) :mbql/query)
+             (not (mr/validate ::lib.schema/query query)))
+    (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
+      ;; the message names two causes because `mu/defn` is not instrumented in prod: an app DB can hold MBQL the QP
+      ;; tolerates but this schema rejects, so a refusal is not on its own evidence of a newer export
+      (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
+                           "either exported by a newer Metabase whose query shape this version cannot represent, "
+                           "or stored by an instance that never validated it. Pass continue_on_error to skip just "
+                           "this entity, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check "
+                           "for the whole import.")
+                      ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
+                      ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
+                      {:schema-errors errors}))))
+  query)
+
+(defn- normalize-imported
+  "Normalizes ingested MBQL/structure into this instance's representation, returning `x` unchanged if normalization
+  fails."
+  [x]
   (when x
     (try
       (if (mbql-ref? x)
@@ -1278,6 +1278,7 @@
         (lib/normalize x))
       (catch Throwable e
         (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
+        ;; many structures will fail normalization, but that is expected
         x))))
 
 (defn- import-mbql*
@@ -1312,12 +1313,16 @@
     x))
 
 (defn import-mbql
-  "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
+  "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
+  IDs embedded, convert the IDs back to raw numeric IDs.
+
+  Throws if an MBQL 5 expression doesn't match the schema."
   [x]
-  (-> x
-      import-mbql*
-      normalize-imported
-      repair-card-template-tag-names))
+  (some-> x
+          import-mbql*
+          normalize-imported
+          (cond-> (not *skip-schema-validation?*) validate-imported-query!)
+          repair-card-template-tag-names))
 
 (declare ^:private mbql-deps-map)
 
@@ -1760,7 +1765,7 @@
   left in its portable entity-id form, instead of throwing. Use for paths where a deleted source Card
   should be treated as a broken section rather than break the whole read."
   [settings]
-  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
+  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.default/lenient-import-resolver)]
     (import-visualizer-settings settings)))
 
 (defn import-visualization-settings
@@ -1892,12 +1897,12 @@
                                                   (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
                               (cond
                                 (nil? first-eid)            ; no entity id, just drop existing stuff
-                                (do (t2/delete! model backward-fk parent-id)
+                                (do (models.db/delete-children! model backward-fk parent-id)
                                     (doseq [ingested lst]
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
+                                (do (models.db/delete-children-except! model backward-fk parent-id (map :entity_id lst))
                                     (doseq [ingested lst
                                             :let [ingested (enrich ingested)
                                                   local    (lookup-by-id model (entity-id model-name ingested))]]
@@ -1953,6 +1958,6 @@
 (defmacro with-cache
   "Runs body with resolvers bound to cached (memoized) versions for performance."
   [& body]
-  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-export-resolver))
-             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-import-resolver))]
+  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.default/cached-export-resolver))
+             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.default/cached-import-resolver))]
      ~@body))

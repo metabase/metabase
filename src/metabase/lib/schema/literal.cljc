@@ -177,7 +177,7 @@
 (mr/def ::literal
   [:or
    :nil
-   :boolean
+   [:boolean {:decode/string identity}] ;; avoid coercing "true"/"false" strings to booleans (#80004)
    :string
    ::integer
    ::non-integer-real

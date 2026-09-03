@@ -11,7 +11,7 @@ import {
 } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import {
   Form,
   FormErrorMessage,
@@ -122,7 +122,7 @@ export function CreateTransformModal({
     <Modal
       title={t`Save your transform`}
       opened
-      padding="xl"
+      padding="xxl"
       closeOnEscape={closeOnEscape}
       onClose={onClose}
     >
@@ -171,7 +171,7 @@ function CreateTransformForm({
 
   return (
     <Form>
-      <Stack gap="lg" mt="sm">
+      <Stack gap="xl" mt="sm">
         <FormTextInput
           name="name"
           label={t`Name`}

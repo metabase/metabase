@@ -67,6 +67,7 @@
   (let [handler        (as-> route+handlers routes+handlers
                          (mapv :route routes+handlers)
                          (conj routes+handlers (compojure.route/not-found {:status-code 404 :body "Not found."}))
+                         ;; throwaway Jetty test handler; no OpenAPI spec needed
                          (apply #_{:clj-kondo/ignore [:discouraged-var]} compojure/routes routes+handlers))
         ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
@@ -154,7 +155,7 @@
        (ex-data e#))))
 
 (deftest can-connect-no-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
       (let [can-connect?* (fn [route]
                             (can-connect? {:url         (str url (:path route))
@@ -177,7 +178,7 @@
                 (exception-data (can-connect?* get-500))))))))
 
 (deftest can-connect-header-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= "SECRET" (get-in x [:headers "x-api-key"]))
@@ -199,7 +200,7 @@
                                               :auth-info   {:x-api-key "WRONG"}}))))))))
 
 (deftest can-connect-query-param-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= ["qnkhuat" "secretpassword"]
@@ -224,7 +225,7 @@
                                                             :password "wrongpassword"}}))))))))
 
 (deftest can-connect-request-body-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :post "/user"
                                    (fn [x]
                                      (if (= "SECRET_TOKEN" (get-in x [:body :token]))
@@ -257,7 +258,7 @@
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
-    (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+    (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
       (with-server [url [get-400]]
         (is (= {:request-body   "Bad request"
                 :request-status 400}
@@ -276,7 +277,7 @@
                                                 :auth-method "none"})))))))))
 
 (deftest send!-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (testing "basic send"
       (with-captured-http-requests [requests]
         (channel/send! {:type        :channel/http
@@ -337,15 +338,50 @@
                               #"No URL is configured for this webhook"
                               (channel/send! channel nil)))))
     (testing "an unparseable webhook URL throws a human-readable error (#76802)"
-      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+      (mt/with-temporary-setting-values [http-channel-allowed-networks :external-only]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid webhook URL"
                               (channel/send! {:type    :channel/http
                                               :details {:url "not-a-url" :auth-method "none"}}
                                              nil)))))))
 
+(deftest send!-rejects-any-local-ula-cgnat-test
+  (testing "under :external-only, hosts the old valid-host? let through -- any-local (0.0.0.0 / [::]),
+           IPv6 ULA, IPv4 CGNAT -- are rejected up front"
+    (mt/with-temporary-setting-values [http-channel-allowed-networks :external-only]
+      (doseq [host ["0.0.0.0" "[::]" "[fc00::1]" "100.64.0.1"]]
+        (testing host
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"internal hosting metadata are prohibited"
+               (channel/send! {:type    :channel/http
+                               :details {:url (str "http://" host ":80/") :auth-method "none"}}
+                              {}))))))))
+
+(deftest send!-attaches-dns-resolver-test
+  (testing "a connection-time SSRF :dns-resolver is attached for restrictive policies, but not for :allow-all"
+    ;; 8.8.8.8 is a public IP literal, so the up-front check needs no DNS lookup
+    (doseq [[strategy resolver?] [[:allow-all false]
+                                  [:allow-private true]
+                                  [:external-only true]]]
+      (with-captured-http-requests [requests]
+        (mt/with-temporary-setting-values [http-channel-allowed-networks strategy]
+          (channel/send! {:type :channel/http
+                          :details {:url         "https://8.8.8.8"
+                                    :auth-method "none"
+                                    :method      "get"}}
+                         {:url          "http://127.0.0.1/"
+                          :dns-resolver ::caller-supplied}))
+        ;; unrelated background http/request calls can land in the atom too (Clojure conveys the
+        ;; `binding` into async tasks), so pick out our request by URL rather than assuming it is first
+        (let [req (first (filter #(= "https://8.8.8.8" (:url %)) @requests))]
+          (is (some? req) "the rendered request cannot override the configured webhook URL")
+          (is (= resolver? (some? (:dns-resolver req)))
+              (str strategy " controls whether the policy DNS resolver is present"))
+          (is (not= ::caller-supplied (:dns-resolver req))
+              "the rendered request cannot override the policy DNS resolver"))))))
+
 (deftest alert-http-channel-e2e-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (let [received-message (atom nil)
           receive-route    (make-route :post "/test_http_channel"
                                        (fn [res]

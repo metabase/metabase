@@ -6,21 +6,22 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
-import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
-import type { MetabotConfig } from "../Metabot";
+import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
+import type { MetabotAgentId } from "../../state";
+import type { MetabotChatConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
+import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
-const defaultConfig: MetabotConfig = {
-  agentId: "omnibot",
+const defaultConfig: MetabotChatConfig = {
   suggestionModels: [
     "dataset",
     "metric",
@@ -32,11 +33,17 @@ const defaultConfig: MetabotConfig = {
 };
 
 export const MetabotChat = ({
+  conversationId,
+  agentId,
+  onNewConversation,
   config = defaultConfig,
   className,
   headerActions,
 }: {
-  config?: MetabotConfig;
+  conversationId: string;
+  agentId?: MetabotAgentId;
+  onNewConversation?: () => void;
+  config?: MetabotChatConfig;
   className?: string;
   headerActions?: ReactNode;
 }) => {
@@ -47,7 +54,7 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(config.agentId);
+  const metabot = useMetabotConversation(conversationId);
   const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
@@ -78,7 +85,6 @@ export const MetabotChat = ({
     : t`New conversation`;
   const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
-  const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
   const shouldShowHeader = headerActions || title;
 
   return (
@@ -115,8 +121,8 @@ export const MetabotChat = ({
               {/* empty state */}
               <Flex
                 h="100%"
-                gap="md"
-                px="md"
+                gap="lg"
+                px="lg"
                 direction="column"
                 align="center"
                 justify="center"
@@ -175,64 +181,65 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
-                onContinueMessage={() =>
-                  metabot.submitInput(
-                    t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
-                  )
-                }
+                onContinueMessage={metabot.submitInput}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
-                  metabot.loadConversation(metabot.conversationId);
+                  metabot.reloadConversation();
                 }}
                 isDoingScience={metabot.isDoingScience}
                 supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
-                agentId={config.agentId}
+                agentId={agentId}
                 conversationId={metabot.conversationId}
               />
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
-              {/* long convo warning */}
-              {metabot.isLongConversation && (
-                <MetabotResetLongChatButton
-                  onResetConversation={metabot.createNewConversation}
-                />
-              )}
             </Box>
           )}
         </Box>
       </Box>
 
       {isConfigured && (
-        <Box className={Styles.textInputContainer}>
-          <Paper
-            className={cx(
-              Styles.inputContainer,
-              metabot.isDoingScience && Styles.inputContainerLoading,
+        <Box className={Styles.footerContainer}>
+          <Box className={Styles.textInputContainer}>
+            {metabot.longChatNotice && onNewConversation && (
+              <MetabotLongChatNotice
+                variant={metabot.longChatNotice}
+                onNewChat={onNewConversation}
+              />
             )}
-          >
-            <MetabotChatEditor
-              ref={metabot.promptInputRef}
-              value={metabot.prompt}
-              autoFocus
-              isResponding={metabot.isDoingScience}
-              placeholder={t`How can I help? Type @ to mention items.`}
-              onChange={metabot.setPrompt}
-              onSubmit={handleEditorSubmit}
-              onStop={metabot.cancelRequest}
-              suggestionConfig={{
-                suggestionModels: config.suggestionModels,
-              }}
-            />
-          </Paper>
-          <Text
-            className={Styles.disclaimer}
-            fz="sm"
-            c="text-secondary"
-            ta="center"
-          >
-            {t`${metabotName} isn't perfect. Double-check results.`}
-          </Text>
+            <Paper
+              className={cx(
+                Styles.inputContainer,
+                metabot.isDoingScience && Styles.inputContainerLoading,
+              )}
+            >
+              <MetabotChatEditor
+                ref={metabot.promptInputRef}
+                value={metabot.prompt}
+                autoFocus
+                isResponding={metabot.isDoingScience}
+                placeholder={t`How can I help? Type @ to mention items.`}
+                onChange={metabot.setPrompt}
+                onSubmit={() => metabot.submitInput(metabot.prompt)}
+                onStop={metabot.cancelRequest}
+                suggestionConfig={{
+                  suggestionModels: config.suggestionModels,
+                }}
+              />
+            </Paper>
+          </Box>
+          <Box className={Styles.footerRow}>
+            <Text fz="sm" c="text-secondary" ta="center">
+              {t`${metabotName} isn't perfect. Double-check results.`}
+            </Text>
+            {metabot.contextWindowPercentUsage > 50 && (
+              <MetabotContextUsageRing
+                className={Styles.contextUsage}
+                percentUsage={metabot.contextWindowPercentUsage}
+              />
+            )}
+          </Box>
         </Box>
       )}
       <AIProviderConfigurationModal

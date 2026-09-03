@@ -14,12 +14,15 @@ import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { getMetadata } from "metabase/metadata-store";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import {
+  getInitialUiState,
+  loadQueryEditor,
+} from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
@@ -70,7 +73,8 @@ export function TransformQueryPage() {
     isLoadingDatabases,
     databasesError,
   } = useTransformPermissions({ transform });
-  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const isEditorLoaded = useQueryEditorChunk();
+  const isLoading = isLoadingTransform || isLoadingDatabases || !isEditorLoaded;
   const error = transformError || databasesError;
 
   if (isLoading || error != null) {
@@ -248,7 +252,7 @@ function TransformQueryPageBody({
         <Box
           w="100%"
           bg="background_page-primary"
-          bdrs="md"
+          bdrs="sm"
           bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{
@@ -384,3 +388,21 @@ export function TransformQueryPageEditor({
     />
   );
 }
+
+// The editor is a separate chunk. Folding it into the wait this page already
+// does for its own data means one wait rather than two in a row.
+const useQueryEditorChunk = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadQueryEditor().then(() => {
+      if (!cancelled) {
+        setIsLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isLoaded;
+};

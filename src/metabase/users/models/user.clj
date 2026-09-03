@@ -2,8 +2,6 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -14,6 +12,7 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -21,10 +20,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
@@ -41,6 +38,8 @@
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id))
+
+(events/derive! :event/user-create :metabase/event)
 
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
@@ -63,7 +62,7 @@
 (t2/deftransforms :model/User
   {:login_attributes transform-attributes
    :jwt_attributes   transform-attributes
-   :settings         mi/transform-encrypted-json
+   :settings         (mi/transform-encrypted-json "core_user.settings")
    :sso_source       mi/transform-keyword
    :type             mi/transform-keyword})
 
@@ -77,15 +76,27 @@
    :is_superuser    false
    :is_data_analyst false})
 
+(defn settings-map
+  "Returns the user's `settings` as a map, defaulting to an empty map.
+
+  [[metabase.models.interface/encrypted-json-out]] hands back the raw column value when it decrypts but does not parse
+  as JSON, and JSON that parses to a scalar or a vector is not a map either, so a non-map value here means the column
+  is unreadable rather than absent. Flag those with [[setting/unreadable-user-settings-key]] so the write that
+  overwrites them can warn -- see [[metabase.settings.models.setting]]."
+  [settings]
+  (if (map? settings)
+    settings
+    (cond-> {}
+      (some? settings) (vary-meta assoc setting/unreadable-user-settings-key true))))
+
 (defn user-local-settings
   "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
   [user-or-user-id]
   (when user-or-user-id
-    (or
+    (settings-map
      (if (integer? user-or-user-id)
-       (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
-       (:settings user-or-user-id))
-     {})))
+       (users.db/user-settings user-or-user-id)
+       (:settings user-or-user-id)))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
 
@@ -125,48 +136,13 @@
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 
-(defn- prepare-password-for-insert
-  "Hash password and prepare password fields for insertion.
-  Throws an exception if password_salt is already present (passwords should not be pre-hashed)."
+(defn- without-credential-fields
+  "Remove password and reset-token fields from a User map. Login passwords live in the user's `password` AuthIdentity
+  (via [[metabase.auth-identity.core/set-password!]]) and reset tokens in their `emailed-secret-password-reset`
+  AuthIdentity; the legacy `core_user.password` / `.password_salt` / `.reset_token` / `.reset_triggered` columns are no
+  longer read or written by this codebase, so we drop any incoming values rather than persisting them."
   [user]
-  (when (contains? user :password_salt)
-    (throw (ex-info "Don't try to hash passwords yourself" {})))
-  (let [pw (or (:password user) (random-uuid))
-        salt (str (random-uuid))
-        hash (u.password/hash-bcrypt (str salt pw))]
-    {:password hash
-     :password_salt salt}))
-
-(defn- prepare-password-for-update
-  "Conditionally hash password for updates. Returns password fields or nil.
-  Only hashes if password is present and password_salt is not (indicating a plaintext password)."
-  [{:keys [password password_salt]}]
-  (when (and password (not password_salt))
-    (prepare-password-for-insert {:password password})))
-
-(defn- sync-password-to-auth-identity!
-  "Synchronize password changes to AuthIdentity model and invalidate sessions."
-  [user-id]
-  (let [{salt :password_salt password :password} (t2/select-one [:model/User :email :password :password_salt] user-id)
-        pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-    (when (and password salt)
-      (cond
-        (nil? pw-auth-identity)
-        (t2/with-transaction [_]
-          (t2/insert! :model/AuthIdentity {:user_id user-id
-                                           :provider "password"
-                                           :credentials {:password_hash password
-                                                         :password_salt salt}})
-          (t2/delete! (t2/table-name :model/Session) :user_id user-id))
-
-        (or (not= password (get-in pw-auth-identity [:credentials :password_hash]))
-            (not= salt (get-in pw-auth-identity [:credentials :password_salt])))
-        (t2/with-transaction [_]
-          (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) {:credentials {:password_hash password
-                                                                                     :password_salt salt}})
-          (t2/delete! (t2/table-name :model/Session) :user_id user-id))
-
-        :else nil))))
+  (dissoc user :password :password_salt :reset_token :reset_triggered))
 
 ;;; -------------------------------------------------- Admin Group Management --------------------------------------------------
 
@@ -196,7 +172,7 @@
   "Clean up user subscriptions when user is archived."
   [user-id active?]
   (when (false? active?)
-    (t2/delete! 'PulseChannelRecipient :user_id user-id)))
+    (users.db/delete-pulse-channel-recipients-for-user! user-id)))
 
 (defn- prepare-archival-timestamp
   "Return a map with deactivated_at field based on is_active status.
@@ -210,38 +186,18 @@
 ;;; -------------------------------------------------- Field Normalization --------------------------------------------------
 
 (defn- normalize-user-fields
-  "Normalize email, locale, and reset token for database storage."
+  "Normalize email and locale for database storage."
   [user]
   (cond-> user
     (:email user) (update :email u/lower-case-en)
-    (:locale user) (update :locale i18n/normalized-locale-string)
-    ;; Only hash reset_token if it's not already a bcrypt hash (starts with $2a$ or $2b$)
-    (and (:reset_token user)
-         (not (re-matches #"^\$2[ab]\$.*" (:reset_token user))))
-    (update :reset_token u.password/hash-bcrypt)))
-
-(methodical/defmethod t2.pipeline/results-transform [#_query-type :toucan.query-type/insert.instances
-                                                     #_model :model/User]
-  "Create the initial :model/AuthIdenity from the results of saving a user. We have to do it here rather than in
-  define-after-insert because we need to get the hashed password and salt to save to the auth-identity model, and
-  those fields are removed by the default-files transformer before after-insert is called."
-  [query-type model]
-  (comp (map (fn [{:keys [password password_salt id] :as user}]
-               (u/prog1 user
-                 (when (and password password_salt)
-                   (t2/insert! :model/AuthIdentity {:user_id id
-                                                    :provider "password"
-                                                    :credentials {:password_hash password
-                                                                  :password_salt password_salt}})))))
-        (binding [t2.default-fields/*skip-default-fields* false]
-          (next-method query-type model))))
+    (:locale user) (update :locale i18n/normalized-locale-string)))
 
 (t2/define-before-insert :model/User
   [user]
   (validate-user-insert! user)
   (-> (merge insert-default-values user)
       normalize-user-fields
-      (merge (prepare-password-for-insert user))))
+      without-credential-fields))
 
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
@@ -263,7 +219,12 @@
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))
-    (sync-password-to-auth-identity! user-id)))
+    ;; Published last, once the group memberships above exist, since creating the User's Personal Collection touches
+    ;; permissions.
+    (events/publish-event! :event/user-create {:object <>})))
+
+;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
+(events/derive! :event/user-credentials-revoked :metabase/event)
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -271,59 +232,18 @@
         {:keys [email locale]
          superuser? :is_superuser
          active? :is_active} changes
-        in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
-                                              :group_id (:id (perms/admin-group))
-                                              :user_id id)
-        hashed-pw (prepare-password-for-update changes)]
+        in-admin-group?           (users.db/group-membership-exists? (:id (perms/admin-group)) id)]
     (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
-    (merge user
-           (normalize-user-fields (t2/changes user))
-           hashed-pw
-           (when (or hashed-pw (and (contains? changes :password) (contains? changes :password_salt)))
-             {:reset_token nil :reset_triggered nil})
-           (prepare-archival-timestamp active?))))
-
-(t2/define-after-update :model/User
-  [{:keys [id] :as user}]
-  ;; Query the database to check if we need to sync reset token changes
-  ;; We can't rely on t2/changes in after-update hooks, so we compare current state
-  (let [{:keys [email reset_token reset_triggered]} (t2/select-one [:model/User :email :reset_token :reset_triggered] :id id)
-        current-auth-identity (t2/select-one :model/AuthIdentity
-                                             :user_id id
-                                             :provider "emailed-secret-password-reset")]
-    (sync-password-to-auth-identity! id)
-    (cond
-      ;; Token being cleared - mark as consumed in AuthIdentity
-      (and (nil? reset_token) current-auth-identity)
-      (do
-        (log/debugf "Syncing User %s reset_token clear to AuthIdentity - marking token consumed" id)
-        (t2/update! :model/AuthIdentity (:id current-auth-identity)
-                    {:credentials (assoc (:credentials current-auth-identity) :consumed_at (t/instant))}))
-
-      ;; Token being set - create or update AuthIdentity
-      (and reset_token reset_triggered)
-      (let [ttl-ms (* 48 60 60 1000)
-            expires-at (t/plus (t/instant reset_triggered) (t/millis ttl-ms))
-            credentials {:token_hash reset_token
-                         :expires_at expires-at
-                         :consumed_at nil}]
-        (if current-auth-identity
-          (do
-            (log/debugf "Syncing User %s reset_token update to existing AuthIdentity %s" id (:id current-auth-identity))
-            (t2/update! :model/AuthIdentity (:id current-auth-identity)
-                        {:credentials credentials}))
-          (do
-            (log/debugf "Syncing User %s reset_token insert to new AuthIdentity" id)
-            (t2/insert! :model/AuthIdentity
-                        {:user_id id
-                         :provider "emailed-secret-password-reset"
-                         :credentials credentials
-                         :metadata {:email email}}))))))
-  user)
+    (when (false? active?)
+      (events/publish-event! :event/user-credentials-revoked {:user-id id}))
+    (-> user
+        (merge (normalize-user-fields (t2/changes user))
+               (prepare-archival-timestamp active?))
+        without-credential-fields)))
 
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
@@ -369,7 +289,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (users.db/user-group-ids (u/the-id user-or-id))))
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
@@ -383,8 +303,7 @@
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
-                                                             :user_id [:in (set (map u/the-id users))]))
+    (let [user-id->memberships (group-by :user_id (users.db/group-memberships-for-users (set (map u/the-id users))))
           membership->group    (fn [membership]
                                  (select-keys membership
                                               [:id (when (premium-features/enable-advanced-permissions?)
@@ -402,8 +321,7 @@
   TODO: deprecate :group_ids and use :user_group_memberships instead"
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
-                                                             :user_id [:in (set (map u/the-id users))]))]
+    (let [user-id->memberships (group-by :user_id (users.db/user-group-ids-for-users (set (map u/the-id users))))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -414,7 +332,7 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   [users]
   (when (seq users)
-    (let [user-count (t2/count :model/User)]
+    (let [user-count (users.db/user-count)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
@@ -439,8 +357,7 @@
     (let [users-with-tenant-ids (filter :tenant_id users)
           tenant-ids            (set (map :tenant_id users-with-tenant-ids))
           tenant-id->collection-id (when (seq tenant-ids)
-                                     (t2/select-pk->fn :tenant_collection_id :model/Tenant
-                                                       :id [:in tenant-ids]))]
+                                     (users.db/tenant-collection-ids tenant-ids))]
       ;; now for each User, try to find the corresponding tenant collection ID
       (for [user users]
         (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]
@@ -460,7 +377,7 @@
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
   match any existing user."
   [new-user]
-  (t2/insert-returning-instance! :model/User new-user))
+  (users.db/insert-user! new-user))
 
 (mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending them a welcome email.
@@ -473,7 +390,7 @@
     setup?        :- :boolean
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
-   (u/prog1 (t2/insert-returning-instance! :model/User new-user)
+   (u/prog1 (users.db/insert-user! new-user)
      (events/publish-event! :event/user-invited
                             {:object
                              (cond-> (assoc <>
@@ -488,7 +405,7 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- users.schema/NewUser]
-  (u/prog1 (t2/insert-returning-instance! :model/User new-user)
+  (u/prog1 (users.db/insert-user! new-user)
     ;; send an email to everyone including the site admin if that's set
     (when (setting/get :send-new-sso-user-admin-email?)
       ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
@@ -514,84 +431,24 @@
         (perms/add-user-to-groups! user-id to-add)))
     true))
 
-(defn add-attributes
-  "Adds the `:attributes` key to a user."
-  [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :attributes (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)))
+(mu/defn add-attributes
+  "Adds the `:attributes` key to a user. Only personal users carry attributes; for other user types (API-key, internal)
+  this is always `{}`, so e.g. sandboxed queries made with an API key report a missing user attribute instead of
+  reading attributes stored on the user row."
+  [{:keys [login_attributes jwt_attributes] :as user} :- [:map [:type (into [:enum] allowed-user-types)]]]
+  (assoc user :attributes (if (= (:type user) :personal)
+                            (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)
+                            {})))
 
 ;;; Filtering users
 
-(defn- status-clause
-  "Figure out what `where` clause to add to the user query when
-  we get a fiddly status and include_deactivated query.
+(defn same-groups-user-ids
+  "Return a list of all user-ids in the same group with the user with id `user-id`.
+  Ignore the All-user groups."
+  [user-id]
+  (map :user_id
+       (users.db/same-groups-user-ids user-id (:id (perms/all-users-group)))))
 
-  This is to keep backwards compatibility with `include_deactivated` while adding `status."
-  [status include_deactivated]
-  (if include_deactivated
-    nil
-    (case status
-      "all"         nil
-      "deactivated" [:= :is_active false]
-      "active"      [:= :is_active true]
-      [:= :is_active true])))
-
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
-
-(defn- query-clause
-  "Honeysql clause to shove into user query if there's a query"
-  [query]
-  [:or
-   [:like :%lower.first_name (wildcard-query query)]
-   [:like :%lower.last_name  (wildcard-query query)]
-   [:like :%lower.email      (wildcard-query query)]])
-
-(defn- table-metadata-perms-exist-clause
-  "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
-  manage-table-metadata."
-  []
-  [:exists ^:allow-subquery {:select [1]
-                             :from   [[:permissions_group_membership :pgm]]
-                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                             :where  [:and
-                                      [:= :pgm.user_id :core_user.id]
-                                      [:= :p.perm_type "perms/manage-table-metadata"]
-                                      [:= :p.perm_value "yes"]]}])
-
-(defn filter-clauses
-  "Honeysql clauses for filtering on users.
-
-  Options:
-    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
-    :query                   - text search on first_name, last_name, email
-    :group-ids               - filter by permissions group membership
-    :include-deactivated     - legacy alias for status=all
-    :is-data-analyst?        - filter by data analyst status (true/false)
-    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
-    :limit                   - pagination limit
-    :offset                  - pagination offset"
-  [{:keys [status query group-ids include-deactivated is-data-analyst? can-access-data-studio? limit offset]}]
-  (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include-deactivated))
-    ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                           (sql.helpers/where (query-clause query))
-    (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
-                                                                 :core_user.is_data_analyst
-                                                                 [:not :core_user.is_data_analyst]))
-    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
-                                                                 [:or
-                                                                  :core_user.is_data_analyst
-                                                                  :core_user.is_superuser
-                                                                  (table-metadata-perms-exist-clause)]
-                                                                 [:and
-                                                                  [:not :core_user.is_data_analyst]
-                                                                  [:not :core_user.is_superuser]
-                                                                  [:not (table-metadata-perms-exist-clause)]]))
-    (some? group-ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group-ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group-ids])
-    (some? limit)                           (sql.helpers/limit limit)
-    (some? offset)                          (sql.helpers/offset offset)))
+(def filter-clauses
+  "Honeysql clauses for filtering on users. See [[users.db/filter-clauses]] for the options."
+  users.db/filter-clauses)
