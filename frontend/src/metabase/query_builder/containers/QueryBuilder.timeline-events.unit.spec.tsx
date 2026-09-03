@@ -251,9 +251,7 @@ describe("QueryBuilder > timeline events", () => {
     await triggerVisualizationQueryChange();
     await saveQuestion();
 
-    expect(trackSimpleEvent).not.toHaveBeenCalledWith(
-      expect.objectContaining({ event: "question_timeline_events_saved" }),
-    );
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
   it("re-showing a timeline keeps events outside the chart's range", async () => {
