@@ -10,15 +10,19 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
+import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { Database, TokenFeatures, User } from "metabase-types/api";
+import type { Database, Table, TokenFeatures, User } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSchema,
@@ -41,6 +45,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  reinitialize();
 });
 
 const PUBLIC_SCHEMA = createMockSchema({
@@ -137,6 +142,38 @@ const DATABASE_WITH_UNNAMED_SCHEMA = createMockDatabase({
   tables: [CORGE, GRAULT, GLORP],
 });
 
+const BIRDS_TABLE = createMockTable({
+  id: nextId(),
+  name: "BIRDS",
+  display_name: "Birds",
+  schema: PUBLIC_SCHEMA.name,
+});
+
+const ORDER_ITEM_DISCOUNT_TABLE = createMockTable({
+  id: nextId(),
+  name: "ORDER_ITEM_DISCOUNT",
+  display_name: "Order Item Discount",
+  schema: PUBLIC_SCHEMA.name,
+});
+
+const LITERAL_SEARCH_TABLE = createMockTable({
+  id: nextId(),
+  name: "what-a_cool%table\\name",
+  display_name: "Literal Search Table",
+  schema: PUBLIC_SCHEMA.name,
+});
+
+const SEARCH_SEMANTICS_DATABASE = createMockDatabase({
+  id: nextId(),
+  name: "SEARCH_SEMANTICS_DATABASE",
+  tables: [
+    FOO_TABLE,
+    BIRDS_TABLE,
+    ORDER_ITEM_DISCOUNT_TABLE,
+    LITERAL_SEARCH_TABLE,
+  ],
+});
+
 const MOCK_DATABASES = [
   DATABASE_WITH_MULTIPLE_SCHEMAS,
   DATABASE_WITH_SINGLE_SCHEMA,
@@ -148,6 +185,56 @@ const currentUser: User = createMockUser({
   common_name: "Bar",
   is_superuser: true,
 });
+
+interface FilterRequestCase {
+  name: string;
+  selectFilter: () => Promise<void>;
+  expectedParams: Record<string, string>;
+  tokenFeatures?: Partial<TokenFeatures>;
+}
+
+const FILTER_REQUEST_CASES: FilterRequestCase[] = [
+  {
+    name: "data-layer",
+    selectFilter: () => selectFilterOption("Visibility layer", "Final"),
+    expectedParams: { "data-layer": "final" },
+  },
+  {
+    name: "data-source",
+    selectFilter: () => selectFilterOption("Source", "Uploaded data"),
+    expectedParams: { "data-source": "upload" },
+  },
+  {
+    name: "owner-user-id",
+    selectFilter: () => selectFilterOption("Owner", currentUser.common_name),
+    expectedParams: { "owner-user-id": String(currentUser.id) },
+  },
+  {
+    name: "owner-email",
+    selectFilter: selectOwnerEmail,
+    expectedParams: { "owner-email": "owner@example.com" },
+  },
+  {
+    name: "orphan-only",
+    selectFilter: () => selectFilterOption("Owner", "Unspecified"),
+    expectedParams: { "orphan-only": "true" },
+  },
+  {
+    name: "unused-only",
+    selectFilter: () =>
+      userEvent.click(
+        screen.getByLabelText("Table isn’t referenced by anything"),
+      ),
+    expectedParams: { "unused-only": "true" },
+  },
+  {
+    name: "published-only",
+    selectFilter: () =>
+      userEvent.click(screen.getByLabelText("Published tables only")),
+    expectedParams: { "published-only": "true" },
+    tokenFeatures: { library: true },
+  },
+];
 
 function setup({
   path = {},
@@ -437,6 +524,121 @@ describe("TablePicker", () => {
       expect(labels).toContain("Hidden");
       expect(labels).toContain("Final");
     });
+
+    it("keeps the active table while its database is collapsed and restored", async () => {
+      setup({
+        path: {
+          databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
+          schemaName: FOO_TABLE.schema,
+          tableId: FOO_TABLE.id,
+        },
+      });
+      await waitLoading();
+
+      const initialTableRow = tableItem(FOO_TABLE.id);
+      expect(initialTableRow).toHaveAttribute("aria-selected", "true");
+      if (!initialTableRow) {
+        return;
+      }
+
+      await userEvent.click(within(initialTableRow).getByRole("checkbox"));
+      expect(tableItem(FOO_TABLE.id)).toHaveAttribute("aria-selected", "false");
+
+      await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
+      expect(tableItem(FOO_TABLE.id)).not.toBeInTheDocument();
+      await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
+
+      await waitFor(() => {
+        expect(tableItem(FOO_TABLE.id)).toBeInTheDocument();
+      });
+      const restoredTableRow = tableItem(FOO_TABLE.id);
+      expect(restoredTableRow).toBeInTheDocument();
+      if (!restoredTableRow) {
+        return;
+      }
+
+      const restoredCheckbox = within(restoredTableRow).getByRole("checkbox");
+      expect(restoredCheckbox).toBeChecked();
+      await userEvent.click(restoredCheckbox);
+      expect(tableItem(FOO_TABLE.id)).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("renders a user owner, formatted row count, and published state", async () => {
+      const table = createMockTable({
+        id: nextId(),
+        name: "KNOWN_OWNER",
+        display_name: "Known Owner",
+        schema: PUBLIC_SCHEMA.name,
+        owner_user_id: currentUser.id,
+        estimated_row_count: 3210,
+        is_published: true,
+      });
+
+      const row = await setupMetadataTable(table);
+      expect(row).toBeInTheDocument();
+      if (!row) {
+        return;
+      }
+
+      expect(within(row).getByTestId("table-owner")).toHaveTextContent(
+        currentUser.common_name,
+      );
+      expect(within(row).getByTestId("table-expected-rows")).toHaveTextContent(
+        "3,210",
+      );
+      expect(within(row).getByLabelText("Published")).toBeVisible();
+    });
+
+    it("renders an email owner and a zero row count", async () => {
+      const table = createMockTable({
+        id: nextId(),
+        name: "EMAIL_OWNER",
+        display_name: "Email Owner",
+        schema: PUBLIC_SCHEMA.name,
+        owner_user_id: null,
+        owner_email: "owner@example.com",
+        estimated_row_count: 0,
+        is_published: false,
+      });
+
+      const row = await setupMetadataTable(table);
+      expect(row).toBeInTheDocument();
+      if (!row) {
+        return;
+      }
+
+      expect(within(row).getByTestId("table-owner")).toHaveTextContent(
+        "owner@example.com",
+      );
+      expect(within(row).getByTestId("table-expected-rows")).toHaveTextContent(
+        "0",
+      );
+      expect(within(row).queryByLabelText("Published")).not.toBeInTheDocument();
+    });
+
+    it("omits empty owner and row count cells", async () => {
+      const table = createMockTable({
+        id: nextId(),
+        name: "EMPTY_METADATA",
+        display_name: "Empty Metadata",
+        schema: PUBLIC_SCHEMA.name,
+        owner_user_id: null,
+        owner_email: null,
+        estimated_row_count: null,
+        is_published: false,
+      });
+
+      const row = await setupMetadataTable(table);
+      expect(row).toBeInTheDocument();
+      if (!row) {
+        return;
+      }
+
+      expect(within(row).queryByTestId("table-owner")).not.toBeInTheDocument();
+      expect(
+        within(row).queryByTestId("table-expected-rows"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("Search view", () => {
@@ -458,6 +660,55 @@ describe("TablePicker", () => {
         expect(item(FOO_TABLE)).toBeInTheDocument();
       });
       expect(item(BAR_TABLE)).not.toBeInTheDocument();
+    });
+
+    it("selects a range of table checkboxes with shift+click", async () => {
+      setup();
+      await waitLoading();
+
+      await userEvent.type(searchInput(), "Q");
+      await waitFor(() => {
+        expect(tableItem(QUU.id)).toBeInTheDocument();
+        expect(tableItem(QUX.id)).toBeInTheDocument();
+      });
+      const firstRow = tableItem(QUU.id);
+      const secondRow = tableItem(QUX.id);
+      if (!firstRow || !secondRow) {
+        return;
+      }
+
+      const firstCheckbox = within(firstRow).getByRole("checkbox");
+      const secondCheckbox = within(secondRow).getByRole("checkbox");
+      await userEvent.click(firstCheckbox);
+      fireEvent.click(secondCheckbox, { shiftKey: true });
+
+      expect(firstCheckbox).toBeChecked();
+      expect(secondCheckbox).toBeChecked();
+    });
+
+    it("clears selected tables when filters or search terms change", async () => {
+      setup();
+      await waitLoading();
+
+      const quuCheckbox = () =>
+        within(screen.getByRole("row", { name: /Quu$/ })).getByRole("checkbox");
+
+      await userEvent.type(searchInput(), "Q");
+      expect(await screen.findByText(QUU.display_name)).toBeInTheDocument();
+
+      await userEvent.click(quuCheckbox());
+      expect(quuCheckbox()).toBeChecked();
+
+      await openFilters();
+      await selectFilterOption("Visibility layer", "Final");
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+      await waitFor(() => expect(quuCheckbox()).not.toBeChecked());
+
+      await userEvent.click(quuCheckbox());
+      expect(quuCheckbox()).toBeChecked();
+
+      await userEvent.type(searchInput(), "u");
+      await waitFor(() => expect(quuCheckbox()).not.toBeChecked());
     });
 
     it("should render a message when no results are found", async () => {
@@ -510,50 +761,46 @@ describe("TablePicker", () => {
       expect(item(FOO_TABLE)).not.toBeInTheDocument();
     });
 
-    it("should support partial matching", async () => {
-      setup();
+    it.each([
+      { term: "oo", expectedText: "No tables found", expectedTableCount: 0 },
+      {
+        term: "Ite",
+        expectedText: ORDER_ITEM_DISCOUNT_TABLE.display_name,
+        expectedTableCount: 1,
+      },
+      {
+        term: "irds",
+        expectedText: "No tables found",
+        expectedTableCount: 0,
+      },
+      {
+        term: "*irds",
+        expectedText: BIRDS_TABLE.display_name,
+        expectedTableCount: 1,
+      },
+      {
+        term: "what-a_cool%table\\name",
+        expectedText: LITERAL_SEARCH_TABLE.display_name,
+        expectedTableCount: 1,
+      },
+      {
+        term: "what%a%cool%table%name",
+        expectedText: "No tables found",
+        expectedTableCount: 0,
+      },
+    ])(
+      "matches '$term' with backend-equivalent semantics (UXW-5189)",
+      async ({ term, expectedText, expectedTableCount }) => {
+        setup({ databases: [SEARCH_SEMANTICS_DATABASE] });
 
-      await waitLoading();
+        await waitLoading();
+        await userEvent.type(searchInput(), term);
+        await waitLoading();
 
-      // Search for partial string "oo" should match "Foo"
-      await userEvent.type(searchInput(), "oo");
-      await waitLoading();
-
-      await waitFor(() => {
-        expect(item(FOO_TABLE)).toBeInTheDocument();
-      });
-      expect(item(BAR_TABLE)).not.toBeInTheDocument();
-
-      // Clear and search for "ar" should match "Bar"
-      await userEvent.clear(searchInput());
-      await waitLoading();
-
-      await userEvent.type(searchInput(), "ar");
-      await waitLoading();
-
-      await waitFor(() => {
-        expect(item(BAR_TABLE)).toBeInTheDocument();
-      });
-      expect(item(FOO_TABLE)).not.toBeInTheDocument();
-    });
-
-    it("should support wildcard search with *", async () => {
-      setup();
-
-      await waitLoading();
-
-      // Search with wildcard pattern
-      await userEvent.type(searchInput(), "Q*");
-      await waitLoading();
-
-      // Should match both QUU and QUX
-      await waitFor(() => {
-        expect(item(QUU)).toBeInTheDocument();
-      });
-      expect(item(QUX)).toBeInTheDocument();
-      expect(item(FOO_TABLE)).not.toBeInTheDocument();
-      expect(item(BAR_TABLE)).not.toBeInTheDocument();
-    });
+        expect(await screen.findByText(expectedText)).toBeInTheDocument();
+        expect(tableItems()).toHaveLength(expectedTableCount);
+      },
+    );
 
     it("should match tables from all databases in search", async () => {
       setup();
@@ -561,7 +808,7 @@ describe("TablePicker", () => {
       await waitLoading();
 
       // Search for a pattern that matches tables in different databases
-      await userEvent.type(searchInput(), "o");
+      await userEvent.type(searchInput(), "*o*");
       await waitLoading();
 
       // Should find FOO (from DATABASE_WITH_MULTIPLE_SCHEMAS)
@@ -578,9 +825,49 @@ describe("TablePicker", () => {
       expect(item(QUX)).not.toBeInTheDocument();
       expect(item(GRAULT)).not.toBeInTheDocument();
     });
+
+    it("routes to the selected result when table names are duplicated", async () => {
+      const domesticAnimals = createMockTable({
+        id: nextId(),
+        name: "DOMESTIC_ANIMALS",
+        display_name: "Animals",
+        schema: "Domestic",
+      });
+      const wildAnimals = createMockTable({
+        id: nextId(),
+        name: "WILD_ANIMALS",
+        display_name: "Animals",
+        schema: "Wild",
+      });
+      const database = createMockDatabase({
+        id: nextId(),
+        name: "Duplicate tables",
+        tables: [domesticAnimals, wildAnimals],
+      });
+      const { onChange } = setup({ databases: [database] });
+
+      await waitLoading();
+      await userEvent.type(searchInput(), "Ani");
+      await waitLoading();
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Animals")).toHaveLength(2);
+      });
+      const wildRow = tableItem(wildAnimals.id);
+      expect(wildRow).toBeInTheDocument();
+      if (wildRow) {
+        await userEvent.click(wildRow);
+      }
+
+      expect(onChange).toHaveBeenCalledWith({
+        databaseId: database.id,
+        schemaName: wildAnimals.schema,
+        tableId: wildAnimals.id,
+      });
+    });
   });
 
-  describe("Published tables filter", () => {
+  describe("Filters", () => {
     it("is hidden when the Library is not enabled", async () => {
       setup();
       await waitLoading();
@@ -595,34 +882,197 @@ describe("TablePicker", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("sends published-only=true when enabled, checked, and applied", async () => {
-      setup({ tokenFeatures: { library: true } });
+    it.each(FILTER_REQUEST_CASES)(
+      "maps $name to the table search request",
+      async ({ selectFilter, expectedParams, tokenFeatures }) => {
+        const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+        trackSimpleEvent.mockClear();
+        setup({ tokenFeatures });
+        await waitLoading();
+
+        await openFilters();
+        await selectFilter();
+        await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+        await expectTableSearchParams(expectedParams);
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "data_studio_table_picker_filters_applied",
+        });
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "data_studio_table_picker_search_performed",
+        });
+      },
+    );
+
+    it("does not offer an unsupported unspecified source filter (UXW-5189)", async () => {
+      setup();
       await waitLoading();
 
-      // Enter search mode first so the table-search endpoint matches the request
-      await userEvent.type(searchInput(), "o");
+      await openFilters();
+      await userEvent.click(screen.getByRole("textbox", { name: "Source" }));
+
+      expect(
+        screen.getByRole("option", { name: "Uploaded data" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("option", { name: "Unspecified" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("closes the filter popover when clicking outside", async () => {
+      setup();
       await waitLoading();
 
-      await userEvent.click(screen.getByRole("button", { name: "Filter" }));
-      await userEvent.click(
-        await screen.findByLabelText("Published tables only"),
-      );
+      await openFilters();
+      await userEvent.click(searchInput());
+
+      expect(
+        screen.queryByTestId("table-picker-filter"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides stale results while a filter request is in flight (UXW-5189)", async () => {
+      const initialTables = [
+        { ...FOO_TABLE, db_id: DATABASE_WITH_MULTIPLE_SCHEMAS.id },
+      ];
+      const filteredTables = [
+        { ...BAR_TABLE, db_id: DATABASE_WITH_MULTIPLE_SCHEMAS.id },
+      ];
+      let resolveFilteredTables: (tables: Table[]) => void = () => {};
+      const filteredTablesRequest = new Promise<Table[]>((resolve) => {
+        resolveFilteredTables = resolve;
+      });
+      setup();
+      fetchMock.modifyRoute("table-search", {
+        response: (call) => {
+          const dataLayer = new URL(call.url).searchParams.get("data-layer");
+          return dataLayer === "final" ? filteredTablesRequest : initialTables;
+        },
+      });
+      await waitLoading();
+
+      await userEvent.type(searchInput(), "*");
+      expect(
+        await screen.findByText(FOO_TABLE.display_name),
+      ).toBeInTheDocument();
+
+      await openFilters();
+      await selectFilterOption("Visibility layer", "Final");
       await userEvent.click(screen.getByRole("button", { name: "Apply" }));
-      await waitLoading();
 
       await waitFor(() => {
-        const calls = fetchMock.callHistory.calls("path:/api/table");
-        const lastCall = calls.at(-1);
-        expect(lastCall).toBeDefined();
-        const url = new URL(lastCall!.url);
-        expect(url.searchParams.get("published-only")).toBe("true");
+        expect(fetchMock.callHistory.calls("table-search")).toHaveLength(2);
+      });
+      expect(screen.getByTestId("loading-indicator")).toBeVisible();
+      expect(tableItem(FOO_TABLE.id)).not.toBeInTheDocument();
+      resolveFilteredTables(filteredTables);
+
+      expect(
+        await screen.findByText(BAR_TABLE.display_name),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("Analytics", () => {
+    it("tracks a table search request", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      trackSimpleEvent.mockClear();
+      setup();
+      await waitLoading();
+
+      await userEvent.type(searchInput(), "foo");
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "data_studio_table_picker_search_performed",
+        });
+      });
+
+      await userEvent.type(searchInput(), "d");
+      expect(await screen.findByText("No tables found")).toBeInTheDocument();
+      await waitFor(() => {
+        const searchEvents = trackSimpleEvent.mock.calls.filter(
+          ([event]) =>
+            event.event === "data_studio_table_picker_search_performed",
+        );
+        expect(searchEvents).toHaveLength(2);
       });
     });
   });
 });
 
 function searchInput() {
-  return screen.getByRole("textbox");
+  return screen.getByPlaceholderText("Search tables");
+}
+
+function tableItem(tableId: Table["id"]) {
+  return (
+    tableItems().find(
+      (row) => row.getAttribute("data-table-id") === String(tableId),
+    ) ?? null
+  );
+}
+
+function tableItems() {
+  return screen
+    .queryAllByTestId("tree-item")
+    .filter((row) => row.hasAttribute("data-table-id"));
+}
+
+async function setupMetadataTable(table: Table) {
+  const database = createMockDatabase({
+    id: nextId(),
+    name: "Metadata database",
+    tables: [table],
+  });
+  setup({ databases: [database], tokenFeatures: { library: true } });
+  await waitLoading();
+  await waitFor(() => {
+    expect(tableItem(table.id)).toBeInTheDocument();
+  });
+  return tableItem(table.id);
+}
+
+async function openFilters() {
+  await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+  expect(await screen.findByTestId("table-picker-filter")).toBeInTheDocument();
+}
+
+async function selectFilterOption(label: string, option: string) {
+  const filterForm = screen.getByTestId("table-picker-filter");
+  await userEvent.click(
+    within(filterForm).getByRole("textbox", { name: label }),
+  );
+  const listbox = await within(filterForm).findByRole("listbox", {
+    name: label,
+  });
+  await userEvent.click(within(listbox).getByText(option));
+}
+
+async function selectOwnerEmail() {
+  const email = "owner@example.com";
+  const filterForm = screen.getByTestId("table-picker-filter");
+  await userEvent.type(
+    within(filterForm).getByRole("textbox", { name: "Owner" }),
+    email,
+  );
+  await userEvent.click(await within(filterForm).findByText(email));
+}
+
+async function expectTableSearchParams(expectedParams: Record<string, string>) {
+  await waitFor(() => {
+    expect(fetchMock.callHistory.calls("table-search")).toHaveLength(1);
+  });
+  const lastCall = fetchMock.callHistory.calls("table-search").at(-1);
+  expect(lastCall).toBeDefined();
+  if (!lastCall) {
+    return;
+  }
+
+  expect(Object.fromEntries(new URL(lastCall.url).searchParams)).toEqual({
+    term: "",
+    ...expectedParams,
+  });
 }
 
 async function waitLoading() {
