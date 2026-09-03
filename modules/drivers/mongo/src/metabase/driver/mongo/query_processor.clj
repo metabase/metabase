@@ -1768,14 +1768,18 @@ function(bin) {
 ;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases [form]
-  (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
+  (letfn [(raw-mongo-path [id-or-name]
+            (when (pos-int? id-or-name)
+              (field->name (driver-api/field (driver-api/metadata-provider) id-or-name))))
+          (prepend-nfc-path [raw-path
+                             {nfc-path      driver-api/qp.add.nfc-path,
                               source-alias  driver-api/qp.add.source-alias,
                               desired-alias driver-api/qp.add.desired-alias,
                               :as           opts}]
             (when (seq nfc-path)
               (let [nfc-path-str (str/join \. nfc-path)]
                 (-> opts
-                    (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
+                    (assoc driver-api/qp.add.source-alias  (or raw-path (str nfc-path-str \. source-alias))
                            driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
                     (dissoc driver-api/qp.add.nfc-path)))))
           (update-name [{field-name :name, source-alias driver-api/qp.add.source-alias, :as opts}]
@@ -1791,20 +1795,20 @@ function(bin) {
                        source-table
                        (not= join-alias source-table))
               (assoc opts :join-alias source-table)))
-          (update-opts [opts]
+          (update-opts [raw-path opts]
             (reduce
              (fn
                [opts f]
                (or (f opts)
                    opts))
              opts
-             [prepend-nfc-path
+             [(partial prepend-nfc-path raw-path)
               update-join-alias
               update-name
               remove-bad-join-alias
               update-join-alias]))
           (update-field-ref [[_tag id-or-name {source-alias driver-api/qp.add.source-alias, :as opts}]]
-            (let [opts (update-opts opts)]
+            (let [opts (update-opts (raw-mongo-path id-or-name) opts)]
               (if (and (string? id-or-name)
                        source-alias)
                 [:field source-alias opts]
