@@ -24,7 +24,6 @@ import {
 import type { Dispatch, GetState } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
-import { isNotNull } from "metabase/utils/types";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 import {
   getCardAfterVisualizationClick,
@@ -67,6 +66,11 @@ import { zoomInRow } from "../zoom";
 
 import { loadCard } from "./card";
 import { updateQuestion } from "./updateQuestion";
+
+const TIMELINE_EVENTS_SETTING_KEYS = [
+  "timeline.selected_timeline_ids",
+  "timeline.excluded_timeline_event_ids",
+] as const;
 
 // refreshes the card without triggering a run of the card's query
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
@@ -255,7 +259,12 @@ export const apiCreateQuestion = (
       createdQuestion,
       isBasedOnExistingQuestion(getState()),
     );
-    trackQuestionTimelineEventsSaved(createdQuestion);
+    trackQuestionTimelineEventsSaved(
+      createdQuestion,
+      isBasedOnExistingQuestion(getState())
+        ? getOriginalQuestion(getState())
+        : undefined,
+    );
 
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
@@ -304,19 +313,25 @@ export const apiUpdateQuestion = (
     }
 
     const submittableQuestion = getSubmittableQuestion(getState(), question);
+    // a metric keeps its own settings; only the event selection is editable here
+    const questionToSave = isMetric
+      ? submittableQuestion.setSettings({
+          ...originalQuestion?.settings(),
+          ..._.pick(question.settings(), ...TIMELINE_EVENTS_SETTING_KEYS),
+        })
+      : submittableQuestion;
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
     const updatedQuestion = await reduxUpdateQuestion(
-      submittableQuestion,
+      questionToSave,
       dispatch,
       {
         excludeDatasetQuery: isAdHocModelOrMetricQuestion(
           question,
           originalQuestion,
         ),
-        excludeVisualisationSettings: isMetric,
       },
     );
 
@@ -399,20 +414,16 @@ async function reduxCreateQuestion(
 async function reduxUpdateQuestion(
   question: Question,
   dispatch: Dispatch,
-  { excludeDatasetQuery = false, excludeVisualisationSettings = false },
+  { excludeDatasetQuery = false },
 ) {
   const fullCard = question.card();
-
-  const keysToOmit = [
-    excludeDatasetQuery ? "dataset_query" : null,
-    excludeVisualisationSettings ? "visualization_settings" : null,
-  ].filter(isNotNull);
-
-  const card = _.omit(fullCard, ...keysToOmit);
+  const card = excludeDatasetQuery
+    ? _.omit(fullCard, "dataset_query")
+    : fullCard;
 
   // Unjustified type cast. FIXME
   const updatedCard = (await dispatch(
-    updateQuestionCard({ id: question.id(), ...card }),
+    updateQuestionCard({ ...card, id: question.id() }),
   )) as Card;
   return question.setCard(updatedCard);
 }

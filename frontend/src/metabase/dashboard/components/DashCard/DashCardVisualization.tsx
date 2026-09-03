@@ -516,7 +516,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
-        withTimelineEvents: isTimelineEventsEnabled,
+        withTimelineEvents: isTimelineEventsEnabled && !isFullscreen,
       });
 
     const errorStatus =
@@ -550,7 +550,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
-            withTimelineEvents={isTimelineEventsEnabled}
+            withTimelineEvents={isTimelineEventsEnabled && !isFullscreen}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -566,6 +566,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    isFullscreen,
     isTimelineEventsEnabled,
     inlineParameters,
     onChangeCardAndRun,
@@ -656,9 +657,13 @@ export function DashCardVisualization({
           errorMessageOverride={visualizerErrMsg}
           timelineEventsVisibility={timelineEventsVisibility}
           selectedTimelineEventIds={selectedTimelineEventIds}
-          onOpenTimelines={onOpenTimelines}
-          onSelectTimelineEvents={onSelectTimelineEvents}
-          onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onOpenTimelines={isEditing ? undefined : onOpenTimelines}
+          onSelectTimelineEvents={
+            isEditing ? undefined : onSelectTimelineEvents
+          }
+          onDeselectTimelineEvents={
+            isEditing ? undefined : onDeselectTimelineEvents
+          }
           onTimelineEventsShown={onTimelineEventsShown}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}

@@ -826,9 +826,13 @@ export const getTimelineEventsVisibility = createSelector(
 );
 
 export const getVisibleTimelineEvents = createSelector(
-  [getFilteredTimelines, getTimelineEventsVisibility],
-  (timelines, visibility) =>
-    resolveVisibleTimelineEvents({ timelines, visibility }),
+  [getFilteredTimelines, getTimelineEventsVisibility, getVisualizationSettings],
+  (timelines, visibility, settings) =>
+    resolveVisibleTimelineEvents({
+      timelines,
+      visibility,
+      enabled: settings?.["timeline_events.enabled"] !== false,
+    }),
 );
 
 export const getVisibleTimelineEventIds = createSelector(

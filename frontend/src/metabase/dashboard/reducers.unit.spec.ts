@@ -489,11 +489,12 @@ describe("dashboard reducers", () => {
       });
     });
 
-    it("drops the session overrides when the dashboard is refetched", () => {
-      const state = timelineEvents(overriddenState().timelineEvents, {
+    it("keeps the session overrides when the dashboard is refetched", () => {
+      const before = overriddenState().timelineEvents;
+      const state = timelineEvents(before, {
         type: fetchDashboard.fulfilled.type,
       });
-      expect(state.overrides).toEqual({});
+      expect(state.overrides).toEqual(before.overrides);
       expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
     });
   });

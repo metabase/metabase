@@ -221,11 +221,6 @@ export const timelineEvents = createReducer(
       SET_EDITING_DASHBOARD,
       () => INITIAL_DASHBOARD_STATE.timelineEvents,
     );
-    builder.addCase(fetchDashboard.fulfilled, (state) => {
-      if (Object.keys(state.overrides).length > 0) {
-        state.overrides = {};
-      }
-    });
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
     });
