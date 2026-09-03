@@ -84,24 +84,60 @@
               true)))
       false)))
 
-(defn- tiebreaker-specs
-  "Deterministic tiebreakers to append after the existing order-bys to make the order total:
-   the projected source-table PK alone when there is one (unique per result row — the fan-out
-   guard in [[next-page-query]] is what upgrades the PK's metadata-level uniqueness to a
-   row-level fact — and none at all if it is already ordered), else the full remaining
-   projected-column tuple.
+(defn- passthrough-stage?
+  "True when stage `stage-number` cannot change row identity: no joins (a join can fan the rows
+   out) and no `:fields` (a re-projection can drop the very columns that made the tuple unique).
+   Filters, expressions and limits all preserve row identity and are fine."
+  [query stage-number]
+  (and (empty? (lib/joins query stage-number))
+       (nil? (:fields (lib/query-stage query stage-number)))))
 
-   Empty means the query's own order is already total. That is the condition
-   [[next-page-query]] mints on and the condition [[with-total-order]] establishes."
-  [resolved-query ret-cols ordered-idxs]
-  (let [pk-idx (pk-index resolved-query ret-cols)]
+(defn- aggregation-derived-unique?
+  "True when the full projected tuple is unique per result row because an aggregating stage
+   produced those rows — they are distinct by breakout tuple, and an aggregated stage projects
+   every breakout — and every stage after it merely passes them through.
+
+   The look-back is load-bearing, not defensive: [[next-page-query]] carries an aggregated
+   query's keyset in an appended stage, so from page 2 on the LAST stage is that appended
+   pass-through, unaggregated and PK-less. A proof that only inspected the last stage would kill
+   the chain at page 2."
+  [query]
+  (loop [stage-number (dec (lib/stage-count query))]
     (cond
-      (and pk-idx (contains? ordered-idxs pk-idx)) []
-      pk-idx                                       [{:idx pk-idx :dir :asc}]
-      :else                                        (into []
-                                                         (comp (remove ordered-idxs)
-                                                               (map (fn [i] {:idx i :dir :asc})))
-                                                         (range (count ret-cols))))))
+      (neg? stage-number)                          false
+      (or (seq (lib/aggregations query stage-number))
+          (seq (lib/breakouts query stage-number))) true
+      (passthrough-stage? query stage-number)       (recur (dec stage-number))
+      :else                                         false)))
+
+(defn- unique-key-specs
+  "Specs for a key proven unique per result row, or nil when no such proof exists. Two proofs:
+   the projected source-table PK (the fan-out guard in [[next-page-query]] is what upgrades its
+   metadata-level uniqueness to a row-level fact), or a full projected tuple an aggregation made
+   distinct.
+
+   Nil is the honest answer for an unaggregated projection that drops the PK — a `fields`
+   selection of non-unique columns, say. Its full tuple repeats, so no order over it is total
+   and the strictly-past-the-boundary keyset would skip every row tied with the boundary. There
+   is no gap-free cursor to mint; the caller is steered to narrow instead."
+  [resolved-query query ret-cols]
+  (if-let [pk-idx (pk-index resolved-query ret-cols)]
+    [{:idx pk-idx :dir :asc}]
+    (when (aggregation-derived-unique? query)
+      (mapv (fn [i] {:idx i :dir :asc}) (range (count ret-cols))))))
+
+(defn- tiebreaker-specs
+  "The unique key's columns that aren't already ordered — the deterministic tiebreakers to append
+   after the existing order-bys to make the row order total.
+
+   Three distinguishable answers, and both callers depend on telling them apart. Nil: no unique
+   key can be proven, so no total order exists and no cursor is possible ([[with-total-order]]
+   leaves the query alone; [[next-page-query]] refuses). Empty: the query's own order is already
+   total — the condition [[next-page-query]] mints on and the condition [[with-total-order]]
+   establishes. Non-empty: the tiebreakers that would establish it."
+  [resolved-query query ret-cols ordered-idxs]
+  (when-let [key-specs (unique-key-specs resolved-query query ret-cols)]
+    (into [] (remove (comp ordered-idxs :idx)) key-specs)))
 
 (defn- keyset-filter-clause
   "Lexicographic strictly-past-the-boundary predicate over the key columns:
@@ -195,7 +231,7 @@
                             (row-positions ret-cols result-cols last-row))]
             (when positions
               (when-let [specs (order-by-specs query ret-cols)]
-                (when (= [] (tiebreaker-specs resolved-query ret-cols (into #{} (map :idx) specs)))
+                (when (= [] (tiebreaker-specs resolved-query query ret-cols (into #{} (map :idx) specs)))
                   (let [values      (mapv #(nth last-row (nth positions (:idx %))) specs)
                         ;; a remapped column can't be a cursor key (the remap middleware rewrites an
                         ;; order-by on it to sort by the display value, so the executed order and the
@@ -231,9 +267,10 @@
    correctness.
 
    Returns the query unchanged when its order is already total, when no tiebreakers can be
-   derived (an order-by outside the projection), when a join makes them unsound anyway (see
-   [[next-page-query]]), or on any failure to rehydrate or manipulate the query. Idempotent: a
-   second pass finds every tiebreaker already ordered."
+   derived (an order-by outside the projection, or a projection with no provable unique key —
+   see [[unique-key-specs]]), when a join makes them unsound anyway (see [[next-page-query]]), or
+   on any failure to rehydrate or manipulate the query. Idempotent: a second pass finds every
+   tiebreaker already ordered."
   [serialized-query]
   (or (when (and (map? serialized-query)
                  (pos-int? (:database serialized-query))
@@ -246,7 +283,7 @@
               (let [query    (lib/query mp serialized-query)
                     ret-cols (vec (lib/returned-columns query))]
                 (when-let [ordered (order-by-specs query ret-cols)]
-                  (when-let [tiebreakers (seq (tiebreaker-specs serialized-query ret-cols
+                  (when-let [tiebreakers (seq (tiebreaker-specs serialized-query query ret-cols
                                                                 (into #{} (map :idx) ordered)))]
                     (-> (reduce (fn [q {:keys [idx dir]}]
                                   (lib/order-by q (nth ret-cols idx) dir))
@@ -281,7 +318,9 @@
    sourced saved question, or a sourced question whose stored query can't be read (a fan-out
    defeats every tiebreaker — see [[next-page-query]]), an order-by outside the projection, a
    row that can't be aligned with the projection, a nil boundary value, a key column that is
-   remapped or whose values don't round-trip exactly (raw datetimes), an aggregated stage
+   remapped or whose values don't round-trip exactly (raw datetimes), a projection with no
+   provable unique key — an unaggregated stage whose `:fields` drops the source-table PK, whose
+   repeating tuple no order can break ties on (see [[unique-key-specs]]) — an aggregated stage
    carrying its own limit, or any failure to rehydrate or manipulate the query."
   ([mcp-session-id user-id resolved-query last-row]
    (next-page-cursor! mcp-session-id user-id resolved-query last-row nil))

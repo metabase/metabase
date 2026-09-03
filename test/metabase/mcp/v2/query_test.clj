@@ -102,6 +102,32 @@
         (lib/order-by p-title :asc)
         (lib/with-fields [p-id p-title]))))
 
+(deftest next-page-query-appended-stage-stays-continuable-test
+  ;; GHY-4363: the stage next-page-query appends for an aggregated page must stay a pass-through
+  ;; — no :fields, no joins — because the uniqueness proof for every later page looks back
+  ;; through it to the aggregating stage. A :fields on that stage could drop a breakout column
+  ;; and silently un-prove the tuple, so pin its shape here rather than only through the chain.
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [aggregated (-> (orders-query)
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib.metadata/field (mp) (mt/id :orders :user_id)))
+                         lib/prepare-for-serialization
+                         q/with-total-order)
+          page-of    (fn [serialized] (run-rows+cols (lib/query (mp) serialized)))
+          [rows cols] (page-of aggregated)
+          page-2     (#'q/next-page-query aggregated cols (nth rows 2))]
+      (testing "GHY-4363: the appended stage carries the order and the keyset, and nothing that could drop a column"
+        (is (some? page-2))
+        (is (= 2 (count (:stages page-2))))
+        (let [appended (last (:stages page-2))]
+          (is (seq (:order-by appended)))
+          (is (seq (:filters appended)))
+          (is (nil? (:fields appended)) "a :fields here could drop a breakout column and un-prove the tuple")
+          (is (nil? (:joins appended)))))
+      (testing "GHY-4363: and the page it mints is itself continuable — the chain does not die at page 2"
+        (let [[rows-2 cols-2] (page-of page-2)]
+          (is (some? (#'q/next-page-query page-2 cols-2 (nth rows-2 2)))))))))
+
 (deftest next-page-cursor-fan-out-join-test
   ;; The contract pinned here is "no silent gaps": whenever a cursor IS minted, following the
   ;; chain must serve exactly the unpaged result set — and when that can't be guaranteed, the

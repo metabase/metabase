@@ -312,6 +312,65 @@
                 "the second page of groups starts strictly past the first page's boundary")))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest non-unique-projection-refuses-cursor-test
+  ;; GHY-4363: a projection with no unique key has no total order. The full-tuple tiebreaker ties
+  ;; on every duplicate row, and a strictly-past-the-boundary keyset then skips every row tied
+  ;; with the boundary. PRODUCTS holds 200 rows across 4 categories, so a CATEGORY-only
+  ;; projection that minted a cursor would serve 4 pages, drop 180 rows, and report itself
+  ;; complete — the exact silent gap the cursor contract exists to prevent.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            query  {:lib/type "mbql/query"
+                    :stages   [{:lib/type     "mbql.stage/mbql"
+                                :source-table (table-name-ref :products)
+                                :fields       [(field-name-ref :products :category)]}]}
+            result (call! sid {:query query :row_limit 5})
+            body   (payload result)]
+        (testing "GHY-4363: a projection without a unique key is an explicit dead end, not a cursor"
+          (is (= 5 (:returned body)))
+          (is (true? (:truncated body)))
+          (is (nil? (:next_cursor body)))
+          (is (not (str/includes? (steering-line result) "continue with `cursor`"))
+              "offering a cursor affordance with no cursor would strand the agent")
+          (is (str/includes? (steering-line result) "narrow the query")))
+        (testing "GHY-4363: projecting the PK alongside restores the cursor — the refusal is about uniqueness, not about `fields`"
+          (let [with-pk (assoc-in query [:stages 0 :fields]
+                                  [(field-name-ref :products :id)
+                                   (field-name-ref :products :category)])
+                pk-body (payload (call! sid {:query with-pk :row_limit 5}))]
+            (is (true? (:truncated pk-body)))
+            (is (string? (:next_cursor pk-body)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest aggregated-cursor-chain-continues-past-the-appended-stage-test
+  ;; GHY-4363: page 1 of an aggregated chain appends a stage to carry the keyset, so every later
+  ;; page reads a query whose LAST stage is that appended one — unaggregated, with no projected
+  ;; PK. The uniqueness proof has to look back through it to the aggregating stage; a proof that
+  ;; only inspects the last stage kills the chain at page 2.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid       (str (random-uuid))
+            page-size 3
+            n-pages   4
+            uids      (loop [args  {:query (orders-query {:aggregation [["count" {}]]
+                                                          :breakout    [(field-name-ref :orders :user_id)]
+                                                          :order-by    [["asc" {} (field-name-ref :orders :user_id)]]})
+                                    :row_limit page-size}
+                             acc   []
+                             pages 0]
+                        (let [body (payload (call! sid args))
+                              idx  (col-index (:cols body) "USER_ID")
+                              acc' (into acc (map #(nth % idx) (:rows body)))]
+                          (if (or (>= (inc pages) n-pages) (not (:next_cursor body)))
+                            acc'
+                            (recur {:cursor (:next_cursor body) :row_limit page-size} acc' (inc pages)))))]
+        (testing "GHY-4363: an aggregated chain keeps paging past the appended stage, with no gaps or repeats"
+          (is (= (* page-size n-pages) (count uids)))
+          (is (apply < uids) "strictly increasing => no boundary repeats and no groups skipped")
+          (is (= (count uids) (count (distinct uids)))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest remapped-column-paging-test
   ;; The remap middleware injects a display column into every row (PEOPLE.NAME beside
   ;; ORDERS.USER_ID), so the row no longer matches the projection position for position.
