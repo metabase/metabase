@@ -44,12 +44,16 @@ describe("getChartGoal", () => {
     ).toEqual({ value: 0.5, label: "Target" });
   });
 
-  it("falls back to zero for an unresolved reference", () => {
+  it("returns nothing for an empty goal", () => {
+    expect(getChartGoal({ ...settings, "graph.goal_value": null })).toBeNull();
+  });
+
+  it("returns nothing for an unresolved reference", () => {
     expect(
       getChartGoal({
         ...settings,
         "graph.goal_value": { type: "card", id: 1, column: "sum" },
       }),
-    ).toEqual({ value: 0, label: "Target" });
+    ).toBeNull();
   });
 });

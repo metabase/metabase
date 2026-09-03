@@ -27,13 +27,15 @@ export const getUnresolvedGoalMessage = () =>
 export const getChartGoal = (
   settings: VisualizationSettings,
 ): ChartGoal | null => {
-  if (!settings["graph.show_goal"]) {
+  const goalValue = getNumericGoalValue(settings);
+
+  if (!settings["graph.show_goal"] || goalValue == null) {
     return null;
   }
   const isPercent = getStackOffset(settings) === "expand";
 
   return {
-    value: getGoalValue(getNumericGoalValue(settings) ?? 0, isPercent),
+    value: getGoalValue(goalValue, isPercent),
     label: settings["graph.goal_label"] ?? getDefaultGoalLabel(),
   };
 };
