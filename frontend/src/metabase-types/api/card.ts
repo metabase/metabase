@@ -136,6 +136,8 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
 export type LineSize = "S" | "M" | "L";
 
+export type LineStyle = "solid" | "dashed" | "dotted";
+
 export type SeriesSettings = {
   title?: string;
   color?: string;
@@ -143,7 +145,7 @@ export type SeriesSettings = {
   display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
-  "line.style"?: "solid" | "dashed" | "dotted";
+  "line.style"?: LineStyle;
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
@@ -386,6 +388,12 @@ export type VisualizationSettings = {
 
   /** Add a trend line, best for time-based trends without extra groupings. */
   "graph.show_trendline"?: boolean;
+
+  /** Color of trend lines. Defaults to the darker variant of each series color. */
+  "graph.trendline_color"?: string;
+
+  /** Style of trend lines: solid, dashed, or dotted. */
+  "graph.trendline_style"?: LineStyle;
 
   /** Render compatible series in separate panels instead of one chart. */
   "graph.split_panels"?: boolean;
