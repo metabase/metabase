@@ -162,7 +162,8 @@
 (defn- publishing-info
   [table-id]
   (when-let [{:keys [timestamp topic], user-id :user_id}
-             ;; An unpublish event invalidates older publishing details if table state is restored without a new event.
+             ;; Serialization can restore `is_published` without a publish event, so a later unpublish
+             ;; invalidates older publishing details.
              (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
                             :topic [:in [:table-publish :table-unpublish]]
                             :model "Table"
