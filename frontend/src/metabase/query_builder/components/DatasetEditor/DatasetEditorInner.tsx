@@ -22,6 +22,7 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
 import { getMetadata } from "metabase/metadata-store";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
@@ -778,6 +779,11 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   renderTableHeader={renderTableHeader}
                   scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                   renderEmptyMessage={isEditingColumns}
+                  noResultsAction={
+                    !isModelQueryDirty && (
+                      <HasResultsAlertPrompt question={question} />
+                    )
+                  }
                 />
               )}
             </DebouncedFrame>
