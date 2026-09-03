@@ -3,13 +3,14 @@ import { LineDecorator } from "metabase/common/components/upsells/components/Lin
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
 import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { Stack } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 
 import S from "./BaseUpsellPage.module.css";
 
 export type BaseUpsellPageProps = {
   campaign: string;
   location: string;
+  header: string;
   title: string;
   description: string;
   bulletPoints?: string[];
@@ -17,11 +18,13 @@ export type BaseUpsellPageProps = {
   variant?: "image-full-height" | "image-card";
 };
 
-// Follows the same shape as the data-studio and monitor upsell pages, with the
-// card aligned to the page heading the hub renders above it.
+// Same full-bleed shape as the data-studio and monitor upsell pages: the
+// dotted field owns the whole tab, header included, instead of sitting
+// inside the tab's normal 800px column below a separately-rendered title.
 export function BaseUpsellPage({
   campaign,
   location,
+  header,
   title,
   description,
   bulletPoints,
@@ -35,22 +38,28 @@ export function BaseUpsellPage({
   });
 
   return (
-    <DottedBackground px={0} py="2rem">
-      <Stack align="flex-start" className={S.UpsellPageContent}>
-        <LineDecorator>
-          <UpsellCardContent
-            campaign={campaign}
-            location={location}
-            title={title}
-            description={description}
-            bulletPoints={bulletPoints}
-            image={image}
-            upgradeOnClick={upgradeOnClick}
-            upgradeUrl={upgradeUrl}
-            variant={variant}
-          />
-        </LineDecorator>
-      </Stack>
+    <DottedBackground px="3.5rem" pt="1.5rem" pb="2rem">
+      {/* fit-content + mx="auto" so the title's box is exactly as wide as
+          the card below it (Stack's default stretch), whatever that width
+          is -- centering the pair without hardcoding the card's width. */}
+      <Box w="fit-content" mx="auto">
+        <Stack gap={160} p={40} className={S.UpsellPageContent}>
+          <Title order={1}>{header}</Title>
+          <LineDecorator>
+            <UpsellCardContent
+              campaign={campaign}
+              location={location}
+              title={title}
+              description={description}
+              bulletPoints={bulletPoints}
+              image={image}
+              upgradeOnClick={upgradeOnClick}
+              upgradeUrl={upgradeUrl}
+              variant={variant}
+            />
+          </LineDecorator>
+        </Stack>
+      </Box>
     </DottedBackground>
   );
 }

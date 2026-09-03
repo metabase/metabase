@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
-import { UpsellEmbeddingTheme } from "metabase/admin/upsells";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { AppearanceUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
@@ -19,33 +19,29 @@ export function EmbeddingHubAppearancePage() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
 
+  if (!hasSimpleEmbedding) {
+    return <AppearanceUpsellPage />;
+  }
+
   return (
     <SettingsPageWrapper title={t`Appearance`}>
-      {!hasSimpleEmbedding && (
-        <UpsellEmbeddingTheme source="embedding-hub-appearance" />
-      )}
+      <Stack gap="lg">
+        <Title order={4}>{t`Themes`}</Title>
 
-      {hasSimpleEmbedding && (
-        <>
-          <Stack gap="lg">
-            <Title order={4}>{t`Themes`}</Title>
+        <EmbeddingThemeListingApp
+          basePath={`${Urls.embeddingHubAppearance()}/theme`}
+          showHeading={false}
+        />
+      </Stack>
 
-            <EmbeddingThemeListingApp
-              basePath={`${Urls.embeddingHubAppearance()}/theme`}
-              showHeading={false}
-            />
-          </Stack>
+      <Stack gap="lg">
+        <Title order={4}>{t`Branding elements`}</Title>
 
-          <Stack gap="lg">
-            <Title order={4}>{t`Branding elements`}</Title>
+        <PLUGIN_WHITELABEL.EmbeddedAppearanceSettings />
+      </Stack>
 
-            <PLUGIN_WHITELABEL.EmbeddedAppearanceSettings />
-          </Stack>
-
-          {/* Per the design's annotation: only when full-app embedding is on. */}
-          {isFullAppEmbeddingEnabled && <FullAppAppearanceBanner />}
-        </>
-      )}
+      {/* Per the design's annotation: only when full-app embedding is on. */}
+      {isFullAppEmbeddingEnabled && <FullAppAppearanceBanner />}
     </SettingsPageWrapper>
   );
 }

@@ -23,7 +23,8 @@ type EmbeddingHubTab = {
   to: string;
   isGated?: boolean;
   /** The design caps most hub pages at 800px; only a few need the whole
-   * area. See `EmbeddingHubContent`. */
+   * area. See `EmbeddingHubContent`. A gated tab is also full width: its
+   * upsell page owns the whole tab, header included, same as Permissions. */
   fullWidth?: boolean;
 };
 
@@ -125,7 +126,11 @@ export function EmbeddingHubLayout() {
       lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
     >
       <EmbeddingHubContent
-        fullWidth={(currentTab?.fullWidth ?? false) || isThemeEditor}
+        fullWidth={
+          (currentTab?.fullWidth ?? false) ||
+          isThemeEditor ||
+          (currentTab?.isGated ?? false)
+        }
       >
         <Outlet />
       </EmbeddingHubContent>

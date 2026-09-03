@@ -46,11 +46,7 @@ export function EmbeddingHubAuthenticationPage() {
   const isSamlConfigured = useSetting("saml-configured");
 
   if (!hasSsoJwt) {
-    return (
-      <SettingsPageWrapper title={t`Authentication`}>
-        <AuthenticationUpsellPage />
-      </SettingsPageWrapper>
-    );
+    return <AuthenticationUpsellPage />;
   }
 
   if (isLoading) {
