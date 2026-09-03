@@ -88,7 +88,6 @@ runs:
           }
 
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
-          core.setOutput('fetch-hit', 'true');
 
     - name: Extract and rename JAR
       if: ${{ steps.find_release_artifact.outputs.fetch-hit == 'true' && inputs.download != 'false' }}

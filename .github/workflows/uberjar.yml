@@ -98,8 +98,8 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      # Faster builds for dev, but never for a PR whose jar gets containerized and pushed.
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
+      # Faster builds for devs
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }} 
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}

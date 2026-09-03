@@ -50,7 +50,6 @@ runs:
       uses: actions/github-script@v9
       env:
         REGISTRY: ${{ inputs.registry }}
-        OWNER: ${{ vars.DOCKERHUB_OWNER }}
         REPO: ${{ inputs.repo }}
         TAG: ${{ inputs.tag }}
         BRANCH: ${{ inputs.branch }}
@@ -83,7 +82,7 @@ runs:
             }
             repo = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${name}`;
           } else if (REGISTRY === 'docker') {
-            repo = `${OWNER}/${name}`;
+            repo = `metabase/${name}`;
           } else {
             core.setFailed(`Unknown registry "${REGISTRY}", expected "docker" or "ecr".`);
             return;

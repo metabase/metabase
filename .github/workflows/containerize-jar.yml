@@ -138,7 +138,7 @@ jobs:
         build-args: ${{ inputs.build-args }}
 
     - name: Post link to image on DockerHub
-      if: ${{ inputs.registry != 'ecr' }}
+      if: ${{ inputs.registry != 'ecr' && github.event_name == 'pull_request' }}
       uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
       with:
         header: docker-build-status-${{ inputs.edition }}
