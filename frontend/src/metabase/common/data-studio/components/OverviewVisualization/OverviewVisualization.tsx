@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import { useSelector } from "metabase/redux";
-import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 
 import { useCardQueryData } from "../../hooks/use-card-query-data";
@@ -24,11 +22,8 @@ export function MetricCardVisualization({
   isLoading,
   className,
 }: MetricCardVisualizationProps) {
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(
-    () => new Question(card, metadata),
-    [card, metadata],
-  );
+  const buildQuestion = useQuestionFromCard();
+  const question = useMemo(() => buildQuestion(card), [card, buildQuestion]);
 
   const rawSeries = useMemo(
     () => (data ? [{ card, data: data.data }] : null),
