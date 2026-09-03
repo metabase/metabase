@@ -1,22 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import { isValidElement } from "react";
 
-import {
-  QueryEditor,
-  getInitialUiState,
-} from "metabase/querying/editor/components/QueryEditor";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { QueryEditor } from "metabase/querying/editor/components/QueryEditor/QueryEditor";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 
-import { NativeQueryParametersList } from "./NativeQueryParametersList";
-import { QueryEditorWithParameters } from "./QueryEditorWithParameters";
-import { TemplateTagsSidebar } from "./TemplateTagsSidebar";
+import { NativeQueryParametersList } from "../NativeQueryParametersList";
+import { TemplateTagsSidebar } from "../TemplateTagsSidebar";
 
-jest.mock("metabase/querying/editor/components/QueryEditor", () => ({
-  ...jest.requireActual("metabase/querying/editor/components/QueryEditor"),
-  QueryEditor: jest.fn(() => <div data-testid="query-editor" />),
-}));
+import { QueryEditorWithParameters } from "./QueryEditorWithParameters";
+
+jest.mock(
+  "metabase/querying/editor/components/QueryEditor/QueryEditor",
+  () => ({
+    ...jest.requireActual(
+      "metabase/querying/editor/components/QueryEditor/QueryEditor",
+    ),
+    QueryEditor: jest.fn(() => <div data-testid="query-editor" />),
+  }),
+);
 
 function setup() {
   const query = new Question(createMockCard(), SAMPLE_METADATA).query();

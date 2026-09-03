@@ -1,10 +1,10 @@
 import {
   QueryEditor,
   type QueryEditorProps,
-} from "metabase/querying/editor/components/QueryEditor";
+} from "metabase/querying/editor/components/QueryEditor/QueryEditor";
 
-import { NativeQueryParametersList } from "./NativeQueryParametersList";
-import { TemplateTagsSidebar } from "./TemplateTagsSidebar";
+import { NativeQueryParametersList } from "../NativeQueryParametersList";
+import { TemplateTagsSidebar } from "../TemplateTagsSidebar";
 
 export type QueryEditorWithParametersProps = Omit<
   QueryEditorProps,
