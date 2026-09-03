@@ -1363,7 +1363,7 @@ Backed by the azure connection in the admin AI settings provider list: reads and
 - Default: `null`
 - [Configuration file name](./config-file.md): `llm-bedrock-access-key-id`
 
-The AWS Access Key ID for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the secret access key to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required.
+The AWS Access Key ID for Amazon Bedrock.
 
 Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
@@ -1375,7 +1375,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
 
-Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
@@ -1383,7 +1383,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 - Default: `null`
 - [Configuration file name](./config-file.md): `llm-bedrock-secret-access-key`
 
-The AWS Secret Access Key for Amazon Bedrock. On a self-hosted Metabase, leave unset together with the access key ID to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile); on Metabase Cloud both keys are required.
+The AWS Secret Access Key for Amazon Bedrock.
 
 Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 

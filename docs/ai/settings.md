@@ -18,7 +18,7 @@ AI features are available on both Metabase Cloud and self-hosted Metabase. To tu
 1. Go to **Admin settings > AI**.
 2. In **Connect to an AI provider**, choose a **Provider**:
    - **Metabase**: The Metabase AI service. Metabase picks a benchmarked, cost-effective model for you, and charges you on token usage. See [Choose AI provider](#choose-ai-provider)
-   - Another supported provider. See [bring your own AI provider](#bring-your-own-ai-provider).
+   - Another supported provider. See [bring your own API key](#bring-your-own-api-key).
 3. Once connected, configure [Metabot](#configure-metabot) and other AI features below.
 
 ## Choose AI provider
@@ -27,8 +27,8 @@ _Admin > AI_
 
 You can choose which AI provider and model is used to power Metabase's built-in agent.
 
-- If you're **self-hosting Metabase** and want to use Metabot, you need to [bring your own AI provider](#bring-your-own-ai-provider).
-- On **Metabase Cloud**, you can either [bring your own AI provider](#bring-your-own-ai-provider) or [use the Metabase AI Service](#metabase-ai-service).
+- If you're **self-hosting Metabase** and want to use Metabot, you need to [bring your own AI API key](#bring-your-own-api-key).
+- On **Metabase Cloud**, you can either [bring your own AI API key](#bring-your-own-api-key) or [use the Metabase AI Service](#metabase-ai-service).
 
 The AI provider that you specify in AI settings powers Metabase's built-in AI functionality, not the MCP server. [With the MCP server, your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
@@ -52,11 +52,11 @@ To disable Metabase AI provider and stop charges:
 1. Go to **Admin > AI > AI settings**.
 2. Under **Connected to Metabase**, click **Disconnect**.
 
-### Bring your own AI provider
+### Bring your own API key
 
-You can connect Metabot to one of the supported providers with your own credentials: an API key for most providers, while Amazon Bedrock on a self-hosted Metabase can also authenticate without any stored keys. When you connect a provider, the **Model** dropdown lists the supported models that your credentials can access.
+You can specify your own API key and model for Metabot from one of the supported providers. When you connect a provider, the **Model** dropdown lists the supported models that your API key can access.
 
-- **Amazon Bedrock**: Claude and GPT models. Enter an AWS access key pair. On a self-hosted Metabase you can instead leave the keys blank to authenticate with the AWS default credentials chain (IAM role, instance profile, IRSA, or EKS Pod Identity), so no long-lived keys are needed; on Metabase Cloud the key pair is required.
+- **Amazon Bedrock**: Claude and GPT models.
 - **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
 - **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
 - **Mistral**
@@ -66,17 +66,17 @@ You can connect Metabot to one of the supported providers with your own credenti
 
 If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
-To enable AI features with your own provider:
+To enable AI features with your own API key:
 
 1. Go to **Admin > AI**.
 2. Select your **Provider**.
-3. Enter your provider's credentials, an **API key** for most providers. For Amazon Bedrock, enter an AWS access key pair, or, when self-hosting, leave the keys blank to authenticate with the AWS default credentials chain. The **Where do I find this?** link opens your provider's key management page in a new tab.
+3. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
 4. Click **Connect**.
-5. Select a **Model** from the dropdown. Available models are fetched from the provider using your credentials.
+5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
-When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your provider connected, you get access to [Metabot](./metabot.md), and [inline SQL generation](./metabot.md#inline-sql-editing).
+When your connection is active, the provider card header shows **Connected to [provider]** (for example, "Connected to Anthropic") next to a green status dot. With your key connected, you get access to [Metabot](./metabot.md), and [inline SQL generation](./metabot.md#inline-sql-editing).
 
-To clear your provider connection, click **Disconnect**. Disconnecting removes the stored credentials and turns off any AI features that depend on the provider.
+To clear your provider connection, click **Disconnect**. Disconnecting removes the stored API key and turns off any AI features that depend on the provider.
 
 ## Configure Metabot
 
@@ -195,7 +195,7 @@ If you're using the Metabase AI service, you can see how many Metabot requests p
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
-If you're bringing your own provider, you can track usage and costs through that provider's dashboard.
+If you're using your own API key, you can track usage and costs through your AI provider's dashboard.
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 
