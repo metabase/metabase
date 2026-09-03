@@ -105,6 +105,8 @@ function _init(
   });
 
   initializeInteractiveEmbedding(store.dispatch);
+  // Installing the listener at boot keeps open-url free of import-time work,
+  // so importing anything from the urls barrel never registers it as a side effect.
   captureClickModifierKeys();
 
   const rootElement = document.getElementById("root");
