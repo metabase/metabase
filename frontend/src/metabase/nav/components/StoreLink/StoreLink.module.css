@@ -1,12 +1,12 @@
 .root {
-  margin-inline-start: var(--mantine-spacing-xs);
+  margin-inline-start: var(--mantine-spacing-xxs);
   margin-inline-end: var(--mantine-spacing-sm);
 }
 
 .iconWrapper {
   width: 2rem;
   height: 2rem;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
   cursor: pointer;
   color: var(--mb-color-text-secondary-inverse);
   transition: all 300ms ease-in-out;

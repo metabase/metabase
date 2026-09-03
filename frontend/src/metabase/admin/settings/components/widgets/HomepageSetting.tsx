@@ -88,18 +88,18 @@ export function HomepageSetting() {
         name="homepage-mode"
         aria-label={t`Homepage`}
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           <Radio value="default" label={t`Default Metabase home`} />
 
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Radio value="dashboard" label={t`Dashboard`} />
             {mode === "dashboard" && (
-              <Box ps="xl" data-testid="custom-homepage-dashboard-setting">
+              <Box ps="xxl" data-testid="custom-homepage-dashboard-setting">
                 <DashboardSelector
                   value={customHomepageDashboardId ?? undefined}
                   onChange={handleDashboardChange}
                 />
-                <Text size="xs" c="text-secondary" mt="xs">
+                <Text size="xs" c="text-secondary" mt="xxs">
                   {t`Users without dashboard access see the default home.`}
                 </Text>
               </Box>
@@ -107,13 +107,13 @@ export function HomepageSetting() {
           </Stack>
 
           {PLUGIN_HOMEPAGE_SETTING.CustomUrlOption && (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Radio
                 value="url"
                 label={PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.label}
               />
               {mode === "url" && (
-                <Box ps="xl">
+                <Box ps="xxl">
                   <PLUGIN_HOMEPAGE_SETTING.CustomUrlOption.Control />
                 </Box>
               )}

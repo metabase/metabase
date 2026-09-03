@@ -123,7 +123,7 @@ export function GroupLimitsSettingsSection() {
         value={activeTab}
         onChange={(value) => value && setActiveTab(value)}
       >
-        <Tabs.List mb="md">
+        <Tabs.List mb="lg">
           <Tabs.Tab value="user-groups">{t`User groups`}</Tabs.Tab>
           <Tabs.Tab value="tenant-groups">{t`Tenant groups`}</Tabs.Tab>
           <Tabs.Tab value="specific-tenants">{t`Specific tenants`}</Tabs.Tab>

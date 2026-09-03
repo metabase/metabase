@@ -35,7 +35,7 @@ function CloseIcon({
 }) {
   return (
     <Box
-      p="md"
+      p="lg"
       ms="auto"
       component="span"
       className={cx(S.CloseIconContainer, className)}

@@ -10,8 +10,8 @@
   cursor: pointer;
   padding-inline-start: var(--mantine-spacing-sm);
   padding-inline-end: var(--mantine-spacing-sm);
-  inset-inline-start: var(--mantine-spacing-xl);
-  inset-inline-end: var(--mantine-spacing-xl);
+  inset-inline-start: var(--mantine-spacing-xxl);
+  inset-inline-end: var(--mantine-spacing-xxl);
 
   &:focus-visible,
   &.selected {
@@ -32,7 +32,7 @@
   }
 
   &.table {
-    padding-inline-start: var(--mantine-spacing-md);
+    padding-inline-start: var(--mantine-spacing-lg);
   }
 }
 

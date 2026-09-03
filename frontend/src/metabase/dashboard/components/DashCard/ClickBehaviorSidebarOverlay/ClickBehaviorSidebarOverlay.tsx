@@ -40,9 +40,9 @@ export function ClickBehaviorSidebarOverlay({
     <Flex align="center" justify="center" h="100%">
       <Flex
         component="button"
-        mb="md"
+        mb="lg"
         fw="bold"
-        px="md"
+        px="lg"
         py="sm"
         className={cx(S.Button, {
           [S.isActive]: isShowingThisClickBehaviorSidebar,
@@ -57,7 +57,7 @@ export function ClickBehaviorSidebarOverlay({
           })}
         />
         {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
-          <Box component="span" display="block" me="md">{t`On click`}</Box>
+          <Box component="span" display="block" me="lg">{t`On click`}</Box>
         )}
         <Box
           component="span"

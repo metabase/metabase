@@ -104,7 +104,7 @@ export const ChartSettingOrderedSimple = ({
   const nonHiddenItems = orderedItems.filter((item) => !item.hidden);
 
   return (
-    <Box ps="md" pb="sm">
+    <Box ps="lg" pb="sm">
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
           items={nonHiddenItems}

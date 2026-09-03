@@ -150,7 +150,7 @@ export const DocumentHeader = ({
           }}
         />
         {document && (
-          <Flex gap="md">
+          <Flex gap="lg">
             <Flex align="center" gap="0.25rem" c="text-secondary">
               <Icon name="person" />
               <Text>{document.creator.common_name}</Text>
@@ -168,7 +168,7 @@ export const DocumentHeader = ({
           </Flex>
         )}
       </Flex>
-      <Flex gap="md" align="center" className={S.actionsContainer}>
+      <Flex gap="lg" align="center" className={S.actionsContainer}>
         <Transition
           mounted={showSaveButton}
           transition={saveButtonTransition}

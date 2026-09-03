@@ -16,7 +16,7 @@ export function MetricEditorSidebar() {
   );
 
   return (
-    <Box pt="md" pe={{ sm: "sm", lg: "md" }}>
+    <Box pt="lg" pe={{ sm: "sm", lg: "lg" }}>
       {showMetabaseLinks && (
         <Button
           component={ExternalLink}

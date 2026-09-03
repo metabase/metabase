@@ -94,7 +94,7 @@ class SnippetSidebarInner extends Component<
   footer = () => (
     <Flex
       className={S.SidebarFooter}
-      p="md"
+      p="lg"
       onClick={() => this.setState({ showArchived: true })}
     >
       <Icon me="sm" name="view_archive" />
@@ -176,7 +176,7 @@ class SnippetSidebarInner extends Component<
           />
         ) : (
           <>
-            <Flex align="center" justify="space-between" p="md" ps="lg" pe="sm">
+            <Flex align="center" justify="space-between" p="lg" ps="xl" pe="sm">
               {showSearch ? (
                 <>
                   <input
@@ -369,7 +369,7 @@ function ArchivedSnippetsInner({
 
   return (
     <SidebarContent>
-      <Box p="lg">
+      <Box p="xl">
         <SidebarHeader title={t`Archived snippets`} onBack={onBack} />
       </Box>
 

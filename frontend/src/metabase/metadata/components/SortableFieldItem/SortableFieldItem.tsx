@@ -55,7 +55,7 @@ export function SortableFieldItem<T extends number | string>({
           gap={0}
           mih={rem(40)}
           pos="relative"
-          px="md"
+          px="lg"
           py={rem(12)}
           w="100%"
           wrap="nowrap"
@@ -68,7 +68,7 @@ export function SortableFieldItem<T extends number | string>({
               flex="0 0 auto"
               lh="normal"
               maw="50%"
-              me="xs"
+              me="xxs"
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>
                 {parent.display_name}

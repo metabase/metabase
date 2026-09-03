@@ -95,7 +95,7 @@ export function ObjectDetailHeader({
             </Menu>
           )}
 
-          <Flex ms="md" ps="md" className={S.closeButton}>
+          <Flex ms="lg" ps="lg" className={S.closeButton}>
             <ActionIcon
               variant="viewHeader"
               data-testid="object-detail-close-button"

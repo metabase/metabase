@@ -50,7 +50,7 @@ export const AddHeadingOrTextButton = () => {
           data-element-id={t`Add a heading or text`}
           aria-label={t`Add a heading or text box`}
         >
-          <Group gap="xs" wrap="nowrap">
+          <Group gap="xxs" wrap="nowrap">
             <Icon name="string" size={18} />
             <Icon name="chevrondown" size={10} />
           </Group>
@@ -58,7 +58,7 @@ export const AddHeadingOrTextButton = () => {
       </Menu.Target>
       <Menu.Dropdown miw="auto">
         {TEXT_OPTIONS.map(({ title, action }) => (
-          <Menu.Item key={title} pe="xl" fw="bold" onClick={action}>
+          <Menu.Item key={title} pe="xxl" fw="bold" onClick={action}>
             {title}
           </Menu.Item>
         ))}

@@ -45,17 +45,17 @@ export const AddLinkOrEmbedButton = () => {
           data-element-id={t`Add a link or iframe`}
           aria-label={t`Add a link or iframe`}
         >
-          <Group gap="xs" wrap="nowrap">
+          <Group gap="xxs" wrap="nowrap">
             <Icon name="link" size={18} />
             <Icon name="chevrondown" size={10} />
           </Group>
         </ToolbarButton>
       </Menu.Target>
       <Menu.Dropdown miw="auto">
-        <Menu.Item pe="xl" fw="bold" onClick={onAddLinkCard}>
+        <Menu.Item pe="xxl" fw="bold" onClick={onAddLinkCard}>
           {t`Link`}
         </Menu.Item>
-        <Menu.Item pe="xl" fw="bold" onClick={onAddIFrameCard}>
+        <Menu.Item pe="xxl" fw="bold" onClick={onAddIFrameCard}>
           {t`Iframe`}
         </Menu.Item>
       </Menu.Dropdown>

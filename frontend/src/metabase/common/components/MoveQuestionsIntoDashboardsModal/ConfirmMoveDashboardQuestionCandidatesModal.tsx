@@ -102,7 +102,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {
             return (
               <Flex justify="center" py="19rem">
-                <Text color="feedback-negative" size="1.25rem" px="md">
+                <Text color="feedback-negative" size="1.25rem" px="lg">
                   {fetchError instanceof Error
                     ? (fetchError?.message ?? defaultErrMsg)
                     : defaultErrMsg}
@@ -112,7 +112,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           })
           .with({ rows: [] }, () => (
             <Flex justify="center" py="19rem">
-              <Text size="1.25rem" px="md" color="text-disabled">
+              <Text size="1.25rem" px="lg" color="text-disabled">
                 {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
               </Text>
             </Flex>
@@ -130,7 +130,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         className={S.modalFooter}
         justify="space-between"
         align="center"
-        gap="md"
+        gap="lg"
         py="1rem"
         px="1.25rem"
       >
@@ -143,7 +143,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         ) : (
           <div />
         )}
-        <Flex gap="md" ms="1.5rem">
+        <Flex gap="lg" ms="1.5rem">
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
           <Button
             loading={isMutating}

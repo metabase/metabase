@@ -109,7 +109,7 @@ export const MembershipSelect = ({
         style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
       >
         <span>{getGroupNameLocalized(group)}</span>
-        <Flex ps="md" align="center" justify="end">
+        <Flex ps="lg" align="center" justify="end">
           {canEditMembershipType && (
             <PLUGIN_GROUP_MANAGERS.UserTypeToggle
               tooltipPlacement="bottom"

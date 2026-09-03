@@ -16,10 +16,10 @@ export function FilterPickerHeader({
   onBack,
 }: FilterPickerHeaderProps) {
   return (
-    <Flex px="md" pt="md" justify="space-between">
+    <Flex px="lg" pt="lg" justify="space-between">
       {onBack && (
         <PopoverBackButton
-          pe="md"
+          pe="lg"
           onClick={onBack}
           disabled={readOnly}
           withArrow={!readOnly}

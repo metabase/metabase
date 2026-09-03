@@ -205,7 +205,7 @@ export function IllustrationWidget({
               defaultPreviewType: type,
             })}
           </Flex>
-          <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
+          <Flex p="xl" gap="lg" direction="column" justify="center" w="100%">
             {settingDetails?.is_env_setting && settingDetails?.env_name ? (
               <SetByEnvVar varName={settingDetails.env_name} />
             ) : (
@@ -243,7 +243,7 @@ export function IllustrationWidget({
                     accept="image/jpeg,image/png,image/svg+xml"
                     multiple={false}
                   />
-                  <Text ms="lg" truncate="end">
+                  <Text ms="xl" truncate="end">
                     {!customIllustrationSource
                       ? t`No file chosen`
                       : fileName
@@ -255,7 +255,7 @@ export function IllustrationWidget({
                       leftSection={<Icon name="close" />}
                       variant="subtle"
                       c="text-primary"
-                      ms="md"
+                      ms="lg"
                       size="compact-md"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}

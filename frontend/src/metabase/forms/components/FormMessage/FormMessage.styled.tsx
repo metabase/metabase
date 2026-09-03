@@ -18,7 +18,7 @@ export const FormMessageStyled = styled.span<{
   float: inline-start;
   opacity: 0;
   padding-bottom: ${({ noPadding }) =>
-    noPadding ? "" : "var(--mantine-spacing-md)"};
+    noPadding ? "" : "var(--mantine-spacing-lg)"};
   transition: none;
   width: 100%;
 

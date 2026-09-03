@@ -55,7 +55,7 @@ export function RunInfo({ status, message, endTime }: RunInfoProps) {
         <Modal
           title={getTitle(status, endTime)}
           size="xl"
-          padding="xl"
+          padding="xxl"
           opened
           onClick={handleModalClick}
           onClose={close}
@@ -98,8 +98,8 @@ type RunErrorModalContentProps = {
 
 function RunInfoModalContent({ message, onClose }: RunErrorModalContentProps) {
   return (
-    <Stack pt="md" gap="lg">
-      <Box className={S.codeContainer} pos="relative" pe="lg">
+    <Stack pt="lg" gap="xl">
+      <Box className={S.codeContainer} pos="relative" pe="xl">
         <CodeEditor value={message} readOnly />
         <Box p="sm" pos="absolute" right={0} top={0}>
           <CopyButton value={message} />

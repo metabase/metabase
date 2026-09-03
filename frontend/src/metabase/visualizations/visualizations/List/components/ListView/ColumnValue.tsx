@@ -106,7 +106,7 @@ export function ColumnValue({
           <Icon
             name={rawValue === true ? "check" : "close"}
             size={12}
-            me="xs"
+            me="xxs"
           />
         }
       >

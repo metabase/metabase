@@ -45,7 +45,7 @@ const BrowseSchemasContainer = ({
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
       data-testid="browse-schemas"
     >
       <BrowseDataHeader />
@@ -61,7 +61,7 @@ const BrowseSchemasContainer = ({
             />
           ) : (
             <>
-              <Flex align="center" pt="md" pe="sm" pb="sm">
+              <Flex align="center" pt="lg" pe="sm" pb="sm">
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
@@ -74,7 +74,7 @@ const BrowseSchemasContainer = ({
                   className={cx(CS.full, CS.textCentered, CS.textMedium)}
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
-                <BrowseGrid pt="lg">
+                <BrowseGrid pt="xl">
                   {schemas.map((schema) => (
                     <BrowseCard
                       key={schema.id}

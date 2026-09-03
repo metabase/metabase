@@ -38,12 +38,12 @@ export const RefreshWidget = (
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="md" miw="12.5rem">
+        <Box p="lg" miw="12.5rem">
           <Box
             fw="bold"
             fz="sm"
             tt="uppercase"
-            mb="md"
+            mb="lg"
             ms="sm"
             c="text-secondary"
           >{t`Auto Refresh`}</Box>

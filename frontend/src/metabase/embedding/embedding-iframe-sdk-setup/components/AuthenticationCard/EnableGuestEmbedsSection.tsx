@@ -79,7 +79,13 @@ export const EnableGuestEmbedsSection = ({
   }
 
   return (
-    <Stack gap={0} ps="xl" data-testid="enable-embedding-card" mt="xs" mb="sm">
+    <Stack
+      gap={0}
+      ps="xxl"
+      data-testid="enable-embedding-card"
+      mt="xxs"
+      mb="sm"
+    >
       <Text fz="md" c="text-primary">
         {title}
 
@@ -90,7 +96,7 @@ export const EnableGuestEmbedsSection = ({
         )}
       </Text>
 
-      <Group justify="flex-start" mt="xs">
+      <Group justify="flex-start" mt="xxs">
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}

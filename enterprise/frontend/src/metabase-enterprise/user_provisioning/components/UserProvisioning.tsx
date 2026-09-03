@@ -156,8 +156,8 @@ export const UserProvisioning = () => {
           loading={maskedTokenRequest.isLoading}
           error={scimTokenError}
         >
-          <Stack ps="md" gap="lg" maw="35rem">
-            <Stack gap="lg" mb="lg" data-testid="scim-enabled-setting">
+          <Stack ps="lg" gap="xl" maw="35rem">
+            <Stack gap="xl" mb="xl" data-testid="scim-enabled-setting">
               <Text
                 fz="1.25rem"
                 fw="bold"
@@ -245,7 +245,7 @@ export const UserProvisioning = () => {
 
             {isAdminNotificationInputVisisble && (
               <>
-                <Divider my="lg" />
+                <Divider my="xl" />
                 <AdminSettingInput
                   name="send-new-sso-user-admin-email?"
                   title={t`Notify admins of new users provisioned from SSO`}

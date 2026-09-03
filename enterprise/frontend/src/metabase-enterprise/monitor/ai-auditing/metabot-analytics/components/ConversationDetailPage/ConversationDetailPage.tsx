@@ -149,7 +149,7 @@ export function ConversationDetailPage() {
     <Flex ref={containerRef} wrap="nowrap">
       <MonitorMain>
         <Box w="100%" maw={800} mx="auto">
-          <Stack gap="xl">
+          <Stack gap="xxl">
             <ConversationHeader conversation={conversation} />
 
             <SimpleGrid cols={4}>
@@ -172,7 +172,7 @@ export function ConversationDetailPage() {
             </SimpleGrid>
 
             {feedback.length > 0 && (
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Title order={3}>{t`Feedback`}</Title>
                 <Stack gap="sm">
                   {feedback.map((item) => (
@@ -187,7 +187,7 @@ export function ConversationDetailPage() {
               </Stack>
             )}
 
-            <Stack gap="md">
+            <Stack gap="lg">
               <Flex align="baseline" justify="space-between">
                 <Title order={3}>{t`Conversation`}</Title>
                 {conversation.slack_permalink && (
@@ -196,7 +196,7 @@ export function ConversationDetailPage() {
                   </ExternalLink>
                 )}
               </Flex>
-              <Card withBorder shadow="none" p="xl">
+              <Card withBorder shadow="none" p="xxl">
                 <Messages
                   messages={messages}
                   getExtraActions={getExtraActions}
@@ -215,7 +215,7 @@ export function ConversationDetailPage() {
             </Stack>
 
             {queries.length > 0 && (
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Title order={3}>{t`Queries generated`}</Title>
                 {queries.map((query) => (
                   <GeneratedQueryCard
@@ -244,11 +244,11 @@ export function ConversationDetailPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Text size="sm" c="text-secondary">
         {label}
       </Text>
-      <Title order={2} mt="xs">
+      <Title order={2} mt="xxs">
         {value}
       </Title>
     </Card>
@@ -278,9 +278,9 @@ function FeedbackCard({
     : null;
 
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Stack gap="sm">
-        <Flex gap="xs" align="center">
+        <Flex gap="xxs" align="center">
           <Icon
             name={feedback.positive ? "thumbs_up" : "thumbs_down"}
             size={20}
@@ -288,7 +288,7 @@ function FeedbackCard({
           />
           <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
           {!feedback.positive && feedback.issue_type && (
-            <Badge color="negative" ms="xs" size="sm">
+            <Badge color="negative" ms="xxs" size="sm">
               {getIssueTypeLabel(feedback.issue_type)}
             </Badge>
           )}
@@ -308,7 +308,7 @@ function FeedbackCard({
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}
             bg="background_page-secondary"
-            p="md"
+            p="lg"
             pb="0"
             bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
@@ -356,7 +356,7 @@ function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
   }, [metadata, query.database_id, query.sql]);
 
   return (
-    <Card withBorder shadow="none" p="md">
+    <Card withBorder shadow="none" p="lg">
       <Stack gap="sm">
         <Flex justify="space-between" align="center" gap="sm">
           <Text
@@ -426,7 +426,7 @@ function NotebookGeneratedQueryCard({
 
   if (isLoading) {
     return (
-      <Card withBorder shadow="none" p="md">
+      <Card withBorder shadow="none" p="lg">
         <Flex justify="center" align="center" mih={120}>
           <Loader />
         </Flex>
@@ -436,7 +436,7 @@ function NotebookGeneratedQueryCard({
 
   if (isError || mbql.database == null) {
     return (
-      <Card withBorder shadow="none" p="md">
+      <Card withBorder shadow="none" p="lg">
         <CodeEditor
           value={JSON.stringify(mbql, null, 2)}
           language="json"
@@ -453,11 +453,11 @@ function NotebookGeneratedQueryCard({
     <Card
       withBorder
       shadow="none"
-      p={{ base: "md", sm: "xl" }}
+      p={{ base: "lg", sm: "xxl" }}
       pb="sm"
       style={{ overflowX: "auto" }}
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         <Flex justify="space-between" align="center" gap="sm">
           <Text
             size="lg"
@@ -478,7 +478,7 @@ function NotebookGeneratedQueryCard({
             {t`Run`}
           </Button>
         </Flex>
-        <Box mx={{ base: "-md", sm: "-xl" }} my={{ base: "-md", sm: "-xl" }}>
+        <Box mx={{ base: "-lg", sm: "-xxl" }} my={{ base: "-lg", sm: "-xxl" }}>
           <Notebook
             question={question}
             isDirty={false}

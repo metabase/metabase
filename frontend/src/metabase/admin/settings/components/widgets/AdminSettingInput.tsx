@@ -299,7 +299,7 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
 }: SetByEnvVarWrapperProps<SettingName>) {
   if (isSettingSetFromEnvVar(settingDetails)) {
     return (
-      <Box mb="lg">
+      <Box mb="xl">
         <SettingHeader
           id={settingKey}
           title={settingDetails.display_name}

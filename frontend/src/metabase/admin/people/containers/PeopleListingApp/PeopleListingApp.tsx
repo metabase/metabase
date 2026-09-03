@@ -100,7 +100,7 @@ export function PeopleListingApp({
 
   return (
     <div>
-      <Group justify="space-between" w="100%" mb="lg">
+      <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{pageTitle}</Title>
 
         {!external && (
@@ -112,7 +112,7 @@ export function PeopleListingApp({
         <Tabs
           value={status}
           onChange={handleTabChange}
-          ps="md"
+          ps="lg"
           listBorder={false}
         >
           <Tabs.List>
@@ -130,7 +130,7 @@ export function PeopleListingApp({
           loading={isLoading || !currentUser}
         >
           <div data-testid="admin-panel">
-            <Group w="100%" justify="space-between" mb="lg" gap="md">
+            <Group w="100%" justify="space-between" mb="xl" gap="lg">
               <Flex flex="1">
                 <SearchFilter
                   value={searchInputValue}

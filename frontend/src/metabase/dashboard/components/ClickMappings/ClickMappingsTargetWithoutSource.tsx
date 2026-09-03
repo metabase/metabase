@@ -81,7 +81,7 @@ export function ClickMappingsTargetWithoutSource({
                 return (
                   <Combobox.Option key={value} value={value} p={0}>
                     <DefaultSelectItem
-                      ps="lg"
+                      ps="xl"
                       value={value}
                       fw="700"
                       label={option.type === undefined ? t`None` : option.name}

@@ -117,7 +117,7 @@ export const AppBarLarge = ({
             (isEmbeddingIframe ? (
               <SearchBar onSearchItemSelect={onSearchItemSelect} />
             ) : (
-              <SearchButton me="md" />
+              <SearchButton me="lg" />
             ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}

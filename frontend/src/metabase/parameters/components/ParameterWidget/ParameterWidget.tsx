@@ -126,7 +126,7 @@ export const ParameterWidget = ({
           data-testid={hasTestId ? "editing-parameter-widget" : undefined}
           ref={ref}
         >
-          <Box mx="xs">{parameter.name}</Box>
+          <Box mx="xxs">{parameter.name}</Box>
           <Box ms="auto" onClick={(e) => e.stopPropagation()}>
             {dragHandle}
           </Box>

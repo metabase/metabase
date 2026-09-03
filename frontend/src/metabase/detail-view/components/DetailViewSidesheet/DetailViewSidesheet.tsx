@@ -357,7 +357,7 @@ export function DetailViewSidesheet({
       >
         <Stack gap={0} mih="100%">
           {headerColumns.length > 0 && (
-            <Box pb="md" pt="xs" px={rem(56)}>
+            <Box pb="lg" pt="xxs" px={rem(56)}>
               <Box
                 // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
                 ms={rem(-8)}
@@ -367,7 +367,7 @@ export function DetailViewSidesheet({
             </Box>
           )}
 
-          <Group pb={rem(48)} pt="xl" px={rem(56)}>
+          <Group pb={rem(48)} pt="xxl" px={rem(56)}>
             <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
               {columns.length > 0 && (
                 <DetailsGroup

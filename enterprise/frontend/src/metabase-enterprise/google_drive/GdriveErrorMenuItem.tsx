@@ -12,7 +12,7 @@ export function GdriveErrorMenuItem({ error }: { error: any }) {
     <>
       <Menu.Label>
         <Flex>
-          <Icon name="warning" c="feedback-negative" mt="xs" me="sm" />
+          <Icon name="warning" c="feedback-negative" mt="xxs" me="sm" />
           <Box>
             <Text fw="bold">{t`Couldn't sync Google Sheets`}</Text>
             <Text size="sm" c="text-secondary" maw="16rem">

@@ -51,7 +51,7 @@
 .Canvas {
   grid-area: Canvas;
   overflow: hidden;
-  padding: var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-xl);
   border-inline-start: 1px solid var(--mb-color-border-neutral);
   border-inline-end: 1px solid var(--mb-color-border-neutral);
 }

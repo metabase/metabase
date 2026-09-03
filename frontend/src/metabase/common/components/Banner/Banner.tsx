@@ -35,10 +35,10 @@ export const Banner = ({
       py="sm"
       justify="space-between"
       ps="1.325rem"
-      pe="md"
+      pe="lg"
       {...flexProps}
     >
-      <Group gap="xs" {...contentGroupProps}>
+      <Group gap="xxs" {...contentGroupProps}>
         {icon && <Icon name={icon} w={36} c={iconColor} />}
         {body}
       </Group>

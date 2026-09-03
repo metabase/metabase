@@ -43,7 +43,7 @@ export function EnableTransformsCard({
   return (
     <Card withBorder maw="60rem" p={0} w="100%" style={{ overflow: "auto" }}>
       <Flex w="100%" p={{ xs: "2.5rem", xl: "3rem" }}>
-        <Stack gap="lg" align="start" pt="xl" ps="lg" flex="1 1 auto">
+        <Stack gap="xl" align="start" pt="xxl" ps="xl" flex="1 1 auto">
           {leftContent ?? (
             <>
               <Title order={2}>{t`Customize and clean up your data`}</Title>
@@ -53,7 +53,7 @@ export function EnableTransformsCard({
                 lh={1.4}
               >{t`Transforms let you create new tables within your connected databases, helping you make nicer and more self-explanatory datasets for your end users to look at and explore.`}</Text>
               {permissionsErrorMessage || (
-                <Stack gap="lg" align="start">
+                <Stack gap="xl" align="start">
                   <Text
                     c="text-secondary"
                     fz="1rem"
@@ -131,7 +131,7 @@ const SimpleCard = ({
   <Card bg="background_page-secondary" shadow="none">
     <Group wrap="nowrap" align="start" gap="sm">
       <Icon name={icon} c="core-brand" size={16} flex="0 0 1rem" />
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Text fw="bold" lh="1rem">
           {title}
         </Text>

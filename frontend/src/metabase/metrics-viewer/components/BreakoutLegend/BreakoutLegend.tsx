@@ -24,14 +24,14 @@ export function BreakoutLegend() {
     <Box
       className={S.root}
       w="16rem"
-      pt="md"
-      pe="lg"
-      pb="md"
+      pt="lg"
+      pe="xl"
+      pb="lg"
       ps="sm"
       data-testid="metrics-viewer-breakout-legend"
     >
-      <Paper withBorder radius="md" p="lg">
-        <Stack gap="lg">
+      <Paper withBorder radius="sm" p="xl">
+        <Stack gap="xl">
           {groups.map((group) => (
             <Stack key={group.key} gap="sm">
               <div>

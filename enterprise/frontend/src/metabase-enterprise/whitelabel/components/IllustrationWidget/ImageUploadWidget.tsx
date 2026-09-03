@@ -109,7 +109,7 @@ export function ImageUploadWidget({
                 <PreviewImage src={imageSource} aria-label={t`Image preview`} />
               )}
             </Flex>
-            <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
+            <Flex p="xl" gap="lg" direction="column" justify="center" w="100%">
               <Flex w="100%" align="center">
                 <Button
                   className={CS.flexNoShrink}
@@ -125,7 +125,7 @@ export function ImageUploadWidget({
                   accept="image/jpeg,image/png,image/svg+xml"
                   multiple={false}
                 />
-                <Text ms="lg" truncate="end">
+                <Text ms="xl" truncate="end">
                   {isDefaultImage
                     ? t`No file chosen`
                     : fileName
@@ -137,7 +137,7 @@ export function ImageUploadWidget({
                     leftSection={<Icon name="close" />}
                     variant="subtle"
                     c="text-primary"
-                    ms="md"
+                    ms="lg"
                     size="compact-md"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}

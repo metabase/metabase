@@ -82,7 +82,7 @@ export const QuestionPane = ({
       onBack={onBack}
       onClose={onClose}
     >
-      <Box ps="lg" pe="lg">
+      <Box ps="xl" pe="xl">
         <Box p="0 0.5rem 1rem 0.5rem">
           {card.description ? (
             <Description>{card.description}</Description>

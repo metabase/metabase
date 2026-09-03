@@ -27,7 +27,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
 
     return (
       <>
-        <Box p="lg" pb={0}>
+        <Box p="xl" pb={0}>
           <Title
             order={4}
           >{t`Combine “${columnInfo.displayName}” with other columns`}</Title>

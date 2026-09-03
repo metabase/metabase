@@ -35,29 +35,29 @@
   }
 
   &:first-of-type {
-    border-start-start-radius: var(--mantine-radius-xs);
-    border-end-start-radius: var(--mantine-radius-xs);
+    border-start-start-radius: var(--mantine-radius-xxs);
+    border-end-start-radius: var(--mantine-radius-xxs);
   }
 
   &:last-of-type {
-    border-end-end-radius: var(--mantine-radius-xs);
-    border-start-end-radius: var(--mantine-radius-xs);
+    border-end-end-radius: var(--mantine-radius-xxs);
+    border-start-end-radius: var(--mantine-radius-xxs);
   }
 }
 
 .colorIndicatorCell {
   width: 1%;
   text-align: center;
-  padding-inline-end: var(--mantine-spacing-xs);
+  padding-inline-end: var(--mantine-spacing-xxs);
 }
 
 .valueCell {
-  padding-inline-start: var(--mantine-spacing-xl);
+  padding-inline-start: var(--mantine-spacing-xxl);
   text-align: end;
 }
 
 .percentCell {
-  padding-inline-start: var(--mantine-spacing-md);
+  padding-inline-start: var(--mantine-spacing-lg);
   color: var(--mb-color-tooltip-text-secondary);
   text-align: end;
 }

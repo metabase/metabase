@@ -212,7 +212,7 @@ function ExistingTagSelectItem({
     <SelectItem
       className={cx(S.selectItem, { [S.editable]: tag.can_run })}
       selected={selected}
-      py="xs"
+      py="xxs"
     >
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
@@ -220,7 +220,7 @@ function ExistingTagSelectItem({
           <Tooltip
             label={t`This tag contains a transform you don't have permission to run.`}
           >
-            <Icon name="lock_filled" size={14} ms="xs" />
+            <Icon name="lock_filled" size={14} ms="xxs" />
           </Tooltip>
         )}
       </Text>

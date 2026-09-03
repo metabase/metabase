@@ -135,7 +135,14 @@ export const ChartSettingFieldPicker = ({
         onChange={(value) => onChange?.(String(value))}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="xs" p="xs" ms="sm" me="md" align="center">
+            <Group
+              wrap="nowrap"
+              gap="xxs"
+              p="xxs"
+              ms="sm"
+              me="lg"
+              align="center"
+            >
               {showDragHandle && (
                 <Icon
                   // Unjustified type cast. FIXME

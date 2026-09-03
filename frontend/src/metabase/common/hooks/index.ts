@@ -5,7 +5,7 @@ export * from "./use-dnd-sensors";
 export * from "./use-docs-url";
 export * from "./use-get-personal-collection";
 export * from "./use-has-token-feature";
-export * from "./use-is-rtl";
+export { useHelpLink } from "./use-help-link";
 export * from "./use-locale";
 export * from "./use-notification-channels";
 export * from "./use-scroll-to-top";

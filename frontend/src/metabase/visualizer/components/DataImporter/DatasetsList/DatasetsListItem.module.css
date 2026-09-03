@@ -1,7 +1,7 @@
 .DatasetsListItem {
   cursor: pointer;
   border-radius: 4px;
-  gap: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
   height: 46px;
 }
 
@@ -48,8 +48,8 @@
 .DatasetsListItemActions {
   display: flex;
   align-items: center;
-  gap: var(--mantine-spacing-xs);
-  padding-inline-start: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
+  padding-inline-start: var(--mantine-spacing-xxs);
 }
 
 .AddButton[data-variant="inverse"] {

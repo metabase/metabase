@@ -564,7 +564,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
         {!isSearching && searchResults.length === 0 && (
           <Box>
             <Text
-              px="md"
+              px="lg"
               py="sm"
               c="text-secondary"
             >{t`No search results`}</Text>
@@ -678,7 +678,7 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
   }
 
   return (
-    <Flex gap="xs" align="center" ms="auto" style={{ overflow: "hidden" }}>
+    <Flex gap="xxs" align="center" ms="auto" style={{ overflow: "hidden" }}>
       {iconProps && <Icon {...iconProps} size={12} miw={12} />}
       <Text size="sm" c="text-secondary" miw="0">
         <Ellipsified>{itemText}</Ellipsified>

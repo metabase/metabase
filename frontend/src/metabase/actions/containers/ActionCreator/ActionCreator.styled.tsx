@@ -21,7 +21,7 @@ export const EditorContainer = styled.div`
   background-color: var(--mb-color-background_page-secondary);
 
   .ace_editor {
-    margin-inline-start: var(--mantine-spacing-md);
+    margin-inline-start: var(--mantine-spacing-lg);
   }
 `;
 

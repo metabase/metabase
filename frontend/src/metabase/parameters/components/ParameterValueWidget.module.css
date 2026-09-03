@@ -9,7 +9,7 @@
   border: 1px solid var(--mb-color-border-neutral);
   padding-inline-start: var(--mantine-spacing-sm);
   padding-inline-end: var(--mantine-spacing-sm);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
   transition: all 0.2s ease-in-out;
 
   &.selected {

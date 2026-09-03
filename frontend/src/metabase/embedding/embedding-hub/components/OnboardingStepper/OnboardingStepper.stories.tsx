@@ -43,13 +43,13 @@ const DefaultExample = () => {
   };
 
   return (
-    <Box maw={600} ms="xl">
+    <Box maw={600} ms="xxl">
       <OnboardingStepper completedSteps={completedSteps} lockedSteps={{}}>
         <OnboardingStepper.Step
           stepId="step-1"
           title="Connect to your database"
         >
-          <Stack gap="lg">
+          <Stack gap="xl">
             <Text>
               Connect your database to start exploring your data. Metabase
               supports PostgreSQL, MySQL, and many other databases.
@@ -67,7 +67,7 @@ const DefaultExample = () => {
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step stepId="step-2" title="Invite your team">
-          <Stack gap="lg">
+          <Stack gap="xl">
             <Text>
               Invite colleagues to collaborate on dashboards and questions.
             </Text>
@@ -87,7 +87,7 @@ const DefaultExample = () => {
           stepId="step-3"
           title="Create your first dashboard"
         >
-          <Stack gap="lg">
+          <Stack gap="xl">
             <Text>
               Build a dashboard to visualize your data and share insights with
               your team.
@@ -124,7 +124,7 @@ export const Default = {
 
 const LockedStepsExample = () => {
   return (
-    <Box maw={600} ms="xl">
+    <Box maw={600} ms="xxl">
       <OnboardingStepper
         completedSteps={{ "step-1": true }}
         lockedSteps={{ "step-3": true, "step-4": true, "step-5": true }}

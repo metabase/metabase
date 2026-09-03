@@ -24,9 +24,9 @@ export const DatabaseInfoSection = ({
   condensed = false,
   ...props
 }: PropsWithChildren<DatabaseInfoSectionProps>) => (
-  <Flex gap="lg" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
-    <Stack w="100%" maw={{ sm: "16rem" }} mt="md" style={{ flexShrink: 0 }}>
-      <Text size="lg" fw="700" mb="xs" lh={1.4}>
+  <Flex gap="xl" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
+    <Stack w="100%" maw={{ sm: "16rem" }} mt="lg" style={{ flexShrink: 0 }}>
+      <Text size="lg" fw="700" mb="xxs" lh={1.4}>
         {name}
       </Text>
       <Markdown c="text-secondary">{description}</Markdown>
@@ -37,7 +37,7 @@ export const DatabaseInfoSection = ({
         bg="background_page-secondary"
         shadow="none"
         style={{ flexGrow: 0 }}
-        px="lg"
+        px="xl"
         py={condensed ? "1.125rem" : "1.875rem"}
       >
         {children}
@@ -54,6 +54,6 @@ export const DatabaseInfoSectionDivider = ({
   condensed?: boolean;
 }) => {
   return (
-    <Divider w="calc(100% + 3rem)" ms="-1.5rem" my={condensed ? "md" : "lg"} />
+    <Divider w="calc(100% + 3rem)" ms="-1.5rem" my={condensed ? "lg" : "xl"} />
   );
 };

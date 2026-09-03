@@ -83,7 +83,7 @@ export function GlossaryRowEditor({
       </Box>
       <Box component="td" valign="top" pe="0">
         {isDuplicate ? (
-          <Group gap="xs" pt="sm" wrap="nowrap">
+          <Group gap="xxs" pt="sm" wrap="nowrap">
             <Icon c="text-secondary" name="info" />
             <Text
               c="text-secondary"
@@ -114,8 +114,8 @@ export function GlossaryRowEditor({
           />
         )}
       </Box>
-      <Box component="td" valign="top" align="center" px="md" pt="sm" pb={0}>
-        <Group justify="flex-end" gap="xs" wrap="nowrap">
+      <Box component="td" valign="top" align="center" px="lg" pt="sm" pb={0}>
+        <Group justify="flex-end" gap="xxs" wrap="nowrap">
           <Tooltip label={t`Cancel`}>
             <ActionIcon
               aria-label={t`Cancel`}
