@@ -1,7 +1,15 @@
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { getUserAttributes, getUserIsAdmin } from "./selectors";
+import {
+  PLUGIN_APPLICATION_PERMISSIONS_SELECTORS,
+  reinitialize,
+} from "./plugin";
+import {
+  canAccessDataModel,
+  getUserAttributes,
+  getUserIsAdmin,
+} from "./selectors";
 
 describe("metabase/current-user", () => {
   it("should return true if user is an admin", () => {
@@ -18,6 +26,37 @@ describe("metabase/current-user", () => {
     });
 
     expect(getUserIsAdmin(state)).toBe(false);
+  });
+
+  describe("canAccessDataModel", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("should return true for an admin", () => {
+      const state = createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      });
+
+      expect(canAccessDataModel(state)).toBe(true);
+    });
+
+    it("should return false for a non-admin by default", () => {
+      const state = createMockState({
+        currentUser: createMockUser({ is_superuser: false }),
+      });
+
+      expect(canAccessDataModel(state)).toBe(false);
+    });
+
+    it("should return the plugin result for a non-admin", () => {
+      PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessDataModel = () => true;
+      const state = createMockState({
+        currentUser: createMockUser({ is_superuser: false }),
+      });
+
+      expect(canAccessDataModel(state)).toBe(true);
+    });
   });
 
   describe("getUserAttributes", () => {

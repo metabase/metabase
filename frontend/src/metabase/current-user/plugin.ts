@@ -1,6 +1,7 @@
 import type { State } from "metabase/redux/store";
 
 const getDefaultApplicationPermissionsSelectors = () => ({
+  canAccessDataModel: (_state: State) => false,
   canAccessSettings: (_state: State) => false,
   canManageSubscriptions: (_state: State) => true,
 });

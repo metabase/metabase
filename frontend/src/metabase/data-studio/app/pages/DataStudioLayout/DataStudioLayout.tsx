@@ -3,17 +3,17 @@ import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/current-user";
+import {
+  canAccessDataModel as canAccessDataModelSelector,
+  useUserKeyValue,
+} from "metabase/current-user";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
   AreaLayout,
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import {
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_REMOTE_SYNC,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -34,9 +34,7 @@ export function DataStudioLayout() {
   const isNavbarOpened = _isNavbarOpened !== false;
 
   const { pathname } = useLocation();
-  const canAccessDataModel = useSelector(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
-  );
+  const canAccessDataModel = useSelector(canAccessDataModelSelector);
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
