@@ -22,7 +22,7 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
 import { getMetadata } from "metabase/metadata-store";
-import { TagEditorSidebar } from "metabase/parameters/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";

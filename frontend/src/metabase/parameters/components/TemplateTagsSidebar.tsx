@@ -5,7 +5,7 @@ import type { TemplateTagsSidebarProps } from "metabase/querying/editor/types";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
-import { TagEditorSidebar } from "./template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "./TagEditor/TagEditorSidebar";
 
 const VISIBILITY_ALWAYS_ENABLED = () => "enabled" as const;
 
