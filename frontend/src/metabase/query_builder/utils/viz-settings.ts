@@ -19,7 +19,7 @@ export function getQuestionWithDefaultVisualizationSettings(
   question: Question,
   series: Series,
 ) {
-  // Compared as they're read, so adopting a legacy custom viz key on its own doesn't dirty the question.
+  // Adopting a legacy custom viz key should not dirty the question
   const oldVizSettings = adoptLegacyCustomVizSettings(
     question.display(),
     question.settings(),
