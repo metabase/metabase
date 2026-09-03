@@ -77,4 +77,38 @@ describe("ChartSettingsWidget", () => {
       onChangeSettings,
     });
   });
+
+  it("keeps the base props ahead of whatever getProps adds", () => {
+    const mount: WidgetMount = () => ({
+      update: () => undefined,
+      unmount: () => undefined,
+    });
+    const onChange = jest.fn();
+    const onChangeSettings = jest.fn();
+    const { mountedProps } = setup({
+      props: {
+        id: "threshold",
+        question: {},
+        props: {
+          id: "forged",
+          value: 2,
+          onChange: jest.fn(),
+          onChangeSettings: jest.fn(),
+        },
+        value: 1,
+        widget: mount,
+        onChange,
+        onChangeSettings,
+        onChangeSeriesColor: jest.fn(),
+        onShowWidget: jest.fn(),
+      },
+    });
+
+    expect(mountedProps).toEqual({
+      id: "threshold",
+      value: 1,
+      onChange,
+      onChangeSettings,
+    });
+  });
 });

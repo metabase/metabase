@@ -1,6 +1,6 @@
 import { runInNewContext } from "vm";
 
-import { copyPluginProps, copyPluginValue } from "./copy-plugin-value";
+import { copyPluginValue } from "./copy-plugin-value";
 
 describe("copyPluginValue", () => {
   it("copies through a proxy, which structuredClone rejects", () => {
@@ -64,27 +64,4 @@ describe("copyPluginValue", () => {
       /can't be copied/,
     );
   });
-});
-
-describe("copyPluginProps", () => {
-  it("copies the entries it can and keeps the plugin's callbacks", () => {
-    const options = [{ name: "Count", value: "count" }];
-    const onFormat = () => "formatted";
-
-    const copied = copyPluginProps(
-      new Proxy({ options: new Proxy(options, {}), onFormat }, {}),
-    );
-
-    expect(copied.options).toEqual(options);
-    expect(copied.options).not.toBe(options);
-    expect(() => structuredClone(copied.options)).not.toThrow();
-    expect(copied.onFormat).toBe(onFormat);
-  });
-
-  it.each([undefined, null, "props", 42])(
-    "turns the non-object result %p into no props",
-    (props) => {
-      expect(copyPluginProps(props)).toEqual({});
-    },
-  );
 });

@@ -16,7 +16,7 @@ import type {
 import type { CustomVizPluginRuntime, Series } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { copyPluginProps, copyPluginValue } from "./copy-plugin-value";
+import { copyPluginValue } from "./copy-plugin-value";
 import { toPluginSeries, toPluginSettings } from "./plugin-view";
 import { wrapPluginWidget } from "./widget-mount";
 
@@ -44,8 +44,9 @@ export type HostContext = {
 /**
  * Turns plugin's `vizDef.settings` into host definitions. Setting ids and
  * dependency ids get the plugin's namespace, every callback sees the plugin's
- * view of the series and settings and has its result copied into the host, and
- * custom setting widgets are rewrapped into host-side `WidgetMount`s.
+ * view of the series and settings, the values `getDefault` and `getValue` return
+ * are copied into the host, and custom setting widgets are rewrapped into
+ * host-side `WidgetMount`s.
  */
 export function sanitizePluginSettings(
   settings: PluginSettingDefinitions | undefined,
@@ -142,8 +143,7 @@ function toHostDefinition(
         copyPluginValue(getValue(...pluginArgs(series, settings)))),
     getProps:
       getProps &&
-      ((series, settings) =>
-        copyPluginProps(getProps(...pluginArgs(series, settings)))),
+      ((series, settings) => getProps(...pluginArgs(series, settings))),
     widget: isComponentWidget(widget)
       ? wrapPluginWidget(
           (container, initialProps) => mount(widget, container, initialProps),

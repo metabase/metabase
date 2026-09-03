@@ -89,11 +89,11 @@ const ChartSettingsWidget = ({
           <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
             widgetProps={{
+              ...props, // spread first so a plugin's getProps can't override the base props
               id: extraWidgetProps.id,
               value: extraWidgetProps.value,
               onChange: checkNotNull(extraWidgetProps.onChange),
               onChangeSettings: checkNotNull(extraWidgetProps.onChangeSettings),
-              ...props,
             }}
           />
         ) : (
