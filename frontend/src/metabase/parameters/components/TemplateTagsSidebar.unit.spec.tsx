@@ -14,6 +14,7 @@ import {
   createMockCard,
   createMockDatabase,
   createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 
@@ -24,9 +25,10 @@ const WRITABLE_DB_ID = 2;
 
 interface SetupOpts {
   canUseSampleDatabase?: boolean;
+  isNative?: boolean;
 }
 
-const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
+const setup = ({ canUseSampleDatabase, isNative = true }: SetupOpts = {}) => {
   const sampleDatabase = createMockDatabase({
     id: SAMPLE_DB_ID,
     name: "Sample Database",
@@ -37,20 +39,21 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
     name: "Writable Postgres",
     engine: "postgres",
   });
-  const card = createMockCard({
-    dataset_query: createMockNativeDatasetQuery({
-      database: WRITABLE_DB_ID,
-      native: {
-        query: "SELECT {{x}}",
-        "template-tags": {
-          x: createMockTemplateTag({
-            name: "x",
-            "display-name": "X",
-            type: "text",
-          }),
-        },
+  const nativeQuery = createMockNativeDatasetQuery({
+    database: WRITABLE_DB_ID,
+    native: {
+      query: "SELECT {{x}}",
+      "template-tags": {
+        x: createMockTemplateTag({
+          name: "x",
+          "display-name": "X",
+          type: "text",
+        }),
       },
-    }),
+    },
+  });
+  const card = createMockCard({
+    dataset_query: isNative ? nativeQuery : createMockStructuredDatasetQuery(),
   });
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -79,6 +82,12 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
 };
 
 describe("TemplateTagsSidebar", () => {
+  it("should render nothing for a question without a native query", () => {
+    setup({ isNative: false });
+
+    expect(screen.queryByTestId("tag-editor-sidebar")).not.toBeInTheDocument();
+  });
+
   it("hides the 'Try it' examples when the sample database can't be used, e.g. in transforms (metabase#78037)", async () => {
     setup({ canUseSampleDatabase: false });
 

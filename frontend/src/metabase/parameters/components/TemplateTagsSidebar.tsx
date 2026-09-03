@@ -2,6 +2,7 @@ import { useRef } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import type { TemplateTagsSidebarProps } from "metabase/querying/editor/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { TagEditorSidebar } from "./template_tags/TagEditorSidebar";
@@ -29,6 +30,11 @@ export function TemplateTagsSidebar({
   const latestQueryRef = useRef(query);
   latestQueryRef.current = query;
 
+  const nativeQuery = question.legacyNativeQuery();
+  if (!nativeQuery) {
+    return null;
+  }
+
   const commitQuery = (newQuery: Lib.Query) => {
     latestQueryRef.current = newQuery;
     onChangeQuery(newQuery);
@@ -37,7 +43,7 @@ export function TemplateTagsSidebar({
   return (
     <TagEditorSidebar
       question={question}
-      query={question.legacyNativeQuery()!}
+      query={nativeQuery}
       onClose={onClose}
       sampleDatabaseId={
         canUseSampleDatabase === false ? undefined : sampleDatabaseId
@@ -59,11 +65,15 @@ export function TemplateTagsSidebar({
         });
       }}
       setTemplateTagConfig={(tag, config) => {
-        const newQuery = question
-          .setQuery(latestQueryRef.current)
-          .legacyNativeQuery()!
-          .setTemplateTagConfig(tag, config);
-        commitQuery(newQuery.question().query());
+        const latestNativeQuery = checkNotNull(
+          question.setQuery(latestQueryRef.current).legacyNativeQuery(),
+        );
+        commitQuery(
+          latestNativeQuery
+            .setTemplateTagConfig(tag, config)
+            .question()
+            .query(),
+        );
       }}
       setDatasetQuery={(newQuery) => {
         commitQuery(question.setDatasetQuery(newQuery).query());
