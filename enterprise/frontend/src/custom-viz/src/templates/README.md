@@ -123,17 +123,17 @@ export default createVisualization;
 
 ### Visualization definition properties
 
-| Property                 | Type                                | Description                                                                                                                 |
-| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `id`                     | `string`                            | Unique identifier. Must match `name` in `metabase-plugin.json`.                                                             |
-| `getName()`              | `() => string`                      | Display name shown in the chart type picker.                                                                                |
-| `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                |
-| `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                |
-| `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                               |
-| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                |
-| `checkRenderable`        | `(series, settings) => void`        | Throw here to signal the viz cannot render with the current data or settings. Metabase shows the error message to the user. |
-| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                    |
-| `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                           |
+| Property                 | Type                                | Description                                                                                                                                                     |
+| ------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                     | `string`                            | Unique identifier. Must match `name` in `metabase-plugin.json`.                                                                                                 |
+| `getName()`              | `() => string`                      | Display name shown in the chart type picker.                                                                                                                    |
+| `minSize`                | `{ width, height }`                 | Minimum dashboard grid size.                                                                                                                                    |
+| `defaultSize`            | `{ width, height }`                 | Default dashboard grid size.                                                                                                                                    |
+| `noHeader`               | `boolean`                           | When `true`, hides the default card title/description header.                                                                                                   |
+| `canSavePng`             | `boolean`                           | Set to `false` to disable PNG export for this visualization.                                                                                                    |
+| `checkRenderable`        | `(series, settings) => void`        | Optional. Throw here to signal the viz cannot render with the current data or settings; Metabase shows the error message to the user. Omit it to always render. |
+| `settings`               | `Record<string, SettingDefinition>` | Map of setting definitions created by `defineSetting()`.                                                                                                        |
+| `VisualizationComponent` | `React.ComponentType`               | The interactive React component for dashboard/question rendering.                                                                                               |
 
 ### VisualizationComponent props
 
@@ -193,9 +193,9 @@ settings: {
 | `getValue(series, settings)`   | Always-computed value — overrides stored value on every render.                      |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                       |
 | `isValid(series, settings)`    | Return `false` to discard a stored value and fall back to `getDefault`.              |
-| `readDependencies`             | Setting IDs that must resolve before this one.                                       |
-| `writeDependencies`            | Setting IDs whose current values are persisted when this setting changes.            |
-| `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                               |
+| `readDependencies`             | Ids of your settings that must resolve before this one.                              |
+| `writeDependencies`            | Ids of your settings whose current values are persisted when this setting changes.   |
+| `eraseDependencies`            | Ids of your settings reset to `null` when this setting changes.                      |
 | `persistDefault`               | When `true`, writes the computed default to stored settings on first render.         |
 
 > **Note:** The setting ids `column_settings` and `column` are reserved by Metabase
@@ -203,6 +203,11 @@ settings: {
 > `Settings` type, and Metabase ignores setting definitions that use them. To apply
 > the formatting people pick in the popover, pass the result of `settings.column?.(col)`
 > to `formatValue`.
+>
+> Metabase stores your settings under `custom-viz:<plugin name>:<setting id>` keys.
+> You never see the prefix: `settings`, `onChangeSettings`, and the dependency lists
+> use your own ids and can only refer to your own settings. If one of your ids collides
+> with a Metabase setting id, your setting shadows Metabase's in `settings`.
 
 ### Built-in widgets
 

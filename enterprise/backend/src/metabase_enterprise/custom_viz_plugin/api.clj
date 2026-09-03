@@ -94,11 +94,14 @@
   (nil? (:bundle_hash plugin)))
 
 (defn- plugin-warnings
-  "Version warnings for a plugin. Dev-only plugins get no warnings."
+  "Warnings for a plugin. Dev-only plugins get no version warnings."
   [plugin]
-  (if (dev-only-plugin? plugin)
-    []
-    (manifest/warnings plugin)))
+  (cond-> (if (dev-only-plugin? plugin)
+            []
+            (manifest/warnings plugin))
+    ;; a legacy pre-validation identifier; /list skips such plugins entirely
+    (manifest/identifier-error (:identifier plugin))
+    (conj {:type "invalid-identifier" :identifier (:identifier plugin)})))
 
 (defn- plugin->response
   "Convert a plugin record to API response format."
@@ -174,6 +177,8 @@
                                            "metabase-plugin.json is missing a \"name\" field."
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
+        _            (when-let [error (manifest/identifier-error identifier)]
+                       (throw (ex-info error {:status-code 400})))
         _            (api/check-400
                       (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
@@ -209,6 +214,10 @@
         plugins   (custom-viz-plugin.db/active-enabled-non-blob-plugins)]
     (->> plugins
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
+         ;; An identifier containing ":" would collide with another plugin's `custom-viz:<id>:`
+         ;; settings prefix on the frontend. Colons are rejected at registration now; skip any
+         ;; legacy row that predates that check instead of serving it.
+         (remove #(manifest/identifier-error (:identifier %)))
          (mapv (comp plugin->runtime-response api/read-check)))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -247,6 +256,10 @@
    _query-params
    {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+        _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
+                                (format (str "This plugin's identifier (\"%s\") is no longer supported. "
+                                             "Delete the plugin and upload the bundle under a new name.")
+                                        (:identifier existing)))
         tempfile (check-upload! file)]
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))

@@ -69,9 +69,11 @@ export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   >;
 
   /**
-   * This function should throw if the visualization cannot be rendered with given data and settings.
+   * Throw here if the visualization cannot be rendered with the given data and settings.
+   * Metabase shows the thrown message to the user.
+   * When omitted, the visualization is always considered renderable.
    */
-  checkRenderable: (
+  checkRenderable?: (
     series: Series,
     settings: CustomVisualizationSettings<TSettings>,
   ) => void | never;
@@ -120,9 +122,7 @@ export type CustomVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
-  onClick: (
-    clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
-  ) => void;
+  onClick: (clickObject: ClickObject | null) => void;
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
@@ -146,7 +146,7 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
-export type ClickObject<TSettings extends BaseVisualizationSettings> = {
+export type ClickObject = {
   /** The raw value of the clicked cell. */
   value?: RowValue;
 
@@ -166,9 +166,6 @@ export type ClickObject<TSettings extends BaseVisualizationSettings> = {
 
   /** The DOM element that was clicked. Used to anchor popovers. */
   element?: Element;
-
-  /** Visualization settings at the time of the click. */
-  settings?: CustomVisualizationSettings<TSettings>;
 
   /**
    * The full row of data and column metadata for the clicked data point.
@@ -275,10 +272,12 @@ export type BaseWidgetProps<
   TValue,
   TSettings extends BaseVisualizationSettings,
 > = {
+  /**
+   * Form-only id for the widget's control (e.g. a label's `htmlFor`).
+   * The value is arbitrary - don't interpret it.
+   */
   id: string;
   value: TValue | undefined;
   onChange: (value?: TValue | null) => void;
-  onChangeSettings: (
-    settings: Partial<CustomVisualizationSettings<TSettings>>,
-  ) => void;
+  onChangeSettings: (settings: Partial<TSettings>) => void;
 };

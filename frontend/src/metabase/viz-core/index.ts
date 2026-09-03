@@ -218,6 +218,10 @@ export {
   HEAT_MAP_ZERO_COLOR,
 } from "./lib/choropleth";
 export { getColorScale } from "./lib/color-scales";
+export {
+  getCustomVizSettingKeyPrefix,
+  isCustomVizSettingKey,
+} from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
   ChartSettingsError,
@@ -354,6 +358,7 @@ export {
   validateStacking,
 } from "./lib/settings/validation";
 export {
+  adoptLegacyCustomVizSettings,
   getComputedSettingsForSeries,
   getPersistableDefaultSettingsForSeries,
   getStoredSettingsForSeries,
@@ -498,6 +503,7 @@ export type {
   ChartSettingTableColumnsProps,
   ChartSettingWidgetProps,
   ComparisonMenuOption,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   EditWidgetData,
   SmartScalarComparisonWidgetProps,

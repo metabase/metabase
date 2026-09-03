@@ -234,7 +234,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value.
 
 The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
@@ -273,9 +273,9 @@ settings: {
 | `getValue(series, settings)`   | Always-computed value — overrides the stored value on every render.                              |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                                   |
 | `isValid(series, settings)`    | Return `false` to discard a stored value and fall back to `getDefault`.                          |
-| `readDependencies`             | Setting IDs that have to resolve before this one.                                                |
-| `writeDependencies`            | Setting IDs whose current values are persisted when this setting changes.                        |
-| `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                                           |
+| `readDependencies`             | Ids of your settings that have to resolve before this one.                                       |
+| `writeDependencies`            | Ids of your settings whose current values are persisted when this setting changes.               |
+| `eraseDependencies`            | Ids of your settings reset to `null` when this setting changes.                                  |
 | `persistDefault`               | When `true`, writes the value from `getDefault` to stored settings on first render.              |
 
 ### Reserved setting ids
@@ -283,6 +283,10 @@ settings: {
 Metabase adds a few settings of its own to every custom visualization. They power built-in behavior, like the column formatting popover that opens when a `"field"` or `"fields"` widget sets `showColumnSetting: true`. The setting ids `column_settings` and `column` are reserved for those settings: TypeScript rejects a `Settings` type that declares either key, and Metabase ignores any setting definition that uses one (and logs a warning to the console).
 
 Your visualization can still _read_ the per-column formatting: the resolved `settings` object includes `column`, a function that returns a column's effective formatting settings. See [Formatting and theming](#formatting-and-theming) for how to apply it with `formatValue`.
+
+### Where your settings are stored
+
+Metabase stores your settings under `custom-viz:<plugin name>:<setting id>` keys in the question's `visualization_settings`, where the plugin name is the `name` from your manifest. You never see the prefix: the `settings` your visualization and widgets receive use your own ids, and so do `onChangeSettings`, `readDependencies`, `writeDependencies`, and `eraseDependencies`. Those can only refer to your own settings. If one of your setting ids collides with a Metabase setting id (like `card.title`), your setting shadows Metabase's in the `settings` you receive. Metabase's settings stay readable from `settings` without listing them in `readDependencies`.
 
 ### Built-in widgets
 
@@ -307,12 +311,12 @@ When the built-in widgets don't fit, set `widget` to your own React component in
 
 Metabase injects these props into your widget component (import the type with `BaseWidgetProps<TValue, TSettings>`):
 
-| Prop               | Type                  | Description                             |
-| ------------------ | --------------------- | --------------------------------------- |
-| `id`               | `string`              | The setting's `id`.                     |
-| `value`            | `TValue \| undefined` | The setting's current value.            |
-| `onChange`         | `(value?) => void`    | Update this setting's value.            |
-| `onChangeSettings` | `(settings) => void`  | Update other settings at the same time. |
+| Prop               | Type                  | Description                                                                                            |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| `id`               | `string`              | Form-only id for your control (e.g. a label's `htmlFor`). The value is arbitrary — don't interpret it. |
+| `value`            | `TValue \| undefined` | The setting's current value.                                                                           |
+| `onChange`         | `(value?) => void`    | Update this setting's value.                                                                           |
+| `onChangeSettings` | `(settings) => void`  | Update other settings of yours.                                                                        |
 
 Add any extra props your component needs with `getProps()`. Its return type is your component's own props, minus the base props Metabase injects.
 

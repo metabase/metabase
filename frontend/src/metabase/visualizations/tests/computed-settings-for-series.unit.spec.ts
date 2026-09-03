@@ -9,6 +9,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
+  registerVisualization,
 } from "metabase/viz-core";
 import type {
   Series,
@@ -389,3 +390,116 @@ const cardWithTimeseriesBreakoutAndTwoMetrics = ({
     },
   ),
 ];
+
+describe("getStoredSettingsForSeries", () => {
+  describe("custom viz settings saved before namespacing", () => {
+    const PREFIX = "custom-viz:demo-viz:";
+
+    beforeAll(() => {
+      registerVisualization({
+        identifier: "custom:demo-viz",
+        getUiName: () => "Demo viz",
+        checkRenderable: () => undefined,
+        settings: {
+          [`${PREFIX}threshold`]: { widget: "number" },
+          [`${PREFIX}card.title`]: { widget: "input" },
+          [`${PREFIX}graph.goal_value`]: { widget: "number" },
+          [`${PREFIX}goal.color`]: { widget: "color" },
+          [`${PREFIX}series_settings`]: { widget: "input" },
+          [`${PREFIX}virtual_card`]: { widget: "input" },
+          [`${PREFIX}toString`]: { widget: "input" },
+        },
+      });
+    });
+
+    function customVizSeries(
+      visualization_settings: VisualizationSettings,
+    ): Series {
+      return [
+        createMockSingleSeries({
+          display: "custom:demo-viz",
+          visualization_settings,
+        }),
+      ];
+    }
+
+    it("reads a bare plugin setting under its namespaced key", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ threshold: 5 })),
+      ).toEqual({ [`${PREFIX}threshold`]: 5 });
+    });
+
+    it("prefers the namespaced key when both are stored", () => {
+      expect(
+        getStoredSettingsForSeries(
+          customVizSeries({ threshold: 5, [`${PREFIX}threshold`]: 7 }),
+        ),
+      ).toEqual({ [`${PREFIX}threshold`]: 7 });
+    });
+
+    it("leaves a host setting alone even when the plugin declares the same id", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ "card.title": "Title" })),
+      ).toEqual({ "card.title": "Title" });
+    });
+
+    it("never adopts or erases a host setting the plugin declares an id for", () => {
+      const series = customVizSeries({ "graph.goal_value": 100 });
+
+      expect(getStoredSettingsForSeries(series)).toEqual({
+        "graph.goal_value": 100,
+      });
+    });
+
+    it("adopts a dotted plugin id that names no host setting", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ "goal.color": "red" })),
+      ).toEqual({ [`${PREFIX}goal.color`]: "red" });
+    });
+
+    it("leaves a host setting registered by another display alone", () => {
+      const series = customVizSeries({
+        series_settings: { x: { title: "X" } },
+      });
+
+      expect(getStoredSettingsForSeries(series)).toEqual({
+        series_settings: { x: { title: "X" } },
+      });
+    });
+
+    it("leaves a stored key with no settings definition alone", () => {
+      const series = customVizSeries({ virtual_card: { display: "text" } });
+
+      expect(getStoredSettingsForSeries(series)).toEqual({
+        virtual_card: { display: "text" },
+      });
+    });
+
+    it("adopts a plugin id that shadows an Object.prototype member", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ toString: "custom" })),
+      ).toEqual({ [`${PREFIX}toString`]: "custom" });
+    });
+
+    it("returns the stored settings as is when there is nothing to adopt", () => {
+      const series = customVizSeries({ [`${PREFIX}threshold`]: 7 });
+
+      expect(getStoredSettingsForSeries(series)).toBe(
+        series[0].card.visualization_settings,
+      );
+    });
+
+    it("ignores bare plugin ids on other displays", () => {
+      const series: Series = [
+        createMockSingleSeries({
+          display: "table",
+          visualization_settings: { threshold: 5 },
+        }),
+      ];
+
+      expect(getStoredSettingsForSeries(series)).toBe(
+        series[0].card.visualization_settings,
+      );
+    });
+  });
+});

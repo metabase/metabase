@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
-import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
-import { formatValue } from "../../../src/index";
+import {
+  type CustomVisualizationProps,
+  type RowValue,
+  formatValue,
+} from "../../../src/index";
 import type { Settings } from "./types";
 
 export const Visualization = (
@@ -9,7 +12,7 @@ export const Visualization = (
 ) => {
   const { series, settings, renderingContext, onClick, onHover, locale } =
     props;
-  const { threshold } = settings;
+  const { threshold, columns } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
 
@@ -33,7 +36,6 @@ export const Visualization = (
     onClick({
       value,
       column: cols[0],
-      settings,
       event: event.nativeEvent,
       element: event.currentTarget,
       origin: { row: rows[0], cols },
@@ -60,6 +62,9 @@ export const Visualization = (
     <div>
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
+      <div data-testid="demo-viz-columns">
+        Columns: {columns?.join(", ") ?? "none"}
+      </div>
       <div>Value: {value}</div>
       <div data-testid="demo-viz-formatted-value">
         Formatted: {formatValue(value, settings.column?.(cols[0]))}
@@ -93,10 +98,12 @@ export const Visualization = (
         Hover me
       </div>
       <div data-testid="demo-viz-last-click">
-        Last clicked: {lastClickValue === null ? "none" : lastClickValue}
+        Last clicked:{" "}
+        {lastClickValue === null ? "none" : String(lastClickValue)}
       </div>
       <div data-testid="demo-viz-last-hover">
-        Last hovered: {lastHoverValue === null ? "none" : lastHoverValue}
+        Last hovered:{" "}
+        {lastHoverValue === null ? "none" : String(lastHoverValue)}
       </div>
     </div>
   );

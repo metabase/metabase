@@ -6,12 +6,36 @@ import type {
 } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
+import { getCustomPluginIdentifier } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import {
+  type CustomVizSettingWidgetProps,
+  type VisualizationSettingDefinition,
+  type VisualizationSettingsDefinitions,
+  getCustomVizSettingKeyPrefix,
+} from "metabase/viz-core";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCustomVizPluginRuntime,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
+import { isFunction, isObject } from "metabase-types/guards";
 
-import { sanitizePluginSettings } from "./custom-viz-settings";
+import {
+  type HostContext,
+  sanitizePluginSettings,
+} from "./custom-viz-settings";
 import { getWidgetMountPlugin, isWidgetMount } from "./widget-mount";
 
 const PLUGIN = createMockCustomVizPluginRuntime();
+const PREFIX = getCustomVizSettingKeyPrefix(getCustomPluginIdentifier(PLUGIN));
+const SERIES: Series = [
+  createMockSingleSeries({ visualization_settings: { threshold: 1 } }),
+];
+const SETTINGS = {
+  "card.title": "Title",
+  [`${PREFIX}threshold`]: 1,
+  "custom-viz:other:threshold": 2,
+};
 
 function setupMount() {
   const handle: CustomVisualizationMountHandle<object> = {
@@ -34,58 +58,94 @@ function setupMount() {
     return handle;
   };
 
-  return { mount, calls, handle };
+  const context: HostContext = { prefix: PREFIX, mount, plugin: PLUGIN };
+
+  return { context, calls, handle };
+}
+
+function mockWarn() {
+  return jest.spyOn(console, "warn").mockImplementation(() => undefined);
 }
 
 describe("sanitizePluginSettings", () => {
-  it("returns undefined when the plugin declares no settings", () => {
-    const { mount } = setupMount();
+  it("returns no definitions when the plugin declares no settings", () => {
+    const { context } = setupMount();
 
-    expect(sanitizePluginSettings(undefined, mount, PLUGIN)).toBeUndefined();
+    expect(sanitizePluginSettings(undefined, context)).toEqual({});
   });
 
-  it("passes built-in widget settings through unchanged", () => {
-    const { mount } = setupMount();
+  it("namespaces setting ids and copies the documented fields", () => {
+    const { context } = setupMount();
     const threshold = definePluginSetting({
       title: "Threshold",
+      group: "Limits",
+      index: 2,
+      inline: true,
+      persistDefault: true,
       widget: "number",
     });
 
-    const sanitized = sanitizePluginSettings({ threshold }, mount, PLUGIN);
+    const sanitized = sanitizePluginSettings({ threshold }, context);
 
-    expect(sanitized?.threshold).toBe(threshold);
+    expect(Object.keys(sanitized)).toEqual([`${PREFIX}threshold`]);
+    const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+    expect(definition).toMatchObject({
+      title: "Threshold",
+      group: "Limits",
+      index: 2,
+      inline: true,
+      persistDefault: true,
+      widget: "number",
+    });
+    expect(definition).not.toBe(threshold);
+  });
+
+  it("leaves out fields that are not part of the plugin API", () => {
+    const { context } = setupMount();
+
+    const sanitized = sanitizePluginSettings(
+      {
+        threshold: definePluginSetting({
+          widget: "number",
+          dashboard: false,
+          getHidden: () => true,
+          onUpdate: () => undefined,
+        }),
+      },
+      context,
+    );
+
+    const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+    expect(definition).not.toHaveProperty("dashboard");
+    expect(definition).not.toHaveProperty("getHidden");
+    expect(definition).not.toHaveProperty("onUpdate");
   });
 
   it("skips definitions that are not objects", () => {
-    const { mount } = setupMount();
+    const { context } = setupMount();
 
     const sanitized = sanitizePluginSettings(
       { broken: definePluginSetting("not-a-definition") },
-      mount,
-      PLUGIN,
+      context,
     );
 
     expect(sanitized).toEqual({});
   });
 
   it("drops settings with reserved ids and warns, keeping the rest", () => {
-    const warn = jest
-      .spyOn(console, "warn")
-      .mockImplementation(() => undefined);
-    const { mount } = setupMount();
-    const threshold = definePluginSetting({ widget: "number" });
+    const warn = mockWarn();
+    const { context } = setupMount();
 
     const sanitized = sanitizePluginSettings(
       {
         column: definePluginSetting({ widget: "input" }),
         column_settings: definePluginSetting({ widget: "input" }),
-        threshold,
+        threshold: definePluginSetting({ widget: "number" }),
       },
-      mount,
-      PLUGIN,
+      context,
     );
 
-    expect(sanitized).toEqual({ threshold });
+    expect(Object.keys(sanitized)).toEqual([`${PREFIX}threshold`]);
     expect(warn).toHaveBeenCalledTimes(2);
     expect(warn).toHaveBeenCalledWith(
       'Custom viz setting "column" uses a reserved id and was ignored.',
@@ -97,50 +157,364 @@ describe("sanitizePluginSettings", () => {
     warn.mockRestore();
   });
 
+  describe("dependencies", () => {
+    it("namespaces read, write and erase dependencies to the plugin's own settings", () => {
+      const { context } = setupMount();
+
+      const sanitized = sanitizePluginSettings(
+        {
+          threshold: definePluginSetting({
+            widget: "number",
+            readDependencies: ["label"],
+            writeDependencies: ["label", "goalColumn"],
+            eraseDependencies: ["segments"],
+          }),
+          label: definePluginSetting({ widget: "input" }),
+          goalColumn: definePluginSetting({ widget: "input" }),
+          segments: definePluginSetting({ widget: "input" }),
+        },
+        context,
+      );
+
+      expect(getHostDefinition(sanitized, `${PREFIX}threshold`)).toMatchObject({
+        readDependencies: [`${PREFIX}label`],
+        writeDependencies: [`${PREFIX}label`, `${PREFIX}goalColumn`],
+        eraseDependencies: [`${PREFIX}segments`],
+      });
+    });
+
+    it("drops dependencies that don't name the plugin's own settings", () => {
+      const { context } = setupMount();
+
+      const sanitized = sanitizePluginSettings(
+        {
+          threshold: definePluginSetting({
+            widget: "number",
+            readDependencies: ["card.title"],
+            writeDependencies: ["label", "card.title"],
+          }),
+          label: definePluginSetting({ widget: "input" }),
+        },
+        context,
+      );
+
+      const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+      expect(definition.readDependencies).toEqual([]);
+      expect(definition.writeDependencies).toEqual([`${PREFIX}label`]);
+    });
+
+    it("drops dependencies that are not lists of ids", () => {
+      const { context } = setupMount();
+
+      const sanitized = sanitizePluginSettings(
+        {
+          threshold: definePluginSetting({
+            widget: "number",
+            readDependencies: "label",
+            writeDependencies: ["label", 42],
+          }),
+          label: definePluginSetting({ widget: "input" }),
+        },
+        context,
+      );
+
+      const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+      expect(definition.readDependencies).toBeUndefined();
+      expect(definition.writeDependencies).toEqual([`${PREFIX}label`]);
+      expect(definition.eraseDependencies).toBeUndefined();
+    });
+  });
+
+  describe("callbacks", () => {
+    it.each(["getDefault", "getValue", "isValid", "getProps"])(
+      "calls %s with the plugin's view of the series and settings only",
+      (name) => {
+        const { context } = setupMount();
+        const callback = jest.fn<boolean, [Series, ...unknown[]]>(() => true);
+
+        const sanitized = sanitizePluginSettings(
+          {
+            threshold: definePluginSetting({
+              widget: "number",
+              [name]: callback,
+            }),
+          },
+          context,
+        );
+        getCallback(getHostDefinition(sanitized, `${PREFIX}threshold`), name)(
+          SERIES,
+          SETTINGS,
+          {},
+          jest.fn(),
+          jest.fn(),
+        );
+
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(callback).toHaveBeenCalledWith([{ data: SERIES[0].data }], {
+          "card.title": "Title",
+          threshold: 1,
+        });
+        const [series] = callback.mock.calls[0];
+        expect(series[0].data).not.toBe(SERIES[0].data);
+      },
+    );
+
+    it.each(["getDefault", "getValue"])(
+      "copies what %s returns into the host",
+      (name) => {
+        const { context } = setupMount();
+        const pluginValue = ["count"];
+
+        const sanitized = sanitizePluginSettings(
+          {
+            columns: definePluginSetting({
+              widget: "input",
+              [name]: () => new Proxy(pluginValue, {}),
+            }),
+          },
+          context,
+        );
+        const result = getCallback(
+          getHostDefinition(sanitized, `${PREFIX}columns`),
+          name,
+        )(SERIES, SETTINGS, {});
+
+        expect(result).toEqual(pluginValue);
+        expect(result).not.toBe(pluginValue);
+        expect(() => structuredClone(result)).not.toThrow();
+      },
+    );
+
+    it("copies what getProps returns for a built-in widget", () => {
+      const { context } = setupMount();
+      const options = [{ name: "Count", value: "count" }];
+
+      const sanitized = sanitizePluginSettings(
+        {
+          metric: definePluginSetting({
+            widget: "select",
+            getProps: () => new Proxy({ options: new Proxy(options, {}) }, {}),
+          }),
+        },
+        context,
+      );
+      const props = getCallback(
+        getHostDefinition(sanitized, `${PREFIX}metric`),
+        "getProps",
+      )(SERIES, SETTINGS, {});
+
+      expect(props).toEqual({ options });
+      if (!isObject(props)) {
+        throw new Error("Expected props");
+      }
+      expect(props.options).not.toBe(options);
+      expect(() => structuredClone(props)).not.toThrow();
+    });
+
+    it("drops built-in widget props that could pass for React elements", () => {
+      const warn = mockWarn();
+      const { context } = setupMount();
+      const element = {
+        $$typeof: Symbol.for("react.element"),
+        type: "div",
+        props: { dangerouslySetInnerHTML: { __html: "<img src=x onerror=1>" } },
+      };
+
+      const sanitized = sanitizePluginSettings(
+        {
+          mode: definePluginSetting({
+            widget: "radio",
+            getProps: () => ({ options: [{ name: element, value: "x" }] }),
+          }),
+        },
+        context,
+      );
+      const props = getCallback(
+        getHostDefinition(sanitized, `${PREFIX}mode`),
+        "getProps",
+      )(SERIES, SETTINGS, {});
+
+      expect(props).toEqual({});
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockRestore();
+    });
+
+    it.each([undefined, null, "props", 42])(
+      "turns the non-object getProps result %p into no props",
+      (result) => {
+        const { context } = setupMount();
+
+        const sanitized = sanitizePluginSettings(
+          {
+            threshold: definePluginSetting({
+              widget: "number",
+              getProps: () => result,
+            }),
+          },
+          context,
+        );
+
+        expect(
+          getCallback(
+            getHostDefinition(sanitized, `${PREFIX}threshold`),
+            "getProps",
+          )(SERIES, SETTINGS, {}),
+        ).toEqual({});
+      },
+    );
+
+    it("hands a component widget its getProps result as is, callbacks included", () => {
+      const { context } = setupMount();
+      const Widget: ComponentType<Record<string, unknown>> = () => null;
+      const pluginProps = { onFormat: () => "formatted" };
+
+      const sanitized = sanitizePluginSettings(
+        {
+          custom: definePluginSetting({
+            widget: Widget,
+            getProps: () => pluginProps,
+          }),
+        },
+        context,
+      );
+
+      expect(
+        getCallback(
+          getHostDefinition(sanitized, `${PREFIX}custom`),
+          "getProps",
+        )(SERIES, SETTINGS, {}),
+      ).toBe(pluginProps);
+    });
+
+    it("drops a title, group and section that are not strings", () => {
+      const { context } = setupMount();
+      const element = { $$typeof: Symbol.for("react.element"), type: "div" };
+
+      const sanitized = sanitizePluginSettings(
+        {
+          threshold: definePluginSetting({
+            widget: "number",
+            title: element,
+            group: element,
+            getSection: () => element,
+          }),
+        },
+        context,
+      );
+
+      const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+      expect(definition.title).toBeUndefined();
+      expect(definition.group).toBeUndefined();
+      expect(
+        getCallback(definition, "getSection")(SERIES, SETTINGS, {}),
+      ).toBeUndefined();
+    });
+
+    it("calls getSection without arguments", () => {
+      const { context } = setupMount();
+      const getSection = jest.fn(() => "Display");
+
+      const sanitized = sanitizePluginSettings(
+        { threshold: definePluginSetting({ widget: "number", getSection }) },
+        context,
+      );
+
+      expect(
+        getCallback(
+          getHostDefinition(sanitized, `${PREFIX}threshold`),
+          "getSection",
+        )(SERIES, SETTINGS, {}),
+      ).toBe("Display");
+      expect(getSection).toHaveBeenCalledWith();
+    });
+  });
+
   describe("component widgets", () => {
     const Widget: ComponentType<Record<string, unknown>> = () => null;
 
     it("rewrites a component widget into a plugin-tagged WidgetMount", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
       const original = definePluginSetting({ title: "Custom", widget: Widget });
 
       const sanitized = sanitizePluginSettings(
         { customWidget: original },
-        mount,
-        PLUGIN,
+        context,
       );
 
-      const definition = getRuntimeDefinition(sanitized?.customWidget);
+      const definition = getHostDefinition(sanitized, `${PREFIX}customWidget`);
       expect(definition.title).toBe("Custom");
 
-      const widget = getMountWidget(sanitized?.customWidget);
+      const widget = getMountWidget(definition);
       expect(isWidgetMount(widget)).toBe(true);
       expect(getWidgetMountPlugin(widget)).toBe(PLUGIN);
-
-      expect(getRuntimeDefinition(original).widget).toBe(Widget);
     });
 
-    it("delegates mounting to the plugin's shared mount function", () => {
-      const { mount, calls, handle } = setupMount();
+    it("delegates mounting to the plugin's shared mount function with the prefixed DOM id", () => {
+      const { context, calls, handle } = setupMount();
       const sanitized = sanitizePluginSettings(
         { customWidget: definePluginSetting({ widget: Widget }) },
-        mount,
-        PLUGIN,
+        context,
       );
 
-      const widget = getMountWidget(sanitized?.customWidget);
+      const widget = getMountWidget(
+        getHostDefinition(sanitized, `${PREFIX}customWidget`),
+      );
       const container = document.createElement("div");
-      const initialProps = { id: "customWidget" };
-      const mountHandle = widget(container, initialProps);
+      const mountHandle = widget(container, {
+        id: `${PREFIX}customWidget`,
+        value: null,
+        onChange: jest.fn(),
+        onChangeSettings: jest.fn(),
+      });
 
-      expect(calls).toEqual([{ Component: Widget, container, initialProps }]);
-      expect(mountHandle).toBe(handle);
+      expect(calls).toMatchObject([{ Component: Widget, container }]);
+      expect(calls[0].initialProps).toMatchObject({
+        id: `${PREFIX}customWidget`,
+      });
+
+      mountHandle.unmount();
+      expect(handle.unmount).toHaveBeenCalledTimes(1);
+    });
+
+    it("namespaces the settings a widget writes", () => {
+      const { context, calls } = setupMount();
+      const onChangeSettings = jest.fn();
+      const sanitized = sanitizePluginSettings(
+        { customWidget: definePluginSetting({ widget: Widget }) },
+        context,
+      );
+
+      const widget = getMountWidget(
+        getHostDefinition(sanitized, `${PREFIX}customWidget`),
+      );
+      widget(document.createElement("div"), {
+        id: `${PREFIX}customWidget`,
+        value: null,
+        onChange: jest.fn(),
+        onChangeSettings,
+      });
+      const mountedProps = calls[0].initialProps;
+      if (!isObject(mountedProps)) {
+        throw new Error("Expected the widget to be mounted with props");
+      }
+      getCallback(
+        mountedProps,
+        "onChangeSettings",
+      )({
+        customWidget: "a",
+        "gauge.segments": [],
+      });
+
+      expect(onChangeSettings).toHaveBeenCalledWith({
+        [`${PREFIX}customWidget`]: "a",
+        [`${PREFIX}gauge.segments`]: [],
+      });
     });
   });
 
   describe("widget validation", () => {
     it("throws for unsupported built-in widget names", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
 
       expect(() =>
         sanitizePluginSettings(
@@ -148,14 +522,35 @@ describe("sanitizePluginSettings", () => {
             threshold: definePluginSetting({ widget: "number" }),
             bad: definePluginSetting({ widget: "dropdown" }),
           },
-          mount,
-          PLUGIN,
+          context,
         ),
       ).toThrow();
     });
 
+    it("reports a bad widget name even on a reserved id that is later dropped", () => {
+      const { context } = setupMount();
+
+      expect(() =>
+        sanitizePluginSettings(
+          { column: definePluginSetting({ widget: "dropdown" }) },
+          context,
+        ),
+      ).toThrow();
+    });
+
+    it("throws for a widget that is neither a name nor a component", () => {
+      const { context } = setupMount();
+
+      expect(() =>
+        sanitizePluginSettings(
+          { bad: definePluginSetting({ widget: 42 }) },
+          context,
+        ),
+      ).toThrow(/unsupported widget/);
+    });
+
     it("accepts every allowed built-in widget name", () => {
-      const { mount } = setupMount();
+      const { context } = setupMount();
       const allowedNames = [
         "input",
         "number",
@@ -175,9 +570,7 @@ describe("sanitizePluginSettings", () => {
         ]),
       );
 
-      expect(() =>
-        sanitizePluginSettings(settings, mount, PLUGIN),
-      ).not.toThrow();
+      expect(() => sanitizePluginSettings(settings, context)).not.toThrow();
     });
   });
 });
@@ -193,30 +586,36 @@ function definePluginSetting(
   >;
 }
 
-type RuntimeSettingDefinition = {
-  title?: string;
-  widget: WidgetMount | string;
-};
+function getHostDefinition(
+  definitions: VisualizationSettingsDefinitions,
+  id: string,
+): VisualizationSettingDefinition<Series> {
+  const definition = definitions[id];
 
-function getRuntimeDefinition(
-  definition:
-    | CustomVisualizationSettingDefinition<Record<string, unknown>>
-    | undefined,
-): RuntimeSettingDefinition {
-  // The branded type is opaque by design; at runtime it's a plain
-  // definition object, which is what these assertions inspect.
-  return definition as unknown as RuntimeSettingDefinition;
+  if (!isObject(definition)) {
+    throw new Error(`Expected a definition for "${id}"`);
+  }
+
+  return definition;
+}
+
+function getCallback(source: object, name: string) {
+  const callback = Reflect.get(source, name);
+
+  if (!isFunction(callback)) {
+    throw new Error(`Expected "${name}" to be a function`);
+  }
+
+  return callback;
 }
 
 function getMountWidget(
-  definition:
-    | CustomVisualizationSettingDefinition<Record<string, unknown>>
-    | undefined,
-): WidgetMount {
-  const { widget } = getRuntimeDefinition(definition);
+  definition: VisualizationSettingDefinition<Series>,
+): WidgetMount<CustomVizSettingWidgetProps> {
+  const { widget } = definition;
 
-  if (typeof widget === "string") {
-    throw new Error(`Expected a WidgetMount, got widget name "${widget}"`);
+  if (!isWidgetMount(widget)) {
+    throw new Error(`Expected a WidgetMount, got widget "${String(widget)}"`);
   }
 
   return widget;

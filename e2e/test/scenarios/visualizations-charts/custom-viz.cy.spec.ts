@@ -621,6 +621,17 @@ describe("admin > custom visualizations", () => {
 
       H.saveSavedQuestion();
 
+      cy.log("plugin settings are stored under the plugin's namespace");
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            42,
+          );
+          expect(body.visualization_settings).not.to.have.property("threshold");
+        });
+      });
+
       H.interceptPluginBundle();
       cy.reload();
       cy.wait("@pluginBundle");
@@ -629,6 +640,100 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
       H.main().findByText("Threshold: 42").should("be.visible");
+    });
+
+    it("reads and migrates plugin settings saved before namespacing", () => {
+      H.createQuestion(
+        {
+          name: "Legacy Custom Viz Settings",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+          visualization_settings: { threshold: 42 },
+        },
+        { visitQuestion: true, wrapId: true, idAlias: "legacyQuestionId" },
+      );
+      H.main().findByText("Threshold: 42").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByPlaceholderText("Set threshold")
+        .clear()
+        .type("43")
+        .blur();
+      H.main().findByText("Threshold: 43").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.log("the first edit moves the bare key under the plugin's namespace");
+      cy.get("@legacyQuestionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            43,
+          );
+          expect(body.visualization_settings).not.to.have.property("threshold");
+        });
+      });
+    });
+
+    it("keeps plugin writes to Metabase settings inside the plugin's namespace", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Rename question from plugin" })
+        .click();
+      H.main().findByText("Threshold: 7").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            7,
+          );
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
+            "Plugin title",
+          );
+          expect(body.visualization_settings).not.to.have.property(
+            "card.title",
+          );
+        });
+      });
+    });
+
+    it("hands the plugin its own array-valued settings, including edits made in the session", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.log("the default the plugin computes is an array");
+      cy.findByTestId("demo-viz-columns").should("have.text", "Columns: count");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .click();
+      cy.findByTestId("demo-viz-columns").should(
+        "have.text",
+        "Columns: count, extra",
+      );
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.deep.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
+            ["count", "extra"],
+          );
+        });
+      });
     });
 
     it("keeps an unsaved question's custom viz after a browser reload (metabase#76065)", () => {
@@ -2427,7 +2532,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      25,
+      27,
     );
   });
 

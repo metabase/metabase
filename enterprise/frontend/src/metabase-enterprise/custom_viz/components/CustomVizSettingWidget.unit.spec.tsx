@@ -3,13 +3,21 @@ import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
 import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
-import { wrapPluginWidget } from "../widget-mount";
+import { type PluginWidgetProps, wrapPluginWidget } from "../widget-mount";
 
 import { CustomVizSettingWidget } from "./CustomVizSettingWidget";
 
-type TestWidgetProps = { title?: string; value?: number };
+type TestWidgetProps = PluginWidgetProps & { title?: string };
+
+const WIDGET_PROPS: CustomVizSettingWidgetProps = {
+  id: "custom-viz:demo-viz:setting",
+  value: 1,
+  onChange: jest.fn(),
+  onChangeSettings: jest.fn(),
+};
 
 function TestWidget({ title }: TestWidgetProps) {
   return (
@@ -53,6 +61,7 @@ function prepareWidget(pluginId = 1) {
   const mount = wrapPluginWidget(
     widgetMount,
     createMockCustomVizPluginRuntime({ id: pluginId }),
+    "custom-viz:demo-viz:",
   );
   return {
     mount,
@@ -63,15 +72,18 @@ function prepareWidget(pluginId = 1) {
 
 function setup({
   pluginId = 1,
-  widgetProps = { title: "Setting 1" },
+  widgetProps,
 }: {
-  widgetProps?: TestWidgetProps;
+  widgetProps?: Partial<CustomVizSettingWidgetProps>;
   pluginId?: number;
 }) {
   const { mount, getMountCalls, getWidgetContainer } = prepareWidget(pluginId);
 
   const { rerender, unmount } = render(
-    <CustomVizSettingWidget mount={mount} widgetProps={widgetProps} />,
+    <CustomVizSettingWidget
+      mount={mount}
+      widgetProps={{ ...WIDGET_PROPS, title: "Setting 1", ...widgetProps }}
+    />,
   );
 
   return {
@@ -99,7 +111,7 @@ describe("CustomVizSettingWidget", () => {
     rerender(
       <CustomVizSettingWidget
         mount={mount}
-        widgetProps={{ title: "Settings 2" }}
+        widgetProps={{ ...WIDGET_PROPS, title: "Settings 2" }}
       />,
     );
 
