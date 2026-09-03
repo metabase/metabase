@@ -34,4 +34,15 @@ describe("getCustomVizPluginWarningMessage", () => {
       }),
     ).toBe("Requires Metabase >=1.99, but this instance is on v1.64.0.");
   });
+
+  it("describes a legacy colon identifier", () => {
+    expect(
+      getCustomVizPluginWarningMessage({
+        type: "invalid-identifier",
+        identifier: "acme:viz",
+      }),
+    ).toBe(
+      `The identifier "acme:viz" is no longer supported and this visualization isn't served to viewers. Delete it and upload the bundle under a new name.`,
+    );
+  });
 });
