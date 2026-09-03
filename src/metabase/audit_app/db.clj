@@ -14,10 +14,15 @@
   [topic]
   (t2/exists? :model/AuditLog :topic topic))
 
-(defn entity-by-entity-id
-  "The `model` row with `entity-id`, or nil."
-  [model entity-id]
-  (t2/select-one model :entity_id entity-id))
+(defn collection-with-entity-id
+  "The Collection with `entity-id`, or nil."
+  [entity-id]
+  (t2/select-one :model/Collection :entity_id entity-id))
+
+(defn dashboard-with-entity-id
+  "The Dashboard with `entity-id`, or nil."
+  [entity-id]
+  (t2/select-one :model/Dashboard :entity_id entity-id))
 
 (defn card-name-and-description
   "The name and description of the Card with `card-id`, or nil."
@@ -39,7 +44,7 @@
               :model_id model-id
               :user_id  user-id))
 
-(defn delete-oldest-rows-by-id-subquery!
+(defn delete-oldest-by-id-subquery!
   "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`, lowest ids first."
   [table time-column cutoff batch-size]
   (t2/query-one {:delete-from table
@@ -51,7 +56,7 @@
                                            :order-by [[:id :asc]]
                                            :limit batch-size}]}))
 
-(defn delete-oldest-rows-with-limit!
+(defn delete-oldest-with-limit!
   "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`."
   [table time-column cutoff batch-size]
   (t2/query-one {:delete-from table

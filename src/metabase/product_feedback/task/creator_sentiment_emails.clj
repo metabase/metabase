@@ -5,14 +5,12 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.app-db.core :as mdb]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-feedback.db :as product-feedback.db]
    [metabase.task.core :as task]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
    (java.time.temporal WeekFields)
@@ -27,9 +25,7 @@
     - Created at least 1 dashboard
     - Only admins if whitelabeling is enabled"
   [has-whitelabelling?]
-  (product-feedback.db/creator-sentiment-candidates
-   (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)
-   (when has-whitelabelling? [:= :u.is_superuser true])))
+  (product-feedback.db/creator-sentiment-candidates has-whitelabelling?))
 
 (defn fetch-plan-info
   "Figure out what plan this Metabase instance is on."

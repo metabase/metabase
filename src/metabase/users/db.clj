@@ -9,10 +9,10 @@
   [user-id]
   (t2/update! :model/User user-id {:last_login :%now}))
 
-(defn user-settings-row
+(defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
   [user-id]
-  (t2/select-one [:model/User :settings] :id user-id))
+  (t2/select-one-fn :settings [:model/User :settings] :id user-id))
 
 (defn delete-pulse-channel-recipients-for-user!
   "Delete every PulseChannelRecipient of the User with `user-id`."
@@ -94,9 +94,13 @@
   (t2/exists? :model/Database :id database-id))
 
 (defn admin-or-self-visible-user
-  "The User matching the key-value `conditions`, with the columns an admin or the user themselves may see, or nil."
-  [columns & conditions]
-  (apply t2/select-one (into [:model/User] columns) conditions))
+  "The User with `id`, with the given `columns`, or nil. When `type` and/or `is-active?` are given (non-nil), also
+  requires `:type` and/or `:is_active` to match."
+  [columns id & {:keys [type is-active?]}]
+  (apply t2/select-one (into [:model/User] columns)
+         :id id
+         (concat (when type [:type type])
+                 (when (some? is-active?) [:is_active is-active?]))))
 
 (defn user-email-exists?
   "Whether a User whose lower-cased email is `lower-case-email` exists."

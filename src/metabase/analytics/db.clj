@@ -5,12 +5,13 @@
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
-(defn first-user-date-joined-row
-  "The `:min` join date of all Users."
+(defn first-user-date-joined
+  "The earliest join date among all Users, or nil."
   []
-  (t2/select-one [:model/User [:%min.date_joined :min]]))
+  (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
 
 (defn sample-database-exists?
   "Whether a sample Database exists."
@@ -76,19 +77,48 @@
              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
              :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)}))
 
-(defn notification-frequencies-by-column
-  "The distinct `column` values (as `:k`) and their `:count` among the `model` rows (Pulses, or rows joined to
-  their Pulse) of alerts when `alerts?`, or of pulses otherwise."
-  [model column alerts?]
+(defn- notification-frequencies-by-column*
+  [model column alerts? left-join?]
   (t2/select [model [column :k] [:%count.* :count]]
              (cond-> {:group-by [column]
                       :where    [(if alerts? :not= :=) :pulse.alert_condition nil]}
-               (not= model :model/Pulse) (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
+               left-join? (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
+
+(defn pulse-channel-frequencies-by-column
+  "The distinct `column` values (as `:k`) and their `:count` among the PulseChannels of alerts when `alerts?`, or of
+  pulses otherwise."
+  [column alerts?]
+  (notification-frequencies-by-column* :model/PulseChannel column alerts? true))
+
+(defn pulse-frequencies-by-column
+  "The distinct `column` values (as `:k`) and their `:count` among the Pulses of alerts when `alerts?`, or of pulses
+  otherwise."
+  [column alerts?]
+  (notification-frequencies-by-column* :model/Pulse column alerts? false))
+
+(defn pulse-card-frequencies-by-column
+  "The distinct `column` values (as `:k`) and their `:count` among the PulseCards of alerts when `alerts?`, or of
+  pulses otherwise."
+  [column alerts?]
+  (notification-frequencies-by-column* :model/PulseCard column alerts? true))
 
 (defn pulse-count
   "The number of Pulses that are not alerts."
   []
   (t2/count :model/Pulse :alert_condition nil))
+
+(defn notification-xls-or-csv-card-count
+  "The `:count` of Notifications with at least one PulseCard with `:include_xls` or `:include_csv`, of alerts when
+  `alerts?`, or of pulses otherwise."
+  [alerts?]
+  (t2/query-one {:select    [[[::h2x/distinct-count :pulse.id] :count]]
+                 :from      [:pulse]
+                 :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
+                 :where     [:and
+                             [:or
+                              [:= :pulse_card.include_csv true]
+                              [:= :pulse_card.include_xls true]]
+                             [(if alerts? :not= :=) :alert_condition nil]]}))
 
 (defn alert-count
   "The number of Pulses that are alerts."
@@ -200,8 +230,8 @@
       ")"
       "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
 
-(defn execution-metrics-row
-  "The single row of execution statistics over the last 30 days of QueryExecutions."
+(defn execution-metrics
+  "The execution statistics over the last 30 days of QueryExecutions."
   []
   (first (t2/query (execution-metrics-sql))))
 

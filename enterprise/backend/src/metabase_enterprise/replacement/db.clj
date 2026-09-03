@@ -58,10 +58,35 @@
 
 ;;; ----------------------------------------------- Replaced entities -----------------------------------------------
 
-(defn instances
-  "The instances of `model` with `ids`."
-  [model ids]
-  (t2/select model {:where [:in :id ids]}))
+(defn cards-with-ids
+  "The Cards with `ids`."
+  [ids]
+  (t2/select :model/Card :id [:in ids]))
+
+(defn tables-with-ids
+  "The Tables with `ids`."
+  [ids]
+  (t2/select :model/Table :id [:in ids]))
+
+(defn dashboards-with-ids
+  "The Dashboards with `ids`."
+  [ids]
+  (t2/select :model/Dashboard :id [:in ids]))
+
+(defn transforms-with-ids
+  "The Transforms with `ids`."
+  [ids]
+  (t2/select :model/Transform :id [:in ids]))
+
+(defn segments-with-ids
+  "The Segments with `ids`."
+  [ids]
+  (t2/select :model/Segment :id [:in ids]))
+
+(defn measures-with-ids
+  "The Measures with `ids`."
+  [ids]
+  (t2/select :model/Measure :id [:in ids]))
 
 (defn card
   "The Card with `card-id`, or nil."

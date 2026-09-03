@@ -4,7 +4,12 @@
   (:require
    [toucan2.core :as t2]))
 
-(defn instance-exists?
-  "Whether an instance of `model` with `id` exists."
-  [model id]
-  (t2/exists? model id))
+(defn card-exists?
+  "Whether a Card with `id` exists."
+  [id]
+  (t2/exists? :model/Card id))
+
+(defn dashboard-exists?
+  "Whether a Dashboard with `id` exists."
+  [id]
+  (t2/exists? :model/Dashboard id))

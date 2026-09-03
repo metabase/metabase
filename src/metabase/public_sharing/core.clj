@@ -61,10 +61,16 @@
   resolving."
   [model uuid]
   (when uuid
-    (some (fn [{:keys [id public_uuid]}]
-            (when (= uuid public_uuid)
-              id))
-          (public-sharing.db/unarchived-ids-and-public-uuids-by-prefix model (public-uuid-prefix uuid)))))
+    (let [prefix (public-uuid-prefix uuid)
+          candidates (case model
+                       :model/Card      (public-sharing.db/unarchived-card-ids-and-public-uuids-by-prefix prefix)
+                       :model/Dashboard (public-sharing.db/unarchived-dashboard-ids-and-public-uuids-by-prefix prefix)
+                       :model/Action    (public-sharing.db/unarchived-action-ids-and-public-uuids-by-prefix prefix)
+                       :model/Document  (public-sharing.db/unarchived-document-ids-and-public-uuids-by-prefix prefix))]
+      (some (fn [{:keys [id public_uuid]}]
+              (when (= uuid public_uuid)
+                id))
+            candidates))))
 
 (defn public-uuid->model
   "Resolve a shared entity's public `uuid` to the full matching `model` row, or nil. Like [[public-uuid->id]] but
@@ -75,5 +81,10 @@
   e.g. a plaintext uuid forged via raw SQL — fails the strict decrypting read and errors out rather than resolving."
   [model uuid]
   (when uuid
-    (m/find-first #(= uuid (:public_uuid %))
-                  (public-sharing.db/unarchived-by-public-uuid-prefix model (public-uuid-prefix uuid)))))
+    (let [prefix (public-uuid-prefix uuid)
+          candidates (case model
+                       :model/Card      (public-sharing.db/unarchived-cards-by-public-uuid-prefix prefix)
+                       :model/Dashboard (public-sharing.db/unarchived-dashboards-by-public-uuid-prefix prefix)
+                       :model/Action    (public-sharing.db/unarchived-actions-by-public-uuid-prefix prefix)
+                       :model/Document  (public-sharing.db/unarchived-documents-by-public-uuid-prefix prefix))]
+      (m/find-first #(= uuid (:public_uuid %)) candidates))))

@@ -233,7 +233,7 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id-row table-id)))))
+  (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
 (mu/defn- check-permissions
   [policy   :- :keyword

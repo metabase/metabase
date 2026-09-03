@@ -194,7 +194,7 @@
         present-slugs (into #{} (map :slug) results)
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
         existing      (into {} (map (juxt :name identity))
-                            (data-apps.db/data-app-sync-rows))
+                            (data-apps.db/data-apps-sync-info))
         {:keys [changed removed]}
         (t2/with-transaction [_conn]
           (let [changed (reduce (fn [n {:keys [slug config-error] :as cfg}]

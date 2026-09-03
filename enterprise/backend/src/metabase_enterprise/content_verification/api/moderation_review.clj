@@ -27,5 +27,7 @@
                      :moderated_item_type moderated_item_type
                      :moderator_id        api/*current-user-id*
                      :status              status}]
-    (api/check-404 (content-verification.db/instance-exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
+    (api/check-404 (case (get moderation/moderated-item-type->model moderated_item_type)
+                     :model/Card      (content-verification.db/card-exists? moderated_item_id)
+                     :model/Dashboard (content-verification.db/dashboard-exists? moderated_item_id)))
     (moderation/create-review! review-data)))

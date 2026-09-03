@@ -159,20 +159,20 @@
 (defn- library-cards [lib-ids id]
   ;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard). Card :type is keywordized
   ;; (:metric / :model); the entity_type is its name string.
-  (->> (entity-retrieval.db/library-cards-where lib-ids (when id [:= :id id]))
+  (->> (entity-retrieval.db/library-cards-in-collections lib-ids id)
        (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))))))
 
 (defn- library-tables [lib-ids id]
   ;; A published table's user-facing label is its display_name; fall back to the raw name.
-  (->> (entity-retrieval.db/library-tables-where lib-ids (when id [:= :id id]))
+  (->> (entity-retrieval.db/library-tables-in-collections lib-ids id)
        (map (fn [t] (->library-entity "table" (:id t) (or (:display_name t) (:name t)) (:description t))))))
 
 (defn- library-measures [table-ids id]
-  (->> (entity-retrieval.db/library-measures-where table-ids (when id [:= :id id]))
+  (->> (entity-retrieval.db/library-measures-of-tables table-ids id)
        (map (fn [mv] (->library-entity "measure" (:id mv) (:name mv) (:description mv))))))
 
 (defn- library-segments [table-ids id]
-  (->> (entity-retrieval.db/library-segments-where table-ids (when id [:= :id id]))
+  (->> (entity-retrieval.db/library-segments-of-tables table-ids id)
        (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))))))
 
 (defn- library-entities
@@ -204,8 +204,9 @@
 
         (#{"measure" "segment"} entity-type)
         ;; A measure/segment is a member only when its parent table is a current library table.
-        (when-let [table-id (entity-retrieval.db/table-id-of (if (= entity-type "measure") :model/Measure :model/Segment)
-                                                             entity-local-id)]
+        (when-let [table-id (if (= entity-type "measure")
+                              (entity-retrieval.db/measure-table-id entity-local-id)
+                              (entity-retrieval.db/segment-table-id entity-local-id))]
           (when (seq (library-tables lib-ids table-id))
             (first (if (= entity-type "measure")
                      (library-measures [table-id] entity-local-id)

@@ -850,17 +850,17 @@
 ;;; These wrapper functions delegate to the current resolver (set by [[with-cache]]).
 ;;; When no resolver is bound, they fall back to the database-backed resolver.
 
-;; TODO: `requiring-resolve` is needed here because resolve.db requires this ns
-;; (for `generate-path`, `field-hierarchy`, `lookup-by-id`, `recursively-find-field-q`).
-;; Moving those into resolve.db (or a shared utils ns) would break the cycle and
-;; let us require resolve.db directly.
+;; TODO: `requiring-resolve` is needed here because resolve.default requires this ns
+;; (for `generate-path`, `field-hierarchy`, `lookup-by-id`).
+;; Moving those into resolve.default (or a shared utils ns) would break the cycle and
+;; let us require resolve.default directly.
 (defn- export-resolver []
   (or resolve/*export-resolver*
-      @(requiring-resolve 'metabase.models.serialization.resolve.db/default-export-resolver)))
+      @(requiring-resolve 'metabase.models.serialization.resolve.default/default-export-resolver)))
 
 (defn- import-resolver []
   (or resolve/*import-resolver*
-      @(requiring-resolve 'metabase.models.serialization.resolve.db/default-import-resolver)))
+      @(requiring-resolve 'metabase.models.serialization.resolve.default/default-import-resolver)))
 
 ;;; ## General foreign keys
 
@@ -1013,19 +1013,6 @@
   [id]
   (reverse
    (models.db/field-hierarchy-rows id)))
-
-(defn recursively-find-field-q
-  "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
-
-  `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
-  [table-id [field & rest]]
-  (when field
-    ^:allow-subquery {:from   [:metabase_field]
-                      :select [:id]
-                      :where  [:and
-                               [:= :table_id table-id]
-                               [:= :name field]
-                               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
 ;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
 ;; database and table exporters above. Fields are unbounded in number (millions on large
@@ -1786,7 +1773,7 @@
   left in its portable entity-id form, instead of throwing. Use for paths where a deleted source Card
   should be treated as a broken section rather than break the whole read."
   [settings]
-  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
+  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.default/lenient-import-resolver)]
     (import-visualizer-settings settings)))
 
 (defn import-visualization-settings
@@ -1979,6 +1966,6 @@
 (defmacro with-cache
   "Runs body with resolvers bound to cached (memoized) versions for performance."
   [& body]
-  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-export-resolver))
-             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.db/cached-import-resolver))]
+  `(binding [resolve/*export-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.default/cached-export-resolver))
+             resolve/*import-resolver* ((requiring-resolve 'metabase.models.serialization.resolve.default/cached-import-resolver))]
      ~@body))

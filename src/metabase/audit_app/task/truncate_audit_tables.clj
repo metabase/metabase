@@ -24,10 +24,10 @@
         batch-size (audit-app.settings/audit-table-truncation-batch-size)]
     (case (mdb/db-type)
       (:postgres :h2)
-      (audit-app.db/delete-oldest-rows-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
+      (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
       (:mysql :mariadb)
-      (audit-app.db/delete-oldest-rows-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
+      (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"

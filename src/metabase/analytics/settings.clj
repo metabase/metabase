@@ -75,7 +75,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (analytics.db/first-user-date-joined-row)))
+  (analytics.db/first-user-date-joined))
 
 (defn- -instance-creation []
   (when-not (setting/get-value-of-type :timestamp :instance-creation)

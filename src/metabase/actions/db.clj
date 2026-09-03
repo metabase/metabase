@@ -13,11 +13,6 @@
                                            [:metabase_database :db] [:= :db.id :card.database_id]]
                                   :where  [:= :action.id action-id]}))
 
-(defn table-database-id-row
-  "The `:db_id` of the Table with `table-id`, or nil."
-  [table-id]
-  (t2/select-one [:model/Table :db_id] table-id))
-
 (defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id]
@@ -68,10 +63,10 @@
   [dashcard-id dashboard-id]
   (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
-(defn dashcard-dashboard-id-row
+(defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id]
-  (t2/select-one [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
 
 (defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -93,20 +88,50 @@
   [action-id changes]
   (t2/update! :model/Action action-id changes))
 
-(defn insert-action-type-row!
-  "Insert the `model` (action type table) `row`."
-  [model row]
-  (t2/insert! model row))
+(defn insert-query-action!
+  "Insert the QueryAction `row`."
+  [row]
+  (t2/insert! :model/QueryAction row))
 
-(defn update-action-type-row!
-  "Apply `changes` to the `model` (action type table) row with `id`."
-  [model id changes]
-  (t2/update! model id changes))
+(defn insert-http-action!
+  "Insert the HTTPAction `row`."
+  [row]
+  (t2/insert! :model/HTTPAction row))
 
-(defn delete-action-type-rows!
-  "Delete the `model` (action type table) rows of the Action with `action-id`."
-  [model action-id]
-  (t2/delete! model :action_id action-id))
+(defn insert-implicit-action!
+  "Insert the ImplicitAction `row`."
+  [row]
+  (t2/insert! :model/ImplicitAction row))
+
+(defn update-query-action!
+  "Apply `changes` to the QueryAction with `action-id`."
+  [action-id changes]
+  (t2/update! :model/QueryAction action-id changes))
+
+(defn update-http-action!
+  "Apply `changes` to the HTTPAction with `action-id`."
+  [action-id changes]
+  (t2/update! :model/HTTPAction action-id changes))
+
+(defn update-implicit-action!
+  "Apply `changes` to the ImplicitAction with `action-id`."
+  [action-id changes]
+  (t2/update! :model/ImplicitAction action-id changes))
+
+(defn delete-query-action!
+  "Delete the QueryAction of the Action with `action-id`."
+  [action-id]
+  (t2/delete! :model/QueryAction :action_id action-id))
+
+(defn delete-http-action!
+  "Delete the HTTPAction of the Action with `action-id`."
+  [action-id]
+  (t2/delete! :model/HTTPAction :action_id action-id))
+
+(defn delete-implicit-action!
+  "Delete the ImplicitAction of the Action with `action-id`."
+  [action-id]
+  (t2/delete! :model/ImplicitAction :action_id action-id))
 
 (defn query-actions
   "The QueryActions of the Actions with `action-ids`."
@@ -128,10 +153,40 @@
   [action-ids]
   (t2/select :model/ImplicitAction :action_id [:in action-ids]))
 
-(defn actions
-  "The Actions selected by the Toucan 2 `options`."
-  [& options]
-  (apply t2/select :model/Action options))
+(defn actions-with-id
+  "The Actions with `action-id` (usually a single Action, since ids are unique)."
+  [action-id]
+  (t2/select :model/Action :id action-id))
+
+(defn unarchived-action-with-id
+  "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."
+  [action-id]
+  (t2/select :model/Action :id action-id :archived false))
+
+(defn action-with-entity-id
+  "The Actions with `entity-id` (usually a single Action, since entity ids are unique)."
+  [entity-id]
+  (t2/select :model/Action :entity_id entity-id))
+
+(defn actions-of-type
+  "The Actions of `action-type`."
+  [action-type]
+  (t2/select :model/Action :type action-type))
+
+(defn unarchived-actions-for-models
+  "The unarchived Actions whose `:model_id` is in `model-ids`."
+  [model-ids]
+  (t2/select :model/Action :model_id [:in model-ids] :archived false))
+
+(defn unarchived-non-http-actions-for-model
+  "The unarchived, non-HTTP Actions of the model Card with `model-id`."
+  [model-id]
+  (t2/select :model/Action :model_id model-id :archived false :type [:not= "http"]))
+
+(defn unarchived-non-http-actions-for-models
+  "The unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`."
+  [model-ids]
+  (t2/select :model/Action :model_id [:in model-ids] :archived false :type [:not= "http"]))
 
 (defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."

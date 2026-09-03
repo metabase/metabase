@@ -55,7 +55,10 @@
           ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
           ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
-            (view-log.db/increment-view-counts! model cnt->ids)))))
+            (case model
+              :model/Card      (view-log.db/increment-card-view-counts! cnt->ids)
+              :model/Dashboard (view-log.db/increment-dashboard-view-counts! cnt->ids)
+              :model/Table     (view-log.db/increment-table-view-counts! cnt->ids))))))
     (catch Exception e
       (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 

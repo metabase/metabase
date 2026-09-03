@@ -25,18 +25,6 @@
   [slug]
   (t2/select-one non-blob-columns :name slug :enabled true))
 
-(defn non-blob-data-app-matching
-  "The DataApp without its bundle matching the Toucan 2 `conditions`, or nil. Kept for the tests of the model
-  namespace; prefer the fixed-condition functions above."
-  [& conditions]
-  (apply t2/select-one non-blob-columns conditions))
-
-(defn non-blob-data-apps-matching
-  "The DataApps without their bundles matching the Toucan 2 `conditions`. Kept for the tests of the model namespace;
-  prefer the fixed-condition functions above."
-  [& conditions]
-  (apply t2/select non-blob-columns conditions))
-
 (defn non-blob-data-apps
   "Every DataApp without its bundle, ordered by display name; only the enabled, error-free ones when `available?`."
   [available?]
@@ -51,7 +39,7 @@
   [data-app-id]
   (t2/select-one-fn :bundle :model/DataApp :id data-app-id))
 
-(defn data-app-sync-rows
+(defn data-apps-sync-info
   "The sync-relevant columns of every DataApp."
   []
   (t2/select [:model/DataApp :name :display_name :description :allowed_hosts :bundle_path :bundle_hash :sync_error]))

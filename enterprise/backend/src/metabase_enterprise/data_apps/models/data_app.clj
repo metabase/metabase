@@ -42,14 +42,14 @@
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
 (defn select-one-non-blob
-  "Like `t2/select-one` on `:model/DataApp`, but excludes the bundle blob."
-  [& conditions]
-  (apply data-apps.db/non-blob-data-app-matching conditions))
+  "Like `t2/select-one` on `:model/DataApp`, but excludes the bundle blob. Takes a `:name` kv-arg, the app's slug."
+  [& {:keys [name]}]
+  (data-apps.db/non-blob-data-app-by-slug name))
 
 (defn select-non-blob
-  "Like `t2/select` on `:model/DataApp`, but excludes the bundle blob."
-  [& conditions]
-  (apply data-apps.db/non-blob-data-apps-matching conditions))
+  "Like `t2/select` on `:model/DataApp`, but excludes the bundle blob. Takes a `:name` kv-arg, the app's slug."
+  [& {:keys [name]}]
+  (some-> (data-apps.db/non-blob-data-app-by-slug name) vector))
 
 ;; Deliberately ungated: any signed-in user may view a data app, and the `+auth`
 ;; endpoints mean reaching a read check already implies authentication. See the

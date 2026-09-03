@@ -12,7 +12,6 @@
    [metabase.analytics.db :as analytics.db]
    [metabase.analytics.event :as analytics.event]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -26,7 +25,6 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -255,27 +253,11 @@
     (micro-histogram (vals (db-frequencies :model/PulseChannel :channel_type false)))
     ;; -> {\"2\" 1, \"1\" 1, ...}"
   [model column alerts?]
-  (into {} (for [{:keys [k count]} (analytics.db/notification-frequencies-by-column model column alerts?)]
+  (into {} (for [{:keys [k count]} (case model
+                                     :model/PulseChannel (analytics.db/pulse-channel-frequencies-by-column column alerts?)
+                                     :model/Pulse         (analytics.db/pulse-frequencies-by-column column alerts?)
+                                     :model/PulseCard     (analytics.db/pulse-card-frequencies-by-column column alerts?))]
              [k count])))
-
-(defn- num-notifications-with-xls-or-csv-cards
-  "Return the number of Notifications that satisfy `where-conditions` that have at least one PulseCard with `include_xls` or
-  `include_csv`.
-
-     ;; Pulses only (filter out Alerts)
-     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
-  [& where-conditions]
-  (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                     :from      [:pulse]
-                     :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                     :where     (into
-                                 [:and
-                                  [:or
-                                   [:= :pulse_card.include_csv true]
-                                   [:= :pulse_card.include_xls true]]]
-                                 where-conditions)})
-      first
-      :count))
 
 (defn- pulse-metrics
   "Get metrics based on pulses
@@ -283,7 +265,7 @@
   []
   {:pulses               (analytics.db/pulse-count)
    ;; "Table Cards" are Cards that include a Table you can download
-   :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
+   :with_table_cards     (:count (analytics.db/notification-xls-or-csv-card-count false))
    :pulse_types          (db-frequencies :model/PulseChannel :channel_type  false)
    :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type false)
    :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id false)))
@@ -292,7 +274,7 @@
 
 (defn- alert-metrics []
   {:alerts               (analytics.db/alert-count)
-   :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
+   :with_table_cards     (:count (analytics.db/notification-xls-or-csv-card-count true))
    :first_time_only      (analytics.db/first-time-only-alert-count)
    :above_goal           (analytics.db/above-goal-alert-count)
    :alert_types          (db-frequencies :model/PulseChannel :channel_type true)
@@ -363,7 +345,7 @@
                              "251_1000"   "251-1000"
                              "1001_10000" "1001-10000"
                              "10000_plus" "10000+"} x x))
-        raw-results (-> (analytics.db/execution-metrics-row)
+        raw-results (-> (analytics.db/execution-metrics)
                         ;; cast numbers to int because some DBs output bigdecimals
                         (update-vals #(some-> % int)))]
     (reduce (fn [acc [k v]]

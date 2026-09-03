@@ -1,4 +1,4 @@
-(ns metabase.models.serialization.resolve.db
+(ns metabase.models.serialization.resolve.default
   "Database-backed implementations of the serdes resolver protocols.
 
   These are the default resolvers used during normal serdes export/import
@@ -22,7 +22,7 @@
   [id model]
   (when id
     (let [model-name (name model)
-          entity     (models.db/entity-by-pk model (first (t2/primary-keys model)) id)
+          entity     (models.db/entity-by-own-pk model id)
           path       (when entity
                        (mapv :id (serdes/generate-path model-name entity)))]
       (cond
@@ -117,7 +117,10 @@
                       {:table-id       table-id
                        :db-name        db-name
                        :database-names (sort (models.db/database-names))
-                       :error          ::database-not-found})))))
+                       ;; Pinned to the namespace this code used to live in (`resolve.db`, before it was folded into
+                       ;; `models.db` and this namespace): other modules (e.g. `remote-sync`) and tests compare
+                       ;; against this literal keyword value.
+                       :error          :metabase.models.serialization.resolve.db/database-not-found})))))
 
 (defn import-field-fk
   "Given [db-name schema table-name field-name ...], return numeric field_id. If part of the parent
@@ -125,9 +128,8 @@
   reference."
   [resolver [db-name schema table-name & fields :as field-id]]
   (when field-id
-    (let [table-id (resolve/import-table-fk resolver [db-name schema table-name])
-          field-q  (serdes/recursively-find-field-q table-id (reverse fields))]
-      (or (models.db/field-pk-where field-q)
+    (let [table-id (resolve/import-table-fk resolver [db-name schema table-name])]
+      (or (models.db/field-pk-in-path table-id (reverse fields))
           (synthesize-field! table-id fields)))))
 
 ;;; ============================================================

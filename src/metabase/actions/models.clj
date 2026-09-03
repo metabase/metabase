@@ -113,15 +113,6 @@
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
    :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
-(mu/defn- type->model
-  "Returns the model from an action type.
-   `action-type` can be a string or a keyword."
-  [action-type :- ::actions.schema/type]
-  (case action-type
-    :http     :model/HTTPAction
-    :implicit :model/ImplicitAction
-    :query    :model/QueryAction))
-
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
 (defn- query->database-id
@@ -152,11 +143,13 @@
   (let [action-data (derive-query-action-database-id action-data)]
     (t2/with-transaction [_conn]
       (let [action (actions.db/insert-action! (select-keys action-data action-columns))
-            model  (type->model (:type action))
             row    (-> (apply dissoc action-data action-columns)
                        (assoc :action_id (:id action))
                        (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
-        (actions.db/insert-action-type-row! model row)
+        (case (:type action)
+          :query    (actions.db/insert-query-action! row)
+          :http     (actions.db/insert-http-action! row)
+          :implicit (actions.db/insert-implicit-action! row))
         (:id action)))))
 
 (mu/defn insert! :- ::actions.schema/id
@@ -177,13 +170,21 @@
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
                                        (dissoc :database_id)))]
-        (let [type-row       (assoc type-row :action_id id)
-              existing-model (type->model (:type existing-action))]
+        (let [type-row (assoc type-row :action_id id)]
           (if (and (:type updates) (not= (:type updates) (:type existing-action)))
-            (let [new-model (type->model (:type updates))]
-              (actions.db/delete-action-type-rows! existing-model id)
-              (actions.db/insert-action-type-row! new-model (assoc type-row :action_id id)))
-            (actions.db/update-action-type-row! existing-model id type-row)))))))
+            (do
+              (case (:type existing-action)
+                :query    (actions.db/delete-query-action! id)
+                :http     (actions.db/delete-http-action! id)
+                :implicit (actions.db/delete-implicit-action! id))
+              (case (:type updates)
+                :query    (actions.db/insert-query-action! type-row)
+                :http     (actions.db/insert-http-action! type-row)
+                :implicit (actions.db/insert-implicit-action! type-row)))
+            (case (:type existing-action)
+              :query    (actions.db/update-query-action! id type-row)
+              :http     (actions.db/update-http-action! id type-row)
+              :implicit (actions.db/update-implicit-action! id type-row))))))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -224,12 +225,33 @@
                       (select-keys implicit-action [:kind]))))
            actions))))
 
+(defn- select-actions-matching-options
+  "Interprets the fixed set of kv-arg shapes [[select-action]]/[[select-actions]] callers use (also a bare id, Toucan's
+   primary-key shorthand), and returns the matching Actions."
+  [options]
+  (if (and (= 1 (count options)) (not (keyword? (first options))))
+    (actions.db/actions-with-id (first options))
+    (let [opts (apply hash-map options)
+          {:keys [id entity_id model_id type archived]} opts]
+      (cond
+        (contains? opts :id)        (if (false? archived)
+                                      (actions.db/unarchived-action-with-id id)
+                                      (actions.db/actions-with-id id))
+        (contains? opts :entity_id) (actions.db/action-with-entity-id entity_id)
+        (and (contains? opts :model_id) (contains? opts :type))
+        (if (sequential? model_id)
+          (actions.db/unarchived-non-http-actions-for-models (second model_id))
+          (actions.db/unarchived-non-http-actions-for-model model_id))
+        (contains? opts :model_id)  (actions.db/unarchived-actions-for-models (second model_id))
+        (contains? opts :type)      (actions.db/actions-of-type type)
+        :else                       (throw (ex-info "Unsupported Action query options" {:options options}))))))
+
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
    for implicit actions, use [[select-action]] instead.
-   `options` is passed to `t2/select` `& options` arg."
+   `options` is interpreted by [[select-actions-matching-options]]."
   [& options]
-  (let [{:keys [query http implicit]} (group-by :type (apply actions.db/actions options))
+  (let [{:keys [query http implicit]} (group-by :type (select-actions-matching-options options))
         query-actions                 (normalize-query-actions query)
         http-actions                  (normalize-http-actions http)
         implicit-actions              (normalize-implicit-actions implicit)]
@@ -398,10 +420,10 @@
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is [[apply]]ed to [[t2/select]]."
+   `options` is interpreted by [[select-actions-matching-options]]."
   [& options]
-  ;; TODO -- it's dumb that we're calling `t2/select` rather than `t2/select-one` above, limiting like this should never
-  ;; be done server-side. I don't have time to fix this right now. -- Cam
+  ;; TODO -- it's dumb that we're selecting all matches rather than a single one above, limiting like this should
+  ;; never be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))
 
 (defn- map-assoc-database-enable-actions

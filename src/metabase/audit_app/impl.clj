@@ -27,7 +27,9 @@
   (mdb/memoize-for-application-db
    (fn [checksum model entity-id]
      (when checksum
-       (audit-app.db/entity-by-entity-id model entity-id)))))
+       (case model
+         :model/Collection (audit-app.db/collection-with-entity-id entity-id)
+         :model/Dashboard  (audit-app.db/dashboard-with-entity-id entity-id))))))
 
 (defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.

@@ -96,7 +96,7 @@
   (when user-or-user-id
     (settings-map
      (if (integer? user-or-user-id)
-       (:settings (users.db/user-settings-row user-or-user-id))
+       (users.db/user-settings user-or-user-id)
        (:settings user-or-user-id)))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------

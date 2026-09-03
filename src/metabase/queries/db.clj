@@ -3,6 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration
   methods."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
@@ -163,6 +165,18 @@
   "The name of the Database with `database-id`."
   [database-id]
   (t2/select-one-fn :name :model/Database :id database-id))
+
+(defn field-database-info-for-ids
+  "The id, name, table name, and Database id of the Fields with `field-ids`."
+  [field-ids]
+  (t2/query {:select    [[:field.id :field-id]
+                         [:field.name :field-name]
+                         [:table.name :table-name]
+                         [:table.db_id :field-db-id]]
+             :from      [[:metabase_field :field]]
+             :left-join [[:metabase_table :table]
+                         [:= :field.table_id :table.id]]
+             :where     [:in :field.id field-ids]}))
 
 (defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
@@ -359,25 +373,46 @@
   [query-hash]
   (t2/select-one-fn :average_execution_time :model/Query :query_hash query-hash))
 
+(defn- int-casting-type
+  "MySQL doesn't accept `integer`, so we have to use `unsigned`; Postgres doesn't accept `unsigned` so we have to use
+  `integer`. Yay SQL dialect differences :D"
+  []
+  (if (= (mdb/db-type) :mysql)
+    :unsigned
+    :integer))
+
+(defn- rolling-average-expr
+  [c0 c1]
+  (h2x/cast (int-casting-type)
+            (h2x/round (h2x/+ (h2x/* c0 :average_execution_time)
+                              c1)
+                       [:inline 0])))
+
 (defn backfill-query-and-average-execution-time!
-  "Set the query text and average execution time of the query with `query-hash` if its text was never stored."
-  [query-hash query-json average-expr]
+  "Set the query text and average execution time (`c0 * average_execution_time + c1`, rounded and cast to an integer)
+  of the query with `query-hash` if its text was never stored."
+  [query-hash query-json c0 c1]
   (t2/update! :model/Query
               {:query_hash query-hash, :query nil}
               {:query                  query-json
-               :average_execution_time average-expr}))
+               :average_execution_time (rolling-average-expr c0 c1)}))
 
 (defn update-average-execution-time!
-  "Set the average execution time of the query with `query-hash`."
-  [query-hash average-expr]
-  (t2/update! :model/Query {:query_hash query-hash} {:average_execution_time average-expr}))
+  "Set the average execution time of the query with `query-hash` to `c0 * average_execution_time + c1`, rounded and
+  cast to an integer."
+  [query-hash c0 c1]
+  (t2/update! :model/Query {:query_hash query-hash} {:average_execution_time (rolling-average-expr c0 c1)}))
 
 (defn update-average-execution-times!
-  "Set the average execution time of the queries with `query-hashes` to the SQL expression `average-expr`."
-  [average-expr query-hashes]
+  "Set the average execution time of each Query identified by the `[query-hash c0 c1]` triples in `hash+coefficients`
+  to `c0 * average_execution_time + c1`, rounded and cast to an integer."
+  [hash+coefficients]
   (t2/query {:update (t2/table-name :model/Query)
-             :set    {:average_execution_time average-expr}
-             :where  [:in :query_hash query-hashes]}))
+             :set    {:average_execution_time (into [:case]
+                                                    (mapcat (fn [[query-hash c0 c1]]
+                                                              [[:= :query_hash query-hash] (rolling-average-expr c0 c1)]))
+                                                    hash+coefficients)}
+             :where  [:in :query_hash (map first hash+coefficients)]}))
 
 (defn insert-queries!
   "Insert the Query `rows`."

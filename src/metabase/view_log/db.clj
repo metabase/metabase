@@ -5,8 +5,7 @@
    [java-time.api :as t]
    [toucan2.core :as t2]))
 
-(defn increment-view-counts!
-  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the `model` rows with `ids`."
+(defn- increment-view-counts-of-model!
   [model count->ids]
   ;; A raw update rather than `t2/update!` avoids triggering Toucan 2 model hooks, specifically search-index enqueues
   ;; on after-update.
@@ -16,6 +15,21 @@
                                                                   [[:in :id ids] cnt])
                                                                 count->ids))]}
              :where  [:in :id (apply concat (vals count->ids))]}))
+
+(defn increment-card-view-counts!
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`."
+  [count->ids]
+  (increment-view-counts-of-model! :model/Card count->ids))
+
+(defn increment-dashboard-view-counts!
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`."
+  [count->ids]
+  (increment-view-counts-of-model! :model/Dashboard count->ids))
+
+(defn increment-table-view-counts!
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`."
+  [count->ids]
+  (increment-view-counts-of-model! :model/Table count->ids))
 
 (defn insert-view-logs!
   "Insert the ViewLog rows `views`."

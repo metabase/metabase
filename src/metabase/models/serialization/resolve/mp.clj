@@ -1,7 +1,7 @@
 (ns metabase.models.serialization.resolve.mp
   "Metadata-provider-backed implementations of the serdes resolver protocols.
 
-  Unlike `metabase.models.serialization.resolve.db`, this resolver does not touch toucan2 /
+  Unlike `metabase.models.serialization.resolve.default`, this resolver does not touch toucan2 /
   the application database for *warehouse-schema* lookups (tables, fields) - it works off a
   `lib.metadata/MetadataProvider`, which may be the live application-DB-backed provider, a
   test-only mock provider, or any cached variant.
@@ -74,7 +74,7 @@
 
 (defn- matching-tables-via-app-db
   "Return all tables matching the `(db-id, schema, table-name)` triple by direct application-DB
-  query — same shape `resolve.db/import-table-fk` has always used. Bypasses the metadata
+  query — same shape `resolve.default/import-table-fk` has always used. Bypasses the metadata
   provider entirely.
 
   Returns inactive rows too: the app DB is authoritative for *existence*, and

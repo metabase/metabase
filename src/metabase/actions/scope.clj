@@ -22,8 +22,8 @@
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
-    (let [{:keys [dashboard_id]} (actions.db/dashcard-dashboard-id-row (:dashcard-id scope))]
-      (merge {:dashboard-id (or dashboard_id missing-id)} scope))))
+    (let [dashboard-id (actions.db/dashcard-dashboard-id (:dashcard-id scope))]
+      (merge {:dashboard-id (or dashboard-id missing-id)} scope))))
 
 (defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))

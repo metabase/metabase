@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.collections.core :as collections]
@@ -390,15 +389,7 @@
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
-      (doseq [{:keys [field-id field-name table-name field-db-id]} (app-db/query
-                                                                    {:select    [[:field.id :field-id]
-                                                                                 [:field.name :field-name]
-                                                                                 [:table.name :table-name]
-                                                                                 [:table.db_id :field-db-id]]
-                                                                     :from      [[:metabase_field :field]]
-                                                                     :left-join [[:metabase_table :table]
-                                                                                 [:= :field.table_id :table.id]]
-                                                                     :where     [:in :field.id (set field-ids)]})]
+      (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
                                     (format "%d %s" db-id (pr-str (queries.db/database-name db-id))))]

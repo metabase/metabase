@@ -4,7 +4,7 @@
   (:require
    [toucan2.core :as t2]))
 
-(defn collection-id-row
-  "The `:collection_id` row of the instance of `model` with `id`, or nil."
-  [model id]
-  (t2/select-one [model :collection_id] :id id))
+(defn snippet-collection-id
+  "The `:collection_id` of the NativeQuerySnippet with `id`, or nil."
+  [id]
+  (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id))

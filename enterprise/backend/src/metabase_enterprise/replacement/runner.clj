@@ -47,14 +47,13 @@
               (when (seq ids)
                 (into {}
                       (map (juxt (fn [o] [m (:id o)]) identity))
-                      (replacement.db/instances (case m
-                                                  :card      :model/Card
-                                                  :table     :model/Table
-                                                  :dashboard :model/Dashboard
-                                                  :transform :model/Transform
-                                                  :segment   :model/Segment
-                                                  :measure   :model/Measure)
-                                                ids)))))]
+                      (case m
+                        :card      (replacement.db/cards-with-ids ids)
+                        :table     (replacement.db/tables-with-ids ids)
+                        :dashboard (replacement.db/dashboards-with-ids ids)
+                        :transform (replacement.db/transforms-with-ids ids)
+                        :segment   (replacement.db/segments-with-ids ids)
+                        :measure   (replacement.db/measures-with-ids ids))))))]
     (let [cards      (id->instances :card)
           tables     (id->instances :table)
           dashboards (id->instances :dashboard)
