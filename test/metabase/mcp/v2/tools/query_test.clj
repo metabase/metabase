@@ -480,6 +480,36 @@
 
 ;;; ------------------------------------------------ Teaching errors -----------------------------------------------
 
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest cursor-page-handle-carries-no-page-boundary-test
+  ;; GHY-4363: a cursor page's stored query embeds the keyset boundary it resumed from — that is
+  ;; how paging works at all. But the handle the response hands back is what `question_write`
+  ;; saves and what the UI visualizes, and a boundary is a scroll position, not part of the
+  ;; question: saving page 3 must save "orders", never "orders from row 4171 onward". The cursor
+  ;; keeps its boundary; the handle does not.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            stored (fn [handle]
+                     (:query (v2.queries/resolve-query-handle! sid (mt/user->id :rasta) handle)))
+            page1  (payload (call! sid {:query (orders-query) :row_limit 5}))
+            page2  (payload (call! sid {:cursor (:next_cursor page1) :row_limit 5}))
+            page3  (payload (call! sid {:cursor (:next_cursor page2) :row_limit 5}))]
+        (testing "the chain really did resume from a boundary — otherwise this pins nothing"
+          (is (< (apply max (row-ids page1)) (apply min (row-ids page3)))))
+        (testing "GHY-4363: the deep page's handle carries no page boundary"
+          (is (empty? (:filters (last (:stages (stored (:query_handle page3))))))))
+        (testing "GHY-4363: so re-running it serves the question from the top, not the page again"
+          (let [rerun (payload (call! sid {:query_handle (:query_handle page3)}))]
+            (is (= (row-ids page1) (vec (take 5 (row-ids rerun)))))))
+        (testing "GHY-4363: a filter the caller wrote is part of the question and survives"
+          (let [f1 (payload (call! sid {:query     (orders-query {:filters [[">" {} (field-name-ref :orders :id) 100]]})
+                                        :row_limit 5}))
+                f2 (payload (call! sid {:cursor (:next_cursor f1) :row_limit 5}))
+                fs (:filters (last (:stages (stored (:query_handle f2)))))]
+            (is (= 1 (count fs)) "the caller's clause, and only it")
+            (is (= ">" (ffirst fs)))))))))
+
 (deftest ^:parallel input-exclusivity-test
   ;; Error paths mint nothing, so these calls go straight through registry/call-tool and stay
   ;; ^:parallel; the minting tests above use the call! helper plus model cleanup instead.

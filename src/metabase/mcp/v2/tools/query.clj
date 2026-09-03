@@ -6,9 +6,10 @@
    also accepted — runs the representations pipeline
    (validate → repair → resolve against database metadata, with teaching errors); a
    `query_handle` or `cursor` resolves through the handle store with the fresh-query guards
-   re-run. Every call mints a handle — what the agent later saves or visualizes through it is
-   byte-identical to what ran — and a truncated MBQL page mints a keyset `next_cursor` so the
-   model continues with one opaque string, never a hand-written keyset filter.
+   re-run. Every call mints a handle — the query that ran, less the page boundary a cursor call
+   resumed from, so what the agent saves or visualizes through it is the question rather than a
+   scroll position — and a truncated MBQL page mints a keyset `next_cursor` so the model continues
+   with one opaque string, never a hand-written keyset filter.
 
    `execute_sql`: raw SQL in the same response envelope, gated by the `mcp-execute-sql-enabled`
    kill switch and native-query permission. It also mints a handle on every call (including
@@ -188,10 +189,16 @@
             returned max-row-limit)))
 
 (defn- mint-handle!
+  "Store `serialized-query` under a fresh handle for the caller, with the page boundary stripped
+   first ([[metabase.mcp.v2.query/without-page-boundary]]) — a handle is what a later tool saves or
+   visualizes, and a cursor page's keyset predicate is a scroll position rather than part of the
+   question. A no-op for a query that never paged, and paging is unaffected either way: the cursor
+   carries its own boundary."
   [session-id serialized-query prompt]
   (v2.queries/mint-query-handle! session-id
                                  api/*current-user-id*
-                                 (v2.queries/encode-serialized-query serialized-query)
+                                 (v2.queries/encode-serialized-query
+                                  (v2.query/without-page-boundary serialized-query))
                                  prompt))
 
 (defn- validate-only-response!
@@ -246,7 +253,7 @@
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute a query, returning rows plus a query_handle. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — what you later save or visualize through it is exactly the query that ran. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
+  "Validate and execute a query, returning rows plus a query_handle. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — it holds the query that ran without the cursor's paging position, so saving or visualizing from any page gives the whole question rather than that one page. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
 
 Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (browse_data get_fields lists every column's id) — never invent or guess ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}; each stage \"lib/type\": \"mbql.stage/mbql\" plus source-table: <numeric table id> or source-card: <numeric card id> on the FIRST stage only — later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <numeric field id>], or a bare column-name string against a previous stage ([\"field\", {}, \"count\"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example (order count by month, ORDERS = table 5, CREATED_AT = field 42): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": 5, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, 42]]}]}. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn(\"query-dialect\") before authoring a non-trivial query (joins, expressions, multi-stage); learn(\"query-dialect\", \"operators\") lists every operator. Native SQL is rejected at any depth — use execute_sql."
   {:name        "execute_query"

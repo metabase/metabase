@@ -177,16 +177,43 @@
   [clause]
   (and (vector? clause) (true? (get-in clause [1 keyset-marker]))))
 
+(defn- stage-without-minted-keysets
+  [stage]
+  (if-let [kept (not-empty (into [] (remove minted-keyset?) (:filters stage)))]
+    (assoc stage :filters kept)
+    (dissoc stage :filters)))
+
 (defn- supersede-previous-keyset
   "`query`'s last stage with the keyset predicates this namespace minted removed, so the caller can
    add the current page's in their place. Filters the caller wrote are untouched."
   [query]
-  (lib/update-query-stage
-   query -1
-   (fn [stage]
-     (if-let [kept (not-empty (into [] (remove minted-keyset?) (:filters stage)))]
-       (assoc stage :filters kept)
-       (dissoc stage :filters)))))
+  (lib/update-query-stage query -1 stage-without-minted-keysets))
+
+(defn without-page-boundary
+  "`serialized-query` with the keyset predicate this namespace minted stripped from its last stage,
+   or unchanged when it carries none.
+
+   A cursor page's stored query embeds the boundary it resumed from — that is how paging works —
+   but a boundary is a scroll position, not part of the question. A query handle is what a later
+   tool saves or visualizes, so mint it from this: saving page 3 of an orders listing should save
+   the orders question, never `orders WHERE id > 4171`. Paging is untouched, since the cursor
+   carries its own boundary.
+
+   Only predicates this namespace minted come off (see [[keyset-marker]]); a filter the caller
+   wrote is part of the question and stays. Works on the serialized map rather than a rehydrated
+   query, so cleaning a stored handle needs no metadata.
+
+   One mark of a cursor page it cannot undo: a query carrying its own `:limit` has that limit spent
+   down across pages, so a deep page's handle asks for the rows still owed rather than the count
+   the caller wrote. Recovering that would need state the handle store deliberately does not keep."
+  [serialized-query]
+  (let [stages (vec (:stages serialized-query))]
+    (if-let [stage (peek stages)]
+      (if (some minted-keyset? (:filters stage))
+        (assoc serialized-query :stages
+               (assoc stages (dec (count stages)) (stage-without-minted-keysets stage)))
+        serialized-query)
+      serialized-query)))
 
 (def ^:private exact-temporal-units
   "Truncation units at or coarser than a second. A value truncated this far renders without
