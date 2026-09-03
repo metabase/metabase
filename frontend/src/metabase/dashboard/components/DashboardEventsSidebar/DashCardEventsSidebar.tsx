@@ -7,7 +7,7 @@ import { getDashCardById } from "metabase/dashboard/selectors";
 import {
   getDashCardSelectedTimelineEventIds,
   getDashCardTimeseriesXAxis,
-  getDashCardVisibleTimelineEvents,
+  getDashCardVisibleTimelineEventIds,
 } from "metabase/dashboard/timeline-events";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
@@ -26,8 +26,8 @@ export function DashCardEventsSidebar({
   const { selectedTabId, closeSidebar } = useDashboardContext();
   const dashcard = useSelector((state) => getDashCardById(state, dashcardId));
   const timelines = useSelector(getTransformedTimelines);
-  const visibleEvents = useSelector((state) =>
-    getDashCardVisibleTimelineEvents(state, dashcardId),
+  const visibleEventIds = useSelector((state) =>
+    getDashCardVisibleTimelineEventIds(state, dashcardId),
   );
   const selectedEventIds = useSelector((state) =>
     getDashCardSelectedTimelineEventIds(state, dashcardId),
@@ -46,10 +46,6 @@ export function DashCardEventsSidebar({
     }
   }, [isOnAnotherTab, closeSidebar]);
 
-  const visibleEventIds = useMemo(
-    () => visibleEvents.map((event) => event.id),
-    [visibleEvents],
-  );
   const dashcardIds = useMemo(() => [dashcardId], [dashcardId]);
 
   const handleShowAllEvents = useCallback(() => {

@@ -48,7 +48,11 @@ describe("dashboard reducers", () => {
       parameterValues: {},
       draftParameterValues: {},
       sidebar: { props: {} },
-      timelineEvents: { overrides: {}, selection: null },
+      timelineEvents: {
+        overrides: {},
+        selection: null,
+        hasTrackedEventsShown: false,
+      },
       slowCards: {},
       loadingControls: {
         isLoading: false,
@@ -478,7 +482,11 @@ describe("dashboard reducers", () => {
         type: SET_EDITING_DASHBOARD,
         payload: TEST_DASHBOARD,
       });
-      expect(state.timelineEvents).toEqual({ overrides: {}, selection: null });
+      expect(state.timelineEvents).toEqual({
+        overrides: {},
+        selection: null,
+        hasTrackedEventsShown: false,
+      });
     });
 
     it("drops the session overrides when the dashboard is refetched", () => {

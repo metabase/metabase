@@ -62,6 +62,7 @@ import {
 } from "./actions";
 import {
   deselectTimelineEvents,
+  markTimelineEventsShown,
   selectTimelineEvents,
   setDashCardTimelineEventsVisibility,
 } from "./actions/timeline-events";
@@ -241,6 +242,9 @@ export const timelineEvents = createReducer(
     });
     builder.addCase(deselectTimelineEvents, (state) => {
       state.selection = null;
+    });
+    builder.addCase(markTimelineEventsShown, (state) => {
+      state.hasTrackedEventsShown = true;
     });
   },
 );

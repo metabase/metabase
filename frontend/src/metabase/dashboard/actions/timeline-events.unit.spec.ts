@@ -1,6 +1,6 @@
 import { getMainStore } from "__support__/entities-store";
 import { getDashCardById } from "metabase/dashboard/selectors";
-import { getDashCardVisibleTimelineEvents } from "metabase/dashboard/timeline-events/selectors";
+import { getDashCardVisibleTimelineEventIds } from "metabase/dashboard/timeline-events/selectors";
 import {
   createMockApiState,
   createMockDashboardState,
@@ -70,9 +70,7 @@ function setup({
 type Store = ReturnType<typeof setup>;
 
 const getVisibleEventIds = (store: Store) =>
-  getDashCardVisibleTimelineEvents(store.getState(), DASHCARD_ID).map(
-    (event) => event.id,
-  );
+  getDashCardVisibleTimelineEventIds(store.getState(), DASHCARD_ID);
 
 const getDashCard = (store: Store) =>
   getDashCardById(store.getState(), DASHCARD_ID);

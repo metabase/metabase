@@ -1,34 +1,34 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 
 import { useListTimelinesQuery } from "metabase/api";
-import { trackDashboardEventsShown } from "metabase/dashboard/analytics";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DashCardId,
   DashboardCard,
-  DashboardId,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 import {
   deselectTimelineEvents,
   openEventsSidebar,
   selectTimelineEvents,
+  trackTimelineEventsShown,
 } from "../actions/timeline-events";
 
 import {
   getDashCardSelectedTimelineEventIds,
-  getDashCardVisibleTimelineEvents,
-  getHasVisibleTimelineEvents,
+  getDashCardTimelineEventsVisibility,
   getIsTimelineEventsDashCard,
   getTimelineEventsDashCardIds,
 } from "./selectors";
 
-const NO_EVENTS: TimelineEvent[] = [];
+const NO_VISIBILITY: TimelineEventsVisibility = {};
 
+// keeps the timelines loaded for the events sidebar; charts load their own
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
   const hasEventsDashCards = useSelector(
@@ -39,34 +39,16 @@ export const useDashboardTimelines = () => {
     { include: "events" },
     { skip: !withTimelineEvents || !hasEventsDashCards },
   );
-
-  useTrackDashboardEventsShown();
-};
-
-const useTrackDashboardEventsShown = () => {
-  const { dashboard, withTimelineEvents } = useDashboardContext();
-  const dashboardId = dashboard?.id;
-  const hasVisibleEvents = useSelector(
-    (state) => !!withTimelineEvents && getHasVisibleTimelineEvents(state),
-  );
-  const trackedDashboardIdRef = useRef<DashboardId>();
-
-  useEffect(() => {
-    const isTracked = trackedDashboardIdRef.current === dashboardId;
-    if (hasVisibleEvents && dashboardId != null && !isTracked) {
-      trackedDashboardIdRef.current = dashboardId;
-      trackDashboardEventsShown(dashboardId);
-    }
-  }, [dashboardId, hasVisibleEvents]);
 };
 
 type DashCardTimelineEventsProps = Pick<
   VisualizationProps,
-  | "timelineEvents"
+  | "timelineEventsVisibility"
   | "selectedTimelineEventIds"
   | "onOpenTimelines"
   | "onSelectTimelineEvents"
   | "onDeselectTimelineEvents"
+  | "onTimelineEventsShown"
 >;
 
 export const useDashCardTimelineEvents = (
@@ -80,8 +62,11 @@ export const useDashCardTimelineEvents = (
       withTimelineEvents && getIsTimelineEventsDashCard(state, dashcardId),
   );
 
-  const timelineEvents = useSelector((state) =>
-    isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : NO_EVENTS,
+  const timelineEventsVisibility = useSelector((state) =>
+    isEnabled
+      ? (getDashCardTimelineEventsVisibility(state, dashcardId) ??
+        NO_VISIBILITY)
+      : null,
   );
   const selectedTimelineEventIds = useSelector((state) =>
     isEnabled
@@ -108,13 +93,18 @@ export const useDashCardTimelineEvents = (
     () => dispatch(deselectTimelineEvents()),
     [dispatch],
   );
+  const onTimelineEventsShown = useCallback(
+    () => dispatch(trackTimelineEventsShown()),
+    [dispatch],
+  );
 
   return {
     isEnabled,
-    timelineEvents,
+    timelineEventsVisibility,
     selectedTimelineEventIds,
     onOpenTimelines: isEnabled ? onOpenTimelines : undefined,
     onSelectTimelineEvents: isEnabled ? onSelectTimelineEvents : undefined,
     onDeselectTimelineEvents: isEnabled ? onDeselectTimelineEvents : undefined,
+    onTimelineEventsShown: isEnabled ? onTimelineEventsShown : undefined,
   };
 };
