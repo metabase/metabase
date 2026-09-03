@@ -21,26 +21,27 @@ Reference material for parameters in embedded dashboards and charts. For how to 
 
 Pass starting values or controlled values, not both. If you pass both, the embed uses the controlled values and logs a warning to the console.
 
-## Web component attributes, properties, and events
+## Attributes and props
 
-### Attributes
+For each attribute's or prop's type and description, check out the generated tables in the [dashboard component reference](./dashboard-reference.md) and the [question component reference](./question-reference.md).
 
-The generated tables in the [dashboard component reference](./dashboard-reference.md#web-component-metabase-dashboard-attributes) and the [question component reference](./question-reference.md#web-component-metabase-question-attributes) list every attribute. The five parameter attributes all take a JSON object or array keyed by slug.
+### Web component attributes
 
-Attribute values are parsed as [JSON](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON, so wrap even a single slug in `hidden-parameters` in `[]`. A value that starts with `{` or `[`, but that doesn't parse, will stay as a string, and Metabase will log an error.
+The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs.
+
+Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON, so wrap even a single slug in `hidden-parameters` in `[]`. A value that starts with `{` or `[`, but that doesn't parse, will stay as a string, and Metabase will log an error.
 
 Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` pushes the new values without a reload.
 
-## React SDK props
+## How values resolve
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
+These rules apply to starting values and controlled values alike, on both dashboards and SQL questions. For each slug:
 
-For each prop's type and description, check out the generated tables:
+- **Set a value**: pass a string, or an array of strings for a multi-select filter. For other types, check out [Value formats by parameter type](#value-formats-by-parameter-type).
+- **Clear a value**: pass `null`. The filter is cleared, and its default isn't used.
+- **Reset to the default**: leave the slug out, or pass `undefined`. The embed falls back to the parameter's default, or to no value if it has none.
 
-- [`StaticDashboard`](./dashboard-reference.md#react-sdk-staticdashboard-props), - [`InteractiveDashboard`](./dashboard-reference.md#react-sdk-interactivedashboard-props)
-- [`EditableDashboard`](./dashboard-reference.md#react-sdk-editabledashboard-props)
-- [`StaticQuestion`](./question-reference.md#react-sdk-staticquestion-props)
-- [`InteractiveQuestion`](./question-reference.md#react-sdk-interactivequestion-props)
+On a web component, assigning `null` or `undefined` to the `parameters` or `sqlParameters` property removes the attribute altogether, which returns the element to uncontrolled mode with the last applied values in place.
 
 ## Value formats by parameter type
 
@@ -56,7 +57,6 @@ For each prop's type and description, check out the generated tables:
 
 The quickest way to get these values is to set the filter in Metabase and copy it from the address bar.
 
-
 | Format                                                        | Meaning                                                                                                                    |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `2024-01-02`                                                  | A single day. Add a time with `2024-01-02T10:20:00`.                                                                       |
@@ -67,6 +67,7 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 | `2024-01-02~`                                                 | After that day.                                                                                                            |
 | `today`, `yesterday`                                          | That day.                                                                                                                  |
 | `thisday`, `thisweek`, `thismonth`, `thisquarter`, `thisyear` | The current unit.                                                                                                          |
+| `lastday`, `lastweek`, `lastmonth`, `lastquarter`, `lastyear` | The previous unit.                                                                                                         |
 | `past30days`, `past3months`, `past1years`                     | The last N units, not counting the current one. Units: `minutes`, `hours`, `days`, `weeks`, `months`, `quarters`, `years`. |
 | `past30days~`                                                 | Same, but including the current unit.                                                                                      |
 | `next7days`, `next7days~`                                     | The next N units, with or without the current one.                                                                         |
@@ -75,6 +76,8 @@ The quickest way to get these values is to set the filter in Metabase and copy i
 | `exclude-days-Mon-Sun`                                        | Exclude days of the week, using `Mon` through `Sun`.                                                                       |
 | `exclude-months-Jan-Dec`                                      | Exclude months, using `Jan` through `Dec`.                                                                                 |
 | `exclude-quarters-1-4`                                        | Exclude quarters, `1` through `4`.                                                                                         |
+
+The `exclude-` formats work with dashboard filters and field filters. A plain SQL variable can't take them, because Metabase substitutes a variable with a date range, and an exclusion isn't one.
 
 ## Change payload
 
@@ -87,7 +90,7 @@ Delivered to `onParametersChange` (SDK) and as `event.detail` of the `parameters
 - `lastUsedParameters`: the values the viewer last used on this dashboard.
 - `source`: why the callback fired. See [`source`](#source).
 
-The three value fields are [`ParameterValues`](#parametervalues) objects. Full type: [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html).
+The three value fields are [`ParameterValues`](./sdk/api/ParameterValues.html) objects. Full type: [`ParameterChangePayload`](./sdk/api/ParameterChangePayload.html).
 
 ### SQL question change payload
 
@@ -115,7 +118,7 @@ On guest embeds and static embeds, your server passes parameter values in the `p
 
 Other rules:
 
-- Always include `params`, even as `{}`. A token without it is rejected before Metabase looks at any parameter.
+- Always include `params`, even as `{}`. A token without it is rejected with `Token is missing value for keypath [:params]` before Metabase looks at any parameter.
 - A slug that isn't on the item at all is rejected with `Unknown parameter :slug.`
 - Pass values as arrays, one element per value: `{ category: ["Gadget", "Gizmo"] }`. A bare value like `{ category: "Gadget" }` works too, but arrays behave consistently everywhere, including in the dropdown values of editable widgets.
 - For a locked filter connected to a plain variable in a SQL question, Metabase substitutes the values as a comma-separated list. That works inside `IN ({{variable}})`, but after `=` it's a SQL error from your database, not a Metabase error, so pass one element unless the query is written for a list.

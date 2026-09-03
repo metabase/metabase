@@ -10,8 +10,6 @@ redirect_from:
 
 A parameter is a value that changes what data an embedded dashboard or chart shows: a [dashboard filter](../dashboards/filters.md), a [SQL variable or field filter](../questions/native-editor/sql-parameters.md), or a time grouping. Questions built with the query builder don't expose parameters in embeds; to filter one, add it to a dashboard and connect a filter to the card.
 
-See also the [Parameters reference](./parameters-reference.md).
-
 ## Choose parameter visibility in the embed wizard
 
 When you embed a dashboard or SQL question, the embedding wizard will offer different parameter options depending on which authentication method you pick. With **SSO** authentication, you can set a default value and choose whether to hide a parameters widget. With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
@@ -73,6 +71,9 @@ To open an embed with some set-and-forget filters already applied, pass starting
 
 If instead you want your app to be able to push values, or see when people change a widget's values, use [controlled values](#control-values-from-your-app).
 
+- [Web component](#web-component-starting-values)
+- [React SDK](#react-sdk-starting-values)
+
 ### Web component starting values
 
 ```html
@@ -111,6 +112,9 @@ When your app needs to be the source of truth for filter values, use the control
 
 Don't combine controlled values with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console.
 
+- [Web component](#web-component-controlled-values)
+- [React SDK](#react-sdk-controlled-values)
+
 ### Web component controlled values
 
 Set the value as an attribute. To catch edits people make in Metabase's widgets, listen for `parameters-change` on the element (it doesn't bubble):
@@ -141,6 +145,8 @@ For a SQL question, use the `sql-parameters` attribute or `sqlParameters` proper
 
 ### React SDK controlled values
 
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
+
 Pair `parameters` with `onParametersChange`, and keep the values in state:
 
 ```typescript
@@ -159,7 +165,10 @@ The [callback's payload](./parameters-reference.md#change-payload) includes the 
 
 ## Hide parameter widgets
 
-To hide a parameter's widget without disabling the parameter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK). Both work on dashboards and SQL questions.
+On an [SSO embed](./introduction.md#components-with-sso-authentication), every parameter shows a widget by default. To hide a parameter's widget without disabling the parameter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK). Both work on dashboards and SQL questions.
+
+- [Web component](#web-component-hidden-widgets)
+- [React SDK](#react-sdk-hidden-widgets)
 
 ### Web component hidden widgets
 
@@ -181,17 +190,53 @@ To hide a parameter's widget without disabling the parameter, list its slug in `
 
 The same prop works on `StaticQuestion` and `InteractiveQuestion`.
 
-You'll mostly want to hide widgets on an [SSO embed](./introduction.md#components-with-sso-authentication), where every parameter shows by default. On a guest embed, only **Editable** parameters have a widget to hide.
+Guest embeds with web components ignore `hidden-parameters`. On a guest embed, only **Editable** parameters get a widget in the first place, so to remove one, set the parameter to **Disabled** or **Locked** in the embed wizard instead.
 
 Hiding a widget doesn't restrict anything: the value is still set from the browser, which means that anyone can open the console to change the value. To restrict what people can query, [lock the parameter](#restrict-data-with-locked-parameters) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
 
 ## Build your own filter UI
 
-If Metabase's widgets don't fit your app, hide them and make your own. How you push values to the charts depends on how the embed authenticates.
+If Metabase's widgets don't fit your app, hide them and make your own. How you push values to the charts depends on how the embed authenticates: on an SSO embed, your app sets the values directly, and on a guest embed, your server re-signs the token.
+
+- [SSO embeds](#sso-embeds-control-the-values-and-hide-the-widgets)
+- [Guest embeds](#guest-embeds-lock-the-parameter-and-re-sign-the-token)
 
 ### SSO embeds: control the values and hide the widgets
 
-Hold the values in your app with the [controlled props](#control-values-from-your-app), hide Metabase's widgets with `hiddenParameters`, and the embed re-queries whenever your widget updates your state. With web components, that's the `parameters` property plus `hidden-parameters`, as in [Web component controlled values](#web-component-controlled-values). In the SDK:
+Hold the values in your app with the [controlled props](#control-values-from-your-app), hide Metabase's widgets, and the embed re-queries whenever your widget changes the value.
+
+#### Web component custom filter UI
+
+Push your widget's value with the `parameters` property, and hide Metabase's widget with `hidden-parameters`:
+
+```html
+<select id="state-picker">
+  <option value="NY">New York</option>
+  <option value="CA">California</option>
+</select>
+
+<metabase-dashboard
+  id="my-dashboard"
+  dashboard-id="1"
+  parameters='{"state": "NY"}'
+  hidden-parameters='["state"]'
+></metabase-dashboard>
+
+<script>
+  const el = document.getElementById("my-dashboard");
+
+  document
+    .getElementById("state-picker")
+    .addEventListener("change", (event) => {
+      // Your widget owns the value. The embed re-queries without reloading.
+      el.parameters = { state: event.target.value };
+    });
+</script>
+```
+
+#### React SDK custom filter UI
+
+Pass your widget's value in `parameters`, and hide Metabase's widget with `hiddenParameters`:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/custom-filter-ui.tsx" snippet="example" %}
@@ -202,6 +247,8 @@ If you'd rather keep Metabase's SQL widgets and only move them, the SDK's `Inter
 ### Guest embeds: lock the parameter and re-sign the token
 
 On a guest embed, lock the parameter and let your widget own it. When someone changes the value, ask your server for a new token signed with the updated `params`, and hand it to the component. The embed re-queries with the new locked value.
+
+#### Web component re-signed token
 
 ```html
 <metabase-dashboard
@@ -219,13 +266,15 @@ On a guest embed, lock the parameter and let your widget own it. When someone ch
 </script>
 ```
 
-In the SDK, hold the token in state and pass it to the `token` prop on `StaticDashboard`. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
+Render the first token into the `token` attribute yourself rather than letting [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) fetch it. An embed that starts without a token fetches one on load, and that token would overwrite the value your widget just set.
+
+#### React SDK re-signed token
+
+Hold the token in state and pass it to the `token` prop on `StaticDashboard`. Guest embeds in the SDK need `isGuest: true` in the `MetabaseProvider` auth config, and a page can use only one authentication method. Check out [Using guest embeds with the SDK](./guest-embedding.md#using-guest-embeds-with-the-sdk).
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/parameters/dashboards/guest-locked-token.tsx" snippet="example" %}
 ```
-
-Render the first token on the component yourself rather than letting [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) fetch it. An embed that starts without a token fetches one on load, and that token would overwrite the value your widget just set.
 
 ## Parameters in iframe embeds
 
