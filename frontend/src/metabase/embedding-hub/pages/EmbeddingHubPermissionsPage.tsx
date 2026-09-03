@@ -16,7 +16,7 @@ const TAB_LABEL_INSET = "2.5rem";
 export function EmbeddingHubPermissionsPage() {
   return (
     // White, like admin, not the hub's tinted background.
-    <Stack gap="md" h="100%" pt="1.5rem" bg="background_page-primary">
+    <Stack gap="lg" h="100%" pt="1.5rem" bg="background_page-primary">
       {/* Full-width page, so it places its own padding here. */}
       <Box pl={TAB_LABEL_INSET}>
         <Title order={1} c="text-primary">{t`Permissions`}</Title>
