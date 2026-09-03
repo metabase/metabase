@@ -169,7 +169,7 @@
 (deftest new-view-data-permission-levels-block-data-app-groups-test
   (testing "data-app groups block newly-synced tables/databases even with no `:blocked` row (full manifest)"
     (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
-      (mt/with-temp [:model/PermissionsGroup {app-group-id :id} {}
+      (mt/with-temp [:model/PermissionsGroup {app-group-id :id} {:is_data_app_group true}
                      :model/PermissionsGroup {ctl-group-id :id} {}                        ; a normal, non-data-app group
                      :model/DataApp          _                  {:name "perm-test-app" :display_name "Perm Test"
                                                                  :bundle_path "app/dist/index.js"
