@@ -79,9 +79,9 @@ function EmbeddingMethodRow({
   settingKey,
 }: EmbeddingMethod) {
   return (
-    <Flex gap="xl" justify="space-between" align="flex-start">
+    <Flex gap="xxl" justify="space-between" align="flex-start">
       <Box maw="38rem">
-        <Text fw="bold" c="text-primary" mb="xs">
+        <Text fw="bold" c="text-primary" mb="xxs">
           {title}
         </Text>
         <Text c="text-secondary" lh="lg">

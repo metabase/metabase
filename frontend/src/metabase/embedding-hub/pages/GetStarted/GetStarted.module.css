@@ -27,7 +27,7 @@
 .cardGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15.625rem, 1fr));
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
 }
 
 /*

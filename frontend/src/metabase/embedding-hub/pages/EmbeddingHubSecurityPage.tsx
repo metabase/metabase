@@ -97,7 +97,7 @@ export function EmbeddingHubSecurityPage() {
             <SettingTitle
               id="static-embeds"
               fz="lg"
-              mb="md"
+              mb="lg"
             >{t`Published guest embeds`}</SettingTitle>
 
             <EmbeddedResources />

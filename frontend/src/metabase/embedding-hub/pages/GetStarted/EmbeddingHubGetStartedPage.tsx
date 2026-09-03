@@ -189,7 +189,7 @@ export function EmbeddingHubGetStartedPage() {
         {t`Get started with Metabase Embedding`}
       </Title>
 
-      <Stack gap="md">
+      <Stack gap="lg">
         <Box>
           <Title order={3} c="text-primary">{t`Create your first embed`}</Title>
           <Text c="text-secondary" mt={4}>
@@ -206,7 +206,7 @@ export function EmbeddingHubGetStartedPage() {
         </Box>
       </Stack>
 
-      <Stack gap="md">
+      <Stack gap="lg">
         <Box>
           <Title order={3} c="text-primary">{t`Fine-tune your embed`}</Title>
 
@@ -215,7 +215,7 @@ export function EmbeddingHubGetStartedPage() {
               {t`If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`}
             </Text>
           ) : (
-            <Box mt="md">
+            <Box mt="lg">
               <UpsellBanner
                 title={t`Upgrade to Metabase Pro to configure advanced options.`}
                 campaign={UTM_CAMPAIGN}
@@ -402,7 +402,7 @@ function UsefulLinksSection() {
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Title order={3} c="text-primary">{t`Useful links`}</Title>
 
       <Box className={S.cardGrid}>
@@ -435,7 +435,7 @@ function UsefulLink({
     <Card
       component={ExternalLink}
       href={href}
-      p="md"
+      p="lg"
       withBorder
       className={S.interactiveCard}
     >

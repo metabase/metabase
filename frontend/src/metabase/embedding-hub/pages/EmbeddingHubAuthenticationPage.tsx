@@ -96,8 +96,8 @@ function AuthenticationSection({
  */
 function SamlConfiguredCard() {
   return (
-    <Card p="xl" withBorder>
-      <Stack gap="md">
+    <Card p="xxl" withBorder>
+      <Stack gap="lg">
         <Title order={2}>{t`SAML is configured`}</Title>
 
         <Text c="text-secondary">
@@ -119,8 +119,8 @@ function SamlConfiguredCard() {
 
 function OtherAuthMethodsBanner() {
   return (
-    <Card p="md" withBorder bg="background-brand">
-      <Group gap="xs">
+    <Card p="lg" withBorder bg="background-brand">
+      <Group gap="xxs">
         <Text c="text-secondary">
           {t`View more authentication options, such as SAML, in the`}
         </Text>

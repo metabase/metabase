@@ -84,7 +84,7 @@ export function ChecklistCard({
   if (isInteractive && to != null) {
     card = (
       <Card
-        p="md"
+        p="lg"
         withBorder
         className={S.interactiveCard}
         component={ForwardRefLink}
@@ -106,7 +106,7 @@ export function ChecklistCard({
       <Card
         component="button"
         type="button"
-        p="md"
+        p="lg"
         withBorder
         // The global button reset does not cover text-align, so without this a
         // native button centres the card's text.
@@ -123,7 +123,7 @@ export function ChecklistCard({
     // Locked, or given neither `to` nor `onClick`: a plain div, with no click target.
     card = (
       <Card
-        p="md"
+        p="lg"
         withBorder
         data-testid="embedding-hub-checklist-card"
         aria-disabled={isLocked || undefined}
