@@ -7,11 +7,15 @@
 ;;; ------------------------------------------------------ Cards -------------------------------------------------------
 
 (defn public-card
-  "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil."
-  [card-id]
+  "The non-archived Card with `card-id`, restricted to the columns safe to expose publicly, or nil. With
+  `:enable-embedding? true`, additionally requires embedding to be enabled."
+  [card-id & {:keys [enable-embedding?]}]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
                   :card_schema]
-                 :id card-id :archived false))
+                 {:where [:and
+                          [:= :id card-id]
+                          [:= :archived false]
+                          (when enable-embedding? [:= :enable_embedding true])]}))
 
 (defn active-card
   "The non-archived Card with `card-id`, or nil."
@@ -26,10 +30,14 @@
 ;;; ---------------------------------------------------- Dashboards ----------------------------------------------------
 
 (defn public-dashboard
-  "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil."
-  [dashboard-id]
+  "The non-archived Dashboard with `dashboard-id`, restricted to the columns safe to expose publicly, or nil. With
+  `:enable-embedding? true`, additionally requires embedding to be enabled."
+  [dashboard-id & {:keys [enable-embedding?]}]
   (t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width]
-                 :id dashboard-id :archived false))
+                 {:where [:and
+                          [:= :id dashboard-id]
+                          [:= :archived false]
+                          (when enable-embedding? [:= :enable_embedding true])]}))
 
 (defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."

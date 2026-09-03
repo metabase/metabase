@@ -311,14 +311,13 @@
        (eid-translation/->id :model/Card)))
 
 (defn card-for-unsigned-token
-  "Return the info needed for embedding about Card specified in `token`. Callers are responsible for checking that
-  embedding is enabled for the Card with [[check-embedding-enabled-for-card]]."
-  [unsigned-token & {:keys [embedding-params]}]
+  "Return the info needed for embedding about Card specified in `token`."
+  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
                                       (embedding-rest.db/card-embedding-params card-id))]
-    (-> (api.public/public-card card-id)
+    (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (enabled-params resolved-embedding-params)
@@ -423,14 +422,13 @@
        (eid-translation/->id :model/Dashboard)))
 
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
-  "Return the info needed for embedding about Dashboard specified in `token`. Callers are responsible for checking that
-  embedding is enabled for the Dashboard with [[check-embedding-enabled-for-dashboard]]."
-  [unsigned-token & {:keys [embedding-params]}]
+  "Return the info needed for embedding about Dashboard specified in `token`."
+  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
                              (embedding-rest.db/dashboard-embedding-params dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (api.public/public-dashboard dashboard-id)
+    (-> (api.public/public-dashboard dashboard-id :enable-embedding? enable-embedding?)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)

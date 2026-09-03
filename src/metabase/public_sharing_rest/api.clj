@@ -111,10 +111,11 @@
 
 (defn public-card
   "Return the public Card with the given `card-id`, removing all columns that should not be visible to the general
-  public. Throws a 404 if the Card doesn't exist."
-  [card-id]
+  public. Throws a 404 if the Card doesn't exist. With `:enable-embedding? true`, additionally requires embedding
+  to be enabled."
+  [card-id & {:as options}]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (public-sharing-rest.db/public-card card-id))
+    (-> (api/check-404 (public-sharing-rest.db/public-card card-id options))
         combine-parameters-and-template-tags
         (t2/hydrate :param_fields)
         keep-param-fields-for-parameters
@@ -279,12 +280,13 @@
         (select-keys action-public-keys))))
 
 (mu/defn public-dashboard :- ::dashboards.schema/dashboard
-  "Return the public Dashboard with the given `dashboard-id`, removing all columns that should not be visible to the
-  general public. Throws a 404 if the Dashboard doesn't exist."
-  [dashboard-id]
+  "Return the public Dashboard with the given `dashboard-id`, removing all columns that should not be visible to
+  the general public. Throws a 404 if the Dashboard doesn't exist. With `:enable-embedding? true`, additionally
+  requires embedding to be enabled."
+  [dashboard-id & {:as options}]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
-    (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id))
+    (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id options))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
         keep-param-fields-for-parameters
         params/remove-param-fields-non-public-columns
