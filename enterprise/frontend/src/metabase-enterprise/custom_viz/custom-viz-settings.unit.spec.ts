@@ -285,6 +285,131 @@ describe("sanitizePluginSettings", () => {
       },
     );
 
+    it("copies what getProps returns for a built-in widget", () => {
+      const { context } = setupMount();
+      const options = [{ name: "Count", value: "count" }];
+
+      const sanitized = sanitizePluginSettings(
+        {
+          metric: definePluginSetting({
+            widget: "select",
+            getProps: () => new Proxy({ options: new Proxy(options, {}) }, {}),
+          }),
+        },
+        context,
+      );
+      const props = getCallback(
+        getHostDefinition(sanitized, `${PREFIX}metric`),
+        "getProps",
+      )(SERIES, SETTINGS, {});
+
+      expect(props).toEqual({ options });
+      if (!isObject(props)) {
+        throw new Error("Expected props");
+      }
+      expect(props.options).not.toBe(options);
+      expect(() => structuredClone(props)).not.toThrow();
+    });
+
+    it("drops built-in widget props that could pass for React elements", () => {
+      const warn = mockWarn();
+      const { context } = setupMount();
+      const element = {
+        $$typeof: Symbol.for("react.element"),
+        type: "div",
+        props: { dangerouslySetInnerHTML: { __html: "<img src=x onerror=1>" } },
+      };
+
+      const sanitized = sanitizePluginSettings(
+        {
+          mode: definePluginSetting({
+            widget: "radio",
+            getProps: () => ({ options: [{ name: element, value: "x" }] }),
+          }),
+        },
+        context,
+      );
+      const props = getCallback(
+        getHostDefinition(sanitized, `${PREFIX}mode`),
+        "getProps",
+      )(SERIES, SETTINGS, {});
+
+      expect(props).toEqual({});
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockRestore();
+    });
+
+    it.each([undefined, null, "props", 42])(
+      "turns the non-object getProps result %p into no props",
+      (result) => {
+        const { context } = setupMount();
+
+        const sanitized = sanitizePluginSettings(
+          {
+            threshold: definePluginSetting({
+              widget: "number",
+              getProps: () => result,
+            }),
+          },
+          context,
+        );
+
+        expect(
+          getCallback(
+            getHostDefinition(sanitized, `${PREFIX}threshold`),
+            "getProps",
+          )(SERIES, SETTINGS, {}),
+        ).toEqual({});
+      },
+    );
+
+    it("hands a component widget its getProps result as is, callbacks included", () => {
+      const { context } = setupMount();
+      const Widget: ComponentType<Record<string, unknown>> = () => null;
+      const pluginProps = { onFormat: () => "formatted" };
+
+      const sanitized = sanitizePluginSettings(
+        {
+          custom: definePluginSetting({
+            widget: Widget,
+            getProps: () => pluginProps,
+          }),
+        },
+        context,
+      );
+
+      expect(
+        getCallback(
+          getHostDefinition(sanitized, `${PREFIX}custom`),
+          "getProps",
+        )(SERIES, SETTINGS, {}),
+      ).toBe(pluginProps);
+    });
+
+    it("drops a title, group and section that are not strings", () => {
+      const { context } = setupMount();
+      const element = { $$typeof: Symbol.for("react.element"), type: "div" };
+
+      const sanitized = sanitizePluginSettings(
+        {
+          threshold: definePluginSetting({
+            widget: "number",
+            title: element,
+            group: element,
+            getSection: () => element,
+          }),
+        },
+        context,
+      );
+
+      const definition = getHostDefinition(sanitized, `${PREFIX}threshold`);
+      expect(definition.title).toBeUndefined();
+      expect(definition.group).toBeUndefined();
+      expect(
+        getCallback(definition, "getSection")(SERIES, SETTINGS, {}),
+      ).toBeUndefined();
+    });
+
     it("calls getSection without arguments", () => {
       const { context } = setupMount();
       const getSection = jest.fn(() => "Display");

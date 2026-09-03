@@ -17,6 +17,11 @@ function copy(value: unknown): unknown {
     throw new TypeError("Functions can't be copied");
   }
 
+  // A symbol-tagged object (e.g. `$$typeof`) could pass for a React element in the host.
+  if (typeof value === "symbol") {
+    throw new TypeError("Symbols can't be copied");
+  }
+
   if (!isObject(value)) {
     return value;
   }

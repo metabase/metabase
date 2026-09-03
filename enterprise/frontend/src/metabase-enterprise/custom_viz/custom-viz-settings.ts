@@ -121,12 +121,12 @@ function toHostDefinition(
     ] as const;
 
   return {
-    title,
-    group,
+    title: asString(title),
+    group: asString(group),
     index,
     inline,
     persistDefault,
-    getSection: getSection && (() => getSection()),
+    getSection: getSection && (() => asString(getSection())),
     readDependencies: prefixSettingIds(readDependencies, prefix, declaredIds),
     writeDependencies: prefixSettingIds(writeDependencies, prefix, declaredIds),
     eraseDependencies: prefixSettingIds(eraseDependencies, prefix, declaredIds),
@@ -143,7 +143,11 @@ function toHostDefinition(
         copyPluginValue(getValue(...pluginArgs(series, settings)))),
     getProps:
       getProps &&
-      ((series, settings) => getProps(...pluginArgs(series, settings))),
+      ((series, settings) => {
+        const props = getProps(...pluginArgs(series, settings));
+        // A built-in widget renders these in the host, so no sandbox object may reach it.
+        return isComponentWidget(widget) ? props : copyPluginProps(props);
+      }),
     widget: isComponentWidget(widget)
       ? wrapPluginWidget(
           (container, initialProps) => mount(widget, container, initialProps),
@@ -169,6 +173,20 @@ function prefixSettingIds(
       ? [`${prefix}${id}`]
       : [];
   });
+}
+
+// Labels end up as React children, so anything but a string is dropped.
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function copyPluginProps(props: unknown): Record<string, unknown> {
+  try {
+    return isObject(props) ? copyPluginValue(props) : {};
+  } catch (error) {
+    console.warn("Custom viz widget props were ignored", error);
+    return {};
+  }
 }
 
 function isComponentWidget(

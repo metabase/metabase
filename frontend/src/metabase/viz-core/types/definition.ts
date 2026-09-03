@@ -108,7 +108,7 @@ export type VisualizationSettingDefinition<
       ? ColumnSettings
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
-  ) => string;
+  ) => string | undefined;
   getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn

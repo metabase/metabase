@@ -58,6 +58,7 @@ describe("copyPluginValue", () => {
 
   it.each([
     ["a function", () => 1],
+    ["a symbol", Symbol.for("react.element")],
     ["an Intl formatter", new Intl.NumberFormat()],
   ])("rejects a value holding %s", (_name, value) => {
     expect(() => copyPluginValue(new Proxy({ value }, {}))).toThrow(
