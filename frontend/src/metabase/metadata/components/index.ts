@@ -25,7 +25,6 @@ export * from "./SortableFieldItem";
 export * from "./SortableFieldList";
 export * from "./SyncOptionsModal";
 export * from "./SyncTableSchemaButton";
-export * from "./TableBreadcrumbs";
 export * from "./TableFieldList";
 export * from "./TableSortableFieldList";
 export * from "./TableSection";
