@@ -201,6 +201,8 @@
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
   [settings]
+  ;; This filter stays out of `remove-env-vars-we-should-not-document` because the config file
+  ;; generator shares that one, and a setting with no env var is still settable in config.yml.
   (->> settings
        remove-env-vars-we-should-not-document
        (remove ignores-env-var?)
