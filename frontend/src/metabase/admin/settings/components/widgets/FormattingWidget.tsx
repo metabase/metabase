@@ -254,7 +254,7 @@ function FormattingInput({
 
   return (
     <Box data-testid={`${id}-formatting-setting`}>
-      <Text htmlFor={id} component="label" fw="bold" display="block" mb="xs">
+      <Text htmlFor={id} component="label" fw="bold" display="block" mb="xxs">
         {label}
       </Text>
       {inputType === "select" && (

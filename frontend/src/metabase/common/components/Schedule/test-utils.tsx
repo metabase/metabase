@@ -14,17 +14,14 @@ import {
 import type { ScheduleProps } from "./Schedule";
 import { Schedule } from "./Schedule";
 import type {
-  ScheduleBuilderType,
-  ScheduleChangeEvent,
+  GetScheduleDefaults,
   ScheduleValue,
   ScheduleValueType,
-} from "./types";
-import type { ScheduleDefaults } from "./utils";
-import { getScheduleDefaults } from "./utils";
+} from "./domain";
+import { getScheduleDefaults } from "./domain";
+import type { ScheduleChangeEvent } from "./types";
 
-export const getDefaultsWithoutHour = (
-  scheduleType: ScheduleBuilderType,
-): ScheduleDefaults => ({
+export const getDefaultsWithoutHour: GetScheduleDefaults = (scheduleType) => ({
   ...getScheduleDefaults(scheduleType),
   schedule_hour: null,
 });

@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
@@ -20,8 +21,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
-   [redux.core :as redux]
-   [toucan2.core :as t2]))
+   [redux.core :as redux]))
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
@@ -37,7 +37,7 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
+  (sync.db/update-field! (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mu/defn- mark-fingerprinting-failed!
   "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
@@ -46,7 +46,7 @@
   left untouched so they are retried."
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (when-let [ids (seq (map u/the-id fields))]
-    (t2/update! :model/Field :id [:in ids] {:fingerprint_version i/*latest-fingerprint-version*})))
+    (sync.db/set-fields-fingerprint-version! ids i/*latest-fingerprint-version*)))
 
 (mr/def ::FingerprintStats
   [:map
@@ -202,10 +202,7 @@
   id so the selection is stable across syncs. This should include NEW fields that are active and visible."
   [table :- i/TableInstance
    limit :- ms/PositiveInt]
-  (seq (t2/select :model/Field
-                  (assoc (honeysql-for-fields-that-need-fingerprint-updating table)
-                         :order-by [[:id :asc]]
-                         :limit    limit))))
+  (seq (sync.db/fields-where (:where (honeysql-for-fields-that-need-fingerprint-updating table)) limit)))
 
 (mu/defn- warn-too-many-fields!
   "Log that `table` has more fields to fingerprint than fingerprint-max-fields-per-table (`limit`), so only the first

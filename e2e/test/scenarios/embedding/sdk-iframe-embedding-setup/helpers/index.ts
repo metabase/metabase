@@ -41,7 +41,9 @@ export const visitNewEmbedPage = (
     if (waitForResource) {
       // Accept the terms only once the sidebar has settled: a click landing
       // mid-re-render is dropped silently and blocks the wizard (EMB-2307).
-      cy.wait("@dashboard", { timeout: 20_000 });
+      // The default dashboard is only chosen once recents and search settle,
+      // so under load the request needs the same 40s margin (EMB-2319).
+      cy.wait("@dashboard", { timeout: 40_000 });
 
       embedModalEnableEmbedding();
 

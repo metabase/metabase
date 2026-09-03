@@ -235,7 +235,7 @@ const EntityRow = memo(function EntityRow({
             {entityName}
           </EntityNameLink>
         ) : (
-          <Flex gap="xs" fw="bold">
+          <Flex gap="xxs" fw="bold">
             {entityName}
             {entity.icon}
           </Flex>

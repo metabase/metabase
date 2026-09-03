@@ -22,7 +22,7 @@ export function MetricAboutPage({
   return (
     <MetricPageCard cardId={cardId}>
       {(card) => (
-        <PageContainer data-testid="metric-about-page" gap="xl">
+        <PageContainer data-testid="metric-about-page" gap="xxl">
           <MetricPageShell
             card={card}
             urls={urls}
