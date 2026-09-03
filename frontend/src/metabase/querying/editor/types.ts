@@ -84,6 +84,9 @@ export type QueryEditorUiOptions = {
   resizable?: boolean;
 };
 
+/**
+ * The component always renders content, because NativeQuerySidebar draws the sidebar panel around it before it runs.
+ */
 export type TemplateTagsSidebarProps = {
   question: Question;
   query: Lib.Query;

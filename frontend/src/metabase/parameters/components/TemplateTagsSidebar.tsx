@@ -30,10 +30,7 @@ export function TemplateTagsSidebar({
   const latestQueryRef = useRef(query);
   latestQueryRef.current = query;
 
-  const nativeQuery = question.legacyNativeQuery();
-  if (!nativeQuery) {
-    return null;
-  }
+  const nativeQuery = checkNotNull(question.legacyNativeQuery());
 
   const commitQuery = (newQuery: Lib.Query) => {
     latestQueryRef.current = newQuery;
