@@ -106,4 +106,38 @@ describe("getChartLayout", () => {
         CHART_STYLE.padding.x,
     );
   });
+
+  it("measures a normalized stack goal as the percentage the user entered", () => {
+    const chartContext = getChartContext();
+    const formatPercent = (value: unknown) => `${Number(value) * 100}%`;
+    const normalizedInput: ChartLayoutInput = {
+      ...input,
+      leftAxisModel: {
+        ...yAxisModel,
+        extent: [0, 1],
+        isNormalized: true,
+        formatter: formatPercent,
+        formatGoal: formatPercent,
+      },
+    };
+
+    getChartLayout(
+      normalizedInput,
+      createMockVisualizationSettings({
+        ...settings,
+        "graph.show_goal": true,
+        "graph.goal_value": 50,
+      }),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    const measuredLabels = jest
+      .mocked(chartContext.measureText)
+      .mock.calls.map(([text]) => text);
+    expect(measuredLabels).toContain("50%");
+    expect(measuredLabels).not.toContain("5000%");
+  });
 });

@@ -185,7 +185,8 @@ const getYAxisTicksWidth = (
   const goalValue = getNumericGoalValue(settings);
 
   if (settings["graph.show_goal"] && goalValue !== null) {
-    valuesToMeasure.push(goalValue);
+    // a normalized goal is entered as a percentage, but the axis is in fractions
+    valuesToMeasure.push(axisModel.isNormalized ? goalValue / 100 : goalValue);
   }
 
   // This is a simplistic assumption to predict if ECharts will use decimal
