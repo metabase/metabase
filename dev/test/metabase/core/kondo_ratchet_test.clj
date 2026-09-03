@@ -9,7 +9,8 @@
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.kondo-ratchet :as kondo-ratchet]))
+   [dev.kondo-ratchet :as kondo-ratchet]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -733,7 +734,7 @@
 (deftest ^:synchronized shrink-pr-body-test
   (let [before {:ignore-counts {:case-symbol-test 2}}
         after  {:ignore-counts {:case-symbol-test 1}}
-        body   #(with-redefs [rand-nth (constantly %)]
+        body   #(mt/with-dynamic-fn-redefs [rand-nth (constantly %)]
                   (kondo-ratchet/shrink-pr-body before after "https://example.test/run/1"))]
     (is (str/includes? (body ["# still our problem" ". fixed, so no longer our problem"])
                        "{:case-symbol-test  2 => 1}"))
