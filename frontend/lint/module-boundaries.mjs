@@ -103,7 +103,6 @@ const elements = [
     type: "shared",
     name: "upsells",
     pattern: "frontend/src/metabase/common/components/upsells/**",
-    enforceSharedTiers: false,
   }),
   ...[
     "frontend/src/metabase/common/search/**",

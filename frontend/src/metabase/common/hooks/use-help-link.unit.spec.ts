@@ -9,7 +9,7 @@ import {
   createMockVersion,
 } from "metabase-types/api/mocks";
 
-import { useHelpLink } from "./useHelpLink";
+import { useHelpLink } from "./use-help-link";
 
 interface SetupOptions {
   customLinkDestination?: string;
