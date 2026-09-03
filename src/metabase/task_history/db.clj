@@ -2,6 +2,7 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn database-names-by-id
@@ -24,8 +25,8 @@
   [run-ids]
   (t2/query {:select   [:run_id
                         [[:count :id] :task_count]
-                        [[:sum [:case [:= :status [:metabase.util.honey-sql-2/literal "success"]] [:inline 1] :else [:inline 0]]] :success_count]
-                        [[:sum [:case [:= :status [:metabase.util.honey-sql-2/literal "failed"]] [:inline 1] :else [:inline 0]]] :failed_count]]
+                        [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
+                        [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
              :from     :task_history
              :where    [:in :run_id run-ids]
              :group-by [:run_id]}))

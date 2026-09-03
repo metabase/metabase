@@ -303,8 +303,13 @@
   `:cards`."
   [notification-or-id & additional-conditions]
   {:pre [(even? (count additional-conditions))]}
-  (some-> (apply pulse.db/pulse-matching (u/the-id notification-or-id) additional-conditions)
-          hydrate-notification))
+  (let [id   (u/the-id notification-or-id)
+        opts (apply hash-map additional-conditions)]
+    (some-> (cond
+              (contains? opts :alert_condition) (pulse.db/unarchived-non-alert-pulse id)
+              (contains? opts :archived)        (pulse.db/unarchived-pulse id)
+              :else                             (pulse.db/pulse id))
+            hydrate-notification)))
 
 (mu/defn- notification->alert :- (ms/InstanceOf :model/Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just

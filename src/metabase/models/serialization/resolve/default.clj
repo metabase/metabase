@@ -107,7 +107,9 @@
 
 (defn import-table-fk
   "Given [db-name schema table-name], return numeric table_id. If the database exists but the table
-  doesn't, synthesize an inactive Table from the path so we can still resolve the reference."
+  doesn't, synthesize an inactive Table from the path so we can still resolve the reference. The thrown ex-data's
+  `:error` is pinned to `:metabase.models.serialization.resolve.db/database-not-found` — this code's old namespace,
+  before this file replaced it — since other modules and tests compare against that literal keyword value."
   [[db-name schema table-name :as table-id]]
   (when table-id
     (if-let [db-id (models.db/database-id-by-name db-name)]
@@ -117,9 +119,6 @@
                       {:table-id       table-id
                        :db-name        db-name
                        :database-names (sort (models.db/database-names))
-                       ;; Pinned to the namespace this code used to live in (`resolve.db`, before it was folded into
-                       ;; `models.db` and this namespace): other modules (e.g. `remote-sync`) and tests compare
-                       ;; against this literal keyword value.
                        :error          :metabase.models.serialization.resolve.db/database-not-found})))))
 
 (defn import-field-fk

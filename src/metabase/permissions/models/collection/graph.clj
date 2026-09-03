@@ -181,11 +181,11 @@
   revision number, which is used for consistency checks when updating the graph."
   [current-revision-number]
   (when api/*current-user-id*
-    (permissions.db/insert-revision-returning-instance! :model/CollectionPermissionGraphRevision
-                                                        {:id      (inc current-revision-number)
-                                                         :user_id api/*current-user-id*
-                                                         :before  ""
-                                                         :after   ""})))
+    (permissions.db/insert-collection-permission-graph-revision-returning-instance!
+     {:id      (inc current-revision-number)
+      :user_id api/*current-user-id*
+      :before  ""
+      :after   ""})))
 
 (defn fill-revision-details!
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is

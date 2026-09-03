@@ -60,10 +60,15 @@
   [pulse-id]
   (t2/select-one-pk :model/Pulse :id pulse-id))
 
-(defn pulse-matching
-  "The Pulse with `pulse-id` also matching the key-value `conditions`, or nil."
-  [pulse-id & conditions]
-  (apply t2/select-one :model/Pulse :id pulse-id conditions))
+(defn unarchived-pulse
+  "The unarchived Pulse with `pulse-id`, or nil."
+  [pulse-id]
+  (t2/select-one :model/Pulse :id pulse-id :archived false))
+
+(defn unarchived-non-alert-pulse
+  "The unarchived, non-alert Pulse with `pulse-id`, or nil."
+  [pulse-id]
+  (t2/select-one :model/Pulse :id pulse-id :archived false :alert_condition nil))
 
 (defn alert
   "The Pulse with `pulse-id` if it is an alert, or nil."
@@ -156,9 +161,9 @@
   (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false))
 
 (defn insert-pulse!
-  "Insert the Pulse `row` and return the inserted instance."
-  [row]
-  (t2/insert-returning-instance! :model/Pulse row))
+  "Insert the Pulse `pulse` and return the inserted instance."
+  [pulse]
+  (t2/insert-returning-instance! :model/Pulse pulse))
 
 (defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."

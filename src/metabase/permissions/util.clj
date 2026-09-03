@@ -47,10 +47,13 @@
   (when api/*current-user-id*
     ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
     ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-    (permissions.db/insert-revision-returning-instance! model {:id      (inc current-revision)
-                                                               :before  before
-                                                               :after   changes
-                                                               :user_id api/*current-user-id*})))
+    (let [revision {:id      (inc current-revision)
+                    :before  before
+                    :after   changes
+                    :user_id api/*current-user-id*}]
+      (case model
+        :model/PermissionsRevision            (permissions.db/insert-permissions-revision-returning-instance! revision)
+        :model/ApplicationPermissionsRevision (permissions.db/insert-application-permissions-revision-returning-instance! revision)))))
 
 (mu/defn increment-implicit-perms-revision!
   "Save changes made to permissions that are NOT due to an explicit update to the permissions graph, but rather due to
@@ -61,11 +64,14 @@
   [model :- [:enum :model/CollectionPermissionGraphRevision]
    remark :- :string]
   (when api/*current-user-id*
-    (permissions.db/insert-revision! model {:id      (inc (collection-permission-graph-revision/latest-id))
-                                            :before  {}
-                                            :after   {}
-                                            :user_id api/*current-user-id*
-                                            :remark  remark})))
+    (case model
+      :model/CollectionPermissionGraphRevision
+      (permissions.db/insert-collection-permission-graph-revision!
+       {:id      (inc (collection-permission-graph-revision/latest-id))
+        :before  {}
+        :after   {}
+        :user_id api/*current-user-id*
+        :remark  remark}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |

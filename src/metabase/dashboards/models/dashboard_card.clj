@@ -295,9 +295,10 @@
 (def ^:private link-card-models
   (set (keys serdes/link-card-model->toucan-model)))
 
-(def link-card-info-query-for-model
-  "Return a honeysql query that is used to fetch info for a linkcard."
-  dashboards.db/link-card-info-query-for-model)
+(defn link-card-entity
+  "The instance of the link-card `model` (a string like \"card\" or \"table\") with `id`, or nil."
+  [model id]
+  (dashboards.db/link-card-entity model id))
 
 (mi/define-batched-hydration-method dashcard-linkcard-info
   :dashcard/linkcard-info

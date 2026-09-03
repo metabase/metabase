@@ -156,9 +156,9 @@
   (t2/select :model/Card :table_id table-id :type :metric :archived false))
 
 (defn insert-card!
-  "Insert the Card `row` and return the inserted instance."
-  [row]
-  (t2/insert-returning-instance! :model/Card row))
+  "Insert the Card `card` and return the inserted instance."
+  [card]
+  (t2/insert-returning-instance! :model/Card card))
 
 (defn delete-cards-in-collection!
   "Delete the Cards in the Collection with `collection-id`."
@@ -237,9 +237,12 @@
   (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= card-id]))
 
 (defn dashcard-card-and-dashboard-ids
-  "The Card and Dashboard ids of the DashboardCards matching the key-value `conditions`."
-  [& conditions]
-  (apply t2/select [:model/DashboardCard :card_id :dashboard_id] conditions))
+  "The Card and Dashboard ids of the DashboardCards, optionally narrowed to `card-ids` and/or excluding
+  `excluded-dashboard-ids`."
+  [card-ids excluded-dashboard-ids]
+  (apply t2/select [:model/DashboardCard :card_id :dashboard_id]
+         (concat (when (seq card-ids) [:card_id [:in card-ids]])
+                 (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in excluded-dashboard-ids]]))))
 
 (defn model-index
   "The ModelIndex with `model-index-id`, or nil."

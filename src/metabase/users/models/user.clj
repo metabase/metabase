@@ -2,7 +2,6 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -443,42 +442,6 @@
 
 ;;; Filtering users
 
-(defn- status-clause
-  "Figure out what `where` clause to add to the user query when
-  we get a fiddly status and include_deactivated query.
-
-  This is to keep backwards compatibility with `include_deactivated` while adding `status."
-  [status include_deactivated]
-  (if include_deactivated
-    nil
-    (case status
-      "all"         nil
-      "deactivated" [:= :is_active false]
-      "active"      [:= :is_active true]
-      [:= :is_active true])))
-
-(defn- wildcard-query [query] (h2x/like-substring query))
-
-(defn- query-clause
-  "Honeysql clause to shove into user query if there's a query"
-  [query]
-  [:or
-   [:like :%lower.first_name (wildcard-query query)]
-   [:like :%lower.last_name  (wildcard-query query)]
-   [:like :%lower.email      (wildcard-query query)]])
-
-(defn- table-metadata-perms-exist-clause
-  "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
-  manage-table-metadata."
-  []
-  [:exists ^:allow-subquery {:select [1]
-                             :from   [[:permissions_group_membership :pgm]]
-                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                             :where  [:and
-                                      [:= :pgm.user_id :core_user.id]
-                                      [:= :p.perm_type "perms/manage-table-metadata"]
-                                      [:= :p.perm_value "yes"]]}])
-
 (defn same-groups-user-ids
   "Return a list of all user-ids in the same group with the user with id `user-id`.
   Ignore the All-user groups."
@@ -486,41 +449,6 @@
   (map :user_id
        (users.db/same-groups-user-ids user-id (:id (perms/all-users-group)))))
 
-(defn filter-clauses
-  "Honeysql clauses for filtering on users.
-
-  Options:
-    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
-    :query                   - text search on first_name, last_name, email
-    :group-ids               - filter by permissions group membership
-    :include-deactivated     - legacy alias for status=all
-    :is-data-analyst?        - filter by data analyst status (true/false)
-    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
-    :limit                   - pagination limit
-    :offset                  - pagination offset"
-  [{:keys [status query group-ids include-deactivated is-data-analyst? can-access-data-studio? limit offset]}]
-  (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include-deactivated))
-    ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                           (sql.helpers/where (query-clause query))
-    (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
-                                                                 :core_user.is_data_analyst
-                                                                 [:not :core_user.is_data_analyst]))
-    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
-                                                                 [:or
-                                                                  :core_user.is_data_analyst
-                                                                  :core_user.is_superuser
-                                                                  (table-metadata-perms-exist-clause)]
-                                                                 [:and
-                                                                  [:not :core_user.is_data_analyst]
-                                                                  [:not :core_user.is_superuser]
-                                                                  [:not (table-metadata-perms-exist-clause)]]))
-    (some? group-ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group-ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group-ids])
-    (some? limit)                           (sql.helpers/limit limit)
-    (some? offset)                          (sql.helpers/offset offset)))
+(def filter-clauses
+  "Honeysql clauses for filtering on users. See [[users.db/filter-clauses]] for the options."
+  users.db/filter-clauses)

@@ -2,6 +2,8 @@
   "Application database queries for the users REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -32,10 +34,25 @@
   [user-id]
   (t2/select-one-fn :sso_source :model/User :id user-id))
 
-(defn entity-exists-where?
-  "Whether a `model` row matching the Honey SQL `where` clause exists."
-  [model where]
-  (t2/exists? model {:where where}))
+(defn has-visible-card?
+  "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
+  (nil for any type)."
+  [card-type]
+  (t2/exists? :model/Card
+              {:where (into [:and
+                             [:= :archived false]
+                             (collection/visible-collection-filter-clause)
+                             (mi/exclude-internal-content-hsql :model/Card)]
+                            (when card-type [[:= :type card-type]]))}))
+
+(defn has-visible-dashboard?
+  "Whether an unarchived, non-internal Dashboard visible to the current user exists."
+  []
+  (t2/exists? :model/Dashboard
+              {:where [:and
+                       [:= :archived false]
+                       (collection/visible-collection-filter-clause)
+                       (mi/exclude-internal-content-hsql :model/Dashboard)]}))
 
 (defn first-login
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."
@@ -47,10 +64,15 @@
   [dashboard-id]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
-(defn collection-exists-where?
-  "Whether a Collection matching the Honey SQL `where` clause exists."
-  [where]
-  (t2/exists? :model/Collection {:where where}))
+(defn writable-collection-exists?
+  "Whether the current user can write to at least one Collection (excluding the Trash and archived items)."
+  []
+  (t2/exists? :model/Collection
+              {:where (collection/visible-collection-filter-clause
+                       :id
+                       {:include-trash-collection? false
+                        :include-archived-items    :exclude
+                        :permission-level          :write})}))
 
 (defn other-user-with-email-exists?
   "Whether a User other than `user-id` has an email matching `email` case-insensitively."

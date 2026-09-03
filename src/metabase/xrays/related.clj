@@ -169,13 +169,9 @@
 (defn- recommended-dashboards
   [cards]
   (let [recent                   (recently-modified-dashboards)
-        card-id->dashboard-cards (->> (apply xrays.db/dashcard-card-and-dashboard-ids
-                                             (cond-> []
-                                               (seq cards)
-                                               (concat [:card_id [:in (map :id cards)]])
-
-                                               (seq recent)
-                                               (concat [:dashboard_id [:not-in (map :id recent)]])))
+        card-id->dashboard-cards (->> (xrays.db/dashcard-card-and-dashboard-ids
+                                       (map :id cards)
+                                       (map :id recent))
                                       (group-by :card_id))
         dashboard-ids (->> (map :id cards)
                            (mapcat card-id->dashboard-cards)

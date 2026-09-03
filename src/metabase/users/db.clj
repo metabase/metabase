@@ -2,7 +2,113 @@
   "Application database queries for the users module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
+
+(defn- status-clause
+  "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated
+  query.
+
+  This is to keep backwards compatibility with `include_deactivated` while adding `status."
+  [status include-deactivated]
+  (if include-deactivated
+    nil
+    (case status
+      "all"         nil
+      "deactivated" [:= :is_active false]
+      "active"      [:= :is_active true]
+      [:= :is_active true])))
+
+(defn- wildcard-query [query] (h2x/like-substring query))
+
+(defn- query-clause
+  "Honeysql clause to shove into user query if there's a query"
+  [query]
+  [:or
+   [:like :%lower.first_name (wildcard-query query)]
+   [:like :%lower.last_name  (wildcard-query query)]
+   [:like :%lower.email      (wildcard-query query)]])
+
+(defn- table-metadata-perms-exist-clause
+  "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
+  manage-table-metadata."
+  []
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[:permissions_group_membership :pgm]]
+                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                             :where  [:and
+                                      [:= :pgm.user_id :core_user.id]
+                                      [:= :p.perm_type "perms/manage-table-metadata"]
+                                      [:= :p.perm_value "yes"]]}])
+
+(defn- tenant-clause
+  "Honeysql clause restricting `:tenant_id`: `tenant-filter` is a tenant id to restrict to, `:all` for no
+  restriction, `:external` for any non-nil tenant, or nil for no tenant (internal users)."
+  [tenant-filter]
+  (case tenant-filter
+    :all      nil
+    :external [:not= :tenant_id nil]
+    [:= :tenant_id tenant-filter]))
+
+(def ^:private sort-order-by
+  "Fixed ORDER BYs for [[filter-clauses]]'s `:sort` option."
+  {:first-name [[:%lower.first_name :asc] [:%lower.last_name :asc] [:id :asc]]
+   :last-name  [[:%lower.last_name :asc] [:%lower.first_name :asc]]})
+
+(defn- add-sort
+  [honeysql-map sort]
+  (apply sql.helpers/order-by honeysql-map (sort-order-by sort)))
+
+(defn filter-clauses
+  "Honeysql clauses for filtering on users.
+
+  Options:
+    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
+    :query                   - text search on first_name, last_name, email
+    :group-ids               - filter by permissions group membership
+    :user-ids                - filter to just these user ids
+    :include-deactivated     - legacy alias for status=all
+    :is-data-analyst?        - filter by data analyst status (true/false)
+    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
+    :tenant-filter           - restrict `:tenant_id`: a tenant id, `:all` (no restriction), `:external` (any
+                               non-nil tenant), or nil (no tenant); omit the key entirely for no restriction
+    :sort                    - `:first-name` or `:last-name`, adds an ORDER BY; omit for none
+    :limit                   - pagination limit
+    :offset                  - pagination offset"
+  [{:keys [status query group-ids user-ids include-deactivated is-data-analyst? can-access-data-studio? sort
+           limit offset]
+    :as   options}]
+  (cond-> {}
+    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where (status-clause status include-deactivated))
+    ;; don't send the internal user
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (contains? options :tenant-filter)      (sql.helpers/where (tenant-clause (:tenant-filter options)))
+    (some? query)                           (sql.helpers/where (query-clause query))
+    (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
+                                                                 :core_user.is_data_analyst
+                                                                 [:not :core_user.is_data_analyst]))
+    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
+                                                                 [:or
+                                                                  :core_user.is_data_analyst
+                                                                  :core_user.is_superuser
+                                                                  (table-metadata-perms-exist-clause)]
+                                                                 [:and
+                                                                  [:not :core_user.is_data_analyst]
+                                                                  [:not :core_user.is_superuser]
+                                                                  [:not (table-metadata-perms-exist-clause)]]))
+    (some? group-ids)                       (sql.helpers/right-join
+                                             :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group-ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group-ids])
+    (seq user-ids)                          (sql.helpers/where [:in :core_user.id user-ids])
+    (some? sort)                            (add-sort sort)
+    (some? limit)                           (sql.helpers/limit limit)
+    (some? offset)                          (sql.helpers/offset offset)))
 
 (defn set-user-last-login-now!
   "Set `last_login` of the User with `user-id` to now."

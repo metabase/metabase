@@ -37,24 +37,52 @@
   (t2/select-one model (t2.identity-query/identity-query [row-map])))
 
 (defn entities-reducible
-  "A reducible of the `model` rows selected by the Honey SQL `query`."
-  [model query]
-  (t2/reducible-select model query))
+  "A reducible of the `model` rows additionally matching the Honey SQL `extra-where` when given — the serdes
+  extract-query nested-fetch hook passes a dynamic foreign-key-column + id-list condition here that varies per
+  model/transform and can't be expressed as fixed data — ordered by `order-by` (or unordered when nil)."
+  [model extra-where order-by]
+  (t2/reducible-select model (cond-> {}
+                               extra-where (assoc :where extra-where)
+                               order-by    (assoc :order-by order-by))))
 
-(defn names-reducible
-  "A reducible of the id, name, and display name of every `model` row."
-  [model]
-  (t2/reducible-select [model :id :name :display_name]))
+(defn entities-in-collections-reducible
+  "A reducible of the `model` rows whose `:collection_id` is in `collection-set` (nil in the set counts as the root
+  collection), additionally matching the Honey SQL `extra-where` when given (see [[entities-reducible]] for why this
+  stays a raw clause), ordered by `order-by` (or unordered when nil)."
+  [model collection-set extra-where order-by]
+  (t2/reducible-select model
+                       (cond-> {:where [:and
+                                        [:or
+                                         [:in :collection_id collection-set]
+                                         (when (some nil? collection-set)
+                                           [:= :collection_id nil])]
+                                        extra-where]}
+                         order-by (assoc :order-by order-by))))
+
+(defn table-names-reducible
+  "A reducible of the id, name, and display name of every Table."
+  []
+  (t2/reducible-select [:model/Table :id :name :display_name]))
+
+(defn field-names-reducible
+  "A reducible of the id, name, and display name of every Field."
+  []
+  (t2/reducible-select [:model/Field :id :name :display_name]))
 
 (defn update-entity!
   "Apply `changes` to the `model` row with `id`."
   [model id changes]
   (t2/update! model id changes))
 
-(defn set-display-name!
-  "Set the display name of the `model` row with `id`."
-  [model id display-name]
-  (t2/update! model id {:display_name display-name}))
+(defn set-table-display-name!
+  "Set the display name of the Table with `id`."
+  [id display-name]
+  (t2/update! :model/Table id {:display_name display-name}))
+
+(defn set-field-display-name!
+  "Set the display name of the Field with `id`."
+  [id display-name]
+  (t2/update! :model/Field id {:display_name display-name}))
 
 (defn insert-entity!
   "Insert the `model` `row` and return the inserted instance."
@@ -148,10 +176,10 @@
 (defn insert-inactive-table!
   "Insert an inactive Table named `table-name` in `schema` of the Database with `database-id` and return its id."
   [database-id schema table-name]
-  (:id (t2/insert-returning-instance! :model/Table {:db_id  database-id
-                                                    :schema schema
-                                                    :name   table-name
-                                                    :active false})))
+  (t2/insert-returning-pk! :model/Table {:db_id  database-id
+                                         :schema schema
+                                         :name   table-name
+                                         :active false}))
 
 (defn field-pk
   "The id of the Field named `field-name` under `parent-id` in the Table with `table-id`, or nil."

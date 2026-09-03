@@ -37,8 +37,9 @@
    (u.humanization/name->human-readable-name strategy s)))
 
 (defn- re-humanize-names!
-  "Update all non-custom display names of all instances of `model` (e.g. Table or Field)."
-  [old-strategy model]
+  "Update all non-custom display names of all `entities-reducible` rows (e.g. Table or Field ones), using `model` for
+  logging and `set-display-name!` to apply the change."
+  [old-strategy model entities-reducible set-display-name!]
   (run! (fn [{id :id, internal-name :name, display-name :display_name}]
           (let [old-strategy-display-name (name->human-readable-name old-strategy internal-name)
                 new-strategy-display-name (name->human-readable-name internal-name)
@@ -47,15 +48,15 @@
                        (not custom-display-name?))
               (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
                          (name model) internal-name display-name new-strategy-display-name)
-              (models.db/set-display-name! model id new-strategy-display-name))))
-        (models.db/names-reducible model)))
+              (set-display-name! id new-strategy-display-name))))
+        (entities-reducible)))
 
 (mu/defn- re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
   the (obstensibly swapped implementation of) `name->human-readable-name`."
   [old-strategy :- :keyword]
-  (doseq [model [:model/Table :model/Field]]
-    (re-humanize-names! old-strategy model)))
+  (re-humanize-names! old-strategy :model/Table models.db/table-names-reducible models.db/set-table-display-name!)
+  (re-humanize-names! old-strategy :model/Field models.db/field-names-reducible models.db/set-field-display-name!))
 
 (defn- set-humanization-strategy! [new-value]
   (let [new-strategy (keyword (or new-value :simple))]

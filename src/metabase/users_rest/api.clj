@@ -2,7 +2,6 @@
   "/api/user endpoints"
   (:require
    [clojure.set :as set]
-   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -195,26 +194,25 @@
     (do
       (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
                      (tru "You cannot specify both `tenancy` and `tenant_id`"))
-      (let [clauses (let [clauses (user/filter-clauses {:status                  status
-                                                        :query                   query
-                                                        :group-ids               (when group_id [group_id])
-                                                        :include-deactivated     include_deactivated
-                                                        :is-data-analyst?        is_data_analyst
-                                                        :can-access-data-studio? can_access_data_studio
-                                                        :limit                   (request/limit)
-                                                        :offset                  (request/offset)})]
-                      (cond
-                        (not api/*is-superuser?*) (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
-                        (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
-                        (= tenancy :all) clauses
-                        (= tenancy :external) (sql.helpers/where clauses [:not= :tenant_id nil])
-                        :else (sql.helpers/where clauses [:= :tenant_id nil])))]
+      (let [tenant-filter (cond
+                            (not api/*is-superuser?*)     (:tenant_id @api/*current-user*)
+                            (contains? params :tenant_id) tenant_id
+                            (= tenancy :all)               :all
+                            (= tenancy :external)           :external
+                            :else                           nil)
+            clauses (user/filter-clauses {:status                  status
+                                          :query                   query
+                                          :group-ids               (when group_id [group_id])
+                                          :include-deactivated     include_deactivated
+                                          :is-data-analyst?        is_data_analyst
+                                          :can-access-data-studio? can_access_data_studio
+                                          :tenant-filter           tenant-filter
+                                          :sort                    :first-name
+                                          :limit                   (request/limit)
+                                          :offset                  (request/offset)})]
         {:data   (cond-> (users-rest.db/users-with-columns
                           (user-visible-columns)
-                          (sql.helpers/order-by clauses
-                                                [:%lower.first_name :asc]
-                                                [:%lower.last_name :asc]
-                                                [:id :asc]))
+                          clauses)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
                    (t2/hydrate :personal_collection_id :tenant_collection_id)
@@ -244,21 +242,20 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
-                                  (not api/*is-superuser?*) (sql.helpers/where
-                                                             [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                  (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
-                                  true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+  (letfn [(recipient-tenant-filter [] (cond
+                                        (not api/*is-superuser?*) (:tenant_id @api/*current-user*)
+                                        (not (perms/use-tenants)) nil
+                                        :else                     :all))
+          (all [] (let [clauses (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
+                                                      :sort          :last-name})]
                     {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
                      :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user/filter-clauses {})
-                                            (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                            (not (perms/use-tenants)) (sql.helpers/where [:= :tenant_id nil])
-                                            (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
-                                            true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                                 clauses  (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
+                                                                :user-ids      user-ids
+                                                                :sort          :last-name})]
                              {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
                               :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)
@@ -310,19 +307,11 @@
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
-  (let [collection-filter (collection/visible-collection-filter-clause)
-        entity-exists? (fn [model & additional-clauses]
-                         (users-rest.db/entity-exists-where? model
-                                                             (into [:and
-                                                                    [:= :archived false]
-                                                                    collection-filter
-                                                                    (mi/exclude-internal-content-hsql model)]
-                                                                   additional-clauses)))]
-    (-> user
-        (assoc :has_question_and_dashboard
-               (and (entity-exists? :model/Card)
-                    (entity-exists? :model/Dashboard)))
-        (assoc :has_model (entity-exists? :model/Card [:= :type "model"])))))
+  (-> user
+      (assoc :has_question_and_dashboard
+             (and (users-rest.db/has-visible-card? nil)
+                  (users-rest.db/has-visible-dashboard?)))
+      (assoc :has_model (users-rest.db/has-visible-card? "model"))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -349,11 +338,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (users-rest.db/collection-exists-where? (collection/visible-collection-filter-clause
-                                                      :id
-                                                      {:include-trash-collection? false
-                                                       :include-archived-items :exclude
-                                                       :permission-level :write})))))
+             (users-rest.db/writable-collection-exists?))))
 
 (mr/def ::user-permissions
   "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,

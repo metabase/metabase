@@ -504,16 +504,8 @@
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (models.db/entities-reducible model (cond-> {:where (or where true)}
-                                            order-by (assoc :order-by order-by)))
-      (models.db/entities-reducible model (cond-> {:where [:and
-                                                           [:or
-                                                            [:in :collection_id collection-set]
-                                                            (when (some nil? collection-set)
-                                                              [:= :collection_id nil])]
-                                                           (when where
-                                                             where)]}
-                                            order-by (assoc :order-by order-by))))))
+      (models.db/entities-reducible model where order-by)
+      (models.db/entities-in-collections-reducible model collection-set where order-by))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)

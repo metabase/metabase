@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -11,10 +12,100 @@
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 
-(defn query-rows
-  "The rows of the Honey SQL `query`."
-  [query]
-  (t2/query query))
+(defn- perm-rows-query-base
+  "The FROM/JOIN/WHERE shared by every rank-rows query below: one user's groups' rows for every permission type,
+  excluding rows for deactivated tables. `db-ids` of nil means every database."
+  [user-id db-ids]
+  ^:allow-subquery {:from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                    :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
+                           [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
+                    :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+                    :where [:and
+                            [:= :pgm.user_id user-id]
+                            (when (seq db-ids)
+                              [:in :p.db_id db-ids])
+                            [:or
+                             [:= :p.table_id nil]
+                             [:= :mt.active true]]]})
+
+(def ^:private value-rank-case
+  "A HoneySQL CASE expression mapping a data_permissions row's (perm_type, perm_value) to the value's rank in its
+  permission type's ordering — 0 = most permissive. MIN/MAX aggregates of this rank are what let SQL collapse
+  groups, tables and duplicate values."
+  (into [:case]
+        cat
+        (for [[perm-type {:keys [values]}] permissions.schema/data-permissions
+              [i v] (map-indexed vector values)]
+          [[:and
+            [:= :p.perm_type (u/qualified-name perm-type)]
+            [:= :p.perm_value (u/qualified-name v)]]
+           [:inline i]])))
+
+(def ^:private db-row-rank-case
+  "[[value-rank-case]] but only for database-level rows — NULL for rows that name a table, so MIN/MAX ignore them."
+  [:case [:= :p.table_id nil] value-rank-case :else nil])
+
+(def ^:private table-level-case
+  "0 for a database-level row, 1 for a table-level row."
+  [:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]])
+
+(defn database-permission-rank-rows
+  "For each `(perm-type, db-id)` of the DataPermissions rows of the User with `user-id`'s groups (narrowed to
+  `db-ids`, or every database when nil), the `[min max]` value rank pairs needed to reconstruct the `:database`,
+  `:every-table`, and `:any-table` whole-database permission values."
+  [user-id db-ids]
+  (let [per-group (-> (perm-rows-query-base user-id db-ids)
+                      (assoc :select   [:p.perm_type :p.db_id :p.group_id
+                                        [[:min value-rank-case] :gmin]
+                                        [[:max value-rank-case] :gmax]
+                                        [[:min db-row-rank-case] :dbmin]
+                                        [[:max db-row-rank-case] :dbmax]]
+                             :group-by [:p.perm_type :p.db_id :p.group_id]))]
+    (t2/query {:select   [:i.perm_type :i.db_id
+                          [[:min :i.gmin] :any_mn]   [[:max :i.gmax] :any_mx]
+                          [[:min :i.gmax] :every_mn] [[:max :i.gmax] :every_mx]
+                          [[:min :i.dbmin] :db_mn]   [[:max :i.dbmax] :db_mx]]
+               :from     [[per-group :i]]
+               :group-by [:i.perm_type :i.db_id]})))
+
+(defn schema-permission-rank-rows
+  "For each `(perm-type, db-id, schema-name, table-level)` of the DataPermissions rows of the User with `user-id`'s
+  groups (narrowed to `db-ids`, or every database when nil), the `[min max]` value rank pair."
+  [user-id db-ids]
+  (t2/query (assoc (perm-rows-query-base user-id db-ids)
+                   :select   [:p.perm_type :p.db_id :p.schema_name
+                              [table-level-case :table_level]
+                              [[:min value-rank-case] :mn]
+                              [[:max value-rank-case] :mx]]
+                   :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))
+
+(defn table-permission-rank-rows
+  "For each `(perm-type, db-id, table-id)` of the table-granular DataPermissions rows of the User with `user-id`'s
+  groups, the `[min max]` value rank pair. Scoped to `table-ids` when given (ignoring `db-ids`), otherwise to
+  `db-ids` (or every database when both are nil)."
+  [user-id db-ids table-ids]
+  (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
+                (assoc :select   [:p.perm_type :p.db_id :p.table_id
+                                  [[:min value-rank-case] :mn]
+                                  [[:max value-rank-case] :mx]]
+                       :group-by [:p.perm_type :p.db_id :p.table_id])
+                (update :where conj [:not= :p.table_id nil])
+                (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids])))))
+
+(defn schema-permission-rank-pair
+  "The `[min max]` value rank pair summarizing the DataPermissions rows of the User with `user-id`'s groups for
+  `perm-type` on the Database with `database-id`, restricted to rows naming the schema `schema-name` or no schema at
+  all (database-level rows), or nil when there are no matching rows."
+  [user-id perm-type database-id schema-name]
+  (let [per-group (-> (perm-rows-query-base user-id [database-id])
+                      (assoc :select   [:p.group_id [[:max value-rank-case] :gmax]]
+                             :group-by [:p.group_id])
+                      (update :where conj [:= :p.perm_type (u/qualified-name perm-type)])
+                      (update :where conj [:or
+                                           [:= :p.table_id nil]
+                                           [:= :p.schema_name schema-name]]))]
+    (first (t2/query {:select [[[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
+                      :from   [[per-group :i]]}))))
 
 (defn table-permission-values-for-groups
   "The set of `perm-type` values `group-ids` hold for the Table with `table-id` or for its whole Database."
@@ -344,15 +435,25 @@
   []
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
 
-(defn insert-revision!
-  "Insert `revision` into `revision-model`."
-  [revision-model revision]
-  (t2/insert! revision-model revision))
+(defn insert-collection-permission-graph-revision!
+  "Insert `revision` into CollectionPermissionGraphRevision."
+  [revision]
+  (t2/insert! :model/CollectionPermissionGraphRevision revision))
 
-(defn insert-revision-returning-instance!
-  "Insert `revision` into `revision-model` and return the new instance."
-  [revision-model revision]
-  (first (t2/insert-returning-instances! revision-model revision)))
+(defn insert-collection-permission-graph-revision-returning-instance!
+  "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
+  [revision]
+  (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
+
+(defn insert-permissions-revision-returning-instance!
+  "Insert `revision` into PermissionsRevision and return the new instance."
+  [revision]
+  (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
+
+(defn insert-application-permissions-revision-returning-instance!
+  "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
+  [revision]
+  (first (t2/insert-returning-instances! :model/ApplicationPermissionsRevision revision)))
 
 (defn update-collection-graph-revision!
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."

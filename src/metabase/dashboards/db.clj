@@ -244,7 +244,7 @@
            [:cast nil col-type])
          col]))))
 
-(defn link-card-info-query-for-model
+(defn- link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
   ^:allow-subquery {:select (select-clause-for-link-card-model model)
@@ -252,6 +252,12 @@
                     :where  (if (coll? id-or-ids)
                               [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
                               [:= :id (ensure-integer-link-card-id id-or-ids)])})
+
+(defn link-card-entity
+  "The instance of the link-card `model` (a string like \"card\" or \"table\") with `id`, projected the same way as
+  [[link-card-info-rows]], or nil."
+  [model id]
+  (t2/select-one (serdes/link-card-model->toucan-model model) (link-card-info-query-for-model model id)))
 
 (defn- link-card-info-query
   [link-card-model->ids]

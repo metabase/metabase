@@ -191,7 +191,8 @@
 ;;; [[with-relevant-permissions-for-user]] and key `:perms` by user ID so we NEVER accidentally use the cache of the
 ;;; wrong user.
 ;;;
-;;; All coalescing happens in SQL: each permission value is mapped to its rank (see [[value-rank-case]]) and rows
+;;; All coalescing happens in SQL: each permission value is mapped to its rank (see `permissions.db`'s
+;;; `value-rank-case`) and rows
 ;;; are aggregated with GROUP BY, so result sets scale with tables/schemas/databases rather than with raw
 ;;; data_permissions row counts (dbs x groups x tables x duplicate values). A bucket's (min, max) rank pair is
 ;;; enough to reconstruct [[coalesce]] exactly (see [[ranks->most-permissive-value]]), and the
@@ -201,40 +202,6 @@
 ;;; All caches are point-in-time snapshots for the request: nothing invalidates them when data_permissions is
 ;;; written, so code that mutates permissions and re-checks them within the same request scope reads pre-write
 ;;; answers, and the caches may observe a concurrent write at different first-load moments.
-
-(defn- perm-rows-query-base
-  "The FROM/JOIN/WHERE shared by every cache load: one user's groups' rows for every permission type, excluding rows
-  for deactivated tables. All caches must select from this same row set so they can never answer the same permission
-  question differently — change the row set here, not in one of the queries. `db-ids` of nil means every database."
-  [user-id db-ids]
-  ^:allow-subquery {:from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
-                    :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
-                           [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
-                    :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
-                    :where [:and
-                            [:= :pgm.user_id user-id]
-                            (when (seq db-ids)
-                              [:in :p.db_id db-ids])
-                            [:or
-                             [:= :p.table_id nil]
-                             [:= :mt.active true]]]})
-
-(def ^:private value-rank-case
-  "A HoneySQL CASE expression mapping a data_permissions row's (perm_type, perm_value) to the value's rank in its
-  permission type's ordering — 0 = most permissive. MIN/MAX aggregates of this rank are what let SQL collapse
-  groups, tables and duplicate values."
-  (into [:case]
-        cat
-        (for [[perm-type {:keys [values]}] permissions.schema/data-permissions
-              [i v] (map-indexed vector values)]
-          [[:and
-            [:= :p.perm_type (u/qualified-name perm-type)]
-            [:= :p.perm_value (u/qualified-name v)]]
-           [:inline i]])))
-
-(def ^:private db-row-rank-case
-  "[[value-rank-case]] but only for database-level rows — NULL for rows that name a table, so MIN/MAX ignore them."
-  [:case [:= :p.table_id nil] value-rank-case :else nil])
 
 (defn- ranks->most-permissive-value
   "Reconstructs [[coalesce]] over a bucket of values from the bucket's `[min-rank max-rank]` pair. Verified
@@ -363,7 +330,7 @@
   before they coalesce across groups — a user can hold `:unrestricted` on every table without any single group
   granting it on all of them.
 
-  All three are aggregations of the same rows (see [[perm-rows-query-base]]), so one query computes all of them, for
+  All three are aggregations of the same rows (see `permissions.db`'s `perm-rows-query-base`), so one query computes all of them, for
   every database it is asked about, at once. `:db-ids` records which those were: this cache only ever answers for a
   database it actually loaded, so one created later is fetched rather than read as having no permissions.
 
@@ -379,14 +346,7 @@
 (defn- load-database-perms
   "Whole-database values for `db-ids`, or for every database when nil."
   [user-id db-ids]
-  (let [per-group (-> (perm-rows-query-base user-id db-ids)
-                      (assoc :select   [:p.perm_type :p.db_id :p.group_id
-                                        [[:min value-rank-case] :gmin]
-                                        [[:max value-rank-case] :gmax]
-                                        [[:min db-row-rank-case] :dbmin]
-                                        [[:max db-row-rank-case] :dbmax]]
-                             :group-by [:p.perm_type :p.db_id :p.group_id]))
-        value     (fn [perm-type mn mx] (when mn (ranks->most-permissive-value perm-type [mn mx])))]
+  (let [value (fn [perm-type mn mx] (when mn (ranks->most-permissive-value perm-type [mn mx])))]
     (reduce (fn [m {:keys [perm_type db_id any_mn any_mx every_mn every_mx db_mn db_mx]}]
               (let [perm-type (keyword perm_type)]
                 (assoc-in m [perm-type db_id]
@@ -394,12 +354,7 @@
                            :every-table (value perm-type every_mn every_mx)
                            :any-table   (value perm-type any_mn any_mx)})))
             {}
-            (permissions.db/query-rows {:select   [:i.perm_type :i.db_id
-                                                   [[:min :i.gmin] :any_mn]   [[:max :i.gmax] :any_mx]
-                                                   [[:min :i.gmax] :every_mn] [[:max :i.gmax] :every_mx]
-                                                   [[:min :i.dbmin] :db_mn]   [[:max :i.dbmax] :db_mx]]
-                                        :from     [[per-group :i]]
-                                        :group-by [:i.perm_type :i.db_id]}))))
+            (permissions.db/database-permission-rank-rows user-id db-ids))))
 
 (defn- load-database-perms!
   "Load `db-ids` into [[*db-permission-cache*]] and return the resulting per-user map."
@@ -467,19 +422,13 @@
 
 (defn- load-schema-permission-perms
   [user-id db-ids]
-  (let [table-level-case [:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]]
-        folded (reduce (fn [m {:keys [perm_type db_id schema_name table_level mn mx]}]
+  (let [folded (reduce (fn [m {:keys [perm_type db_id schema_name table_level mn mx]}]
                          (if (pos? table_level)
                            (update-in m [(keyword perm_type) db_id :schemas (or schema_name "")]
                                       combine-rank-pairs [mn mx])
                            (assoc-in m [(keyword perm_type) db_id :db-level] [mn mx])))
                        {}
-                       (permissions.db/query-rows (assoc (perm-rows-query-base user-id db-ids)
-                                                         :select [:p.perm_type :p.db_id :p.schema_name
-                                                                  [table-level-case :table_level]
-                                                                  [[:min value-rank-case] :mn]
-                                                                  [[:max value-rank-case] :mx]]
-                                                         :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))]
+                       (permissions.db/schema-permission-rank-rows user-id db-ids))]
     (into {}
           (map (fn [[perm-type db-id->folded]]
                  [perm-type
@@ -541,13 +490,7 @@
             (assoc-in m [(keyword perm_type) db_id table_id]
                       (ranks->most-permissive-value (keyword perm_type) [mn mx])))
           {}
-          (permissions.db/query-rows (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
-                                         (assoc :select [:p.perm_type :p.db_id :p.table_id
-                                                         [[:min value-rank-case] :mn]
-                                                         [[:max value-rank-case] :mx]]
-                                                :group-by [:p.perm_type :p.db_id :p.table_id])
-                                         (update :where conj [:not= :p.table_id nil])
-                                         (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids]))))))
+          (permissions.db/table-permission-rank-rows user-id db-ids table-ids)))
 
 (defn- merge-table-perms
   "Merge freshly loaded table permissions into cached ones, unioning the per-database table maps rather than replacing
@@ -733,15 +676,7 @@
   Selecting the schema's table rows and the database-level rows together is what keeps this a single flat aggregate:
   a database-level row applies to every schema, so restricting to one schema needs no expansion step."
   [user-id perm-type database-id schema-name]
-  (let [per-group   (-> (perm-rows-query-base user-id [database-id])
-                        (assoc :select   [:p.group_id [[:max value-rank-case] :gmax]]
-                               :group-by [:p.group_id])
-                        (update :where conj [:= :p.perm_type (u/qualified-name perm-type)])
-                        (update :where conj [:or
-                                             [:= :p.table_id nil]
-                                             [:= :p.schema_name schema-name]]))
-        {:keys [mn mx]} (first (permissions.db/query-rows {:select [[[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
-                                                           :from   [[per-group :i]]}))]
+  (let [{:keys [mn mx]} (permissions.db/schema-permission-rank-pair user-id perm-type database-id schema-name)]
     (when mn [mn mx])))
 
 (mu/defn full-schema-permission-for-user :- ::permissions.schema/data-permission-value

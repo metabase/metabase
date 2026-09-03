@@ -6,7 +6,6 @@
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
@@ -105,9 +104,7 @@
         ;; the info in viz-settings might be out-of-date
         (some? (:entity link-card))
         (let [{:keys [model id]} (:entity link-card)
-              instance           (notification.db/link-card-entity
-                                  (serdes/link-card-model->toucan-model model)
-                                  (dashboard-card/link-card-info-query-for-model model id))]
+              instance           (dashboard-card/link-card-entity model id)]
           (when (mi/can-read? instance)
             (link-card->text-part (assoc link-card :entity instance))))))
     (catch Throwable e

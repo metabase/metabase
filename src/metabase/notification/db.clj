@@ -31,11 +31,6 @@
                                             :from   :notification_handler
                                             :where  [:= :id handler-id]}]))
 
-(defn notifications
-  "The Notifications matching the Honey SQL `query`."
-  [query]
-  (t2/select :model/Notification query))
-
 (defn notifications-matching
   "Reducible Notifications, optionally narrowed to `creator-id`, `creator-or-recipient-id` (a User who is either the
   creator or a recipient), `recipient-id`, `card-id`, and `payload-type`; active Notifications only unless
@@ -121,11 +116,6 @@
                           [:= :n.active true]
                           [:= :ns.event_name event-name]
                           [:= :ns.type "notification-subscription/system-event"]]}))
-
-(defn notification-count-row
-  "The single row of the Honey SQL count `query`."
-  [query]
-  (t2/query-one query))
 
 (defn insert-notification!
   "Insert `notification` and return the new instance."
@@ -591,11 +581,6 @@
   "The instance of `model` with `id`, or nil."
   [model id]
   (t2/select-one model id))
-
-(defn link-card-entity
-  "The instance of `model` matching the Honey SQL `query` that a link card points at, or nil."
-  [model query]
-  (t2/select-one model query))
 
 (defn card
   "The Card with `card-id`, or nil."
