@@ -17,6 +17,7 @@ import {
 } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import type { QueryModalType } from "metabase/querying/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
@@ -198,6 +199,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               isDirty={isDirty}
               isResultDirty={isResultDirty}
               isRunning={isRunning}
+              noResultsAction={<HasResultsAlertPrompt question={question} />}
               onChange={updateQuestion}
               onCreate={async (question) => {
                 const result = await onCreate(question);
