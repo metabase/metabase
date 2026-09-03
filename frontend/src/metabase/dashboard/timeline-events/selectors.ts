@@ -12,7 +12,6 @@ import {
   getDashCardById,
   getDashboard,
   getDashcardData,
-  getDashcardDataMap,
   getDashcards,
   getSelectedTabId,
   getSidebar,
@@ -39,7 +38,6 @@ import type {
 import {
   canDashCardDisplayTimelineEvents,
   computeDashCardTimeseriesXAxis,
-  isDashCardDataLoaded,
 } from "./utils";
 
 const NO_EVENT_IDS: TimelineEventId[] = [];
@@ -86,7 +84,7 @@ export const getIsTimelineEventsDashCard = createCachedSelector(
   (dashcard, xAxis) =>
     dashcard != null &&
     canDashCardDisplayTimelineEvents(dashcard) &&
-    xAxis != null,
+    xAxis?.domain != null,
 )((_state, dashcardId) => dashcardId);
 
 export const getDashCardVisibleTimelineEventIds = createCachedSelector(
@@ -110,35 +108,26 @@ export const getDashCardSelectedTimelineEventIds = (
     return NO_EVENT_IDS;
   }
   const selection = state.dashboard.timelineEvents.selection;
-  return selection &&
-    (selection.dashcardId == null || selection.dashcardId === dashcardId)
-    ? selection.eventIds
-    : NO_EVENT_IDS;
+  const isForThisChart =
+    dashcardId == null ||
+    selection?.dashcardId == null ||
+    selection.dashcardId === dashcardId;
+  return selection && isForThisChart ? selection.eventIds : NO_EVENT_IDS;
 };
 
 const isDashCardOnSelectedTab = (
   dashcard: DashboardCard,
   selectedTabId: DashboardTabId | null,
-) =>
-  !selectedTabId ||
-  dashcard.dashboard_tab_id === selectedTabId ||
-  dashcard.dashboard_tab_id === null;
+) => !selectedTabId || dashcard.dashboard_tab_id === selectedTabId;
 
 export const getTimelineEventsDashCardIds = createShallowEqualResultSelector(
-  [
-    getCurrentDashcards,
-    getSelectedTabId,
-    getDashcardDataMap,
-    (state: State) => state,
-  ],
-  (dashcards, selectedTabId, dashcardDataMap, state) =>
+  [getCurrentDashcards, getSelectedTabId, (state: State) => state],
+  (dashcards, selectedTabId, state) =>
     dashcards
       .filter(
         (dashcard) =>
           isDashCardOnSelectedTab(dashcard, selectedTabId) &&
-          canDashCardDisplayTimelineEvents(dashcard) &&
-          (!isDashCardDataLoaded(dashcard, dashcardDataMap[dashcard.id]) ||
-            getIsTimelineEventsDashCard(state, dashcard.id)),
+          getIsTimelineEventsDashCard(state, dashcard.id),
       )
       .map((dashcard) => dashcard.id),
 );

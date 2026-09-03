@@ -25,7 +25,7 @@ const getIntervalWidth = (
     dayjs(range[1]).diff(range[0], interval.unit) / interval.count,
   );
 
-  return chartLayout.boundaryWidth / intervalsCount;
+  return chartLayout.boundaryWidth / Math.max(intervalsCount, 1);
 };
 
 const groupEventsByUnitStart = (
