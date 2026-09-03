@@ -14,7 +14,6 @@
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values])
   (:import
@@ -43,17 +42,6 @@
                  (parse-long id-str)))
          set)))
 
-(defn- table-match-clause
-  "Build a WHERE clause to match a table by name and optionally schema.
-   When schema is present, matches both; otherwise matches just the table name."
-  [{:keys [schema table]}]
-  (let [table-lower (u/lower-case-en table)]
-    (if schema
-      [:and
-       [:= [:lower :name] table-lower]
-       [:= [:lower :schema] (u/lower-case-en schema)]]
-      [:= [:lower :name] table-lower])))
-
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string.
 
@@ -70,8 +58,7 @@
       (let [driver (llm.db/database-engine database-id)
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
-          (let [match-clauses (mapv table-match-clause tables)
-                matched-tables (llm.db/active-tables-matching database-id match-clauses)]
+          (let [matched-tables (llm.db/active-tables-matching database-id tables)]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
@@ -100,15 +87,7 @@
    Returns a map of table-id -> table record."
   [database-id table-ids]
   (when (seq table-ids)
-    (let [{:keys [clause with]} (mi/visible-filter-clause
-                                 :model/Table :id
-                                 {:user-id       api/*current-user-id*
-                                  :is-superuser? api/*is-superuser?*}
-                                 {:perms/view-data      :unrestricted
-                                  :perms/create-queries :query-builder-and-native})
-          tables (llm.db/visible-tables table-ids database-id
-                                        (cond-> {:where clause}
-                                          with (assoc :with with)))]
+    (let [tables (llm.db/visible-tables table-ids database-id api/*current-user-id* api/*is-superuser?*)]
       (into {} (map (juxt :id identity)) tables))))
 
 (defn get-accessible-card-ids

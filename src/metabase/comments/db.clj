@@ -2,6 +2,11 @@
   "Application database queries for the comments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
+   [metabase.users.core :as users]
+   [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [toucan2.core :as t2]))
 
 (defn comments-for-target
@@ -18,10 +23,15 @@
   [user-ids]
   (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
 
-(defn entity
-  "The `model` row with `id`, or nil."
-  [model id]
-  (t2/select-one model :id id))
+(defn document
+  "The Document with `id`, or nil."
+  [id]
+  (t2/select-one :model/Document :id id))
+
+(defn exploration
+  "The Exploration with `id`, or nil."
+  [id]
+  (t2/select-one :model/Exploration :id id))
 
 (defn comment-by-id
   "The Comment with `id`, or nil."
@@ -59,17 +69,40 @@
   [id]
   (t2/update! :model/Comment id {:deleted_at [:now]}))
 
-(defn mention-users
-  "The id, name, and email of the Users selected by the Honey SQL `query`."
-  [query]
-  (t2/select [:model/User :id :first_name :last_name :email] query))
-
-(defn mention-user-count
-  "The `:count` of distinct Users matching the Honey SQL `clauses`."
+(defn- restrict-to-visible-users
+  "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
+  everyone; everyone else is limited to their own tenant and further narrowed by the `user-visibility`
+  setting."
   [clauses]
+  (if api/*is-superuser?*
+    clauses
+    (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
+      (case (users.settings/user-visibility)
+        :all   clauses
+        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                                 set
+                                                                 (conj api/*current-user-id*))])
+        :none  (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
+
+(defn mentionable-users
+  "The id, first name, last name, and email of the active Users the current user may @mention, ordered by name
+  then id, limited to `limit` starting at `offset`."
+  [limit offset]
+  (t2/select [:model/User :id :first_name :last_name :email]
+             (-> (user/filter-clauses {:limit limit :offset offset})
+                 restrict-to-visible-users
+                 (sql.helpers/order-by [:%lower.first_name :asc]
+                                       [:%lower.last_name :asc]
+                                       [:id :asc]))))
+
+(defn mentionable-user-count
+  "The `:count` of the active Users the current user may @mention."
+  []
   (t2/query-one (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                         :from   :core_user}
-                       clauses)))
+                       (-> (user/filter-clauses {})
+                           restrict-to-visible-users
+                           users/filter-clauses-without-paging))))
 
 (defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."

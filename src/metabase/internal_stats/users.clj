@@ -1,15 +1,11 @@
 (ns metabase.internal-stats.users
   (:require
-   [metabase.app-db.core :as db]
    [metabase.internal-stats.db :as internal-stats.db]))
 
 (defn email-domain-count
   "Count all unique normalized domains found in active user emails"
   []
-  (:count (internal-stats.db/active-personal-user-email-domain-count
-           (condp contains? (db/db-type)
-             #{:postgres}  [:split_part :email "@" [:inline 2]]
-             #{:h2 :mysql} [:substring :email [:locate "@" :email]]))))
+  (:count (internal-stats.db/active-personal-user-email-domain-count)))
 
 (defn external-users-count
   "Number of users with sso-source: JWT as a proxy for tenant users of embedded views"

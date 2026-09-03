@@ -2,6 +2,8 @@
   "Application database queries for the login history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn login-history-for-user
@@ -28,13 +30,13 @@
   (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit limit}))
 
 (defn first-device-login-count-since
-  "The number of LoginHistory rows of the User with `user-id` after the Honey SQL timestamp `cutoff` that are the
-  first login on their device."
-  [user-id cutoff]
+  "The number of LoginHistory rows of the User with `user-id` in the last `window-hours` that are the first
+  login on their device."
+  [user-id window-hours]
   (t2/count :model/LoginHistory
             {:where [:and
                      [:= :user_id user-id]
-                     [:> :timestamp cutoff]
+                     [:> :timestamp (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- window-hours) :hour)]
                      [:not [:exists
                             ^:allow-subquery
                             {:select [1]

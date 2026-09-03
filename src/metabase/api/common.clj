@@ -460,25 +460,28 @@
   [collection-id :- [:maybe ms/PositiveInt]
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
-  (let [models '[Card Dashboard Pulse Document]]
-    (when (not= new-position old-position)
-      (cond
-        (and (nil? new-position)
-             old-position)
-        (doseq [model models]
-          (api.db/shift-collection-positions-after! model collection-id old-position :-))
+  (when (not= new-position old-position)
+    (cond
+      (and (nil? new-position)
+           old-position)
+      (doseq [shift-after! [api.db/shift-card-positions-after! api.db/shift-dashboard-positions-after!
+                            api.db/shift-pulse-positions-after! api.db/shift-document-positions-after!]]
+        (shift-after! collection-id old-position :-))
 
-        (and new-position (nil? old-position))
-        (doseq [model models]
-          (api.db/shift-collection-positions-from! model collection-id new-position :+))
+      (and new-position (nil? old-position))
+      (doseq [shift-from! [api.db/shift-card-positions-from! api.db/shift-dashboard-positions-from!
+                           api.db/shift-pulse-positions-from! api.db/shift-document-positions-from!]]
+        (shift-from! collection-id new-position :+))
 
-        (> new-position old-position)
-        (doseq [model models]
-          (api.db/shift-collection-positions-between! model collection-id old-position new-position :-))
+      (> new-position old-position)
+      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
+                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
+        (shift-between! collection-id old-position new-position :-))
 
-        (< new-position old-position)
-        (doseq [model models]
-          (api.db/shift-collection-positions-between! model collection-id new-position old-position :+))))))
+      (< new-position old-position)
+      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
+                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
+        (shift-between! collection-id new-position old-position :+)))))
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"

@@ -2,13 +2,19 @@
   "Application database queries for the glossary module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn glossary-entries
-  "The Glossary entries matching the Honey SQL `where` clause (every entry when nil), in term order."
-  [where]
-  (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
-                               where (assoc :where where))))
+  "The Glossary entries whose term or definition contains `search` case-insensitively, or every
+  entry when `search` is nil, in term order."
+  [search]
+  (t2/select :model/Glossary
+             (cond-> {:order-by [[:term :asc]]}
+               search (assoc :where (let [pattern (h2x/like-substring search)]
+                                      [:or
+                                       [:like [:lower :term] pattern]
+                                       [:like [:lower :definition] pattern]])))))
 
 (defn insert-glossary-entry!
   "Insert the Glossary `row` and return the inserted instance."

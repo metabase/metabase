@@ -257,11 +257,14 @@
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
-(def ^:private ast-model->db-model
-  {"card"      :model/Card
-   "dataset"   :model/Card
-   "table"     :model/Table
-   "dashboard" :model/Dashboard})
+(defn- ast-model->entity
+  "The database row identified by the smart-link/card-embed `model` (\"card\", \"dataset\", \"table\", or
+  \"dashboard\") and `id`, or nil."
+  [model id]
+  (case model
+    ("card" "dataset") (documents.db/card id)
+    "table"            (documents.db/table id)
+    "dashboard"        (documents.db/dashboard id)))
 
 (def ^:private model->serdes-model
   {"card"      "Card"
@@ -285,7 +288,7 @@
         node (cond-> node
                (= prose-mirror/card-embed-type type)
                (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
-    (if-let [db-model (and id (documents.db/entity (ast-model->db-model model) id))]
+    (if-let [db-model (and id (ast-model->entity model id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))

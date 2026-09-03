@@ -2,12 +2,75 @@
   "Application database queries for the model persistence module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
-(defn persisted-infos
-  "The PersistedInfos selected by the Honey SQL `query`."
-  [query]
-  (t2/select :model/PersistedInfo query))
+(defn persisted-info-listing
+  "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
+  table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
+  unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
+  refresh first, paginated from `offset` by `limit`."
+  [persisted-info-id db-ids card-id limit offset]
+  (t2/select :model/PersistedInfo
+             (cond-> {:select    [:p.id :p.database_id :p.definition
+                                  :p.active :p.state :p.error
+                                  :p.refresh_begin :p.refresh_end
+                                  :p.table_name :p.creator_id
+                                  :p.card_id [:c.name :card_name]
+                                  [:c.archived :card_archived]
+                                  [:c.type :card_type]
+                                  [:db.name :database_name]
+                                  [:col.id :collection_id] [:col.name :collection_name]
+                                  [:col.authority_level :collection_authority_level]]
+                      :from      [[:persisted_info :p]]
+                      :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
+                                  [:report_card :c]        [:= :c.id :p.card_id]
+                                  [:collection :col]       [:= :c.collection_id :col.id]]
+                      :where     [:and
+                                  [:= :c.type "model"]
+                                  [:= :c.archived false]]
+                      :order-by  [[:p.refresh_begin :desc]]}
+               persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
+               (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
+               card-id           (sql.helpers/where [:= :p.card_id card-id])
+               limit             (sql.helpers/limit limit)
+               offset            (sql.helpers/offset offset))))
+
+(defn deletable-prunable-persisted-infos
+  "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
+  Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
+  [states]
+  (t2/select :model/PersistedInfo
+             {:select    [:p.*]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:or
+                          [:and
+                           [:in :state states]
+                           ;; Buffer deletions for an hour if the prune job happens soon after setting
+                           ;; state: 1. so people have a chance to change their mind, 2. so a query
+                           ;; running against the cache doesn't get ripped out.
+                           [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                          [:= :c.type "question"]
+                          [:= :c.archived true]
+                          ;; card_id is set to null when the corresponding card is deleted
+                          [:= :p.card_id nil]]}))
+
+(defn refreshable-persisted-infos
+  "The PersistedInfos of the Database with `database-id` in one of `states` whose Card is an unarchived
+  model, plus the Card's `:type`, `:archived`, and `:name`."
+  [database-id states]
+  (t2/select :model/PersistedInfo
+             {:select    [:p.* :c.type :c.archived :c.name]
+              :from      [[:persisted_info :p]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :where     [:and
+                          [:= :p.database_id database-id]
+                          [:in :p.state states]
+                          [:= :c.archived false]
+                          [:= :c.type "model"]]}))
 
 (defn persisted-infos-by-ids
   "The PersistedInfos with `ids`."
@@ -69,16 +132,26 @@
   [id changes]
   (t2/update! :model/PersistedInfo id changes))
 
-(defn deactivate-persisted-infos!
-  "Deactivate the PersistedInfos matching `conditions` and move them to `state`."
-  [conditions state]
-  (t2/update! :model/PersistedInfo conditions {:active false, :state state, :state_change_at :%now}))
+(defn deactivate-all-persisted-infos!
+  "Deactivate every PersistedInfo and move it to `state`."
+  [state]
+  (t2/update! :model/PersistedInfo {} {:active false, :state state, :state_change_at :%now}))
 
-(defn invalidate-persisted-infos!
-  "Deactivate the active PersistedInfos matching `conditions` and move them back to creating."
-  [conditions]
+(defn deactivate-persisted-info!
+  "Deactivate the PersistedInfo with `id` and move it to `state`."
+  [id state]
+  (t2/update! :model/PersistedInfo id {:active false, :state state, :state_change_at :%now}))
+
+(defn deactivate-persisted-infos-for-database!
+  "Deactivate the PersistedInfos of the Database with `database-id` and move them to `state`."
+  [database-id state]
+  (t2/update! :model/PersistedInfo :database_id database-id {:active false, :state state, :state_change_at :%now}))
+
+(defn invalidate-persisted-infos-for-cards!
+  "Deactivate the active PersistedInfos of the Cards with `card-ids` and move them back to creating."
+  [card-ids]
   (t2/update! :model/PersistedInfo
-              (merge {:active true} conditions)
+              {:active true, :card_id [:in card-ids]}
               {:active false, :state "creating", :state_change_at :%now}))
 
 (defn reset-persisted-info-to-creating!

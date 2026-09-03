@@ -2,6 +2,8 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.models.serialization :as serdes]
    [toucan2.core :as t2]))
 
 (defn snippets-by-archived
@@ -44,7 +46,17 @@
   [id]
   (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id))
 
-(defn snippets-reducible
-  "A reducible of the NativeQuerySnippets selected by the Honey SQL `query`."
-  [query]
-  (t2/reducible-select :model/NativeQuerySnippet query))
+(defn exportable-snippets
+  "A reducible of the NativeQuerySnippets to export via serdes: unarchived when `skip-archived?`, and either
+  in one of `collection-ids`, uncollected when `include-root?`, or matching the serdes-supplied
+  `extra-condition` — an additional condition the caller widens the export scope with (e.g. also export as
+  a Card dependency, regardless of collection), or nil — in stable export order."
+  [collection-ids include-root? skip-archived? extra-condition]
+  (t2/reducible-select :model/NativeQuerySnippet
+                       (cond-> {:where    [:and
+                                           (when skip-archived? [:not :archived])
+                                           [:or
+                                            (when (seq collection-ids) [:in :collection_id collection-ids])
+                                            (when include-root? [:= :collection_id nil])]]
+                                :order-by serdes/stable-storage-order}
+                         extra-condition (sql.helpers/where :or extra-condition))))

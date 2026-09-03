@@ -2,7 +2,9 @@
   "Application database queries for the internal stats module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
+   [metabase.models.interface :as mi]
    [toucan2.core :as t2]))
 
 (defn enabled-data-app-count
@@ -118,22 +120,92 @@
   [date]
   (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
 
-(defn card-statistics
-  "The aggregate `columns` over the Cards matching the Honey SQL `where` clause."
-  [columns where]
-  (t2/select-one (into [:model/Card] columns) {:where where}))
+(defn- and-not-nil
+  ([not-nil-field]
+   (and-not-nil nil not-nil-field))
+  ([case-boolean not-nil-field]
+   (cond->> [:!= not-nil-field nil]
+     case-boolean (conj [:and case-boolean]))))
+
+(defn- card-has-params
+  []
+  (condp = (mdb/db-type)
+    :mysql [:json_contains_path
+            :dataset_query
+            ^:allow-raw-sql [:inline "one"]
+            ^:allow-raw-sql [:inline "$.native.\"template-tags\".*"]]
+    :postgres [:jsonb_path_exists
+               [:cast :dataset_query :jsonb]
+               ^:allow-raw-sql [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+
+(defn- contains-embedding-param
+  [param]
+  (condp = (mdb/db-type)
+    :mysql [:!= [:json_search
+                 :embedding_params
+                 ^:allow-raw-sql [:inline "one"]
+                 param]
+            nil]
+    :postgres [:jsonb_path_exists
+               [:cast :embedding_params :jsonb]
+               ^:allow-raw-sql [:inline "$.* ? (@ == $val)"]
+               [:jsonb_build_object ^:allow-raw-sql [:inline "val"] param]]))
+
+(def ^:private embedding-on [:= :enable_embedding [:inline true]])
+
+(defn question-statistics-all-time
+  "Aggregate counts of unarchived, non-internal Cards over all time: totals, native vs GUI, dashboard
+  questions, embedded, publicly shared, and (where the app db supports JSON path queries) counts
+  broken down by template-tag parameters and embedding-parameter locking."
+  []
+  (let [json-supported? (contains? #{:mysql :mariadb :postgres} (mdb/db-type))]
+    (t2/select-one
+     (into [:model/Card]
+           (cond-> [[:%count.* :total]
+                    [(u/count-case [:= "native" :query_type])
+                     :native]
+                    [(u/count-case [:!= "native" :query_type])
+                     :gui]
+                    [(u/count-case [:!= :dashboard_id nil])
+                     :is_dashboard_question]
+                    [(u/count-case [:= :enable_embedding [:inline true]])
+                     :total_embedded]
+                    [(u/count-case (and-not-nil :public_uuid))
+                     :total_public]]
+             ;; json_exists/contains which we use to query json encoded data stored in text
+             ;; columns is not supported on h2 databases, so we exclude these stats when
+             ;; the app db is h2.
+             json-supported? (conj
+                              [(u/count-case (card-has-params))
+                               :with_params]
+                              [(u/count-case (and-not-nil (card-has-params) :public_uuid))
+                               :with_params_public]
+                              [(u/count-case [:and embedding-on (card-has-params)])
+                               :with_params_embedded]
+                              [(u/count-case [:and (contains-embedding-param "enabled")
+                                              embedding-on])
+                               :with_enabled_params]
+                              [(u/count-case [:and (contains-embedding-param "locked")
+                                              embedding-on])
+                               :with_locked_params]
+                              [(u/count-case [:and (contains-embedding-param "disabled")
+                                              embedding-on])
+                               :with_disabled_params])))
+     {:where (mi/exclude-internal-content-hsql :model/Card)})))
 
 (defn active-personal-user-email-domain-count
-  "The `:count` of distinct email domains of active personal Users, `domain-expr` being the Honey SQL expression
-  extracting the domain from `:email`."
-  [domain-expr]
-  (t2/query-one {:select [[:%count.* :count]]
-                 :from [[^:allow-subquery
-                         {:select-distinct [[domain-expr]]
-                          :from [:core_user]
-                          :where [:and
-                                  [:= :is_active true]
-                                  [:= :type "personal"]]} :distinct_emails]]}))
+  "The `:count` of distinct email domains of active personal Users."
+  []
+  (let [domain-expr (condp contains? (mdb/db-type)
+                      #{:postgres}  [:split_part :email "@" [:inline 2]]
+                      #{:h2 :mysql} [:substring :email [:locate "@" :email]])]
+    (t2/query-one {:select [[:%count.* :count]]
+                   :from [[^:allow-subquery
+                           {:select-distinct [[domain-expr]]
+                            :from [:core_user]
+                            :where [:and
+                                    [:= :is_active true]
+                                    [:= :type "personal"]]} :distinct_emails]]})))
 
 (defn active-jwt-user-count
   "The number of active personal Users whose SSO source is JWT."

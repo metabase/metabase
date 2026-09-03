@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.upload.queries :as upload.queries]
+   [metabase.upload.db :as upload.db]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
@@ -16,7 +16,7 @@
   [db-id]
   (or (not-handling-api-request?)
       (mi/can-write? :model/Database db-id)
-      (upload.queries/database-is-attached-dwh? db-id)
+      (upload.db/database-is-attached-dwh? db-id)
       (api/throw-403)))
 
 (defsetting uploads-settings
@@ -27,16 +27,16 @@
   :type       :json
   :audit      :getter
   :getter     (fn []
-                (let [db (upload.queries/uploads-database)]
+                (let [db (upload.db/current-database)]
                   {:db_id        (:id db)
                    :schema_name  (:uploads_schema_name db)
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (if (nil? db_id)
-                  (upload.queries/disable-uploads-for-all-databases!)
+                  (upload.db/disable-uploads-for-all-databases!)
                   (do
                     (check-required-perms! db_id)
-                    (upload.queries/enable-uploads-for-database! db_id schema_name table_prefix)))))
+                    (upload.db/enable-uploads-for-database! db_id schema_name table_prefix)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

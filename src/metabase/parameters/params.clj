@@ -13,7 +13,6 @@
    [clojure.set :as set]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -122,7 +121,7 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (parameters.db/active-name-fields-for-tables param-field-columns table-ids (app-db/isa :type/Name))
+    (m/index-by :table_id (-> (parameters.db/active-name-fields-for-tables param-field-columns table-ids)
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)

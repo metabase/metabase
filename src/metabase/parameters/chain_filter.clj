@@ -65,7 +65,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -547,68 +546,18 @@
               (get v->human-readable v (get v->human-readable (str v))))
             values)))
 
-(defn- format-union
-  "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
-  fail on Postgres."
-  [_clause exprs]
-  (let [[sqls args] (sql/format-expr-list exprs)
-        sql         (str/join " UNION " sqls)]
-    (into [sql] args)))
-
-(sql/register-clause! ::union format-union :union)
-
-(defn- implicit-pk->name-mapping-query
-  [field-id mapping-type]
-  ^:allow-subquery
-  {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
-   :from      [[:metabase_field :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [:metabase_field :dest] [:= :dest.table_id :table.id]]
-   :where     [:and
-               [:= :source.id field-id]
-               (mdb/isa :source.semantic_type :type/PK)
-               (mdb/isa :dest.semantic_type :type/Name)]
-   :limit     1})
-
 (def ^:dynamic *allow-implicit-uuid-field-remapping*
   "Should implicit remapping be allowed _for uuid fields_? Not eg. for
   `GET /dashboard/:id/params/:param-key/search/:query` to search on actual field that was picked
   for filtering (#59020). Apart from the endpoint it is bound in [[chain-filter-search]]!"
   true)
 
-(defn- remapped-field-id-query [field-id]
-  {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-   :from   [[^:allow-subquery
-             {::union (into [;; Explicit FK Field->Field remapping
-                             ^:allow-subquery
-                             {:select [[:dimension.human_readable_field_id :id] [^:allow-raw-sql [:inline "fk->field"] :mapping_type]]
-                              :from   [[:dimension :dimension]]
-                              :where  [:and
-                                       [:= :dimension.field_id field-id]
-                                       [:not= :dimension.human_readable_field_id nil]]
-                              :limit  1}]
-                            (when *allow-implicit-uuid-field-remapping*
-                              [;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                               (implicit-pk->name-mapping-query
-                                ^:allow-subquery
-                                {:select    [:fk_target_field_id]
-                                 :from      [:metabase_field]
-                                 :where     [:and
-                                             [:= :id field-id]
-                                             (mdb/isa :semantic_type :type/FK)]
-                                 :limit     1}
-                                "fk->pk->name")
-                               ;; Implicit PK Field-> [Name] Field remapping
-                               (implicit-pk->name-mapping-query field-id "pk->name")]))}
-             :mapping]]
-   :limit  1})
-
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ::lib.schema.id/field]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (:id (parameters.db/remapped-field (remapped-field-id-query field-id))))
+  (:id (parameters.db/remapped-field field-id *allow-implicit-uuid-field-remapping*)))
 
 (mu/defn remapping :- [:maybe [:map
                                [:id ::lib.schema.id/field]
@@ -616,7 +565,7 @@
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when-let [raw-mapping (parameters.db/remapped-field (remapped-field-id-query field-id))]
+  (when-let [raw-mapping (parameters.db/remapped-field field-id *allow-implicit-uuid-field-remapping*)]
     (-> raw-mapping
         (dissoc :mapping_type)
         (assoc :mapping-type (-> raw-mapping :mapping_type keyword)))))

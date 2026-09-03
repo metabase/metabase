@@ -121,14 +121,18 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (model-persistence.db/deactivate-persisted-infos! conditions-map state)))
+   (cond
+     (contains? conditions-map :id)          (model-persistence.db/deactivate-persisted-info! (:id conditions-map) state)
+     (contains? conditions-map :database_id) (model-persistence.db/deactivate-persisted-infos-for-database! (:database_id conditions-map) state)
+     :else                                   (model-persistence.db/deactivate-all-persisted-infos! state))))
 
 (defn invalidate!
-  "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
-  [conditions-map]
+  "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
+  on again."
+  [card-ids]
   ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
   ;; TODO perhaps we should immediately kick off a recalculation of these caches
-  (model-persistence.db/invalidate-persisted-infos! conditions-map))
+  (model-persistence.db/invalidate-persisted-infos-for-cards! card-ids))
 
 (defenterprise default-persistent-info-state
   "The default state for a new PersistedInfo record. Defaults to 'creating' for OSS"

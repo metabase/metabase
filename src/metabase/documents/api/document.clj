@@ -5,7 +5,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -240,7 +239,7 @@
    _query-params]
   ;; Documents attached to an exploration are internal to that exploration — every other listing surface (search,
   ;; recents, collection items) excludes them too.
-  {:items (as-> (documents.db/visible-unarchived-documents (collection/visible-collection-filter-clause)) docs
+  {:items (as-> (documents.db/visible-unarchived-documents) docs
             (filter mi/can-read? docs)
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 

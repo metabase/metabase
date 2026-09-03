@@ -4,35 +4,47 @@
   (:require
    [toucan2.core :as t2]))
 
+(defn- client-event-where
+  "The `:where` clause for OAuthClientEvents narrowed by `client-id` and/or `event-type`, or nil for no
+  narrowing."
+  [client-id event-type]
+  (let [clauses (cond-> []
+                  client-id  (conj [:= :c.client_id client-id])
+                  event-type (conj [:= :e.event_type event-type]))]
+    (when (seq clauses)
+      (into [:and] clauses))))
+
 (defn client-event-count
-  "The number of OAuthClientEvents matching the Honey SQL `where` clause (all of them when nil)."
-  [where]
-  (t2/query (cond-> {:select    [[[:count :*] :count]]
-                     :from      [[:oauth_client_event :e]]
-                     :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]}
-              where (assoc :where where))))
+  "The number of OAuthClientEvents matching `client-id` and/or `event-type` (all of them when both nil)."
+  [client-id event-type]
+  (let [where (client-event-where client-id event-type)]
+    (t2/query (cond-> {:select    [[[:count :*] :count]]
+                       :from      [[:oauth_client_event :e]]
+                       :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]}
+                where (assoc :where where)))))
 
 (defn client-events
-  "Up to `limit` OAuthClientEvents from `offset` matching the Honey SQL `where` clause (all of them when nil), newest
-  first, with their client and deciding user."
-  [where limit offset]
-  (t2/query (cond-> {:select     [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
-                                  [:c.client_id :client_id]
-                                  [:c.client_name :client_name]
-                                  [:c.client_uri :client_uri]
-                                  [:c.registration_type :registration_type]
-                                  [:c.application_type :application_type]
-                                  [:c.redirect_uris :redirect_uris]
-                                  [:u.email :user_email]
-                                  [:u.first_name :user_first_name]
-                                  [:u.last_name :user_last_name]]
-                     :from       [[:oauth_client_event :e]]
-                     :left-join  [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
-                                  [:core_user :u]    [:= :e.user_id :u.id]]
-                     :order-by   [[:e.created_at :desc] [:e.id :desc]]
-                     :limit      limit
-                     :offset     offset}
-              where (assoc :where where))))
+  "Up to `limit` OAuthClientEvents from `offset` matching `client-id` and/or `event-type` (all of them when
+  both nil), newest first, with their client and deciding user."
+  [client-id event-type limit offset]
+  (let [where (client-event-where client-id event-type)]
+    (t2/query (cond-> {:select     [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
+                                    [:c.client_id :client_id]
+                                    [:c.client_name :client_name]
+                                    [:c.client_uri :client_uri]
+                                    [:c.registration_type :registration_type]
+                                    [:c.application_type :application_type]
+                                    [:c.redirect_uris :redirect_uris]
+                                    [:u.email :user_email]
+                                    [:u.first_name :user_first_name]
+                                    [:u.last_name :user_last_name]]
+                       :from       [[:oauth_client_event :e]]
+                       :left-join  [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
+                                    [:core_user :u]    [:= :e.user_id :u.id]]
+                       :order-by   [[:e.created_at :desc] [:e.id :desc]]
+                       :limit      limit
+                       :offset     offset}
+                where (assoc :where where)))))
 
 (defn active-user-exists?
   "Whether an active User with `user-id` exists."

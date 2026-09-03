@@ -20,14 +20,6 @@
                     :user_id :user_email :user_first_name :user_last_name])
       (update :redirect_uris #(some-> % json/decode))))
 
-(defn- event-where-clause
-  [client-id event-type]
-  (let [clauses (cond-> []
-                  client-id  (conj [:= :c.client_id client-id])
-                  event-type (conj [:= :e.event_type event-type]))]
-    (when (seq clauses)
-      (into [:and] clauses))))
-
 (api.macros/defendpoint :get "/authorizations"
   :- [:map
       [:total  ms/IntGreaterThanOrEqualToZero]
@@ -43,9 +35,8 @@
   (api/check-superuser)
   (let [limit  (or (request/limit) 50)
         offset (or (request/offset) 0)
-        where  (event-where-clause client-id event-type)
-        total  (:count (first (oauth-server.db/client-event-count where)))
-        rows   (oauth-server.db/client-events where limit offset)]
+        total  (:count (first (oauth-server.db/client-event-count client-id event-type)))
+        rows   (oauth-server.db/client-events client-id event-type limit offset)]
     {:total  (or total 0)
      :limit  limit
      :offset offset

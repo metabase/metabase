@@ -5,7 +5,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -17,12 +16,7 @@
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
    {:keys [search]} :- [:maybe [:map [:search {:optional true} [:maybe ms/NonBlankString]]]]]
-  (let [where (when search
-                (let [pattern (h2x/like-substring search)]
-                  [:or
-                   [:like [:lower :term] pattern]
-                   [:like [:lower :definition] pattern]]))]
-    {:data (t2/hydrate (glossary.db/glossary-entries where) :creator)}))
+  {:data (t2/hydrate (glossary.db/glossary-entries search) :creator)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

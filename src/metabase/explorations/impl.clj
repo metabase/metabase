@@ -15,7 +15,6 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
-   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -108,12 +107,8 @@
    name. Optionally restricted to `metric-ids` (when non-nil), preserving access checks but
    filtering to that subset."
   [metric-ids library-ids]
-  (let [base-where  (queries/visible-metric-cards-where-clause)
-        where       (if (seq metric-ids)
-                      [:and base-where [:in :id (vec metric-ids)]]
-                      base-where)]
-    (->> (explorations.db/metric-card-ids-where where (or (seq library-ids) [-1]))
-         (mapv :id))))
+  (->> (explorations.db/metric-card-ids metric-ids library-ids)
+       (mapv :id)))
 
 (defn- load-metric-cards
   "Load the metric Card rows for `card-ids` in a single batched SELECT, returning them

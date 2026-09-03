@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.data-studio.api.table :as api.table]
+   [metabase.data-studio.db :as data-studio.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -212,10 +213,9 @@
               (is (= [v3] (get-field-values))))))))))
 
 (deftest ^:parallel table-selectors->filter-test
-  (testing "table-selectors->filter function generates correct WHERE clauses"
+  (testing "data-studio.db/tables-matching-selectors picks out the correct Tables"
     (let [selectors->table-ids (fn [selectors]
-                                 (let [where (#'api.table/table-selectors->filter selectors)]
-                                   (t2/select-pks-set :model/Table {:where where})))]
+                                 (not-empty (set (map :id (data-studio.db/tables-matching-selectors selectors)))))]
       (mt/with-temp [:model/Database {db-1 :id}      {}
                      :model/Database {db-2 :id}      {}
                      :model/Table    {table-1 :id}   {:db_id db-1}

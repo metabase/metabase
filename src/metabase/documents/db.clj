@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (defn document
@@ -16,11 +17,10 @@
   (t2/select-one :model/Document :id id :archived false))
 
 (defn visible-unarchived-documents
-  "The unarchived Documents not attached to an Exploration in the Collections matching the Honey SQL
-  `collection-clause`."
-  [collection-clause]
+  "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
+  []
   (t2/select :model/Document {:where [:and
-                                      collection-clause
+                                      (collection/visible-collection-filter-clause)
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
@@ -101,10 +101,15 @@
   [user-ids]
   (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(defn entity
-  "The `model` row with `id`, or nil."
-  [model id]
-  (t2/select-one model :id id))
+(defn table
+  "The Table with `id`, or nil."
+  [id]
+  (t2/select-one :model/Table :id id))
+
+(defn dashboard
+  "The Dashboard with `id`, or nil."
+  [id]
+  (t2/select-one :model/Dashboard :id id))
 
 (defn update-documents-last-viewed-at!
   "Move `last_viewed_at` of each Document in `document-id->timestamp` forward to its timestamp, without touching
