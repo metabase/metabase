@@ -104,6 +104,16 @@ const setup = ({ warningRequestFails = false } = {}) => {
 };
 
 describe("ManageDataAppUsersPage", () => {
+  it("places the Data apps back link above the management card", async () => {
+    setup();
+
+    const backLink = await screen.findByRole("link", { name: /Data apps/ });
+    const card = screen.getByTestId("data-app-users-card");
+
+    expect(card).not.toContainElement(backLink);
+    expect(card).toContainElement(screen.getByTestId("admin-panel"));
+  });
+
   it("shows missing table access for an existing user", async () => {
     setup();
 

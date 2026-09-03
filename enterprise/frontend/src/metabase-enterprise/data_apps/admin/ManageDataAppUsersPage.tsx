@@ -136,15 +136,15 @@ const DataAppUsers = ({
   };
 
   return (
-    <SettingsSection>
-      <Stack gap="md">
-        <Link to="/admin/settings/apps">
-          <Flex align="center" gap="xs">
-            <Icon name="chevronleft" size={14} />
-            <Text>{t`Data apps`}</Text>
-          </Flex>
-        </Link>
+    <Stack gap="md">
+      <Link to="/admin/settings/apps">
+        <Flex align="center" gap="xs">
+          <Icon name="chevronleft" size={14} />
+          <Text>{t`Data apps`}</Text>
+        </Flex>
+      </Link>
 
+      <SettingsSection data-testid="data-app-users-card">
         <AdminPaneLayout
           title={t`Manage users for ${appTitle}`}
           description={ngettext(
@@ -213,8 +213,8 @@ const DataAppUsers = ({
             </>
           )}
         </AdminPaneLayout>
-      </Stack>
-    </SettingsSection>
+      </SettingsSection>
+    </Stack>
   );
 };
 
