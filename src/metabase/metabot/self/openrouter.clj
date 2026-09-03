@@ -77,6 +77,7 @@
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000}
    "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000}
+   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576}})
 
 (defn context-window-tokens

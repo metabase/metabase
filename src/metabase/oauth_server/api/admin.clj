@@ -3,10 +3,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.request.current :as request]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,14 +19,6 @@
                     :client_name :client_uri :registration_type :application_type :redirect_uris
                     :user_id :user_email :user_first_name :user_last_name])
       (update :redirect_uris #(some-> % json/decode))))
-
-(defn- event-where-clause
-  [client-id event-type]
-  (let [clauses (cond-> []
-                  client-id  (conj [:= :c.client_id client-id])
-                  event-type (conj [:= :e.event_type event-type]))]
-    (when (seq clauses)
-      (into [:and] clauses))))
 
 (api.macros/defendpoint :get "/authorizations"
   :- [:map
@@ -43,28 +35,8 @@
   (api/check-superuser)
   (let [limit  (or (request/limit) 50)
         offset (or (request/offset) 0)
-        where  (event-where-clause client-id event-type)
-        total  (:count (first (t2/query (cond-> {:select    [[[:count :*] :count]]
-                                                 :from      [[:oauth_client_event :e]]
-                                                 :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]}
-                                          where (assoc :where where)))))
-        rows   (t2/query (cond-> {:select     [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
-                                               [:c.client_id :client_id]
-                                               [:c.client_name :client_name]
-                                               [:c.client_uri :client_uri]
-                                               [:c.registration_type :registration_type]
-                                               [:c.application_type :application_type]
-                                               [:c.redirect_uris :redirect_uris]
-                                               [:u.email :user_email]
-                                               [:u.first_name :user_first_name]
-                                               [:u.last_name :user_last_name]]
-                                  :from       [[:oauth_client_event :e]]
-                                  :left-join  [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
-                                               [:core_user :u]    [:= :e.user_id :u.id]]
-                                  :order-by   [[:e.created_at :desc] [:e.id :desc]]
-                                  :limit      limit
-                                  :offset     offset}
-                           where (assoc :where where)))]
+        total  (:count (first (oauth-server.db/client-event-count client-id event-type)))
+        rows   (oauth-server.db/client-events client-id event-type limit offset)]
     {:total  (or total 0)
      :limit  limit
      :offset offset

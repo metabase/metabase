@@ -20,10 +20,6 @@ inputs:
     description: Directory path where the jar should be extracted (defaults to current directory)
     required: false
     default: "."
-  fail-on-fetch-miss:
-    description: Default is true, if set to false the action will not fail if no artifact is found.
-    required: false
-    default: "true"
   download:
     description: Default is true. Set to false to only look the artifact up and report `fetch-hit`.
     required: false
@@ -62,17 +58,12 @@ runs:
 
           if (!artifact_id) {
             core.setOutput('fetch-hit', 'false');
-            if (failOnMiss) {
-              core.setFailed(`No artifacts found for ${artifactName}`);
-            } else {
-              core.info(`No artifacts found for ${artifactName}`);
-            }
-            return;
+          } else {
+            core.setOutput('fetch-hit', 'true');
           }
 
           if (!shouldDownload) {
-            console.log(`Found ${artifactName}, skipping download (download: false)`);
-            core.setOutput('fetch-hit', 'true');
+            console.log(`skipping download (download: false)`);
             return;
           }
 

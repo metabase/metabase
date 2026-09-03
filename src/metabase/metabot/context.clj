@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
@@ -18,8 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -202,11 +202,7 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables    (t2/select [:model/Table :id :name :schema :description]
-                                   :db_id database-id
-                                   :id [:in table-ids]
-                                   :active true
-                                   :visibility_type nil)
+    (let [raw-tables    (metabot.db/visible-table-summaries database-id table-ids)
           queryable-ids (metabot.perms/queryable-table-ids (map :id raw-tables))]
       (into []
             (comp (filter (comp queryable-ids :id))
@@ -266,10 +262,9 @@
   "Look up the metabot row for the given UUID/entity-id, mirroring the resolution used by `metabase.metabot.tools.search`."
   [metabot-id]
   (when metabot-id
-    (t2/select-one :model/Metabot
-                   :entity_id (get-in metabot.config/metabot-config
-                                      [metabot-id :entity-id]
-                                      metabot-id))))
+    (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config
+                                             [metabot-id :entity-id]
+                                             metabot-id))))
 
 (defn- filter-recents-to-curated
   "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
