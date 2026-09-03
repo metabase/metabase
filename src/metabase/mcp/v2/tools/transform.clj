@@ -278,11 +278,22 @@
         ;; The target follows the query being stored — the new one when the source is changing in
         ;; this same call, otherwise the one already there.
         source-db  (-> (or new-source (:source transform)) :query :database)
+        ;; A source swap onto another database has to carry the target's database with it even when
+        ;; the call names no `target`: the target records the database it writes, that database
+        ;; follows the query, and one left behind names a database the transform does not write —
+        ;; which `resolve-target` then refuses when the agent passes the echo back, dead-ending the
+        ;; read-modify-write. Patched in place rather than rebuilt through `resolve-target`, so a
+        ;; target this tool can't author still gets its database corrected instead of becoming
+        ;; uneditable. Ordered before the caller's own `target` in the `cond->`, which wins.
+        retarget   (when-let [target (and new-source (:target transform))]
+                     (when (not= source-db (:database target))
+                       (assoc target :database source-db)))
         updates    (cond-> {}
                      (contains? args :name)          (assoc :name name)
                      (contains? args :description)   (assoc :description description)
                      (contains? args :collection_id) (assoc :collection_id (v2.resolve/resolve-collection-id (:collection_id args)))
                      (contains? args :tag_ids)       (assoc :tag_ids (vec tag_ids))
+                     retarget                        (assoc :target retarget)
                      (contains? args :target)        (assoc :target (resolve-target (:target transform) (:target args) source-db))
                      new-source                      (assoc :source new-source))]
     (when (empty? updates)

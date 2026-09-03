@@ -430,6 +430,42 @@
                 (let [again (tool-result (write! {:method "update" :id id :target (:target result)}))]
                   (is (= (mt/id) (-> again :target :database))))))))))))
 
+(deftest transform-write-update-source-database-swap-retargets-test
+  (testing "GHY-4240: swapping the source to a query on a different database moves the target's database
+            with it, even though the call names no `target`. The target database is derived from the
+            query rather than authored, so a target left pointing at the old database names one the
+            transform does not write — and the echo carrying it is then refused on the way back in by
+            the target/query database check, dead-ending the read-modify-write this tool is built on."
+    (with-transforms
+      (with-target-db-support
+        (let [orig-db     (mt/id)
+              orig-venues (mt/id :venues)
+              orig-schema (venues-schema)]
+          (mt/with-temp-copy-of-db
+            (let [other-db (mt/id)]
+              (is (not= orig-db other-db) "the copy really is a second database")
+              (mt/with-temp [:model/Transform {id :id}
+                             {:name   "db swap"
+                              :source {:type  :query
+                                       :query {:database orig-db :type "query"
+                                               :query {:source-table orig-venues}}}
+                              :target {:type :table :schema orig-schema :name "mcp_db_swap"}}]
+                (let [result (tool-result (write! {:method     "update" :id id
+                                                   :definition {:type  "query"
+                                                                :query {:database other-db :type "query"
+                                                                        :query {:source-table (mt/id :venues)}}}}))
+                      stored (t2/select-one :model/Transform :id id)]
+                  (testing "the echoed target names the database the transform now writes"
+                    (is (= other-db (-> result :target :database))))
+                  (testing "and so does the stored one — the echo is not a prettier view of a stale row"
+                    (is (= other-db (-> stored :target :database))))
+                  (testing "so the echoed target can be passed straight back, as read-modify-write does"
+                    (let [again (tool-result (write! {:method "update" :id id :target (:target result)}))]
+                      (is (= other-db (-> again :target :database)))))
+                  (testing "while the parts of the target the call never named are left alone"
+                    (is (= "mcp_db_swap" (-> result :target :name)))
+                    (is (= orig-schema (-> result :target :schema)))))))))))))
+
 ;; TODO(query-track/execute_sql): restore when the execute_sql tool lands — this test mints a
 ;; query handle via `call-tool! ... "execute_sql"`, which isn't registered yet. (a query_handle on update)
 #_(deftest transform-write-update-swaps-source-from-handle-test
