@@ -84,10 +84,8 @@
   `metabase-enterprise.semantic-search.scoring/appdb-scorers`) evaluated under `search-ctx`, joining bookmark
   tables when `:bookmarked` is among `scorers`."
   [search-results search-ctx scorers]
-  (-> (search-index-select search-results)
-      (search.scoring/with-scores search-ctx scorers)
-      (cond-> (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx)))
-      t2/query))
+  (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
+              (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx)))))
 
 (defn insert-token-tracking!
   "Insert the SemanticSearchTokenTracking `row`."
