@@ -2,6 +2,7 @@ import { type ReactNode, useEffect } from "react";
 
 import {
   ADMIN_PERMISSIONS_BASE_PATH,
+  getPermissionsBasePath,
   resetPermissionsBasePath,
   setPermissionsBasePath,
 } from "metabase/common/components/PermissionsBasePath/base-path";
@@ -27,6 +28,13 @@ type PermissionsBasePathProps = {
  * leaving the editor for somewhere that is not admin permissions —
  * `ConversationHeader` links a group to the permissions editor from Monitor,
  * and would otherwise send the user into the hub.
+ *
+ * The unmount reset only fires if this instance's value is still current.
+ * Some hosts (the hub's Tenancy tab, for its own tenant-scoped permissions
+ * routes) declare a base path outside this component and can unmount after a
+ * sibling host has already rendered and claimed a different one -- resetting
+ * unconditionally there would clobber that sibling's value moments after it
+ * was set.
  */
 export function PermissionsBasePath({
   basePath = ADMIN_PERMISSIONS_BASE_PATH,
@@ -34,7 +42,13 @@ export function PermissionsBasePath({
 }: PermissionsBasePathProps) {
   setPermissionsBasePath(basePath);
 
-  useEffect(() => resetPermissionsBasePath, []);
+  useEffect(() => {
+    return () => {
+      if (getPermissionsBasePath() === basePath) {
+        resetPermissionsBasePath();
+      }
+    };
+  }, [basePath]);
 
   return <>{children}</>;
 }

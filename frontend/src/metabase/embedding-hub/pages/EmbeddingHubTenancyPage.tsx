@@ -47,7 +47,7 @@ export function EmbeddingHubTenancyPage() {
   const isUsingTenants = useSetting("use-tenants");
 
   // Declares the hub as both the tenant and the permissions editor's URL
-  // builders' host, the same way EmbeddingHubPermissionsBasePath does when the
+  // builders' host, the same way `PermissionsBasePath` does when the
   // Permissions tab itself is mounted.
   usePermissionsBasePath(Urls.embeddingHubPermissions());
   setTenantsBasePath(Urls.embeddingHubTenancy());

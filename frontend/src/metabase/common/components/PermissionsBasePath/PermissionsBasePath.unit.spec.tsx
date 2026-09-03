@@ -64,4 +64,20 @@ describe("PermissionsBasePath", () => {
 
     expect(getPermissionsBasePath()).toBe(ADMIN_PERMISSIONS_BASE_PATH);
   });
+
+  it("doesn't clobber a base path a later host already claimed", () => {
+    // Tenancy -> Permissions in the hub: React renders Permissions' new
+    // PermissionsBasePath (claiming its own base path) before running
+    // Tenancy's unmount cleanup. An unconditional reset there would undo
+    // what Permissions just set.
+    const TENANCY_PERMISSIONS_BASE_PATH = "/embedding/tenancy/permissions";
+    const { unmount } = render(
+      <PermissionsBasePath basePath={TENANCY_PERMISSIONS_BASE_PATH} />,
+    );
+    render(<PermissionsBasePath basePath={HUB_PERMISSIONS_BASE_PATH} />);
+
+    unmount();
+
+    expect(getPermissionsBasePath()).toBe(HUB_PERMISSIONS_BASE_PATH);
+  });
 });
