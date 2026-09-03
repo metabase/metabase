@@ -203,6 +203,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {
   gauge: ["gauge.segments"],
+  scalar: ["scalar.segments"],
 };
 
 export function getDynamicGoalSettingKeys(
