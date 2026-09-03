@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { modelIconMap } from "metabase/common/utils/icon";
-import { PLUGIN_COLLECTIONS, PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getIconForVisualizationType } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
@@ -68,8 +68,18 @@ export const useGetIconBase = () => {
   );
 };
 
+const getDefaultPluginIcon = () => ({
+  useGetIcon: useGetIconBase,
+});
+
+export const PLUGIN_ICON = getDefaultPluginIcon();
+
 /**
  * relies mainly on the `model` property to determine the icon to return
  * also handle special collection icons and visualization types for cards
  */
-export const useGetIcon = () => PLUGIN_COLLECTIONS.useGetIcon();
+export const useGetIcon = () => PLUGIN_ICON.useGetIcon();
+
+export function reinitialize() {
+  Object.assign(PLUGIN_ICON, getDefaultPluginIcon());
+}

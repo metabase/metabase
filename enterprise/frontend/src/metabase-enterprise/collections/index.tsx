@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_ICON } from "metabase/hooks/use-icon";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -41,7 +42,7 @@ export function initializePlugin() {
     PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
     PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
     PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
-    PLUGIN_COLLECTIONS.useGetIcon = useGetIcon;
+    PLUGIN_ICON.useGetIcon = useGetIcon;
 
     PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
       collection: Collection,
