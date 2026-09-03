@@ -1,7 +1,11 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -27,6 +31,7 @@ function setup({
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
+  setupUpdateSettingsEndpoint();
 
   // Seed the store state too: without it, the render harness seeds the
   // settings bootstrap with *defaults*, and assertions can run against the
@@ -75,5 +80,24 @@ describe("MetabotCustomizationPage", () => {
 
     const preview = await screen.findByAltText("Metabot icon");
     expect(preview).toHaveAttribute("src", "data:image/png;base64,abc123");
+  });
+
+  it("turns illustrations back on when the custom icon is removed", async () => {
+    setup({
+      metabotIcon: "data:image/png;base64,abc123",
+      showIllustrations: false,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Remove custom icon/ }),
+    );
+
+    const call = fetchMock.callHistory.lastCall("path:/api/setting", {
+      method: "PUT",
+    });
+    expect(await call?.request?.json()).toEqual({
+      "metabot-icon": null,
+      "metabot-show-illustrations": true,
+    });
   });
 });
