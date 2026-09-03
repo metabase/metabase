@@ -93,4 +93,11 @@ describe("BrowseMetrics (OSS)", () => {
     const location = router?.location;
     expect(location?.pathname).toBe("/metric/1");
   });
+
+  it("renders the page title as a single h1", () => {
+    setup();
+    expect(
+      screen.getByRole("heading", { level: 1, name: /Metrics$/ }),
+    ).toBeInTheDocument();
+  });
 });
