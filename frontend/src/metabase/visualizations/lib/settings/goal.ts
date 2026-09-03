@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isDynamicGoalSetting } from "metabase/visualizations/lib/dynamic-goals";
 import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
@@ -52,11 +53,19 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Goal value`;
     },
-    widget: "number",
+    widget: "goalValue",
     getDefault: () => 0,
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
+    // the transformed series drop `data.referenced_entities`
+    useRawSeries: true,
+    getProps: ([{ card, data }]) => ({
+      data,
+      datasetQuery: card.dataset_query,
+      isDynamic: isDynamicGoalSetting(card.display, "graph.goal_value"),
+      showSelfColumns: false,
+    }),
   },
   "graph.goal_label": {
     getSection: () => t`Display`,

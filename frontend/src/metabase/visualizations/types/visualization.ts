@@ -44,6 +44,7 @@ import type {
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
+import type { ChartSettingGoalValueProps } from "../components/settings/ChartSettingGoalValue";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
 import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
 import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
@@ -476,7 +477,10 @@ export type VisualizationSettingsDefinitions = {
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
   "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
-  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingGoalValueProps
+  >;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   /**
    * "graph.label_value_frequency" key is used for 2 different settings:

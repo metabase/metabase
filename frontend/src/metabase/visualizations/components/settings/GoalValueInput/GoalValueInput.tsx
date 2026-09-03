@@ -61,6 +61,7 @@ export type GoalValueInputProps = {
   id: string;
   placeholder?: string;
   referencedEntities: ReferencedEntity[];
+  showSelfColumns?: boolean;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
 };
@@ -72,6 +73,7 @@ export const GoalValueInput = ({
   id,
   placeholder,
   referencedEntities,
+  showSelfColumns = true,
   value,
   onChange,
 }: GoalValueInputProps) => {
@@ -85,7 +87,7 @@ export const GoalValueInput = ({
   const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const selfColumns = getNumericColumnOptions(data.cols);
+  const selfColumns = showSelfColumns ? getNumericColumnOptions(data.cols) : [];
   const isSelfRef =
     isGoalSelfColumnRef(value) &&
     selfColumns.some((column) => column.name === value);

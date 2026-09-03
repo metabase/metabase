@@ -58,12 +58,14 @@ const DATASET_QUERY = createMockStructuredDatasetQuery();
 type SetupOpts = {
   data?: DatasetData;
   referencedEntities?: ReferencedEntity[];
+  showSelfColumns?: boolean;
   value?: GoalValue | null;
 };
 
 function setup({
   data = DATA,
   referencedEntities = [],
+  showSelfColumns,
   value = 0,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
@@ -74,6 +76,7 @@ function setup({
       datasetQuery={DATASET_QUERY}
       id="goal-value"
       referencedEntities={referencedEntities}
+      showSelfColumns={showSelfColumns}
       value={value}
       onChange={onChange}
     />,
@@ -104,6 +107,19 @@ describe("GoalValueInput", () => {
       screen.getByRole("menuitem", {
         name: /Value from another question/,
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the self-columns option when asked to", async () => {
+    setup({ showSelfColumns: false });
+
+    await openMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: /Value from this question/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from another question/ }),
     ).toBeInTheDocument();
   });
 
