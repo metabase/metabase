@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]))
 
@@ -13,15 +15,18 @@
   (testing "fetch values for implicit action will save an execution info"
     (mt/test-helpers-set-global-values!
       (mt/with-actions-enabled
-        (let [dataset-query (mt/mbql-query venues {:fields [$id $name]})
+        (let [mp (mt/metadata-provider)
+              dataset-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                (lib/with-fields [(lib.metadata/field mp (mt/id :venues :id))
+                                                  (lib.metadata/field mp (mt/id :venues :name))]))
+              target-dimension (-> dataset-query
+                                   lib/returned-columns
+                                   first lib/ref)
               query (assoc
                      dataset-query
                      :parameters [{:id     "metabase.actions.execution/prefetch-parameters-pk"
-                                   :target [:dimension
-                                            (-> dataset-query
-                                                :query
-                                                :fields
-                                                first)]
+                                   ;; for now parameters still use legacy MBQL
+                                   :target [:dimension [:field (last target-dimension)]]
                                    :type   :number/=
                                    :value  [1]}]
                      :constraints nil

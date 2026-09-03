@@ -98,7 +98,6 @@
            api
            driver
            events
-           legacy-mbql
            lib
            lib-be
            model-persistence

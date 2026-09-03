@@ -9,8 +9,9 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver.connection :as driver.conn]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
@@ -112,7 +113,7 @@
    :row/delete :model.row/delete})
 
 (mu/defn- build-implicit-query :- [:map
-                                   [:query          ::mbql.s/Query]
+                                   [:query          ::lib.schema/query]
                                    [:row-parameters ::actions.args/row]
                                    [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
@@ -146,25 +147,25 @@
                400
                (tru "Missing primary key parameter: {0}"
                     (pr-str (u/slugify (:name pk-field)))))
-    (cond-> {:query {:database database-id,
-                     :type :query,
-                     :query {:source-table table-id}}
-             :row-parameters row-parameters}
+    (let [mp (lib-be/application-database-metadata-provider database-id)
+          query (lib/query mp (lib.metadata/table mp table-id))
+          field (lib/normalize [:field {} (:id pk-field)])]
+      (cond-> {:query (if requires-pk?
+                        (lib/filter query (lib/= field
+                                                 (get simple-parameters pk-field-name)))
+                        query)
+               :row-parameters row-parameters}
 
-      requires-pk?
-      (assoc-in [:query :query :filter]
-                [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
-
-      requires-pk?
-      (assoc :prefetch-parameters [{;; parameter ID here is not really important but let's generate something
-                                    ;; consistent rather than random to make this easier to test
-                                    :id     "metabase.actions.execution/prefetch-parameters-pk"
-                                    :target [:dimension [:field (:id pk-field) nil]]
-                                    ;; :type/UUID derives from :type/Text, so UUIDs are handled as strings
-                                    :type   (if (isa? (:base_type pk-field) :type/Number)
-                                              :number/=
-                                              :string/=)
-                                    :value  [(get simple-parameters pk-field-name)]}]))))
+        requires-pk?
+        (assoc :prefetch-parameters [{;; parameter ID here is not really important but let's generate something
+                                      ;; consistent rather than random to make this easier to test
+                                      :id     "metabase.actions.execution/prefetch-parameters-pk"
+                                      :target [:dimension field]
+                                      ;; :type/UUID derives from :type/Text, so UUIDs are handled as strings
+                                      :type   (if (isa? (:base_type pk-field) :type/Number)
+                                                :number/=
+                                                :string/=)
+                                      :value  [(get simple-parameters pk-field-name)]}])))))
 
 (defn- parse-implicit-action [action-instance]
   (let [k (keyword (:kind action-instance))]

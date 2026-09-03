@@ -1,7 +1,6 @@
 (ns metabase.lib-be.models.transforms
   (:refer-clojure :exclude [empty?])
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -20,8 +19,7 @@
 (defn- normalize-mbql
   [query]
   (case (lib/normalized-query-type query)
-    :mbql/query      (lib.schema.common/normalize-map-no-kebab-case query)
-    (:query :native) (mbql.normalize/normalize query)
+    (:query :native) (lib/normalize query)
     (lib.schema.common/normalize-map-no-kebab-case query)))
 
 (mu/defn normalize-query :- [:maybe

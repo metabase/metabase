@@ -1,7 +1,6 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
@@ -84,7 +83,7 @@
 
 (defmethod normalize-action-arg-map :model.row/create
   [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  (lib/normalize nil query {:throw? true}))
 
 ;;;; `:model.row/update`
 
@@ -108,7 +107,7 @@
 
 (defmethod normalize-action-arg-map :model.row/update
   [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  (lib/normalize query))
 
 ;;;; `:model.row/delete`
 
@@ -130,7 +129,7 @@
 
 (defmethod normalize-action-arg-map :model.row/delete
   [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  (lib/normalize query))
 
 ;;;; Table actions
 
