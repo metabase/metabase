@@ -212,7 +212,7 @@ const elements = [
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
-  createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "metabot" }),
   // The app-wide mirror of table and field metadata. Separate from
   // `shared/metadata`, which is the Semantic Layer UI: 147 files read the store,
   // 115 use the UI, and 8 do both.
