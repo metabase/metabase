@@ -322,10 +322,10 @@
        (not (encryption/possibly-encrypted-bytes? value))))
 
 (defn- handle-legacy-unencrypted-values!
-  "What happens when `n` legacy values that a previous version of Metabase stored unencrypted are found in `where` (a
+  "What happens when `n` legacy values that a previous version of Metabase stored unencrypted are found in `title` (a
   `table.column` or a migration name), before they are encrypted: for now a warning."
-  [where n]
-  (log/warnf "Encrypting %d legacy value(s) in %s that a previous version of Metabase stored unencrypted." n where))
+  [title n]
+  (log/warnf "Encrypting %d legacy value(s) in %s that a previous version of Metabase stored unencrypted." n title))
 
 (defn encrypt-plaintext-columns!
   "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup: the one-shot

@@ -210,19 +210,19 @@
 
 (defn- handle-legacy-unencrypted-values!
   "Mirrors [[metabase.app-db.encryption/handle-legacy-unencrypted-values!]]: what happens when `n` legacy values that a
-  previous version of Metabase stored unencrypted are found in `where` (a migration name and table), before they are
+  previous version of Metabase stored unencrypted are found in `title` (a migration name and table), before they are
   encrypted: for now a warning."
-  [where n]
-  (log/warnf "Encrypting %d legacy value(s) in %s that a previous version of Metabase stored unencrypted." n where))
+  [title n]
+  (log/warnf "Encrypting %d legacy value(s) in %s that a previous version of Metabase stored unencrypted." n title))
 
 (defn- encrypt-legacy-rows!
   "Encrypt with `encrypt-row!` every row of `rows` whose `plaintext?` says a previous version of Metabase stored it
-  unencrypted, handing them to [[handle-legacy-unencrypted-values!]] first under `where` (the
+  unencrypted, handing them to [[handle-legacy-unencrypted-values!]] first under `title` (the
   migration name and table). `rows` must be realized: reducing a reducible query closes the migration's connection."
-  [where plaintext? encrypt-row! rows]
+  [title plaintext? encrypt-row! rows]
   (let [plaintext (filterv plaintext? rows)]
     (when (seq plaintext)
-      (handle-legacy-unencrypted-values! where (count plaintext))
+      (handle-legacy-unencrypted-values! title (count plaintext))
       (run! encrypt-row! plaintext))))
 
 (define-migration DeleteAbandonmentEmailTask
