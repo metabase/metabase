@@ -1,6 +1,7 @@
 (ns metabase-enterprise.tenants.api
   (:require
    [malli.util]
+   [metabase-enterprise.tenants.db :as tenants.db]
    [metabase-enterprise.tenants.models :as tenant]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -32,7 +33,7 @@
                        [:tenant_collection_id ms/PositiveInt]])
 
 (defn- present-tenants [tenants]
-  (->> (t2/hydrate tenants :member_count)
+  (->> (tenants.db/hydrate-member-count tenants)
        (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id]))))
 
 (defn- present-tenant [tenant]
@@ -49,7 +50,7 @@
   (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
-  (let [new-tenant (t2/insert-returning-instance! :model/Tenant tenant)]
+  (let [new-tenant (tenants.db/insert-tenant! tenant)]
     (events/publish-event! :event/tenant-create {:object new-tenant})
     (present-tenant new-tenant)))
 
@@ -68,12 +69,9 @@
    _]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
   {:data (present-tenants
-          (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]}
-                                     (request/paged?) (assoc :limit (request/limit) :offset (request/offset))
-                                     true (assoc :where (case status
-                                                          "all" [:= [:inline 1] [:inline 1]]
-                                                          "active" [:= :is_active true]
-                                                          "deactivated" [:= :is_active false])))))})
+          (tenants.db/tenants-page status
+                                   (when (request/paged?) (request/limit))
+                                   (when (request/paged?) (request/offset))))})
 
 (def ^:private UpdateTenantArguments
   [:map {:closed true}
@@ -87,22 +85,16 @@
    {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (t2/with-transaction [_cn]
     (collection/with-allow-modifying-tenant-root-collections
-      (let [tenant-before-update (t2/select-one :model/Tenant tenant-id)
-            _                    (t2/update! :model/Tenant {:id tenant-id} tenant)
-            tenant-after-update  (t2/select-one :model/Tenant tenant-id)]
+      (let [tenant-before-update (tenants.db/tenant tenant-id)
+            _                    (tenants.db/update-tenant! tenant-id tenant)
+            tenant-after-update  (tenants.db/tenant tenant-id)]
         (when (false? is_active)
-          (t2/update! :model/User {:is_active true :tenant_id tenant-id}
-                      {:is_active false :deactivated_with_tenant true})
-          (some-> (t2/select-one :model/Collection
-                                 :id (:tenant_collection_id tenant-before-update)
-                                 :archived false)
+          (tenants.db/deactivate-tenant-users! tenant-id)
+          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) false)
                   collection/archive-collection!))
         (when (true? is_active)
-          (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
-                      {:is_active true :deactivated_with_tenant nil})
-          (some-> (t2/select-one :model/Collection
-                                 :id (:tenant_collection_id tenant-before-update)
-                                 :archived true)
+          (tenants.db/reactivate-tenant-users! tenant-id)
+          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) true)
                   (collection/unarchive-collection! {})))
         (events/publish-event! :event/tenant-update {:object          tenant-after-update
                                                      :previous-object tenant-before-update})
@@ -115,7 +107,7 @@
    tenant :- UpdateTenantArguments]
   (api/check-403 api/*is-superuser?*)
   (when (:name tenant)
-    (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant) :id [:not= id]))
+    (api/check-400 (not (tenants.db/other-tenant-named? (:name tenant) id))
                    "This name is already taken."))
   (present-tenant (update-tenant! id tenant)))
 
@@ -123,7 +115,7 @@
   "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
-  (present-tenant (t2/select-one :model/Tenant :id id)))
+  (present-tenant (tenants.db/tenant id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenant` routes"

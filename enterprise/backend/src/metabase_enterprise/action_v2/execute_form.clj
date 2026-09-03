@@ -1,11 +1,11 @@
 (ns metabase-enterprise.action-v2.execute-form
   (:require
+   [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private strip-namespace-hack (comp keyword name))
 
@@ -89,13 +89,11 @@
            row-data]}]
   (when-not table-id
     (throw (ex-info "Must provide table-id" {:status-code 400})))
-  (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
-        database                    (t2/select-one :model/Database :id (:db_id table))
+  (let [table                       (api/read-check (action-v2.db/active-table table-id))
+        database                    (action-v2.db/database (:db_id table))
         _                           (actions/check-data-editing-enabled-for-database! database)
-        fields                      (-> (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]})
-                                        (t2/hydrate :dimensions
-                                                    :has_field_values
-                                                    :values))
+        fields                      (-> (action-v2.db/active-fields-in-position-order table-id)
+                                        action-v2.db/hydrate-form-field-details)
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration
         column-editable?            (constantly true)
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration

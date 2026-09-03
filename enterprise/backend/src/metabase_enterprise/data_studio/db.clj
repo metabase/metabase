@@ -3,7 +3,7 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
-   [metabase.collections.core :as collection]
+   [metabase.collections.models.collection :as collection]
    [toucan2.core :as t2]))
 
 (defn- table-selectors-where

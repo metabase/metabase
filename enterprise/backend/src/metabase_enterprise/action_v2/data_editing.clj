@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.action-v2.coerce :as data-editing.coerce]
+   [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -12,8 +13,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
-   [metabase.util.queue :as queue]
-   [toucan2.core :as t2])
+   [metabase.util.queue :as queue])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
 
@@ -41,7 +41,7 @@
                     (->> field-ids
                          (partition-all *invalidate-select-batch-size*)
                          (mapcat (fn [batch]
-                                   (t2/select :model/Field :id [:in batch])))))]
+                                   (action-v2.db/fields batch)))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
@@ -51,7 +51,7 @@
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
   [table-id]
-  (u/prog1 (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
+  (u/prog1 (api/check-404 (action-v2.db/pk-fields-for-table table-id))
     (api/check-500 (pos? (count <>)))))
 
 (defn get-row-pks
@@ -86,7 +86,7 @@
   (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
   (when (seq rows)
-    (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+    (let [{:keys [db_id]} (api/check-404 (action-v2.db/table table-id))
           row-pks (seq (map (partial get-row-pks pk-fields) rows))]
       (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
       (let [mp    (lib-be/application-database-metadata-provider db_id)
@@ -118,7 +118,7 @@
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
         fields      (when (seq field-names)
-                      (t2/select :model/Field :table_id table-id :name [:in field-names]))
+                      (action-v2.db/fields-by-name table-id field-names))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
                            [(keyword field-name)
@@ -141,17 +141,10 @@
         ln->ids     (when (seq lower-names)
                       (u/group-by
                        :lower_name :id
-                       (t2/query {:select [:id [[:lower :name] :lower_name]]
-                                  :from   [(t2/table-name :model/Field)]
-                                  :where  [:and
-                                           [:= :table_id table-id]
-                                           [:in [:lower :name] lower-names]
-                                           [:in :has_field_values ["list" "auto-list"]]
-                                           [:= :semantic_type "type/Category"]]})))
+                       (action-v2.db/category-list-field-ids-by-lower-name table-id lower-names)))
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
-                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
-                                                                                 :field_id [:in field-ids]))]]
+                                      old-values (into #{} cat (action-v2.db/field-values-of-fields field-ids))]]
                             (when (seq (set/difference new-values old-values))
                               field-ids))
                           (apply concat))]
