@@ -52,9 +52,6 @@
           (t2/delete! :model/Card :document_id id)
           (t2/delete! :model/Document :id id))))))
 
-;; TODO(slice-11/content): restore once `metabase.mcp.v2.tools.content/fetch-document` lands —
-;; this test calls it via `(#'v2.content/fetch-document ...)` to compare the tool's echo against a
-;; concise get_content read. See DEC-0001 and .private/decisions in the mcp-v2-foundation sidecar.
 (deftest create-clones-card-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Orders card"
                                             :dataset_query (orders-query)}]
@@ -592,9 +589,6 @@
               (is (re-find #"clear" txt))
               (is (= "pinned doc" (t2/select-one-fn :name :model/Document :id (:id doc)))))))))))
 
-;; TODO(slice-11/content): restore once the `get_content` tool lands — this test calls it via
-;; `registry/call-tool ... "get_content"` to compare the write echo against a concise read. See
-;; DEC-0001 and .private/decisions in the mcp-v2-foundation sidecar.
 (deftest write-echo-and-read-name-the-body-alike-test
   (testing "the write echo and a concise get_content read call the body `content_markdown`. They
               used to disagree — the read said `markdown` — so an agent doing the read-modify-write
