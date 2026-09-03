@@ -37,6 +37,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
@@ -96,6 +97,14 @@
                                         rff))
             (qp/process-query (assoc query :info info) rff)))))))
 
+(defn- request-referenced-entities
+  "The `referenced_entities` specs, read off the raw body. Normalizing the query to MBQL 5 rebuilds it and drops
+  every key that isn't part of the query itself, so they can't come in on the decoded `query` param."
+  [request]
+  (let [specs (get-in request [:body :referenced_entities])]
+    (api/check-400 (mr/validate qp.referenced-entities/specs-schema specs))
+    specs))
+
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache.
@@ -103,17 +112,13 @@
   `data.referenced_entities`."
   [_route-params
    _query-params
-   {:keys [referenced_entities] :as query}
-   :- [:and
-       ::lib-be.schema/maybe-legacy-or-internal-query
-       [:map
-        [:referenced_entities {:optional true} qp.referenced-entities/specs-schema]]]]
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
   (run-streaming-query
    (-> query
-       (dissoc :referenced_entities)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   :referenced-entities-specs referenced_entities))
+   :referenced-entities-specs (request-referenced-entities request)))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
