@@ -11,6 +11,9 @@ interface EditableTextRootProps {
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
   position: relative;
+  /* the root can be rendered as a heading via the "as" prop; keep the
+     margin-less box of the default div when the element changes */
+  margin: 0;
   color: var(--mb-color-text-primary);
   padding: 0.25rem;
   border: 1px solid transparent;

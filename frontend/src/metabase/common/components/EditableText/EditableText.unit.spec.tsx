@@ -107,4 +107,16 @@ describe("EditableText", () => {
     expect(textarea).toHaveFocus();
     expect(textarea).toHaveTextContent(/^original description$/);
   });
+
+  it("renders as the provided element via as", () => {
+    setup({
+      as: "h1",
+      initialValue: "My collection",
+      onChange: jest.fn(),
+    });
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "My collection" }),
+    ).toBeInTheDocument();
+  });
 });

@@ -1,5 +1,6 @@
 import type {
   ChangeEvent,
+  ElementType,
   FocusEvent,
   FocusEventHandler,
   HTMLAttributes,
@@ -29,6 +30,7 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   isMarkdown?: boolean;
+  as?: ElementType;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
@@ -51,6 +53,7 @@ const EditableTextInner = forwardRef(function EditableText(
     onFocus,
     onBlur,
     "data-testid": dataTestId,
+    as,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -135,6 +138,7 @@ const EditableTextInner = forwardRef(function EditableText(
   return (
     <Box
       component={EditableTextRoot}
+      as={as}
       onClick={isMarkdown ? handleRootElementClick : undefined}
       ref={ref}
       isEditing={isEditing}
