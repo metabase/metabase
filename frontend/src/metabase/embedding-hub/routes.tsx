@@ -103,6 +103,10 @@ export function getEmbeddingHubRoutes() {
         <Route path="appearance">
           <Route index lazy={embeddingHubAppearancePage} />
           <Route path="theme">
+            <Route
+              index
+              element={<Navigate to={Urls.embeddingHubAppearance()} replace />}
+            />
             <Route path=":themeId" lazy={embeddingHubThemeEditorPage} />
           </Route>
         </Route>

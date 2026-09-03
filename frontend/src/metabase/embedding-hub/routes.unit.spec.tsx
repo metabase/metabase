@@ -36,6 +36,7 @@ describe("embedding hub routes", () => {
       "embedding/permissions/collections/:collectionId",
       "embedding/tenancy",
       "embedding/appearance",
+      "embedding/appearance/theme",
       "embedding/appearance/theme/:themeId",
     ]);
   });
