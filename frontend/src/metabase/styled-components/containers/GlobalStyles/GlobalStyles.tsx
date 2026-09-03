@@ -4,11 +4,11 @@ import { useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -35,8 +35,7 @@ export const GlobalStyles = (): JSX.Element => {
 
   const styles = useMemo(() => {
     return css`
-      ${cssVariables}
-      :root {
+      ${cssVariables}: root {
         --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
@@ -52,8 +51,8 @@ export const GlobalStyles = (): JSX.Element => {
           }
         `,
       )}
-    ${getSaveDomImageStyles(isEmbeddingSdk())}
-    body {
+      ${getSaveDomImageStyles(isEmbeddingSdk())}
+      body {
         font-size: 0.875em;
         ${isStaticEmbedding() || isPublicEmbedding()
           ? ""

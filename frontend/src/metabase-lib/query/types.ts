@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 import type {
   CardId,
   DatabaseId,

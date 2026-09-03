@@ -26,4 +26,4 @@ export function getSliceTreeNodesFromPath(
 }
 
 export const getArrayFromMapValues = <_, V>(map: Map<_, V>): V[] =>
-  Array(...map.values());
+  Array.from(map.values());

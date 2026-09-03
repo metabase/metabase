@@ -1,9 +1,9 @@
-import type { GeoSubtype } from "metabase/common/metrics/utils/dimension-types";
 import type {
   MetricsViewerDimensionBreakoutType,
   MetricsViewerDisplayType,
   SerializedDefinitionInfo,
 } from "metabase/common/metrics-viewer";
+import type { GeoSubtype } from "metabase/common/metrics/utils/dimension-types";
 import type {
   DimensionGroup,
   MetricDefinition,

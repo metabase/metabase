@@ -1,5 +1,4 @@
-/* eslint-disable import/order */
-
+// oxfmt-ignore
 import {
   TEST_DATASET_QUERY,
   createDeferred,
@@ -8,14 +7,20 @@ import {
   resetTestState,
   stubSdkBundle,
 } from "./setup";
+// oxfmt-ignore
 import { TEST_SCHEMA } from "./fixtures";
 
+// oxfmt-ignore
 import { act, renderHook, waitFor } from "@testing-library/react";
 
+// oxfmt-ignore
 import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset";
+// oxfmt-ignore
 import type { QueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+// oxfmt-ignore
 import type { DatasetQuery } from "metabase-types/api";
 
+// oxfmt-ignore
 import { useMetabaseQuery, useMetabaseQueryObject } from "..";
 
 beforeEach(resetTestState);
