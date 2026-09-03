@@ -864,7 +864,7 @@
   rows on the recycled connection.
 
   A non-pooled Connection has no next query to poison, so it is left alone."
-  [conn]
+  [^Connection conn]
   (when (instance? C3P0ProxyConnection conn)
     (try
       (.rawConnectionOperation ^C3P0ProxyConnection conn
@@ -872,7 +872,15 @@
                                C3P0ProxyConnection/RAW_CONNECTION
                                (make-array Object 0))
       (catch Throwable e
-        (log/debugf "Discarding pooled connection after statement cancelation failed: %s" (ex-message e))))))
+        (log/debugf "Discarding pooled connection after statement cancelation failed: %s" (ex-message e))))
+    ;; Closing the raw Connection is invisible to c3p0: `rawConnectionOperation` reports nothing back to the pool, and
+    ;; the check-in reset only reads properties that a driver may answer from memory once closed — Hive's
+    ;; `getAutoCommit` is a bare `return true` — so on those drivers the pool hands the dead Connection to the next
+    ;; query. Any *proxied* call routes its exception into c3p0, which then tests the physical Connection and destroys
+    ;; it when the test fails. `createStatement` is that call: JDBC requires it to throw on a closed Connection.
+    (try
+      (.close (.createStatement conn))
+      (catch Throwable _))))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
