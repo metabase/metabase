@@ -210,7 +210,7 @@ const elements = [
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
-  createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
   // The app-wide mirror of table and field metadata. Separate from
