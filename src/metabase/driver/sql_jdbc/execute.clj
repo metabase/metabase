@@ -842,7 +842,7 @@
   Canceling abandons a result set the server is still producing, and the pool cannot clear what that leaves behind:
   c3p0 resets `autoCommit`/`readOnly`/holdability on check-in, not driver-level wire state. A driver whose cancelation
   leaves nothing pending on the wire should keep the default of `false`."
-  {:added "0.65.0", :arglists '([driver])}
+  {:added "0.64.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
