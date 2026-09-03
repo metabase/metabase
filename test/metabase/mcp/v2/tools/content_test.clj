@@ -343,6 +343,103 @@
               (is (= "t1" (:name row)))
               (is (= "t1_out" (-> row :target :name))))))))))
 
+(deftest get-content-resolves-entity-ids-test
+  (testing "GHY-4140: `id` takes a 21-character entity_id as well as a numeric id, for every type
+            carrying an entity_id column — the portable id a write echo hands back"
+    (mt/with-temp [:model/Collection         {coll-id :id} {:name "C1"}
+                   :model/Card               {card-id :id} {:name "Q1" :dataset_query (venues-query)}
+                   :model/NativeQuerySnippet {snip-id :id} {:name       "snip"
+                                                            :content    "wow"
+                                                            :creator_id (mt/user->id :lucky)}
+                   :model/Document           {doc-id :id}
+                   {:document     {:type    "doc"
+                                   :content [{:type    "paragraph"
+                                              :content [{:type "text" :text "hello"}]}]}
+                    :content_type "application/json+vnd.prose-mirror"}]
+      (mt/with-test-user :crowberto
+        (doseq [[type model id] [["collection" :model/Collection         coll-id]
+                                 ["question"   :model/Card               card-id]
+                                 ["snippet"    :model/NativeQuerySnippet snip-id]
+                                 ["document"   :model/Document           doc-id]]]
+          (testing type
+            (let [eid (t2/select-one-fn :entity_id model :id id)]
+              (is (= 21 (count eid)) "the fixture must actually carry an entity_id")
+              (let [row (content-one {:items [{:type type :id eid}]})]
+                (is (nil? (:error row)))
+                (is (= id (:id row)) "resolves to the row the numeric id returns")))))))))
+
+(deftest get-content-entity-id-teaching-errors-test
+  (testing "GHY-4140: a type with no entity_id column names the fix rather than collapsing to
+            not-found, and a string that is neither shape is rejected outright"
+    (notification.tu/with-card-notification
+      [notification {:card         {:dataset_query (venues-query)}
+                     :notification {:creator_id (mt/user->id :crowberto)}
+                     :handlers     []}]
+      (mt/with-test-user :crowberto
+        (testing "alerts are numeric-only"
+          (is (re-find #"numeric id"
+                       (:error (content-one {:items [{:type "alert"
+                                                      :id   "abcdefghijklmnopqrstu"}]})))))
+        (testing "and the alert still reads by its numeric id"
+          (is (nil? (:error (content-one {:items [{:type "alert" :id (:id notification)}]})))))
+        (testing "a string that is neither a numeric id nor an entity_id"
+          (is (re-find #"21-character entity_id"
+                       (:error (content-one {:items [{:type "question" :id "nope"}]})))))))))
+
+(deftest get-content-transform-target-table-test
+  (testing "GHY-4140: `table` is the transform's target, hydrated with no permission check of its own
+            — `can-read?` on a Transform gates on the SOURCE tables only — so `fetch-transform`
+            re-checks it before returning it.
+
+            That gate's false branch is unreachable through permissions today, so there is no test
+            for it: reading a transform at all requires superuser or data analyst; superusers read
+            every table; and `table-permission-for-user` hands every data analyst
+            `manage-table-metadata :yes` unconditionally, which by itself satisfies `can-read?` on a
+            Table. The check is defence in depth for the day the transform read check widens. What
+            is reachable is covered here."
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+        ;; Target an already-synced table rather than the usual nonexistent one, so `:table` actually
+        ;; hydrates and there is something to withhold. Source and target must differ: blocking the
+        ;; source would make the transform itself unreadable and prove nothing.
+        (mt/with-temp [:model/Transform {id :id}
+                       {:name   "t1"
+                        :source {:type  :query
+                                 :query {:database (mt/id)
+                                         :type     "query"
+                                         :query    {:source-table (mt/id :venues)}}}
+                        :target {:type   :table
+                                 :schema (t2/select-one-fn :schema :model/Table :id (mt/id :checkins))
+                                 :name   (t2/select-one-fn :name :model/Table :id (mt/id :checkins))}}]
+          ;; `table` is a detailed-only key, so the gate only ever runs on a detailed read.
+          (testing "an admin, who can read the target, gets it"
+            (mt/with-test-user :crowberto
+              (let [row (content-one {:items           [{:type "transform" :id id}]
+                                      :response_format "detailed"})]
+                (is (nil? (:error row)))
+                (is (= (mt/id :checkins) (-> row :table :id))))))
+          (testing "and it is a detailed-only key, absent from a concise read"
+            (mt/with-test-user :crowberto
+              (is (nil? (:table (content-one {:items [{:type "transform" :id id}]})))))))))
+    (testing "a transform whose target table does not exist yet reads without a `table`"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Transform {id :id}
+                         {:name   "t2"
+                          :source {:type  :query
+                                   :query {:database (mt/id)
+                                           :type     "query"
+                                           :query    {:source-table (mt/id :venues)}}}
+                          :target {:type   :table
+                                   :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                   :name   "never_run_out"}}]
+            (mt/with-test-user :crowberto
+              (let [row (content-one {:items           [{:type "transform" :id id}]
+                                      :response_format "detailed"})]
+                (is (nil? (:error row)))
+                (is (= "t2" (:name row)))
+                (is (nil? (:table row)) "nothing to hydrate, so the section is omitted")))))))))
+
 (deftest get-content-not-found-is-not-an-existence-oracle-test
   (testing "GHY-4140: a nonexistent id and an existing-but-unreadable id are indistinguishable,
             so responses never form an existence oracle across the permission boundary"
@@ -440,7 +537,22 @@
         (mt/with-test-user :crowberto
           (let [row (content-one #{"agent:content:read"} {:items [{:type "document" :id id}]})]
             (is (nil? (:error row)))
-            (is (re-find #"hello" (:content_markdown row)))))))))
+            (is (re-find #"hello" (:content_markdown row)))))))
+    (testing "transform — `agent:transforms:read` is still declared, but this tool does not ask for it"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                                    :source {:type  :query
+                                                             :query {:database (mt/id)
+                                                                     :type     "query"
+                                                                     :query    {:source-table (mt/id :venues)}}}
+                                                    :target {:type   :table
+                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :name   "t1_out"}}]
+            (mt/with-test-user :crowberto
+              (let [row (content-one #{"agent:content:read"} {:items [{:type "transform" :id id}]})]
+                (is (nil? (:error row)))
+                (is (= "t1" (:name row)))))))))))
 
 (defn- comment-content
   [text]
@@ -727,6 +839,49 @@
             (is (nil? (:error question)))
             (is (some? (:definition question)))
             (is (nil? (:layout question)))))))))
+
+(deftest get-content-definition-include-per-type-test
+  (testing "GHY-4140: every type declaring a `definition` section actually produces one. Each
+            builder swallows its own failures and the section is simply omitted when it returns
+            nil, so a broken exporter looks exactly like a type that has nothing to export."
+    (testing "measure — the aggregation clause"
+      (mt/with-temp [:model/Measure {id :id} {:name       "M1"
+                                              :table_id   (mt/id :venues)
+                                              :creator_id (mt/user->id :rasta)
+                                              :definition (measure-definition (lib/count))}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one {:items [{:type "measure" :id id}] :include ["definition"]})]
+            (is (nil? (:error row)))
+            (is (some? (:definition row)) "the definition section is present")
+            (is (= "count" (-> row :definition first first))
+                "and carries the stored aggregation")))))
+    (testing "segment — the filter clauses"
+      (mt/with-temp [:model/Segment {id :id} {:name       "S1"
+                                              :table_id   (mt/id :venues)
+                                              :definition {:filter [:= [:field-id (mt/id :venues :price)] 2]}}]
+        (mt/with-test-user :crowberto
+          (let [row (content-one {:items [{:type "segment" :id id}] :include ["definition"]})]
+            (is (nil? (:error row)))
+            (is (some? (:definition row)) "the definition section is present")
+            (is (= "=" (-> row :definition first first))
+                "and carries the stored filter")))))
+    (testing "transform — the source, with its query serialized"
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp-env-var-value! [mb-transforms-enabled true]
+          (mt/with-temp [:model/Transform {id :id} {:name   "t1"
+                                                    :source {:type  :query
+                                                             :query {:database (mt/id)
+                                                                     :type     "query"
+                                                                     :query    {:source-table (mt/id :venues)}}}
+                                                    :target {:type   :table
+                                                             :schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
+                                                             :name   "t1_out"}}]
+            (mt/with-test-user :crowberto
+              (let [row (content-one {:items [{:type "transform" :id id}] :include ["definition"]})]
+                (is (nil? (:error row)))
+                (is (some? (:definition row)) "the definition section is present")
+                (is (= (mt/id) (-> row :definition :query :database))
+                    "and the query round-trips as the numeric-id MBQL 5 shape")))))))))
 
 (deftest get-content-include-unknown-for-every-item-test
   (testing "GHY-4140: a section no item in the batch supports is a tool-level teaching error,
