@@ -153,34 +153,15 @@ CREATE ROLE metabase_audit_read WITH LOGIN NOINHERIT PASSWORD '<password>'
 GRANT CONNECT ON DATABASE metabase TO metabase_audit_read;
 GRANT USAGE ON SCHEMA public TO metabase_audit_read;
 ALTER ROLE metabase_audit_read SET default_transaction_read_only = on;
-GRANT SELECT ON v_agent_api_calls,
-                v_ai_usage_log,
-                v_alerts,
-                v_audit_log,
-                v_content,
-                v_dashboardcard,
-                v_databases,
-                v_fields,
-                v_group_members,
-                v_mcp_tool_calls,
-                v_metabot_conversations,
-                v_metabot_messages,
-                v_query_log,
-                v_subscriptions,
-                v_tables,
-                v_task_runs,
-                v_tasks,
-                v_tenants,
-                v_users,
-                v_view_log TO metabase_audit_read;
 ```
 
-A PostgreSQL view runs with the privileges of whoever owns it, so granting `SELECT` on the views is enough - the role never needs to read `core_user`, `metabase_database`, or any other underlying table.
+That's the whole setup, and you only do it once. Notice there are no `GRANT SELECT` statements: **Metabase grants the role `SELECT` on the analytics views itself, every time it starts.** Upgrades drop and recreate those views (PostgreSQL drops a view's grants along with it), and which views exist changes from release to release, so leaving the grants to you would mean re-running a list that goes stale. Instead Metabase reconciles them at boot - granting views that have been added, and revoking any it no longer uses. Don't grant the role anything on the underlying tables; it doesn't need them, and Metabase won't remove grants you add by hand.
 
-Two things to know before you rely on this:
+A PostgreSQL view runs with the privileges of whoever owns it, which is why `SELECT` on the views is enough - the role never reads `core_user`, `metabase_database`, or any other underlying table directly.
 
-- **Upgrades drop and recreate these views, and PostgreSQL drops their grants along with them.** Re-run the `GRANT SELECT` statement after upgrading Metabase, or usage analytics questions will start failing with permission errors. Metabase does not re-apply the grants for you.
-- **MySQL, MariaDB, and H2 don't support this.** The MySQL versions of these views run with the privileges of the caller rather than the owner, so a role granted only the views can't read them. H2 application databases have no users at all. On all three, setting `MB_DB_AUDIT_READ_USER` gets you a separate connection pool but no privilege boundary.
+If the role doesn't exist, or the application database user can't grant on the views (normally it owns them, because it created them), Metabase logs an error naming the role and starts anyway. Usage analytics questions will fail until you fix it; the rest of Metabase is unaffected.
+
+**MySQL, MariaDB, and H2 don't support this.** The MySQL versions of these views run with the privileges of the caller rather than the owner, so a role granted only the views can't read them; H2 application databases have no users at all. On all three, setting `MB_DB_AUDIT_READ_USER` gets you a separate connection pool but no privilege boundary, and Metabase doesn't try to manage grants.
 
 ## Migrating from H2
 

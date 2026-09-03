@@ -53,6 +53,7 @@
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env
+  audit-read-user
   db-file]
  [mdb.h2
   jdbc-sql-syntax-error-exception-classname]

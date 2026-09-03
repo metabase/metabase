@@ -247,3 +247,11 @@
 
   Normally you want [[metabase.app-db.connection/audit-read-data-source]], which is pooled and can be rebound."
   (env->audit-read-DataSource db-type env data-source))
+
+(def audit-read-user
+  "The database user the Audit DB path connects as, or `nil` when it connects on the app-DB credential. Derived from
+  the outcome above rather than the env var, so the H2 fallback is decided in one place.
+
+  Grant reconciliation needs the role's *name*, which the [[javax.sql.DataSource]] deliberately does not expose."
+  (when-not (identical? data-source audit-read-data-source)
+    (:mb-db-user (audit-read-credential env))))
