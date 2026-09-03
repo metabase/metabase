@@ -1,12 +1,43 @@
 import { renderHook } from "@testing-library/react";
 
-import { registerVisualizations as register } from "metabase/visualizations/register";
+import {
+  type VisualizationDefinition,
+  registerVisualization,
+  setDefaultVisualization,
+} from "metabase/viz-core";
+import type { IconName, VisualizationDisplay } from "metabase-types/api";
 
 import { useGetIcon } from "./use-icon";
 
+// useGetIcon reads only iconName from the registry, so bare definitions stand in for the chart modules.
+const createDefinition = (
+  identifier: VisualizationDisplay,
+  iconName: IconName,
+): VisualizationDefinition => ({
+  identifier,
+  iconName,
+  getUiName: () => identifier,
+  checkRenderable: () => undefined,
+});
+
+const TABLE_DEFINITION = createDefinition("table", "table2");
+
+const DEFINITIONS = [
+  TABLE_DEFINITION,
+  createDefinition("bar", "bar"),
+  createDefinition("pie", "pie"),
+  createDefinition("line", "line"),
+  createDefinition("row", "horizontal_bar"),
+  createDefinition("funnel", "funnel"),
+  createDefinition("map", "pinmap"),
+  createDefinition("object", "document"),
+];
+
 describe("useGetIcon", () => {
   beforeAll(() => {
-    register();
+    // The registry resolves unknown display types to the default visualization.
+    setDefaultVisualization(TABLE_DEFINITION);
+    DEFINITIONS.forEach((definition) => registerVisualization(definition));
   });
 
   const createGetIcon = () => {
