@@ -142,7 +142,6 @@
            metabase.activity-feed.core
            metabase.activity-feed.init}
    :uses #{api
-           app-db
            batch-processing
            collections
            config
@@ -361,7 +360,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache}}
+   :model-imports #{:model/Field}}
 
   appearance
   {:team "UX West"
@@ -705,7 +704,7 @@
            models
            util}
    :model-exports #{:model/ModerationReview}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/User}}
 
   contextual-interestingness
   {:team "UX West"
@@ -1532,6 +1531,7 @@
                     :model/Dashboard
                     :model/DashboardTab
                     :model/Database
+                    :model/Document
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
@@ -1789,7 +1789,11 @@
            metabase.public-sharing.validation}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Dashboard
+                    :model/Document}}
 
   public-sharing-rest
   {:team "UX West"
@@ -2257,7 +2261,8 @@
            premium-features
            util
            enterprise/advanced-permissions}
-   :model-exports #{:model/Setting}}
+   :model-exports #{:model/Setting}
+   :model-imports #{:model/User}}
 
   settings-rest
   {:team "DevEx"
@@ -2744,6 +2749,7 @@
    :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
+                    :model/PulseChannelRecipient
                     :model/Tenant}}
 
   users-rest
@@ -2803,7 +2809,10 @@
            query-permissions
            util}
    :model-exports #{:model/ViewLog}
-   :model-imports #{:model/Card :model/Dashboard :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Document
+                    :model/Table}}
 
   warehouse-schema
   {:team "UX West"
@@ -3188,7 +3197,8 @@
    :uses #{api
            content-verification
            util
-           enterprise/api}}
+           enterprise/api}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/core
   {:team "DevEx"

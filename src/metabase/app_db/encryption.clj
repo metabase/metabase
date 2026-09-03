@@ -1,4 +1,8 @@
 (ns metabase.app-db.encryption
+  "Encrypting, decrypting, and re-keying the application database at rest. Every write here is a plain `t2/query`
+  rather than a Toucan DML statement: the cloud-migration guard on Toucan DML reads `read-only-mode` through the
+  Setting model first, and while rows are being re-encrypted a setting row can be plaintext under a key, or ciphertext
+  under a key not yet in effect, which that model's strict read rejects."
   (:require
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.setting :as mdb.setting]
@@ -150,17 +154,18 @@
                   (map #(conj % (comp encryption/decryptable-bytes? maybe-blob->bytes)) encrypted-bytes-columns))))
 
 (defn- replace-encryption-check!
-  "Replace the `encryption-check` sentinel on `conn`: with a fresh UUID encrypted by `encrypt-fn` -- and, in
+  "Replace the `encryption-check` sentinel: with a fresh UUID encrypted by `encrypt-fn` -- and, in
   `value_with_aad`, by `encrypt-setting-fn`, a function of a string and the setting key -- or with the plaintext
   \"unencrypted\" marker in both columns when they are nil (the database is being decrypted). Written to
   `value_with_aad` and to the legacy `value` both, so that a version predating `value_with_aad` reads the same answer
   from the same database."
-  [conn encrypt-fn encrypt-setting-fn]
+  [encrypt-fn encrypt-setting-fn]
   (let [sentinel (if encrypt-fn (str (random-uuid)) "unencrypted")]
-    (t2/delete! :conn conn :setting :key encryption-check-key)
-    (t2/insert! :conn conn :setting {:key            encryption-check-key
-                                     :value          (cond-> sentinel encrypt-fn encrypt-fn)
-                                     :value_with_aad (cond-> sentinel encrypt-setting-fn (encrypt-setting-fn encryption-check-key))})))
+    (t2/query {:delete-from :setting, :where [:= :key encryption-check-key]})
+    (t2/query {:insert-into :setting
+               :values      [{:key            encryption-check-key
+                              :value          (cond-> sentinel encrypt-fn encrypt-fn)
+                              :value_with_aad (cond-> sentinel encrypt-setting-fn (encrypt-setting-fn encryption-check-key))}]})))
 
 (defn- encrypt-setting
   "A function of a string and a setting key that encrypts the string the way `setting.value_with_aad` holds it: under
@@ -173,8 +178,8 @@
   "Record that the database is encrypted under the current MB_ENCRYPTION_SECRET_KEY by replacing the `encryption-check`
   sentinel with a fresh UUID encrypted under it. Only ever writes the sentinel -- never touches any other row."
   []
-  (t2/with-transaction [conn]
-    (replace-encryption-check! conn encryption/encrypt (encrypt-setting nil))))
+  (t2/with-transaction [_conn]
+    (replace-encryption-check! encryption/encrypt (encrypt-setting nil))))
 
 (def ^:private EncryptionState
   [:enum :encrypted :unencrypted :fresh :pre-sentinel :missing-key :wrong-key :not-decryptable])
@@ -266,7 +271,7 @@
   this database (see `encryption-check-status`) and the column can legitimately hold values written with some other
   key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
   nothing that was usable."
-  [conn table column encrypt-str-fn clear-undecryptable?]
+  [table column encrypt-str-fn clear-undecryptable?]
   (run! (fn [{:keys [id value]}]
           (when (some? value)
             (let [decrypted (try
@@ -279,7 +284,7 @@
                                     "{}")
                                   (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
                                                   {:table table, :id id, :column column} e)))))]
-              (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))
+              (t2/query {:update table, :set {column (encrypt-str-fn decrypted)}, :where [:= :id id]}))))
         (t2/reducible-select [table :id [column :value]])))
 
 (defn- reencrypt-encrypted-bytes-column!
@@ -287,7 +292,7 @@
   Streams the rows so a large column (e.g. `stored_result.result_data`) does not have to be held in memory all at
   once. A value that cannot be decrypted with the current key aborts rather than being re-encrypted: re-encrypting it
   would produce `encrypt_new(encrypt_old(x))`, permanently unrecoverable."
-  [conn table column encrypt-bytes-fn]
+  [table column encrypt-bytes-fn]
   (run! (fn [{:keys [id value]}]
           (when (some? value)
             (let [decrypted (try
@@ -295,7 +300,7 @@
                               (catch Throwable e
                                 (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
                                                 {:table table, :id id, :column column} e))))]
-              (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
+              (t2/query {:update table, :set {column (encrypt-bytes-fn decrypted)}, :where [:= :id id]}))))
         (t2/reducible-select [table :id [column :value]])))
 
 (defn encrypt-plaintext-columns!
@@ -310,19 +315,21 @@
   MB_ENCRYPTION_SECRET_KEY is not set."
   []
   (when (encryption/default-encryption-enabled?)
-    (t2/with-transaction [conn]
+    (t2/with-transaction [_conn]
       (doseq [[table column] encrypted-string-columns]
         (run! (fn [{:keys [id value]}]
                 (when (and (string? value)
                            (not (encryption/decryptable-string? value)))
-                  (t2/update! :conn conn table {:id id} {column (encryption/encrypt value)})))
+                  (t2/query {:update table, :set {column (encryption/encrypt value)}, :where [:= :id id]})))
               (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]})))
       ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
       (let [encrypt-setting-fn (encrypt-setting nil)]
         (run! (fn [{:keys [key value_with_aad]}]
                 (when (and (string? value_with_aad)
                            (not (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad key)})))
-                  (t2/update! :conn conn :setting {:key key} {:value_with_aad (encrypt-setting-fn value_with_aad key)})))
+                  (t2/query {:update :setting
+                             :set    {:value_with_aad (encrypt-setting-fn value_with_aad key)}
+                             :where  [:= :key key]})))
               (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))))))
 
 (defn- do-encryption
@@ -334,13 +341,13 @@
   (let [encrypt-str-fn     (if encrypting? #(encryption/maybe-encrypt % {:secret-key to-key}) identity)
         encrypt-bytes-fn   (if encrypting? #(encryption/maybe-encrypt-bytes % {:secret-key to-key}) identity)
         encrypt-setting-fn (if encrypting? (encrypt-setting to-key) (fn [s _setting-key] s))]
-    (t2/with-transaction [conn {:datasource data-source}]
+    (t2/with-transaction [_conn {:datasource data-source}]
       (let [check-status (encryption-check-status)]
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
         (doseq [[table column] encrypted-string-columns]
-          (reencrypt-encrypted-column! conn table column encrypt-str-fn
+          (reencrypt-encrypted-column! table column encrypt-str-fn
                                        (and (= check-status :valid)
                                             (contains? clearable-when-undecryptable [table column])))))
       ;; Read the settings raw (via `:setting`, not `:model/Setting`) to bypass the model's strict decrypt-on-read:
@@ -353,20 +360,21 @@
       (doseq [{:keys [key value value_with_aad]} (t2/select :setting)]
         (case key
           "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
-                                    (t2/update! :conn conn :setting {:key key}
-                                                {:value          now
-                                                 :value_with_aad (encrypt-setting-fn now key)}))
+                                    (t2/query {:update :setting
+                                               :set    {:value          now
+                                                        :value_with_aad (encrypt-setting-fn now key)}
+                                               :where  [:= :key key]}))
           "encryption-check" nil
           (let [aad-opts {:aad (mdb.setting/setting-aad key)}
                 changes  (cond-> {}
                            (seq value)          (assoc :value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value)))
                            (seq value_with_aad) (assoc :value_with_aad (encrypt-setting-fn (encryption/maybe-decrypt-accepting-plaintext value_with_aad aad-opts) key)))]
             (when (seq changes)
-              (t2/update! :conn conn :setting {:key key} changes)))))
-      (replace-encryption-check! conn (when encrypting? encrypt-str-fn) (when encrypting? encrypt-setting-fn))
+              (t2/query {:update :setting, :set changes, :where [:= :key key]})))))
+      (replace-encryption-check! (when encrypting? encrypt-str-fn) (when encrypting? encrypt-setting-fn))
       (doseq [[table column] encrypted-bytes-columns]
-        (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
-      (t2/delete! :conn conn :model/QueryCache))))
+        (reencrypt-encrypted-bytes-column! table column encrypt-bytes-fn))
+      (t2/query {:delete-from :query_cache}))))
 
 (defn encrypt-db
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.
