@@ -168,45 +168,57 @@ type CardQuestionBuilder = (
 
 const cardQuestionBuilders = new WeakMap<Lib.Metadata, CardQuestionBuilder>();
 
+/**
+ * `selectQuestionFromCard` as a builder, for `createSelector` inputs and for
+ * components. Memoised on the `Metadata` object so it is stable in a
+ * dependency array and as a selector result.
+ */
+export const selectQuestionFromCardBuilder = (
+  state: State,
+): CardQuestionBuilder => {
+  const metadata = getMetadata(state);
+  const cached = cardQuestionBuilders.get(metadata);
+
+  if (cached) {
+    return cached;
+  }
+
+  const build = (card: UnsavedCard, parameterValues?: ParameterValuesMap) =>
+    new Question(card, metadata, parameterValues);
+  cardQuestionBuilders.set(metadata, build);
+
+  return build;
+};
+
 export const useQuestionFromCard = (): CardQuestionBuilder =>
-  useSelector((state) => {
-    const metadata = getMetadata(state);
-    const cached = cardQuestionBuilders.get(metadata);
+  useSelector(selectQuestionFromCardBuilder);
 
-    if (cached) {
-      return cached;
-    }
+type DraftQuestionBuilder = (
+  opts: Omit<QuestionCreatorOpts, "metadata">,
+) => Question;
 
-    const build = (card: UnsavedCard, parameterValues?: ParameterValuesMap) =>
-      new Question(card, metadata, parameterValues);
-    cardQuestionBuilders.set(metadata, build);
-
-    return build;
-  });
+const draftQuestionBuilders = new WeakMap<Lib.Metadata, DraftQuestionBuilder>();
 
 /**
- * `selectQuestionFromOpts` for components. A builder for the same reason as
- * `useQuestionFromCard`.
+ * `selectQuestionFromOpts` as a builder. A builder for the same reason as
+ * `selectQuestionFromCardBuilder`.
  */
-const draftQuestionBuilders = new WeakMap<
-  Lib.Metadata,
-  (opts: Omit<QuestionCreatorOpts, "metadata">) => Question
->();
+export const selectQuestionFromOptsBuilder = (
+  state: State,
+): DraftQuestionBuilder => {
+  const metadata = getMetadata(state);
+  const cached = draftQuestionBuilders.get(metadata);
 
-export const useQuestionFromOpts = (): ((
-  opts: Omit<QuestionCreatorOpts, "metadata">,
-) => Question) =>
-  useSelector((state) => {
-    const metadata = getMetadata(state);
-    const cached = draftQuestionBuilders.get(metadata);
+  if (cached) {
+    return cached;
+  }
 
-    if (cached) {
-      return cached;
-    }
+  const build = (opts: Omit<QuestionCreatorOpts, "metadata">) =>
+    Question.create({ ...opts, metadata });
+  draftQuestionBuilders.set(metadata, build);
 
-    const build = (opts: Omit<QuestionCreatorOpts, "metadata">) =>
-      Question.create({ ...opts, metadata });
-    draftQuestionBuilders.set(metadata, build);
+  return build;
+};
 
-    return build;
-  });
+export const useQuestionFromOpts = (): DraftQuestionBuilder =>
+  useSelector(selectQuestionFromOptsBuilder);

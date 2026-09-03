@@ -10,7 +10,10 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
-import { getMetadata } from "metabase/metadata-store";
+import {
+  getMetadata,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -32,7 +35,7 @@ import {
   minTimeseriesUnit,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
@@ -180,16 +183,22 @@ export const getDatasetEditorTab = createSelector(
   (uiControls) => uiControls.datasetEditorTab,
 );
 
+// Typed against this store's state so every input below takes the same
+// argument. A wider `State` makes reselect merge the parameter lists into a
+// signature that needs two arguments.
+const getQuestionBuilder = (state: QueryBuilderStoreState) =>
+  selectQuestionFromCardBuilder(state);
+
 export const getOriginalQuestionWithParameterValues = createSelector(
-  [getMetadata, getOriginalCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    metadata && card && new Question(card, metadata, parameterValues),
+  [getQuestionBuilder, getOriginalCard, getParameterValues],
+  (buildQuestion, card, parameterValues) =>
+    card && buildQuestion(card, parameterValues),
 );
 
 export const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
+  [getQuestionBuilder, getLastRunCard, getParameterValues],
+  (buildQuestion, card, parameterValues) =>
+    card && buildQuestion(card, parameterValues),
 );
 
 /**

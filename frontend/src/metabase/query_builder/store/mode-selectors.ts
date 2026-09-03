@@ -1,8 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getMetadata } from "metabase/metadata-store";
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
-import Question from "metabase-lib/v1/Question";
 
 import type { QueryBuilderStoreState } from "./state";
 
@@ -12,10 +11,16 @@ const getParameterValues = (state: QueryBuilderStoreState) =>
 const getZoomedObjectId = (state: QueryBuilderStoreState) =>
   state.qb.zoomedRowObjectId;
 
+// Typed against this store's state so every input below takes the same
+// argument. A wider `State` makes reselect merge the parameter lists into a
+// signature that needs two arguments.
+const getQuestionBuilder = (state: QueryBuilderStoreState) =>
+  selectQuestionFromCardBuilder(state);
+
 const getLastRunQuestion = createSelector(
-  [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    card && metadata && new Question(card, metadata, parameterValues),
+  [getQuestionBuilder, getLastRunCard, getParameterValues],
+  (buildQuestion, card, parameterValues) =>
+    card && buildQuestion(card, parameterValues),
 );
 
 const isZoomingRow = createSelector(
