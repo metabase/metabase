@@ -33,7 +33,6 @@ export const Visualization = (
     onClick({
       value,
       column: cols[0],
-      settings,
       event: event.nativeEvent,
       element: event.currentTarget,
       origin: { row: rows[0], cols },

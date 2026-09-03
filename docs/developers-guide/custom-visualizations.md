@@ -234,7 +234,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value.
 
 The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
