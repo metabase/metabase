@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
@@ -42,6 +43,27 @@ export const withRealCollectionId = (item: CollectionItem) => ({
   id: item.id === ROOT_ITEM_ID ? ROOT_COLLECTION.id : item.id,
 });
 
+type RootState =
+  /** The root collection is known */
+  | { kind: "readable"; collection: Collection }
+  /** No permission on root (403) but might still read nested collections. */
+  | { kind: "forbidden" }
+  /** No root to show: still loading it, or it failed with something else. */
+  | { kind: "unavailable" };
+
+const getRootState = (
+  collection: Collection | undefined,
+  error: unknown,
+): RootState => {
+  if (isObject(error) && error.status === 403) {
+    return { kind: "forbidden" };
+  }
+
+  return collection
+    ? { kind: "readable", collection }
+    : { kind: "unavailable" };
+};
+
 /**
  * The rows of the virtual "All collections" root: "Our analytics", the shared
  * tenant collections, the tenant collection and the personal one, as siblings.
@@ -60,11 +82,7 @@ export const useAllCollectionsItems = ({
     isFetching: isFetchingRootCollection,
   } = useGetCollectionQuery(enabled ? { id: "root" } : skipToken);
 
-  const isRootForbidden =
-    isObject(rootCollectionError) && rootCollectionError.status === 403;
-
-  const isRootReadable =
-    !isFetchingRootCollection && !rootCollectionError && !!rootCollection;
+  const rootState = getRootState(rootCollection, rootCollectionError);
 
   // The user may have no permission on "Our analytics" but still have it on
   // sub collections. /root/items returns those, /root would just 403.
@@ -73,7 +91,9 @@ export const useAllCollectionsItems = ({
     error: rootItemsError,
     isFetching: isFetchingRootItems,
   } = useListCollectionItemsQuery(
-    isRootForbidden ? { id: "root", models: ["collection"] } : skipToken,
+    rootState.kind === "forbidden"
+      ? { id: "root", models: ["collection"] }
+      : skipToken,
   );
 
   const hasTenantsSetting = useSetting("use-tenants");
@@ -95,16 +115,18 @@ export const useAllCollectionsItems = ({
   );
 
   // Either "Our analytics" itself, or the collections inside it the user can reach.
-  const sharedCollectionItems: AllCollectionsItem[] = isRootReadable
-    ? [
-        {
-          id: ROOT_ITEM_ID,
-          model: "collection",
-          name: rootCollection.name || t`Our analytics`,
-          description: rootCollection.description ?? null,
-        },
-      ]
-    : (rootItems?.data ?? []);
+  const sharedCollectionItems: AllCollectionsItem[] = match(rootState)
+    .with({ kind: "readable" }, ({ collection }): AllCollectionsItem[] => [
+      {
+        id: ROOT_ITEM_ID,
+        model: "collection",
+        name: collection.name || t`Our analytics`,
+        description: collection.description ?? null,
+      },
+    ])
+    .with({ kind: "forbidden" }, () => rootItems?.data ?? [])
+    .with({ kind: "unavailable" }, () => [])
+    .exhaustive();
 
   // Shared tenant collections always have numeric ids; the check only narrows
   // `Collection["id"]` for the table item.
@@ -156,18 +178,17 @@ export const useAllCollectionsItems = ({
     personalCollectionItem,
   ].filter(isNotNull);
 
-  // When the user comes back to the virtual root, the rejected root query
-  // refetches. RTK still returns the error, so keep the cached rows up, not the
-  // loader.
-  const isLoadingRows = isRootForbidden
-    ? isFetchingRootItems && !rootItems
-    : isFetchingRootCollection;
+  // A root refetch keeps the cached rows up instead of showing the loader again.
+  const isLoadingRows =
+    rootState.kind === "forbidden"
+      ? isFetchingRootItems && !rootItems
+      : isFetchingRootCollection && !rootCollection;
 
   return {
     items,
     isLoading: isLoadingRows || isFetchingSharedTenantCollections,
     error:
-      (isRootForbidden ? rootItemsError : rootCollectionError) ??
+      (rootState.kind === "forbidden" ? rootItemsError : rootCollectionError) ??
       sharedTenantCollectionsError,
   };
 };
