@@ -199,7 +199,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               isDirty={isDirty}
               isResultDirty={isResultDirty}
               isRunning={isRunning}
-              noResultsAction={<HasResultsAlertPrompt question={question} />}
+              noResultsAction={
+                !isDirty && <HasResultsAlertPrompt question={question} />
+              }
               onChange={updateQuestion}
               onCreate={async (question) => {
                 const result = await onCreate(question);
