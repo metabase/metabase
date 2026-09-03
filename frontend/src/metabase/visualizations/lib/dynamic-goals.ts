@@ -23,6 +23,7 @@ import {
   isGoalSegment,
   isGoalSelfColumnRef,
   isGoalStaticValue,
+  isGoalValue,
 } from "metabase-types/guards";
 
 import { segmentIsValid } from "./utils";
@@ -181,8 +182,78 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
+export type GoalSettingKey =
+  | "graph.goal_value"
+  | "progress.goal"
+  | "gauge.segments"
+  | "scalar.segments";
+
+type GoalSettingKind = "value" | "segments";
+
+// Mirrors `goal-settings` in metabase.visualization-settings.dynamic-goals
+const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
+  "graph.goal_value": "value",
+  "progress.goal": "value",
+  "gauge.segments": "segments",
+  "scalar.segments": "segments",
+};
+
+// A display is listed once its renderers, interactive and static, resolve the setting.
+const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
+  Record<VisualizationDisplay, GoalSettingKey[]>
+> = {
+  gauge: ["gauge.segments"],
+};
+
+export function getDynamicGoalSettingKeys(
+  display: VisualizationDisplay | undefined,
+): GoalSettingKey[] {
+  return display != null
+    ? (DYNAMIC_GOAL_SETTINGS_BY_DISPLAY[display] ?? [])
+    : [];
+}
+
+export function supportsDynamicGoals(
+  display: VisualizationDisplay | undefined,
+): boolean {
+  return getDynamicGoalSettingKeys(display).length > 0;
+}
+
+export function isDynamicGoalSetting(
+  display: VisualizationDisplay | undefined,
+  key: GoalSettingKey,
+): boolean {
+  return getDynamicGoalSettingKeys(display).includes(key);
+}
+
 function validGoalSegments(segments: unknown): GoalSegment[] {
   return Array.isArray(segments) ? segments.filter(isGoalSegment) : [];
+}
+
+function getSegmentBounds(segments: GoalSegment[]): (GoalValue | null)[] {
+  return segments.flatMap((segment) => [segment.min, segment.max]);
+}
+
+export function getGoalSegmentBounds(
+  segments: GoalSegment[] | undefined,
+): (GoalValue | null)[] {
+  return getSegmentBounds(validGoalSegments(segments));
+}
+
+export function getGoalValuesFromVizSettings(
+  settings: VisualizationSettings,
+  keys: GoalSettingKey[],
+): GoalValue[] {
+  return keys.flatMap((key) => {
+    const setting: unknown = settings[key];
+
+    return match(GOAL_SETTINGS[key])
+      .with("value", () => (isGoalValue(setting) ? [setting] : []))
+      .with("segments", () =>
+        getSegmentBounds(validGoalSegments(setting)).filter(isGoalValue),
+      )
+      .exhaustive();
+  });
 }
 
 export function resolveGoalSegments(
@@ -216,21 +287,27 @@ export function getSegmentColor(
   return segment.color ?? getColor("text-secondary");
 }
 
+export type GoalValues = ReadonlyArray<GoalValue | null | undefined>;
+
+export function hasFailedGoalReferencesForValues(
+  data: GoalData,
+  values: GoalValues,
+): boolean {
+  return values.some((value) => isFailed(value, resolveGoalValue(data, value)));
+}
+
 export function hasFailedGoalReferences(
   data: GoalData,
   segments: GoalSegment[] | undefined,
 ): boolean {
-  return validGoalSegments(segments)
-    .flatMap((segment) => [segment.min, segment.max])
-    .some((bound) => isFailed(bound, resolveGoalValue(data, bound)));
+  return hasFailedGoalReferencesForValues(data, getGoalSegmentBounds(segments));
 }
 
-export function getUnansweredGoalEntities(
+export function getUnansweredGoalEntitiesForValues(
   data: GoalData,
-  segments: GoalSegment[] | undefined,
+  values: GoalValues,
 ): ReferencedEntity[] {
-  const unansweredRefs = validGoalSegments(segments)
-    .flatMap((segment) => [segment.min, segment.max])
+  const unansweredRefs = values
     .filter(isGoalForeignColumnRef)
     .filter((ref) => needsAnswer(resolveGoalValue(data, ref)));
   const entities = new Map(
@@ -243,6 +320,16 @@ export function getUnansweredGoalEntities(
   return Array.from(entities.values());
 }
 
+export function getUnansweredGoalEntities(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+): ReferencedEntity[] {
+  return getUnansweredGoalEntitiesForValues(
+    data,
+    getGoalSegmentBounds(segments),
+  );
+}
+
 export function toReferencedEntity({
   type,
   id,
@@ -250,16 +337,24 @@ export function toReferencedEntity({
   return { type, id };
 }
 
+export type GoalCard = Pick<Card, "display" | "visualization_settings">;
+
+export function getGoalForeignColumnRefs(
+  card: GoalCard,
+): GoalForeignColumnRef[] {
+  return getGoalValuesFromVizSettings(
+    card.visualization_settings,
+    getDynamicGoalSettingKeys(card.display),
+  ).filter(isGoalForeignColumnRef);
+}
+
 type ReferencedEntityColumns =
   | { type: "card"; id: CardId; columns: Set<string> }
   | { type: "measure"; id: MeasureId; columns: Set<string> };
 
-export function getReferencedEntitiesFromVizSettings(
-  settings: VisualizationSettings,
-): ReferencedEntity[] {
-  const foreignColumnRefs = getGoalForeignColumnRefs(settings);
-
-  const columnsByEntity = foreignColumnRefs.reduce((map, ref) => {
+// The entities a query for `card` must also answer, with the columns their goals read.
+export function getReferencedEntities(card: GoalCard): ReferencedEntity[] {
+  const columnsByEntity = getGoalForeignColumnRefs(card).reduce((map, ref) => {
     const refKey = `${ref.type}:${ref.id}`;
     const entry = map.get(refKey) ?? {
       type: ref.type,
@@ -278,26 +373,12 @@ export function getReferencedEntitiesFromVizSettings(
   }));
 }
 
-function getGoalForeignColumnRefs(
-  settings: VisualizationSettings,
-): GoalForeignColumnRef[] {
-  return validGoalSegments(settings["gauge.segments"])
-    .flatMap((segment) => [segment.min, segment.max])
-    .filter(isGoalForeignColumnRef);
-}
-
-export type GoalCard = Pick<Card, "display" | "visualization_settings">;
-
 function hasGoalReferencesWhere(
   card: GoalCard,
   data: GoalData | undefined,
   predicate: (resolved: ResolvedGoalValue) => boolean,
 ): boolean {
-  if (!supportsDynamicGoals(card.display)) {
-    return false;
-  }
-
-  return getGoalForeignColumnRefs(card.visualization_settings).some(
+  return getGoalForeignColumnRefs(card).some(
     (ref) => data == null || predicate(resolveGoalValue(data, ref)),
   );
 }
@@ -337,17 +418,11 @@ function isUnresolved(resolved: ResolvedGoalValue): boolean {
 
 // Only a foreign reference gets re-asked (see needsAnswer) - every other error is final.
 function isFailed(
-  bound: GoalValue | null,
+  value: GoalValue | null | undefined,
   resolved: ResolvedGoalValue,
 ): boolean {
   return (
     resolved.error != null &&
-    !(isGoalForeignColumnRef(bound) && needsAnswer(resolved))
+    !(isGoalForeignColumnRef(value) && needsAnswer(resolved))
   );
-}
-
-export function supportsDynamicGoals(display: VisualizationDisplay): boolean {
-  return match(display)
-    .with("gauge", () => true)
-    .otherwise(() => false);
 }
