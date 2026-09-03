@@ -10,6 +10,7 @@ export {
   reinitialize,
 } from "./plugin";
 export {
+  canAccessDataModel,
   canAccessSettings,
   canManageSubscriptions,
   canUserCreateNativeQueries,
