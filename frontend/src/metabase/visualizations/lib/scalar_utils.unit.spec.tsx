@@ -1,13 +1,75 @@
+import { render, screen } from "__support__/ui";
+import { color } from "metabase/ui/utils/colors";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
+import type { ResolvedOpenEndedGoalSegment } from "./dynamic-goals";
 import {
   COMPACT_MAX_WIDTH,
   COMPACT_MIN_LENGTH,
   COMPACT_WIDTH_PER_DIGIT,
   compactifyValue,
+  getColor,
+  getTooltipContent,
 } from "./scalar_utils";
 
+const SEGMENTS: ResolvedOpenEndedGoalSegment[] = [
+  { min: null, max: 10, color: "red", label: "low" },
+  { min: 10, max: 100, color: "yellow", label: "mid" },
+  { min: 100, max: null, color: "green", label: "high" },
+];
+
 describe("scalar utils", () => {
+  describe("getColor", () => {
+    it("uses the default color without segments", () => {
+      expect(getColor(5)).toBe(color("text-primary"));
+      expect(getColor(5, [])).toBe(color("text-primary"));
+    });
+
+    it("uses the default color for a value no segment covers", () => {
+      expect(
+        getColor(500, [{ min: 0, max: 100, color: "red", label: "" }]),
+      ).toBe(color("text-primary"));
+    });
+
+    it("uses the default color for a non-numeric value", () => {
+      expect(getColor("abc", SEGMENTS)).toBe(color("text-primary"));
+      expect(getColor(null, SEGMENTS)).toBe(color("text-primary"));
+    });
+
+    it("colors a value by the resolved segment containing it", () => {
+      expect(getColor(50, SEGMENTS)).toBe("yellow");
+      expect(getColor("50", SEGMENTS)).toBe("yellow");
+    });
+
+    it("treats a null bound as open-ended", () => {
+      expect(getColor(-1000, SEGMENTS)).toBe("red");
+      expect(getColor(1000, SEGMENTS)).toBe("green");
+    });
+
+    it("gives the first matching segment a shared bound", () => {
+      expect(getColor(10, SEGMENTS)).toBe("red");
+      expect(getColor(100, SEGMENTS)).toBe("yellow");
+    });
+  });
+
+  describe("getTooltipContent", () => {
+    it("has nothing to show without segments", () => {
+      expect(getTooltipContent()).toBeNull();
+      expect(getTooltipContent([])).toBeNull();
+    });
+
+    it("lists every segment's range and label", () => {
+      render(<>{getTooltipContent(SEGMENTS)}</>);
+
+      expect(screen.getByText("≤ 10")).toBeInTheDocument();
+      expect(screen.getByText("low")).toBeInTheDocument();
+      expect(screen.getByText("10 - 100")).toBeInTheDocument();
+      expect(screen.getByText("mid")).toBeInTheDocument();
+      expect(screen.getByText("≥ 100")).toBeInTheDocument();
+      expect(screen.getByText("high")).toBeInTheDocument();
+    });
+  });
+
   describe("compactifyValue", () => {
     const formatOptions = {
       column: {

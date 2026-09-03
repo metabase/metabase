@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
+import { setupCardDataset } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { color } from "metabase/ui/utils/colors";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Series } from "metabase-types/api";
+import type { DatasetData, ScalarSegment, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -149,6 +151,126 @@ describe("Scalar", () => {
     );
 
     expect(screen.getByText("12,345")).toBeInTheDocument();
+  });
+});
+
+describe("Scalar conditional colors", () => {
+  const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
+
+  function createScalarSeries(data: Partial<DatasetData> = {}): Series {
+    return [
+      createMockSingleSeries(createMockCard({ display: "scalar" }), {
+        data: createMockDatasetData({
+          cols: [createMockColumn({ name: "count" })],
+          rows: [[12345]],
+          ...data,
+        }),
+      }),
+    ];
+  }
+
+  function answeredGoal(goal: number): Partial<DatasetData> {
+    return {
+      referenced_entities: {
+        card: {
+          [GOAL_REF.id]: {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: GOAL_REF.column })],
+              rows: [[goal]],
+            },
+          },
+        },
+      },
+    };
+  }
+
+  function setup(series: Series, segments: ScalarSegment[]) {
+    renderWithProviders(
+      <Scalar
+        {...mockedProps}
+        series={series}
+        rawSeries={series}
+        settings={{ ...settings, "scalar.segments": segments }}
+        visualizationIsClickable={() => false}
+        height={200}
+        width={230}
+      />,
+    );
+  }
+
+  function getValueColor() {
+    return screen
+      .getByTestId("scalar-value")
+      .style.getPropertyValue("--scalar-value-color");
+  }
+
+  it("colors the value by the open-ended static range containing it", async () => {
+    setup(createScalarSeries(), [
+      { min: null, max: 100, color: "red", label: "low" },
+      { min: 10000, max: null, color: "green", label: "high" },
+    ]);
+
+    expect(screen.getByText("12,345")).toBeInTheDocument();
+    expect(getValueColor()).toBe("green");
+
+    await userEvent.hover(screen.getByTestId("scalar-value"));
+    expect(await screen.findByText("≥ 10000")).toBeInTheDocument();
+    expect(screen.getByText("≤ 100")).toBeInTheDocument();
+  });
+
+  it("colors the value by a range bound the dataset already answers", async () => {
+    setup(createScalarSeries(answeredGoal(10000)), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(getValueColor()).toBe("green");
+
+    await userEvent.hover(screen.getByTestId("scalar-value"));
+    expect(await screen.findByText("≥ 10000")).toBeInTheDocument();
+    expect(screen.getByText("above goal")).toBeInTheDocument();
+  });
+
+  it("keeps the default color when the value misses the resolved range", () => {
+    setup(createScalarSeries(answeredGoal(20000)), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(getValueColor()).toBe(color("text-primary"));
+  });
+
+  it("shows a loader until an unanswered reference is fetched, then colors the value", async () => {
+    setupCardDataset({
+      dataset: { data: createMockDatasetData(answeredGoal(10000)) },
+    });
+
+    setup(createScalarSeries(), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
+
+    expect(await screen.findByText("12,345")).toBeInTheDocument();
+    expect(getValueColor()).toBe("green");
+  });
+
+  it("explains instead of rendering when a range's bound failed to load", () => {
+    setup(
+      createScalarSeries({
+        referenced_entities: {
+          card: { [GOAL_REF.id]: { status: "failed", error: "boom" } },
+        },
+      }),
+      [{ min: GOAL_REF, max: null, color: "green", label: "above goal" }],
+    );
+
+    expect(
+      screen.getByText(
+        "Couldn't load a value one of this chart's color ranges depends on.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("scalar-value")).not.toBeInTheDocument();
   });
 });
 

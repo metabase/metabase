@@ -9,7 +9,10 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import { useResolvedGoalSegments } from "./use-resolved-goal-segments";
+import {
+  useResolvedGoalSegments,
+  useResolvedOpenEndedGoalSegments,
+} from "./use-resolved-goal-segments";
 
 const DATASET_QUERY = createMockStructuredDatasetQuery();
 
@@ -250,5 +253,86 @@ describe("useResolvedGoalSegments", () => {
         segments: [{ min: 10, max: 250, color: "red", label: "" }],
       }),
     );
+  });
+});
+
+describe("useResolvedOpenEndedGoalSegments", () => {
+  const OPEN_ENDED_SEGMENTS: GoalSegment[] = [
+    { min: null, max: 10, color: "red", label: "" },
+    {
+      min: { type: "card", id: 9, column: "goal" },
+      max: null,
+      color: "green",
+      label: "",
+    },
+  ];
+
+  function setupOpenEnded(data: DatasetData, segments: GoalSegment[]) {
+    return renderHookWithProviders(
+      () => useResolvedOpenEndedGoalSegments(DATASET_QUERY, data, segments),
+      {},
+    );
+  }
+
+  it("keeps empty bounds open without fetching", () => {
+    const { result } = setupOpenEnded(DATA, [
+      { min: null, max: 10, color: "red", label: "" },
+      { min: 10, max: null, color: "green", label: "" },
+    ]);
+
+    expect(result.current).toEqual({
+      status: "resolved",
+      segments: [
+        { min: null, max: 10, color: "red", label: "" },
+        { min: 10, max: null, color: "green", label: "" },
+      ],
+    });
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("answers a dynamic bound by re-running the query and keeps the other bound open", async () => {
+    setupCardDataset({
+      dataset: {
+        data: createMockDatasetData({
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "goal" })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    const { result } = setupOpenEnded(DATA, OPEN_ENDED_SEGMENTS);
+    expect(result.current).toEqual({ status: "resolving" });
+
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        status: "resolved",
+        segments: [
+          { min: null, max: 10, color: "red", label: "" },
+          { min: 250, max: null, color: "green", label: "" },
+        ],
+      }),
+    );
+  });
+
+  it("fails when the dataset reports a failed reference", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    const { result } = setupOpenEnded(data, OPEN_ENDED_SEGMENTS);
+
+    expect(result.current).toEqual({ status: "failed" });
   });
 });
