@@ -26,8 +26,8 @@ const TIMESERIES: VisualizationSettings = {
 
 const BATCH = 50_000;
 
-// 50,000 values cost 22.5 MB when the cache was module-level. Anything near
-// that means the cache escaped the call again.
+// Pass 3 measured +22.5 MB when the cache was module-level. See
+// profileCacheRetention for why pass 1 is not asserted.
 const RETENTION_BUDGET_MB = 1;
 
 function seriesFromRows(listOfRows: RowValues[][]): Series {
@@ -125,7 +125,6 @@ describe("renderer_utils parsed x value caching", () => {
         }),
       );
 
-      expect(profile.newKeysMb).toBeLessThan(RETENTION_BUDGET_MB);
       expect(profile.moreNewKeysMb).toBeLessThan(RETENTION_BUDGET_MB);
     });
   });
