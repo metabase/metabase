@@ -1,10 +1,10 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
+import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
