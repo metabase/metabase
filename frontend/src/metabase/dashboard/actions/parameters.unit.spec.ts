@@ -1,12 +1,18 @@
 import { getMainStore } from "__support__/entities-store";
 import { setupFieldEndpoints } from "__support__/server-mocks";
-import { getParameters } from "metabase/dashboard/selectors";
+import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { getDashCardById, getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import type {
+  ParameterTarget,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
@@ -24,6 +30,10 @@ import {
   setParameterMapping,
   setParameterType,
 } from "./parameters";
+
+jest.mock("metabase/dashboard/actions/auto-wire-parameters/actions", () => ({
+  showAutoWireToast: jest.fn(() => () => undefined),
+}));
 
 function setup(initialState: State) {
   return getMainStore(initialState);
@@ -218,6 +228,54 @@ describe("removeParameter", () => {
 });
 
 describe("setParameterMapping", () => {
+  it("sets the mapping before auto-wire reads the source dashcard", async () => {
+    const parameter = createMockParameter({ id: "parameter" });
+    const dashcard = createMockDashboardCard({
+      id: 1,
+      card_id: 1,
+      card: createMockCard({ id: 1 }),
+      series: [createMockCard({ id: 2 })],
+    });
+    const state = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: 1,
+        selectedTabId: 1,
+        dashboards: {
+          1: createMockStoreDashboard({
+            id: 1,
+            dashcards: [dashcard.id],
+            parameters: [parameter],
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+      }),
+    });
+    const target: ParameterTarget = ["variable", ["template-tag", "foo"]];
+    let mappingsSeenByAutoWire: QuestionDashboardCard["parameter_mappings"];
+
+    jest
+      .mocked(showAutoWireToast)
+      .mockImplementationOnce(() => (_dispatch, getState) => {
+        const currentDashcard = getDashCardById(getState(), dashcard.id);
+        if (isQuestionDashCard(currentDashcard)) {
+          mappingsSeenByAutoWire = currentDashcard.parameter_mappings;
+        }
+      });
+
+    const store = setup(state);
+    await store.dispatch(
+      setParameterMapping(parameter.id, dashcard.id, dashcard.card.id, target),
+    );
+
+    expect(mappingsSeenByAutoWire).toEqual([
+      {
+        parameter_id: parameter.id,
+        card_id: dashcard.card.id,
+        target,
+      },
+    ]);
+  });
+
   describe("QUE2-326: updates ID parameter type when mapped to a field", () => {
     function setupIdMapping({
       fieldId,
