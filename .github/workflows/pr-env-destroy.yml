@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "Destroying PR environment for PR #${PR_NUMBER}"
 
-  destroy_pr:
+  cleanup:
     needs: [ approve ]
     # Runs when dispatched manually (after approval), when a PR carrying a PR-Env
     # label is closed, or when one of those labels is removed.
@@ -53,7 +53,7 @@ jobs:
                       || github.event.label.name == 'PR-Env-analytics-dev'
                       || github.event.label.name == 'PR-Env-Stats-Dump'))) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: PR Review ENV Destroy
+    timeout-minutes: 10
     permissions:
       id-token: write
       contents: read
