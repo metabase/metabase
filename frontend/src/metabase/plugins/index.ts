@@ -39,7 +39,6 @@ export {
   type CollectionAuthorityLevelDisplayProps,
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
-export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
 export {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
@@ -198,7 +197,6 @@ import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
 import { reinitialize as reinitializeCaching } from "./oss/caching";
 import { reinitialize as reinitializeCollections } from "./oss/collections";
-import { reinitialize as reinitializeContentTranslation } from "./oss/content-translation";
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
@@ -246,7 +244,6 @@ export function reinitialize() {
   reinitializeAuth();
   reinitializeCaching();
   reinitializeCollections();
-  reinitializeContentTranslation();
   reinitializeContentVerification();
   reinitializeCore();
   reinitializeCustomViz();

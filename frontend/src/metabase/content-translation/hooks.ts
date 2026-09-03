@@ -1,5 +1,4 @@
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins/oss/content-translation";
-
+import { PLUGIN_CONTENT_TRANSLATION } from "./plugin";
 import type { ContentTranslationFunction } from "./types";
 
 /** To keep the components that require content translation tidier, they can

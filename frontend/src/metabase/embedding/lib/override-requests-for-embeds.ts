@@ -3,8 +3,8 @@ import {
   PLUGIN_API,
   type RequestMethod,
 } from "metabase/api/client";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
 import { isEmbedPreview } from "metabase/embedding/config";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { sessionPropertiesPath } from "metabase/settings";
 
 type EmbedType = "guest" | "static" | "public";

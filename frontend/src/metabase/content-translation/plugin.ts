@@ -1,16 +1,17 @@
 import { useCallback } from "react";
 
-import type {
-  ContentTranslationFunction,
-  TranslatableSingleSeries,
-} from "metabase/content-translation/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/viz-core";
 import type { EntityToken } from "metabase-types/api/entity";
 
+import type {
+  ContentTranslationFunction,
+  TranslatableSingleSeries,
+} from "./types";
+
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
-  // Unjustified type cast. FIXME
+  // Widened so the EE plugin can assign the dictionary path.
   getDictionaryBasePath: null as string | null,
   setEndpointsForAuthEmbedding: () => {},
   setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},
@@ -41,13 +42,3 @@ const getDefaultPluginContentTranslation = () => ({
 });
 
 export const PLUGIN_CONTENT_TRANSLATION = getDefaultPluginContentTranslation();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(
-    PLUGIN_CONTENT_TRANSLATION,
-    getDefaultPluginContentTranslation(),
-  );
-}

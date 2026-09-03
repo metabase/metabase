@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
