@@ -9,7 +9,8 @@ import type { IconName, VisualizationDisplay } from "metabase-types/api";
 
 import { useGetIcon } from "./use-icon";
 
-// useGetIcon reads only iconName from the registry, so bare definitions stand in for the chart modules.
+// The hook only reads each registered visualization's iconName,
+// so the spec registers stubs instead of the real chart modules from metabase/visualizations.
 const createDefinition = (
   identifier: VisualizationDisplay,
   iconName: IconName,
@@ -20,24 +21,14 @@ const createDefinition = (
   checkRenderable: () => undefined,
 });
 
-const TABLE_DEFINITION = createDefinition("table", "table2");
-
-const DEFINITIONS = [
-  TABLE_DEFINITION,
-  createDefinition("bar", "bar"),
-  createDefinition("pie", "pie"),
-  createDefinition("line", "line"),
-  createDefinition("row", "horizontal_bar"),
-  createDefinition("funnel", "funnel"),
-  createDefinition("map", "pinmap"),
-  createDefinition("object", "document"),
-];
+const REGISTERED_DEFINITION = createDefinition("funnel", "rocket");
+const DEFAULT_DEFINITION = createDefinition("table", "moon");
 
 describe("useGetIcon", () => {
   beforeAll(() => {
     // The registry resolves unknown display types to the default visualization.
-    setDefaultVisualization(TABLE_DEFINITION);
-    DEFINITIONS.forEach((definition) => registerVisualization(definition));
+    setDefaultVisualization(DEFAULT_DEFINITION);
+    registerVisualization(REGISTERED_DEFINITION);
   });
 
   const createGetIcon = () => {
@@ -104,68 +95,23 @@ describe("useGetIcon", () => {
   });
 
   describe("card display types", () => {
-    it("should return the default icon for an invalid display type", () => {
+    it("should return the registered visualization's icon for a card", () => {
       const getIcon = createGetIcon();
-      expect(
-        // @ts-expect-error testing invalid display type
-        getIcon({ model: "card", display: "pikachu" }),
-      ).toEqual({
-        name: "table2",
+      expect(getIcon({ model: "card", display: "funnel" })).toEqual({
+        name: "rocket",
+      });
+    });
+
+    it("should fall back to the default visualization's icon for an unknown display", () => {
+      const getIcon = createGetIcon();
+      expect(getIcon({ model: "card", display: "scatter" })).toEqual({
+        name: "moon",
       });
     });
 
     it("should return the default icon for no display type", () => {
       const getIcon = createGetIcon();
       expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
-    });
-
-    it("should return the correct icon for a card with a table chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "table" })).toEqual({
-        name: "table2",
-      });
-    });
-
-    it("should return the correct icon for a card with a bar chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "bar" })).toEqual({
-        name: "bar",
-      });
-    });
-
-    it("should return the correct icon for a card with a pie chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "pie" })).toEqual({
-        name: "pie",
-      });
-    });
-
-    it("should return the correct icon for a card with a line chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "line" })).toEqual({
-        name: "line",
-      });
-    });
-
-    it("should return the correct icon for a card with a row chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "row" })).toEqual({
-        name: "horizontal_bar",
-      });
-    });
-
-    it("should return the correct icon for a card with a funnel chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "funnel" })).toEqual({
-        name: "funnel",
-      });
-    });
-
-    it("should return the correct icon for a card with a map chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "map" })).toEqual({
-        name: "pinmap",
-      });
     });
 
     it("should return the correct icon for a personal collection root", () => {
@@ -194,13 +140,6 @@ describe("useGetIcon", () => {
       const getIcon = createGetIcon();
       expect(getIcon({ model: "collection", id: "personal" })).toEqual({
         name: "group",
-      });
-    });
-
-    it("should return the correct icon for a card with an object detail chart", () => {
-      const getIcon = createGetIcon();
-      expect(getIcon({ model: "card", display: "object" })).toEqual({
-        name: "document",
       });
     });
   });
