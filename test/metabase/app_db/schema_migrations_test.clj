@@ -2790,3 +2790,56 @@
         (is (= [{:first_name "SAML" :provider "saml"}
                 {:first_name "JWT" :provider "jwt"}]
                results))))))
+
+(deftest dedupe-data-permissions-and-add-unique-constraint-test
+  (testing "v58.2026-07-31: duplicate data_permissions rows are deleted (most restrictive value, lowest id survives) and a unique constraint prevents recurrence"
+    (impl/test-migrations ["v58.2026-07-31T00:00:00" "v58.2026-07-31T00:00:02"] [migrate!]
+      (let [group-id (t2/insert-returning-pk! :permissions_group {:name "Dedupe Test Group"})
+            db-id    (t2/insert-returning-pk! :metabase_database {:name       "Dedupe Test DB"
+                                                                  :engine     "postgres"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+            table-id (t2/insert-returning-pk! :metabase_table {:active     true
+                                                               :db_id      db-id
+                                                               :name       "a table"
+                                                               :created_at :%now
+                                                               :updated_at :%now})
+            perm!    (fn [m]
+                       (t2/insert-returning-pk! :data_permissions
+                                                (merge {:group_id group-id :db_id db-id} m)))
+            ;; the incident shape: two identical DB-level rows
+            vd-keep  (perm! {:perm_type "perms/view-data" :perm_value "unrestricted"})
+            _vd-dup  (perm! {:perm_type "perms/view-data" :perm_value "unrestricted"})
+            ;; differing values: the more restrictive row must survive even with a higher id
+            _cq-perm (perm! {:perm_type "perms/create-queries" :perm_value "query-builder-and-native"})
+            cq-keep  (perm! {:perm_type "perms/create-queries" :perm_value "no"})
+            ;; table-level duplicates dedupe too
+            _dl-perm (perm! {:perm_type   "perms/download-results"
+                             :perm_value  "one-million-rows"
+                             :table_id    table-id
+                             :schema_name "public"})
+            dl-keep  (perm! {:perm_type   "perms/download-results"
+                             :perm_value  "ten-thousand-rows"
+                             :table_id    table-id
+                             :schema_name "public"})
+            ;; not a duplicate: same perm-type on a different scope must be untouched
+            md-keep  (perm! {:perm_type "perms/manage-database" :perm_value "no"})]
+        (migrate!)
+        (testing "exact duplicates: the lowest id survives"
+          (is (= [vd-keep]
+                 (map :id (t2/select :data_permissions :db_id db-id :perm_type "perms/view-data")))))
+        (testing "differing values: the most restrictive survives regardless of id order"
+          (is (= [cq-keep]
+                 (map :id (t2/select :data_permissions :db_id db-id :perm_type "perms/create-queries")))))
+        (testing "table-level duplicates dedupe by the same rule"
+          (is (= [dl-keep]
+                 (map :id (t2/select :data_permissions :db_id db-id :perm_type "perms/download-results")))))
+        (testing "non-duplicate rows are untouched"
+          (is (some? (t2/select-one :data_permissions :id md-keep))))
+        (testing "the generated column coalesces NULL table_id to -1"
+          (is (= -1 (t2/select-one-fn :unique_perms_helper :data_permissions :id vd-keep)))
+          (is (= table-id (t2/select-one-fn :unique_perms_helper :data_permissions :id dl-keep))))
+        (testing "the unique constraint rejects a new DB-level duplicate"
+          (is (thrown? Exception
+                       (perm! {:perm_type "perms/view-data" :perm_value "blocked"}))))))))

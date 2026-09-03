@@ -104,6 +104,12 @@
    :type       mi/transform-keyword
    :value      mi/transform-keyword})
 
+(t2/define-after-select :model/DataPermissions
+  [permissions]
+  ;; unique_perms_helper is a generated column backing the unique constraint; it is not part of the
+  ;; model and must not round-trip into inserts.
+  (dissoc permissions :unique_perms_helper))
+
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
 (defn least-permissive-value
@@ -691,6 +697,14 @@
   "An ID, or something with an ID."
   [:or pos-int? [:map [:id pos-int?]]])
 
+(defn- merge-perm-changes
+  "Merges `{:to-delete [...] :to-insert [...]}` maps, deduping as it concatenates: several implication
+  paths can produce the same row — e.g. `view-data :blocked` implies `:perms/transforms :no` both
+  directly and via the implied `create-queries :no` — and inserting every copy creates duplicate
+  data_permissions rows (UXW-4927)."
+  [& changes]
+  (apply merge-with (fn [a b] (distinct (concat a b))) changes))
+
 (mu/defn- build-database-permission
   "Builds a sequence of DataPermissions models to delete and insert for setting a single permission to a specified
   value for a given group and database. If a permission value already exists for the specified group and object,
@@ -728,7 +742,7 @@
 
                           (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
                           (conj (build-database-permission group-or-id db-or-id :perms/transforms :no)))]
-    (apply merge-with concat
+    (apply merge-perm-changes
            {:to-delete existing-perms
             :to-insert [new-perm]}
            recursive-calls)))
@@ -899,7 +913,11 @@
       (when (not= (count (set (map :db_id new-perms))) 1)
         (throw (ex-info (tru "All tables must belong to the same database.")
                         {:new-perms new-perms})))
-      (apply merge-with concat
+      ;; merge-perm-changes rather than plain concat: the main case and the recursive implications can
+      ;; produce the same row — e.g. setting `create-queries` coalesces to a DB-level row whose
+      ;; implications include `view-data :unrestricted`, and the recursive table-level `view-data`
+      ;; call coalesces to that same DB-level row.
+      (apply merge-perm-changes
              (if-let [existing-db-perm (t2/select-one :model/DataPermissions
                                                       {:where
                                                        [:and
@@ -1168,8 +1186,15 @@
                                   :table_id    table-id
                                   :schema_name schema}]
                (cond
-                 ;; Group has DB-level perm and new table needs :blocked → going-granular
-                 (and db-level-perm (= actual-value :blocked))
+                 ;; Group has DB-level perm and new table needs :blocked → going-granular.
+                 ;; Only when the DB-level row has some *other* value: a :blocked DB-level row already
+                 ;; covers the new table, and expanding it would write one redundant row per table
+                 ;; (see #76077, where this ballooned data_permissions to 46M rows). Those redundant
+                 ;; rows also collide with the unique constraint added here, because a bulk table
+                 ;; insert fires this hook once per table with every table already present.
+                 (and db-level-perm
+                      (not= :blocked (:perm_value db-level-perm))
+                      (= actual-value :blocked))
                  (-> acc
                      (update :going-granular conj {:group-id group-id :perm-type perm-type
                                                    :new-perm new-perm :db-perm db-level-perm})
@@ -1183,30 +1208,36 @@
                  :else
                  acc)))
            {:simple-perms [] :going-granular [] :db-rows-to-delete []}
-           group-perm-defaults)]
-      ;; Bulk DELETE: DB-level rows that need going-granular expansion
-      (when (seq db-rows-to-delete)
-        (batch-delete-permissions! db-rows-to-delete))
-      ;; Bulk INSERT: expansion rows for going-granular groups + simple insert rows
-      (let [expansion-rows (mapcat
-                            (fn [{:keys [group-id perm-type new-perm db-perm]}]
-                              (let [db-perm-value (:perm_value db-perm)
-                                    ;; Build per-table rows for all existing tables (with the old DB-level value)
-                                    existing-table-rows
-                                    (keep (fn [t]
-                                            (when (not= (:id t) table-id)
-                                              {:perm_type   perm-type
-                                               :group_id    group-id
-                                               :perm_value  (case db-perm-value
-                                                              :query-builder-and-native :query-builder
-                                                              db-perm-value)
-                                               :db_id       db-id
-                                               :table_id    (:id t)
-                                               :schema_name (:schema t)}))
-                                          all-db-tables)]
-                                (cons new-perm existing-table-rows)))
-                            going-granular)]
-        (batch-insert-permissions! (concat expansion-rows simple-perms))))))
+           group-perm-defaults)
+          ;; Expansion rows for going-granular groups: per-table rows for all existing tables (with
+          ;; the old DB-level value), plus the new table's own row
+          expansion-rows (mapcat
+                          (fn [{:keys [group-id perm-type new-perm db-perm]}]
+                            (let [db-perm-value (:perm_value db-perm)
+                                  existing-table-rows
+                                  (keep (fn [t]
+                                          (when (not= (:id t) table-id)
+                                            {:perm_type   perm-type
+                                             :group_id    group-id
+                                             :perm_value  (case db-perm-value
+                                                            :query-builder-and-native :query-builder
+                                                            db-perm-value)
+                                             :db_id       db-id
+                                             :table_id    (:id t)
+                                             :schema_name (:schema t)}))
+                                        all-db-tables)]
+                              (cons new-perm existing-table-rows)))
+                          going-granular)
+          rows-to-insert (concat expansion-rows simple-perms)]
+      (when (or (seq db-rows-to-delete) (seq rows-to-insert))
+        ;; One transaction so a failed insert (e.g. a unique-constraint violation) can't leave the
+        ;; DB-level rows deleted but the table-level expansion half-written. Nested transactions are
+        ;; savepoint-based (see metabase.app-db.connection), so this is safe under callers that
+        ;; already run inside one, like the Table after-insert hook.
+        (t2/with-transaction [_conn]
+          (when (seq db-rows-to-delete)
+            (batch-delete-permissions! db-rows-to-delete))
+          (batch-insert-permissions! rows-to-insert))))))
 
 (defenterprise download-perms-level
   "Return the download permission for the query that the given user has. OSS returns :full"
