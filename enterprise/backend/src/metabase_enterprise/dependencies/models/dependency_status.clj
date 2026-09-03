@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.app-db.core :as app-db]
@@ -52,7 +53,7 @@
 (defmethod hydrate-for-deps :default [_ instances] instances)
 
 (defmethod hydrate-for-deps :dashboard [_ instances]
-  (t2/hydrate instances [:dashcards :series]))
+  (dependencies.db/hydrate instances [:dashcards :series]))
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
@@ -61,41 +62,16 @@
   Returns full entity objects. Prioritizes stale over outdated.
   Uses Java time (not DB time) so tests with [[mt/with-clock]] work correctly."
   [entity-type batch-size]
-  (let [model (deps.dependency-types/dependency-type->model entity-type)
-        table-name (t2/table-name model)
-        id-field (keyword (name table-name) "id")
-        table-wildcard (keyword (name table-name) "*")
-        now (t/offset-date-time)]
-    (t2/select model
-               {:select [table-wildcard]
-                :from table-name
-                :left-join [:dependency_status [:and
-                                                [:= :dependency_status.entity_id id-field]
-                                                [:= :dependency_status.entity_type (name entity-type)]]]
-                :where [:or
-                        ;; No status row yet — needs initial processing.
-                        [:= :dependency_status.entity_id nil]
-                        [:and
-                         ;; Needs processing: stale or version outdated
-                         [:or
-                          [:= :dependency_status.stale true]
-                          [:< :dependency_status.dependency_analysis_version
-                           models.dependency/current-dependency-analysis-version]]
-                         ;; Not terminally broken
-                         [:= :dependency_status.terminal false]
-                         ;; Retry delay has elapsed (or no delay set)
-                         [:or
-                          [:is :dependency_status.next_retry_at nil]
-                          [:<= :dependency_status.next_retry_at now]]]]
-                :order-by [[[:case [:= :dependency_status.stale true] [:inline 0] :else [:inline 1]]]]
-                :limit batch-size})))
+  (dependencies.db/instances-for-dependency-calculation (deps.dependency-types/dependency-type->model entity-type)
+                                                        entity-type
+                                                        batch-size
+                                                        models.dependency/current-dependency-analysis-version
+                                                        (t/offset-date-time)))
 
 (defn has-pending-retries?
   "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
   []
-  (t2/exists? :model/DependencyStatus
-              :terminal false
-              :next_retry_at [:not= nil]))
+  (dependencies.db/pending-retry-exists?))
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,

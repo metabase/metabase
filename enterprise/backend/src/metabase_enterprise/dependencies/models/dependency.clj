@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.models.dependency
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
@@ -42,7 +43,7 @@
                        (let [full-filter (conj base-filter
                                                [:= src-type (name entity-type)]
                                                [:in src-id entity-keys])
-                             deps (t2/select :model/Dependency {:where full-filter})]
+                             deps (dependencies.db/dependencies-matching full-filter)]
                          (u/group-by (juxt src-type src-id)
                                      (juxt dst-type dst-id)
                                      conj #{}
@@ -217,10 +218,10 @@
     (into {}
           (mapcat (fn [[node-type ids]]
                     (let [model (deps.dependency-types/dependency-type->model node-type)]
-                      (t2/select-fn-vec (fn [entity]
-                                          [[node-type (:id entity)]
-                                           (is-native-entity? node-type entity)])
-                                        model :id [:in ids]))))
+                      (mapv (fn [entity]
+                              [[node-type (:id entity)]
+                               (is-native-entity? node-type entity)])
+                            (dependencies.db/instances model ids)))))
           grouped)))
 
 (defn transitive-mbql-dependents
@@ -255,9 +256,7 @@
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]
-  (let [current-dependencies (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
-                                        :from_entity_type entity-type
-                                        :from_entity_id entity-id)
+  (let [current-dependencies (dependencies.db/dependencies-from entity-type entity-id)
         to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
                           (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
                             id))
@@ -272,9 +271,9 @@
                   :to_entity_id (ensure-entity-id to-entity-id)})]
     (t2/with-transaction [_conn]
       (when (seq to-remove)
-        (t2/delete! :model/Dependency :id [:in to-remove]))
+        (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
-        (t2/insert! :model/Dependency to-add)))))
+        (dependencies.db/insert-dependencies! to-add)))))
 
 (defn swap-dependency!
   "Efficiently swap a dependency from old-source to new-source during replacement operations.
@@ -289,14 +288,9 @@
   - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
   - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
   [entity-type entity-id [old-source-type old-source-id] [new-source-type new-source-id]]
-  (let [already-present? (t2/exists? :model/Dependency
-                                     :from_entity_type entity-type :from_entity_id entity-id
-                                     :to_entity_type new-source-type :to_entity_id new-source-id)]
+  (let [already-present? (dependencies.db/dependency-exists? entity-type entity-id new-source-type new-source-id)]
     (if already-present?
-      (t2/delete! :model/Dependency
-                  :from_entity_type entity-type :from_entity_id entity-id
-                  :to_entity_type old-source-type :to_entity_id old-source-id)
-      (t2/update! :model/Dependency
-                  {:from_entity_type entity-type :from_entity_id entity-id
-                   :to_entity_type old-source-type :to_entity_id old-source-id}
-                  {:to_entity_type new-source-type :to_entity_id new-source-id}))))
+      (dependencies.db/delete-dependency! entity-type entity-id old-source-type old-source-id)
+      (dependencies.db/retarget-dependency! entity-type entity-id
+                                            old-source-type old-source-id
+                                            new-source-type new-source-id))))

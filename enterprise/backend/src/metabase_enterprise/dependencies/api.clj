@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
@@ -372,7 +373,7 @@
                        (keep #(when (= (first %) :card)
                                 (second %))))
         card->type (when (seq all-cards)
-                     (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
+                     (dependencies.db/card-types-by-id all-cards))]
     (update-vals children-map
                  (fn [children]
                    (->> children
@@ -391,12 +392,12 @@
   [nodes-by-type]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
-              (let [finding-errors (t2/select :model/AnalysisFindingError
-                                              {:where [:and
-                                                       [:= :source_entity_type (name source-type)]
-                                                       [:in :source_entity_id ids]
-                                                       (visible-entities-filter-clause
-                                                        :analyzed_entity_type :analyzed_entity_id)]})]
+              (let [finding-errors (dependencies.db/finding-errors-matching
+                                    [:and
+                                     [:= :source_entity_type (name source-type)]
+                                     [:in :source_entity_id ids]
+                                     (visible-entities-filter-clause
+                                      :analyzed_entity_type :analyzed_entity_id)])]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
                             identity conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -414,14 +415,14 @@
               error_detail (assoc :detail error_detail)))
           (errors-by-entity-type-and-id [[type ids]]
             (when (seq ids)
-              (let [finding-errors (t2/select :model/AnalysisFindingError
-                                              {:where [:and
-                                                       [:= :analyzed_entity_type (name type)]
-                                                       [:in :analyzed_entity_id ids]
-                                                       [:or
-                                                        [:= :source_entity_type nil]
-                                                        (visible-entities-filter-clause
-                                                         :source_entity_type :source_entity_id)]]})]
+              (let [finding-errors (dependencies.db/finding-errors-matching
+                                    [:and
+                                     [:= :analyzed_entity_type (name type)]
+                                     [:in :analyzed_entity_id ids]
+                                     [:or
+                                      [:= :source_entity_type nil]
+                                      (visible-entities-filter-clause
+                                       :source_entity_type :source_entity_id)]])]
                 (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
                             normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -431,25 +432,25 @@
 (defn- hydrate-entities [entity-type entities]
   (case entity-type
     :card (-> entities
-              (t2/hydrate :creator :dashboard :document [:collection :is_personal])
+              (dependencies.db/hydrate :creator :dashboard :document [:collection :is_personal])
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
-    :table (t2/hydrate entities :fields :db :transform :owner)
+    :table (dependencies.db/hydrate entities :fields :db :transform :owner)
     :transform (-> entities
-                   (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
+                   (dependencies.db/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
     :dashboard (-> entities
-                   (t2/hydrate :creator [:collection :is_personal])
+                   (dependencies.db/hydrate :creator [:collection :is_personal])
                    (->> (map collection.root/hydrate-root-collection))
                    (revisions/with-last-edit-info :dashboard))
     :document (-> entities
-                  (t2/hydrate :creator [:collection :is_personal])
+                  (dependencies.db/hydrate :creator [:collection :is_personal])
                   (->> (map collection.root/hydrate-root-collection)))
-    :sandbox (t2/hydrate entities [:table :db :fields])
+    :sandbox (dependencies.db/hydrate entities [:table :db :fields])
     :snippet (-> entities
-                 (t2/hydrate :creator :collection)
+                 (dependencies.db/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
-    (:segment :measure) (t2/hydrate entities :creator [:table :db])))
+    (:segment :measure) (dependencies.db/hydrate entities :creator [:table :db])))
 
 (defn- fetch-and-hydrate-nodes
   "Fetches and hydrates entities for the given nodes.
@@ -460,7 +461,7 @@
                   (when (seq entity-ids)
                     (let [model (deps.dependency-types/dependency-type->model entity-type)
                           fields (entity-select-fields entity-type)]
-                      (->> (t2/select (into [model] fields) :id [:in entity-ids])
+                      (->> (dependencies.db/instances-with-columns model fields entity-ids)
                            (hydrate-entities entity-type)
                            (map (fn [entity]
                                   [[entity-type (:id entity)] entity])))))))
@@ -742,9 +743,7 @@
         personal-filter (when-not include-personal-collections
                           (case entity-type
                             (:card :dashboard :document :snippet)
-                            (let [personal-ids (t2/select-pks-vec :model/Collection
-                                                                  :personal_owner_id [:not= nil]
-                                                                  :location "/")]
+                            (let [personal-ids (dependencies.db/personal-root-collection-ids)]
                               (when (seq personal-ids)
                                 {:filter [:or
                                           [:= :entity.collection_id nil]
@@ -883,15 +882,15 @@
                                                      :sort-column sort-column})
                            selected-types)
         union-query ^:allow-subquery {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
-                                      :offset offset
-                                      :limit limit))
+        all-ids (->> (dependencies.db/query-rows (assoc union-query
+                                                        :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
+                                                        :offset offset
+                                                        :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents))
-        total (-> (t2/query {:select [[:%count.* :total]]
-                             :from [[union-query :subquery]]})
+        total (-> (dependencies.db/query-rows {:select [[:%count.* :total]]
+                                               :from [[union-query :subquery]]})
                   first
                   :total)]
     {:data   (expanded-nodes downstream-graph all-ids {:include-errors? false})
@@ -940,24 +939,24 @@
                                                      :sort-column sort-column})
                            selected-types)
         union-query ^:allow-subquery {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query
-                                      :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
-                                      :offset offset
-                                      :limit limit))
+        all-ids (->> (dependencies.db/query-rows (assoc union-query
+                                                        :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
+                                                        :offset offset
+                                                        :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         nodes-by-type (u/group-by first second all-ids)
         downstream-errors (node-downstream-errors nodes-by-type)
-        total (-> (t2/query {:select [[:%count.* :total]]
-                             :from [[union-query :subquery]]})
+        total (-> (dependencies.db/query-rows {:select [[:%count.* :total]]
+                                               :from [[union-query :subquery]]})
                   first
                   :total)
         usages (node-usages downstream-graph all-ids)
         fetch-entity (fn [entity-type entity-id]
                        (let [model (deps.dependency-types/dependency-type->model entity-type)
                              fields (entity-select-fields entity-type)]
-                         (t2/select-one (into [model] fields) :id entity-id)))
+                         (dependencies.db/instance-with-columns model fields entity-id)))
         data (into []
                    (keep (fn [[entity-type entity-id]]
                            (when-let [entity (fetch-entity entity-type entity-id)]
@@ -1032,18 +1031,18 @@
                                          [:!= :afe.analyzed_entity_type "card"]
                                          [:in :rc.type card-types]]))
         broken-entity-pairs
-        (t2/query (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
-                                             [:afe.analyzed_entity_id :entity_id]]
-                           :from [[:analysis_finding_error :afe]]
-                           :join [[:analysis_finding :af]
-                                  [:and
-                                   [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
-                                   [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
-                           :where where-clause}
-                    card-types (assoc :left-join [[:report_card :rc]
-                                                  [:and
-                                                   [:= :afe.analyzed_entity_type "card"]
-                                                   [:= :rc.id :afe.analyzed_entity_id]]])))
+        (dependencies.db/query-rows (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
+                                                               [:afe.analyzed_entity_id :entity_id]]
+                                             :from [[:analysis_finding_error :afe]]
+                                             :join [[:analysis_finding :af]
+                                                    [:and
+                                                     [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
+                                                     [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
+                                             :where where-clause}
+                                      card-types (assoc :left-join [[:report_card :rc]
+                                                                    [:and
+                                                                     [:= :afe.analyzed_entity_type "card"]
+                                                                     [:= :rc.id :afe.analyzed_entity_id]]])))
         nodes (map (fn [{:keys [entity_type entity_id]}]
                      [(keyword entity_type) entity_id])
                    broken-entity-pairs)
