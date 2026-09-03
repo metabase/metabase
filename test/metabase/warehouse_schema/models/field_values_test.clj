@@ -368,6 +368,25 @@
         (finally
           (swap! registry #(apply dissoc % (keys filler))))))))
 
+(deftest detached-fetch!-waiter-times-out-test
+  (testing "a caller does not park forever on a fetch that never finishes: the sweep that would
+            cancel it only runs when a request arrives, and enough parked callers means none can
+            (GHY-2937)"
+    (let [registry @#'field-values/in-flight-fetches
+          release  (promise)]
+      (try
+        (with-redefs-fn {#'field-values/fetch-max-age-ms 100}
+          (fn []
+            (is (= 100 (try
+                         (field-values/detached-fetch! ::never-finishes (fn [] @release))
+                         nil
+                         (catch clojure.lang.ExceptionInfo e
+                           (:timeout-ms (ex-data e))))))))
+        (finally
+          ;; let the fetch finish so it clears its own entry
+          (deliver release ::done)
+          (swap! registry dissoc ::never-finishes))))))
+
 (deftest detached-fetch!-rethrows-test
   (testing "an exception thrown by the fetch reaches the caller"
     (is (thrown-with-msg? Exception #"oops"

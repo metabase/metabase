@@ -530,12 +530,20 @@
   (atom {}))
 
 (def ^:private fetch-max-age-ms
-  "How long a detached fetch may run before it is canceled and its waiters failed.
+  "How long a detached fetch may run before it is canceled, and how long a caller will wait on one.
 
   Only a fetch wedged outside the query processor can reach this: the warehouse query itself is
   already capped by `*query-timeout-ms*` (`MB_DB_QUERY_TIMEOUT_MINUTES`, 20 minutes in prod), so
   this is a backstop for work blocked somewhere the QP cannot cancel — acquiring a connection, or a
-  driver that ignores cancellation."
+  driver that ignores cancellation.
+
+  It bounds the wait as well as the work because [[sweep-stalled-fetches!]] only runs when a request
+  arrives, and the case this guards against is precisely the one where none can: callers parked on a
+  wedged fetch are request threads, so enough of them stop the server from serving anything at all.
+
+  Deliberately a backstop rather than a request-latency bound. A value nearer a sensible HTTP
+  timeout would hand the thread back far sooner, but returning before the values are ready changes
+  what this endpoint promises its callers, and that is a decision of its own."
   (* 60 60 1000))
 
 (def ^:private max-in-flight-fetches
@@ -634,10 +642,18 @@
         ;; shutting down, and the registry entry is already in place by then
         (catch Throwable e
           (complete-fetch! cache-key entry {:error e}))))
-    (let [{:keys [value error]} @(:promise this)]
-      (when error
-        (throw error))
-      value)))
+    (let [{:keys [value error] :as result} (deref (:promise this) fetch-max-age-ms ::timed-out)]
+      (cond
+        (= result ::timed-out)
+        (throw (ex-info (tru "Timed out waiting for field values.")
+                        {:status-code 503
+                         :timeout-ms  fetch-max-age-ms}))
+
+        error
+        (throw error)
+
+        :else
+        value))))
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
