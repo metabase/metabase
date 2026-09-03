@@ -149,7 +149,7 @@ jobs:
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
-  
+
   containerize:
     needs: [uberjar]
     if: >-
@@ -167,8 +167,8 @@ jobs:
     secrets: inherit
     with:
       build-args: |
-        GIT_COMMIT_SHA=${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+        GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
       edition: ${{ matrix.edition }}
       release: false
 

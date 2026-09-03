@@ -91,14 +91,15 @@ jobs:
     if: ${{ needs.setup.outputs.build_editions != '[]' }}
     name: build (${{ matrix.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       matrix:
         edition: ${{ fromJson(needs.setup.outputs.build_editions) }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
+      # Faster builds for dev, but never for a PR whose jar gets containerized and pushed.
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
@@ -125,6 +126,19 @@ jobs:
           name: metabase-bundle-stats-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           path: target/bundle-stats
           if-no-files-found: warn
+      - name: Verify license files are present in uberjar
+        if: ${{ env.SKIP_LICENSES != 'true' }}
+        run: |
+          echo "Checking for license files in uberjar..."
+          unzip -l ./target/uberjar/metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
+          unzip -l ./target/uberjar/metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
+          echo "Both license files found in uberjar"
+      - name: Launch uberjar
+        run: >-
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        timeout-minutes: 5
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       - name: Mark with the commit hash
         run: git rev-parse --short HEAD > COMMIT-ID
         shell: bash
@@ -135,21 +149,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           # Same key the artifact lookups use, so a build for an explicitly dispatched commit
-          # uploads where `setup` and `jar-healthcheck` go looking for it.
+          # uploads where `setup` and the containerize workflow go looking for it.
           name: metabase-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
           path: |
             ./target/uberjar/metabase.jar
             ./COMMIT-ID
             ./SHA256.sum
-      - name: Verify license files are present in uberjar
-        if: ${{ SKIP_LICENSES != 'true' }}
-        run: |
-          echo "Checking for license files in uberjar..."
-          unzip -l ./metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
-          unzip -l ./metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
-          echo "Both license files found in uberjar"
-      - name: Launch uberjar
-        run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
-      - name: Wait for Metabase to start
-        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done

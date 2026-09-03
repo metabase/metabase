@@ -330,6 +330,7 @@ jobs:
   get-extra-tags:
     needs: [ check-version ]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
     outputs:
       extra_tags: ${{ steps.taglist.outputs.extra_tags }}
     steps:

@@ -3,7 +3,7 @@ run-name: Building Dynamic PR Environment for ${{ github.ref_name }} by @${{ git
 
 on:
   pull_request:
-    types: [ labeled, synchronize, reopened ]
+    types: [ opened, labeled, synchronize, reopened ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,9 +35,12 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
+      edition: ee
       registry: ecr
       repo: metabase-enterprise
       tag: ${{ github.event.pull_request.head.sha }}
+      commit: ${{ github.event.pull_request.head.sha }}
+      platforms: linux/amd64
 
   deploy:
     needs: [containerize]
