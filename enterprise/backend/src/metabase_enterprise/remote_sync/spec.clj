@@ -14,6 +14,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
@@ -501,16 +502,13 @@
               :let [spec (spec-for-model-type model-type)
                     model-key (:model-key spec)]
               :when (and spec model-key (#{:entity-id :hybrid} (:identity spec)))
-              :let [local-entity-ids (t2/select-fn-set :entity_id model-key :entity_id [:in entity-ids])
+              :let [local-entity-ids (remote-sync.db/existing-entity-ids model-key entity-ids)
                     tracked-entity-ids (when (seq local-entity-ids)
-                                         (let [pks (t2/select-pks-vec model-key
-                                                                      :entity_id [:in local-entity-ids])]
-                                           (t2/select-fn-set
-                                            (fn [rso]
-                                              (:entity_id (t2/select-one model-key :id (:model_id rso))))
-                                            :model/RemoteSyncObject
-                                            :model_type model-type
-                                            :model_id [:in pks])))
+                                         (let [pks (remote-sync.db/ids-by-entity-ids model-key local-entity-ids)]
+                                           (into #{}
+                                                 (map (fn [rso]
+                                                        (:entity_id (remote-sync.db/instance model-key (:model_id rso)))))
+                                                 (remote-sync.db/rsos-of-models model-type pks))))
                     conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
                     conflicting-entity-ids (if (= model-type "Collection")
                                              (disj conflicting-entity-ids collection/library-entity-id)
@@ -528,10 +526,8 @@
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
                 conditions (export-conditions spec)
-                local-count (if conditions
-                              (apply t2/count model-key (into [] cat conditions))
-                              (t2/count model-key))
-                synced-count (t2/count :model/RemoteSyncObject :model_type model-type)]
+                local-count (apply remote-sync.db/count-matching model-key (into [] cat conditions))
+                synced-count (remote-sync.db/rso-count-of-type model-type)]
             (and (pos? local-count)
                  (> local-count synced-count))))
         specs-for-feature))
@@ -578,16 +574,14 @@
                                          (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
                                          :else false)]
                 :when (not setting-enabled?)
-                :let [local-ns-colls (t2/select [:model/Collection :id :entity_id] :namespace ns-name)
+                :let [local-ns-colls (remote-sync.db/collections-in-namespace ns-name)
                       import-eids (get import-ns-collection-entity-ids ns-name #{})
                       ;; Only consider local collections that are NOT in the import (truly local-only)
                       ;; and NOT tracked in RemoteSyncObject
                       unsynced-local (remove
                                       (fn [coll]
                                         (or (contains? import-eids (:entity_id coll))
-                                            (t2/exists? :model/RemoteSyncObject
-                                                        :model_type "Collection"
-                                                        :model_id (:id coll))))
+                                            (remote-sync.db/rso-exists? "Collection" (:id coll))))
                                       local-ns-colls)]
                 :when (seq unsynced-local)]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
@@ -660,7 +654,7 @@
                     where        (-> [:and]
                                      (into (removal-where-clauses spec nil imported-ids))
                                      (conj (unsynced-anti-join model-type (model-id-column model-key))))
-                    n-unsynced   (t2/count model-key {:where where})]
+                    n-unsynced   (remote-sync.db/count-where model-key where)]
               :when (pos? n-unsynced)
               :let [category (setting->category setting-kw)]]
           {:type    (keyword (str (u/lower-case-en category) "-conflict"))
@@ -706,11 +700,11 @@
   []
   (into []
         cat
-        [(t2/select-pks-vec :model/Collection :is_remote_synced true)
+        [(remote-sync.db/remote-synced-collection-ids)
          (when (rs-settings/remote-sync-transforms)
-           (t2/select-pks-vec :model/Collection :namespace (name collections/transforms-ns)))
+           (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
          (when (rs-settings/library-is-remote-synced?)
-           (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
+           (remote-sync.db/collection-ids-in-namespace "snippets"))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -744,14 +738,14 @@
                         where        (-> [:and]
                                          (into (removal-where-clauses spec synced-collection-ids imported-ids))
                                          (conj (unsynced-anti-join model-type (model-id-column model-key))))
-                        n            (t2/count model-key {:where where})]
+                        n            (remote-sync.db/count-where model-key where)]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
                :category model-type
                :model    model-type
                :count    n
                ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (t2/select-fn-vec :name model-key {:where where :limit max-conflict-names})
+               :names    (remote-sync.db/names-where model-key where max-conflict-names)
                :message  (format "Import would delete %d unsynced local %s %s"
                                  n model-type (if (= 1 n) "entity" "entities"))})))))
 
@@ -816,7 +810,7 @@
 (defmethod check-eligibility-by-type :parent-table
   [{:keys [parent-model]} {:keys [table_id]}]
   (when table_id
-    (when-let [table (t2/select-one parent-model :id table_id)]
+    (when-let [table (remote-sync.db/instance parent-model table_id)]
       (check-eligibility (spec-for-model-key parent-model) table))))
 
 (defmethod check-eligibility-by-type :setting
@@ -885,14 +879,14 @@
   [{:keys [model-key tracking]} model-id]
   (if-let [query (:hydrate-query tracking)]
     ;; Use custom query for joins (Field, Segment)
-    (first (t2/query (update query :where
-                             (fn [where-clause]
-                               (walk/postwalk
-                                #(if (= % :?id) model-id %)
-                                where-clause)))))
+    (first (remote-sync.db/query-rows (update query :where
+                                              (fn [where-clause]
+                                                (walk/postwalk
+                                                 #(if (= % :?id) model-id %)
+                                                 where-clause)))))
     ;; Simple select using select-fields
     (when-let [fields (:select-fields tracking)]
-      (t2/select-one (into [model-key] fields) :id model-id))))
+      (remote-sync.db/instance-with-columns model-key fields model-id))))
 
 (defn build-sync-object-fields
   "Builds the fields map for RemoteSyncObject from hydrated model details.
@@ -1058,7 +1052,7 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (t2/select (into [model-key] select-fields) :entity_id [:in entity-ids])]
+          entities (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids)]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1090,7 +1084,7 @@
       (let [base-query (-> query-template
                            (update :select (fn [cols] (vec (concat [:s.id] cols))))
                            (assoc :where [:in :s.entity_id entity-ids]))]
-        (->> (t2/query base-query)
+        (->> (remote-sync.db/query-rows base-query)
              (map (fn [entity]
                     (let [field-mappings (:field-mappings tracking)
                           mapped-fields (into {}
@@ -1102,28 +1096,12 @@
                               :status_changed_at timestamp}
                              mapped-fields)))))))))
 
-(defn- build-path-where-clause
-  "Builds an :or where clause for path-based lookups."
-  [paths has-field?]
-  (into [:or]
-        (for [path paths]
-          (let [{:keys [db_name schema table_name field_name]} path]
-            (cond-> [:and
-                     [:= :db.name db_name]
-                     (if schema [:= :t.schema schema] [:is :t.schema nil])
-                     [:= :t.name table_name]]
-              (and has-field? field_name)
-              (conj [:= :f.name field_name]))))))
-
 (defmethod query-entities-for-sync :path
   [{:keys [model-type model-key]} paths timestamp]
   (when (seq paths)
     (case model-key
       :model/Table
-      (->> (t2/query {:select [:t.id :t.name :t.collection_id]
-                      :from   [[:metabase_table :t]]
-                      :join   [[:metabase_database :db] [:= :db.id :t.db_id]]
-                      :where  (build-path-where-clause paths false)})
+      (->> (remote-sync.db/tables-at-paths paths)
            (map (fn [{:keys [id name collection_id]}]
                   {:model_type        model-type
                    :model_id          id
@@ -1136,11 +1114,7 @@
                    :status_changed_at timestamp})))
 
       :model/Field
-      (->> (t2/query {:select [:f.id :f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-                      :from   [[:metabase_field :f]]
-                      :join   [[:metabase_table :t] [:= :t.id :f.table_id]
-                               [:metabase_database :db] [:= :db.id :t.db_id]]
-                      :where  (build-path-where-clause paths true)})
+      (->> (remote-sync.db/fields-at-paths paths)
            (map (fn [{:keys [id name table_id table_name collection_id]}]
                   {:model_type          model-type
                    :model_id            id
@@ -1190,42 +1164,28 @@
   (case (or export-scope :derived)
     :root-collections
     ;; Excludes archived collections - their files are handled by the removal logic
-    (concat
-     (t2/select-fn-set (juxt (constantly "Collection") :id)
-                       :model/Collection
-                       {:where [:and
-                                [:= :is_remote_synced true]
-                                [:= :location "/"]
-                                [:not :archived]]})
-     (when (rs-settings/remote-sync-transforms)
-       (t2/select-fn-set (juxt (constantly "Collection") :id)
-                         :model/Collection
-                         {:where [:and
-                                  [:= :namespace (name collections/transforms-ns)]
-                                  [:= :location "/"]
-                                  [:not :archived]]}))
-     (when (rs-settings/library-is-remote-synced?)
-       (t2/select-fn-set (juxt (constantly "Collection") :id)
-                         :model/Collection
-                         {:where [:and
-                                  [:= :namespace "snippets"]
-                                  [:= :location "/"]
-                                  [:not :archived]]})))
+    (let [collection-keys (fn [ids] (into #{} (map (fn [id] ["Collection" id])) ids))]
+      (concat
+       (collection-keys (remote-sync.db/unarchived-remote-synced-root-collection-ids))
+       (when (rs-settings/remote-sync-transforms)
+         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/transforms-ns))))
+       (when (rs-settings/library-is-remote-synced?)
+         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))))
     :derived
     nil))
 
 (defmethod query-export-roots :setting
   [{:keys [export-scope model-key model-type] :as spec}]
   (when (spec-enabled? spec)
-    (let [conditions (export-conditions spec)]
+    (let [conditions (export-conditions spec)
+          model-keys (fn [ids] (into #{} (map (fn [id] [model-type id])) ids))]
       (case export-scope
         :root-only
-        (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
-               :collection_id nil
-               (into [] cat conditions))
+        (model-keys (apply remote-sync.db/ids-matching model-key
+                           :collection_id nil
+                           (into [] cat conditions)))
         :all
-        (apply t2/select-fn-set (juxt (constantly model-type) :id) model-key
-               (into [] cat conditions))
+        (model-keys (apply remote-sync.db/ids-matching model-key (into [] cat conditions)))
         nil))))
 
 (defmethod query-export-roots :published-table [_] nil)
@@ -1236,9 +1196,11 @@
   (when (spec-enabled? spec)
     (case export-scope
       :all
-      (if archived-key
-        (t2/select-fn-set (juxt (constantly model-type) :id) model-key archived-key false)
-        (t2/select-fn-set (juxt (constantly model-type) :id) model-key))
+      (into #{}
+            (map (fn [id] [model-type id]))
+            (if archived-key
+              (remote-sync.db/ids-matching model-key archived-key false)
+              (remote-sync.db/ids-matching model-key)))
       nil)))
 
 (defmethod query-export-roots :default [_] nil)

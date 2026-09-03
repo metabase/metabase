@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -17,8 +18,7 @@
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -181,7 +181,7 @@
   []
   (api/check-superuser)
   (when-let [task (remote-sync.task/most-recent-task)]
-    (t2/hydrate task :status)))
+    (remote-sync.db/hydrate-status task)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
@@ -190,7 +190,7 @@
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (remote-sync.db/hydrate-status (remote-sync.task/most-recent-task))))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.
@@ -269,8 +269,7 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (t2/select [:model/Collection :id :is_remote_synced]
-                                                            :id [:in (keys collections)]))]
+                                                 (remote-sync.db/collection-sync-states (keys collections)))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]
