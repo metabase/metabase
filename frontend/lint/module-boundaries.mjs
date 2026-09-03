@@ -257,7 +257,7 @@ const elements = [
     name: "types",
     pattern: "frontend/src/types/**",
   }),
-  createElement({ type: "shared", name: "urls", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "urls" }),
   createElement({
     type: "shared",
     name: "visualizations",
