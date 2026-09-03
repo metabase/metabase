@@ -50,30 +50,30 @@
           ;; notification result. The regression this test guards against is viz-settings
           ;; bleeding across two cards that share a query, independent of cache state.
           (testing "Card 1 has count hidden and sum visible"
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:metabase.visualization-settings.core/table-columns
+                                           [{:metabase.visualization-settings.core/table-column-enabled false
+                                             :metabase.visualization-settings.core/table-column-name "count"}
+                                            {:metabase.visualization-settings.core/table-column-enabled true
+                                             :metabase.visualization-settings.core/table-column-name "sum"}]}}}
                     (result-for-dashcard dashcard-1)))
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:metabase.visualization-settings.core/table-columns
+                                           [{:metabase.visualization-settings.core/table-column-enabled true
+                                             :metabase.visualization-settings.core/table-column-name "count"}
+                                            {:metabase.visualization-settings.core/table-column-enabled false
+                                             :metabase.visualization-settings.core/table-column-name "sum"}]}}}
                     (result-for-dashcard dashcard-2))))
           (testing "Card 2 has count visible and sum hidden"
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:metabase.visualization-settings.core/table-columns
+                                           [{:metabase.visualization-settings.core/table-column-enabled false
+                                             :metabase.visualization-settings.core/table-column-name "count"}
+                                            {:metabase.visualization-settings.core/table-column-enabled true
+                                             :metabase.visualization-settings.core/table-column-name "sum"}]}}}
                     (result-for-card card-1)))
-            (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
-                                           [{:metabase.models.visualization-settings/table-column-enabled true
-                                             :metabase.models.visualization-settings/table-column-name "count"}
-                                            {:metabase.models.visualization-settings/table-column-enabled false
-                                             :metabase.models.visualization-settings/table-column-name "sum"}]}}}
+            (is (=? {:data {:viz-settings {:metabase.visualization-settings.core/table-columns
+                                           [{:metabase.visualization-settings.core/table-column-enabled true
+                                             :metabase.visualization-settings.core/table-column-name "count"}
+                                            {:metabase.visualization-settings.core/table-column-enabled false
+                                             :metabase.visualization-settings.core/table-column-name "sum"}]}}}
                     (result-for-card card-2)))))))))
 
 (deftest viz-settings-reflect-card-edit-after-cache-hit-test
@@ -94,7 +94,7 @@
                                                 {:name "sum"   :enabled true}]}
           table-columns-of (fn [result]
                              (get-in result [:data :viz-settings
-                                             :metabase.models.visualization-settings/table-columns]))]
+                                             :metabase.visualization-settings.core/table-columns]))]
       (t2/delete! :model/QueryCache)
       (mt/with-premium-features #{:cache-granular-controls}
         (mt/with-temp
@@ -125,5 +125,5 @@
                       "Cache entry should not have been overwritten — confirms cache hit")
                   (is (= 2 (count (table-columns-of result))))
                   (is (= ["count" "sum"]
-                         (map :metabase.models.visualization-settings/table-column-name
+                         (map :metabase.visualization-settings.core/table-column-name
                               (table-columns-of result)))))))))))))

@@ -7,11 +7,11 @@
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.visualization-settings.core :as mb.viz]
    [next.jdbc]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))

@@ -13,7 +13,6 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
@@ -24,7 +23,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.referenced-cards :as qp.referenced-cards]
+   [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
@@ -35,6 +34,7 @@
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.visualization-settings.core :as mb.viz]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -54,7 +54,7 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format was-pivot referenced-cards-specs]
+   & {:keys [context export-format was-pivot referenced-entities-specs]
       :or   {context       :ad-hoc
              export-format :api}}]
   (span/with-span!
@@ -79,9 +79,8 @@
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
-        ;; THROW-AWAY (GDGT-2789): run any referenced queries (e.g. dynamic Gauge goals) and add their
-        ;; values under `data.referenced_cards`. Must happen before `process-query` sets up the QP store.
-        (let [rff (qp.referenced-cards/wrap-rff rff referenced-cards-specs)]
+        ;; must run before `process-query` sets up the QP store
+        (let [rff (qp.referenced-entities/maybe-wrap-rff-for-goals rff referenced-entities-specs)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
@@ -98,19 +97,20 @@
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
-  "Execute a query and retrieve the results in the usual format. The query will not use the cache."
+  "Execute a query and retrieve the results in the usual format. The query will not use the cache.
+  `referenced_entities` also runs the given cards' and measures' queries and returns their values under
+  `data.referenced_entities`."
   [_route-params
    _query-params
-   ;; THROW-AWAY (GDGT-2789): `referenced_cards` requests values from other cards (dynamic Gauge goals).
-   {:keys [referenced_cards] :as query} :- [:map
-                                            [:database {:optional true} [:maybe :int]]
-                                            [:referenced_cards {:optional true} qp.referenced-cards/specs-schema]]]
+   {:keys [referenced_entities] :as query} :- [:map
+                                               [:database {:optional true} [:maybe :int]]
+                                               [:referenced_entities {:optional true} qp.referenced-entities/specs-schema]]]
   (run-streaming-query
    (-> query
-       (dissoc :referenced_cards)
+       (dissoc :referenced_entities)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)
-   :referenced-cards-specs referenced_cards))
+   :referenced-entities-specs referenced_entities))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 

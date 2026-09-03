@@ -9,7 +9,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.ui-logic :as ui-logic]
+   [metabase.visualization-settings.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
 
 (mu/defmethod notification.payload/payload :notification/card
