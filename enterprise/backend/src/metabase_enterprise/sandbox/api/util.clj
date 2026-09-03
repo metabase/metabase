@@ -3,12 +3,12 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.users.models.user :as user]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- enforce-sandbox?
   "Takes all the group-ids a user belongs to and a sandbox, and determines whether the sandbox should be enforced for the user.
@@ -46,19 +46,10 @@
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
-          sandboxes-with-group-ids (t2/hydrate
-                                    (t2/select :model/Sandbox
-                                               {:select [[:pgm.group_id :group_id]
-                                                         [:s.*]]
-                                                :from [[:permissions_group_membership :pgm]]
-                                                :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
-                                                :where [:and
-                                                        [:= :pgm.user_id user-id]]})
-                                    :table)
+          sandboxes-with-group-ids (sandbox.db/hydrate-table (sandbox.db/user-sandboxes-with-group-ids user-id))
 
           impersonations-with-group-ids (when (seq user-group-ids)
-                                          (t2/select :model/ConnectionImpersonation
-                                                     :group_id [:in user-group-ids]))
+                                          (sandbox.db/impersonations-for-groups user-group-ids))
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids
@@ -88,7 +79,7 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
+       (let [sandboxes (sandbox.db/hydrate-table (seq (perms/sandboxes-for-user)))]
          (some #(= (get-in % [:table :db_id]) database-id)
                sandboxes))
        ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid

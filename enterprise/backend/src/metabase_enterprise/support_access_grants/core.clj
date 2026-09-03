@@ -2,6 +2,7 @@
   "Core business logic for support access grant management."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.models.support-access-grant-log :as sag.model]
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
@@ -9,8 +10,7 @@
    [metabase.events.core :as events]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (def ^:private grant-lifecycle-lock
   ::grant-lifecycle)
@@ -19,9 +19,7 @@
   "Check if there is an active (non-revoked, non-expired) grant."
   []
   (let [now (t/instant)]
-    (t2/exists? :model/SupportAccessGrantLog
-                :revoked_at nil
-                :grant_end_timestamp [:> now])))
+    (support-access-grants.db/active-grant-exists? now)))
 
 (defn create-grant!
   "Create a new support access grant.
@@ -47,8 +45,8 @@
                               :notes                 notes
                               :grant_start_timestamp now
                               :grant_end_timestamp   grant-end}
-          grant              (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
-                                 (t2/hydrate :user_info))
+          grant              (-> (support-access-grants.db/insert-grant! grant-record)
+                                 support-access-grants.db/hydrate-user-info)
           support-email      (sag.settings/support-access-grant-email)
           support-user       (sag.model/fetch-or-create-support-user!)
           token              (sag.provider/create-support-access-reset! (:id support-user) grant)
@@ -80,7 +78,7 @@
   - Grant doesn't exist
   - Grant is already revoked"
   [user-id grant-id]
-  (let [grant (t2/select-one :model/SupportAccessGrantLog :id grant-id)]
+  (let [grant (support-access-grants.db/grant grant-id)]
     (when-not grant
       (throw (ex-info (tru "Grant not found")
                       {:status-code 404})))
@@ -88,11 +86,11 @@
       (throw (ex-info (tru "Grant is already revoked")
                       {:status-code 400})))
     (let [now (t/instant)]
-      (t2/update! :model/SupportAccessGrantLog grant-id
-                  {:revoked_at now
-                   :revoked_by_user_id user-id})
-      (-> (t2/select-one :model/SupportAccessGrantLog :id grant-id)
-          (t2/hydrate :user_info)))))
+      (support-access-grants.db/update-grant! grant-id
+                                              {:revoked_at now
+                                               :revoked_by_user_id user-id})
+      (-> (support-access-grants.db/grant grant-id)
+          support-access-grants.db/hydrate-user-info))))
 
 (defn expire-ended-grants!
   "Tear down the support user's access once every grant has ended.
@@ -100,8 +98,8 @@
   A no-op when there is no support user, when a grant is still running, or when access is already torn down."
   []
   (when-let [{support-user-id :id, superuser? :is_superuser}
-             (t2/select-one [:model/User :id :is_superuser] :email (sag.settings/support-access-grant-email))]
-    (when (or superuser? (t2/exists? :model/Session :user_id support-user-id))
+             (support-access-grants.db/user-superuser-flag-by-email (sag.settings/support-access-grant-email))]
+    (when (or superuser? (support-access-grants.db/session-exists-for-user? support-user-id))
       (cluster-lock/with-cluster-lock grant-lifecycle-lock
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
         ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.
@@ -130,33 +128,9 @@
 
   (let [limit (min (or limit 50) 100)
         offset (or offset 0)
-        where-conditions (cond-> []
-                           (not include-revoked)
-                           (conj [:= :revoked_at nil])
-
-                           ticket-number
-                           (conj [:= :ticket_number ticket-number])
-
-                           user-id
-                           (conj [:= :user_id user-id]))
-        where-clause (when (seq where-conditions)
-                       (if (= 1 (count where-conditions))
-                         (first where-conditions)
-                         (into [:and] where-conditions)))
-        grants (if where-clause
-                 (t2/select :model/SupportAccessGrantLog
-                            {:where where-clause
-                             :limit limit
-                             :offset offset
-                             :order-by [[:created_at :desc]]})
-                 (t2/select :model/SupportAccessGrantLog
-                            {:limit limit
-                             :offset offset
-                             :order-by [[:created_at :desc]]}))
-        grants-with-user-name (t2/hydrate grants :user_info)
-        total (if where-clause
-                (t2/count :model/SupportAccessGrantLog {:where where-clause})
-                (t2/count :model/SupportAccessGrantLog))]
+        grants (support-access-grants.db/grants-page include-revoked ticket-number user-id limit offset)
+        grants-with-user-name (support-access-grants.db/hydrate-user-info grants)
+        total (support-access-grants.db/grant-count include-revoked ticket-number user-id)]
     {:data grants-with-user-name
      :total total
      :limit limit
@@ -167,9 +141,5 @@
 
   Returns the active grant record or nil if no active grant exists."
   []
-  (some-> (t2/select-one :model/SupportAccessGrantLog
-                         {:where [:and [:= :revoked_at nil]
-                                  [:> :grant_end_timestamp :%now]]
-                          :order-by [[:created_at :desc]
-                                     [:id :desc]]})
-          (t2/hydrate :user_info)))
+  (some-> (support-access-grants.db/current-grant)
+          support-access-grants.db/hydrate-user-info))
