@@ -1,0 +1,22 @@
+## permissions_group.is_data_app_group marks a data app's server-managed group (mirrors is_tenant_group).
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-01T00:00:00
+      author: timofei
+      comment: Add permissions_group.is_data_app_group boolean column
+      changes:
+        - addColumn:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: is_data_app_group
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "true iff this is a Data App group (server-managed, hidden from the groups UI)"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: permissions_group
+            columnName: is_data_app_group

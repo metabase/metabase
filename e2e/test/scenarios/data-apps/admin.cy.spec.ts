@@ -51,6 +51,26 @@ describe("scenarios > data apps > admin management", () => {
     });
   });
 
+  it("keeps a data app's permission group out of the admin Groups list", () => {
+    // Provisioning a data app draft creates its permission group as a side effect.
+    cy.request("POST", "/api/apps/orders-app/draft").then(({ body }) => {
+      const dataAppGroupId = body.permission_group_id;
+
+      // The groups API omits data-app groups.
+      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+        const ids = groups.map((group: { id: number }) => group.id);
+        expect(ids).not.to.include(dataAppGroupId);
+      });
+
+      // ...so they never appear on the admin Groups page.
+      cy.visit("/admin/people/groups");
+      cy.findByTestId("admin-panel").within(() => {
+        cy.findByText("All Users").should("be.visible");
+        cy.findByText("Data App: orders-app").should("not.exist");
+      });
+    });
+  });
+
   it("dismisses the promo banner and keeps it hidden across a reload", () => {
     cy.intercept("GET", "/api/apps/repo-status", { configured: true });
     cy.intercept("GET", "/api/apps", []);

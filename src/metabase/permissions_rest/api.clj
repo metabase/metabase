@@ -174,6 +174,8 @@
                                       :where  [:and
                                                [:= :user_id api/*current-user-id*]
                                                [:= :is_group_manager true]]}])
+         ;; Data-app groups are a server-managed namespace, never shown in the groups UI.
+         [:not :is_data_app_group]
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
          (when-not (premium-features/enable-advanced-permissions?)

@@ -118,6 +118,26 @@
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
 
+(deftest deleting-a-data-app-removes-its-permission-group-test
+  (testing "removing a data app through the admin API — clearing out one left behind after its
+            repo was disconnected or a remote-sync branch switch — deletes its server-managed
+            permission group and resource collection along with the row"
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (create-app!)
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [permission_group_id resource_collection_id]}
+              (data-app.resources/ensure-resources! app)]
+          (is (t2/exists? :model/PermissionsGroup :id permission_group_id)
+              "precondition: the app has a permission group")
+          (mt/user-http-request :crowberto :delete 204 "apps/demo")
+          (is (not (t2/exists? :model/DataApp :id (:id app)))
+              "the app row is gone")
+          (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))
+              "its permission group is removed too")
+          (is (not (t2/exists? :model/Collection :id resource_collection_id))
+              "and so is its resource collection"))))))
+
 (deftest superuser-can-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
