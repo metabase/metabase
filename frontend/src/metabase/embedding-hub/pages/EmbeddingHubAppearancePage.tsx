@@ -7,7 +7,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { AppearanceUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_WHITELABEL } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
-import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import { Card, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 /**
@@ -49,18 +49,16 @@ export function EmbeddingHubAppearancePage() {
 function FullAppAppearanceBanner() {
   return (
     <Card p="lg" bg="background-brand">
-      <Group gap="xxs" wrap="nowrap">
-        <Text c="text-secondary">
-          {t`Colors and branding for full-app embedding are based on the appearance settings defined in the`}
-        </Text>
-
+      {/* One flowing sentence, not a Group of rigid parts -- the link needs
+          to wrap inline with the text on narrow screens rather than being
+          pushed onto its own line. */}
+      <Text c="text-secondary">
+        {t`Colors and branding for full-app embedding are based on the appearance settings defined in the`}{" "}
         <Link to="/admin/settings/whitelabel">
-          <Group gap={4} wrap="nowrap">
-            <Text c="brand" fw="bold">{t`Admin`}</Text>
-            <Icon name="external" size={12} c="brand" />
-          </Group>
+          <Text component="span" c="brand" fw="bold">{t`Admin`}</Text>{" "}
+          <Icon name="external" size={12} c="brand" />
         </Link>
-      </Group>
+      </Text>
     </Card>
   );
 }
