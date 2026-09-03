@@ -31,7 +31,8 @@
   "The sentence every source-shape teaching error ends with, naming what `definition` accepts."
   (str "`definition` is a transform source: {\"type\": \"query\", \"query\": …} — exactly what "
        "get_content's \"definition\" include returns for a transform. The query inside is either "
-       "the same numeric-id dialect execute_query takes. "
+       "the same numeric-id dialect execute_query takes, or the older name-based dialect, still "
+       "resolved on input. "
        "Alternatively pass a query_handle from execute_query or execute_sql instead of "
        "`definition`."))
 

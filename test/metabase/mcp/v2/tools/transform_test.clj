@@ -399,6 +399,48 @@
           (is (re-find #"run the query again" error))
           (is (zero? (t2/count :model/Transform :name "no such handle"))))))))
 
+(defn- venues-fk
+  "The portable FK path the external dialect names the venues table by."
+  []
+  [(t2/select-one-fn :name :model/Database :id (mt/id)) (venues-schema) "VENUES"])
+
+(deftest transform-write-portable-definition-test
+  (testing "GHY-4240: a `definition` in the older name-based dialect resolves on input, as the
+            accepted-shapes sentence every source error ends with promises. Only the numeric-id
+            dialect had a test, so nothing held that sentence to the code."
+    (with-transforms
+      (with-target-db-support
+        (let [result (tool-result (write! {:method     "create"
+                                           :name       "Portable source"
+                                           :definition {:type  "query"
+                                                        :query {:lib/type "mbql/query"
+                                                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                            :source-table (venues-fk)}]}}
+                                           :target     {:name "mcp_portable" :schema (venues-schema)}}))]
+          (try
+            (testing "the FK path resolved to the numeric id the transform stores"
+              (is (= (mt/id :venues)
+                     (-> (t2/select-one-fn :source :model/Transform :id (:id result))
+                         :query :stages first :source-table))))
+            (testing "and the target database follows the resolved query"
+              (is (= (mt/id) (-> result :target :database))))
+            (finally
+              (t2/delete! :model/Transform :id (:id result)))))))))
+
+(deftest transform-write-accepted-shapes-names-both-dialects-test
+  (testing "GHY-4240: the sentence every source-shape error ends with is what teaches the agent how to
+            retry, so it has to name both dialects the tool actually resolves — it once said
+            \"either\" and then listed one"
+    (with-transforms
+      (let [error (tool-error (write! {:method     "create"
+                                       :name       "x"
+                                       :definition {:query (venues-query)}
+                                       :target     {:name "y" :schema (venues-schema)}}))]
+        (is (re-find #"numeric-id dialect" error))
+        (is (re-find #"name-based dialect" error))
+        (is (not (re-find #"either the same numeric-id dialect execute_query takes\." error))
+            "the truncated form, with `either` promising an alternative it never gives")))))
+
 ;;; -------------------------------------------------- Update ------------------------------------------------------
 
 (deftest transform-write-update-swaps-source-test
