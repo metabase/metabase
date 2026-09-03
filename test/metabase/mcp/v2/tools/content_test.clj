@@ -753,6 +753,25 @@
           (is (= dims-before (t2/select-one-fn :dimensions :model/Card :id metric-id))
               "the read persisted nothing to the metric's dimensions column"))))))
 
+(deftest get-content-document-read-does-not-log-a-view-test
+  (testing "GHY-4140: `get_content` declares readOnlyHint, so a document read must not record a
+            view. `documents/get-document` publishes `:event/document-read` by default, which bumps
+            `view_count`, stamps `last_viewed_at`, writes a view_log row, and pushes the document
+            onto the caller's recently-viewed list — filling a user's recents with an agent's reads."
+    (mt/with-temp [:model/Document {doc-id :id}
+                   {:document     {:type    "doc"
+                                   :content [{:type    "paragraph"
+                                              :content [{:type "text" :text "hello"}]}]}
+                    :content_type "application/json+vnd.prose-mirror"
+                    :view_count   0}]
+      (mt/with-test-user :crowberto
+        (let [row (content-one {:items [{:type "document" :id doc-id}]})]
+          (is (nil? (:error row)))
+          (is (re-find #"hello" (:content_markdown row))
+              "the read still returns the body")))
+      (is (= 0 (t2/select-one-fn :view_count :model/Document doc-id))
+          "and left view_count alone"))))
+
 (deftest get-content-dimensions-respects-a-curated-metric-test
   (testing "GHY-4140: a metric whose dimensions were curated keeps them authoritative on read, the way
             GET /api/metric/:id does. Reconciling a metric the MEASURE way — which is what

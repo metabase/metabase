@@ -194,7 +194,9 @@
 (defn- fetch-document
   [id-or-eid]
   (let [doc (v2.resolve/resolve-and-read-with :model/Document id-or-eid
-                                              (fn [id] (documents/get-document id)))
+                                              ;; `:log-view? false` — this tool is readOnlyHint, and
+                                              ;; an agent's read has no business in a user's recents.
+                                              (fn [id] (documents/get-document id :log-view? false)))
         ;; The Metabase-flavored Markdown body — the same text document_write's old_str edits
         ;; match against — plus the node-id -> character-offset spans the comments include
         ;; anchors threads with. A body the serializer can't render (e.g. an unrecognized node
