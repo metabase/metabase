@@ -9,7 +9,7 @@ type DiagnosticsEmptyStateProps = {
 
 export function DiagnosticsEmptyState({ label }: DiagnosticsEmptyStateProps) {
   return (
-    <Stack p="xl" align="center">
+    <Stack p="xxl" align="center">
       <img
         src={EmptyDashboardBot}
         alt={t`Empty list`}

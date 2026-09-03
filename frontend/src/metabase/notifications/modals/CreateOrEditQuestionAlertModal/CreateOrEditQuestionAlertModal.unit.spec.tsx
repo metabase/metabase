@@ -537,10 +537,8 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
-    // Going through Custom drops the hour, so the alert is left without a
-    // subscription until a new time is picked
     await userEvent.click(screen.getByTestId("select-frequency"));
-    await userEvent.click(screen.getByRole("option", { name: /custom/i }));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
 
     await userEvent.click(screen.getByTestId("select-frequency"));
     await userEvent.click(screen.getByRole("option", { name: /daily/i }));

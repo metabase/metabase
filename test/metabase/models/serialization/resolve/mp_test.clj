@@ -176,7 +176,10 @@
               (is (= :unknown-table (:error d)))
               (is (= 400 (:status-code d)))
               (is (true? (:agent-error? d)))
-              (is (re-find #"read_resource" msg) "message points the LLM at read_resource to re-list")
+              (is (re-find #"No table found matching portable FK" msg)
+                  "the resolver states the miss (positive check, so an empty/unrelated message can't pass)")
+              (is (not (re-find #"read_resource|browse_data" msg))
+                  "the resolver states the miss; the calling surface owns the recovery sentence")
               (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
                 (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
                                          (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
@@ -242,8 +245,10 @@
             (testing "ex-data carries only the rejected path — no candidates / schemas"
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
-            (testing "message points the LLM at read_resource for self-correction"
-              (is (re-find #"read_resource" msg)))))))))
+            (testing "the resolver states the miss without naming any surface's discovery tool"
+              (is (re-find #"No table found matching portable FK" msg)
+                  "positive check: the message actually states the miss")
+              (is (not (re-find #"read_resource|browse_data" msg))))))))))
 
 (deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"

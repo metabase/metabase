@@ -143,6 +143,7 @@
            metabase.activity-feed.init}
    :uses #{api
            app-db
+           batch-processing
            collections
            config
            events
@@ -348,6 +349,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
@@ -356,7 +358,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field :model/QueryCache}}
+   :model-imports #{:model/Field}}
 
   appearance
   {:team "UX West"
@@ -591,6 +593,7 @@
   {:team "UX West"
    :api  #{metabase.collections.core
            metabase.collections.curation
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -1616,7 +1619,8 @@
            system
            task
            tracing
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   osi
   {:team "Metabot"
@@ -2199,7 +2203,6 @@
            request
            session
            settings
-           setup
            sso
            system
            tracing
@@ -2234,8 +2237,7 @@
 
   settings
   {:team "DevEx"
-   :api  #{metabase.settings.core
-           metabase.settings.init}
+   :api  #{metabase.settings.core metabase.settings.init}
    :uses #{api
            app-db
            config
@@ -2420,6 +2422,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           config
            tracing
            util}}
 
@@ -2485,6 +2488,7 @@
            lib
            lib-be
            parameters
+           premium-features
            query-processor
            settings
            util}

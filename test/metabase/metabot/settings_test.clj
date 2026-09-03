@@ -32,8 +32,11 @@
 
 (defn- do-with-selected-model!
   [model-ref thunk]
-  (mt/with-temporary-raw-setting-values [llm-metabot-provider model-ref]
-    (thunk)))
+  ;; Env vars outrank raw setting values, so mask any MB_LLM_METABOT_PROVIDER the host
+  ;; carries (dev machines pin one in mise.local.toml) before selecting the model.
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
+    (mt/with-temporary-raw-setting-values [llm-metabot-provider model-ref]
+      (thunk))))
 
 (defmacro ^:private with-selected-model
   [model-ref & body]
@@ -202,6 +205,27 @@
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
+
+(deftest metabot-supports-fast-mode-test
+  (testing "only BYOK anthropic connections serving a fast-capable model report support"
+    (with-connections [(connection "anthropic" "anthropic")
+                       (connection "bedrock" "bedrock")
+                       (connection "openai" "openai")]
+      (doseq [[model-ref expected]
+              {"anthropic/claude-opus-5"           true
+               "anthropic/claude-opus-4-8"         true
+               "anthropic/claude-opus-4-7"         false
+               "anthropic/claude-sonnet-4-6"       false
+               "bedrock/anthropic.claude-opus-4-8" false
+               "openai/gpt-5.4"                    false}]
+        (testing model-ref
+          (with-selected-model model-ref
+            (is (= expected (metabot.settings/llm-metabot-supports-fast-mode?))))))))
+  (testing "the managed connection reports no support even for a fast-capable model"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (with-connections [(connection "metabase" "metabase")]
+        (with-selected-model "metabase/anthropic/claude-opus-5"
+          (is (false? (metabot.settings/llm-metabot-supports-fast-mode?))))))))
 
 (deftest metabot-supports-reasoning-vllm-test
   (testing "vLLM answers from what the connect-time probe recorded on the connection, since neither its catalog

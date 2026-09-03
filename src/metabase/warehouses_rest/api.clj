@@ -702,11 +702,11 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id search-string limit]
+(defn- autocomplete-tables [db-id like-pattern limit]
   (t2/select [:model/Table :id :db_id :schema :name]
              {:where    [:and [:= :db_id db-id]
                          [:= :active true]
-                         [:like :%lower.name (u/lower-case-en search-string)]
+                         [:like :%lower.name like-pattern]
                          [:= :visibility_type nil]]
               :order-by [[:%lower.name :asc]]
               :limit    limit}))
@@ -744,11 +744,11 @@
                              [:and
                               [:= :report_card.id (Integer/parseInt search-id)]
                               ;; this is a prefix match to be consistent with substring matches on the entire slug
-                              [:like [:lower :report_card.name] (str search-name "%")]]
+                              [:like [:lower :report_card.name] (h2x/like-prefix search-name)]]
 
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
-                             [:like [:lower :report_card.name] (str "%" search-name "%")])]
+                             [:like [:lower :report_card.name] (h2x/like-substring search-name)])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
                 ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
                 ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
@@ -757,14 +757,14 @@
                            [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
 
-(defn- autocomplete-fields [db-id search-string limit]
+(defn- autocomplete-fields [db-id like-pattern limit]
   ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
   (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
-             :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
+             :%lower.metabase_field/name     [:like like-pattern]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    db-id
              {:order-by   [[[:lower :metabase_field.name] :asc]
@@ -789,11 +789,12 @@
                            (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string]
+  "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
+  lowercased table and field names."
+  [db-id like-pattern]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
-        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
+        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
     (autocomplete-results tables fields limit)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -830,8 +831,8 @@
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
-                substring (autocomplete-suggestions id (str "%" substring "%"))
-                prefix    (autocomplete-suggestions id (str prefix "%")))}
+                substring (autocomplete-suggestions id (h2x/like-substring substring))
+                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 

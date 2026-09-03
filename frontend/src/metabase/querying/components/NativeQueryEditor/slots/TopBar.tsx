@@ -68,7 +68,7 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
         />
       )}
       {leftContent}
-      <Flex ml="auto" gap="lg" mr="lg" align="center" h="3rem" pl="md">
+      <Flex ml="auto" gap="xl" mr="xl" align="center" h="3rem" pl="lg">
         {children}
       </Flex>
     </Flex>

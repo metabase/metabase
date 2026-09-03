@@ -39,6 +39,8 @@
   (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id))
 
+(events/derive! :event/user-create :metabase/event)
+
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
   [m]
@@ -74,15 +76,27 @@
    :is_superuser    false
    :is_data_analyst false})
 
+(defn settings-map
+  "Returns the user's `settings` as a map, defaulting to an empty map.
+
+  [[metabase.models.interface/encrypted-json-out]] hands back the raw column value when it decrypts but does not parse
+  as JSON, and JSON that parses to a scalar or a vector is not a map either, so a non-map value here means the column
+  is unreadable rather than absent. Flag those with [[setting/unreadable-user-settings-key]] so the write that
+  overwrites them can warn -- see [[metabase.settings.models.setting]]."
+  [settings]
+  (if (map? settings)
+    settings
+    (cond-> {}
+      (some? settings) (vary-meta assoc setting/unreadable-user-settings-key true))))
+
 (defn user-local-settings
   "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
   [user-or-user-id]
   (when user-or-user-id
-    (or
+    (settings-map
      (if (integer? user-or-user-id)
        (:settings (t2/select-one [:model/User :settings] :id user-or-user-id))
-       (:settings user-or-user-id))
-     {})))
+       (:settings user-or-user-id)))))
 
 ;;; -------------------------------------------------- Validation Helpers --------------------------------------------------
 
@@ -204,7 +218,10 @@
       (perms/allow-changing-all-users-group-members
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
-          (perms/add-user-to-groups! user-id (map u/the-id groups))))))))
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
+    ;; Published last, once the group memberships above exist, since creating the User's Personal Collection touches
+    ;; permissions.
+    (events/publish-event! :event/user-create {:object <>})))
 
 ;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
 (events/derive! :event/user-credentials-revoked :metabase/event)
@@ -444,7 +461,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
+(defn- wildcard-query [query] (h2x/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"

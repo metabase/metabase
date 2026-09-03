@@ -55,7 +55,7 @@ export function GroupMembersTable({
   // An empty group renders just the call to action, without the column header.
   if (!hasMembers && !showAddUser) {
     return (
-      <Text c="text-secondary" ta="center" mt="xl">
+      <Text c="text-secondary" ta="center" mt="xxl">
         {t`Add members to get started.`}
       </Text>
     );
@@ -94,7 +94,7 @@ export function GroupMembersTable({
       </AdminContentTable>
 
       {hasMembers && (
-        <Flex align="center" justify="flex-end" p="md">
+        <Flex align="center" justify="flex-end" p="lg">
           <PaginationControls
             page={page}
             pageSize={pageSize}

@@ -116,10 +116,9 @@
   oracle, so both get this identical message.
 
   The LLM can still self-correct in one turn by listing the parent database's tables with
-  `read_resource`; the message points it at that path."
+  the calling surface's discovery tool; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0}. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and schemas, then retry with an exact portable FK from the response."
-                (pr-str path))
+  (ex-info (tru "No table found matching portable FK {0}." (pr-str path))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
@@ -177,7 +176,7 @@
         ;; Deliberately do NOT enumerate the matching `[schema name id]` tuples — the metadata
         ;; provider is un-sandboxed, so a leaked candidate list could surface tables the caller
         ;; cannot otherwise see (parity with the `unknown-table-ex-info` strip above).
-        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates. Call `read_resource` with `metabase://database/<numeric id>/tables` to list available tables and retry with a more specific portable FK."
+        (throw (ex-info (tru "Ambiguous portable table FK {0}: {1} candidates."
                              (pr-str path) (count candidates))
                         {:status-code  400
                          :error        :ambiguous-table
@@ -204,10 +203,10 @@
         ;; column name. The metadata provider is un-sandboxed, the `:agent-error?` flag
         ;; relays this message verbatim to the user, and a leaked FK-candidate path would
         ;; reveal table names the caller may not be permitted to see. The LLM can recover
-        ;; by reading the parent table's fields with `read_resource`.
+        ;; by listing the parent table's fields with the calling surface's discovery tool.
         unknown-field-ex
         (fn [segment]
-          (ex-info (tru "No column {0} on table {1}.{2}.{3}. Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns."
+          (ex-info (tru "No column {0} on table {1}.{2}.{3}."
                         (pr-str segment) (pr-str db) (pr-str schema) (pr-str table-name))
                    {:status-code  400
                     :error        :unknown-field
@@ -378,7 +377,7 @@
       (if (= database-id (:id current-db))
         (:name current-db)
         (throw (ex-info (tru "Cannot export database id {0}: metadata provider is for database id {1}."
-                             database-id (:id current-db))
+                             (str database-id) (str (:id current-db)))
                         {:status-code 400
                          :error       :unknown-database-id
                          :database-id database-id
@@ -416,14 +415,14 @@
           entity-id     (when card (or (:entity-id card) (:entity_id card)))]
       (cond
         (nil? card)
-        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." card-id)
+        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." (str card-id))
                         {:status-code 400
                          :error       :unknown-card-id
                          :card-id     card-id}))
 
         (not= card-db-id current-db-id)
-        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this resolver targets database {2}."
-                             card-id card-db-id current-db-id)
+        (throw (ex-info (tru "Saved question / model / metric id {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                             (str card-id) (str card-db-id) (str current-db-id))
                         {:status-code      400
                          :error            :cross-database-card
                          :card-id          card-id
@@ -431,7 +430,8 @@
                          :expected-database current-db-id}))
 
         (or (not (string? entity-id)) (str/blank? entity-id))
-        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation." card-id)
+        (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation."
+                             (str card-id))
                         {:status-code 400
                          :error       :missing-card-entity-id
                          :card-id     card-id}))
@@ -454,8 +454,7 @@
         card-db-id    (when card (or (:database-id card) (:database_id card)))]
     (cond
       (nil? card)
-      (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `read_resource` with `metabase://question/<numeric id>` or `metabase://model/<numeric id>` first, then copy the exact `portable_entity_id` from the response into `source-card:`."
-                           (pr-str entity-id))
+      (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-card
@@ -490,8 +489,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? measure)
-      (throw (ex-info (tru "No measure found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the measure with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<measure>` tag."
-                           (pr-str entity-id))
+      (throw (ex-info (tru "No measure found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-measure
@@ -522,21 +520,21 @@
           entity-id        (when measure (or (:entity-id measure) (:entity_id measure)))]
       (cond
         (nil? measure)
-        (throw (ex-info (tru "No measure found with id {0}." measure-id)
+        (throw (ex-info (tru "No measure found with id {0}." (str measure-id))
                         {:status-code 400
                          :error       :unknown-measure-id
                          :measure-id  measure-id}))
 
         (nil? measure-table)
-        (throw (ex-info (tru "Measure id {0} belongs to a table outside this metadata provider''s database."
-                             measure-id)
+        (throw (ex-info (tru "Measure id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+                             (str measure-id))
                         {:status-code 400
                          :error       :cross-database-measure
                          :measure-id  measure-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
         (throw (ex-info (tru "Measure id {0} does not have an entity_id, so it cannot be exported as a portable representation."
-                             measure-id)
+                             (str measure-id))
                         {:status-code 400
                          :error       :missing-measure-entity-id
                          :measure-id  measure-id}))
@@ -556,21 +554,21 @@
           entity-id        (when segment (or (:entity-id segment) (:entity_id segment)))]
       (cond
         (nil? segment)
-        (throw (ex-info (tru "No segment found with id {0}." segment-id)
+        (throw (ex-info (tru "No segment found with id {0}." (str segment-id))
                         {:status-code 400
                          :error       :unknown-segment-id
                          :segment-id  segment-id}))
 
         (nil? segment-table)
-        (throw (ex-info (tru "Segment id {0} belongs to a table outside this metadata provider''s database."
-                             segment-id)
+        (throw (ex-info (tru "Segment id {0} belongs to a table in a different database than this query. Cross-database queries are not supported."
+                             (str segment-id))
                         {:status-code 400
                          :error       :cross-database-segment
                          :segment-id  segment-id}))
 
         (not (and (string? entity-id) (seq entity-id)))
         (throw (ex-info (tru "Segment id {0} does not have an entity_id, so it cannot be exported as a portable representation."
-                             segment-id)
+                             (str segment-id))
                         {:status-code 400
                          :error       :missing-segment-entity-id
                          :segment-id  segment-id}))
@@ -589,8 +587,7 @@
         current-db-id    (:id (lib.metadata/database metadata-provider))]
     (cond
       (nil? segment)
-      (throw (ex-info (tru "No segment found with entity_id {0}. Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
-                           (pr-str entity-id))
+      (throw (ex-info (tru "No segment found with entity_id {0}." (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-segment
@@ -692,7 +689,7 @@
        (when table-id
          (let [t (lib.metadata.protocols/table metadata-provider table-id)]
            (when-not t
-             (throw (ex-info (tru "No table with id {0} in metadata provider." table-id)
+             (throw (ex-info (tru "No table found with id {0}." (str table-id))
                              {:status-code 400
                               :error       :unknown-table-id
                               :table-id    table-id})))
@@ -701,7 +698,7 @@
        (when field-id
          (let [f (lib.metadata.protocols/field metadata-provider field-id)]
            (when-not f
-             (throw (ex-info (tru "No field with id {0} in metadata provider." field-id)
+             (throw (ex-info (tru "No field found with id {0}." (str field-id))
                              {:status-code 400
                               :error       :unknown-field-id
                               :field-id    field-id})))

@@ -10,7 +10,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   left: 50%;
   margin-left: ${(props) =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
-  margin-bottom: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
   transform: translateX(-50%);
   z-index: 150;
 `;
@@ -19,7 +19,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
 export const ToastCard = styled(Card)`
   background-color: var(--mb-color-background_page-primary-inverse);
   color: var(--mb-color-text-primary-inverse);
-  padding: 0.75rem var(--mantine-spacing-md);
+  padding: 0.75rem var(--mantine-spacing-lg);
   display: flex;
   flex-direction: row;
   align-items: center;

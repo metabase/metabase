@@ -35,7 +35,7 @@ export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
         <Icon name="info" c="text-disabled" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Stack p="md" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
+        <Stack p="lg" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
           {DESCRIPTIONS[type].map((message, index) => (
             <Text key={index} size="sm">
               {message}
