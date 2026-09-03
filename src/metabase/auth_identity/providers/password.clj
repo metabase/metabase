@@ -3,7 +3,6 @@
   (:require
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -40,7 +39,7 @@
 (mu/defn- find-auth-identity-by-email
   "Find an AuthIdentity record by email address."
   [email :- ms/NonBlankString]
-  (when-let [user (auth-identity.db/user-by-lower-email (u/lower-case-en email))]
+  (when-let [user (auth-identity.db/user-by-email email)]
     (auth-identity.db/auth-identity (:id user) "password")))
 
 (methodical/defmethod provider/authenticate :provider/password

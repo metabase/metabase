@@ -2,6 +2,7 @@
   "Application database queries for the queries REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [honey.sql.helpers :as sql.helpers]
    [toucan2.core :as t2]))
 
 (def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
@@ -65,13 +66,13 @@
   []
   (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
 
-(defn database-id-via-table
-  "The Database id of the Table of the `model` row with `model-id`, or nil."
-  [model model-id]
+(defn segment-database-id
+  "The Database id of the Table of the Segment with `segment-id`, or nil."
+  [segment-id]
   (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
                                          :from [[:metabase_table :t]]
-                                         :join [[model :m] [:= :t.id :m.table_id]]
-                                         :where [:= :m.id model-id]}))
+                                         :join [[:segment :m] [:= :t.id :m.table_id]]
+                                         :where [:= :m.id segment-id]}))
 
 (defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
@@ -99,14 +100,26 @@
   (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id))
 
 (defn compatible-series-cards
-  "The unarchived Cards other than `excluded-card-id` displayed as one of `display-types` also selected by the Honey
-  SQL `query`."
-  [excluded-card-id display-types query]
+  "The unarchived Cards other than `excluded-card-id` displayed as one of `display-types`, newest first, whose id is
+  less than `last-cursor` (when given), excluding `exclude-ids`, and whose lower-cased name matches the SQL LIKE
+  `name-pattern` (when given). Up to `limit` results (when given)."
+  [excluded-card-id display-types last-cursor exclude-ids name-pattern limit]
   (t2/select :model/Card
              :archived false
              :display [:in display-types]
              :id [:not= excluded-card-id]
-             query))
+             (cond-> {:order-by [[:id :desc]]}
+               last-cursor
+               (sql.helpers/where [:< :id last-cursor])
+
+               (seq exclude-ids)
+               (sql.helpers/where [:not [:in :id exclude-ids]])
+
+               name-pattern
+               (sql.helpers/where [:like :%lower.name name-pattern])
+
+               limit
+               (assoc :limit limit))))
 
 (defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
@@ -128,10 +141,15 @@
   [collection-id]
   (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))
 
-(defn cards-collection-columns-where
-  "The id, Collection, position, query, and schema of the Cards matching the Honey SQL `where` clause."
-  [where]
-  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema] {:where where}))
+(defn cards-to-move-to-collection
+  "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in
+  `new-collection-id-or-nil`."
+  [card-ids new-collection-id-or-nil]
+  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema]
+             {:where [:and [:in :id card-ids]
+                      [:or [:not= :collection_id new-collection-id-or-nil]
+                       (when new-collection-id-or-nil
+                         [:= :collection_id nil])]]}))
 
 (defn set-cards-collection-raw!
   "Move the Cards with `card-ids` to the Collection with `collection-id` without running model hooks."

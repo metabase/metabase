@@ -171,9 +171,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -396,24 +394,14 @@
   In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
   for `/db/1/schema/`.
 
-  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
-  deleted.
-
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
-  (let [paths (conj (perms.u/->v2-path path) path)
-        where {:where (apply list
-                             :and
-                             [:= :group_id (u/the-id group-or-id)]
-                             (into [:or
-                                    [:like path (h2x/concat :object (h2x/literal "%"))]]
-                                   (map (fn [path-form] [:like :object (str path-form "%")])
-                                        paths))
-                             other-conditions)}]
-    (when-let [revoked (permissions.db/permission-objects-where where)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (permissions.db/delete-permissions-where! where)
+  [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema]
+  (let [group-id (u/the-id group-or-id)
+        paths    (conj (perms.u/->v2-path path) path)]
+    (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
+      (permissions.db/delete-related-permissions! group-id path paths)
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
@@ -435,18 +423,9 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn namespace-clause
+(def namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
-  [:or
-   [:= namespace-keyword namespace-val]
-   (when (and (nil? namespace-val)
-              (premium-features/enable-audit-app?))
-     [:= namespace-keyword "analytics"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
-     [:= namespace-keyword "shared-tenant-collection"])
-   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
-     [:= namespace-keyword "tenant-specific"])])
+  permissions.db/namespace-clause)
 
 (defn can-read-via-parent-collection?
   "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.

@@ -23,7 +23,7 @@
   (when (seq field-ids)
     (into {}
           (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id])]))
-          (permissions.db/field-visibility-rows field-ids))))
+          (permissions.db/field-visibility-info field-ids))))
 
 (defn- batch-table-db-ids
   "Batch-fetch db_id for a set of table IDs.
@@ -32,7 +32,7 @@
   (when (seq table-ids)
     (into {}
           (map (fn [t] [(:id t) (:db_id t)]))
-          (permissions.db/table-database-id-rows table-ids))))
+          (permissions.db/table-database-ids table-ids))))
 
 ;;; ------------------------------------------------- Permission Predicates -------------------------------------------------
 

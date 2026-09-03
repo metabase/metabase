@@ -55,20 +55,13 @@
   Library and database endpoint paths both need the same active/readable table
   rules; only their id filters differ."
   [database-ids table-ids]
-  (->> (typed-schemas.db/tables-ordered-by-name
-        (cond-> [:and [:= :active true]]
-          database-ids (conj (schema.common/scope-filter-clause database-ids :db_id))
-          table-ids (conj (schema.common/scope-filter-clause table-ids :id))))
+  (->> (typed-schemas.db/active-tables-in-scope database-ids table-ids)
        (filter-readable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
   [{:keys [data-collection-ids]}]
-  (->> (typed-schemas.db/tables-ordered-by-name
-        [:and
-         [:= :active true]
-         [:= :is_published true]
-         (schema.common/scope-filter-clause data-collection-ids :collection_id)])
+  (->> (typed-schemas.db/published-library-tables-in-collections data-collection-ids)
        (filter-readable-tables)))
 
 (defn segment-schema

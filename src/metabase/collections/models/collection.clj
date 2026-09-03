@@ -1140,23 +1140,12 @@
   "Like [[descendants-flat]], but returns the descendants of *any* of
   `collections` in a single query. Also selects `:type`, so callers can
   classify descendants without another lookup."
-  [collections :- [:sequential CollectionWithLocationAndIDOrRoot]
-   & additional-honeysql-where-clauses]
+  [collections :- [:sequential CollectionWithLocationAndIDOrRoot]]
   (if (empty? collections)
     []
-    (collections.db/descendant-summaries-with-type-where
-     (apply
-      vector
-      :and
-      (into [:or]
-            (map (fn [collection]
-                   [:like :location (str (children-location collection) "%")]))
-            collections)
-      ;; same personal-collection rule as descendants-flat
-      [:or
-       [:= :personal_owner_id nil]
-       [:= :personal_owner_id api/*current-user-id*]]
-      additional-honeysql-where-clauses))))
+    (collections.db/descendant-summaries-with-type
+     (map #(str (children-location %) "%") collections)
+     api/*current-user-id*)))
 
 (mu/defn descendants :- [:set Children]
   "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
@@ -1633,10 +1622,13 @@
                                           :archived_directly    true
                                           :archived             true})
       (collections.db/archive-descendant-collections! (str (children-location collection) "%") archive-operation-id)
-      (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (collections.db/set-archived-in-collections! model affected-collection-ids true))
-      (doseq [model (archived-directly-models)]
-        (collections.db/set-archived-in-collections-not-directly! model affected-collection-ids true))
+      (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
+      (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
+      (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
+      (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids true)
       (let [library-data-ids (collections.db/collection-ids-of-type affected-collection-ids library-data-collection-type)]
         (when (seq library-data-ids)
           (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
@@ -1691,10 +1683,13 @@
                                                         new-children-location
                                                         (boolean new-parent-is-remote-synced?)
                                                         (:archive_operation_id collection))
-      (doseq [model (apply disj (collectable-models) (archived-directly-models))]
-        (collections.db/set-archived-in-collections! model affected-collection-ids false))
-      (doseq [model (archived-directly-models)]
-        (collections.db/set-archived-in-collections-not-directly! model affected-collection-ids false))
+      (collections.db/set-pulse-archived-in-collections! affected-collection-ids false)
+      (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids false)
+      (collections.db/set-timeline-archived-in-collections! affected-collection-ids false)
+      (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
@@ -1999,12 +1994,11 @@
         published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
     (collections.db/unpublish-tables-in-collections! affected-collection-ids)
     (unpublish-downstream-fk-tables! published-table-ids)
-    (doseq [model [:model/Card
-                   :model/Dashboard
-                   :model/NativeQuerySnippet
-                   :model/Pulse
-                   :model/Timeline]]
-      (collections.db/delete-in-collections! model affected-collection-ids)))
+    (collections.db/delete-cards-in-collections! affected-collection-ids)
+    (collections.db/delete-dashboards-in-collections! affected-collection-ids)
+    (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
+    (collections.db/delete-pulses-in-collections! affected-collection-ids)
+    (collections.db/delete-timelines-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
@@ -2095,21 +2089,21 @@
         child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
                       (into {} (for [child-id (collections.db/child-collection-ids (str location id "/")
                                                                                    trash-collection-type
-                                                                                   (when skip-archived [:not :archived]))]
+                                                                                   skip-archived)]
                                  {["Collection" child-id] {"Collection" id}})))
-        dashboards  (into {} (for [dash-id (collections.db/dashboard-ids-in-collection id (when skip-archived [:not :archived]))]
+        dashboards  (into {} (for [dash-id (collections.db/dashboard-ids-in-collection id skip-archived)]
                                {["Dashboard" dash-id] {"Collection" id}}))
         ;; Cards materialized by an exploration Summary ride with that Summary, which is excluded just below. Listing
         ;; them here would make them export targets whose Document dependency is absent.
-        cards       (into {} (for [card-id (collections.db/card-ids-in-collection id (when skip-archived [:not :archived]))]
+        cards       (into {} (for [card-id (collections.db/card-ids-in-collection id skip-archived)]
                                {["Card" card-id] {"Collection" id}}))
         documents (when config/ee-available?
                     ;; Exploration documents are user scratch space — exclude from serdes/remote-sync.
-                    (into {} (for [doc-id (collections.db/document-ids-in-collection id (when skip-archived [:not :archived]))]
+                    (into {} (for [doc-id (collections.db/document-ids-in-collection id skip-archived)]
                                {["Document" doc-id] {"Collection" id}})))
-        timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id (when skip-archived [:not :archived]))]
+        timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
                                {["Timeline" timeline-id] {"Collection" id}}))
-        tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id (when skip-archived [:= :archived_at nil]))]
+        tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?

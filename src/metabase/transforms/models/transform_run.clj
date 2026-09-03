@@ -37,28 +37,12 @@
   [transform]
   (transforms.db/runs-for-transform (:id transform)))
 
-(defn- latest-run-cte
-  ([] (latest-run-cte nil))
-  ([where]
-   [[:latest_runs
-     (-> ^:allow-subquery
-      {:select [:*
-                [[:over [[:row_number] ^:allow-subquery {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
-       :from   [:transform_run]}
-         (m/assoc-some :where where))]]))
-
-(defn- latest-runs-query [transform-ids]
-  {:with   (latest-run-cte [:in :transform_id transform-ids])
-   :select [:*]
-   :from   [:latest_runs]
-   :where  [:= :rn [:inline 1]]})
-
 (defn latest-runs
   "Return the latest runs for `transform-ids`."
   [transform-ids]
   (when (seq transform-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (transforms.db/latest-runs-reducible (latest-runs-query transform-ids)))))
+          (transforms.db/latest-runs-reducible transform-ids))))
 
 (defn start-run!
   "Start a run. If `user_id` is provided in properties, it will be stored with the run

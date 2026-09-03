@@ -102,11 +102,23 @@
                                         [:model    (into [:enum] recent-views/rv-models)]
                                         [:model_id ms/PositiveInt]
                                         [:context  [:enum :selection]]]]
-  (let [model-id model_id
-        model-type (recent-views/rv-model->model model)]
-    (when-not (activity-feed.db/entity-exists? model-type model-id)
+  (let [model-id     model_id
+        model-type   (recent-views/rv-model->model model)
+        exists?      (case model-type
+                       :model/Card       (activity-feed.db/card-exists? model-id)
+                       :model/Dashboard  (activity-feed.db/dashboard-exists? model-id)
+                       :model/Table      (activity-feed.db/table-exists? model-id)
+                       :model/Collection (activity-feed.db/collection-exists? model-id)
+                       :model/Document   (activity-feed.db/document-exists? model-id))
+        entity       (fn [] (case model-type
+                              :model/Card       (activity-feed.db/card model-id)
+                              :model/Dashboard  (activity-feed.db/dashboard model-id)
+                              :model/Table      (activity-feed.db/table model-id)
+                              :model/Collection (activity-feed.db/collection model-id)
+                              :model/Document   (activity-feed.db/document model-id)))]
+    (when-not exists?
       (throw (ex-info "Model not found" {:model model :model_id model-id})))
-    (api/read-check (activity-feed.db/entity model-type model-id))
+    (api/read-check (entity))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

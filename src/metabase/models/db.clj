@@ -158,10 +158,22 @@
   [table-id field-name parent-id]
   (t2/select-one-pk :model/Field :table_id table-id :name field-name :parent_id parent-id))
 
-(defn field-pk-where
-  "The id of the Field selected by the Honey SQL `query`, or nil."
-  [query]
-  (t2/select-one-pk :model/Field query))
+(defn- field-in-path-query
+  [table-id [field & rest]]
+  (when field
+    ^:allow-subquery {:from   [:metabase_field]
+                      :select [:id]
+                      :where  [:and
+                               [:= :table_id table-id]
+                               [:= :name field]
+                               [:= :parent_id (field-in-path-query table-id rest)]]}))
+
+(defn field-pk-in-path
+  "The id of the Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
+  `table-id`, or nil."
+  [table-id field-names]
+  (when (seq field-names)
+    (t2/select-one-pk :model/Field (field-in-path-query table-id field-names))))
 
 (defn insert-inactive-field!
   "Insert an inactive, untyped Field named `field-name` under `parent-id` in the Table with `table-id` and return its
@@ -193,3 +205,8 @@
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
   [segment-id]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
+
+(defn entity-by-own-pk
+  "The `model` row identified by `id`, using whatever column is that model's own primary key."
+  [model id]
+  (t2/select-one model (first (t2/primary-keys model)) id))

@@ -80,15 +80,50 @@
               :order-by [[:max_ts :desc]]
               :limit    limit}))
 
-(defn entity-exists?
-  "Whether a `model` row with `id` exists."
-  [model id]
-  (t2/exists? model :id id))
+(defn card-exists?
+  "Whether a Card with `id` exists."
+  [id]
+  (t2/exists? :model/Card :id id))
 
-(defn entity
-  "The `model` row with `id`, or nil."
-  [model id]
-  (t2/select-one model :id id))
+(defn dashboard-exists?
+  "Whether a Dashboard with `id` exists."
+  [id]
+  (t2/exists? :model/Dashboard :id id))
+
+(defn table-exists?
+  "Whether a Table with `id` exists."
+  [id]
+  (t2/exists? :model/Table :id id))
+
+(defn collection-exists?
+  "Whether a Collection with `id` exists."
+  [id]
+  (t2/exists? :model/Collection :id id))
+
+(defn document-exists?
+  "Whether a Document with `id` exists."
+  [id]
+  (t2/exists? :model/Document :id id))
+
+(defn card
+  "The Card with `id`, or nil."
+  [id]
+  (t2/select-one :model/Card :id id))
+
+(defn table
+  "The Table with `id`, or nil."
+  [id]
+  (t2/select-one :model/Table :id id))
+
+(defn collection
+  "The Collection with `id`, or nil."
+  [id]
+  (t2/select-one :model/Collection :id id))
+
+(defn document
+  "The Document with `id`, or nil."
+  [id]
+  (t2/select-one :model/Document :id id))
 
 (defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

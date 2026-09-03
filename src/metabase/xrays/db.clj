@@ -34,10 +34,10 @@
              :visibility_type nil
              :active          true))
 
-(defn candidate-tables
-  "The id, schema, name, entity type, Database, field count, and list-likeness of the Tables matching the Honey SQL
-  `where` clause that have at least one non-key Field."
-  [where]
+(defn candidate-tables-with-field-stats
+  "The id, schema, name, entity type, Database, field count, and list-likeness of the active, visible Tables of the
+  Database with `database-id` (optionally narrowed to `schema`) that have at least one non-key Field."
+  [database-id schema]
   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
               [:ts.count :num-fields]
               [[:and
@@ -58,7 +58,11 @@
                            [:and [:= :ts.table_id :id]
                             [:> :ts.count 0]
                             [:!= :ts.count :ts.count_pks_and_fks]]]
-              :where where}))
+              :where (cond-> [:and
+                              [:= :db_id database-id]
+                              [:= :visibility_type nil]
+                              [:= :active true]]
+                       schema (conj [:= :schema schema]))}))
 
 (defn field
   "The Field with `field-id`, or nil."

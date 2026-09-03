@@ -945,9 +945,7 @@
   [user-id & {:keys [db-id perm-type]}]
   (if (is-superuser? user-id)
     (admin-permission-graph :db-id db-id :perm-type perm-type)
-    (let [data-perms    (permissions.db/user-data-permissions user-id
-                                                              (when db-id [:= :db_id db-id])
-                                                              (when perm-type [:= :perm_type (u/qualified-name perm-type)]))
+    (let [data-perms    (permissions.db/user-data-permissions user-id db-id perm-type)
           path->perms     (group-by (fn [{:keys [db-id perm-type table-id]}]
                                       (if table-id
                                         [db-id perm-type table-id]

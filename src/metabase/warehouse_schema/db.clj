@@ -17,10 +17,22 @@
   [field-id]
   (t2/select-one :model/Field :id field-id))
 
-(defn field-where
-  "The first Field matching the Honey SQL `query`, or nil."
-  [query]
-  (t2/select-one :model/Field query))
+(defn- field-in-path-query
+  [table-id [field & rest]]
+  (when field
+    ^:allow-subquery {:from   [:metabase_field]
+                      :select [:id]
+                      :where  [:and
+                               [:= :table_id table-id]
+                               [:= :name field]
+                               [:= :parent_id (field-in-path-query table-id rest)]]}))
+
+(defn field-in-path
+  "The Field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
+  `table-id`, or nil."
+  [table-id field-names]
+  (when (seq field-names)
+    (t2/select-one :model/Field (field-in-path-query table-id field-names))))
 
 (defn fields
   "The Fields with `field-ids`."
@@ -62,10 +74,25 @@
   [table-id]
   (t2/select-pks-set :model/Field :table_id table-id :active true))
 
+(defn- field-order-order-by
+  [field-order]
+  (case field-order
+    :custom       [[:custom_position :asc]]
+    :smart        [[[:case
+                     (app-db/isa :semantic_type :type/PK)       0
+                     (app-db/isa :semantic_type :type/Name)     1
+                     (app-db/isa :semantic_type :type/Temporal) 2
+                     :else                                     3]
+                    :asc]
+                   [:%lower.name :asc]]
+    :database     [[:database_position :asc]]
+    :alphabetical [[:%lower.name :asc]]))
+
 (defn field-ids-for-table-ordered
-  "The `:id` rows of the Fields of the Table with `table-id` in the Honey SQL `order-by` order."
-  [table-id order-by]
-  (t2/select [:model/Field :id] :table_id table-id {:order-by order-by}))
+  "The ids of the Fields of the Table with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
+  or `:alphabetical`)."
+  [table-id field-order]
+  (t2/select [:model/Field :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
 
 (defn active-fields-for-tables
   "The active, unretired Fields of the Tables with `table-ids`, in field order."
@@ -266,9 +293,9 @@
   (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
 (defn segment-ids-for-table
-  "The IDs of the Segments of the Table with `table-id` matching the optional Honey SQL `archived-clause`."
-  [table-id archived-clause]
-  (t2/select-pks-set :model/Segment {:where [:and [:= :table_id table-id] archived-clause]}))
+  "The IDs of the Segments of the Table with `table-id`, excluding archived ones when `skip-archived?`."
+  [table-id skip-archived?]
+  (t2/select-pks-set :model/Segment {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
 
 (defn unarchived-measures-for-tables
   "The unarchived Measures of the Tables with `table-ids`, ordered by name."
@@ -276,9 +303,9 @@
   (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
 
 (defn measure-ids-for-table
-  "The IDs of the Measures of the Table with `table-id` matching the optional Honey SQL `archived-clause`."
-  [table-id archived-clause]
-  (t2/select-pks-set :model/Measure {:where [:and [:= :table_id table-id] archived-clause]}))
+  "The IDs of the Measures of the Table with `table-id`, excluding archived ones when `skip-archived?`."
+  [table-id skip-archived?]
+  (t2/select-pks-set :model/Measure {:where [:and [:= :table_id table-id] (when skip-archived? [:not :archived])]}))
 
 (defn unarchived-metric-cards-for-tables
   "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."

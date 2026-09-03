@@ -268,7 +268,7 @@
     (when-let [{user-id      :id
                 sso-source   :sso_source
                 is-active?   :is_active :as user}
-               (session.db/user-by-lower-email (u/lower-case-en email))]
+               (session.db/user-by-email email)]
       (cond
         ;; SSO users should use their SSO provider, not password reset.
         (sso-password-reset-disabled? sso-source)

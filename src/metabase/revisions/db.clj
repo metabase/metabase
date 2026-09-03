@@ -157,11 +157,16 @@
                 [:in :r.model_id ids]]}))
 
 (defn latest-changes
-  "The editing User, model, model id, and timestamp of the most recent Revisions matching the Honey SQL
-  `model-clause`."
-  [model-clause]
+  "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
+  and/or the Dashboards with `dashboard-ids`."
+  [card-ids dashboard-ids]
   (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
                          :r.model :r.model_id :r.timestamp]
              :from      [[:revision :r]]
              :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-             :where     [:and [:= :r.most_recent true] model-clause]}))
+             :where     [:and [:= :r.most_recent true]
+                         (into [:or]
+                               (keep (fn [[model-name ids]]
+                                       (when (seq ids)
+                                         [:and [:= :model model-name] [:in :model_id ids]])))
+                               [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))

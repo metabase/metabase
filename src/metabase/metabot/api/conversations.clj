@@ -116,59 +116,6 @@
 (def ^:private default-limit  50)
 (def ^:private default-offset 0)
 
-(defn- participation-clause
-  "Match conversations visible in history for `user-id`.
-
-  New rows participate via `metabot_message.user_id`; legacy rows created before
-  message authors were stamped fall back to the conversation originator."
-  [user-id]
-  (let [participation-exists [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                                        :from   [[:metabot_message :participation_message]]
-                                                        :where  [:and
-                                                                 [:= :participation_message.conversation_id :c.id]
-                                                                 [:= :participation_message.user_id user-id]]}]]
-    [:or
-     [:= :c.user_id user-id]
-     participation-exists]))
-
-(defn- last-live-message-profile-id-subquery
-  []
-  ^:allow-subquery
-  {:select   [:last_message.profile_id]
-   :from     [[:metabot_message :last_message]]
-   :where    [:and
-              [:= :last_message.conversation_id :c.id]
-              [:= :last_message.deleted_at nil]]
-   :order-by [[:last_message.created_at :desc] [:last_message.id :desc]]
-   :limit    1})
-
-(defn- live-message-count-subquery
-  []
-  ^:allow-subquery
-  {:select [[[:count :*]]]
-   :from   [[:metabot_message :counted_message]]
-   :where  [:and
-            [:= :counted_message.conversation_id :c.id]
-            [:= :counted_message.deleted_at nil]]})
-
-(defn- last-live-message-at-subquery
-  []
-  ^:allow-subquery
-  {:select [[[:max :recent_message.created_at]]]
-   :from   [[:metabot_message :recent_message]]
-   :where  [:and
-            [:= :recent_message.conversation_id :c.id]
-            [:= :recent_message.deleted_at nil]]})
-
-(defn- activity-at-expression
-  []
-  [:greatest :c.created_at [:coalesce (last-live-message-at-subquery) :c.created_at]])
-
-(defn- list-where-clause
-  [user-id profile-id]
-  (cond-> [:and (participation-clause user-id)]
-    profile-id (conj [:= (last-live-message-profile-id-subquery) profile-id])))
-
 ;;; ---------------------------------------- Endpoints ----------------------------------------
 
 (api.macros/defendpoint :get "/" :- ListConversationsResponse
@@ -183,23 +130,13 @@
   (let [user-id (api/check-404 api/*current-user-id*)
         limit   (or (request/limit) default-limit)
         offset  (or (request/offset) default-offset)
-        where   (list-where-clause user-id profile_id)
-        total   (:count (metabot.db/conversation-count-where where))
+        total   (metabot.db/conversation-count user-id profile_id)
         ;; Aggregates are per-row correlated subqueries so pagination stays on the outer
         ;; `metabot_conversation` scan rather than grouping every message the user owns.
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
-        rows    (metabot.db/conversations-page
-                 {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
-                             [(live-message-count-subquery) :message_count]
-                             [(last-live-message-at-subquery) :last_message_at]
-                             [(last-live-message-profile-id-subquery) :profile_id]]
-                  :from     [[:metabot_conversation :c]]
-                  :where    where
-                  :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
-                  :limit    limit
-                  :offset   offset})]
+        rows    (metabot.db/conversations-page user-id profile_id limit offset)]
     {:data   (mapv #(-> %
                         (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at
                                       :forked_from_conversation_id])

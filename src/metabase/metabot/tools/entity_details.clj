@@ -30,7 +30,9 @@
   `model-key` is `:model/Measure` or `:model/Segment`."
   [model-key id]
   (when id
-    (metabot.db/entity-id-of model-key id)))
+    (case model-key
+      :model/Measure (metabot.db/measure-entity-id id)
+      :model/Segment (metabot.db/segment-entity-id id))))
 
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
@@ -820,10 +822,10 @@
         (metabot.tools.u/handle-agent-error e)))))
 
 (def ^:private measure-or-segment-dispatch
-  "Per-`kind` config for `measure-or-segment-details`: the app-DB model, the lib-metadata fetcher,
-  and the `convert-measure-or-segment` definition key."
-  {:measure {:model :model/Measure, :lookup-fn lib.metadata/measure, :definition-key :aggregation}
-   :segment {:model :model/Segment, :lookup-fn lib.metadata/segment, :definition-key :filters}})
+  "Per-`kind` config for `measure-or-segment-details`: the lib-metadata fetcher and the
+  `convert-measure-or-segment` definition key."
+  {:measure {:lookup-fn lib.metadata/measure, :definition-key :aggregation}
+   :segment {:lookup-fn lib.metadata/segment, :definition-key :filters}})
 
 (mu/defn- measure-or-segment-details
   "Build drill-in detail for a single measure or segment by numeric `id`.
@@ -832,13 +834,15 @@
   shape matches the nested measures/segments `table-details` already emits."
   [kind :- [:enum :measure :segment]
    id   :- :int]
-  (let [{:keys [model lookup-fn definition-key]} (measure-or-segment-dispatch kind)
-        row (metabot.db/table-id-row model id)]
-    (when-not row
+  (let [{:keys [lookup-fn definition-key]} (measure-or-segment-dispatch kind)
+        table-id (case kind
+                   :measure (metabot.db/measure-table-id id)
+                   :segment (metabot.db/segment-table-id id))]
+    (when-not table-id
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))
     ;; Measure/segment perms delegate to the parent Table, so read-checking it gates access.
-    (let [table     (api/read-check :model/Table (:table_id row))
+    (let [table     (api/read-check :model/Table table-id)
           db-id     (:db_id table)
           mp        (lib-be/application-database-metadata-provider db-id)
           database  (lib.metadata/database mp)

@@ -2,6 +2,7 @@
   "Application database queries for the users REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn rename-collection!
@@ -52,9 +53,9 @@
   (t2/exists? :model/Collection {:where where}))
 
 (defn other-user-with-email-exists?
-  "Whether a User other than `user-id` has the lower-cased email `lower-case-email`."
-  [lower-case-email user-id]
-  (t2/exists? :model/User, :%lower.email lower-case-email, :id [:not= user-id]))
+  "Whether a User other than `user-id` has an email matching `email` case-insensitively."
+  [email user-id]
+  (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= user-id]))
 
 (defn update-user!
   "Apply `changes` to the User with `user-id`."

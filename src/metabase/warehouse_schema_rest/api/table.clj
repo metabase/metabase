@@ -2,11 +2,9 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
@@ -27,7 +25,6 @@
    [metabase.sync.core :as sync]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -91,45 +88,20 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [db-type    (app-db/db-type)
-        ;; `*` is the user-facing wildcard; everything else in `term` has already been escaped to match literally
-        glob       (fn [escaped]
-                     (-> escaped
-                         (str/replace "*" "%")
-                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
-        ci-pattern (fn [pattern]
-                     (case db-type
-                       (:h2 :postgres) pattern
-                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
-        like       (fn [field wrap]
-                     [(case db-type (:h2 :postgres) :ilike :like)
-                      field
-                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
-        where      (cond-> [:and (if include-transform-targets
-                                   [:or [:= :active true] [:= :transform_target true]]
-                                   [:= :active true])]
-                     (not (str/blank? term)) (conj [:or
-                                                    (like :name identity)
-                                                    (like :display_name identity)
-                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name #(str "% " %))])
-                     visibility-type         (conj [:= :visibility_type visibility-type])
-                     data-layer              (conj [:= :data_layer      (name data-layer)])
-                     data-source             (conj [:= :data_source     (name data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
-                     owner-email             (conj [:= :owner_email     owner-email])
-                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
-                     published-only          (conj [:= :is_published true])
-                     (and unused-only (premium-features/has-feature? :dependencies))
-                     (conj [:not-exists ^:allow-subquery {:select [:*]
-                                                          :from   [[:dependency :d]]
-                                                          :where  [:and
-                                                                   [:= :d.to_entity_id :metabase_table.id]
-                                                                   [:= :d.to_entity_type "table"]]}]))
-        query      {:where where, :order-by [[:name :asc]]}
-        hydrations (cond-> [:db]
+  (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
-    (as-> (warehouse-schema-rest.db/tables query) tables
+    (as-> (warehouse-schema-rest.db/matching-tables
+           {:term                       term
+            :visibility-type            visibility-type
+            :data-layer                 data-layer
+            :data-source                data-source
+            :owner-user-id              owner-user-id
+            :owner-email                owner-email
+            :orphan-only?               orphan-only
+            :published-only?            published-only
+            :check-unused?              (and unused-only (premium-features/has-feature? :dependencies))
+            :include-transform-targets? include-transform-targets})
+          tables
       (apply t2/hydrate tables hydrations)
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                           :table-ids (into #{} (map :id) tables)})

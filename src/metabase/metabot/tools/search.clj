@@ -424,12 +424,11 @@
   [refs]
   (when (seq refs)
     (let [by-type (group-by :type refs)
-          fetch   (fn [model ids]
+          fetch   (fn [db-fn ids]
                     (when-let [ids (not-empty (distinct ids))]
-                      (filter mi/can-read?
-                              (metabot.db/measure-or-segment-rows model ids))))
-          rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
-                          (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
+                      (filter mi/can-read? (db-fn ids))))
+          rows    (concat (map #(assoc % :type "measure") (fetch metabot.db/measures (map :id (get by-type "measure"))))
+                          (map #(assoc % :type "segment") (fetch metabot.db/segments (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
                     (into {} (map (juxt :id identity))

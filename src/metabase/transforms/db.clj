@@ -3,6 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (def ^:private no-active-run-clause
@@ -27,10 +29,11 @@
   (t2/select :model/Transform :id [:in transform-ids]))
 
 (defn transforms-of-source-types
-  "The Transforms whose source type is one of `source-types`, narrowed by the optional Honey SQL `database-clause`,
-  ordered by ID."
-  [source-types database-clause]
-  (t2/select :model/Transform {:where    [:and [:in :source_type source-types] database-clause]
+  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
+  [source-types database-id]
+  (t2/select :model/Transform {:where    [:and
+                                          [:in :source_type source-types]
+                                          (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 
 (defn transform-dependency-rows
@@ -237,9 +240,20 @@
   (t2/count :model/TransformRun query))
 
 (defn latest-runs-reducible
-  "Reducible TransformRuns of the Honey SQL `query`."
-  [query]
-  (t2/reducible-select :model/TransformRun query))
+  "Reducible latest TransformRun of each Transform with `transform-ids`."
+  [transform-ids]
+  (t2/reducible-select :model/TransformRun
+                       {:with   [[:latest_runs
+                                  {:select [:*
+                                            [[:over [[:row_number]
+                                                     ^:allow-subquery {:partition-by :transform_id
+                                                                       :order-by     [[:start_time :desc]]}]]
+                                             :rn]]
+                                   :from   [:transform_run]
+                                   :where  [:in :transform_id transform-ids]}]]
+                        :select [:*]
+                        :from   [:latest_runs]
+                        :where  [:= :rn [:inline 1]]}))
 
 (defn active-run-for-transform
   "The active TransformRun of the Transform with `transform-id`, or nil."
@@ -338,20 +352,63 @@
   [model run-id changes]
   (t2/update! model :id run-id :is_active true changes))
 
-(defn job-runs-where
-  "The TransformJobRuns matching the Honey SQL `query`."
-  [query]
-  (t2/select :model/TransformJobRun query))
+(defn- job-run-where
+  [job-id status run-method started-at-start started-at-end]
+  (let [conditions (cond-> []
+                     job-id             (conj [:= :job_id job-id])
+                     status             (conj [:= :status status])
+                     (= status "started") (conj [:= :is_active true])
+                     run-method         (conj [:= :run_method run-method])
+                     started-at-start   (conj [:>= :start_time started-at-start])
+                     started-at-end     (conj [:< :start_time started-at-end]))]
+    (when (seq conditions)
+      (into [:and] conditions))))
 
-(defn job-run-count-where
-  "The number of TransformJobRuns matching the Honey SQL `query`."
-  [query]
-  (t2/count :model/TransformJobRun query))
+(defn- job-run-order-by
+  [sort-column sort-direction]
+  (let [sort-direction (or (keyword sort-direction) :desc)
+        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+    (case (keyword sort-column)
+      :start_time [[:start_time sort-direction]]
+      :end_time   [[:end_time sort-direction nulls-sort]]
+      [[:start_time sort-direction]
+       [:end_time   sort-direction nulls-sort]])))
+
+(defn job-runs
+  "Up to `limit` (offset by `offset`) TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and
+  started in [`started-at-start`, `started-at-end`), sorted by `sort-column`/`sort-direction`."
+  [job-id status run-method started-at-start started-at-end sort-column sort-direction limit offset]
+  (t2/select :model/TransformJobRun
+             (cond-> {:order-by (job-run-order-by sort-column sort-direction)
+                      :offset   offset
+                      :limit    limit}
+               (job-run-where job-id status run-method started-at-start started-at-end)
+               (assoc :where (job-run-where job-id status run-method started-at-start started-at-end)))))
+
+(defn job-run-count
+  "The number of TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and started in
+  [`started-at-start`, `started-at-end`)."
+  [job-id status run-method started-at-start started-at-end]
+  (t2/count :model/TransformJobRun
+            (if-let [where (job-run-where job-id status run-method started-at-start started-at-end)]
+              {:where where}
+              {})))
 
 (defn latest-job-runs-reducible
-  "Reducible TransformJobRuns of the Honey SQL `query`."
-  [query]
-  (t2/reducible-select :model/TransformJobRun query))
+  "Reducible latest TransformJobRun of each TransformJob with `job-ids`."
+  [job-ids]
+  (t2/reducible-select :model/TransformJobRun
+                       {:with   [[:ranked_runs
+                                  {:select [:*
+                                            [[:over [[:row_number]
+                                                     ^:allow-subquery {:partition-by :job_id
+                                                                       :order-by     [[:start_time :desc]]}]]
+                                             :rn]]
+                                   :from   [:transform_job_run]
+                                   :where  [:in :job_id job-ids]}]]
+                        :select [:*]
+                        :from   [:ranked_runs]
+                        :where  [:= :rn [:inline 1]]}))
 
 (defn active-job-run-for-job
   "The active TransformJobRun of the TransformJob with `job-id`, or nil."
@@ -385,27 +442,132 @@
   [dag-run]
   (t2/insert-returning-instance! :model/TransformDagRun dag-run))
 
-(defn query-rows
-  "The rows of the Honey SQL `query`."
-  [query]
-  (t2/query query))
+;;; ------------------------------------------ Root run listing ------------------------------------------
 
-(defn now-row
-  "The `:now` row holding the SQL expression `now-expr`."
-  [now-expr]
-  (t2/query-one {:select [[now-expr :now]]}))
+;; Each branch must project the same columns in the same order for the UNION ALL to line up;
+;; `[nil :col]` fills in columns a table lacks.
+
+(defn- job-run-subquery [transform-ids]
+  ^:allow-subquery
+  {:select [[^:allow-raw-sql [:inline "job"] :run_type]
+            :id
+            [:job_id :entity_id]
+            [:job_name :entity_name]
+            [nil :direction]
+            [nil :transform_count]
+            :run_method
+            :status :is_active :start_time :end_time :message
+            [nil :user_id]]
+   :from   [:transform_job_run]
+   :where  (if (seq transform-ids)
+             ;; only job runs that actually ran one of these transforms
+             [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                        :from   [[:transform_run :member]]
+                                        :where  [:and
+                                                 [:= :member.job_run_id :transform_job_run.id]
+                                                 [:in :member.transform_id transform-ids]]}]
+             true)})
+
+(defn- dag-run-subquery [transform-ids]
+  ^:allow-subquery
+  {:select [[^:allow-raw-sql [:inline "dag"] :run_type]
+            :id
+            [:source_transform_id :entity_id]
+            [:source_transform_name :entity_name]
+            :direction
+            :transform_count
+            [^:allow-raw-sql [:inline "manual"] :run_method]
+            :status :is_active :start_time :end_time :message
+            :user_id]
+   :from   [:transform_dag_run]
+   :where  (if (seq transform-ids)
+             [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                        :from   [[:transform_run :member]]
+                                        :where  [:and
+                                                 [:= :member.dag_run_id :transform_dag_run.id]
+                                                 [:in :member.transform_id transform-ids]]}]
+             true)})
+
+(defn- transform-run-subquery [transform-ids]
+  ^:allow-subquery
+  {:select [[^:allow-raw-sql [:inline "transform"] :run_type]
+            :id
+            [:transform_id :entity_id]
+            [:transform_name :entity_name]
+            [nil :direction]
+            [nil :transform_count]
+            :run_method
+            :status :is_active :start_time :end_time :message
+            :user_id]
+   :from   [:transform_run]
+   ;; standalone runs only: those not coordinated by a job or DAG run
+   :where  (cond-> [:and
+                    [:= :job_run_id nil]
+                    [:= :dag_run_id nil]]
+             (seq transform-ids) (conj [:in :transform_id transform-ids]))})
+
+(defn- union-subquery
+  "The UNION ALL of the branches selected by `types` (a subset of `#{:job :dag :transform}`), each optionally
+  narrowed to runs touching one of `transform-ids`."
+  [types transform-ids]
+  (let [types (set (or (seq types) #{:job :dag :transform}))]
+    ^:allow-subquery
+    {:union-all (cond-> []
+                  (:job types)       (conj (job-run-subquery transform-ids))
+                  (:dag types)       (conj (dag-run-subquery transform-ids))
+                  (:transform types) (conj (transform-run-subquery transform-ids)))}))
+
+(defn- root-run-summaries-where
+  [statuses run-methods started-at-start started-at-end ended-at-start ended-at-end]
+  (let [where (into [:and] (remove nil?)
+                    [(when (seq statuses)    [:in :status (set statuses)])
+                     ;; started ⇒ still active, as in the per-table run listings
+                     (when (= (set statuses) #{"started"}) [:= :is_active true])
+                     (when (seq run-methods) [:in :run_method (set run-methods)])
+                     (when started-at-start [:>= :start_time started-at-start])
+                     (when started-at-end   [:<  :start_time started-at-end])
+                     (when ended-at-start   [:>= :end_time ended-at-start])
+                     (when ended-at-end     [:<  :end_time ended-at-end])])]
+    (when (> (count where) 1) where)))
+
+(defn root-run-summaries-page
+  "Up to `limit` (offset by `offset`) root-run summary rows -- see [[metabase.transforms.run-listing]] -- of `types`
+  (a subset of `#{:job :dag :transform}`, or all three when empty), optionally narrowed to `statuses`,
+  `run-methods`, started in [`started-at-start`, `started-at-end`), ended in [`ended-at-start`, `ended-at-end`),
+  and/or touching one of `transform-ids`, sorted by the Honey SQL `order-by`."
+  [types statuses run-methods started-at-start started-at-end ended-at-start ended-at-end transform-ids order-by
+   limit offset]
+  (let [where (root-run-summaries-where statuses run-methods started-at-start started-at-end ended-at-start
+                                        ended-at-end)
+        base  (cond-> {:from [[(union-subquery types transform-ids) :runs]]}
+                where (assoc :where where))]
+    (t2/query (merge base {:select [:*] :order-by order-by :limit limit :offset offset}))))
+
+(defn root-run-summaries-count
+  "The number of root-run summary rows matching the same filters as [[root-run-summaries-page]]."
+  [types statuses run-methods started-at-start started-at-end ended-at-start ended-at-end transform-ids]
+  (let [where (root-run-summaries-where statuses run-methods started-at-start started-at-end ended-at-start
+                                        ended-at-end)
+        base  (cond-> {:from [[(union-subquery types transform-ids) :runs]]}
+                where (assoc :where where))]
+    (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))))
+
+(defn app-db-now
+  "The current time according to the application database."
+  []
+  (:now (t2/query-one {:select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) :now]]})))
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
-
-(defn instance
-  "The instance of `model` with `id`, or nil."
-  [model id]
-  (t2/select-one model id))
 
 (defn database
   "The Database with `database-id`, or nil."
   [database-id]
   (t2/select-one :model/Database database-id))
+
+(defn table
+  "The Table with `table-id`, or nil."
+  [table-id]
+  (t2/select-one :model/Table table-id))
 
 (defn databases
   "The Databases with `database-ids`."

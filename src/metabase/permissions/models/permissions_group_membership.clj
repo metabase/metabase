@@ -116,31 +116,6 @@
     (dissoc membership
             :__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships)))
 
-(mu/defn- add-users-to-groups-sql
-  "Generates SQL for adding users to groups"
-  [user-id-group-id->is-group-manager? :- [:map-of
-                                           [:tuple pos-int? pos-int?]
-                                           :boolean]]
-  (when (seq user-id-group-id->is-group-manager?)
-    {:insert-into [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
-                   ^:allow-subquery
-                   {:select [:g.id :u.id [(into [:case]
-                                                (mapcat (fn [[[user-id group-id] is-group-manager?]]
-                                                          [[[:and
-                                                             [:= :u.id user-id]
-                                                             [:= :g.id group-id]]]
-                                                           is-group-manager?])
-                                                        user-id-group-id->is-group-manager?))]]
-                    :from [[:permissions_group :g]]
-                    :join [[:core_user :u] (into [:or]
-                                                 (for [[[user-id group-id] _] user-id-group-id->is-group-manager?]
-                                                   [:and
-                                                    [:= :u.id user-id]
-                                                    [:= :g.id group-id]
-                                                    [:=
-                                                     :g.is_tenant_group
-                                                     [:not= :u.tenant_id nil]]]))]}]}))
-
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
@@ -206,11 +181,9 @@
                                     keys
                                     (keep (fn [[user-id group-id]]
                                             (when (= group-id (:id (perms-group/data-analyst)))
-                                              user-id))))
-
-          sql (add-users-to-groups-sql user-id-group-id->is-group-manager?)]
+                                              user-id))))]
       (t2/with-transaction [_conn]
-        (when (< (permissions.db/execute-one! sql)
+        (when (< (permissions.db/insert-group-memberships-from-mapping! user-id-group-id->is-group-manager?)
                  (count user-id-group-id->is-group-manager?))
           ;; Theoretically, there could be a race condition in the above check: a user or group may be changed to a tenant
           ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the

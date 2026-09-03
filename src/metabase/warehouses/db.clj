@@ -2,6 +2,7 @@
   "Application database queries for the warehouses module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [toucan2.core :as t2]))
 
 (defn router-database-id
@@ -50,19 +51,36 @@
                         [:= :router_database_id nil]]
              :group-by [:engine]}))
 
-(defn fields-exist-for-tables?
-  "Whether any Field belongs to a Table selected by the Honey SQL `table-ids-query`."
-  [table-ids-query]
-  (t2/exists? :model/Field :table_id [:in table-ids-query]))
+(defn- table-ids-of-database-query
+  [database-id]
+  ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]})
 
-(defn delete-fields-for-tables!
-  "Delete the Fields of the Tables selected by the Honey SQL `table-ids-query` that also match `extra-clause`,
-  returning the number deleted."
-  [table-ids-query extra-clause]
-  (t2/query-one {:delete-from (t2/table-name :model/Field)
-                 :where       [:and
-                               [:in :table_id table-ids-query]
-                               extra-clause]}))
+(defn fields-exist-for-database?
+  "Whether any Field belongs to a Table of the Database with `database-id`."
+  [database-id]
+  (t2/exists? :model/Field :table_id [:in (table-ids-of-database-query database-id)]))
+
+(defn delete-childless-fields-for-database!
+  "Delete the childless Fields of the Tables of the Database with `database-id`, returning the number deleted."
+  [database-id]
+  (let [table-ids-query (table-ids-of-database-query database-id)
+        extra-clause    (if (= (mdb/db-type) :mysql)
+                          ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
+                          ;; DELETE target
+                          [:not-in :id ^:allow-subquery {:select [:parent_id]
+                                                         :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                     :from   [(t2/table-name :model/Field)]
+                                                                                     :where  [:and
+                                                                                              [:not= :parent_id nil]
+                                                                                              [:in :table_id table-ids-query]]}
+                                                                   :parent_fields]]}]
+                          [:not [:exists ^:allow-subquery {:select [1]
+                                                           :from   [[(t2/table-name :model/Field) :child_field]]
+                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    (t2/query-one {:delete-from (t2/table-name :model/Field)
+                   :where       [:and
+                                 [:in :table_id table-ids-query]
+                                 extra-clause]})))
 
 (defn delete-cards-for-database-returning-ids-reducible
   "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
@@ -107,15 +125,15 @@
   [database-id]
   (t2/select-pks-set :model/Table, :db_id database-id, :active true))
 
-(defn fields-with-semantic-type
-  "The Fields of the Tables with `table-ids` whose semantic type matches the Honey SQL `semantic-type-clause`."
-  [table-ids semantic-type-clause]
-  (t2/select :model/Field, :table_id [:in table-ids], :semantic_type semantic-type-clause))
+(defn pk-fields-for-tables
+  "The primary-key Fields of the Tables with `table-ids`."
+  [table-ids]
+  (t2/select :model/Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))
 
 (defn databases-reducible
-  "A reducible of the `model` rows matching the Honey SQL `where` clause."
-  [model where]
-  (t2/reducible-select model {:where where}))
+  "A reducible of the Databases matching the Honey SQL `where` clause."
+  [where]
+  (t2/reducible-select :model/Database {:where where}))
 
 (defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

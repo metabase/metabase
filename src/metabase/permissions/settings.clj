@@ -15,7 +15,7 @@
 ;; We should come back around and delete them from the master branch in a few months.
 
 (defn- instance-create-time []
-  (->> (permissions.db/earliest-user-join-row) :min t/local-date-time))
+  (t/local-date-time (permissions.db/earliest-user-join-date)))
 
 (defn- v-fifty-migration-time []
   (let [v50-migration-id "v50.2024-01-04T13:52:51"]

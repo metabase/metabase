@@ -89,35 +89,17 @@
 (defn- grouped-segment-rows
   "Group + sum `source_segment_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.db/grouped-segment-rows where)))
+  (usage-metadata.db/grouped-segment-rows source-type source-id bucket-start bucket-end))
 
 (defn- grouped-metric-rows
   "Group + sum `source_metric_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.db/grouped-metric-rows where)))
+  (usage-metadata.db/grouped-metric-rows source-type source-id bucket-start bucket-end))
 
 (defn- grouped-dimension-rows
   "Group + sum `source_dimension_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.db/grouped-dimension-rows where)))
+  (usage-metadata.db/grouped-dimension-rows source-type source-id bucket-start bucket-end))
 
 (defn- decode-atom-fingerprints [x]
   (cond
@@ -131,25 +113,14 @@
   Each returned row carries the whole-clause JSON, the atom-fingerprint array, and the summed count
   across the window — the input shape expected by the FIM pass."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and
-                       [:in :ownership_mode ["direct" "projected"]]]
-                source-type  (conj [:= :source_type (name source-type)])
-                source-id    (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (->> (usage-metadata.db/grouped-composite-rows where)
-         (mapv (fn [row]
-                 (update row :atom_fingerprints decode-atom-fingerprints))))))
+  (->> (usage-metadata.db/grouped-composite-rows source-type source-id bucket-start bucket-end)
+       (mapv (fn [row]
+               (update row :atom_fingerprints decode-atom-fingerprints)))))
 
 (defn- grouped-profile-rows
   "Group + sum `source_dimension_profile_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
-  (let [where (cond-> [:and]
-                source-type (conj [:= :source_type (name source-type)])
-                source-id   (conj [:= :source_id source-id])
-                bucket-start (conj [:>= :bucket_date bucket-start])
-                bucket-end   (conj [:<= :bucket_date bucket-end]))]
-    (usage-metadata.db/grouped-profile-rows where)))
+  (usage-metadata.db/grouped-profile-rows source-type source-id bucket-start bucket-end))
 
 (defn- wrap-query
   "Wrap a raw MBQL map in a full lib query using the app DB metadata-provider. Returns nil on failure."
@@ -175,9 +146,8 @@
 
 (defn- existing-segment-predicates*
   [[source-type source-id]]
-  (let [where     (cond-> [:and [:= :archived false]]
-                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (usage-metadata.db/segments where)
+  (let [table-id  (when (and (= source-type :table) source-id) source-id)
+        segments  (usage-metadata.db/unarchived-segments table-id)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
@@ -436,9 +406,8 @@
 
 (defn- existing-composite-atomsets*
   [[source-type source-id]]
-  (let [where     (cond-> [:and [:= :archived false]]
-                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
-        segments  (usage-metadata.db/segments where)
+  (let [table-id  (when (and (= source-type :table) source-id) source-id)
+        segments  (usage-metadata.db/unarchived-segments table-id)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}

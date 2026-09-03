@@ -2,7 +2,6 @@
   "/api/permissions endpoints."
   (:require
    [clojure.data :as data]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -119,12 +118,8 @@
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
-  [limit offset query]
-  (permissions-rest.db/permissions-groups
-   (cond-> {:order-by [:%lower.name]}
-     (some? limit)  (sql.helpers/limit  limit)
-     (some? offset) (sql.helpers/offset offset)
-     (some? query)  (sql.helpers/where query))))
+  [limit offset opts]
+  (permissions-rest.db/permissions-groups limit offset opts))
 
 (defn- maybe-fix-name
   "With Tenants enabled, we refer to the `all-internal-users` group as \"All internal users\", but
@@ -167,30 +162,15 @@
     (perms/check-group-manager)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :setting)))
-  (let [base-where
-        [:and
-         (when (and (not api/*is-superuser?*)
-                    (premium-features/enable-advanced-permissions?)
-                    api/*is-group-manager?*)
-           [:in :id ^:allow-subquery {:select [:group_id]
-                                      :from   [:permissions_group_membership]
-                                      :where  [:and
-                                               [:= :user_id api/*current-user-id*]
-                                               [:= :is_group_manager true]]}])
-         (when-not (setting/get :use-tenants)
-           [:not :is_tenant_group])
-         (when-not (premium-features/enable-advanced-permissions?)
-           [:or
-            [:= nil :magic_group_type]
-            [:not= "data-analyst" :magic_group_type]])]
-        where (case tenancy
-                "external" (if (setting/get :use-tenants)
-                             [:and base-where [:= :is_tenant_group true]]
-                             [:= 1 0]) ; Return no results when tenants disabled but external requested
-                "internal" [:and base-where [:or [:= :is_tenant_group false]
-                                             [:= :is_tenant_group nil]]]
-                base-where)]
-    (-> (ordered-groups (request/limit) (request/offset) where)
+  (let [manager-user-id (when (and (not api/*is-superuser?*)
+                                   (premium-features/enable-advanced-permissions?)
+                                   api/*is-group-manager?*)
+                          api/*current-user-id*)]
+    (-> (ordered-groups (request/limit) (request/offset)
+                        {:tenancy                       tenancy
+                         :manager-user-id               manager-user-id
+                         :tenants-enabled?               (setting/get :use-tenants)
+                         :advanced-permissions-enabled? (premium-features/enable-advanced-permissions?)})
         (t2/hydrate :member_count)
         (maybe-fix-names))))
 
@@ -303,23 +283,13 @@
                  :is_group_manager boolean}]}"
   []
   (perms/check-group-manager)
-  (group-by :user_id (permissions-rest.db/group-memberships
-                      (cond-> {}
-                        (and (not api/*is-superuser?*)
-                             api/*is-group-manager?*)
-                        (sql.helpers/where
-                         [:in :group_id ^:allow-subquery {:select [:group_id]
-                                                          :from   [:permissions_group_membership]
-                                                          :where  [:and
-                                                                   [:= :user_id api/*current-user-id*]
-                                                                   [:= :is_group_manager true]]}])
-                        (not (premium-features/enable-advanced-permissions?))
-                        (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])
-                        (not (setting/get :use-tenants))
-                        (sql.helpers/where [:not-in :group_id ^:allow-subquery
-                                            {:select [:id]
-                                             :from   [:permissions_group]
-                                             :where  [:= :is_tenant_group true]}])))))
+  (group-by :user_id
+            (permissions-rest.db/group-memberships
+             {:manager-user-id        (when (and (not api/*is-superuser?*) api/*is-group-manager?*)
+                                        api/*current-user-id*)
+              :excluded-group-id      (when-not (premium-features/enable-advanced-permissions?)
+                                        (u/the-id (perms/data-analyst-group)))
+              :exclude-tenant-groups? (not (setting/get :use-tenants))})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -419,30 +419,14 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (let [table-ids-query ^:allow-subquery {:from   [(t2/table-name :model/Table)]
-                                          :select [:id]
-                                          :where  [:= :db_id database-id]}]
-    ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
-    ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
-    ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
-    (when (warehouses.db/fields-exist-for-tables? table-ids-query)
-      (let [no-children-clause (if (= (mdb/db-type) :mysql)
-                                 ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
-                                 ;; DELETE target
-                                 [:not-in :id ^:allow-subquery {:select [:parent_id]
-                                                                :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                            :from   [(t2/table-name :model/Field)]
-                                                                                            :where  [:and
-                                                                                                     [:not= :parent_id nil]
-                                                                                                     [:in :table_id table-ids-query]]}
-                                                                          :parent_fields]]}]
-                                 [:not [:exists ^:allow-subquery {:select [1]
-                                                                  :from   [[(t2/table-name :model/Field) :child_field]]
-                                                                  :where  [:= :child_field.parent_id :metabase_field.id]}]])]
-        (loop []
-          (let [deleted (warehouses.db/delete-fields-for-tables! table-ids-query no-children-clause)]
-            (when (pos? deleted)
-              (recur))))))))
+  ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
+  ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
+  ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
+  (when (warehouses.db/fields-exist-for-database? database-id)
+    (loop []
+      (let [deleted (warehouses.db/delete-childless-fields-for-database! database-id)]
+        (when (pos? deleted)
+          (recur))))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -638,7 +622,7 @@
   [{:keys [id]}]
   (let [table-ids (warehouses.db/active-table-ids-for-database id)]
     (when (seq table-ids)
-      (warehouses.db/fields-with-semantic-type table-ids (mdb/isa :type/PK)))))
+      (warehouses.db/pk-fields-for-tables table-ids))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
@@ -734,9 +718,8 @@
   false)
 
 (defmethod serdes/extract-query "Database"
-  [model-name {:keys [where]}]
-  (warehouses.db/databases-reducible (keyword "model" model-name)
-                                     (cond-> [:and
+  [_model-name {:keys [where]}]
+  (warehouses.db/databases-reducible (cond-> [:and
                                               (or where true)
                                               [:= :router_database_id nil]
                                               ;; never export the sample database, regardless of its driver

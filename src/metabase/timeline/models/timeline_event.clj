@@ -3,7 +3,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
-   [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -67,29 +66,7 @@
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
   regardless of archive state."
   [timeline-ids {:events/keys [all? start end]}]
-  (let [clause {:where [:and
-                        ;; in our collections
-                        [:in :timeline_id timeline-ids]
-                        (when-not all?
-                          [:= :archived false])
-                        (when (or start end)
-                          [:or
-                           ;; absolute time in bounds
-                           [:and
-                            [:= :time_matters true]
-                            ;; less than or equal?
-                            (when start
-                              [:<= start :timestamp])
-                            (when end
-                              [:<= :timestamp end])]
-                           ;; non-specic time in bounds
-                           [:and
-                            [:= :time_matters false]
-                            (when start
-                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
-                            (when end
-                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (t2/hydrate (timeline.db/timeline-events clause) :creator)))
+  (t2/hydrate (timeline.db/timeline-events-for-timelines timeline-ids all? start end) :creator))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all

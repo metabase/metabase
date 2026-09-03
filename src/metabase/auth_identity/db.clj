@@ -2,6 +2,7 @@
   "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn auth-identity
@@ -54,20 +55,21 @@
   [user-id]
   (t2/select-one :model/User user-id))
 
-(defn user-by-lower-email
-  "The User whose lower-cased email is `lower-case-email`, or nil."
-  [lower-case-email]
-  (t2/select-one :model/User :%lower.email lower-case-email))
+(defn user-by-email
+  "The User whose email matches `email` case-insensitively, or nil."
+  [email]
+  (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
 
 (defn user-login-columns
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
 
-(defn user-login-columns-by-lower-email
-  "The id, active flag, last login, and tenant id of the User whose lower-cased email is `lower-case-email`, or nil."
-  [lower-case-email]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email lower-case-email))
+(defn user-login-columns-by-email
+  "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
+  nil."
+  [email]
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))
 
 (defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."

@@ -547,7 +547,7 @@
                   "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (when email
-      (api/checkp (not (users-rest.db/other-user-with-email-exists? (u/lower-case-en email) id))
+      (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
                   "email" (tru "Email address already associated to another user.")))
     (t2/with-transaction [_conn]
       ;; only superuser or self can update user info

@@ -80,13 +80,7 @@
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
   [{:keys [card-ids dashboard-ids]}]
   (when (seq (concat card-ids dashboard-ids))
-    (let [latest-changes (revisions.db/latest-changes
-                          (into [:or]
-                                (keep (fn [[model-name ids]]
-                                        (when (seq ids)
-                                          [:and [:= :model model-name] [:in :model_id ids]])))
-                                [["Card" card-ids]
-                                 ["Dashboard" dashboard-ids]]))]
+    (let [latest-changes (revisions.db/latest-changes card-ids dashboard-ids)]
       (->> latest-changes
            (group-by :model)
            (m/map-vals (fn [model-changes]

@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
-   [metabase.app-db.core :as mdb]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
@@ -25,7 +24,6 @@
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
 
@@ -337,7 +335,7 @@
 
 (defn- app-db-now
   []
-  (:now (transforms.db/now-row (h2x/current-datetime-honeysql-form (mdb/db-type)))))
+  (transforms.db/app-db-now))
 
 (defn run-transforms!
   "Run the transforms of `plan`, honoring the DAG.

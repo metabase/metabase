@@ -255,9 +255,7 @@
 
 (mu/defn- cards* :- [:sequential HybridPulseCard]
   [pulse-ids]
-  (pulse.db/pulse-cards-for-pulses pulse-ids
-                                   (when-not *allow-hydrate-archived-cards*
-                                     [:= :c.archived false])))
+  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -326,9 +324,6 @@
           hydrate-notification
           notification->alert))
 
-(defn- query-as [model query]
-  (pulse.db/select-where model query))
-
 (mu/defn retrieve-alerts :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all Alerts."
   ([]
@@ -337,62 +332,24 @@
   ([{:keys [archived? user-id]
      :or   {archived? false}}]
    (assert boolean? archived?)
-   (let [query (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-                       :from            [[:pulse :p]]
-                       :where           [:and
-                                         [:not= :p.alert_condition nil]
-                                         [:= :p.archived archived?]
-                                         (when user-id
-                                           [:or
-                                            [:= :p.creator_id user-id]
-                                            [:= :pcr.user_id user-id]])]
-                       :order-by        [[:lower-name :asc]]}
-                      (when user-id
-                        {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                                     [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))]
-     (for [alert (hydrate-notifications (query-as :model/Pulse query))
-           :let  [alert (notification->alert alert)]
-           ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
-           ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
-           ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
-           :when (:card alert)]
-       alert))))
+   (for [alert (hydrate-notifications (pulse.db/alerts archived? user-id))
+         :let  [alert (notification->alert alert)]
+         ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
+         ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
+         ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
+         :when (:card alert)]
+     alert)))
 
 (mu/defn retrieve-pulses :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}}]
-  (let [query {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-               :from            [[:pulse :p]]
-               :left-join       (concat
-                                 [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                 (when user-id
-                                   [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
-                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
-               :where           [:and
-                                 [:= :p.alert_condition nil]
-                                 [:= :p.archived archived?]
-                                 ;; Only return dashboard subscriptions for non-archived dashboards
-                                 [:or
-                                  [:= :p.dashboard_id nil]
-                                  [:= :d.archived false]]
-                                 (when dashboard-id
-                                   [:= :p.dashboard_id dashboard-id])
-                                 ;; Only return dashboard subscriptions when `user-id` is passed, so that legacy
-                                 ;; pulses don't show up in the notification management page
-                                 (when user-id
-                                   [:and
-                                    [:not= :p.dashboard_id nil]
-                                    [:or
-                                     [:= :p.creator_id user-id]
-                                     [:= :pcr.user_id user-id]]])]
-               :order-by        [[:lower-name :asc]]}]
-    (for [pulse (query-as :model/Pulse query)]
-      (-> pulse
-          (dissoc :lower-name)
-          hydrate-notification
-          notification->pulse))))
+  (for [pulse (pulse.db/pulses archived? dashboard-id user-id)]
+    (-> pulse
+        (dissoc :lower-name)
+        hydrate-notification
+        notification->pulse)))
 
 (defn- tenant-scoped-caller?
   "True when the current user's recipient visibility is narrowed to their own tenant. Superusers and
@@ -498,17 +455,7 @@
                                  [:archived? {:optional true} boolean?]]]
   (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
-       (query-as :model/Pulse
-                 {:select [:p.*]
-                  :from   [[:pulse :p]]
-                  :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                           [:pulse_channel :pchan] [:= :pchan.pulse_id :p.id]
-                           [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
-                  :where  [:and
-                           [:not= :p.alert_condition nil]
-                           [:= :pc.card_id card-id]
-                           [:= :pcr.user_id user-id]
-                           [:= :p.archived archived?]]})))
+       (pulse.db/alerts-for-card-and-user card-id user-id archived?)))
 
 (mu/defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
@@ -520,14 +467,7 @@
                                  [:archived? {:optional true} boolean?]]]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
-         (query-as :model/Pulse
-                   {:select [:p.*]
-                    :from   [[:pulse :p]]
-                    :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                    :where  [:and
-                             [:not= :p.alert_condition nil]
-                             [:in :pc.card_id card-ids]
-                             [:= :p.archived archived?]]}))))
+         (pulse.db/alerts-for-cards card-ids archived?))))
 
 (mu/defn card->ref :- CardRef
   "Create a card reference from a card or id"

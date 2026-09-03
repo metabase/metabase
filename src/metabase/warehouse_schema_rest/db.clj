@@ -2,6 +2,9 @@
   "Application database queries for the warehouse schema REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [clojure.string :as str]
+   [metabase.app-db.core :as app-db]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn field-and-target-database-ids
@@ -61,10 +64,49 @@
   [field-id]
   (t2/delete! :model/Dimension :field_id field-id))
 
-(defn tables
-  "The Tables selected by the Honey SQL `query`."
-  [query]
-  (t2/select :model/Table query))
+(defn matching-tables
+  "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
+  using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
+  `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
+  `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents,
+  ordered by name."
+  [{:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only? published-only?
+           check-unused? include-transform-targets?]}]
+  (let [db-type    (app-db/db-type)
+        glob       (fn [escaped]
+                     (-> escaped
+                         (str/replace "*" "%")
+                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        ci-pattern (fn [pattern]
+                     (case db-type
+                       (:h2 :postgres) pattern
+                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        like       (fn [field wrap]
+                     [(case db-type (:h2 :postgres) :ilike :like)
+                      field
+                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
+        where      (cond-> [:and (if include-transform-targets?
+                                   [:or [:= :active true] [:= :transform_target true]]
+                                   [:= :active true])]
+                     (not (str/blank? term)) (conj [:or
+                                                    (like :name identity)
+                                                    (like :display_name identity)
+                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
+                                                    (like :display_name #(str "% " %))])
+                     visibility-type         (conj [:= :visibility_type visibility-type])
+                     data-layer              (conj [:= :data_layer      (name data-layer)])
+                     data-source             (conj [:= :data_source     (name data-source)])
+                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
+                     owner-email             (conj [:= :owner_email     owner-email])
+                     orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
+                     published-only?         (conj [:= :is_published true])
+                     check-unused?
+                     (conj [:not-exists ^:allow-subquery {:select [:*]
+                                                          :from   [[:dependency :d]]
+                                                          :where  [:and
+                                                                   [:= :d.to_entity_id :metabase_table.id]
+                                                                   [:= :d.to_entity_type "table"]]}]))]
+    (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
 (defn tables-by-ids
   "The Tables with `table-ids`."

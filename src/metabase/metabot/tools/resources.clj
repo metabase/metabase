@@ -324,13 +324,7 @@
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all)."
   [{:keys [tree] :as query-params}]
   (let [tree?    (= "true" tree)
-        where    (cond-> [:and
-                          [:= :archived false]
-                          [:= :namespace nil]
-                          ;; Exclude the system Trash collection from navigation listings.
-                          [:or [:= :type nil] [:!= :type "trash"]]]
-                   (not tree?) (conj [:= :location "/"]))
-        colls    (->> (metabot.db/collections-where where)
+        colls    (->> (metabot.db/navigable-collections tree?)
                       (filter mi/can-read?))
         ;; For tree mode, compute path names by chaining ancestor names.
         id->name (when tree? (into {} (map (juxt :id :name)) colls))
@@ -471,7 +465,9 @@
     (check-resource-database (:database_id card))))
 
 (defn- check-measure-or-segment-resource-database [model id]
-  (when-let [table-id (metabot.db/table-id-of model id)]
+  (when-let [table-id (case model
+                        :model/Measure (metabot.db/measure-table-id id)
+                        :model/Segment (metabot.db/segment-table-id id))]
     (check-table-resource-database table-id)))
 
 (defn- table-details

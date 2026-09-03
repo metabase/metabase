@@ -780,17 +780,10 @@
   [refs]
   (when (seq refs)
     (let [unique-refs (distinct (map (juxt :database_id :schema :table) refs))
-          ref->clause (fn [[db-id schema table-name]]
-                        [:and
-                         [:= :db_id db-id]
-                         (if (some? schema)
-                           [:= :schema schema]
-                           [:is :schema nil])
-                         [:= :name table-name]])
           fetch-batch (fn [batch]
                         (into {}
                               (map (juxt (juxt :db_id :schema :name) :id))
-                              (transforms-base.db/table-refs-matching (into [:or] (map ref->clause batch)))))]
+                              (transforms-base.db/table-refs-matching batch)))]
       (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
 (defn- source-table-ref->key

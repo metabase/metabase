@@ -14,50 +14,50 @@
   1000)
 
 (defn- chunked-insert!
-  [model rows]
+  [insert-fn! rows]
   (when (seq rows)
     (doseq [chunk (partition-all insert-chunk-size rows)]
-      (usage-metadata.db/insert-rows! model chunk))))
+      (insert-fn! chunk))))
 
 (defn delete-day!
   "Delete all rollup rows for `bucket-date` across the usage metadata daily tables."
   [bucket-date]
-  (usage-metadata.db/delete-rollups-for-day! :model/SourceSegmentDaily bucket-date)
-  (usage-metadata.db/delete-rollups-for-day! :model/SourceSegmentCompositeDaily bucket-date)
-  (usage-metadata.db/delete-rollups-for-day! :model/SourceMetricDaily bucket-date)
-  (usage-metadata.db/delete-rollups-for-day! :model/SourceDimensionDaily bucket-date)
-  (usage-metadata.db/delete-rollups-for-day! :model/SourceDimensionProfileDaily bucket-date)
+  (usage-metadata.db/delete-segment-rollups-for-day! bucket-date)
+  (usage-metadata.db/delete-segment-composite-rollups-for-day! bucket-date)
+  (usage-metadata.db/delete-metric-rollups-for-day! bucket-date)
+  (usage-metadata.db/delete-dimension-rollups-for-day! bucket-date)
+  (usage-metadata.db/delete-dimension-profile-rollups-for-day! bucket-date)
   nil)
 
 (defn insert-segment-rollups!
   "Insert daily segment rollup rows."
   [rows]
-  (chunked-insert! :model/SourceSegmentDaily rows)
+  (chunked-insert! usage-metadata.db/insert-segment-rollups! rows)
   nil)
 
 (defn insert-composite-rollups!
   "Insert daily composite segment (whole-:and basket) rollup rows."
   [rows]
   (when (seq rows)
-    (usage-metadata.db/insert-rows! :model/SourceSegmentCompositeDaily rows))
+    (usage-metadata.db/insert-segment-composite-rollups! rows))
   nil)
 
 (defn insert-metric-rollups!
   "Insert daily metric rollup rows."
   [rows]
-  (chunked-insert! :model/SourceMetricDaily rows)
+  (chunked-insert! usage-metadata.db/insert-metric-rollups! rows)
   nil)
 
 (defn insert-dimension-rollups!
   "Insert daily dimension rollup rows."
   [rows]
-  (chunked-insert! :model/SourceDimensionDaily rows)
+  (chunked-insert! usage-metadata.db/insert-dimension-rollups! rows)
   nil)
 
 (defn insert-dimension-profile-rollups!
   "Insert daily dimension profile observation rows."
   [rows]
-  (chunked-insert! :model/SourceDimensionProfileDaily rows)
+  (chunked-insert! usage-metadata.db/insert-dimension-profile-rollups! rows)
   nil)
 
 (defn replace-day!

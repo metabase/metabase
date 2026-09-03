@@ -24,5 +24,5 @@
   "Return the ID of the newest `PermissionsRevision`, or zero if none have been made yet. (This is used by the
   permissions graph update logic that checks for changes since the original graph was fetched)."
   []
-  (or (:id (permissions.db/latest-revision-row :model/PermissionsRevision))
+  (or (permissions.db/latest-permissions-revision-id)
       0))

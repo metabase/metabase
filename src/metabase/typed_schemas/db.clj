@@ -42,10 +42,34 @@
   [field-id]
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
-(defn tables-ordered-by-name
-  "The Tables matching the Honey SQL `where` clause, in name then id order."
-  [where]
-  (t2/select :model/Table {:where where, :order-by [[:name :asc] [:id :asc]]}))
+(defn- scope-filter-clause
+  "Compiles a resolved scope into a Honey SQL where-clause conjunct: a nil scope means unscoped (no clause), an
+  empty scope matches nothing."
+  [scope-ids column]
+  (when scope-ids
+    (if (seq scope-ids)
+      [:in column scope-ids]
+      ;; no row has id -1: a resolved-but-empty scope matches no rows
+      [:= column -1])))
+
+(defn active-tables-in-scope
+  "The active Tables among `database-ids` and/or `table-ids` (either nil for unscoped), in name then id order."
+  [database-ids table-ids]
+  (t2/select :model/Table
+             {:where    [:and [:= :active true]
+                         (scope-filter-clause database-ids :db_id)
+                         (scope-filter-clause table-ids :id)]
+              :order-by [[:name :asc] [:id :asc]]}))
+
+(defn published-library-tables-in-collections
+  "The active, published Tables in `collection-ids` (nil for unscoped), in name then id order."
+  [collection-ids]
+  (t2/select :model/Table
+             {:where    [:and
+                         [:= :active true]
+                         [:= :is_published true]
+                         (scope-filter-clause collection-ids :collection_id)]
+              :order-by [[:name :asc] [:id :asc]]}))
 
 (defn measure-definition
   "The definition of the Measure with `measure-id`, or nil."

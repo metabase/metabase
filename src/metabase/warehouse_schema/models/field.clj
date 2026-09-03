@@ -462,9 +462,8 @@
 (defmethod serdes/load-find-local "Field"
   [path]
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
-        table               (serdes/load-find-local table-path)
-        field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
-    (warehouse-schema.db/field-where field-q)))
+        table               (serdes/load-find-local table-path)]
+    (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields)))))
 
 (defmethod serdes/deserialization-dependencies "Field" [field]
   (let [db-path (first (serdes/path field))]

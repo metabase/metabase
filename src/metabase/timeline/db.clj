@@ -2,6 +2,7 @@
   "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn insert-timeline!
@@ -69,10 +70,29 @@
   [id]
   (t2/select-one :model/TimelineEvent :id id))
 
-(defn timeline-events
-  "The TimelineEvents selected by the Honey SQL `query`."
-  [query]
-  (t2/select :model/TimelineEvent query))
+(defn timeline-events-for-timelines
+  "The TimelineEvents of the Timelines with `timeline-ids`, unarchived only unless `all?`, and (when `start` and/or
+  `end` are given) within that time range (respecting each event's `:time_matters` flag)."
+  [timeline-ids all? start end]
+  (t2/select :model/TimelineEvent
+             {:where [:and
+                      [:in :timeline_id timeline-ids]
+                      (when-not all?
+                        [:= :archived false])
+                      (when (or start end)
+                        [:or
+                         [:and
+                          [:= :time_matters true]
+                          (when start
+                            [:<= start :timestamp])
+                          (when end
+                            [:<= :timestamp end])]
+                         [:and
+                          [:= :time_matters false]
+                          (when start
+                            [:<= (h2x/->date start) (h2x/->date :timestamp)])
+                          (when end
+                            [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
 (defn update-timeline-event!
   "Apply `changes` to the TimelineEvent with `id`."

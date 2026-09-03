@@ -83,7 +83,7 @@
 (defn collection-columns-by-id
   "A map of ID to the `columns` of the Collections with `collection-ids`."
   [columns collection-ids]
-  (t2/select-pk->fn identity :model/Collection {:select columns, :where [:in :id collection-ids]}))
+  (t2/select-pk->fn identity (into [:model/Collection] columns) :id [:in collection-ids]))
 
 (defn collection-archived-flags
   "A map of ID to `:archived` for `collection-ids`."
@@ -110,10 +110,14 @@
   [where]
   (t2/select [:model/Collection :name :id :location :description] {:where where}))
 
-(defn descendant-summaries-with-type-where
-  "The name, ID, location, description, and type of the Collections matching the Honey SQL `where`."
-  [where]
-  (t2/select [:model/Collection :name :id :location :description :type] {:where where}))
+(defn descendant-summaries-with-type
+  "The name, ID, location, description, and type of the Collections directly under any of `location-prefixes`
+  (compared with SQL `LIKE`), excluding personal Collections that don't belong to `current-user-id`."
+  [location-prefixes current-user-id]
+  (t2/select [:model/Collection :name :id :location :description :type]
+             {:where [:and
+                      (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
+                      [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
 
 (defn effective-children-where
   "The ID, name, description, and type of the Collections matching the Honey SQL `where`."
@@ -170,12 +174,12 @@
   (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
 
 (defn child-collection-ids
-  "The IDs of the non-trash Collections directly at `location` matching the optional Honey SQL `archived-clause`."
-  [location trash-type archived-clause]
+  "The IDs of the non-trash Collections directly at `location`, excluding archived ones when `skip-archived?`."
+  [location trash-type skip-archived?]
   (t2/select-pks-set :model/Collection
                      {:where [:and
                               [:= :location location]
-                              archived-clause
+                              (when skip-archived? [:not :archived])
                               [:or
                                [:not= :type trash-type]
                                [:= :type nil]]]}))
@@ -273,34 +277,79 @@
                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
-(defn set-archived-in-collections!
-  "Set `archived?` on the instances of `model` in the Collections with `collection-ids`."
-  [model collection-ids archived?]
-  (t2/update! model {:collection_id [:in collection-ids]} {:archived archived?}))
+(defn set-pulse-archived-in-collections!
+  "Set `archived?` on the Pulses in the Collections with `collection-ids`."
+  [collection-ids archived?]
+  (t2/update! :model/Pulse {:collection_id [:in collection-ids]} {:archived archived?}))
 
-(defn set-archived-in-collections-not-directly!
-  "Set `archived?` on the instances of `model` in the Collections with `collection-ids` that were not archived
-  directly."
-  [model collection-ids archived?]
-  (t2/update! model {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+(defn set-native-query-snippet-archived-in-collections!
+  "Set `archived?` on the NativeQuerySnippets in the Collections with `collection-ids`."
+  [collection-ids archived?]
+  (t2/update! :model/NativeQuerySnippet {:collection_id [:in collection-ids]} {:archived archived?}))
 
-(defn delete-in-collections!
-  "Delete the instances of `model` in the Collections with `collection-ids`."
-  [model collection-ids]
-  (t2/delete! model :collection_id [:in collection-ids]))
+(defn set-timeline-archived-in-collections!
+  "Set `archived?` on the Timelines in the Collections with `collection-ids`."
+  [collection-ids archived?]
+  (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
+
+(defn set-card-archived-in-collections-not-directly!
+  "Set `archived?` on the Cards in the Collections with `collection-ids` that were not archived directly."
+  [collection-ids archived?]
+  (t2/update! :model/Card {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+
+(defn set-dashboard-archived-in-collections-not-directly!
+  "Set `archived?` on the Dashboards in the Collections with `collection-ids` that were not archived directly."
+  [collection-ids archived?]
+  (t2/update! :model/Dashboard {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+
+(defn set-document-archived-in-collections-not-directly!
+  "Set `archived?` on the Documents in the Collections with `collection-ids` that were not archived directly."
+  [collection-ids archived?]
+  (t2/update! :model/Document {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+
+(defn set-exploration-archived-in-collections-not-directly!
+  "Set `archived?` on the Explorations in the Collections with `collection-ids` that were not archived directly."
+  [collection-ids archived?]
+  (t2/update! :model/Exploration {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+
+(defn delete-cards-in-collections!
+  "Delete the Cards in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/delete! :model/Card :collection_id [:in collection-ids]))
+
+(defn delete-dashboards-in-collections!
+  "Delete the Dashboards in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/delete! :model/Dashboard :collection_id [:in collection-ids]))
+
+(defn delete-native-query-snippets-in-collections!
+  "Delete the NativeQuerySnippets in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
+
+(defn delete-pulses-in-collections!
+  "Delete the Pulses in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/delete! :model/Pulse :collection_id [:in collection-ids]))
+
+(defn delete-timelines-in-collections!
+  "Delete the Timelines in the Collections with `collection-ids`."
+  [collection-ids]
+  (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
 
 (defn dashboard-ids-in-collection
-  "The IDs of the Dashboards in the Collection with `collection-id` matching the optional Honey SQL `archived-clause`."
-  [collection-id archived-clause]
-  (t2/select-pks-set :model/Dashboard {:where [:and [:= :collection_id collection-id] archived-clause]}))
+  "The IDs of the Dashboards in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
+  [collection-id skip-archived?]
+  (t2/select-pks-set :model/Dashboard
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
 (defn card-ids-in-collection
-  "The IDs of the Cards in the Collection with `collection-id` matching the optional Honey SQL `archived-clause`,
+  "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
   excluding Cards materialized by an exploration Summary."
-  [collection-id archived-clause]
+  [collection-id skip-archived?]
   (t2/select-pks-set :model/Card {:where [:and
                                           [:= :collection_id collection-id]
-                                          archived-clause
+                                          (when skip-archived? [:not :archived])
                                           [:or
                                            [:= :document_id nil]
                                            [:in :document_id
@@ -309,27 +358,28 @@
                                                               :where  [:= :exploration_id nil]}]]]}))
 
 (defn document-ids-in-collection
-  "The IDs of the non-exploration Documents in the Collection with `collection-id` matching the optional Honey SQL
-  `archived-clause`."
-  [collection-id archived-clause]
+  "The IDs of the non-exploration Documents in the Collection with `collection-id`, excluding archived ones when
+  `skip-archived?`."
+  [collection-id skip-archived?]
   (t2/select-pks-set :model/Document {:where [:and
                                               [:= :collection_id collection-id]
                                               [:= :exploration_id nil]
-                                              archived-clause]}))
+                                              (when skip-archived? [:not :archived])]}))
 
 (defn timeline-ids-in-collection
-  "The IDs of the Timelines in the Collection with `collection-id` matching the optional Honey SQL `archived-clause`."
-  [collection-id archived-clause]
-  (t2/select-pks-set :model/Timeline {:where [:and [:= :collection_id collection-id] archived-clause]}))
+  "The IDs of the Timelines in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
+  [collection-id skip-archived?]
+  (t2/select-pks-set :model/Timeline
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
 (defn published-table-ids-in-collection
-  "The IDs of the published Tables in the Collection with `collection-id` matching the optional Honey SQL
-  `archived-clause`."
-  [collection-id archived-clause]
+  "The IDs of the published Tables in the Collection with `collection-id`, excluding archived ones when
+  `skip-archived?`."
+  [collection-id skip-archived?]
   (t2/select-pks-set :model/Table {:where [:and
                                            [:= :collection_id collection-id]
                                            [:= :is_published true]
-                                           archived-clause]}))
+                                           (when skip-archived? [:= :archived_at nil])]}))
 
 (defn transform-ids-in-collection
   "The IDs of the Transforms in the Collection with `collection-id`."

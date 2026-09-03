@@ -3,6 +3,10 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
@@ -28,8 +32,8 @@
 
 (defn user-data-permissions
   "The permission type, group, value, database, and table of every DataPermissions row of the groups the User with
-  `user-id` belongs to, narrowed by the optional Honey SQL `database-clause` and `perm-type-clause`."
-  [user-id database-clause perm-type-clause]
+  `user-id` belongs to, optionally narrowed to `database-id` and/or `perm-type`."
+  [user-id database-id perm-type]
   (t2/select :model/DataPermissions
              {:select [[:p.perm_type :perm-type]
                        [:p.group_id :group-id]
@@ -41,8 +45,8 @@
                        [:data_permissions :p]   [:= :p.group_id :pg.id]]
               :where  [:and
                        [:= :pgm.user_id user-id]
-                       database-clause
-                       perm-type-clause]}))
+                       (when database-id [:= :db_id database-id])
+                       (when perm-type [:= :perm_type (u/qualified-name perm-type)])]}))
 
 (defn data-permissions-for-groups-and-databases
   "The DataPermissions of `group-ids` on the Databases with `database-ids`."
@@ -138,15 +142,27 @@
   [objects]
   (t2/select-fn-set :group_id :model/Permissions {:where [:in :object objects]}))
 
-(defn permission-objects-where
-  "The set of Permissions objects matching the Honey SQL `where` map."
-  [where]
-  (t2/select-fn-set :object :model/Permissions where))
+(defn- related-permission-objects-where
+  [group-id path also-under-paths]
+  [:and
+   [:= :group_id group-id]
+   (into [:or [:like path (h2x/concat :object (h2x/literal "%"))]]
+         (map (fn [path-form] [:like :object (str path-form "%")]))
+         also-under-paths)])
 
-(defn delete-permissions-where!
-  "Delete the Permissions rows matching the Honey SQL `where` map."
-  [where]
-  (t2/delete! :model/Permissions where))
+(defn related-permission-objects
+  "The Permissions objects held by the group with `group-id` that are ancestors or descendants of `path` (also
+  checking each of `also-under-paths`, e.g. a v2-equivalent path)."
+  [group-id path also-under-paths]
+  (t2/select-fn-set :object :model/Permissions
+                    {:where (related-permission-objects-where group-id path also-under-paths)}))
+
+(defn delete-related-permissions!
+  "Delete the Permissions rows held by the group with `group-id` that are ancestors or descendants of `path` (also
+  checking each of `also-under-paths`, e.g. a v2-equivalent path)."
+  [group-id path also-under-paths]
+  (t2/delete! :model/Permissions
+              {:where (related-permission-objects-where group-id path also-under-paths)}))
 
 (defn insert-permissions!
   "Insert the Permissions `rows`."
@@ -238,10 +254,33 @@
 
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
-(defn execute-one!
-  "Run the Honey SQL statement `query` and return its single result."
-  [query]
-  (t2/query-one query))
+(defn- insert-group-memberships-from-mapping-query
+  [user-id-group-id->is-group-manager?]
+  {:insert-into [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
+                 ^:allow-subquery
+                 {:select [:g.id :u.id [(into [:case]
+                                              (mapcat (fn [[[user-id group-id] is-group-manager?]]
+                                                        [[[:and
+                                                           [:= :u.id user-id]
+                                                           [:= :g.id group-id]]]
+                                                         is-group-manager?])
+                                                      user-id-group-id->is-group-manager?))]]
+                  :from [[:permissions_group :g]]
+                  :join [[:core_user :u] (into [:or]
+                                               (for [[[user-id group-id] _] user-id-group-id->is-group-manager?]
+                                                 [:and
+                                                  [:= :u.id user-id]
+                                                  [:= :g.id group-id]
+                                                  [:=
+                                                   :g.is_tenant_group
+                                                   [:not= :u.tenant_id nil]]]))]}]})
+
+(defn insert-group-memberships-from-mapping!
+  "Insert a PermissionsGroupMembership (with `is_group_manager`) for each `[user-id group-id]` pair in
+  `user-id-group-id->is-group-manager?`, matching Users to Groups on tenant status; returns the number of rows
+  inserted."
+  [user-id-group-id->is-group-manager?]
+  (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?)))
 
 (defn group-membership-count
   "The number of memberships of the PermissionsGroup with `group-id`."
@@ -290,10 +329,20 @@
 
 ;;; ------------------------------------------------ Revisions ------------------------------------------------
 
-(defn latest-revision-row
-  "The `:id` row holding the highest ID of `revision-model`."
-  [revision-model]
-  (t2/select-one [revision-model [:%max.id :id]]))
+(defn latest-permissions-revision-id
+  "The highest ID of any PermissionsRevision, or nil."
+  []
+  (:id (t2/select-one [:model/PermissionsRevision [:%max.id :id]])))
+
+(defn latest-collection-permission-graph-revision-id
+  "The highest ID of any CollectionPermissionGraphRevision, or nil."
+  []
+  (:id (t2/select-one [:model/CollectionPermissionGraphRevision [:%max.id :id]])))
+
+(defn latest-application-permissions-revision-id
+  "The highest ID of any ApplicationPermissionsRevision, or nil."
+  []
+  (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
 
 (defn insert-revision!
   "Insert `revision` into `revision-model`."
@@ -317,20 +366,128 @@
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn collection-ids-where
-  "The set of IDs of the Collections matching the Honey SQL `where`."
-  [where]
-  (t2/select-pks-set :model/Collection {:where where}))
+(defn personal-or-descendant-collection-ids
+  "The IDs among `collection-ids` that are personal Collections, or descendants of one."
+  [collection-ids]
+  (t2/select-pks-set :model/Collection
+                     {:where [:and
+                              [:in :id collection-ids]
+                              [:or [:not= :personal_owner_id nil]
+                               [:exists ^:allow-subquery
+                                {:select [1]
+                                 :from   [[:collection :pc]]
+                                 :where  [:and
+                                          [:not= :pc.personal_owner_id nil]
+                                          [:like :collection.location
+                                           [:concat "/" :pc.id "/%"]]]}]]]}))
+
+(defn collection-ids-in-other-namespace
+  "The IDs among `collection-ids` that do not belong to `namespace` (nil meaning the default namespace)."
+  [collection-ids namespace]
+  (t2/select-pks-set :model/Collection
+                     {:where [:and [:in :id collection-ids]
+                              (cond->> [[:not= :namespace (some-> namespace name)]]
+                                (nil? namespace)  (into [:and [:not= :namespace "analytics"]])
+                                (some? namespace) (into [:or [:= :namespace nil]]))]}))
 
 (defn library-collection-ids
   "The IDs of the library Collections."
   []
   (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics"]]))
 
-(defn collection-graph-rows-reducible
-  "Reducible rows of the collection permissions graph Honey SQL `query`."
-  [query]
-  (t2/reducible-query query))
+(defn namespace-clause
+  "Honey SQL clause to filter `namespace-keyword` by `namespace-val`, also matching the audit-app and tenant
+  namespaces when applicable."
+  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
+  [:or
+   [:= namespace-keyword namespace-val]
+   (when (and (nil? namespace-val)
+              (premium-features/enable-audit-app?))
+     [:= namespace-keyword "analytics"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "shared-tenant-collection"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "tenant-specific"])])
+
+(defn collection-graph-rows
+  "Reducible group/collection/writable/readable rows of the collection permissions graph for `collection-namespace`,
+  restricted to `ids-without-root` (or every Collection when empty) and `group-ids` (or every group when empty).
+  `include-root?` controls whether the root-collection rows are included; `admin-group-id` is the id of the
+  Administrators group, which implicitly has write access to every Collection."
+  [collection-namespace include-root? root-object ids-without-root group-ids admin-group-id]
+  (t2/reducible-query
+   {:with [[:eligible_collections
+            ^:allow-subquery
+            {:select [:id]
+             :from   [:collection]
+             :where  [:and
+                      [:or [:= :type nil] [:not= :type "trash"]]
+                      (namespace-clause :namespace (u/qualified-name collection-namespace))
+                      [:not :archived]
+                      [:= :personal_owner_id nil]
+                      (when (seq ids-without-root)
+                        [:in :id ids-without-root])
+                      [:not [:exists ^:allow-subquery
+                             {:select [1]
+                              :from   [[:collection :pc]]
+                              :where  [:and
+                                       [:not= :pc.personal_owner_id nil]
+                                       [:like :collection.location
+                                        [:concat "/" :pc.id "/%"]]]}]]]}]
+           [:relevant_permissions
+            ^:allow-subquery
+            {:select [:group_id :collection_id :perm_value]
+             :from   [:permissions]
+             :where  (into [:and
+                            [:= :perm_type "perms/collection-access"]
+                            [:not= :collection_id nil]]
+                           (when (seq group-ids)
+                             [[:in :group_id group-ids]]))}]]
+    :union-all
+    [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
+     ;; and :root is not present in that collection
+     ^:allow-subquery
+     {:select   [[:pg.id :group_id]
+                 [nil :collection_id]
+                 [[:max [:case [:= :p.object root-object]
+                         [:inline 1]
+                         :else [:inline 0]]] :writable]
+                 [[:max [:case [:= :p.object (str root-object "read/")]
+                         [:inline 1]
+                         :else [:inline 0]]] :readable]]
+      :from     [[:permissions_group :pg]]
+      :join     [[:permissions :p] [:and
+                                    [:= :p.group_id :pg.id]
+                                    [:or [:= :p.object root-object]
+                                     [:= :p.object (str root-object "read/")]]]]
+      :where    (into [:and [:inline include-root?]]
+                      (when (seq group-ids)
+                        [[:in :pg.id group-ids]]))
+      :group-by [:pg.id]}
+     ;; Query 2: Regular collection permissions
+     ^:allow-subquery
+     {:select   [[:pg.id :group_id]
+                 [:c.id :collection_id]
+                 [[:max [:case [:= :p.perm_value "read-and-write"]
+                         [:inline 1]
+                         :else [:inline 0]]] :writable]
+                 [[:max [:case [:or [:= :p.perm_value "read-and-write"]
+                                [:= :p.perm_value "read"]]
+                         [:inline 1]
+                         :else [:inline 0]]] :readable]]
+      :from     [[:permissions_group :pg]]
+      :join     [[:relevant_permissions :p] [:= :p.group_id :pg.id]
+                 [:eligible_collections :c] [:= :p.collection_id :c.id]]
+      :where    [:not= :c.id nil]
+      :group-by [:pg.id :c.id]}
+     ;; Query 3: The Administrators group has write access to all collections
+     ;; but does not have any explicit permissions.
+     ^:allow-subquery
+     {:select [[admin-group-id :group_id]
+               [:c.id :collection_id]
+               [[:inline 1] :writable]
+               [[:inline 1] :readable]]
+      :from   [[:eligible_collections :c]]}]}))
 
 ;;; ------------------------------------------------- Users -------------------------------------------------
 
@@ -349,10 +506,10 @@
   [user-ids]
   (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in user-ids]))
 
-(defn earliest-user-join-row
-  "The `:min` row holding the earliest `date_joined` of any User."
+(defn earliest-user-join-date
+  "The earliest `date_joined` of any User, or nil."
   []
-  (t2/select-one [:model/User [:%min.date_joined :min]]))
+  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
 
 (defn update-user!
   "Apply `changes` to the User with `user-id`."
@@ -402,7 +559,7 @@
   [table-id]
   (t2/select-one-fn :db_id :model/Table table-id))
 
-(defn table-database-id-rows
+(defn table-database-ids
   "The ID and Database ID of the Tables with `table-ids`."
   [table-ids]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
@@ -420,7 +577,7 @@
                       [:= :db_id database-id]
                       [:not [:in :id excluded-table-ids]]]}))
 
-(defn field-visibility-rows
+(defn field-visibility-info
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids]
   (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))

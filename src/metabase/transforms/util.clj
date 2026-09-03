@@ -81,7 +81,9 @@
    (let [resolve* (fn [model id]
                     (if models-cache
                       (get-in models-cache [model id])
-                      (transforms.db/instance model id)))
+                      (case model
+                        :model/Database (transforms.db/database id)
+                        :model/Table    (transforms.db/table id))))
          source   (:source transform)]
      (case (keyword (:type source))
        :query

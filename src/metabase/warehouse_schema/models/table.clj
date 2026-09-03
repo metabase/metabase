@@ -1,7 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
@@ -438,17 +437,7 @@
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
                 (warehouse-schema.db/field-ids-for-table-ordered
                  (u/the-id table)
-                 (case (:field_order table)
-                   :custom       [[:custom_position :asc]]
-                   :smart        [[[:case
-                                    (app-db/isa :semantic_type :type/PK)       0
-                                    (app-db/isa :semantic_type :type/Name)     1
-                                    (app-db/isa :semantic_type :type/Temporal) 2
-                                    :else                                     3]
-                                   :asc]
-                                  [:%lower.name :asc]]
-                   :database     [[:database_position :asc]]
-                   :alphabetical [[:%lower.name :asc]])))))
+                 (:field_order table)))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -573,9 +562,9 @@
                               [["FieldUserSettings" fus-field-id] {"Table" id}]))
                    (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                               [["Field" field-id] {"Table" id}])))
-        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id (when skip-archived [:not :archived]))]
+        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
-        measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id (when skip-archived [:not :archived]))]
+        measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
     (merge fields segments measures)))
 

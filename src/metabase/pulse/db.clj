@@ -70,10 +70,80 @@
   [pulse-id]
   (t2/select-one :model/Pulse, :id pulse-id, :alert_condition [:not= nil]))
 
-(defn select-where
-  "The `model` rows selected by the Honey SQL `query`."
-  [model query]
-  (t2/select model query))
+(defn alerts
+  "The alert-type Pulses (unarchived unless `archived?`), optionally narrowed to those with a recipient or creator
+  `user-id`, ordered by lower-cased name."
+  [archived? user-id]
+  (t2/select :model/Pulse
+             (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
+                     :from            [[:pulse :p]]
+                     :where           [:and
+                                       [:not= :p.alert_condition nil]
+                                       [:= :p.archived archived?]
+                                       (when user-id
+                                         [:or
+                                          [:= :p.creator_id user-id]
+                                          [:= :pcr.user_id user-id]])]
+                     :order-by        [[:lower-name :asc]]}
+                    (when user-id
+                      {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
+                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
+
+(defn pulses
+  "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
+  those with a recipient or creator `user-id`, ordered by lower-cased name."
+  [archived? dashboard-id user-id]
+  (t2/select :model/Pulse
+             {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
+              :from            [[:pulse :p]]
+              :left-join       (concat
+                                [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+                                (when user-id
+                                  [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
+                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+              :where           [:and
+                                [:= :p.alert_condition nil]
+                                [:= :p.archived archived?]
+                                [:or
+                                 [:= :p.dashboard_id nil]
+                                 [:= :d.archived false]]
+                                (when dashboard-id
+                                  [:= :p.dashboard_id dashboard-id])
+                                (when user-id
+                                  [:and
+                                   [:not= :p.dashboard_id nil]
+                                   [:or
+                                    [:= :p.creator_id user-id]
+                                    [:= :pcr.user_id user-id]]])]
+              :order-by        [[:lower-name :asc]]}))
+
+(defn alerts-for-card-and-user
+  "The alert-type Pulses (unarchived unless `archived?`) on the Card with `card-id` that the User with `user-id` is
+  set to receive."
+  [card-id user-id archived?]
+  (t2/select :model/Pulse
+             {:select [:p.*]
+              :from   [[:pulse :p]]
+              :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
+                       [:pulse_channel :pchan] [:= :pchan.pulse_id :p.id]
+                       [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
+              :where  [:and
+                       [:not= :p.alert_condition nil]
+                       [:= :pc.card_id card-id]
+                       [:= :pcr.user_id user-id]
+                       [:= :p.archived archived?]]}))
+
+(defn alerts-for-cards
+  "The alert-type Pulses (unarchived unless `archived?`) on any of the Cards with `card-ids`."
+  [card-ids archived?]
+  (t2/select :model/Pulse
+             {:select [:p.*]
+              :from   [[:pulse :p]]
+              :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+              :where  [:and
+                       [:not= :p.alert_condition nil]
+                       [:in :pc.card_id card-ids]
+                       [:= :p.archived archived?]]}))
 
 (defn legacy-pulse-count
   "The number of unarchived Pulses that are neither dashboard subscriptions nor alerts."
@@ -101,9 +171,9 @@
   (t2/update! :model/Pulse {:dashboard_id dashboard-id} changes))
 
 (defn pulse-cards-for-pulses
-  "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, also matching the Honey SQL
-  `archived-clause` (nil for any), in position order."
-  [pulse-ids archived-clause]
+  "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
+  archived Cards unless `include-archived?`."
+  [pulse-ids include-archived?]
   (t2/select
    :model/Card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
@@ -114,7 +184,7 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:in :p.id pulse-ids]
-                archived-clause]
+                (when-not include-archived? [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
 (defn pulse-card-refs

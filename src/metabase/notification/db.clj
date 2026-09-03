@@ -3,6 +3,12 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [clojure.string :as str]
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- Notification ---------------------------------------------
@@ -11,11 +17,6 @@
   "The Notification with `notification-id`, or nil."
   [notification-id]
   (t2/select-one :model/Notification notification-id))
-
-(defn notification-one
-  "The first Notification matching the Honey SQL `query`, or nil."
-  [query]
-  (t2/select-one :model/Notification query))
 
 (defn notification-by-internal-id
   "The seeded Notification with `internal-id`, or nil."
@@ -35,10 +36,59 @@
   [query]
   (t2/select :model/Notification query))
 
-(defn notifications-reducible
-  "Reducible Notifications matching the Honey SQL `query`."
-  [query]
-  (t2/reducible-select :model/Notification query))
+(defn notifications-matching
+  "Reducible Notifications, optionally narrowed to `creator-id`, `creator-or-recipient-id` (a User who is either the
+  creator or a recipient), `recipient-id`, `card-id`, and `payload-type`; active Notifications only unless
+  `include-inactive?` or `legacy-active` (a boolean, overriding both) is given. `legacy-user-id` narrows to a User
+  who is either the creator or a recipient."
+  [{:keys [creator-id creator-or-recipient-id recipient-id card-id payload-type include-inactive? legacy-active
+           legacy-user-id]}]
+  (t2/reducible-select
+   :model/Notification
+   (cond-> {:select-distinct [:notification.*]}
+     creator-id
+     (sql.helpers/where [:= :notification.creator_id creator-id])
+
+     recipient-id
+     (-> (sql.helpers/left-join
+          :notification_handler [:= :notification_handler.notification_id :notification.id])
+         (sql.helpers/left-join
+          :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+         (sql.helpers/where [:= :notification_recipient.user_id recipient-id]))
+
+     creator-or-recipient-id
+     (-> (sql.helpers/left-join
+          :notification_handler [:= :notification_handler.notification_id :notification.id])
+         (sql.helpers/left-join
+          :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+         (sql.helpers/where [:or [:= :notification_recipient.user_id creator-or-recipient-id]
+                             [:= :notification.creator_id creator-or-recipient-id]]))
+
+     card-id
+     (-> (sql.helpers/left-join
+          :notification_card
+          [:and
+           [:= :notification_card.id :notification.payload_id]
+           [:= :notification.payload_type "notification/card"]])
+         (sql.helpers/where [:= :notification_card.card_id card-id]))
+
+     (and (nil? legacy-active) (not (true? include-inactive?)))
+     (sql.helpers/where [:= :notification.active true])
+
+     payload-type
+     (sql.helpers/where [:= :notification.payload_type (u/qualified-name payload-type)])
+
+     (some? legacy-active)
+     (sql.helpers/where [:= :notification.active legacy-active])
+
+     legacy-user-id
+     (-> (sql.helpers/left-join
+          :notification_handler [:= :notification_handler.notification_id :notification.id])
+         (sql.helpers/left-join
+          :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+         (sql.helpers/where [:or
+                             [:= :notification_recipient.user_id legacy-user-id]
+                             [:= :notification.creator_id legacy-user-id]])))))
 
 (defn notifications-by-id
   "The Notifications with `notification-ids`."
@@ -184,14 +234,21 @@
   [notification-ids]
   (t2/select :model/NotificationHandler :notification_id [:in notification-ids]))
 
-(defn handler-notification-ids-where
-  "The set of Notification IDs of the handlers whose recipients, joined to their user, match the Honey SQL `where`."
-  [where]
-  (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
-                    {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
-                                 [:= :nr.notification_handler_id :notification_handler.id]]
-                     :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
-                     :where     where}))
+(defn handler-notification-ids-for-email
+  "The set of Notification IDs of the handlers whose recipients (joined to their user) have an exact, lower-cased
+  `email` match, either directly (via the recipient's User) or among `raw-value-handler-ids` (handler IDs already
+  known to have a matching raw-value recipient)."
+  [lower-email raw-value-handler-ids]
+  (let [user-clause [:and
+                     [:= :nr.type "notification-recipient/user"]
+                     [:= [:lower :cu.email] lower-email]]]
+    (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
+                      {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
+                                   [:= :nr.notification_handler_id :notification_handler.id]]
+                       :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
+                       :where     (if (seq raw-value-handler-ids)
+                                    [:or user-clause [:in :notification_handler.id raw-value-handler-ids]]
+                                    user-clause)})))
 
 (defn insert-handler!
   "Insert `handler` and return its ID."
@@ -295,10 +352,10 @@
                         :order-by [[:tr.started_at :desc] [:tr.id :desc]]
                         :limit    500}))
 
-(defn latest-failed-task-history-rows
-  "The `:run_id` and `:task_details` of the single TaskHistory row per run matching the Honey SQL `where`, preferring
-  rows of `preferred-task` and then the latest by `ended_at`."
-  [preferred-task where]
+(defn latest-failed-task-history
+  "The `:run_id` and `:task_details` of the single failed/abandoned TaskHistory row per run among `run-ids` (and, if
+  given, restricted to `task-name`), preferring rows of `preferred-task` and then the latest by `ended_at`."
+  [preferred-task run-ids task-name]
   (t2/select :model/TaskHistory
              {:select [:run_id :task_details]
               :from   [[^:allow-subquery
@@ -312,9 +369,221 @@
                                                            [:ended_at :desc]]}]]
                                    :rn]]
                          :from   [:task_history]
-                         :where  where}
+                         :where  [:and
+                                  [:in :run_id run-ids]
+                                  [:in :status ["failed" "abandoned"]]
+                                  (when task-name [:= :task task-name])]}
                         :sub]]
               :where  [:= :sub.rn 1]}))
+
+;;; --------------------------------------------- Admin listing ---------------------------------------------
+
+(def ^:private admin-run-type-alert "alert")
+(def ^:private admin-task-channel-send "channel-send")
+(def ^:private admin-terminal-statuses ["success" "failed" "abandoned"])
+
+(def ^:private admin-run-lookback-days
+  "How far back to consider alert-type TaskRuns / TaskHistory rows when computing run summaries."
+  90)
+
+(defn admin-lookback-cutoff
+  "The earliest `started_at` considered for the admin notification list/detail run history:
+  [[admin-run-lookback-days]] days before now."
+  []
+  (h2x/add-interval-honeysql-form (mdb/db-type) (mi/now) (- admin-run-lookback-days) :day))
+
+(defn- latest-run-per-notification
+  [lookback]
+  ^:allow-subquery
+  {:select [:id :notification_id :status :started_at :ended_at]
+   :from   [[^:allow-subquery
+             {:select [:id :notification_id :status :started_at :ended_at
+                       [[:over [[:row_number]
+                                ^:allow-subquery
+                                {:partition-by [:notification_id]
+                                 :order-by     [[:started_at :desc]]}]]
+                        :rn]]
+              :from   [:task_run]
+              :where  [:and
+                       [:= :run_type admin-run-type-alert]
+                       [:is-not :notification_id nil]
+                       [:in :status admin-terminal-statuses]
+                       [:> :started_at lookback]]}
+             :sub]]
+   :where  [:= :sub.rn 1]})
+
+(defn- latest-send-tick-per-notification
+  [lookback]
+  ^:allow-subquery
+  {:select [:lr.notification_id
+            [:lr.run_id          :id]
+            [:lr.tick_started_at :started_at]
+            [[:case
+              [:exists ^:allow-subquery
+               {:select [[1]]
+                :from   [[:task_history :tf]]
+                :where  [:and
+                         [:= :tf.run_id :lr.run_id]
+                         [:= :tf.task admin-task-channel-send]
+                         [:= :tf.status "failed"]]}]
+              true
+              :else false]
+             :has_failure]]
+   :from   [[^:allow-subquery
+             {:select [:tr2.notification_id
+                       [:tr2.id         :run_id]
+                       [:tr2.started_at :tick_started_at]
+                       [[:over [[:row_number]
+                                ^:allow-subquery
+                                {:partition-by [:tr2.notification_id]
+                                 :order-by     [[:tr2.started_at :desc]]}]]
+                        :rn]]
+              :from   [[:task_run :tr2]]
+              :where  [:and
+                       [:= :tr2.run_type admin-run-type-alert]
+                       [:is-not :tr2.notification_id nil]
+                       [:in :tr2.status admin-terminal-statuses]
+                       [:> :tr2.started_at lookback]
+                       [:exists ^:allow-subquery
+                        {:select [[1]]
+                         :from   [[:task_history :tx]]
+                         :where  [:and
+                                  [:= :tx.run_id :tr2.id]
+                                  [:= :tx.task admin-task-channel-send]]}]]}
+             :lr]]
+   :where [:= :lr.rn 1]})
+
+(def ^:private admin-sort-column->order-by
+  "Maps the public `sort_column` enum to the SQL expression used in `ORDER BY`. Uses raw expressions rather than the
+  SELECT aliases because H2 does not resolve aliases inside expressions."
+  {:id           :notification.id
+   :last_send    :ls.started_at
+   :last_check   :lc.started_at
+   :card_name    :c.name
+   :creator_name [:coalesce :cu.last_name :cu.first_name :cu.email]
+   :updated_at   :notification.updated_at})
+
+(defn- admin-channel-exists
+  [channels]
+  (let [channels (if (sequential? channels) channels [channels])]
+    [:exists
+     ^:allow-subquery
+     {:select [[1]]
+      :from   [(t2/table-name :model/NotificationHandler)]
+      :where  [:and
+               [:= :notification_handler.notification_id :notification.id]
+               [:in :notification_handler.channel_type channels]]}]))
+
+(defn- admin-query-where-clause
+  [query]
+  (let [wildcard (h2x/like-substring query)]
+    [:or
+     [:like [:lower :c.name]        wildcard]
+     [:like [:lower :cu.first_name] wildcard]
+     [:like [:lower :cu.last_name]  wildcard]
+     [:like [:lower :cu.email]      wildcard]]))
+
+(defn- admin-list-where-clauses
+  [{:keys [active creator_id creator_active creatorless card_id recipient_notification_ids channel
+           last_send_status last_check_status query]}]
+  (keep
+   identity
+   [(when (some? active)         [:= :notification.active active])
+    (when (some? creator_active) [:= :cu.is_active creator_active])
+    (when (true? creatorless)
+      [:or [:= :notification.creator_id nil] [:= :cu.is_active false]])
+    (when (false? creatorless)
+      [:and [:is-not :notification.creator_id nil] [:= :cu.is_active true]])
+    (when creator_id    [:= :notification.creator_id creator_id])
+    (when card_id       [:= :nc.card_id card_id])
+    (when (seq channel) (admin-channel-exists channel))
+    (when last_send_status
+      (case last_send_status
+        :successful [:= :ls.has_failure false]
+        :failing    [:= :ls.has_failure true]))
+    (when last_check_status
+      (case last_check_status
+        :successful [:= :lc.status "success"]
+        :failing    [:in :lc.status ["failed" "abandoned"]]))
+    ;; recipient_notification_ids is nil when no recipient_email filter was given, and an empty set when a
+    ;; recipient_email filter matched nobody -- in which case the page must come back empty.
+    (when recipient_notification_ids
+      (if (seq recipient_notification_ids)
+        [:in :notification.id recipient_notification_ids]
+        [:= 1 0]))
+    (when-not (str/blank? query) (admin-query-where-clause query))]))
+
+(defn- admin-base-list-query
+  [{:keys [skip-run-joins?] :as filters}]
+  (let [lookback (admin-lookback-cutoff)]
+    (reduce
+     sql.helpers/where
+     (cond-> {:select (cond-> [:notification.id
+                               :notification.active
+                               :notification.creator_id
+                               :notification.created_at
+                               :notification.updated_at
+                               :notification.payload_type
+                               :notification.payload_id
+                               [:c.name                                           :card_name]
+                               [:cu.is_active                                     :creator_is_active]
+                               [[:coalesce :cu.last_name :cu.first_name :cu.email] :creator_name]]
+                        (not skip-run-joins?)
+                        (into [[:lc.id                                            :lc_id]
+                               [:lc.status                                        :lc_status]
+                               [:lc.started_at                                    :lc_started_at]
+                               [:ls.id                                            :ls_id]
+                               [:ls.started_at                                    :ls_started_at]
+                               [:ls.has_failure                                   :ls_has_failure]]))
+              :from   [:notification]
+              :where  [:and
+                       [:= :notification.payload_type "notification/card"]
+                       [:is-not :notification.payload_id nil]]}
+
+       true
+       (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
+           (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
+           (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
+
+       (not skip-run-joins?)
+       (-> (sql.helpers/left-join [(latest-run-per-notification lookback)       :lc] [:= :lc.notification_id :notification.id])
+           (sql.helpers/left-join [(latest-send-tick-per-notification lookback) :ls] [:= :ls.notification_id :notification.id])))
+     (admin-list-where-clauses filters))))
+
+(defn- admin-order-by-clauses
+  [sort-column sort-direction]
+  (let [col (admin-sort-column->order-by sort-column)
+        dir (or sort-direction :desc)]
+    [[[:case [:= col nil] 1 :else 0] :asc]
+     [col dir]
+     [:notification.id :desc]]))
+
+(defn- admin-list-query
+  [{:keys [sort_column sort_direction] :as filters}]
+  (assoc (admin-base-list-query (dissoc filters :sort_column :sort_direction))
+         :order-by (admin-order-by-clauses (or sort_column :last_send) sort_direction)))
+
+(defn admin-notifications-page
+  "A page (`limit`/`offset`) of admin notification-list rows matching `filters` (see
+  [[metabase.notification.api.admin]] for the supported keys), most-relevant first per `:sort_column`/
+  `:sort_direction`."
+  [filters limit offset]
+  (t2/select :model/Notification (assoc (admin-list-query filters) :limit limit :offset offset)))
+
+(defn admin-notifications-count
+  "The number of admin notification-list rows matching `filters`."
+  [filters]
+  (:count (t2/query-one (-> (admin-list-query filters)
+                            (assoc :select [[[:count :notification.id] :count]])
+                            (dissoc :order-by)))))
+
+(defn admin-notification-detail-row
+  "The admin notification-list row (skipping the run-summary joins) for the Notification with `notification-id`, or
+  nil."
+  [notification-id]
+  (t2/select-one :model/Notification
+                 (-> (admin-base-list-query {:skip-run-joins? true})
+                     (sql.helpers/where [:= :notification.id notification-id]))))
 
 ;;; ------------------------------------------- Other models -------------------------------------------
 

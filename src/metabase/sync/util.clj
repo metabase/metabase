@@ -467,9 +467,7 @@
                                              [:id ::lib.schema.id/database]]]
    & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
   (eduction (map t2.realize/realize)
-            (sync.db/sync-tables-reducible (u/the-id database-or-id)
-                                           (when (seq schema-names) [:in :schema schema-names])
-                                           (when (seq table-names) [:in :name table-names]))))
+            (sync.db/sync-tables-reducible (u/the-id database-or-id) schema-names table-names)))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."

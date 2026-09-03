@@ -85,9 +85,19 @@
                     {:order-by [[:position :asc]]}))
 
 (defn table-refs-matching
-  "The id, Database id, schema, and name of the Tables matching the Honey SQL `where` clause."
-  [where]
-  (t2/select [:model/Table :id :db_id :schema :name] {:where where}))
+  "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
+  triple; `schema` may be nil)."
+  [refs]
+  (t2/select [:model/Table :id :db_id :schema :name]
+             {:where (into [:or]
+                           (map (fn [[db-id schema table-name]]
+                                  [:and
+                                   [:= :db_id db-id]
+                                   (if (some? schema)
+                                     [:= :schema schema]
+                                     [:is :schema nil])
+                                   [:= :name table-name]]))
+                           refs)}))
 
 (defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."

@@ -24,12 +24,12 @@
 (def ^:private utc-zone-offset
   (t/zone-offset "Z"))
 
-(def ^:private rollup-models
-  [:model/SourceSegmentDaily
-   :model/SourceSegmentCompositeDaily
-   :model/SourceMetricDaily
-   :model/SourceDimensionDaily
-   :model/SourceDimensionProfileDaily])
+(def ^:private delete-rollups-before-fns
+  [usage-metadata.db/delete-segment-rollups-before!
+   usage-metadata.db/delete-segment-composite-rollups-before!
+   usage-metadata.db/delete-metric-rollups-before!
+   usage-metadata.db/delete-dimension-rollups-before!
+   usage-metadata.db/delete-dimension-profile-rollups-before!])
 
 (def ^:private low-cardinality-threshold
   30)
@@ -320,8 +320,8 @@
   [retention-days today]
   (let [retention-days (max 1 (or retention-days 1))
         cutoff-day     (t/minus today (t/days retention-days))]
-    (doseq [model rollup-models]
-      (usage-metadata.db/delete-rollups-before! model cutoff-day))
+    (doseq [delete-before! delete-rollups-before-fns]
+      (delete-before! cutoff-day))
     cutoff-day))
 
 (defn run-batch!

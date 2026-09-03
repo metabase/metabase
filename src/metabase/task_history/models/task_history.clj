@@ -73,36 +73,11 @@
    :logs         mi/transform-json
    :status       mi/transform-keyword})
 
-(defn- params->where
-  [{:keys [status task]}]
-  (when (or status task)
-    ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
-    {:where (cond-> [:and]
-              task   (conj [:= :task_history.task task])
-              status (conj [:= :task_history.status (name status)]))}))
-
 (def FilterParams
   "Schema for filter for task history."
   [:map
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
-
-(def ^:private join-sort-columns
-  "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
-  {:db_name   :metabase_database.name
-   :db_engine :metabase_database.engine})
-
-(defn- params->order-by
-  "Build the honeysql fragment needed to order the task history list. For `:db_name`/`:db_engine` this adds a LEFT JOIN
-  to `metabase_database` (ordering by the joined name/engine) while keeping the selected row shape to `task_history.*`.
-  A secondary `[:id :desc]` key makes ordering deterministic for low-cardinality columns."
-  [{col :sort_column
-    dir :sort_direction}]
-  (if-let [order-col (join-sort-columns col)]
-    {:select    [:task_history.*]
-     :left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
-     :order-by  [[order-col dir] [:task_history.id :desc]]}
-    {:order-by [[col dir] [:id :desc]]}))
 
 (def ^:private available-sort-columns
   #{:started_at :ended_at :duration :task :status :db_name :db_engine})
@@ -117,18 +92,13 @@
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   params :- [:maybe [:merge FilterParams SortParams]]]
-  (task-history.db/task-histories (merge (params->where params)
-                                         (params->order-by params)
-                                         (when limit
-                                           {:limit limit})
-                                         (when offset
-                                           {:offset offset}))))
+   {:keys [status task sort_column sort_direction]} :- [:maybe [:merge FilterParams SortParams]]]
+  (task-history.db/task-histories status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [params :- FilterParams]
-  (task-history.db/task-history-count ((fnil identity {}) (params->where params))))
+  [{:keys [status task]} :- FilterParams]
+  (task-history.db/task-history-count status task))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."

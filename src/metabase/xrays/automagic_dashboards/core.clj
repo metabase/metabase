@@ -927,9 +927,9 @@
   - list-like?: Is this field 'list like'
 
   Filters out tables that are link-tables"
-  [clauses]
+  [database-id schema]
   (->>
-   (xrays.db/candidate-tables (into [:and] clauses))
+   (xrays.db/candidate-tables-with-field-stats database-id schema)
    (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables
@@ -949,11 +949,7 @@
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])
-         tables              (load-tables-with-enhanced-table-stats
-                              (cond-> [[:= :db_id (u/the-id database)]
-                                       [:= :visibility_type nil]
-                                       [:= :active true]]
-                                schema (conj [:= :schema schema])))]
+         tables              (load-tables-with-enhanced-table-stats (u/the-id database) schema)]
      ;; the readable check below runs once per table, so load their permissions in one go
      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                      :table-ids (into #{} (map :id) tables)})

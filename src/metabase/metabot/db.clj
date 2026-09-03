@@ -106,24 +106,87 @@
   [conversation-id]
   (t2/select-one :model/MetabotConversation :id conversation-id {:for :update}))
 
-(defn conversations-page
-  "The MetabotConversation rows of the Honey SQL `query`."
-  [query]
-  (t2/select :model/MetabotConversation query))
+(defn- participation-clause
+  "Match conversations visible in history for `user-id`.
 
-(defn conversation-count-where
-  "The `:count` row of the MetabotConversations matching the Honey SQL `where`."
-  [where]
-  (t2/query-one {:select [[[:count :*] :count]]
-                 :from   [[:metabot_conversation :c]]
-                 :where  where}))
+  New rows participate via `metabot_message.user_id`; legacy rows created before message authors were stamped fall
+  back to the conversation originator."
+  [user-id]
+  [:or
+   [:= :c.user_id user-id]
+   [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                              :from   [[:metabot_message :participation_message]]
+                              :where  [:and
+                                       [:= :participation_message.conversation_id :c.id]
+                                       [:= :participation_message.user_id user-id]]}]])
+
+(defn- last-live-message-profile-id-subquery
+  []
+  ^:allow-subquery
+  {:select   [:last_message.profile_id]
+   :from     [[:metabot_message :last_message]]
+   :where    [:and
+              [:= :last_message.conversation_id :c.id]
+              [:= :last_message.deleted_at nil]]
+   :order-by [[:last_message.created_at :desc] [:last_message.id :desc]]
+   :limit    1})
+
+(defn- live-message-count-subquery
+  []
+  ^:allow-subquery
+  {:select [[[:count :*]]]
+   :from   [[:metabot_message :counted_message]]
+   :where  [:and
+            [:= :counted_message.conversation_id :c.id]
+            [:= :counted_message.deleted_at nil]]})
+
+(defn- last-live-message-at-subquery
+  []
+  ^:allow-subquery
+  {:select [[[:max :recent_message.created_at]]]
+   :from   [[:metabot_message :recent_message]]
+   :where  [:and
+            [:= :recent_message.conversation_id :c.id]
+            [:= :recent_message.deleted_at nil]]})
+
+(defn- activity-at-expression
+  []
+  [:greatest :c.created_at [:coalesce (last-live-message-at-subquery) :c.created_at]])
+
+(defn- conversations-list-where
+  [user-id profile-id]
+  (cond-> [:and (participation-clause user-id)]
+    profile-id (conj [:= (last-live-message-profile-id-subquery) profile-id])))
+
+(defn conversations-page
+  "A page of up to `limit` (offset by `offset`) MetabotConversations visible in the history of the User with
+  `user-id`, most-recent-activity first, optionally narrowed to the last live message's `profile-id`."
+  [user-id profile-id limit offset]
+  (t2/select :model/MetabotConversation
+             {:select   [:c.id :c.created_at :c.title :c.user_id :c.forked_from_conversation_id
+                         [(live-message-count-subquery) :message_count]
+                         [(last-live-message-at-subquery) :last_message_at]
+                         [(last-live-message-profile-id-subquery) :profile_id]]
+              :from     [[:metabot_conversation :c]]
+              :where    (conversations-list-where user-id profile-id)
+              :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
+              :limit    limit
+              :offset   offset}))
+
+(defn conversation-count
+  "The number of MetabotConversations visible in the history of the User with `user-id`, optionally narrowed to the
+  last live message's `profile-id`."
+  [user-id profile-id]
+  (:count (t2/query-one {:select [[[:count :*] :count]]
+                         :from   [[:metabot_conversation :c]]
+                         :where  (conversations-list-where user-id profile-id)})))
 
 (defn titleless-conversation-ids
-  "Up to `limit` IDs of the MetabotConversations without a title, narrowed by the optional Honey SQL `id-clause`,
-  in ID order."
-  [id-clause limit]
+  "Up to `limit` IDs of the MetabotConversations without a title, whose ID is greater than `after-id` (or every one,
+  when `after-id` is nil), in ID order."
+  [after-id limit]
   (t2/select-fn-vec :id :model/MetabotConversation
-                    {:where    [:and [:= :title nil] id-clause]
+                    {:where    [:and [:= :title nil] (when after-id [:> :id after-id])]
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
@@ -507,11 +570,16 @@
   [collection-ids]
   (t2/select-pk->fn identity [:model/Collection :id :authority_level :location :type] :id [:in collection-ids]))
 
-(defn collections-where
-  "The presentable columns of the Collections matching the Honey SQL `where`, ordered by location and name."
-  [where]
+(defn navigable-collections
+  "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
+  Restricted to top-level Collections unless `include-nested?`."
+  [include-nested?]
   (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
-             {:where    where
+             {:where    (cond-> [:and
+                                 [:= :archived false]
+                                 [:= :namespace nil]
+                                 [:or [:= :type nil] [:!= :type "trash"]]]
+                          (not include-nested?) (conj [:= :location "/"]))
               :order-by [[:location :asc] [:%lower.name :asc]]}))
 
 (defn unarchived-collections-at-location
@@ -634,27 +702,42 @@
   [user-ids]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(defn collection-id-rows
-  "The ID and Collection ID of the instances of `model` with `ids`."
-  [model ids]
-  (t2/select [model :id :collection_id] :id [:in ids]))
+(defn card-collection-ids
+  "The ID and Collection ID of the Cards with `ids`."
+  [ids]
+  (t2/select [:model/Card :id :collection_id] :id [:in ids]))
 
-(defn table-id-row
-  "The ID and Table ID of the instance of `model` with `id`, or nil."
-  [model id]
-  (t2/select-one [model :id :table_id] :id id))
+(defn dashboard-collection-ids
+  "The ID and Collection ID of the Dashboards with `ids`."
+  [ids]
+  (t2/select [:model/Dashboard :id :collection_id] :id [:in ids]))
 
-(defn table-id-of
-  "The Table ID of the instance of `model` with `id`."
-  [model id]
-  (t2/select-one-fn :table_id model :id id))
+(defn measure-table-id
+  "The Table ID of the Measure with `id`, or nil."
+  [id]
+  (t2/select-one-fn :table_id :model/Measure :id id))
 
-(defn entity-id-of
-  "The entity ID of the instance of `model` with `id`."
-  [model id]
-  (t2/select-one-fn :entity_id model :id id))
+(defn segment-table-id
+  "The Table ID of the Segment with `id`, or nil."
+  [id]
+  (t2/select-one-fn :table_id :model/Segment :id id))
 
-(defn measure-or-segment-rows
-  "The ID, name, description, Table ID, and entity ID of the instances of `model` with `ids`."
-  [model ids]
-  (t2/select [model :id :name :description :table_id :entity_id] :id [:in ids]))
+(defn measure-entity-id
+  "The entity ID of the Measure with `id`."
+  [id]
+  (t2/select-one-fn :entity_id :model/Measure :id id))
+
+(defn segment-entity-id
+  "The entity ID of the Segment with `id`."
+  [id]
+  (t2/select-one-fn :entity_id :model/Segment :id id))
+
+(defn measures
+  "The ID, name, description, Table ID, and entity ID of the Measures with `ids`."
+  [ids]
+  (t2/select [:model/Measure :id :name :description :table_id :entity_id] :id [:in ids]))
+
+(defn segments
+  "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
+  [ids]
+  (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))

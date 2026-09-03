@@ -143,10 +143,6 @@
   "a valid card filter option."
   (keys (methods cards-for-filter-option*)))
 
-(defn- db-id-via-table
-  [model model-id]
-  (queries-rest.db/database-id-via-table model model-id))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -171,7 +167,7 @@
       :database      (api/read-check :model/Database model-id)
       :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
       :using_model   (api/read-check :model/Card model-id)
-      :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
+      :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
@@ -362,22 +358,13 @@
   (let [matching-cards  (queries-rest.db/compatible-series-cards
                          (:id card)
                          supported-series-display-type
-                         (cond-> {:order-by [[:id :desc]]
-                                  :where    [:and]}
-                           last-cursor
-                           (update :where conj [:< :id last-cursor])
-
-                           (seq exclude-ids)
-                           (update :where conj [:not [:in :id exclude-ids]])
-
-                           query
-                           (update :where conj [:like :%lower.name (h2x/like-substring query)])
-
-                           ;; add a little buffer to the page to account for cards that are not
-                           ;; compatible + do not have permissions to read
-                           ;; this is just a heuristic, but it should be good enough
-                           page-size
-                           (assoc :limit (+ 10 page-size))))
+                         last-cursor
+                         exclude-ids
+                         (when query (h2x/like-substring query))
+                         ;; add a little buffer to the page to account for cards that are not
+                         ;; compatible + do not have permissions to read
+                         ;; this is just a heuristic, but it should be good enough
+                         (when page-size (+ 10 page-size)))
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
@@ -805,11 +792,7 @@
     (api/write-check :model/Collection new-collection-id-or-nil))
   ;; for each affected card...
   (when (seq card-ids)
-    (let [cards (queries-rest.db/cards-collection-columns-where
-                 [:and [:in :id (set card-ids)]
-                  [:or [:not= :collection_id new-collection-id-or-nil]
-                   (when new-collection-id-or-nil
-                     [:= :collection_id nil])]])] ; poisioned NULLs = ick
+    (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))

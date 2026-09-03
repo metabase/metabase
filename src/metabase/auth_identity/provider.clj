@@ -312,7 +312,7 @@
                      (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
-                   (auth-identity.db/user-login-columns-by-lower-email (u/lower-case-en email))))))
+                   (auth-identity.db/user-login-columns-by-email email)))))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))

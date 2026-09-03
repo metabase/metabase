@@ -130,7 +130,7 @@
   For every db in the incoming graph, adds on admin permissions."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms/admin-group))
-        db-ids         (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? [:not= :id audit/audit-db-id])))]
+        db-ids         (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -148,7 +148,7 @@
   This is not stored in the data-permissions table, so we add it to the graph for the API."
   [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
-        db-ids                (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? [:not= :id audit/audit-db-id])))]
+        db-ids                (if db-id [db-id] (permissions-rest.db/non-destination-database-ids (when-not audit? audit/audit-db-id)))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -214,11 +214,11 @@
               (update :type keyword)
               (update :value keyword))))
    (permissions-rest.db/data-permissions-reducible
-    [(when perm-type [:= :perm_type (u/qualified-name perm-type)])
-     (when db-id [:= :db_id db-id])
-     (when group-id [:= :group_id group-id])
-     (when group-ids [:in :group_id group-ids])
-     (when-not audit? [:not= :db_id audit/audit-db-id])])))
+    {:perm-type             perm-type
+     :db-id                 db-id
+     :group-id              group-id
+     :group-ids             group-ids
+     :excluded-database-id  (when-not audit? audit/audit-db-id)})))
 
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a

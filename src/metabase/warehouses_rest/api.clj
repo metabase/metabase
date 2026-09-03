@@ -691,31 +691,7 @@
    If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
    If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
   [database-id search-card-slug include-dashboard-questions?]
-  (let [search-id   (re-find #"\d*" search-card-slug)
-        search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
-                        second
-                        (str/replace #"-" " ")
-                        u/lower-case-en)]
-    (warehouses-rest.db/autocomplete-cards database-id
-                                           (when-not include-dashboard-questions?
-                                             [:= :report_card.dashboard_id nil])
-                                           (cond
-                                             ;; e.g. search-string = "123"
-                                             (and (not-empty search-id) (empty? search-name))
-                                             [:like
-                                              (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :report_card.id)
-                                              (str search-id "%")]
-
-                                             ;; e.g. search-string = "123-foo"
-                                             (and (not-empty search-id) (not-empty search-name))
-                                             [:and
-                                              [:= :report_card.id (Integer/parseInt search-id)]
-                                              ;; this is a prefix match to be consistent with substring matches on the entire slug
-                                              [:like [:lower :report_card.name] (h2x/like-prefix search-name)]]
-
-                                             ;; e.g. search-string = "foo"
-                                             (and (empty? search-id) (not-empty search-name))
-                                             [:like [:lower :report_card.name] (h2x/like-substring search-name)]))))
+  (warehouses-rest.db/autocomplete-cards database-id search-card-slug include-dashboard-questions?))
 
 (defn- autocomplete-fields [db-id like-pattern limit]
   (warehouses-rest.db/autocomplete-fields db-id like-pattern limit))

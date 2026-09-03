@@ -24,15 +24,13 @@
 ;; PostgreSQL limits prepared statements to 65,535 bind parameters.
 (def ^:private max-in-clause-size 20000)
 
-(defn- chunked-collection-ids
-  "Like [[permissions.db/collection-ids-where]] but chunks large ID sets to avoid exceeding the bind parameter
-  limit. `where-fn` takes a set of IDs and returns a HoneySQL where clause."
-  [ids where-fn]
+(defn- chunked
+  "Applies `f` (a function from a set of IDs to a set of IDs) to `ids`, chunking large ID sets to avoid exceeding the
+  bind parameter limit."
+  [ids f]
   (if (<= (count ids) max-in-clause-size)
-    (permissions.db/collection-ids-where (where-fn ids))
-    (into #{} (mapcat (fn [chunk]
-                        (permissions.db/collection-ids-where (where-fn (set chunk)))))
-          (partition-all max-in-clause-size ids))))
+    (f (set ids))
+    (into #{} (mapcat #(f (set %))) (partition-all max-in-clause-size ids))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -83,80 +81,9 @@
                         (= readable 1) :read
                         :else :none)))
           accum
-          (permissions.db/collection-graph-rows-reducible
-           {:with [[:eligible_collections
-                    ^:allow-subquery
-                    {:select [:id]
-                     :from [:collection]
-                     :where [:and
-                             [:or [:= :type nil] [:not= :type "trash"]]
-                             (perms/namespace-clause
-                              :namespace (u/qualified-name collection-namespace))
-                             [:not :archived]
-                             [:= :personal_owner_id nil]
-                             (when (seq ids-without-root)
-                               [:in :id ids-without-root])
-                             [:not [:exists ^:allow-subquery
-                                    {:select [1]
-                                     :from [[:collection :pc]]
-                                     :where [:and
-                                             [:not= :pc.personal_owner_id nil]
-                                             [:like :collection.location
-                                              [:concat "/" :pc.id "/%"]]]}]]]}]
-                   [:relevant_permissions
-                    ^:allow-subquery
-                    {:select [:group_id :collection_id :perm_value]
-                     :from [:permissions]
-                     :where (into [:and
-                                   [:= :perm_type "perms/collection-access"]
-                                   [:not= :collection_id nil]]
-                                  (when (seq group-ids)
-                                    [[:in :group_id group-ids]]))}]]
-            :union-all
-            [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
-             ;; and :root is not present in that collection
-             ^:allow-subquery
-             {:select [[:pg.id :group_id]
-                       [nil :collection_id]
-                       [[:max [:case [:= :p.object root-object]
-                               [:inline 1]
-                               :else [:inline 0]]] :writable]
-                       [[:max [:case [:= :p.object (str root-object "read/")]
-                               [:inline 1]
-                               :else [:inline 0]]] :readable]]
-              :from [[:permissions_group :pg]]
-              :join [[:permissions :p] [:and
-                                        [:= :p.group_id :pg.id]
-                                        [:or [:= :p.object root-object]
-                                         [:= :p.object (str root-object "read/")]]]]
-              :where (into [:and [:inline include-root?]]
-                           (when (seq group-ids)
-                             [[:in :pg.id group-ids]]))
-              :group-by [:pg.id]}
-             ;; Query 2: Regular collection permissions
-             ^:allow-subquery
-             {:select [[:pg.id :group_id]
-                       [:c.id :collection_id]
-                       [[:max [:case [:= :p.perm_value "read-and-write"]
-                               [:inline 1]
-                               :else [:inline 0]]] :writable]
-                       [[:max [:case [:or [:= :p.perm_value "read-and-write"]
-                                      [:= :p.perm_value "read"]]
-                               [:inline 1]
-                               :else [:inline 0]]] :readable]]
-              :from [[:permissions_group :pg]]
-              :join [[:relevant_permissions :p] [:= :p.group_id :pg.id]
-                     [:eligible_collections :c] [:= :p.collection_id :c.id]]
-              :where [:not= :c.id nil]
-              :group-by [:pg.id :c.id]}
-             ;; Query 3: The Administrators group has write access to all collections
-             ;; but does not have any explicit permissions.
-             ^:allow-subquery
-             {:select [[(u/the-id (perms-group/admin)) :group_id]
-                       [:c.id :collection_id]
-                       [[:inline 1] :writable]
-                       [[:inline 1] :readable]]
-              :from [[:eligible_collections :c]]}]})))
+          (permissions.db/collection-graph-rows
+           collection-namespace include-root? root-object ids-without-root group-ids
+           (u/the-id (perms-group/admin)))))
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a sparse graph representing the current permissions status for groups and collections with permissions.
@@ -271,19 +198,7 @@
   These should never appear in permission graphs or be editable via the graph API."
   [collection-ids]
   (when-let [ids (seq (disj collection-ids :root))]
-    (chunked-collection-ids
-     ids
-     (fn [id-set]
-       [:and
-        [:in :id id-set]
-        [:or [:not= :personal_owner_id nil]
-         [:exists ^:allow-subquery
-          {:select [1]
-           :from [[:collection :pc]]
-           :where [:and
-                   [:not= :pc.personal_owner_id nil]
-                   [:like :collection.location
-                    [:concat "/" :pc.id "/%"]]]}]]]))))
+    (chunked ids permissions.db/personal-or-descendant-collection-ids)))
 
 (defn- remove-personal-collections-from-graph
   "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."
@@ -297,13 +212,7 @@
   [graph collection-ids namespace]
   (let [ids          (disj collection-ids :root)
         other-ns-ids (when (seq ids)
-                       (chunked-collection-ids
-                        ids
-                        (fn [id-set]
-                          [:and [:in :id id-set]
-                           (cond->> [[:not= :namespace (some-> namespace name)]]
-                             (nil? namespace) (into [:and [:not= :namespace "analytics"]])
-                             (some? namespace) (into [:or [:= :namespace nil]]))])))]
+                       (chunked ids #(permissions.db/collection-ids-in-other-namespace % namespace)))]
     (cond-> graph
       (seq other-ns-ids) (update :groups update-vals #(apply dissoc % other-ns-ids)))))
 

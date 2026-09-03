@@ -39,7 +39,9 @@
 (defn- moderatable-curation-signals
   "`[id signal-map]` pairs for collection-housed, moderatable models (report_card-backed and dashboards)."
   [search-model t2-model item-type ids]
-  (let [rows     (metabot.db/collection-id-rows t2-model ids)
+  (let [rows     (case t2-model
+                   :model/Card      (metabot.db/card-collection-ids ids)
+                   :model/Dashboard (metabot.db/dashboard-collection-ids ids))
         coll     (collection-info (into #{} (keep :collection_id) rows))
         verified (verified-item-ids ids item-type)]
     (for [{:keys [id collection_id]} rows]

@@ -19,23 +19,12 @@
   {:status mi/transform-keyword
    :run_method mi/transform-keyword})
 
-(defn- latest-runs-query [job-ids]
-  {:with [[:ranked_runs
-           ^:allow-subquery
-           {:select [:*
-                     [[:over [[:row_number] ^:allow-subquery {:partition-by :job_id, :order-by [[:start_time :desc]]}]] :rn]]
-            :from [:transform_job_run]
-            :where [:in :job_id job-ids]}]]
-   :select [:*]
-   :from [:ranked_runs]
-   :where [:= :rn [:inline 1]]})
-
 (defn latest-runs
   "Return the latest runs for `job-ids`."
   [job-ids]
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (transforms.db/latest-job-runs-reducible (latest-runs-query job-ids)))))
+          (transforms.db/latest-job-runs-reducible job-ids))))
 
 (defn start-run!
   "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
@@ -67,23 +56,13 @@
 
   Follows the conventions used by the FE."
   [{:keys [sort-column sort-direction job-id status run-method start-time offset limit]}]
-  (let [offset     (or offset 0)
-        limit      (or limit 20)
-        where-cond (cond-> []
-                     job-id               (conj [:= :job_id job-id])
-                     status               (conj [:= :status status])
-                     (= status "started") (conj [:= :is_active true])
-                     run-method           (conj [:= :run_method run-method])
-                     start-time           (conj (transforms.models.u/timestamp-constraint :start_time start-time)))
-        where      (when (seq where-cond) (into [:and] where-cond))]
-    {:data   (transforms.db/job-runs-where
-              (cond-> {:order-by (transforms.models.u/run-order-by sort-column sort-direction)
-                       :offset   offset
-                       :limit    limit}
-                where (assoc :where where)))
+  (let [offset          (or offset 0)
+        limit           (or limit 20)
+        [start-at end-at] (when start-time (transforms.models.u/timestamp-range start-time))]
+    {:data   (transforms.db/job-runs job-id status run-method start-at end-at sort-column sort-direction limit offset)
      :limit  limit
      :offset offset
-     :total  (transforms.db/job-run-count-where (if where {:where where} {}))}))
+     :total  (transforms.db/job-run-count job-id status run-method start-at end-at)}))
 
 (defn transform-runs-for-job-run
   "Return transform runs that were part of the given job run, ordered by start time."

@@ -19,5 +19,5 @@
   "Return the ID of the newest `CollectionPermissionGraphRevision`, or zero if none have been made yet.
    (This is used by the collection graph update logic that checks for changes since the original graph was fetched)."
   []
-  (or (:id (permissions.db/latest-revision-row :model/CollectionPermissionGraphRevision))
+  (or (permissions.db/latest-collection-permission-graph-revision-id)
       0))

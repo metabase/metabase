@@ -148,12 +148,14 @@
   (t2/count :model/Table :db_id database-id {:where sync-tables-clause}))
 
 (defn sync-tables-reducible
-  "Reducible synced Tables of the Database with `database-id` ordered by schema and name, narrowed by the optional
-  Honey SQL `schema-clause` and `table-clause`."
-  [database-id schema-clause table-clause]
+  "Reducible synced Tables of the Database with `database-id` ordered by schema and name, optionally narrowed to
+  `schema-names` and/or `table-names`."
+  [database-id schema-names table-names]
   (t2/reducible-select :model/Table
                        :db_id database-id
-                       {:where    [:and sync-tables-clause schema-clause table-clause]
+                       {:where    [:and sync-tables-clause
+                                   (when (seq schema-names) [:in :schema schema-names])
+                                   (when (seq table-names) [:in :name table-names])]
                         :order-by [[:schema :asc] [:name :asc]]}))
 
 (defn sync-tables-by-earliest-analyzed-reducible
