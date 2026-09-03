@@ -5,12 +5,12 @@ import { getThemeOverrides } from "metabase/ui/theme";
 
 const theme = getThemeOverrides();
 
-const PAPER_PADDING_OPTIONS = ["lg", "xl", "xxl"] as const;
+const PAPER_PADDING_OPTIONS = ["0", "lg", "xl", "xxl"] as const;
 const PAPER_RADIUS_OPTIONS = ["xxs", "md"] as const;
 const shadowOptions = Object.keys(theme.shadows ?? {});
 
 const args = {
-  p: "lg",
+  p: "0",
   radius: "xxs",
   shadow: "xs_outline",
   withBorder: false,
