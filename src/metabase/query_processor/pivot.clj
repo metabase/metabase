@@ -822,7 +822,8 @@
   "Run one pivot `flow` (`:multi-query`, `:grouping-sets`, or `:union-all`) against `query`. The primary
   flow uses the caller's `rff` and lets `qp.pipeline/*result*` pass through; the others use the default rff
   and result handler purely to collect an outcome for comparison. Returns `{:outcome ...}` on success or
-  `{:throwable ...}` on failure."
+  `{:throwable ...}` on failure — annotated with `:elapsed-ms` and `:flow` so the parity checker (and CI
+  log inspection) can see per-flow timings without extra plumbing."
   [flow query rff primary-flow]
   (let [primary?    (= flow primary-flow)
         runner      (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
@@ -832,8 +833,10 @@
                       :union-all     :union-all)
         do-run      (fn [rff]
                       (binding [*force-compilation-shape* force-shape]
-                        (try {:outcome (runner query rff)}
-                             (catch Throwable t {:throwable t}))))]
+                        (let [t0     (System/nanoTime)
+                              result (try {:outcome (runner query rff)}
+                                          (catch Throwable t {:throwable t}))]
+                          (assoc result :flow flow, :elapsed-ms (long (/ (- (System/nanoTime) t0) 1e6))))))]
     (if primary?
       (do-run rff)
       (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
@@ -851,7 +854,11 @@
   `:grouping-sets` when the driver supports `:native-pivot-tables` and the query has no window-function
   aggregation — and report any pairwise divergence via [[*on-parity-mismatch*]]. The primary flow (per
   `sql-primary?` + GS applicability) uses the caller's `rff`; other flows use the default rff for
-  comparison only. Returns the primary flow's success value or rethrows its exception."
+  comparison only. Returns the primary flow's success value or rethrows its exception.
+
+  Logs a per-flow timing summary at INFO so CI logs surface which flow was slow and by how much when a
+  mismatch or timeout occurs on some environment (e.g. Presto CI). Format: `pivot-parity {:driver ..
+  :primary .. :outcomes {<flow> {:elapsed-ms .. :ok? ..}}}`."
   [query rff sql-primary?]
   (let [skip-gs?        (or (query-has-window-fn-aggregation? query)
                             (not (driver-supports-grouping-sets? query)))
@@ -863,6 +870,12 @@
                           (not skip-gs?) (conj :grouping-sets))
         outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
         divergent-pairs (divergent-pivot-pairs outcomes)]
+    (log/infof "pivot-parity %s"
+               (pr-str {:driver  (:engine (query-database query))
+                        :primary primary-flow
+                        :flows   (update-vals outcomes (fn [o] {:elapsed-ms (:elapsed-ms o)
+                                                                :ok?        (nil? (:throwable o))}))
+                        :divergent-pairs divergent-pairs}))
     (when (seq divergent-pairs)
       (*on-parity-mismatch* {:outcomes outcomes, :divergent-pairs divergent-pairs}))
     (let [{:keys [outcome throwable]} (get outcomes primary-flow)]
