@@ -28,11 +28,13 @@ import {
   Box,
   Button,
   Flex,
+  HoverCard,
   Icon,
   Pill,
   Popover,
   Stack,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
@@ -162,43 +164,50 @@ const DataAppUsers = ({
             </Button>
           }
         >
-          {memberWarnings.isError && <WarningRequestError mb="md" />}
+          <Stack data-testid="user-management-sections" gap="lg">
+            {memberWarnings.isError && <WarningRequestError />}
 
-          {members.length === 0 && !isAdding ? (
-            <Text c="text-secondary" ta="center" mt="xl">
-              {t`Add users to give them access to this data app.`}
-            </Text>
-          ) : (
-            <>
-              <AdminContentTable
-                columnTitles={[t`Name`, t`Email`, t`Data access`]}
-              >
-                {isAdding && (
-                  <AddUsersRow
-                    members={members}
-                    selectedUsers={selectedUsers}
-                    warnings={selectedWarnings.byUserId}
-                    warningsFailed={selectedWarnings.isError}
-                    onSelectedUsersChange={setSelectedUsers}
-                    onCancel={() => {
-                      setSelectedUsers(new Map());
-                      setIsAdding(false);
-                    }}
-                    onDone={handleAddUsers}
-                  />
-                )}
+            {isAdding && (
+              <AddUsersSection
+                permissionGroupId={group.id}
+                members={members}
+                selectedUsers={selectedUsers}
+                warnings={selectedWarnings.byUserId}
+                warningsFailed={selectedWarnings.isError}
+                onSelectedUsersChange={setSelectedUsers}
+                onCancel={() => {
+                  setSelectedUsers(new Map());
+                  setIsAdding(false);
+                }}
+                onDone={handleAddUsers}
+              />
+            )}
 
-                {visibleMembers.map((member) => (
-                  <MemberRow
-                    key={member.membership_id}
-                    member={member}
-                    warning={memberWarnings.byUserId.get(member.user_id)}
-                    onRemove={handleRemoveUser}
-                  />
-                ))}
-              </AdminContentTable>
+            {members.length === 0 ? (
+              !isAdding && (
+                <Text c="text-secondary" ta="center" mt="xl">
+                  {t`Add users to give them access to this data app.`}
+                </Text>
+              )
+            ) : (
+              <Stack gap="sm">
+                <Text fw={700}>{t`Current users`}</Text>
 
-              {members.length > 0 && (
+                <AdminContentTable
+                  columnTitles={[t`Name`, t`Email`, t`Data access`]}
+                >
+                  {visibleMembers.map((member) => (
+                    <MemberRow
+                      key={member.membership_id}
+                      permissionGroupId={group.id}
+                      member={member}
+                      isAccessChecked={memberWarnings.isSuccess}
+                      warning={memberWarnings.byUserId.get(member.user_id)}
+                      onRemove={handleRemoveUser}
+                    />
+                  ))}
+                </AdminContentTable>
+
                 <Flex align="center" justify="flex-end" p="md">
                   <PaginationControls
                     page={page}
@@ -209,9 +218,9 @@ const DataAppUsers = ({
                     onPreviousPage={handlePreviousPage}
                   />
                 </Flex>
-              )}
-            </>
-          )}
+              </Stack>
+            )}
+          </Stack>
         </AdminPaneLayout>
       </SettingsSection>
     </Stack>
@@ -228,19 +237,28 @@ const useWarnings = (appName: string, userIds: number[]) => {
     [request.data],
   );
 
-  return { byUserId, isError: request.isError };
+  return {
+    byUserId,
+    isError: request.isError,
+    isSuccess: request.isSuccess,
+  };
 };
 
 const MemberRow = ({
+  permissionGroupId,
   member,
+  isAccessChecked,
   warning,
   onRemove,
 }: {
+  permissionGroupId: number;
   member: Member;
+  isAccessChecked: boolean;
   warning?: DataAppUserPermissionWarning;
   onRemove: (member: Member) => void;
 }) => {
   const name = getFullName(member) ?? member.email;
+  const adequateAccessLabel = t`Has view or sandboxed access to every table used by this app.`;
 
   return (
     <tr>
@@ -248,7 +266,24 @@ const MemberRow = ({
         <Text fw={700}>{name}</Text>
       </td>
       <td>{member.email}</td>
-      <td>{warning && <DataAccessWarning warning={warning} />}</td>
+      <td>
+        {warning ? (
+          <DataAccessWarning
+            permissionGroupId={permissionGroupId}
+            warning={warning}
+          />
+        ) : (
+          isAccessChecked && (
+            <Tooltip label={adequateAccessLabel}>
+              <Icon
+                name="check"
+                c="feedback-positive"
+                aria-label={adequateAccessLabel}
+              />
+            </Tooltip>
+          )
+        )}
+      </td>
       <Box component="td" ta="right">
         <UnstyledButton
           aria-label={t`Remove ${name}`}
@@ -261,7 +296,8 @@ const MemberRow = ({
   );
 };
 
-const AddUsersRow = ({
+const AddUsersSection = ({
+  permissionGroupId,
   members,
   selectedUsers,
   warnings,
@@ -270,6 +306,7 @@ const AddUsersRow = ({
   onCancel,
   onDone,
 }: {
+  permissionGroupId: number;
   members: Member[];
   selectedUsers: Map<number, User>;
   warnings: Map<number, DataAppUserPermissionWarning>;
@@ -282,6 +319,7 @@ const AddUsersRow = ({
     tenancy: "internal",
   });
   const [text, setText] = useState("");
+  const [isPickerOpen, setIsPickerOpen] = useState(true);
   const memberIds = useMemo(
     () => new Set(members.map(({ user_id }) => user_id)),
     [members],
@@ -304,6 +342,7 @@ const AddUsersRow = ({
     }
     onSelectedUsersChange(new Map(selectedUsers).set(user.id, user));
     setText("");
+    setIsPickerOpen(false);
   };
 
   const removeUser = (user: User) => {
@@ -311,87 +350,139 @@ const AddUsersRow = ({
     nextUsers.delete(user.id);
     onSelectedUsersChange(nextUsers);
   };
+  const usersMissingDataAccess = Array.from(selectedUsers.values()).flatMap(
+    (user) => {
+      const warning = warnings.get(user.id);
+      return warning ? [{ user, warning }] : [];
+    },
+  );
 
   return (
-    <tr>
-      <td colSpan={4} style={{ padding: 0 }}>
-        <Stack gap="sm">
-          <Popover
-            opened={!isLoading && !error && suggestedUsers.length > 0}
-            position="bottom-start"
-            withArrow
-            shadow="md"
-          >
-            <Popover.Target>
-              <div>
-                <AddRow
-                  value={text}
-                  isValid={selectedUsers.size > 0}
-                  placeholder={t`Julie McMemberson`}
-                  ariaLabel={t`Search for a user to add`}
-                  submitLabel={t`Save`}
-                  onChange={(event) => setText(event.target.value)}
-                  onDone={onDone}
-                  onCancel={onCancel}
+    <Stack gap="sm">
+      <Popover
+        opened={
+          isPickerOpen && !isLoading && !error && suggestedUsers.length > 0
+        }
+        onChange={setIsPickerOpen}
+        position="bottom-start"
+        withArrow
+        shadow="md"
+      >
+        <Popover.Target>
+          <div>
+            <AddRow
+              value={text}
+              isValid={selectedUsers.size > 0}
+              placeholder={t`Julie McMemberson`}
+              ariaLabel={t`Search for a user to add`}
+              submitLabel={t`Save`}
+              onChange={(event) => {
+                setText(event.target.value);
+                setIsPickerOpen(true);
+              }}
+              onDone={onDone}
+              onCancel={onCancel}
+            >
+              {Array.from(selectedUsers.values()).map((user, index) => (
+                <Pill
+                  key={user.id}
+                  size="md"
+                  ms={index > 0 ? "sm" : ""}
+                  withRemoveButton
+                  onRemove={() => removeUser(user)}
                 >
-                  {Array.from(selectedUsers.values()).map((user, index) => (
-                    <Pill
-                      key={user.id}
-                      size="md"
-                      ms={index > 0 ? "sm" : ""}
-                      withRemoveButton
-                      onRemove={() => removeUser(user)}
-                    >
-                      {user.common_name}
-                    </Pill>
-                  ))}
-                </AddRow>
-              </div>
-            </Popover.Target>
+                  {user.common_name}
+                </Pill>
+              ))}
+            </AddRow>
+          </div>
+        </Popover.Target>
 
-            <Popover.Dropdown>
-              <Stack gap={0} miw="15rem">
-                {suggestedUsers.map((user) => (
-                  <Flex
-                    key={user.id}
-                    component={UnstyledButton}
-                    align="center"
-                    gap="md"
-                    p="0.5rem 1rem"
-                    onClick={() => addUser(user)}
-                  >
-                    <UserAvatar bg={userToColor(user)} user={user} />
-                    <Text fw="bold" size="lg">
+        <Popover.Dropdown>
+          <Stack gap={0} miw="15rem">
+            {suggestedUsers.map((user) => (
+              <Flex
+                key={user.id}
+                component={UnstyledButton}
+                align="center"
+                gap="md"
+                p="0.5rem 1rem"
+                onClick={() => addUser(user)}
+              >
+                <UserAvatar bg={userToColor(user)} user={user} />
+                <Text fw="bold" size="lg">
+                  {user.common_name}
+                </Text>
+              </Flex>
+            ))}
+          </Stack>
+        </Popover.Dropdown>
+      </Popover>
+
+      {warningsFailed && <WarningRequestError />}
+
+      {usersMissingDataAccess.length > 0 && (
+        <Box
+          data-testid="missing-data-access-users"
+          bg="background-secondary"
+          bd="1px solid var(--mb-color-border)"
+          bdrs="md"
+          p="md"
+        >
+          <Flex align="center" justify="space-between" gap="md" mb="sm">
+            <Flex align="baseline" gap="xs">
+              <Text fw={700}>{t`Users missing data access`}</Text>
+              <Text c="text-secondary" size="sm">
+                {usersMissingDataAccess.length}
+              </Text>
+            </Flex>
+            <Text c="text-secondary" size="sm">
+              {t`These users might not see all data in this app.`}
+            </Text>
+          </Flex>
+
+          <Stack gap="xs">
+            {usersMissingDataAccess.map(({ user, warning }) => (
+              <Flex
+                key={user.id}
+                align="center"
+                justify="space-between"
+                gap="lg"
+                bg="background-primary"
+                bdrs="sm"
+                px="md"
+                py="sm"
+              >
+                <Flex align="center" gap="sm" miw={0}>
+                  <UserAvatar bg={userToColor(user)} user={user} />
+                  <Stack gap={0} miw={0}>
+                    <Text fw={700} truncate>
                       {user.common_name}
                     </Text>
-                  </Flex>
-                ))}
-              </Stack>
-            </Popover.Dropdown>
-          </Popover>
+                    <Text c="text-secondary" size="sm" truncate>
+                      {user.email}
+                    </Text>
+                  </Stack>
+                </Flex>
 
-          {warningsFailed && <WarningRequestError />}
-
-          {Array.from(selectedUsers.values()).flatMap((user) => {
-            const warning = warnings.get(user.id);
-            return warning
-              ? [
-                  <Flex key={user.id} align="center" gap="sm" px="md">
-                    <Text fw="bold">{user.common_name}</Text>
-                    <DataAccessWarning warning={warning} />
-                  </Flex>,
-                ]
-              : [];
-          })}
-        </Stack>
-      </td>
-    </tr>
+                <DataAccessWarning
+                  permissionGroupId={permissionGroupId}
+                  warning={warning}
+                />
+              </Flex>
+            ))}
+          </Stack>
+        </Box>
+      )}
+    </Stack>
   );
 };
 
 const DataAccessWarning = ({
+  permissionGroupId,
   warning,
 }: {
+  permissionGroupId: number;
   warning: DataAppUserPermissionWarning;
 }) => {
   const label = ngettext(
@@ -415,30 +506,73 @@ const DataAccessWarning = ({
   }, [warning.missing_tables]);
 
   return (
-    <Popover position="bottom-start" withArrow shadow="md">
-      <Popover.Target>
+    <HoverCard
+      position="bottom-start"
+      openDelay={150}
+      closeDelay={100}
+      withArrow
+      shadow="md"
+    >
+      <HoverCard.Target>
         <UnstyledButton aria-label={label}>
           <Flex align="center" gap="xs" c="warning">
             <Icon name="warning" />
             <Text c="inherit">{label}</Text>
           </Flex>
         </UnstyledButton>
-      </Popover.Target>
+      </HoverCard.Target>
 
-      <Popover.Dropdown>
-        <Stack gap="sm" maw="24rem">
-          <Text>{t`This user might not see all data in this app.`}</Text>
+      <HoverCard.Dropdown
+        data-testid="data-access-warning-popover"
+        p="md"
+        w="22rem"
+      >
+        <Stack gap="md">
           <Stack gap="xs">
-            {warning.missing_tables.map((table) => (
-              <Text key={table.id} size="sm">
-                {tableLabel(table, duplicateNames)}
-              </Text>
-            ))}
+            <Text fw={700}>{t`Missing data access`}</Text>
+            <Text c="text-secondary" size="sm">
+              {t`This user might not see all data in this app.`}
+            </Text>
           </Stack>
-          <Link to="/admin/permissions/data">{t`Review data permissions`}</Link>
+
+          <Stack gap="xs">
+            <Text fw={700} size="sm">{t`Tables without access`}</Text>
+            <Stack
+              component="ul"
+              data-testid="missing-tables-list"
+              gap={4}
+              m={0}
+              pl={0}
+              style={{ listStyle: "none" }}
+            >
+              {warning.missing_tables.map((table) => (
+                <Flex component="li" key={table.id} align="center" gap="xs">
+                  <Icon
+                    name="table"
+                    c="text-secondary"
+                    size={14}
+                    aria-hidden
+                    data-testid="missing-table-icon"
+                  />
+                  <Text size="sm">{tableLabel(table, duplicateNames)}</Text>
+                </Flex>
+              ))}
+            </Stack>
+          </Stack>
+
+          <Button
+            component={Link}
+            to={`/admin/permissions/data/group/${permissionGroupId}`}
+            variant="outline"
+            size="compact-sm"
+            w="fit-content"
+            rightSection={<Icon name="chevronright" size={12} aria-hidden />}
+          >
+            {t`Review data permissions`}
+          </Button>
         </Stack>
-      </Popover.Dropdown>
-    </Popover>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 };
 
@@ -454,8 +588,8 @@ const tableLabel = (
     .join(" > ");
 };
 
-const WarningRequestError = ({ mb }: { mb?: string }) => (
-  <Alert color="warning" icon={<Icon name="warning" />} mb={mb}>
+const WarningRequestError = () => (
+  <Alert color="warning" icon={<Icon name="warning" />}>
     {t`We couldn't check data access for some users. You can still update access to this data app.`}
   </Alert>
 );
