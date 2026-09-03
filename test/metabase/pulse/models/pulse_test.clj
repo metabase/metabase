@@ -595,8 +595,8 @@
                  (is (not (some #(= internal-id (:id %)) kept))))
                (testing "raw email recipient is always preserved"
                  (is (some #(= "ext@example.com" (:email %)) kept)))))
-           (testing "a caller with no tenant sees recipients unfiltered, as before tenants existed"
+           (testing "an internal (tenantless) non-superuser sees only other internal users and raw emails"
              (mt/with-current-user internal-id
-               (is (= [{:id same-id} {:id other-id} {:id internal-id} {:email "ext@example.com"}]
+               (is (= [{:id internal-id} {:email "ext@example.com"}]
                       (-> (models.pulse/maybe-filter-pulses-recipients pulses)
                           first :channels first :recipients)))))))))))
