@@ -4,11 +4,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.core :as mdb]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -100,30 +98,9 @@
                                        [:sample {:optional true} :boolean]
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
-  (let [offset (when-not sample (request/offset))
-        rand-fn (case (mdb/db-type)
-                  :postgres :random
-                  :rand)
-        base-query (cond-> {:join  [[^:allow-subquery {:select [:id :name :type]
-                                                       :from   [[(metabot.tools.u/metabot-metrics-and-models-query id)
-                                                                 :scope]]}
-                                     :card]
-                                    [:and
-                                     [:= :card.id :metabot_prompt.card_id]]]
-                            :where [:and
-                                    [:= :metabot_prompt.metabot_id id]]}
-                     model    (update :where conj [:= :card.type model])
-                     model_id (update :where conj [:= :card.id model_id]))
-        total (metabot.db/prompt-count-where base-query)
-        order-by (if sample
-                   [[[rand-fn]]]
-                   [[:card.name :asc]
-                    [:id :asc]])
-        prompts (metabot.db/prompts-where
-                 (cond-> base-query
-                   true             (assoc :order-by order-by)
-                   (request/limit)  (assoc :limit    (request/limit))
-                   offset           (assoc :offset   offset)))]
+  (let [offset  (when-not sample (request/offset))
+        total   (metabot.db/prompt-count id model model_id)
+        prompts (metabot.db/prompts id model model_id sample (request/limit) offset)]
     {:prompts prompts
      :limit   (request/limit)
      :offset  offset
