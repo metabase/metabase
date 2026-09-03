@@ -1,12 +1,10 @@
 import { useMemo } from "react";
 
 import { getMetadata } from "metabase/metadata-store";
-import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
-import { TemplateTagsSidebar } from "metabase/parameters/components/TemplateTagsSidebar";
-import {
-  QueryEditor,
-  type QueryEditorUiOptions,
-  type QueryEditorUiState,
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import type {
+  QueryEditorUiOptions,
+  QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
@@ -83,13 +81,11 @@ export function TransformEditor({
   };
 
   return (
-    <QueryEditor
+    <QueryEditorWithParameters
       query={query}
       uiState={uiState}
       uiOptions={mergedUiOptions}
       proposedQuery={proposedQuery}
-      parametersList={<NativeQueryParametersList />}
-      templateTagsSidebar={TemplateTagsSidebar}
       onChangeQuery={handleQueryChange}
       onChangeUiState={onChangeUiState}
       onAcceptProposed={onAcceptProposed}

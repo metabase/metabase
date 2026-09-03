@@ -1,11 +1,7 @@
 import { useState } from "react";
 
-import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
-import { TemplateTagsSidebar } from "metabase/parameters/components/TemplateTagsSidebar";
-import {
-  QueryEditor,
-  getInitialUiState,
-} from "metabase/querying/editor/components/QueryEditor";
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useQueryResults } from "metabase/querying/editor/hooks/use-query-results";
 import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
 import type * as Lib from "metabase-lib";
@@ -51,11 +47,9 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
 
   return (
     <>
-      <QueryEditor
+      <QueryEditorWithParameters
         query={currentQuestion.query()}
         uiState={uiState}
-        parametersList={<NativeQueryParametersList />}
-        templateTagsSidebar={TemplateTagsSidebar}
         onChangeQuery={onQueryChange}
         onChangeUiState={setUiState}
         onAcceptProposed={handleRunQuery}
