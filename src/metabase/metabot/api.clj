@@ -21,6 +21,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -36,8 +37,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io OutputStream)))
 
@@ -50,7 +50,7 @@
   can originate one. Permissions are participation-based — a conversation can
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
-  (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+  (when-let [conversation (metabot.db/conversation conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
 (defn- make-out-of-sync-fn

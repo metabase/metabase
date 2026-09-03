@@ -6,6 +6,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -23,9 +24,9 @@
 ;; Check that our `base-types->descendants` function properly returns a set of descendants including parent type
 (deftest ^:parallel base-type->descendats-test
   (is (= #{"type/URL" "type/ImageURL" "type/AvatarURL"}
-         (#'sync.fingerprint/base-types->descendants #{:type/URL})))
+         (#'sync.db/base-types->descendants #{:type/URL})))
   (is (= #{"type/ImageURL" "type/AvatarURL"}
-         (#'sync.fingerprint/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
+         (#'sync.db/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
 
 (def ^:private skip-fingerprint-base-types
   (into #{"type/*"
@@ -44,108 +45,99 @@
          :type/Large
          :type/fingerprint-unsupported]))
 
-(deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
-  (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
-                "`*fingerprint-version->types-that-should-be-re-fingerprinted*`")
-    (is (= {:where
-            [:and
-             [:= :active true]
-             [:or
-              [:not (app-db/isa :semantic_type :type/PK)]
-              [:= :semantic_type nil]]
-             [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not-in :base_type skip-fingerprint-base-types]
-             [:or
-              [:and
-               [:< :fingerprint_version 1]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
-           (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/URL}}]
-             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+(deftest ^:parallel needs-fingerprint-update-clause-test
+  (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever `version->base-types` "
+                "is passed in")
+    (is (= [:and
+            [:= :active true]
+            [:or
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
+            [:not-in :base_type skip-fingerprint-base-types]
+            [:or
+             [:and
+              [:< :fingerprint_version 1]
+              [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]
+           (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/URL}})))))
 
-(deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-2
-  (is (= {:where
-          [:and
-           [:= :active true]
-           [:or
-            [:not (app-db/isa :semantic_type :type/PK)]
-            [:= :semantic_type nil]]
-           [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not-in :base_type skip-fingerprint-base-types]
-           [:or
-            [:and
-             [:< :fingerprint_version 2]
-             [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                               "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
-            [:and
-             [:< :fingerprint_version 1]
-             [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
-         (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/ImageURL :type/AvatarURL}
-                                                                                   2 #{:type/Float}}]
-           (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
+(deftest ^:parallel needs-fingerprint-update-clause-test-2
+  (is (= [:and
+          [:= :active true]
+          [:or
+           [:not (app-db/isa :semantic_type :type/PK)]
+           [:= :semantic_type nil]]
+          [:not-in :visibility_type ["retired" "sensitive"]]
+          [:not-in :base_type skip-fingerprint-base-types]
+          [:or
+           [:and
+            [:< :fingerprint_version 2]
+            [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
+                              "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
+           [:and
+            [:< :fingerprint_version 1]
+            [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]
+         (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/ImageURL :type/AvatarURL}
+                                                           2 #{:type/Float}}))))
 
-(deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-3
+(deftest ^:parallel needs-fingerprint-update-clause-test-3
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
-    (is (= {:where
-            [:and
-             [:= :active true]
-             [:or
-              [:not (app-db/isa :semantic_type :type/PK)]
-              [:= :semantic_type nil]]
-             [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not-in :base_type skip-fingerprint-base-types]
-             [:or
-              [:and
-               [:< :fingerprint_version 2]
-               [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                                 "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
-              ;; no type/Float stuff should be included for 1
-              [:and
-               [:< :fingerprint_version 1]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
-           (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/Float :type/URL}
-                                                                                     2 #{:type/Float}}]
-             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+    (is (= [:and
+            [:= :active true]
+            [:or
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
+            [:not-in :base_type skip-fingerprint-base-types]
+            [:or
+             [:and
+              [:< :fingerprint_version 2]
+              [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
+                                "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
+             ;; no type/Float stuff should be included for 1
+             [:and
+              [:< :fingerprint_version 1]
+              [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]
+           (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/Float :type/URL}
+                                                             2 #{:type/Float}})))))
 
-(deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-4
+(deftest ^:parallel needs-fingerprint-update-clause-test-4
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
-    (is (= {:where
-            [:and
-             [:= :active true]
-             [:or
-              [:not (app-db/isa :semantic_type :type/PK)]
-              [:= :semantic_type nil]]
-             [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not-in :base_type skip-fingerprint-base-types]
-             [:or
-              [:and
-               [:< :fingerprint_version 4]
-               [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                                 "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
-              [:and
-               [:< :fingerprint_version 3]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]
-              ;; version 2 can be eliminated completely since everything relevant there is included in 4
-              ;; The only things that should go in 1 should be `:type/City` since `:type/Coordinate` is included in 4
-              [:and
-               [:< :fingerprint_version 1]
-               [:in :base_type #{"type/City"}]]]]}
-           (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {1 #{:type/Coordinate :type/City}
-                                                                                     2 #{:type/Coordinate}
-                                                                                     3 #{:type/URL}
-                                                                                     4 #{:type/Float}}]
-             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+    (is (= [:and
+            [:= :active true]
+            [:or
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
+            [:not-in :base_type skip-fingerprint-base-types]
+            [:or
+             [:and
+              [:< :fingerprint_version 4]
+              [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
+                                "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost" "type/Percentage"}]]
+             [:and
+              [:< :fingerprint_version 3]
+              [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]
+             ;; version 2 can be eliminated completely since everything relevant there is included in 4
+             ;; The only things that should go in 1 should be `:type/City` since `:type/Coordinate` is included in 4
+             [:and
+              [:< :fingerprint_version 1]
+              [:in :base_type #{"type/City"}]]]]
+           (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/Coordinate :type/City}
+                                                             2 #{:type/Coordinate}
+                                                             3 #{:type/URL}
+                                                             4 #{:type/Float}})))))
 
-(deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test-5
+(deftest ^:parallel needs-fingerprint-update-clause-test-5
   (testing "when refingerprinting doesn't check for versions"
-    (is (= {:where [:and
-                    [:= :active true]
-                    [:or
-                     [:not (app-db/isa :semantic_type :type/PK)]
-                     [:= :semantic_type nil]]
-                    [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not-in :base_type skip-fingerprint-base-types]]}
-           (binding [sync.fingerprint/*refingerprint?* true]
-             (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
+    (is (= [:and
+            [:= :active true]
+            [:or
+             [:not (app-db/isa :semantic_type :type/PK)]
+             [:= :semantic_type nil]]
+            [:not-in :visibility_type ["retired" "sensitive"]]
+            [:not-in :base_type skip-fingerprint-base-types]]
+           (#'sync.db/needs-fingerprint-update-clause true {1 #{:type/URL}})))))
 
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
 (defn- field-was-fingerprinted?! [fingerprint-versions field-properties]
