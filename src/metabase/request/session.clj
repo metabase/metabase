@@ -2,20 +2,16 @@
   (:require
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
+   [metabase.request.db :as request.db]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
-
-(def ^:private current-user-fields
-  ;; `:type` is needed so [[user/add-attributes]] can refuse to add attributes to non-personal (API-key/internal) users
-  (into [:model/User :type] user/admin-or-self-visible-columns))
+   [metabase.util.malli :as mu]))
 
 (defn- find-user [user-id]
   (when user-id
-    (some-> (t2/select-one current-user-fields, :id user-id)
+    (some-> (request.db/current-user user-id)
             user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
@@ -64,13 +60,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (t2/select-one [:model/User
-                    [:id :metabase-user-id]
-                    [:is_superuser :is-superuser?]
-                    [:is_data_analyst :is-data-analyst?]
-                    [:locale :user-locale]
-                    :settings]
-                   :id current-user-id)))
+    (request.db/current-user-for-id current-user-id)))
 
 (defn do-as-admin
   "Execute `thunk` with admin perms."

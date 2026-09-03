@@ -7,7 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
+   [metabase.typed-schemas.db :as typed-schemas.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +36,7 @@
   `metabase.metabot.tools.resources/check-resource-database`)."
   [db-ids]
   (when (seq db-ids)
-    (t2/select-fn-set :id :model/Database :id [:in db-ids] :router_database_id [:not= nil])))
+    (typed-schemas.db/destination-database-ids db-ids)))
 
 (defn select-schema-cards
   "Returns readable, non-archived cards for schema generation.
@@ -45,14 +45,13 @@
   the same visibility, archived, database and collection filters, and exclude cards backed by a
   destination (routed) database -- see [[destination-db-ids]]."
   [card-type database-ids collection-ids]
-  (let [cards (->> (t2/select :model/Card
-                              {:where    (cond-> [:and
-                                                  [:= :type (name card-type)]
-                                                  [:= :archived false]
-                                                  (collection/visible-collection-filter-clause :collection_id)]
-                                           database-ids (conj (scope-filter-clause database-ids :database_id))
-                                           collection-ids (conj (scope-filter-clause collection-ids :collection_id)))
-                               :order-by [[:name :asc] [:id :asc]]})
+  (let [cards (->> (typed-schemas.db/cards-ordered-by-name
+                    (cond-> [:and
+                             [:= :type (name card-type)]
+                             [:= :archived false]
+                             (collection/visible-collection-filter-clause :collection_id)]
+                      database-ids (conj (scope-filter-clause database-ids :database_id))
+                      collection-ids (conj (scope-filter-clause collection-ids :collection_id))))
                    (filter mi/can-read?))
         destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
     (if (seq destination-ids)

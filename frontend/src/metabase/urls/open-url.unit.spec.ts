@@ -2,12 +2,14 @@ import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
 import {
+  captureClickModifierKeys,
   getUrlTarget,
   openUrl,
   shouldOpenInBlankWindow,
-} from "metabase/visualizations/lib/open-url";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+} from "./open-url";
 
 describe("shouldOpenInBlankWindow", () => {
   afterEach(() => {
@@ -25,6 +27,37 @@ describe("shouldOpenInBlankWindow", () => {
     const url = `${window.location.origin}/dashboard/1`;
     const result = shouldOpenInBlankWindow(url);
     expect(result).toBe(true);
+  });
+});
+
+describe("captureClickModifierKeys", () => {
+  const url = `${window.location.origin}/dashboard/1`;
+
+  function mouseUp(metaKey: boolean) {
+    window.dispatchEvent(new MouseEvent("mouseup", { metaKey }));
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // Runs before any test in this file calls captureClickModifierKeys,
+  // since the listener stays registered.
+  it("should ignore the last click's modifier keys until it is called", () => {
+    mouseUp(true);
+    expect(shouldOpenInBlankWindow(url, { event: null })).toBe(false);
+  });
+
+  it("should register one mouseup listener and read the last click's modifier keys", () => {
+    const addEventListener = jest.spyOn(window, "addEventListener");
+    captureClickModifierKeys();
+    captureClickModifierKeys();
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+
+    mouseUp(true);
+    expect(shouldOpenInBlankWindow(url, { event: null })).toBe(true);
+    mouseUp(false);
+    expect(shouldOpenInBlankWindow(url, { event: null })).toBe(false);
   });
 });
 

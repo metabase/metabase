@@ -126,7 +126,7 @@ x.com`
 - [Exported as](../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
 - [Configuration file name](./config-file.md): `allowed-iframe-hosts`
 
-Allowed iframe hosts.
+Allowed iframe hosts. Includes a list of popular hosts by default; set to ' ' to disable the default list.
 
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
@@ -2679,6 +2679,10 @@ This URL is used for things like creating links in emails, auth redirects, and i
 This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
         Make sure that the address defined is how Metabase is being accessed.
+        If left unset, Metabase learns this value from the request headers of the first authenticated
+        admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
+        that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
+        `MB_SITE_URL` explicitly.
 
 ### `MB_SLACK_APP_TOKEN`
 

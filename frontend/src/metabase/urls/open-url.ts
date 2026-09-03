@@ -11,18 +11,26 @@ import {
   isSameOrigin,
 } from "metabase/utils/dom";
 
-// need to keep track of the latest click's state because sometimes
-// `openUrl` is called asynchronously, thus window.event isn't the click event
+// shouldOpenInBlankWindow falls back to these when window.event is not a mouse event,
+// which happens when openUrl is called after an await.
 let metaKey: boolean = false;
 let ctrlKey: boolean = false;
-window.addEventListener(
-  "mouseup",
-  (e: MouseEvent) => {
-    metaKey = e.metaKey;
-    ctrlKey = e.ctrlKey;
-  },
-  true,
-);
+let isCapturingClickModifierKeys = false;
+
+export function captureClickModifierKeys() {
+  if (isCapturingClickModifierKeys) {
+    return;
+  }
+  isCapturingClickModifierKeys = true;
+  window.addEventListener(
+    "mouseup",
+    (e: MouseEvent) => {
+      metaKey = e.metaKey;
+      ctrlKey = e.ctrlKey;
+    },
+    true,
+  );
+}
 
 type ShouldOpenInBlankWindowOptions = {
   event?: MouseEvent | null;

@@ -6,11 +6,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.osi.db :as osi.db]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private writable-entity-types
   "Entity types accepted on writes — the real types callers name. Card flavors (metric/model) are stored
@@ -61,9 +61,7 @@
   "The stored row for an entity, looked up by its normalized key, or nil. The CRUD API speaks the real
   card flavors; storage keys on the canonical `card`, so normalize before matching."
   [entity-type entity-local-id]
-  (t2/select-one :model/OsiAiContext
-                 :entity_type (entity-retrieval/normalize-entity-type entity-type)
-                 :entity_local_id entity-local-id))
+  (osi.db/ai-context (entity-retrieval/normalize-entity-type entity-type) entity-local-id))
 
 (def ^:private logical-key-route-schema
   ;; entity-type is any non-blank string at the route level — a write to a non-writable type gets a clear
@@ -85,11 +83,8 @@
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
-    {:data   (t2/select :model/OsiAiContext
-                        {:order-by [[:entity_type :asc] [:entity_local_id :asc]]
-                         :limit    limit
-                         :offset   offset})
-     :total  (t2/count :model/OsiAiContext)
+    {:data   (osi.db/ai-contexts-page limit offset)
+     :total  (osi.db/ai-context-count)
      :limit  limit
      :offset offset}))
 
@@ -153,7 +148,5 @@
    _query-params]
   (api/check-superuser)
   (api/check-404 (get-entry entity-type entity-local-id))
-  (t2/delete! :model/OsiAiContext
-              :entity_type (entity-retrieval/normalize-entity-type entity-type)
-              :entity_local_id entity-local-id)
+  (osi.db/delete-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id)
   api/generic-204-no-content)

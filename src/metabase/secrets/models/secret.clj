@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.secrets.db :as secrets.db]
    [metabase.system.settings :as system-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -48,7 +49,7 @@
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
   {:added "0.42.0"}
   [id]
-  (t2/select-one :model/Secret :id id {:order-by [[:version :desc]]}))
+  (secrets.db/latest-secret id))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
@@ -57,18 +58,18 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (first (t2/insert-returning-instances! :model/Secret (cond-> {:version    v
-                                                                                                      :name       nm
-                                                                                                      :kind       kind
-                                                                                                      :source     src
-                                                                                                      :value      value
-                                                                                                      :creator_id api/*current-user-id*}
-                                                                                               id
-                                                                                               (assoc :id id))))]
+                         (let [inserted (secrets.db/insert-secret! (cond-> {:version    v
+                                                                            :name       nm
+                                                                            :kind       kind
+                                                                            :source     src
+                                                                            :value      value
+                                                                            :creator_id api/*current-user-id*}
+                                                                     id
+                                                                     (assoc :id id)))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
-                           (t2/select-one :model/Secret :id (or id (u/the-id inserted)) :version v)))
+                           (secrets.db/secret-version (or id (u/the-id inserted)) v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (insert-new (u/the-id latest-version) (inc (:version latest-version)))
@@ -310,7 +311,7 @@
                               #{}
                               possible-secret-prop-names)]
       (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-      (t2/delete! :model/Secret :id secret-id))))
+      (secrets.db/delete-secret! secret-id))))
 
 (defn- hydrate-redacted-secret
   [db-details conn-prop-nm _conn-prop]
@@ -404,7 +405,7 @@
                                                         (:value secret))]
                                       (assoc cleared-details id-kw id))
                                     (do
-                                      (t2/delete! :model/Secret :id secret-id)
+                                      (secrets.db/delete-secret! secret-id)
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]
