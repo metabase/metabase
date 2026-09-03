@@ -366,28 +366,27 @@
 
 (defn- gc-tracked-datasets!
   "Datasets created by CI runs from older versions still use the tracking table. Until
-  we stop supporting version 58 and 64 we'll have to keep GCing these, but we handle them
+  we stop supporting version 58 and 63 we'll have to keep GCing these, but we handle them
   in a separate function so they'll be easier to delete later."
   [hours dry-run?]
   (mapv (fn [[dataset-name]] (drop-orphan! (project-id) dry-run? dataset-name))
-        (execute! (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+        (execute! (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
                        " WHERE `name` LIKE '%2$s'"
-                       " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))"
+                       " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))"
                        " UNION ALL "
                        "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
                            where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
-                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))")
-                  (project-id)
-                  hours)))
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))")
+                  (project-id) hours hours)))
 
 (defmethod tx/gc-orphans! :bigquery-cloud-sdk
-  [_driver {:keys [hours dry-run?]}]
+  [_driver {:keys [hours tracked? dry-run?]}]
   (->> (execute-params!
-        (format "select schema_name from `%s`.%s where schema_name like 'temp_%%' limit 256"
+        (format "select schema_name from `%s`.%s where schema_name like 'temp_%%'"
                 (project-id) "INFORMATION_SCHEMA.SCHEMATA") [])
        (filter (partial sql.tu.unique-prefix/old-temp-dataset? hours))
        (mapv (partial drop-orphan! (project-id) dry-run?))
-       (concat (gc-tracked-datasets! hours dry-run?))))
+       (concat (and tracked? (gc-tracked-datasets! hours dry-run?)))))
 
 (defmethod tx/count-datasets :bigquery-cloud-sdk
   [_driver]

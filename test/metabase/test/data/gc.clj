@@ -67,6 +67,7 @@
     (let [results   (try
                       (vec (tx/gc-orphans! driver options))
                       (catch Exception e
+                        (def ee e)
                         [{:name nil, :status :failed, :error (ex-message e)}]))
           remaining (census! driver)
           {:keys [deleted failed]} (group-by :status results)]
@@ -149,11 +150,14 @@
 
   `:hours` is how old a dataset needs to be before it's considered orphaned. Defaults to 12.
 
-  `:report-dir` (default [[default-report-dir]]) receives `report.json` and `report.md`.
+  `:tracked?` (default: nil) whether or not to also GC the legacy tracked datasets.
+              off by default to avoid disrupting backport branches but easy to run manually.
+
+  `:report-dir` (default: target/gc-report) receives `report.json` and `report.md`.
 
   Failures don't stop the sweep. They are reported per object, written to the report, and fail the job at the end."
-  [{:keys [drivers hours dry-run? report-dir]}]
-  (let [options {:hours (or hours 12) :dry-run? dry-run?}]
+  [{:keys [drivers hours dry-run? tracked? report-dir]}]
+  (let [options {:hours (or hours 12) :dry-run? dry-run? :tracked? tracked?}]
     (when (< (:hours options) 4) (throw (Exception. "Must specify at least 4 hours.")))
     (let [swept  (let [ds (parse-drivers drivers)]
                    ;; drivers share nothing, so the job costs the slowest one rather than the sum of all three

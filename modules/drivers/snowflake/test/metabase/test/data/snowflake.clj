@@ -112,19 +112,6 @@
     (doseq [name @to-cleanup]
       (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
 
-(defn- with-write-stmt!
-  "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
-  close everything. Centralizes the boilerplate so the per-resource drop fns
-  don't repeat it."
-  [f & args]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.createStatement conn)]
-       (apply f stmt args)))))
-
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
 ;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). This replaces the old in-process cleanup, which
@@ -143,11 +130,10 @@
     (catch Exception e
       {:server server :name name :status :error :error (ex-message e)})))
 
-(defn- gc-orphans! [conn _stmt {:keys [hours dry-run?]}]
+(defn- gc-orphans! [conn {:keys [hours dry-run?]}]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                        :snowflake conn
-                                       "SHOW TERSE DATABASES STARTS WITH 'temp_' LIMIT 256"
-                                       [])
+                                       "SHOW TERSE DATABASES STARTS WITH 'temp_'" [])
               ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
     (->> (resultset-seq rs)
          (filter (partial sql.tu.unique-prefix/old-temp-dataset? hours))
@@ -159,32 +145,41 @@
       (jdbc/execute! conn [(format "DROP DATABASE IF EXISTS \"%s\";" database_name)])
       (jdbc/execute! conn ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?"
                            database_name]))
-    {:server server :name name :status :deleted}
+    {:server server :name database_name :status :deleted}
     (catch Exception e
-      {:server server :name name :status :error :error (ex-message e)})))
+      {:server server :name database_name :status :error :error (ex-message e)})))
+
+(def ^:private tracked-sql
+  (str "select d.database_name
+          from metabase_test_tracking.information_schema.databases d
+          left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
+         where (startswith(d.database_name, 'isolate_')
+                           and d.created < dateadd(hour, 0 - ?, current_timestamp()))
+            or (startswith(d.database_name, 'sha_')
+                           and coalesce(t.accessed_at, d.created) < dateadd(hour, 0 - ?, current_timestamp()))
+         order by d.created"))
 
 (defn- gc-tracked-datasets!
   "Datasets created by CI runs from older versions still use the tracking table. Until
-  we stop supporting version 58 and 64 we'll have to keep GCing these, but we handle them
+  we stop supporting version 58 and 63 we'll have to keep GCing these, but we handle them
   in a separate function so they'll be easier to delete later."
-  [conn _stmt {:keys [hours dry-run?]}]
-  (->> (jdbc/query (no-db-connection-spec)
-                   [(format
-                     "select d.database_name
-                       from metabase_test_tracking.information_schema.databases d
-                       left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
-                       where (startswith(d.database_name, 'isolate_')
-                              and d.created < dateadd(hour, -%d, current_timestamp()))
-                          or (startswith(d.database_name, 'sha_')
-                              and coalesce(t.accessed_at, d.created) < dateadd(hour, -%d, current_timestamp()))
-                       order by d.created"
-                     hours hours)])
-       (mapv (partial drop-tracked-dataset conn (account) dry-run?))))
+  [conn {:keys [hours dry-run?]}]
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       :snowflake conn
+                                       tracked-sql [hours hours])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
+    (->> (resultset-seq rs)
+         (mapv (partial drop-tracked-dataset conn (account) dry-run?)))))
 
 (defmethod tx/gc-orphans! :snowflake
   [_driver options]
-  (concat (with-write-stmt! gc-orphans! options)
-          (with-write-stmt! gc-tracked-datasets! options)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? true}
+   (fn [conn]
+     (concat (gc-orphans! conn options)
+             (and (:tracked? options) (gc-tracked-datasets! conn options))))))
 
 (defmethod tx/count-datasets :snowflake
   [_driver]

@@ -400,7 +400,7 @@
   what was found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never fires when
   a CI job is cancelled.
 
-  `options` are `:temp-data-hours` (per-run garbage) and `:fixture-hours` (datasets runs share).
+  `options` are `:hours` and `:dry-run?`
 
   Returns one map per object it tried to delete:
 
