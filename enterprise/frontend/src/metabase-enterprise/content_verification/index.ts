@@ -1,4 +1,5 @@
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugin";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { VerifiedFilter } from "./VerifiedFilter";
@@ -10,9 +11,9 @@ import { ModelFilterControls, getDefaultModelFilters } from "./models";
  */
 export function initializePlugin() {
   if (hasPremiumFeature("content_verification")) {
+    Object.assign(PLUGIN_SEARCH_FILTERS, { VerifiedFilter });
     Object.assign(PLUGIN_CONTENT_VERIFICATION, {
       contentVerificationEnabled: true,
-      VerifiedFilter,
       ModelFilterControls,
       getDefaultModelFilters,
       getDefaultMetricFilters,
