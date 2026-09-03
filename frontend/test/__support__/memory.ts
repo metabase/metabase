@@ -69,6 +69,12 @@ export type RetentionProfile = {
  * `repeatedKeysMb` near zero means growth tracks distinct keys rather than call
  * volume. `moreNewKeysMb` staying close to `newKeysMb`, instead of reusing the
  * space the first pass took, means nothing was ever released.
+ *
+ * Assert on `moreNewKeysMb` when testing that a cache retains nothing.
+ * `newKeysMb` also carries the one-off heap growth of first touching an
+ * allocation of this size, which a warm-up does not fully absorb, so it reads
+ * as a megabyte or so even when nothing is retained. By pass 3 the heap floor
+ * has settled and the number is retention alone.
  */
 export function profileCacheRetention({
   driveNewKeys,
@@ -92,16 +98,20 @@ export function formatRetentionProfile(
 ): string {
   const { newKeysMb, repeatedKeysMb, moreNewKeysMb } = profile;
   const bytesPerEntry = (newKeysMb * 1024 * 1024) / entryCount;
+  const totalMb = newKeysMb + repeatedKeysMb + moreNewKeysMb;
+
+  // A pass can measure slightly negative when it releases more than it takes.
+  const signed = (mb: number) => `${mb < 0 ? "-" : "+"}${Math.abs(mb).toFixed(1)}`;
 
   return `
   gc exposed:  ${canForceGarbageCollection}
   batch:       ${entryCount.toLocaleString()} ${entryLabel}
 
-  pass 1  new keys         +${newKeysMb.toFixed(1)} MB
-  pass 2  same keys again  +${repeatedKeysMb.toFixed(1)} MB
-  pass 3  new keys         +${moreNewKeysMb.toFixed(1)} MB
+  pass 1  new keys         ${signed(newKeysMb)} MB
+  pass 2  same keys again  ${signed(repeatedKeysMb)} MB
+  pass 3  new keys         ${signed(moreNewKeysMb)} MB
 
   retained per entry (pass 1):  ${bytesPerEntry.toFixed(0)} B
-  total held after 3 passes:    ${(newKeysMb + repeatedKeysMb + moreNewKeysMb).toFixed(1)} MB
+  total held after 3 passes:    ${signed(totalMb)} MB
 `;
 }
