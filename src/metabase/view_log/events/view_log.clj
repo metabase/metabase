@@ -58,7 +58,8 @@
             (case model
               :model/Card      (view-log.db/increment-card-view-counts! cnt->ids)
               :model/Dashboard (view-log.db/increment-dashboard-view-counts! cnt->ids)
-              :model/Table     (view-log.db/increment-table-view-counts! cnt->ids))))))
+              :model/Table     (view-log.db/increment-table-view-counts! cnt->ids)
+              :model/Document  (view-log.db/increment-document-view-counts! cnt->ids))))))
     (catch Exception e
       (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 

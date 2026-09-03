@@ -31,6 +31,11 @@
   [count->ids]
   (increment-view-counts-of-model! :model/Table count->ids))
 
+(defn increment-document-view-counts!
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`."
+  [count->ids]
+  (increment-view-counts-of-model! :model/Document count->ids))
+
 (defn insert-view-logs!
   "Insert the ViewLog rows `views`."
   [views]
