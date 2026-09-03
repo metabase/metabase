@@ -11,6 +11,7 @@ import {
   screen,
 } from "__support__/ui";
 import { SearchResult } from "metabase/common/components/SearchResult";
+import { reinitialize as reinitializeIcon } from "metabase/hooks/use-icon";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
@@ -73,6 +74,7 @@ const setup = ({
     }),
   });
   reinitialize();
+  reinitializeIcon();
 
   if (enterprisePlugins) {
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
