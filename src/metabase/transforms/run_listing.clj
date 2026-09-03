@@ -39,10 +39,9 @@
   (let [offset              (or offset 0)
         limit               (or limit 20)
         [start-at end-at]   (when start-time (transforms.models.u/timestamp-range start-time))
-        [ended-at end-end]  (when end-time (transforms.models.u/timestamp-range end-time))
-        order-by            (transforms.models.u/run-order-by sort-column sort-direction)]
+        [ended-at end-end]  (when end-time (transforms.models.u/timestamp-range end-time))]
     {:data   (transforms.db/root-run-summaries-page types statuses run-methods start-at end-at ended-at end-end
-                                                    transform-ids order-by limit offset)
+                                                    transform-ids sort-column sort-direction limit offset)
      :limit  limit
      :offset offset
      :total  (transforms.db/root-run-summaries-count types statuses run-methods start-at end-at ended-at end-end

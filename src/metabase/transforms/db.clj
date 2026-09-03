@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -229,21 +230,130 @@
   [dag-run-id]
   (t2/select :model/TransformRun {:where [:= :dag_run_id dag-run-id], :order-by [[:start_time :asc]]}))
 
-(defn runs-where
-  "The TransformRuns matching the Honey SQL `query`."
-  [query]
-  (t2/select :model/TransformRun query))
+(defn- paged-runs-where
+  "Builds a `:where` clause for the paged run listing from plain filter data. `started-at-start`/`started-at-end`
+  and `ended-at-start`/`ended-at-end` are instant bounds (as returned by parsing a date-range string at the call
+  site); either half of a pair may be nil."
+  [{:keys [started-at-start started-at-end ended-at-start ended-at-end run-methods transform-ids
+           transform-tag-ids statuses user-id]}]
+  (let [where-cond (cond-> []
+                     started-at-start (conj [:>= :start_time started-at-start])
+                     started-at-end   (conj [:<  :start_time started-at-end])
+                     ended-at-start   (conj [:>= :end_time ended-at-start])
+                     ended-at-end     (conj [:<  :end_time ended-at-end])
 
-(defn run-count-where
-  "The number of TransformRuns matching the Honey SQL `query`."
-  [query]
-  (t2/count :model/TransformRun query))
+                     (seq run-methods)
+                     (conj [:in :run_method (set run-methods)])
+
+                     (seq transform-ids)
+                     (conj [:in :transform_id transform-ids])
+
+                     (seq transform-tag-ids)
+                     (conj [:in :transform_id ^:allow-subquery
+                            {:select [:transform_id]
+                             :from   [:transform_transform_tag]
+                             :where  [:in :tag_id transform-tag-ids]}])
+
+                     (seq statuses)
+                     (conj [:in :status (set statuses)])
+
+                     ;; optimization: is_active condition for started status
+                     (and (= (first statuses) "started")
+                          (nil? (next statuses)))
+                     (conj [:= :is_active true])
+
+                     (some? user-id)
+                     (conj [:= :user_id user-id]))]
+    (when (seq where-cond)
+      (into [:and] where-cond))))
+
+(defn- paged-runs-join
+  "Returns a `:left-join` clause for run listing sort columns that require joining other tables."
+  [sort-column]
+  (case (keyword sort-column)
+    :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
+    nil))
+
+(defn- label-case
+  "A Honey SQL `:case` expression translating each value of `test-column` per `labels` (a map of raw value to
+  display label), falling back to `fallback` (`test-column` itself, by default) when it matches none of them."
+  ([test-column labels] (label-case test-column labels test-column))
+  ([test-column labels fallback]
+   (-> [:case]
+       (into (mapcat (fn [[value label]] [[:= test-column value] label])) labels)
+       (conj :else fallback))))
+
+(defn- first-tag-name-subquery
+  "A correlated subquery selecting the translated name of the first tag (by minimum position) assigned to the
+  transform for a transform run. `tag-name-labels` translates built-in tag names (e.g. `\"hourly\"`); a tag with no
+  matching built-in type displays its own name."
+  [tag-name-labels]
+  ^:allow-subquery
+  {:select [[(label-case :tt.built_in_type tag-name-labels :tt.name) :tag_name]]
+   :from   [[:transform_transform_tag :ttt]]
+   :join   [[:transform_tag :tt] [:= :ttt.tag_id :tt.id]]
+   :where  [:and
+            [:= :ttt.transform_id :transform_run.transform_id]
+            [:= :ttt.position ^:allow-subquery
+             {:select [[[:min :ttt2.position]]]
+              :from   [[:transform_transform_tag :ttt2]]
+              :where  [:= :ttt2.transform_id :transform_run.transform_id]}]]})
+
+(defn- paged-runs-order-by
+  "Builds a `:order-by` clause for the paged run listing, translating display values for sortable columns per
+  `status-labels`/`run-method-labels`/`tag-name-labels` (maps of raw value to display label)."
+  [sort-column sort-direction status-labels run-method-labels tag-name-labels]
+  (let [sort-column    (or (keyword sort-column) :start-time)
+        sort-direction (or (keyword sort-direction) :desc)
+        nulls-sort     (if (= sort-direction :asc)
+                         :nulls-last
+                         :nulls-first)]
+    (conj
+     (case sort-column
+       :transform-name  [[:transform.name sort-direction]]
+       :start-time      [[:start_time sort-direction]]
+       :end-time        [[:end_time sort-direction nulls-sort]]
+       :status          [[(label-case :status status-labels) sort-direction]]
+       :run-method      [[(label-case :run_method run-method-labels) sort-direction]]
+       :transform-tags  [[(first-tag-name-subquery tag-name-labels) sort-direction nulls-sort]]
+       ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
+       ;; directions — null means "no measurable duration yet," not
+       ;; "longest duration."
+       :duration        [[[:is :end_time nil] :asc]
+                         [(h2x/calculate-interval-honeysql-form
+                           (mdb/db-type) :end_time :start_time)
+                          sort-direction]]
+       [[:start_time sort-direction]
+        [:end_time   sort-direction nulls-sort]])
+     [:transform_run.id sort-direction])))
+
+(defn paged-runs
+  "Up to `limit` (offset by `offset`) TransformRuns matching `filters` (see [[paged-runs-where]] for the supported
+  keys), sorted by `sort-column`/`sort-direction` (translating `status`, `run-method`, and `transform-tags` sort
+  columns per `status-labels`/`run-method-labels`/`tag-name-labels`)."
+  [filters sort-column sort-direction status-labels run-method-labels tag-name-labels limit offset]
+  (let [where-clause (paged-runs-where filters)
+        join-clause  (paged-runs-join sort-column)]
+    (t2/select :model/TransformRun
+               (m/assoc-some {:order-by (paged-runs-order-by sort-column sort-direction status-labels
+                                                             run-method-labels tag-name-labels)
+                              :offset   offset
+                              :limit    limit}
+                             :select (when join-clause [:transform_run.*])
+                             :where where-clause
+                             :left-join join-clause))))
+
+(defn paged-run-count
+  "The number of TransformRuns matching `filters` (see [[paged-runs-where]] for the supported keys)."
+  [filters]
+  (t2/count :model/TransformRun (m/assoc-some {} :where (paged-runs-where filters))))
 
 (defn latest-runs-reducible
   "Reducible latest TransformRun of each Transform with `transform-ids`."
   [transform-ids]
   (t2/reducible-select :model/TransformRun
                        {:with   [[:latest_runs
+                                  ^:allow-subquery
                                   {:select [:*
                                             [[:over [[:row_number]
                                                      ^:allow-subquery {:partition-by :transform_id
@@ -342,15 +452,27 @@
 
 ;;; ------------------------------------------- Job and DAG runs -------------------------------------------
 
-(defn touch-active-run!
-  "Stamp `updated_at` on the active run of `model` with `run-id`."
-  [model run-id]
-  (t2/update! model :id run-id :is_active true {:updated_at :%now}))
+(defn touch-active-job-run!
+  "Stamp `updated_at` on the active TransformJobRun with `run-id`."
+  [run-id]
+  (t2/update! :model/TransformJobRun :id run-id :is_active true {:updated_at :%now}))
 
-(defn finish-active-coordinated-run!
-  "Apply `changes` to the run of `model` with `run-id` if it is still active, returning the number of rows updated."
-  [model run-id changes]
-  (t2/update! model :id run-id :is_active true changes))
+(defn touch-active-dag-run!
+  "Stamp `updated_at` on the active TransformDagRun with `run-id`."
+  [run-id]
+  (t2/update! :model/TransformDagRun :id run-id :is_active true {:updated_at :%now}))
+
+(defn finish-active-job-run!
+  "Apply `changes` to the TransformJobRun with `run-id` if it is still active, returning the number of rows
+  updated."
+  [run-id changes]
+  (t2/update! :model/TransformJobRun :id run-id :is_active true changes))
+
+(defn finish-active-dag-run!
+  "Apply `changes` to the TransformDagRun with `run-id` if it is still active, returning the number of rows
+  updated."
+  [run-id changes]
+  (t2/update! :model/TransformDagRun :id run-id :is_active true changes))
 
 (defn- job-run-where
   [job-id status run-method started-at-start started-at-end]
@@ -399,6 +521,7 @@
   [job-ids]
   (t2/reducible-select :model/TransformJobRun
                        {:with   [[:ranked_runs
+                                  ^:allow-subquery
                                   {:select [:*
                                             [[:over [[:row_number]
                                                      ^:allow-subquery {:partition-by :job_id
@@ -530,18 +653,34 @@
                      (when ended-at-end     [:<  :end_time ended-at-end])])]
     (when (> (count where) 1) where)))
 
+(defn- root-run-order-by
+  "Standard `:order-by` clause for a paged root-run listing. Sorts by `sort-column` (`:start_time` or `:end_time`;
+  anything else — including nil — falls back to ordering by start_time then end_time) in `sort-direction`
+  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) always ordered last."
+  [sort-column sort-direction]
+  (let [sort-direction (or (keyword sort-direction) :desc)
+        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+    (case (keyword sort-column)
+      :start_time [[:start_time sort-direction]]
+      :end_time   [[:end_time sort-direction nulls-sort]]
+      [[:start_time sort-direction]
+       [:end_time   sort-direction nulls-sort]])))
+
 (defn root-run-summaries-page
   "Up to `limit` (offset by `offset`) root-run summary rows -- see [[metabase.transforms.run-listing]] -- of `types`
   (a subset of `#{:job :dag :transform}`, or all three when empty), optionally narrowed to `statuses`,
   `run-methods`, started in [`started-at-start`, `started-at-end`), ended in [`ended-at-start`, `ended-at-end`),
-  and/or touching one of `transform-ids`, sorted by the Honey SQL `order-by`."
-  [types statuses run-methods started-at-start started-at-end ended-at-start ended-at-end transform-ids order-by
-   limit offset]
+  and/or touching one of `transform-ids`, sorted by `sort-column`/`sort-direction`."
+  [types statuses run-methods started-at-start started-at-end ended-at-start ended-at-end transform-ids
+   sort-column sort-direction limit offset]
   (let [where (root-run-summaries-where statuses run-methods started-at-start started-at-end ended-at-start
                                         ended-at-end)
         base  (cond-> {:from [[(union-subquery types transform-ids) :runs]]}
                 where (assoc :where where))]
-    (t2/query (merge base {:select [:*] :order-by order-by :limit limit :offset offset}))))
+    (t2/query (merge base {:select   [:*]
+                           :order-by (root-run-order-by sort-column sort-direction)
+                           :limit    limit
+                           :offset   offset}))))
 
 (defn root-run-summaries-count
   "The number of root-run summary rows matching the same filters as [[root-run-summaries-page]]."
