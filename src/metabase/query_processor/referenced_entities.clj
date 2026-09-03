@@ -12,6 +12,8 @@
   (:require
    [clojure.core.async :as a]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -66,6 +68,17 @@
          :info {:context :question
                 :card-id id}))
 
+(defn- runnable-query
+  "The query to run for `entity`. A metric's breakouts group it for display; a reference wants its value, so
+  they come off. Filters and joins stay, they define what the metric measures."
+  [entity query-key]
+  (let [query (query-key entity)]
+    (if-not (= :metric (:type entity))
+      query
+      (let [query (lib/query (lib-be/application-database-metadata-provider (:database query)) query)]
+        (cond-> query
+          (lib/mbql-stage? query -1) lib/remove-all-breakouts)))))
+
 (defn- child-canceled-chan
   "Cancel chan for a nested run: cancellation flows down from `parent`, but the nested run finishing can't close
   `parent` (see [[qp.pipeline/*reduce*]]) and leave the main query uncancelable."
@@ -87,7 +100,7 @@
             ;; not write to the outer stream
             result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
                              qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
-                     (qp/process-query (referenced-query (query-key entity) id max-rows)))
+                     (qp/process-query (referenced-query (runnable-query entity query-key) id max-rows)))
             data   (:data result)]
         (if (> (count (:rows data)) max-rows)
           (do
@@ -150,17 +163,17 @@
 (defn viz-settings->goal-specs
   "Extract referenced-entity specs from merged viz settings; nil when there are none."
   [viz]
-  (let [sources (into []
-                      (comp (keep dynamic-goals/goal-source)
-                            ;; a goal pointing at something we can't run is dropped rather than failing the request
-                            (filter (comp entity-types :type)))
-                      (dynamic-goals/goal-values viz))]
-    (when (seq sources)
-      (perf/mapv (fn [[[entity-type id] ss]]
-                   {:type    entity-type
-                    :id      id
-                    :columns (vec (distinct (map :column ss)))})
-                 (group-by (juxt :type :id) sources)))))
+  (when-let [sources (not-empty
+                      (into []
+                            (comp (keep dynamic-goals/goal-source)
+                                  ;; a goal pointing at something we can't run is dropped rather than failing the request
+                                  (filter (comp entity-types :type)))
+                            (dynamic-goals/goal-values viz)))]
+    (perf/mapv (fn [[[entity-type id] ss]]
+                 {:type    entity-type
+                  :id      id
+                  :columns (vec (distinct (map :column ss)))})
+               (group-by (juxt :type :id) sources))))
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
