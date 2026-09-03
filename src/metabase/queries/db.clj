@@ -146,7 +146,7 @@
                                                                         :d.enable_embedding]
                                                              :from     [[:report_dashboardcard :dc]]
                                                              :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                                             :where    [:in :dc.card_id [:inline card-ids]]
+                                                             :where    [:in :dc.card_id card-ids]
                                                              :order-by [[:d.id :asc]]}}
                          ^:allow-subquery {:nest
                                            ^:allow-subquery {:select   [[:dcs.card_id :card_id]
@@ -159,7 +159,7 @@
                                                              :from     [[:dashboardcard_series :dcs]]
                                                              :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
                                                                         [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                                                             :where    [:in :dcs.card_id [:inline card-ids]]
+                                                             :where    [:in :dcs.card_id card-ids]
                                                              :order-by [[:d.id :asc]]}}]}))
 
 ;;; ------------------------------------------- Related models --------------------------------------------

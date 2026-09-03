@@ -197,7 +197,7 @@
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
              {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
               :where [:and
-                      [:in :field.table_id [table-ids]]
+                      [:in :field.table_id table-ids]
                       [:= :field.visibility_type "normal"]
                       [:= :metabase_fieldvalues.type "full"]]}))
 

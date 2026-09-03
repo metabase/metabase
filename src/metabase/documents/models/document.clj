@@ -150,9 +150,10 @@
   [_model k documents]
   (mi/instances-with-hydrated-data
    documents k
-   #(-> (documents.db/user-columns (keep :creator_id documents))
-        (map (juxt :id identity))
-        (into {}))
+   #(when-let [creator-ids (seq (keep :creator_id documents))]
+      (-> (documents.db/user-columns creator-ids)
+          (map (juxt :id identity))
+          (into {})))
    :creator_id {:default {}}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :cards]

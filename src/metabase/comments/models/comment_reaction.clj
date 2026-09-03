@@ -15,7 +15,8 @@
   [_model k reactions]
   (mi/instances-with-hydrated-data
    reactions k
-   #(comments.db/users-by-id (map :user_id reactions))
+   #(when-let [user-ids (seq (map :user_id reactions))]
+      (comments.db/users-by-id user-ids))
    :user_id {:default {}}))
 
 ;;; Helpers

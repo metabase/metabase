@@ -30,7 +30,8 @@
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
-   #(comments.db/users-by-id (keep :creator_id comments))
+   #(when-let [creator-ids (seq (keep :creator_id comments))]
+      (comments.db/users-by-id creator-ids))
    :creator_id
    {:default {}}))
 

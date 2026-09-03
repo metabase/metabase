@@ -109,7 +109,7 @@
 (defn user-columns
   "The id, email, and name of the Users with `user-ids`."
   [user-ids]
-  (t2/select [:model/User :id :email :first_name :last_name] :id user-ids))
+  (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
 (defn entity
   "The `model` row with `id`, or nil."

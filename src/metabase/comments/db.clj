@@ -73,7 +73,7 @@
 (defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id user-ids))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
 (defn reaction-exists?
   "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."
