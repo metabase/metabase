@@ -3,7 +3,15 @@ import cx from "classnames";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { ButtonProps } from "metabase/ui";
-import { Box, Button, Flex, Icon, Text, isValidIconName } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Text,
+  Title,
+  isValidIconName,
+} from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./EmptyState.module.css";
@@ -78,9 +86,9 @@ export const EmptyState = ({
         {image && <LegacyImage image={image} {...rest} />}
       </div>
       {title && (
-        <h2 role="status" aria-live="polite" className={CS.textMedium}>
+        <Title order={2} aria-live="polite" c="text-secondary">
           {title}
-        </h2>
+        </Title>
       )}
       {message && (
         <Text role="status" c="text-secondary" mt="xxs">
