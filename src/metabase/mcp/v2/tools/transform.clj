@@ -10,6 +10,7 @@
    a `target` patched rather than replaced so a rename keeps its schema, and refusing the two shapes
    it cannot author — python sources and incremental targets — instead of silently rewriting them."
   (:require
+   [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
@@ -23,7 +24,8 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -196,6 +198,26 @@
       (when (not= (where transform) (where updates))
         (check-target-free! (merge transform updates))))))
 
+;;; ---------------------------------------------------- Tags ------------------------------------------------------
+
+(defn- check-tags-exist!
+  "Refuse `tag-ids` that name no transform tag. The shared write silently filters unknown ids out,
+   so without this the tool's own \"replaces the current list\" would quietly mean \"replaces it
+   with a shorter one\" — and jobs select the transforms they run by tag, so the dropped one is
+   noticed only when a schedule doesn't fire."
+  [tag-ids]
+  (when (seq tag-ids)
+    ;; `into`, not the select's own return: it hands back nil rather than an empty set when no id
+    ;; matches, which is exactly the all-unknown case this exists to catch.
+    (let [known   (into #{} (t2/select-fn-set :id :model/TransformTag :id [:in (distinct tag-ids)]))
+          unknown (sort (remove known (distinct tag-ids)))]
+      (when (seq unknown)
+        (common/throw-teaching-error
+         (format (str "No transform tag has id %s. Tags are created in Metabase and listed on a "
+                      "transform's read — pass only ids that exist, or omit `tag_ids` to leave "
+                      "the current ones alone.")
+                 (str/join ", " unknown)))))))
+
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- write-result
@@ -236,6 +258,8 @@
                  :tag_ids       tag_ids})]
     (transforms/check-feature-enabled! body)
     (api/create-check :model/Transform body)
+    ;; Before the target check, which opens a warehouse connection — a bad argument shouldn't pay for that.
+    (check-tags-exist! tag_ids)
     (transforms/check-database-feature body)
     (check-target-free! body)
     (write-result (transforms/create-transform! body))))
@@ -301,6 +325,8 @@
       (common/throw-teaching-error
        (str "Nothing to update — pass at least one of name, description, definition, query_handle, target, "
             "collection_id, or tag_ids.")))
+    (when (contains? args :tag_ids)
+      (check-tags-exist! tag_ids))
     (check-target-move! transform updates)
     (write-result (transforms/update-transform! (:id transform) updates))))
 

@@ -399,6 +399,101 @@
           (is (re-find #"run the query again" error))
           (is (zero? (t2/count :model/Transform :name "no such handle"))))))))
 
+;;; ------------------------------------------- Collections and tags -----------------------------------------------
+
+(deftest transform-write-collection-id-test
+  (testing "GHY-4240: `collection_id` files the transform in a transform folder, on create and on update.
+            Transform folders are collections in the :transforms namespace, so an ordinary collection is
+            refused — pinned here because the refusal comes from a layer below this tool."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/Collection {folder :id}  {:name "Transforms folder" :namespace :transforms}
+                       :model/Collection {folder2 :id} {:name "Other folder" :namespace :transforms}
+                       :model/Collection {ordinary :id} {:name "Ordinary folder"}]
+          (testing "create files it where it's told"
+            (let [result (tool-result (write! {:method        "create"
+                                               :name          "Filed transform"
+                                               :definition    (query-definition)
+                                               :target        {:name "mcp_filed" :schema (venues-schema)}
+                                               :collection_id folder}))]
+              (try
+                (is (= folder (:collection_id result)))
+                (is (= folder (t2/select-one-fn :collection_id :model/Transform :id (:id result))))
+                (testing "and update moves it"
+                  (let [moved (tool-result (write! {:method "update" :id (:id result) :collection_id folder2}))]
+                    (is (= folder2 (:collection_id moved)))))
+                (testing "while \"root\" puts it at the top of the transforms tree"
+                  (let [rooted (tool-result (write! {:method "update" :id (:id result) :collection_id "root"}))]
+                    (is (nil? (:collection_id rooted)))
+                    (is (nil? (t2/select-one-fn :collection_id :model/Transform :id (:id result))))))
+                (finally
+                  (t2/delete! :model/Transform :id (:id result))))))
+          (testing "a collection that isn't a transform folder is refused, and nothing is written"
+            (let [error (tool-error (write! {:method        "create"
+                                             :name          "Misfiled transform"
+                                             :definition    (query-definition)
+                                             :target        {:name "mcp_misfiled" :schema (venues-schema)}
+                                             :collection_id ordinary}))]
+              (is (re-find #"(?i)namespace" error))
+              (is (zero? (t2/count :model/Transform :name "Misfiled transform")))))
+          (testing "and a collection id that resolves to nothing is the shared not-found error"
+            (is (re-find #"not found"
+                         (tool-error (write! {:method        "create"
+                                              :name          "Nowhere transform"
+                                              :definition    (query-definition)
+                                              :target        {:name "mcp_nowhere" :schema (venues-schema)}
+                                              :collection_id 999999999}))))))))))
+
+(deftest transform-write-tag-ids-test
+  (testing "GHY-4240: `tag_ids` replaces the whole list — jobs select transforms by tag, so a tag that
+            silently fails to attach is a transform a schedule never runs"
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/TransformTag {tag1 :id} {:name "mcp-tag-1"}
+                       :model/TransformTag {tag2 :id} {:name "mcp-tag-2"}]
+          (let [result (tool-result (write! {:method     "create"
+                                             :name       "Tagged transform"
+                                             :definition (query-definition)
+                                             :target     {:name "mcp_tagged" :schema (venues-schema)}
+                                             :tag_ids    [tag1]}))
+                id     (:id result)]
+            (try
+              (testing "create attaches them"
+                (is (= [tag1] (:tag_ids result))))
+              (testing "update replaces the list rather than adding to it"
+                (is (= [tag2] (:tag_ids (tool-result (write! {:method "update" :id id :tag_ids [tag2]}))))))
+              (testing "and [] clears it"
+                (is (= [] (:tag_ids (tool-result (write! {:method "update" :id id :tag_ids []}))))))
+              (finally
+                (t2/delete! :model/Transform :id id)))))))))
+
+(deftest transform-write-unknown-tag-ids-test
+  (testing "GHY-4240: a tag id that names no tag is refused rather than dropped on the floor. The shared
+            write filters unknown ids out silently, so \"replaces the current list\" would quietly mean
+            \"replaces it with a shorter one\" — and the tag a job selects on is exactly the one whose
+            absence goes unnoticed until the schedule doesn't fire."
+    (with-transforms
+      (with-target-db-support
+        (mt/with-temp [:model/TransformTag {tag1 :id} {:name "mcp-tag-live"}]
+          (testing "on create, naming the id that doesn't exist"
+            (let [error (tool-error (write! {:method     "create"
+                                             :name       "Badly tagged"
+                                             :definition (query-definition)
+                                             :target     {:name "mcp_bad_tag" :schema (venues-schema)}
+                                             :tag_ids    [tag1 999999999]}))]
+              (is (re-find #"999999999" error))
+              (is (zero? (t2/count :model/Transform :name "Badly tagged"))
+                  "and nothing is written")))
+          (testing "and on update, where the stored tags are left alone"
+            ;; `:tag_ids` is a hydration key over the join table, not a column, so the association is
+            ;; made directly rather than passed to the insert.
+            (mt/with-temp [:model/Transform             {id :id} (temp-transform-defaults "mcp_bad_tag_update")
+                           :model/TransformTransformTag _        {:transform_id id :tag_id tag1 :position 0}]
+              (let [error (tool-error (write! {:method "update" :id id :tag_ids [999999999]}))]
+                (is (re-find #"999999999" error))
+                (is (= [tag1] (:tag_ids (t2/hydrate (t2/select-one :model/Transform :id id)
+                                                    :transform_tag_ids))))))))))))
+
 (defn- venues-fk
   "The portable FK path the external dialect names the venues table by."
   []
