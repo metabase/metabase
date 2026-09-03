@@ -211,6 +211,82 @@
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
+;; The header row and the header *titles* are built by two different code paths and then
+;; zipped positionally in `render-table-head`: `query-results->header-row` drops the remapped
+;; source column, while `streaming.common/column-titles` (fed by `filtered-cols`) does not.
+;; With no `::mb.viz/table-columns` on the card the two lists differ in length and the titles
+;; shift. [[remapped-col]] above asserts the header row these titles are supposed to match.
+
+(def ^:private header-alignment-cols
+  "A remapped pair (`rating` -> `rating_desc`) with a column after it, so that a one-position
+  shift in the rendered headers is visible and not just a truncated tail. Names are kept short
+  because `render-table-head` truncates long titles."
+  [{:name "id"          :display_name "ID"          :base_type :type/Integer
+    :visibility_type :normal :semantic_type nil}
+   {:name "rating"      :display_name "Rating"      :base_type :type/Integer
+    :visibility_type :normal :semantic_type :type/Category :remapped_to "rating_desc"}
+   {:name "rating_desc" :display_name "Rating Desc" :base_type :type/Text
+    :visibility_type :normal :semantic_type nil :remapped_from "rating"}
+   {:name "title"       :display_name "Title"       :base_type :type/Text
+    :visibility_type :normal :semantic_type nil}])
+
+(def ^:private header-alignment-rows [[1 3 "Good" "Widget"]])
+
+(def ^:private header-alignment-table-columns
+  "Viz settings naming every column, in result order. Their presence flips `order-data` into
+  the branch that strips remap metadata, which masks the misalignment."
+  {:metabase.models.visualization-settings/table-columns
+   (vec (for [col-name (map :name header-alignment-cols)]
+          {:metabase.models.visualization-settings/table-column-name    col-name
+           :metabase.models.visualization-settings/table-column-enabled true}))})
+
+(defn- rendered-table-headers
+  "The titles actually rendered into the <th> cells of a `:table` part."
+  [viz-settings]
+  (let [data {:cols header-alignment-cols :rows header-alignment-rows :viz-settings viz-settings}
+        part (body/render :table :inline pacific-tz {:visualization_settings {}} nil data)]
+    (map last (render.tu/nodes-with-tag (:content part) :th))))
+
+(deftest ^:parallel remapped-column-header-alignment-test
+  (testing "the header row itself drops the remapped source column"
+    (is (= [(number "ID" "ID") "Rating Desc" "Title"]
+           (:row (first (#'body/prep-for-html-rendering
+                         pacific-tz {} {:cols header-alignment-cols
+                                        :rows header-alignment-rows}))))))
+  (testing "rendered <th> titles must match that header row (#71069)"
+    (is (= ["ID" "Rating Desc" "Title"]
+           (rendered-table-headers {}))))
+  (testing "they already do when table-columns viz settings are present, which is why
+            restyling any column appears to fix it (#71069)"
+    (is (= ["ID" "Rating Desc" "Title"]
+           (rendered-table-headers header-alignment-table-columns)))))
+
+(defn- rendered-th-titles
+  "The `:title` attribute of each rendered <th>. Read the attribute rather than the cell text,
+  which `render-table-head` truncates."
+  [part]
+  (map (comp :title second) (render.tu/nodes-with-tag (:content part) :th)))
+
+;; Companion to [[remapped-column-header-alignment-test]] using a real FK remapping and a real
+;; query, so the hand-written `:remapped_to` / `:remapped_from` metadata above is checked
+;; against what the query processor actually emits.
+;;
+;; Note the two behaviours this pins are in tension, which is why the fix cannot simply be
+;; "render the header row's titles":
+;;   - PRODUCT_ID must show the remapped column's title, which only the header row knows
+;;   - DISCOUNT must keep its " ($)" suffix, which only `column-titles` adds
+;;     (`streaming.common/column-titles` -> `is-currency?`)
+(deftest ^:synchronized remapped-column-header-alignment-e2e-test
+  (mt/with-column-remappings [orders.product_id products.title]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {:limit 1})}]
+      (testing "a real remapped FK column renders its remapped title, currency suffix intact (#71069)"
+        (let [data (:data (:result (notification.execute/execute-card (mt/user->id :crowberto)
+                                                                      (:id card))))
+              part (body/render :table :inline pacific-tz card nil data)]
+          (is (= ["ID" "User ID" "Product ID [external remap]" "Subtotal" "Tax" "Total"
+                  "Discount ($)" "Created At" "Quantity"]
+                 (rendered-th-titles part))))))))
+
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
   (is (= ""
