@@ -1,3 +1,4 @@
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { checkNotNull } from "metabase/utils/types";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
@@ -297,6 +298,107 @@ describe("GRAPH_TREND_SETTINGS", () => {
       );
 
       expect(isHidden).toBe(true);
+    });
+  });
+
+  describe("graph.trendline_color", () => {
+    const getDefault = checkNotNull(
+      GRAPH_TREND_SETTINGS["graph.trendline_color"]?.getDefault,
+    );
+    const getHidden = checkNotNull(
+      GRAPH_TREND_SETTINGS["graph.trendline_color"]?.getHidden,
+    );
+
+    it("should default to the shade of the first series color", () => {
+      const value = getDefault([createMockSingleSeries({})], {
+        "series_settings.colors": {
+          count: "#509EE3",
+          avg: "#88BF4D",
+        },
+      });
+
+      expect(value).toBe(deriveChartShadeColor("#509EE3"));
+    });
+
+    it("should be hidden when the trend line is disabled", () => {
+      const series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: createMockDatasetData({
+              insights: [createMockInsight({ col: "FOO" })],
+            }),
+          },
+        ),
+      ];
+
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": false,
+          "graph.dimensions": ["FOO"],
+        }),
+      ).toBe(true);
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": true,
+          "graph.dimensions": ["FOO"],
+        }),
+      ).toBe(false);
+    });
+
+    it("should be hidden when the trend line is unavailable", () => {
+      const series = [
+        createMockSingleSeries(
+          {},
+          { data: createMockDatasetData({ insights: [] }) },
+        ),
+      ];
+
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": true,
+          "graph.dimensions": ["FOO"],
+        }),
+      ).toBe(true);
+    });
+  });
+
+  describe("graph.trendline_style", () => {
+    const getDefault = checkNotNull(
+      GRAPH_TREND_SETTINGS["graph.trendline_style"]?.getDefault,
+    );
+    const getHidden = checkNotNull(
+      GRAPH_TREND_SETTINGS["graph.trendline_style"]?.getHidden,
+    );
+
+    it("should default to a solid line", () => {
+      expect(getDefault([createMockSingleSeries({})], {})).toBe("solid");
+    });
+
+    it("should be hidden when the trend line is disabled", () => {
+      const series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: createMockDatasetData({
+              insights: [createMockInsight({ col: "FOO" })],
+            }),
+          },
+        ),
+      ];
+
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": false,
+          "graph.dimensions": ["FOO"],
+        }),
+      ).toBe(true);
+      expect(
+        getHidden(series, {
+          "graph.show_trendline": true,
+          "graph.dimensions": ["FOO"],
+        }),
+      ).toBe(false);
     });
   });
 });

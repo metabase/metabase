@@ -3,7 +3,7 @@ import { color as getColor } from "metabase/ui/colors";
 import {
   CHART_STYLE,
   GOAL_LINE_DASH,
-  TREND_LINE_DASH,
+  TREND_LINE_WIDTH,
 } from "metabase/viz-core";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
@@ -39,9 +39,7 @@ export function goalLine() {
 }
 
 export function trendLine() {
-  return echartsContainer().find(
-    `path[stroke-dasharray='${TREND_LINE_DASH.join(",")}']`,
-  );
+  return echartsContainer().find(`path[stroke-width='${TREND_LINE_WIDTH}']`);
 }
 
 export function getXYTransform(element) {

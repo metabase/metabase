@@ -1,5 +1,6 @@
 import Color from "color";
 
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { checkNumber, isNotNull } from "metabase/utils/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -33,6 +34,25 @@ import type {
 type TrendFn = (days: number) => number;
 
 const getTrendKeyForSeries = (dataKey: DataKey) => `${dataKey}_trend`;
+
+const getTrendLineColor = (
+  rawSeries: RawSeries,
+  seriesModel: SeriesModel,
+  renderingContext: RenderingContext,
+) => {
+  // The computed "graph.trendline_color" always has a default based on the first
+  // series, so multi-series charts read the stored setting to keep per-series
+  // trend line colors until the user explicitly picks one color for all of them.
+  const customColor =
+    rawSeries[0].card.visualization_settings?.["graph.trendline_color"];
+  if (customColor != null) {
+    return renderingContext.getColor(customColor);
+  }
+
+  return deriveChartShadeColor(
+    Color(renderingContext.getColor(seriesModel.color)).hex(),
+  );
+};
 
 const getSeriesModelsWithTrends = (
   rawSeries: RawSeries,
@@ -171,9 +191,7 @@ export const getTrendLines = (
       dataKey: getTrendKeyForSeries(seriesModel.dataKey),
       sourceDataKey: seriesModel.dataKey,
       name: `${seriesModel.name}; trend line`, // not used in UI
-      color: Color(renderingContext.getColor(seriesModel.color))
-        .lighten(0.25)
-        .hex(),
+      color: getTrendLineColor(rawSeries, seriesModel, renderingContext),
       visible: true,
       column: seriesModel.column,
       columnIndex: seriesModel.columnIndex,
