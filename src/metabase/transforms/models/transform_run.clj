@@ -205,8 +205,9 @@
           (map (juxt :transform_id :last_success))
           (transforms.db/last-success-times transform-ids))))
 
-(def ^:private status-labels
+(defn- status-labels
   "Display labels for TransformRun status values."
+  []
   {"started"   (tru "In progress")
    "succeeded" (tru "Success")
    "failed"    (tru "Failed")
@@ -214,13 +215,15 @@
    "canceling" (tru "Canceling")
    "canceled"  (tru "Canceled")})
 
-(def ^:private run-method-labels
+(defn- run-method-labels
   "Display labels for TransformRun run_method values."
+  []
   {"manual" (tru "Manual")
    "cron"   (tru "Schedule")})
 
-(def ^:private tag-name-labels
+(defn- tag-name-labels
   "Display labels for built-in TransformTag names."
+  []
   {"hourly"  (tru "hourly")
    "daily"   (tru "daily")
    "weekly"  (tru "weekly")
@@ -245,8 +248,8 @@
                            :transform-tag-ids  transform-tag-ids
                            :statuses           statuses
                            :user-id            user-id}
-        runs              (transforms.db/paged-runs filters sort-column sort-direction status-labels
-                                                    run-method-labels tag-name-labels limit offset)
+        runs              (transforms.db/paged-runs filters sort-column sort-direction (status-labels)
+                                                    (run-method-labels) (tag-name-labels) limit offset)
         root-collection   (collection.root/hydrated-root-collection :transforms)]
     {:data   (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
                   (map #(update % :transform collection.root/hydrate-root-collection root-collection)))
