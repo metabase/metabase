@@ -807,10 +807,24 @@ describe("dynamic goal settings per display", () => {
     expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
     expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
   });
+
+  it("does not resolve graph goal values yet", () => {
+    const card: GoalCard = {
+      display: "line",
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": { type: "card", id: 1, column: "sum" },
+      },
+    };
+
+    expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(false);
+    expect(getReferencedEntities(card)).toEqual([]);
+  });
 });
 
 describe("getGoalValuesFromVizSettings", () => {
   const settings: VisualizationSettings = {
+    "graph.goal_value": 7,
     "progress.goal": { type: "card", id: 1, column: "sum" },
     "gauge.segments": [
       { min: 0, max: { type: "measure", id: 2, column: "avg" }, color: "red" },
@@ -825,7 +839,10 @@ describe("getGoalValuesFromVizSettings", () => {
         "graph.goal_value",
         "progress.goal",
       ]),
-    ).toEqual([{ type: "card", id: 1, column: "sum" }]);
+    ).toEqual([7, { type: "card", id: 1, column: "sum" }]);
+    expect(
+      getGoalValuesFromVizSettings({}, ["graph.goal_value", "progress.goal"]),
+    ).toEqual([]);
   });
 
   it("reads the non-empty bounds of segment settings", () => {

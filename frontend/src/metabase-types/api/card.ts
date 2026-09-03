@@ -33,6 +33,7 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
   GoalSegment,
+  GoalValue,
   PieRow,
   ScalarSegment,
   SmartScalarComparison,
@@ -373,8 +374,8 @@ export type VisualizationSettings = {
   /** Fixed y-axis maximum when auto range is disabled. */
   "graph.y_axis.max"?: number;
 
-  /** Numeric value for the goal line. */
-  "graph.goal_value"?: number;
+  /** Goal line value: a number, or a reference to a column of this or another question, resolved before rendering. */
+  "graph.goal_value"?: GoalValue | null;
 
   /** Draw a goal line on supported cartesian charts. */
   "graph.show_goal"?: boolean;

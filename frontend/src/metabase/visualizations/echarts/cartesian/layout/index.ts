@@ -16,6 +16,7 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getPaddedAxisLabel } from "metabase/visualizations/echarts/cartesian/option/utils";
+import { getNumericGoalValue } from "metabase/visualizations/lib/settings/goal";
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -185,8 +186,9 @@ const getYAxisTicksWidth = (
     }
   }
 
-  if (settings["graph.show_goal"] && settings["graph.goal_value"] != null) {
-    valuesToMeasure.push(settings["graph.goal_value"]);
+  const goalValue = getNumericGoalValue(settings);
+  if (settings["graph.show_goal"] && goalValue != null) {
+    valuesToMeasure.push(goalValue);
   }
 
   // This is a simplistic assumption to predict if ECharts will use decimal

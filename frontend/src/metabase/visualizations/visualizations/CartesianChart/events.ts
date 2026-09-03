@@ -54,6 +54,7 @@ import {
   hasClickBehavior,
   isRemappedToString,
 } from "metabase/visualizations/lib/renderer_utils";
+import { getNumericGoalValue } from "metabase/visualizations/lib/settings/goal";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type {
   ComputedVisualizationSettings,
@@ -885,7 +886,7 @@ export const getGoalLineHoverData = (
     return null;
   }
 
-  const goalValue = settings["graph.goal_value"] ?? "";
+  const goalValue = getNumericGoalValue(settings) ?? "";
 
   return {
     element,

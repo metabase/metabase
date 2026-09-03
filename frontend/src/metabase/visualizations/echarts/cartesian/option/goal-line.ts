@@ -1,5 +1,6 @@
 import type { CustomSeriesOption } from "echarts/charts";
 
+import { getNumericGoalValue } from "metabase/visualizations/lib/settings/goal";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -57,13 +58,13 @@ export function getGoalLineSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
-  if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
+  const goalValue = getNumericGoalValue(settings);
+
+  if (!settings["graph.show_goal"] || goalValue == null) {
     return null;
   }
 
-  const value = isNormalized
-    ? settings["graph.goal_value"] / 100
-    : settings["graph.goal_value"];
+  const value = isNormalized ? goalValue / 100 : goalValue;
 
   const scaleTransformedGoalValue = toEChartsAxisValue(value);
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;

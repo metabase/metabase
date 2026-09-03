@@ -4,11 +4,21 @@ import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/car
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
+import { isGoalStaticValue } from "metabase-types/guards";
 
 import { getStackOffset } from "./stacking";
 
 const getGoalValue = (value: number, isPercent: boolean) =>
   isPercent ? value / 100 : value;
+
+// Renderers only see numbers here: the chart boundary resolves references first.
+// A reference that got past it means resolution was skipped, so it counts as "no goal".
+export const getNumericGoalValue = (
+  settings: VisualizationSettings,
+): number | null => {
+  const value = settings["graph.goal_value"];
+  return isGoalStaticValue(value) ? value : null;
+};
 
 export const getChartGoal = (
   settings: VisualizationSettings,
@@ -19,7 +29,7 @@ export const getChartGoal = (
   const isPercent = getStackOffset(settings) === "expand";
 
   return {
-    value: getGoalValue(settings["graph.goal_value"] ?? 0, isPercent),
+    value: getGoalValue(getNumericGoalValue(settings) ?? 0, isPercent),
     label: settings["graph.goal_label"] ?? getDefaultGoalLabel(),
   };
 };
