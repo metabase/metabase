@@ -12,6 +12,7 @@
         "./enterprise/frontend/test/*"
       ],
       "build-configs/*": ["./frontend/build/*"],
+      "style": ["./frontend/src/metabase/css/core/index.css"],
       "cljs/*": ["./target/cljs_dev/*"],
       "echarts/types/src/*": ["./node_modules/echarts/types/src/*"],
       "zrender/lib/core/types": ["./node_modules/zrender/lib/core/types"],
@@ -37,14 +38,10 @@
         "./enterprise/frontend/src/embedding-sdk-package/data-app-dev.config.ts"
       ]
     },
-    "plugins": [
-      {
-        "name": "typescript-plugin-css-modules",
-        "options": {
-          "goToDefinition": true
-        }
-      }
-    ]
+    "plugins": [{ "name": "@css-modules-kit/ts-plugin" }]
+  },
+  "cmkOptions": {
+    "enabled": true
   },
   "include": [
     "frontend/src/**/*",
