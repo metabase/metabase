@@ -43,6 +43,13 @@ describe("BrowseDatabases", () => {
     }
   });
 
+  it("renders the page title as a single h1", async () => {
+    renderBrowseDatabases(10);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /Databases$/ }),
+    ).toBeInTheDocument();
+  });
+
   describe("opening a database through the UI", () => {
     const renderBrowseDatabasesWithRouter = (databases: Database[]) => {
       setupDatabasesEndpoints(databases);
