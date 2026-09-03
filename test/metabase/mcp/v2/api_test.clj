@@ -112,7 +112,8 @@
     (let [narrow #{"agent:query:run"}]
       (testing "a token on another surface scope neither sees nor can call it"
         (is (not (some #(= "ping_v2" (:name %)) (registry/list-tools narrow))))
-        (is (:isError (registry/call-tool narrow nil "ping_v2" {}))))
+        (is (= "Insufficient scope to call tool: ping_v2"
+               (get-in (registry/call-tool narrow nil "ping_v2" {}) [:error :message]))))
       (testing "the published description names the required scope and the unscoped fallback"
         (let [description (->> (registry/list-tools nil)
                                (filter #(= "ping_v2" (:name %)))
@@ -139,18 +140,19 @@
         (is (= 200 (:status response)))
         (is (not (:isError result)))
         (is (= {:ok true :message "pong"} (:structuredContent result)))))
-    (testing "argument validation failures are teaching errors, not schema dumps"
-      (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {:message 42}})
-                                  {"mcp-session-id" session-id})
-            result   (get-in response [:body :result])]
-        (is (:isError result))
-        (is (str/starts-with? (-> result :content first :text) "Invalid arguments"))))
-    (testing "an unknown tool is a method-not-found style error"
+    (testing "argument validation failures are JSON-RPC invalid-params errors, not MCP tool results"
+      (let [response (mcp-request (jsonrpc-request "tools/call"
+                                                   {:name "ping_v2" :arguments {:message 42}})
+                                  {"mcp-session-id" session-id})]
+        (is (= -32602 (get-in response [:body :error :code])))
+        (is (str/starts-with? (get-in response [:body :error :message]) "Invalid arguments"))
+        (is (not (contains? (:body response) :result)))))
+    (testing "an unknown tool is a JSON-RPC method-not-found error"
       (let [response (mcp-request (jsonrpc-request "tools/call" {:name "nope" :arguments {}})
-                                  {"mcp-session-id" session-id})
-            result   (get-in response [:body :result])]
-        (is (:isError result))
-        (is (= "Unknown tool: nope" (-> result :content first :text)))))))
+                                  {"mcp-session-id" session-id})]
+        (is (= -32601 (get-in response [:body :error :code])))
+        (is (= "Unknown tool: nope" (get-in response [:body :error :message])))
+        (is (not (contains? (:body response) :result)))))))
 
 (deftest disabled-tools-kill-switch-test
   (let [[session-id _] (initialize!)]
@@ -162,10 +164,10 @@
                          (get-in response [:body :result :tools]))))))
       (testing "a disabled tool is rejected by tools/call as if it never existed"
         (let [response (mcp-request (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
-                                    {"mcp-session-id" session-id})
-              result   (get-in response [:body :result])]
-          (is (:isError result))
-          (is (= "Unknown tool: ping_v2" (-> result :content first :text))))))))
+                                    {"mcp-session-id" session-id})]
+          (is (= -32601 (get-in response [:body :error :code])))
+          (is (= "Unknown tool: ping_v2" (get-in response [:body :error :message])))
+          (is (not (contains? (:body response) :result))))))))
 
 (deftest method-dispatch-fallthrough-test
   (let [[session-id _] (initialize!)]
@@ -340,12 +342,11 @@
                 handed a live /api/dataset authenticator by calling the tool by name"
         (let [plain-session (-> (mcp-request (jsonrpc-request "initialize" {:capabilities {}}))
                                 (get-in [:headers "Mcp-Session-Id"]))
-              result        (-> (mcp-request (jsonrpc-request "tools/call"
-                                                              {:name "refresh_ui_credential" :arguments {}})
-                                             {"mcp-session-id" plain-session})
-                                (get-in [:body :result]))]
-          (is (true? (:isError result)))
-          (is (nil? (get-in result [:_meta :com.metabase/mcp-apps]))))))))
+              response      (mcp-request (jsonrpc-request "tools/call"
+                                                          {:name "refresh_ui_credential" :arguments {}})
+                                         {"mcp-session-id" plain-session})]
+          (is (= -32602 (get-in response [:body :error :code])))
+          (is (not (contains? (:body response) :result))))))))
 
 (deftest refresh-ui-credential-is-redacted-from-the-transport-trace-test
   (testing "the transport records the whole JSON-RPC response one frame above the registry's tool-output
@@ -368,10 +369,13 @@
             (`mcp.resources/redact-ui-credential`); the transport's HTML scrub does not reach tool results."
     (let [recorded (atom [])]
       (mt/with-dynamic-fn-redefs [ait/record! (fn [m] (swap! recorded conj m))]
-        (let [result (mt/with-current-user (mt/user->id :crowberto)
-                       (registry/call-tool #{"agent:query:run"}
-                                           (mcp.session/create! (mt/user->id :crowberto) nil)
-                                           "refresh_ui_credential" {} {:supports-mcp-ui? true}))]
+        (let [{:keys [result]}
+              (mt/with-current-user (mt/user->id :crowberto)
+                (registry/call-tool #{"agent:query:run"}
+                                    (mcp.session/create! (mt/user->id :crowberto) nil)
+                                    "refresh_ui_credential"
+                                    {}
+                                    {:supports-mcp-ui? true}))]
           (testing "the caller still gets the credential"
             (is (some? (get-in result [:_meta :com.metabase/mcp-apps :credential]))))
           (testing "but the trace does not"

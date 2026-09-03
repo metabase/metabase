@@ -351,16 +351,21 @@
             (is (= 404 (:status response)))
             (is (= "Invalid or expired session" (get-in response [:body :error :message])))
             (is (nil? (get-in response [:body :result])))))
-        (testing "nor can they tear it down"
-          (let [response (client/client-full-response (test.users/username->token :crowberto)
-                                                      :delete endpoint
-                                                      {:request-options {:headers {"mcp-session-id" session-id}}})]
-            (is (= 404 (:status response))))
-          ;; the `core_session` row is what carries the ownership, so a DELETE that reaped it would leave the
-          ;; session ownerless — and an ownerless session dispatches for anyone
+        (testing "DELETE refuses invalid sessions and reports that valid-session termination is unsupported"
+          (testing "another user cannot tear the session down"
+            (let [response (client/client-full-response (test.users/username->token :crowberto)
+                                                        :delete endpoint
+                                                        {:request-options {:headers {"mcp-session-id" session-id}}})]
+              (is (= 404 (:status response)))))
           (testing "the session is still owned afterwards, so the foreigner is still refused"
             (is (= 404 (:status (mcp-request :crowberto (ping-call) {"mcp-session-id" session-id})))))
-          (testing "and its owner still holds it"
+          (testing "the owner gets 405 rather than a false acknowledgement of termination"
+            (let [response (client/client-full-response (test.users/username->token :rasta)
+                                                        :delete endpoint
+                                                        {:request-options {:headers {"mcp-session-id" session-id}}})]
+              (is (= 405 (:status response)))
+              (is (= "GET, POST" (get-in response [:headers "Allow"])))))
+          (testing "the owner still holds the session after the refused DELETE"
             (is (= 200 (:status (mcp-request :rasta (ping-call) {"mcp-session-id" session-id}))))))
         (finally
           (mcp.session/delete! session-id rasta-id))))))
@@ -591,11 +596,22 @@
           (let [response (mcp-request body {"mcp-session-id" session-id})]
             (is (= 202 (:status response)))
             (is (str/blank? (str (:body response))))))))
-    (testing "MCP forbids batching initialize — it is what issues the session the rest of a batch needs"
-      (let [response (mcp-request [(jsonrpc-request "initialize")] {"mcp-session-id" session-id})]
-        (is (= 400 (:status response)))
-        (is (= "initialize must not be batched" (get-in response [:body :error :message])))
-        (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
+    (testing "initialize requires a JSON-RPC 2.0 request and cannot be batched"
+      (doseq [[label message] {"a request without a version" {:method "initialize" :id 1}
+                               "a JSON-RPC 1.0 request"       {:jsonrpc "1.0" :method "initialize" :id 1}
+                               "a notification"              {:jsonrpc "2.0" :method "initialize"}}]
+        (testing label
+          (let [response (mcp-request message)]
+            (is (= 400 (:status response)))
+            (is (= -32600 (get-in response [:body :error :code])))
+            (is (= "Invalid request" (get-in response [:body :error :message])))
+            (is (nil? (get-in response [:headers "Mcp-Session-Id"]))))))
+      (testing "a valid initialize request is still forbidden in a batch"
+        (let [response (mcp-request [(jsonrpc-request "initialize")]
+                                    {"mcp-session-id" session-id})]
+          (is (= 400 (:status response)))
+          (is (= "initialize must not be batched" (get-in response [:body :error :message])))
+          (is (nil? (get-in response [:headers "Mcp-Session-Id"]))))))
     (testing "an empty batch is invalid per JSON-RPC 2.0"
       (let [response (mcp-request [] {"mcp-session-id" session-id})]
         (is (= 400 (:status response)))
@@ -625,18 +641,26 @@
               "an all-invalid batch is answered, not 202-swallowed")
           (is (= 3 (count (:body response))))
           (is (every? #(= -32600 (get-in % [:error :code])) (:body response)))))
-      (testing "an object missing a string `method` is Invalid Request (-32600), not method-not-found (-32601)"
-        (testing "as a single message"
-          (let [response (mcp-request {:jsonrpc "2.0" :id 5} {"mcp-session-id" session-id})]
-            (is (= -32600 (get-in response [:body :error :code])))
-            (is (= "Invalid request" (get-in response [:body :error :message]))
-                "no trailing-space 'Method not found: ' — the message is never dispatched as a method")))
-        (testing "inside a batch, alongside a valid request"
-          (let [response (mcp-request [(jsonrpc-request "ping" {} 1) {:jsonrpc "2.0" :id 5}]
-                                      {"mcp-session-id" session-id})
-                body     (:body response)]
-            (is (= 2 (count body)))
-            (is (= -32600 (get-in (first (remove #(= 1 (:id %)) body)) [:error :code])))))))))
+      (testing "an object without a JSON-RPC 2.0 envelope and string method is Invalid Request (-32600)"
+        (doseq [[label malformed] {"missing method" {:jsonrpc "2.0" :id 5}
+                                   "non-string method" {:jsonrpc "2.0" :method 42 :id 5}
+                                   "missing version" {:method "ping" :id 5}
+                                   "missing version and id" {:method "ping"}
+                                   "JSON-RPC 1.0" {:jsonrpc "1.0" :method "ping" :id 5}}]
+          (testing label
+            (testing "as a single message"
+              (let [response (mcp-request malformed {"mcp-session-id" session-id})]
+                (is (= 400 (:status response)))
+                (is (= -32600 (get-in response [:body :error :code])))
+                (is (= "Invalid request" (get-in response [:body :error :message])))))
+            (testing "inside a batch, alongside a valid request"
+              (let [response (mcp-request [(jsonrpc-request "ping" {} 1) malformed]
+                                          {"mcp-session-id" session-id})
+                    body     (:body response)]
+                (is (= 200 (:status response)))
+                (is (= 2 (count body)))
+                (is (= -32600
+                       (get-in (first (remove #(= 1 (:id %)) body)) [:error :code])))))))))))
 
 ;;; ------------------------------------------------------ SSE -----------------------------------------------------
 
