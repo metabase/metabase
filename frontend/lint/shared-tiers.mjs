@@ -18,7 +18,7 @@ const SHARED_UTILS_LEVELS = [
   ["shared/redux"],
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U4 — the current user, composed over the plugin registry for application permissions.
+  // U4 — the current user, over the api client and store.
   ["shared/current-user"],
   // U5 — app services over the store, registry and current user.
   [

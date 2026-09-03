@@ -196,9 +196,12 @@ import { reinitializeRequestHandlers } from "metabase/api/client";
 import { resetPluginSlots } from "./slot";
 
 /**
- * Mostly for test purposes, reinitialize all plugins.
+ * Reinitialize the plugin slots declared in this module.
  * You don't reinitialize plugins individually because some plugins depend on others,
  * so reinitializing them all ensures that dependencies are correctly set up.
+ *
+ * @internal Do not call directly. Use reinitializePlugins from __support__/plugins instead,
+ * which also resets the slots that other modules declare.
  */
 export function reinitialize() {
   resetPluginSlots();
