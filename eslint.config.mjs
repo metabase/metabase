@@ -332,6 +332,7 @@ const configs = [
       "metabase/no-literal-metabase-strings": "error",
       "metabase/no-oss-reinitialize-import": "error",
       "metabase/no-analytics-import-outside-analytics-files": "error",
+      "metabase/no-underscore-memoize": "error",
 
       "depend/ban-dependencies": [
         "error",

@@ -101,7 +101,8 @@ export function formatRetentionProfile(
   const totalMb = newKeysMb + repeatedKeysMb + moreNewKeysMb;
 
   // A pass can measure slightly negative when it releases more than it takes.
-  const signed = (mb: number) => `${mb < 0 ? "-" : "+"}${Math.abs(mb).toFixed(1)}`;
+  const signed = (mb: number) =>
+    `${mb < 0 ? "-" : "+"}${Math.abs(mb).toFixed(1)}`;
 
   return `
   gc exposed:  ${canForceGarbageCollection}
