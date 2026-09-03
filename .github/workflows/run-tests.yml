@@ -148,9 +148,29 @@ jobs:
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
-    with:
-      containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
+  
+  containerize:
+    needs: [uberjar]
+    if: >-
+      !cancelled() &&
+      needs.uberjar.result == 'success' &&
+      (
+        (github.event_name == 'push' && github.ref_name == 'master') ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    name: containerize (${{ matrix.edition }})
+    strategy:
+      matrix:
+        edition: ['ee', 'oss']
+    uses: ./.github/workflows/containerize-jar.yml
+    secrets: inherit
+    with:
+      build-args: |
+        GIT_COMMIT_SHA=${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+      edition: ${{ matrix.edition }}
+      release: false
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION

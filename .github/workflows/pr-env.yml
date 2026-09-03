@@ -29,13 +29,18 @@ jobs:
       }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
+
+  containerize:
+    needs: [build]
+    uses: ./.github/workflows/containerize-jar.yml
+    secrets: inherit
     with:
-      containerize: true
       registry: ecr
       repo: metabase-enterprise
       tag: ${{ github.event.pull_request.head.sha }}
+
   deploy:
-    needs: [build]
+    needs: [containerize]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV
     timeout-minutes: 60

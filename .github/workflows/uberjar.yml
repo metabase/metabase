@@ -1,6 +1,6 @@
 name: Build Uberjar
 
-# This workflow builds and containerizes an uberjar and pushes it to dockerhub.
+# This workflow builds the uberjar.
 
 concurrency:
   group: uberjar-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
@@ -14,53 +14,10 @@ on:
         type: string
         default: ''
         required: false
-      containerize:
-        description: "Set if the uberjar should be containerized."
-        type: boolean
-        default: false
-        required: false
-      registry:
-        description: "Registry the containerized uberjar is pushed to. Ignored if containerize is false."
-        type: choice
-        options:
-          - docker
-          - ecr
-        default: docker
-        required: false
-      repo:
-        description: "Repository name the containerized uberjar is pushed to, without the registry host or the Docker Hub owner. Ignored if containerize is false."
-        type: string
-        default: ''
-        required: false
-      tag:
-        description: "Tag for containerized uberjar. Ignored if containerize is false."
-        type: string
-        default: ''
-        required: false
   workflow_call:
     inputs:
       commit:
         description: "Optional full-length commit SHA-1 hash"
-        type: string
-        default: ''
-        required: false
-      containerize:
-        description: "Set if the uberjar should be containerized."
-        type: boolean
-        default: false
-        required: false
-      registry:
-        description: "Registry the containerized uberjar is pushed to. Ignored if containerize is false."
-        type: string
-        default: docker
-        required: false
-      repo:
-        description: "Repository name the containerized uberjar is pushed to, without the registry host or the Docker Hub owner. Ignored if containerize is false."
-        type: string
-        default: ''
-        required: false
-      tag:
-        description: "Tag for containerized uberjar. Ignored if containerize is false."
         type: string
         default: ''
         required: false
@@ -71,7 +28,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       build_editions: ${{ steps.matrix.outputs.build_editions }}
-      containerize_editions: ${{ steps.matrix.outputs.containerize_editions }}
       java_version: ${{ steps.dependencies.outputs.java_version }}
       node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
@@ -110,16 +66,7 @@ jobs:
 
             core.info(`build: ${editions.join(', ') || '(nothing, both artifacts already exist)'}`);
 
-            // If both repo and tag is set, only containerize and push the ee version since we don't want a 
-            // race condition between the oss and ee versions pushed to the same repo and tag.
-            const repo = '${{ inputs.repo }}';
-            const tag = '${{ inputs.tag }}';
-            const containerize_editions = repo && tag ? ['ee'] : ['ee', 'oss'];
-
-            core.info(`containerize: ${containerize_editions.join(', ')}`);
-
             core.setOutput('build_editions', JSON.stringify(editions));
-            core.setOutput('containerize_editions', JSON.stringify(containerize_editions));
 
       - name: Prepare release scripts
         if: ${{ contains(github.ref, 'release-x') }}
@@ -206,22 +153,3 @@ jobs:
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
       - name: Wait for Metabase to start
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
-  containerize:
-    needs: [setup, build, jar-healthcheck]
-    if: ${{ inputs.containerize && !failure() && !cancelled() }}
-    name: containerize (${{ matrix.edition }})
-    strategy:
-      matrix:
-        edition: ${{ fromJson(needs.setup.outputs.containerize_editions) }}
-    uses: ./.github/workflows/containerize-jar.yml
-    secrets: inherit
-    with:
-      build-args: |
-        GIT_COMMIT_SHA=${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-      commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-      edition: ${{ matrix.edition }}
-      release: false
-      registry: ${{ inputs.registry }}
-      repo: ${{ inputs.repo }}
-      tag: ${{ inputs.tag }}
