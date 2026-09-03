@@ -1,4 +1,4 @@
-import type { CollectionItemModel } from "./collection";
+import type { CollectionItemModel, CollectionType } from "./collection";
 import type { EnterpriseSettings } from "./settings";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
@@ -147,6 +147,7 @@ export type RemoteSyncCollectionRef = {
 };
 
 export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
+  type: CollectionType;
   personal: boolean;
 };
 

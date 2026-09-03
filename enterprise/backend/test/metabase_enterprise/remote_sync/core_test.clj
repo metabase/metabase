@@ -7,7 +7,7 @@
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
-   [metabase.collections.test-utils :refer [with-library-synced with-library-not-synced]]
+   [metabase.collections.test-utils :refer [with-library with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -213,29 +213,128 @@
           (is (nil? (:collection dep))))))))
 
 (deftest bulk-set-remote-sync-snippet-dependency-remedy-is-library-test
-  (testing "a snippet dependency asks for Library sync — its eligibility keys on the Library, not its collection"
-    (with-library-not-synced
-      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
-                     :model/NativeQuerySnippet {snippet-id :id} {:name "active_users" :content "1 = 1"}
-                     :model/Card _ {:name "Snippet Card"
-                                    :collection_id synced-id
-                                    :database_id (mt/id)
-                                    :dataset_query (mt/native-query
-                                                    {:query         "SELECT 1 WHERE {{snippet: active_users}}"
-                                                     :template-tags {"snippet: active_users"
-                                                                     {:snippet-id   snippet-id
-                                                                      :snippet-name "active_users"
-                                                                      :type         :snippet
-                                                                      :name         "snippet: active_users"
-                                                                      :display-name "Snippet: Active Users"
-                                                                      :id           (str (random-uuid))}}})}]
-        (let [ex (is (thrown? clojure.lang.ExceptionInfo
-                              (core/bulk-set-remote-sync {synced-id true})))]
-          (is (=? {:errors {:collections [{:dependencies [{:model  "snippet"
-                                                           :id     snippet-id
-                                                           :name   "active_users"
-                                                           :remedy {:type :library}}]}]}}
-                  (ex-data ex))))))))
+  (testing "a snippet dependency names the Library collection, which an admin switches on like any other"
+    (with-library [{:keys [library]}]
+      (with-library-not-synced
+        (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                       :model/NativeQuerySnippet {snippet-id :id} {:name "active_users" :content "1 = 1"}
+                       :model/Card _ {:name "Snippet Card"
+                                      :collection_id synced-id
+                                      :database_id (mt/id)
+                                      :dataset_query (mt/native-query
+                                                      {:query         "SELECT 1 WHERE {{snippet: active_users}}"
+                                                       :template-tags {"snippet: active_users"
+                                                                       {:snippet-id   snippet-id
+                                                                        :snippet-name "active_users"
+                                                                        :type         :snippet
+                                                                        :name         "snippet: active_users"
+                                                                        :display-name "Snippet: Active Users"
+                                                                        :id           (str (random-uuid))}}})}]
+          (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                                (core/bulk-set-remote-sync {synced-id true})))]
+            (is (=? {:errors {:collections [{:dependencies [{:model  "snippet"
+                                                             :id     snippet-id
+                                                             :name   "active_users"
+                                                             ;; The collection `type` is what lets clients
+                                                             ;; give the Library its own icon.
+                                                             :remedy {:type       :collection
+                                                                      :collection {:id       (:id library)
+                                                                                   :name     (:name library)
+                                                                                   :type     "library"
+                                                                                   :personal false}}}]}]}}
+                    (ex-data ex)))))))))
+
+(deftest bulk-set-remote-sync-dependency-remedy-carries-collection-type-test
+  (testing "a remedy resolved through the top-level-ancestor lookup still reports the collection's type"
+    ;; Distinct from the snippet case above, whose Library is loaded whole. This one goes through
+    ;; `collections-by-id`, so it is what proves that select carries `:type`.
+    (with-library [{:keys [library]}]
+      (with-library-not-synced
+        (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                       :model/Card {source-card-id :id} {:name "Library Card"
+                                                         :collection_id (:id library)
+                                                         :database_id (mt/id)
+                                                         :dataset_query (mt/mbql-query venues)}
+                       :model/Card _ {:name "Dependent Card"
+                                      :collection_id synced-id
+                                      :database_id (mt/id)
+                                      :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+          (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                                (core/bulk-set-remote-sync {synced-id true})))]
+            (is (=? {:errors {:collections [{:dependencies [{:id     source-card-id
+                                                             :remedy {:type       :collection
+                                                                      :collection {:id   (:id library)
+                                                                                   :type "library"}}}]}]}}
+                    (ex-data ex)))))))))
+
+(defn- link-to-dashboard-dashcard
+  "A dashcard on `dashboard-id` that holds no card of its own and links to `target-id` via click behaviour."
+  [dashboard-id target-id]
+  {:dashboard_id           dashboard-id
+   :card_id                nil
+   :visualization_settings {:click_behavior {:type     "link"
+                                             :linkType "dashboard"
+                                             :targetId target-id}}})
+
+(defn- reported-dependencies
+  "The `[model id]` pairs a refused sync reports for its first failing collection."
+  [ex]
+  (set (map (juxt :model :id) (get-in (ex-data ex) [:errors :collections 0 :dependencies]))))
+
+(deftest bulk-set-remote-sync-dependency-prunes-the-contents-of-a-linked-dashboard-test
+  (testing "a dashboard reached by click behaviour is reported alone — syncing its collection covers the cards it holds"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Card {held-card-id :id} {:name "Held Card"
+                                                   :collection_id regular-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {linked-id :id} {:name "Linked" :collection_id regular-id}
+                   :model/DashboardCard _ {:dashboard_id linked-id :card_id held-card-id}
+                   :model/Dashboard {hub-id :id} {:name "Hub" :collection_id synced-id}
+                   :model/DashboardCard _ (link-to-dashboard-dashcard hub-id linked-id)]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-id true})))]
+        (is (= #{["dashboard" linked-id]} (reported-dependencies ex)))
+        (testing "the card the linked dashboard holds is not reported in its own right"
+          (is (not (contains? (reported-dependencies ex) ["card" held-card-id]))))))))
+
+(deftest bulk-set-remote-sync-dependency-keeps-linked-content-needing-its-own-remedy-test
+  (testing "a card inside a linked dashboard survives when syncing that dashboard's collection wouldn't cover it"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Collection {other-id :id} {:name "Other" :location "/" :is_remote_synced false}
+                   :model/Card {held-card-id :id} {:name "Held Card"
+                                                   :collection_id other-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {linked-id :id} {:name "Linked" :collection_id regular-id}
+                   :model/DashboardCard _ {:dashboard_id linked-id :card_id held-card-id}
+                   :model/Dashboard {hub-id :id} {:name "Hub" :collection_id synced-id}
+                   :model/DashboardCard _ (link-to-dashboard-dashcard hub-id linked-id)]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-id true})))]
+        (is (= #{["dashboard" linked-id] ["card" held-card-id]} (reported-dependencies ex)))
+        (testing "each names the collection that actually covers it"
+          (is (=? {"Regular" {:type :collection}
+                   "Other"   {:type :collection}}
+                  (into {} (for [{:keys [remedy]} (get-in (ex-data ex) [:errors :collections 0 :dependencies])]
+                             [(get-in remedy [:collection :name]) remedy])))))))))
+
+(deftest bulk-set-remote-sync-dependency-pruning-keeps-a-mutually-linked-pair-reachable-test
+  (testing "dashboards that link to each other don't prune each other away, leaving nothing to report"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Dashboard {first-id :id} {:name "First" :collection_id regular-id}
+                   :model/Dashboard {second-id :id} {:name "Second" :collection_id regular-id}
+                   :model/DashboardCard _ (link-to-dashboard-dashcard first-id second-id)
+                   :model/DashboardCard _ (link-to-dashboard-dashcard second-id first-id)
+                   :model/Dashboard {hub-id :id} {:name "Hub" :collection_id synced-id}
+                   :model/DashboardCard _ (link-to-dashboard-dashcard hub-id first-id)]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-id true})))]
+        ;; Only `First` is reached from the synced collection, so only it survives — but something must.
+        (is (= #{["dashboard" first-id]} (reported-dependencies ex)))))))
 
 (deftest bulk-set-remote-sync-reports-every-failing-collection-test
   (testing "every collection with unsynced dependencies is reported, not just the first to fail"
