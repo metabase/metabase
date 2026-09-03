@@ -53,8 +53,9 @@ export const TenantsListingApp = () => {
   const hasNoTenants = data?.data?.length === 0;
 
   return (
-    // Make the layout narrow when there are no tenants
-    <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
+    // Narrower when there are no tenants. 50rem matches the embedding hub's
+    // content column, which mounts this same listing.
+    <Box maw={hasNoTenants ? "50rem" : undefined} mx="auto">
       <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{t`Tenants`}</Title>
 

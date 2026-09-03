@@ -7,6 +7,7 @@ import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting/strings";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useListTenantsQuery } from "../../../api/tenants";
@@ -124,13 +125,13 @@ const RelatedSettingsSection = () => (
     <RelatedSettingCard
       name={t`Tenants`}
       icon="globe"
-      to="/admin/people/tenants"
+      to={EnterpriseUrls.tenants()}
     />
 
     <RelatedSettingCard
       name={t`People`}
       icon="person"
-      to="/admin/people/tenants/people"
+      to={EnterpriseUrls.tenantPeople()}
     />
 
     <RelatedSettingCard
@@ -142,7 +143,7 @@ const RelatedSettingsSection = () => (
     <RelatedSettingCard
       name={t`Permissions`}
       icon="group"
-      to="/admin/permissions"
+      to={EnterpriseUrls.tenantsPermissions()}
     />
   </SimpleGrid>
 );

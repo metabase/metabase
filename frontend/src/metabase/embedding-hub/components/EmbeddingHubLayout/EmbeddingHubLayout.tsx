@@ -40,6 +40,7 @@ export function EmbeddingHubLayout() {
 
   const { pathname } = useLocation();
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
+  const hasTenants = useHasTokenFeature("tenants");
 
   useEnsureDefaultEmbeddingThemes();
 
@@ -62,6 +63,12 @@ export function EmbeddingHubLayout() {
       icon: "key",
       to: Urls.embeddingHubPermissions(),
       fullWidth: true,
+    },
+    {
+      label: t`Tenancy`,
+      icon: "group",
+      to: Urls.embeddingHubTenancy(),
+      isGated: !hasTenants,
     },
   ];
 
@@ -118,7 +125,7 @@ function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
 
 // Matches a whole path segment, never a string prefix, so a tab claims its own
 // sub-routes without claiming a sibling whose path merely starts the same way.
-function isUnder(pathname: string, base: string) {
+export function isUnder(pathname: string, base: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 

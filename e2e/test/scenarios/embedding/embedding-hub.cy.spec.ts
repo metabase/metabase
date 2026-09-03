@@ -449,6 +449,83 @@ function assertStillInsideHub() {
   cy.findByTestId("embedding-hub-nav").should("be.visible");
 }
 
+describe("scenarios > embedding > embedding hub > tenancy", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("offers the enable card while the multi-tenant strategy is off", () => {
+      H.updateSetting("use-tenants", false);
+
+      cy.visit("/embedding");
+
+      cy.findByTestId("embedding-hub-nav")
+        .findByRole("link", { name: "Tenancy" })
+        .click();
+
+      cy.url().should("include", "/embedding/tenancy");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Enable multi-tenant user strategy").should("be.visible");
+        cy.findByRole("tab", { name: "Tenants" }).should("not.exist");
+      });
+    });
+
+    it("carries the tenant surfaces once the strategy is on", () => {
+      H.updateSetting("use-tenants", false);
+
+      cy.visit("/embedding/tenancy");
+
+      cy.log("Enable multi-tenancy from the enable card, not the API");
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("button", { name: "Enable multi-tenancy" })
+        .click();
+
+      cy.findByRole("dialog", { name: "Pick a user strategy" }).within(() => {
+        cy.findByText("Multi tenant").click();
+        cy.findByRole("button", { name: "Apply" }).click();
+      });
+
+      cy.log("Applying lands on the tenants listing, now empty");
+      // The empty state's copy is interpolated with anchor links, so no
+      // single node's text content matches the sentence exactly -- a regex
+      // matches the substring instead.
+      cy.findByTestId("embedding-hub-main")
+        .findByText(/Create your first tenant to start adding/)
+        .should("be.visible");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByRole("tab", { name: "Tenants" }).should("be.visible");
+        cy.findByRole("tab", { name: "Tenant users" }).click();
+      });
+
+      cy.log("The listing's own links stay inside the hub");
+      cy.url().should("include", "/embedding/tenancy/people");
+      cy.url().should("not.include", "/admin/people");
+    });
+  });
+
+  describe("oss", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells rather than hiding the tab", () => {
+      cy.visit("/embedding/tenancy");
+
+      // Card copy is unit-tested next to the component; this just confirms
+      // the upsell renders in place of the real tenants surfaces.
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Use a multi-tenant user strategy")
+        .should("be.visible");
+    });
+  });
+});
+
 function configureSaml() {
   cy.readFile("test_resources/sso/auth0-public-idp.cert", "utf8").then(
     (certificate) => {

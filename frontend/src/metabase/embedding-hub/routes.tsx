@@ -1,4 +1,5 @@
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Navigate, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -31,6 +32,11 @@ const embeddingHubAuthenticationPage = () =>
 const embeddingHubPermissionsPage = () =>
   import("./pages").then(({ EmbeddingHubPermissionsPage }) => ({
     Component: EmbeddingHubPermissionsPage,
+  }));
+
+const embeddingHubTenancyPage = () =>
+  import("./pages").then(({ EmbeddingHubTenancyPage }) => ({
+    Component: EmbeddingHubTenancyPage,
   }));
 
 const setupPermissionsAndTenantsPage = () =>
@@ -77,6 +83,12 @@ export function getEmbeddingHubRoutes() {
 
         <Route path="permissions" lazy={embeddingHubPermissionsPage}>
           {getAdminPermissionsRoutes()}
+        </Route>
+
+        {/* Null on OSS, and on EE assigned during plugin init. With no child
+            routes the page still renders its own upsell. */}
+        <Route path="tenancy" lazy={embeddingHubTenancyPage}>
+          {PLUGIN_TENANTS.tenantsRoutes}
         </Route>
       </Route>
     </Route>
