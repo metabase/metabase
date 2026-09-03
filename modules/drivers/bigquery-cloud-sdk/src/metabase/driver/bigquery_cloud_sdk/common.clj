@@ -1,13 +1,11 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
+   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ;; persists the project-id resolved from credentials back to the Database row; a write, not metadata
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (com.google.auth.oauth2 ServiceAccountCredentials)
    (java.io ByteArrayInputStream)))
@@ -81,7 +79,5 @@
                           "(%s vs %s). The cached project-id-from-credentials uses the read SA's project; "
                           "query qualification may be incorrect for write connections.")
                      (u/the-id database) creds-proj-id write-proj-id))))
-    (t2/update! :model/Database
-                (u/the-id database)
-                {:details (assoc details :project-id-from-credentials creds-proj-id)})
+    (bigquery.db/update-database-details! (u/the-id database) (assoc details :project-id-from-credentials creds-proj-id))
     creds-proj-id))
