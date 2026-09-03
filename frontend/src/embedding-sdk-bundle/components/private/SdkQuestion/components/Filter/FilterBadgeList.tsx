@@ -7,7 +7,7 @@ import {
 import { BadgeList } from "embedding-sdk-bundle/components/private/SdkQuestion/components/util/BadgeList";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugin";
 
 export const FilterBadgeList = ({
   onAddItem,

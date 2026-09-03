@@ -5,12 +5,13 @@ import { setupContentTranslationEndpoints } from "__support__/server-mocks/conte
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { DictionaryArray, TokenFeatures } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { PLUGIN_CONTENT_TRANSLATION } from "./plugin";
 
 export interface ContentTranslationTestSetupOptions {
   localeCode?: string;
