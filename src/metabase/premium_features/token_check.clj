@@ -191,18 +191,22 @@
                      :socket-timeout     5000     ;; in milliseconds
                      :connection-timeout 2000})))     ;; in milliseconds
 
+(defn- authoritative
+  "Mark a decoded token status as an authoritative answer from the store — one we may cache and hold on
+  to, including a 4xx that definitively rejects the token (expired, does not exist). Anything transient
+  (network error, 5xx, missing or unparseable body) must throw instead so cached state is left alone."
+  [decoded]
+  (assoc decoded :canonical? true))
+
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
       (http/success? resp) (do (analytics/inc! :metabase-token-check/attempt {:status :success})
-                               (some-> body json/decode+kw (assoc :canonical? true)))
-      (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
-                              {:valid         false
-                               :canonical?    false
-                               :status        "Unable to validate token"
-                               :error-details "Token validation provided no response"})
+                               (some-> body json/decode+kw authoritative))
+      (<= 400 status 499) (or (some-> body json/decode+kw authoritative)
+                              (throw (ex-info "Token validation provided no response." {:status status})))
       ;; exceptions are not cached.
       :else (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
                 (throw (ex-info "An unknown error occurred when validating token." {:status status
@@ -279,15 +283,15 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (assoc (decode-airgap-token token) :canonical? true))
+          (authoritative (decode-airgap-token token)))
 
         :else
         (do
           (log/error (u/format-color 'red "Invalid token format!"))
-          {:valid         false
-           :canonical?    true
-           :status        "invalid"
-           :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
+          (authoritative
+           {:valid         false
+            :status        "invalid"
+            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")}))))
 
 (def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
 
@@ -421,6 +425,8 @@
   (let [local-cache          (or local-cache (atom {}))
         refresh-in-progress? (atom false)]
     (letfn [(do-refresh! [token token-hash]
+              ;; anything the inner checker returns is an authoritative answer we may hold on to —
+              ;; transient failures (network errors, 5xx, bodyless 4xx) throw before reaching here
               (let [result      (-check-token token-checker token)
                     result-hash (hash-token-status result)
                     now         (t/instant)]
@@ -607,9 +613,12 @@
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-features.settings/premium-embedding-token)
-                  (check-token)
-                  :features set)
+      ;; an invalid token (e.g. expired) confers no features, even if the token-status response still
+      ;; lists them (EMB-2341)
+      (or (let [{:keys [valid features]} (some-> (premium-features.settings/premium-embedding-token)
+                                                 (check-token))]
+            (when valid
+              (set features)))
           #{})
       (catch Throwable e
         (when (:pass-thru (ex-data e))
@@ -666,7 +675,8 @@
   (if-let [token (premium-features.settings/premium-embedding-token)]
     (let [result (check-token token)]
       (when (:canonical? result)
-        (boolean (contains? (set (:features result)) (name feature)))))
+        (boolean (and (:valid result)
+                      (contains? (set (:features result)) (name feature))))))
     false))
 
 (defn ee-feature-error
