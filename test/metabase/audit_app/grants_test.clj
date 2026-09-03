@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.grants :as grants]
    [metabase.audit-app.purview :as purview]
    [metabase.test.fixtures :as fixtures]
@@ -9,24 +10,30 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- rows
+  "`{view-name granted?}` as [[metabase.audit-app.db/views-and-select-grants]] would return it."
+  [views]
+  (for [[view granted?] views]
+    {:view_name view, :granted granted?}))
+
 (deftest reconciliation-test
   (let [a-purview-view (first (sort purview/audit-view-names))
         holds-purview  (zipmap purview/audit-view-names (repeat true))]
     (testing "nothing to do when the role already holds exactly the purview"
       (is (= {:grant #{} :revoke #{}}
-             (#'grants/reconciliation holds-purview))))
+             (#'grants/reconciliation (rows holds-purview)))))
     (testing "a purview view the role cannot read is granted"
       (is (= {:grant #{a-purview-view} :revoke #{}}
-             (#'grants/reconciliation (assoc holds-purview a-purview-view false)))))
+             (#'grants/reconciliation (rows (assoc holds-purview a-purview-view false))))))
     (testing "a `v_` view the role holds but the purview dropped is revoked"
       (is (= {:grant #{} :revoke #{"v_no_longer_in_the_purview"}}
-             (#'grants/reconciliation (assoc holds-purview "v_no_longer_in_the_purview" true)))))
+             (#'grants/reconciliation (rows (assoc holds-purview "v_no_longer_in_the_purview" true))))))
     (testing "a grant on something that isn't a `v_` view is the operator's business, not ours"
       (is (= {:grant #{} :revoke #{}}
-             (#'grants/reconciliation (assoc holds-purview "core_user" true)))))
+             (#'grants/reconciliation (rows (assoc holds-purview "core_user" true))))))
     (testing "a purview entry with no view behind it is skipped -- GRANT on a missing object would fail the batch"
       (is (= {:grant #{} :revoke #{}}
-             (#'grants/reconciliation (dissoc holds-purview a-purview-view)))))))
+             (#'grants/reconciliation (rows (dissoc holds-purview a-purview-view))))))))
 
 (deftest reconcile-audit-read-grants!-no-op-test
   (testing "no configured audit-read role means nothing to reconcile"
@@ -45,11 +52,13 @@
   "The `v_*` views [[test-role]] currently holds a direct `SELECT` grant on."
   []
   (into #{}
-        (keep (fn [[view granted?]] (when granted? view)))
-        (#'grants/views-and-grants test-role)))
+        (keep (fn [{:keys [view_name granted]}] (when granted view_name)))
+        (audit-app.db/views-and-select-grants test-role)))
 
 (defn- purview-views-present []
-  (set (filter purview/audit-view-names (keys (#'grants/views-and-grants test-role)))))
+  (into #{}
+        (comp (map :view_name) (filter purview/audit-view-names))
+        (audit-app.db/views-and-select-grants test-role)))
 
 (defn- do-with-test-role! [thunk]
   (t2/query (format "DROP ROLE IF EXISTS %s" test-role))
