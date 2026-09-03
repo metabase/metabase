@@ -27,7 +27,7 @@ export function DeleteBulkRowConfirmationModal({
       opened={opened}
       onClose={onClose}
     >
-      <Group justify="flex-end" mt="xl">
+      <Group justify="flex-end" mt="xxl">
         <Button variant="subtle" onClick={onClose}>
           {t`Cancel`}
         </Button>

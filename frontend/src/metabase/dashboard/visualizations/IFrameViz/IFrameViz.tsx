@@ -11,6 +11,7 @@ import { fillParametersInText } from "metabase/dashboard/visualizations/paramete
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
@@ -177,7 +178,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   const renderMessage = () => {
     if (isAdmin) {
-      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
+      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to={`${Urls.domainsSettings()}#allowed-iframe-hosts`} target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
     }
     return showMetabaseLinks
       ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>}.`
@@ -194,7 +195,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText c="text-primary" px="lg" mt="md">
+      <InteractiveText c="text-primary" px="xl" mt="lg">
         {renderMessage()}
       </InteractiveText>
     </Box>

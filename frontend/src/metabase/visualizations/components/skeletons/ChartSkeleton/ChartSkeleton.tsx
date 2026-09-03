@@ -80,7 +80,6 @@ const ChartSkeleton = ({
     return (
       <ScalarSkeleton
         className={className}
-        scalarType={display}
         name={name}
         description={description}
         actionMenu={actionMenu}

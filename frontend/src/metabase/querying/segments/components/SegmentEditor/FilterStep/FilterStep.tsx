@@ -27,7 +27,7 @@ export function FilterStep({
   return (
     <ClauseStep label={t`Filtered by`}>
       {query ? (
-        <Flex align="center" gap="md" wrap="wrap">
+        <Flex align="center" gap="lg" wrap="wrap">
           {filters.map((filter, filterIndex) => (
             <FilterPopover
               key={filterIndex}

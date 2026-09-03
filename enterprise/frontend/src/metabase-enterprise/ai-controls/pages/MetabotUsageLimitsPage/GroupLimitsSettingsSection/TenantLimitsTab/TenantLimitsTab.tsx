@@ -119,7 +119,7 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   return (
-    <Stack gap="xl" data-testid="tenant-limits-tab">
+    <Stack gap="xxl" data-testid="tenant-limits-tab">
       <Text c="text-secondary">{getDescription(limitType)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
@@ -128,14 +128,14 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
         {noTenantsToShow ? (
           <Alert
             size="compact"
-            mb="md"
+            mb="lg"
             color="error"
             icon={<Icon name="warning" />}
           >
             {t`No tenants to show`}
           </Alert>
         ) : (
-          <Stack gap="xl">
+          <Stack gap="xxl">
             <TextInput
               placeholder={t`Search...`}
               value={search}

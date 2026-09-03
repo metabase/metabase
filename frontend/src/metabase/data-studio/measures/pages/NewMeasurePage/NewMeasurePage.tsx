@@ -104,7 +104,7 @@ export function NewMeasurePage({
   }, [savedMeasure, getSuccessUrl, navigate]);
 
   return (
-    <PageContainer data-testid="new-measure-page" gap="xl">
+    <PageContainer data-testid="new-measure-page" gap="xxl">
       <NewMeasureHeader
         previewUrl={previewUrl}
         onNameChange={setName}
