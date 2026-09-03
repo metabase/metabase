@@ -335,10 +335,13 @@
                  (catch dev.failsafe.CircuitBreakerOpenException _e
                    (throw (ex-info (tru "Token validation is currently unavailable.")
                                    {:cause :token-check/circuit-breaker})))
+                 ;; a timed-out execution has no cause to unwrap — translate it ourselves
+                 (catch dev.failsafe.TimeoutExceededException _e
+                   (throw (ex-info (tru "Token validation timed out.") {})))
                  ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
                  ;; rethrowing.
                  (catch dev.failsafe.FailsafeException e
-                   (throw (.getCause e)))))))
+                   (throw (or (.getCause e) e)))))))
       (-clear-cache! [_]
         (-clear-cache! token-checker)))))
 

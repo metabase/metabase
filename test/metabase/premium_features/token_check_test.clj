@@ -59,7 +59,9 @@
                                                          (case @response
                                                            :error     (throw (ex-info "kaboom" {:ka :boom}))
                                                            :500       {:status 500}
-                                                           :400-empty {:status 400}))]
+                                                           :400-empty {:status 400}
+                                                           :400-html  {:status 400 :body "<html>Bad Gateway</html>"}
+                                                           :200-empty {:status 200}))]
       (testing "For timeouts, 5XX errors, etc. we don't cache the result"
         (dotimes [_ 5] (token-check/check-token checker token))
         (is (= 5 @call-count)))
@@ -77,7 +79,17 @@
                 :canonical?    false
                 :status        "Unable to validate token"
                 :error-details "Token validation provided no response."}
-               (token-check/check-token checker token)))))))
+               (token-check/check-token checker token))))
+      (testing "An unparseable body (e.g. a proxy's error page) is transient, not cached"
+        (reset! call-count 0)
+        (reset! response :400-html)
+        (dotimes [_ 5] (token-check/check-token checker token))
+        (is (= 5 @call-count)))
+      (testing "A 2XX with no body is transient, not cached"
+        (reset! call-count 0)
+        (reset! response :200-empty)
+        (dotimes [_ 5] (token-check/check-token checker token))
+        (is (= 5 @call-count))))))
 
 (deftest not-found-test
   (mt/with-log-level :fatal
@@ -101,6 +113,56 @@
         (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 403 :body (json/encode status)})]
           (is (= (assoc status :canonical? true)
                  (token-check/check-token checker token))))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
+(deftest invalid-token-in-2xx-is-authoritative-test
+  (testing "an invalid verdict in a 2xx is a real answer: cached, and features gated the same as a 4xx"
+    (let [token      (tu/random-token)
+          call-count (atom 0)
+          body       (json/encode {:valid false :status "Token is expired." :features ["sso"]})
+          checker    (binding [token-check/*customize-checker* true]
+                       (token-check/make-checker {:local-ttl (t/seconds 5)
+                                                  :soft-ttl  (t/hours 12)
+                                                  :hard-ttl  (t/hours 36)}))]
+      (try
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                             (swap! call-count inc)
+                                                             {:status 200 :body body})]
+          (is (= {:valid false :status "Token is expired." :features ["sso"] :canonical? true}
+                 (token-check/check-token checker token)))
+          (token-check/check-token checker token)
+          (is (= 1 @call-count) "authoritative answers are cached"))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
+(deftest hung-request-times-out-test
+  (testing "a request that never returns times out with a legible error and is not cached"
+    (let [token      (tu/random-token)
+          call-count (atom 0)
+          checker    (binding [token-check/*customize-checker* true]
+                       (token-check/make-checker
+                        {:base            (reify token-check/TokenChecker
+                                            (-check-token [_ _]
+                                              (swap! call-count inc)
+                                              (Thread/sleep 5000))
+                                            (-clear-cache! [_]))
+                         :circuit-breaker {:failure-threshold-ratio-in-period [10 10 1000]
+                                           :delay-ms                          50
+                                           :success-threshold                 1}
+                         :timeout-ms      100
+                         :local-ttl       (t/millis 1)
+                         :soft-ttl        (t/minutes 1)
+                         :hard-ttl        (t/minutes 2)}))]
+      (try
+        (is (= {:valid         false
+                :canonical?    false
+                :status        "Unable to validate token"
+                :error-details "Token validation timed out."}
+               (token-check/check-token checker token)))
+        (Thread/sleep 5) ;; expire the local memoize layer
+        (token-check/check-token checker token)
+        (is (= 2 @call-count) "timeouts are not cached")
         (finally
           (token-check/-clear-cache! checker))))))
 
@@ -138,7 +200,6 @@
                          (swap! call-count inc)
                          (case @behavior
                            :success good-response
-                           :timeout (Thread/sleep 200)
                            :error   (throw (ex-info "network issues!" {:ka :boom}))))
         checker        (token-check/make-checker
                         {:base            (reify token-check/TokenChecker
