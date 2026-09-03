@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.enable-encryption :refer [enable-encryption!]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -14,6 +15,11 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defsetting enable-encryption-test-setting
+  "Test setting -- a plaintext setting row for `enable-encryption` to encrypt."
+  :visibility :internal
+  :encryption :no)
 
 (defn- raw-value [k]
   (t2/select-one-fn :value :setting :key k))
@@ -32,7 +38,7 @@
     (encryption-test/with-secret-key nil
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? true)
-        (t2/insert! :model/Setting {:key "test-setting", :value "plain value"})
+        (t2/insert! :model/Setting {:key "enable-encryption-test-setting", :value "plain value"})
         ;; the v53 migration's legacy plaintext marker; new code never writes it and reads it as "no sentinel"
         (is (= "unencrypted" (raw-value "encryption-check")))
         (encryption-test/with-secret-key "key1"
@@ -42,8 +48,8 @@
           (testing "the command encrypts everything and writes the sentinel"
             (enable-encryption!)
             (is (encryption/decryptable-string? (raw-value "encryption-check")))
-            (is (encryption/decryptable-string? (raw-value "test-setting")))
-            (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "test-setting")))
+            (is (encryption/decryptable-string? (raw-value "enable-encryption-test-setting")))
+            (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "enable-encryption-test-setting")))
             (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)))
             (is (map? (t2/select-one-fn :details :model/Database))))
           (testing "startup now succeeds"
