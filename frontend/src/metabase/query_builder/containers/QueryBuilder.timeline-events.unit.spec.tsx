@@ -226,9 +226,7 @@ describe("QueryBuilder > timeline events", () => {
       store.dispatch(openTimelines("chart", [RC1.id]));
     });
 
-    expect(trackSimpleEvent).not.toHaveBeenCalledWith(
-      expect.objectContaining({ event: "question_events_panel_opened" }),
-    );
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
   it("saving a question with a recorded selection tracks it", async () => {
