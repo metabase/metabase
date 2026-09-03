@@ -93,7 +93,15 @@ const getAllModeBaseCollectionId = (
  */
 export type CollectionBrowserProps = {
   /**
-   * The numerical ID of the collection, "personal" for the user's personal collection, "tenant" for the user's tenant collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Use "all" to show everything the user can access: their personal collection plus the shared collections. Defaults to "personal"
+   * The collection to show:
+   * - a number - the collection ID. You can find it in the URL of a collection in your Metabase instance. For `http://localhost:3000/collection/1-my-collection` the ID is `1`.
+   * - an entity ID string, e.g. `"nT4gT_MOnU1uJ1zLsGaTV"`.
+   * - `"personal"` - the user's personal collection.
+   * - `"tenant"` - the user's tenant collection.
+   * - `"root"` - the root collection, "Our analytics".
+   * - `"all"` - a list that contains the root collection, the tenant collections, and the user's personal collection.
+   *
+   * Defaults to `"personal"`.
    */
   collectionId?: SdkBrowserCollectionId;
 
