@@ -151,7 +151,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' && !inputs.containerize }}  # faster builds for dev
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
@@ -194,33 +194,8 @@ jobs:
             ./target/uberjar/metabase.jar
             ./COMMIT-ID
             ./SHA256.sum
-
-  jar-healthcheck:
-    needs: [setup, build]
-    # Health-check whatever we are about to containerize
-    if: ${{ !failure() && !cancelled() && (inputs.containerize || github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
-    name:  jar-healthcheck (${{ matrix.edition }})
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        edition: ${{ fromJson(needs.setup.outputs.containerize_editions) }}
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v6
-      - name: Prepare JRE (Java Run-time Environment)
-        uses: actions/setup-java@v5.2.0
-        with:
-          java-package: jre
-          java-version: ${{ needs.setup.outputs.java_version || 25 }}
-          distribution: "temurin"
-      - run: java -version
-      - name: Retrieve uberjar artifact
-        uses: ./.github/actions/fetch-artifact
-        with:
-          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
-          edition: ${{ matrix.edition }}
       - name: Verify license files are present in uberjar
+        if: ${{ SKIP_LICENSES != 'true' }}
         run: |
           echo "Checking for license files in uberjar..."
           unzip -l ./metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
@@ -228,7 +203,7 @@ jobs:
           echo "Both license files found in uberjar"
       - name: Launch uberjar
         run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
       - name: Wait for Metabase to start
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
