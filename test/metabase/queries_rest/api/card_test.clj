@@ -1376,6 +1376,21 @@
                            [:trace          [:sequential :any]]]
                           (create-card! :rasta 403))))))))))
 
+(deftest create-card-parameter-permissions-generic-error-test
+  (testing "POST /api/card"
+    (testing "the 403 for a parameter field the user cannot query names neither the table nor its ids"
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; the entire response body is the generic message
+          (is (= "You must have data permissions to add a parameter referencing this Field."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :parameters [{:id     "abc123"
+                                                            :type   "category"
+                                                            :name   "x"
+                                                            :slug   "x"
+                                                            :target [:dimension [:field (mt/id :venues :name) nil]]}])))))))))
+
 (deftest ^:parallel create-card-with-type-and-dataset-test
   (t2/with-transaction [_]
     (testing "can create a model using type"
@@ -5208,14 +5223,14 @@
                              :values_query_type "list"
                              :target            ["dimension" ["field" field-id nil]]})]
             (testing "POST /api/card"
-              (is (re-find #"You must have data permissions to add a parameter referencing the Table"
-                           (:cause (mt/user-http-request :rasta :post 403 "card"
-                                                         {:name                   "mine"
-                                                          :collection_id          coll-id
-                                                          :display                "table"
-                                                          :visualization_settings {}
-                                                          :dataset_query          (mt/mbql-query venues)
-                                                          :parameters             [(parameter (mt/id :categories :name))]}))))
+              (is (= "You must have data permissions to add a parameter referencing this Field."
+                     (mt/user-http-request :rasta :post 403 "card"
+                                           {:name                   "mine"
+                                            :collection_id          coll-id
+                                            :display                "table"
+                                            :visualization_settings {}
+                                            :dataset_query          (mt/mbql-query venues)
+                                            :parameters             [(parameter (mt/id :categories :name))]})))
               (testing "a Field the user can query is accepted"
                 (is (some? (mt/user-http-request :rasta :post 200 "card"
                                                  {:name                   "mine"
@@ -5225,9 +5240,9 @@
                                                   :dataset_query          (mt/mbql-query venues)
                                                   :parameters             [(parameter (mt/id :venues :name))]})))))
             (testing "PUT /api/card/:id"
-              (is (re-find #"You must have data permissions to add a parameter referencing the Table"
-                           (:cause (mt/user-http-request :rasta :put 403 (str "card/" card-id)
-                                                         {:parameters [(parameter (mt/id :categories :name))]}))))
+              (is (= "You must have data permissions to add a parameter referencing this Field."
+                     (mt/user-http-request :rasta :put 403 (str "card/" card-id)
+                                           {:parameters [(parameter (mt/id :categories :name))]})))
               (is (empty? (t2/select-one-fn :parameters :model/Card :id card-id))))))))))
 
 (deftest copy-checks-collection-write-permissions-test
