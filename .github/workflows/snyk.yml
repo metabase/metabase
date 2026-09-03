@@ -10,6 +10,7 @@ on:
       - "**/package.json"
       - ".github/workflows/snyk.yml"
       - ".github/scripts/write-poms.sh"
+      - ".github/scripts/fix-yarn-lock-aliases.ts"
   schedule:
     - cron: "0 5 * * *"
 
@@ -58,18 +59,22 @@ jobs:
         # Snyk doesn't support bun.lock yet, so we generate yarn.lock and scan that.
         # Bun has a bug where it normalizes "< 3.0.0" to "< 3" in alias entries
         # but not in dependency specs, causing Snyk to fail matching dependencies.
-        # The sed commands fix this inconsistency. They continue on error to let
-        # Snyk report parsing issues directly rather than failing on the workaround.
+        # The sed commands fix this inconsistency. Bun also names aliased entries
+        # after the aliased package instead of the alias, which the script fixes.
+        # Both continue on error to let Snyk report parsing issues directly rather
+        # than failing on the workaround.
       - name: Generate yarn.lock
         if: matrix.project.file == 'yarn.lock'
         run: |
           bun install --yarn
           sed -i -E 's/< ([0-9]+)\.0\.0"/< \1"/g; s/< ([0-9]+)\.0"/< \1"/g' yarn.lock || true
+          bun ${{ github.workspace }}/.github/scripts/fix-yarn-lock-aliases.ts || true
       - name: Generate release/yarn.lock
         if: matrix.project.file == 'release/yarn.lock'
         run: |
           bun install --yarn
           sed -i -E 's/< ([0-9]+)\.0\.0"/< \1"/g; s/< ([0-9]+)\.0"/< \1"/g' yarn.lock || true
+          bun ${{ github.workspace }}/.github/scripts/fix-yarn-lock-aliases.ts || true
         working-directory: release
       - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
       - name: Run snyk test

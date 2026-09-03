@@ -8,7 +8,7 @@
   "include": [
     "../../../../frontend/src/types/**/*.d.ts",
     "../../../../frontend/src/embedding-sdk-shared/types/*.d.ts",
-    "../../../../frontend/src/metabase/utils/dayjs.ts",
+    "../../../../frontend/src/metabase/dayjs/index.ts",
     "*/src/**/*.ts",
     "*/src/**/*.tsx"
   ],

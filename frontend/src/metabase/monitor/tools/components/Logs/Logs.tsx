@@ -75,7 +75,7 @@ export const Logs = ({
             </Center>
           ) : (
             <>
-              <Group gap="md" align="center" wrap="nowrap">
+              <Group gap="lg" align="center" wrap="nowrap">
                 <TextInput
                   flex={1}
                   miw="8rem"

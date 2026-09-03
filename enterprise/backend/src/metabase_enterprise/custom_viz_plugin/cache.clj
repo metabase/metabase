@@ -15,14 +15,14 @@
    [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
-   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.files :as u.files]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.http :as u.http]
+   [metabase.util.log :as log])
   (:import
    (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
    (java.nio.file.attribute FileAttribute)))
@@ -201,7 +201,7 @@
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
       (when-not (u.files/exists? dir)
-        (when-let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
+        (when-let [bundle-bytes (custom-viz-plugin.db/plugin-bundle id)]
           (let [actual-hash (bytes-hash bundle-bytes)]
             (when-not (= actual-hash bundle_hash)
               (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
@@ -237,16 +237,15 @@
   "Persist a validated bundle for an existing plugin row, evict stale on-disk
    caches, and return the refreshed row."
   [{:keys [id]} validated]
-  (t2/update! :model/CustomVizPlugin id (derived-columns validated))
+  (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin/select-one-non-blob :id id))
+  (custom-viz-plugin.db/non-blob-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
    the inserted row."
   [identifier validated]
-  (t2/insert-returning-instance!
-   :model/CustomVizPlugin
+  (custom-viz-plugin.db/insert-plugin!
    (merge {:identifier identifier
            :enabled    true}
           (derived-columns validated))))
@@ -294,13 +293,31 @@
   []
   #{"http" "https"})
 
+(def ^:private dev-network-policy
+  :loopback-and-private)
+
+(defn- disallowed-address-ex
+  [^String label ^String url]
+  (ex-info (str label " must resolve to a loopback or private network address.")
+           {:status-code 400 :url url}))
+
 (defn- validate-url!
-  "Validate that a URL uses an allowed scheme. Throws on invalid input."
+  "Validate that a URL uses an allowed scheme and does not name an address the dev fetches would refuse to
+   connect to. Throws on invalid input."
   [^String url ^String label]
   (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
     (when-not (contains? (allowed-schemes) scheme)
       (throw (ex-info (str label " must use http or https, got: " scheme)
-                      {:status-code 400 :url url})))))
+                      {:status-code 400 :url url})))
+    (when-not (u.http/host-allowed-for-network-policy? dev-network-policy url)
+      (throw (disallowed-address-ex label url)))))
+
+(defn- rethrow-if-refused!
+  "Re-throw `e` as a 400 if it is the network policy refusing to connect, otherwise do nothing. Without this
+   the surrounding catch would report a refused address as a dev server that happens to be down."
+  [^Exception e ^String url]
+  (when (:ssrf (ex-data e))
+    (throw (disallowed-address-ex "Dev bundle URL" url))))
 
 (defn dev-base-url
   "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
@@ -313,60 +330,100 @@
   ^String [^String base-url ^String relative-path]
   (str (dev-base-url base-url) relative-path))
 
-(def ^:private http-opts
-  {:socket-timeout 5000 :connection-timeout 5000})
+(def dev-http-opts
+  "clj-http options for every fetch of a caller-supplied dev bundle URL, including the SSE proxy in the api ns."
+  {:socket-timeout     5000
+   :connection-timeout 5000
+   :redirect-strategy  :none
+   :dns-resolver       (u.http/network-policy-dns-resolver dev-network-policy)})
+
+;; Content-type
+;; The address policy has to keep allowing loopback and private addresses, so a dev URL can still be pointed
+;; at an internal service. Requiring the content-type specific content-type narrows the possibilities
+
+(def ^:private bundle-content-types
+  #{"application/javascript" "text/javascript"})
+
+(def ^:private manifest-content-types
+  #{"application/json" "text/json"})
+
+(defn- check-content-type!
+  [resp allowed ^String url]
+  (let [ctype (u.http/response-content-type resp)]
+    (when-not (contains? allowed ctype)
+      (throw (ex-info (str "Dev bundle URL returned " (or ctype "no content type")
+                           ", expected " (str/join " or " (sort allowed)))
+                      {:status-code 400 :url url})))))
 
 (defn fetch-dev-bundle
   "Fetch a JS bundle from a dev base URL.
-   Returns {:content str :hash str}, or nil when the dev server is transiently
-   unavailable (e.g. mid-rebuild)."
+   Returns {:content str :hash str}, or nil when the dev server is unreachable or
+   responds with an error status (e.g. mid-rebuild). Throws a 400 when the URL is
+   disallowed or the response has an unexpected content type."
   [^String base-url]
-  (try
-    (let [content (:body (http/get (dev-url base-url bundle-rel-path)
-                                   (assoc http-opts :as :string)))]
-      {:content content
-       :hash    (string-hash content)})
-    (catch Exception e
-      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
-      nil)))
+  ;; build (and thereby validate) the URL outside the try -- validation failures must surface as the 400s
+  ;; they are, not be swallowed by the catch as a dev server that happens to be down
+  (let [url (dev-url base-url bundle-rel-path)]
+    (when-let [resp (try
+                      (http/get url (assoc dev-http-opts :as :string))
+                      (catch Exception e
+                        (rethrow-if-refused! e base-url)
+                        (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
+                        nil))]
+      (check-content-type! resp bundle-content-types base-url)
+      (let [content (:body resp)]
+        {:content content
+         :hash    (string-hash content)}))))
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.
-   Returns the parsed manifest map or nil on failure. Throws ex-info with
-   `:status-code 400` when the manifest is structurally invalid."
+   Returns the parsed manifest map, or nil when the dev server is unreachable or
+   responds with an error status. Throws ex-info with `:status-code 400` when the
+   URL is disallowed, the response has an unexpected content type, or the
+   manifest is structurally invalid."
   [^String base-url]
-  (when-let [parsed (try
-                      (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
-                                                     (assoc http-opts :as :string)))]
-                        (manifest/parse-manifest content))
-                      (catch Exception e
-                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
-                        nil))]
-    (when-let [error (manifest/validation-error parsed)]
-      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                      {:status-code 400})))
-    parsed))
+  ;; as in [[fetch-dev-bundle]], validate the URL outside the try
+  (let [url (dev-url base-url (manifest/manifest-path))]
+    (when-let [parsed (when-let [resp (try
+                                        (http/get url (assoc dev-http-opts :as :string))
+                                        (catch Exception e
+                                          (rethrow-if-refused! e base-url)
+                                          (log/debugf "No manifest at %s: %s" base-url (ex-message e))
+                                          nil))]
+                        (check-content-type! resp manifest-content-types base-url)
+                        (manifest/parse-manifest (:body resp)))]
+      (when-let [error (manifest/validation-error parsed)]
+        (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                        {:status-code 400})))
+      parsed)))
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.
-   Returns the bytes or nil on failure."
+   Returns the bytes. Throws on fetch failure; disallowed addresses and
+   unexpected content types surface as 400s."
   ^bytes [^String base-url ^String asset-name]
-  (:body (http/get (dev-url base-url (asset-rel-path asset-name))
-                   (assoc http-opts :as :byte-array))))
+  (let [url  (dev-url base-url (asset-rel-path asset-name))
+        resp (try
+               (http/get url (assoc dev-http-opts :as :byte-array))
+               (catch Exception e
+                 (rethrow-if-refused! e base-url)
+                 (throw e)))]
+    (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
+    (:body resp)))
 
 (defn set-or-clear-dev-bundle!
   "Set or clear the dev base URL for a plugin. Persists to the database."
   [id dev-bundle-url]
   (let [url (not-empty dev-bundle-url)]
     (some-> url (validate-url! "Dev bundle URL"))
-    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
+    (custom-viz-plugin.db/update-plugin! id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-    (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+    (not-empty (custom-viz-plugin.db/plugin-dev-bundle-url id))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 

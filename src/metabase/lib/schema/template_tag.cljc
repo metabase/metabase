@@ -44,7 +44,7 @@
    [:ref ::common]
    [:map
     ;; default value for this parameter
-    [:default {:optional true} any?]
+    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
 
@@ -56,7 +56,7 @@
 ;;    :display-name "Unit"}
 (mr/def ::temporal-unit
   [:merge
-   [:ref ::common]
+   [:ref ::value.common]
    [:map
     [:type [:= :temporal-unit]]
     ;; an optional alias to use in place of the normal field ref
@@ -64,8 +64,12 @@
     [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 (mr/def ::field-filter.options
+  "Options appended to the filter clause a Field Filter template tag generates. These get merged into the parameter
+  value the QP builds for the tag, so they are the same options as `:metabase.lib.schema.parameter/parameter.options`."
   [:map
-   {:decode/normalize common/normalize-map-no-kebab-case}])
+   {:decode/normalize common/normalize-map-no-kebab-case}
+   [:case-sensitive  {:optional true} :boolean]
+   [:include-current {:optional true} :boolean]])
 
 ;; Example:
 ;;
@@ -140,7 +144,7 @@
   [:map
    [:field-id ::id/field]
    [:op       (into [:enum] allowed-source-filter-ops)]
-   [:value    :any]])
+   [:value    [:ref ::lib.schema.parameter/parameter.value]]])
 
 ;; Example:
 ;;
@@ -189,9 +193,12 @@
 
 (mr/def ::template-tag
   [:and
-   {:decode/normalize common/normalize-map}
-   [:map
-    [:type [:ref ::type]]]
+   {:decode/normalize (fn [tag]
+                        (when-some [tag (common/normalize-map tag)]
+                          (cond-> tag
+                            (:type tag) (update :type common/normalize-keyword))))
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:multi {:dispatch #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]

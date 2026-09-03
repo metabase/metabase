@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -135,8 +135,8 @@ export const getQuestionUrl = (getQuestionArgs: GetQuestionArgs): string => {
 export const has = (entity: unknown): boolean =>
   Array.isArray(entity) ? entity.length > 0 : Boolean(entity);
 
-export const getDescription = (question: Question): string => {
-  const timestamp = dayjs(question.getCreatedAt()).fromNow();
-  const author = question.getCreator().common_name;
+export const getDescription = (card: Card): string => {
+  const timestamp = dayjs(card.created_at).fromNow();
+  const author = card.creator?.common_name;
   return t`Created ${timestamp} by ${author}`;
 };

@@ -1,6 +1,11 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import {
+  type ComponentPropsWithoutRef,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
@@ -17,7 +22,6 @@ import { CommentEditor } from "metabase/comments/components";
 import DiscussionS from "metabase/comments/components/Discussion/Discussion.module.css";
 import { DiscussionActionPanel } from "metabase/comments/components/Discussion/DiscussionActionPanel";
 import { DiscussionReactions } from "metabase/comments/components/Discussion/DiscussionReactions";
-import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
   formatCommentDate,
   getCommentNodeId,
@@ -25,28 +29,46 @@ import {
 } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
-import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
-import { Avatar, Box, Group, Stack, Text, Title, Tooltip } from "metabase/ui";
+import { setHighlightedComment } from "metabase/explorations/explorations.slice";
+import {
+  type ExplorationCommentView,
+  useExplorationCommentUrl,
+} from "metabase/explorations/hooks/useExplorationCommentUrl";
+import { useDispatch, useSelector } from "metabase/redux";
+import {
+  ActionIcon,
+  Avatar,
+  Box,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import type {
   Comment,
   CommentContext,
   DocumentContent,
   ExplorationId,
+  Timeline,
+  TimelineId,
 } from "metabase-types/api";
 
 import S from "./ExplorationComments.module.css";
 
-export type CommentTagsRenderer = (comment: Comment) => ReactNode;
-
 interface ExplorationCommentsProps {
   explorationId: ExplorationId;
   pageId: string;
+  view: ExplorationCommentView;
   context?: CommentContext;
   disableAutoFocus?: boolean;
   onClose: () => void;
-  renderCommentTags?: CommentTagsRenderer;
+  timelines?: Timeline[];
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }
 
 const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
@@ -57,11 +79,14 @@ const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
 export function ExplorationComments({
   explorationId,
   pageId,
+  view,
   context,
   disableAutoFocus = false,
   onClose,
-  renderCommentTags,
+  timelines = [],
+  onSelectTimelineId,
 }: ExplorationCommentsProps) {
+  const dispatch = useDispatch();
   const {
     data: commentsData,
     isLoading,
@@ -141,6 +166,12 @@ export function ExplorationComments({
     };
   }, [commentsStream.length, hasHashTarget, hash]);
 
+  useEffect(() => {
+    return () => {
+      dispatch(setHighlightedComment(null));
+    };
+  }, [dispatch, pageId]);
+
   useWindowEvent("keydown", (event) => {
     if (event.key === "Escape" && !event.defaultPrevented) {
       onClose();
@@ -174,24 +205,35 @@ export function ExplorationComments({
 
   return (
     <Stack gap={0} h="100%" data-testid="exploration-comments">
-      <Box px="lg" pt="1.25rem" pb="sm">
+      <Group
+        px="xl"
+        pt="1.25rem"
+        pb="sm"
+        justify="space-between"
+        align="center"
+      >
         <Title order={3}>{t`Comments`}</Title>
-      </Box>
-      <Box ref={streamRef} flex={1} px="md" py="sm" className={S.stream}>
-        <Stack ref={streamContentRef} gap="md">
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <Icon name="close" c="icon-primary" />
+        </ActionIcon>
+      </Group>
+      <Box ref={streamRef} flex={1} px="lg" py="sm" className={S.stream}>
+        <Stack ref={streamContentRef} gap="lg">
           {commentsStream.map((comment) => (
             <ExplorationComment
               key={comment.id}
               comment={comment}
               pageId={pageId}
-              renderCommentTags={renderCommentTags}
+              view={view}
+              timelines={timelines}
+              onSelectTimelineId={onSelectTimelineId}
             />
           ))}
         </Stack>
       </Box>
-      <Box px="lg" pb="lg" pt="xs" className={S.composer}>
+      <Box px="xl" pb="xl" pt="xxs" className={S.composer}>
         <CommentEditor
-          autoFocus={commentsStream.length === 0 && !disableAutoFocus}
+          autoFocus={!disableAutoFocus}
           data-testid="new-thread-editor"
           placeholder={t`Add a comment…`}
           onSubmit={handleSubmit}
@@ -204,13 +246,17 @@ export function ExplorationComments({
 interface ExplorationCommentProps {
   comment: Comment;
   pageId: string;
-  renderCommentTags?: CommentTagsRenderer;
+  view: ExplorationCommentView;
+  timelines: Timeline[];
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }
 
 function ExplorationComment({
   comment,
   pageId,
-  renderCommentTags,
+  view,
+  timelines,
+  onSelectTimelineId,
 }: ExplorationCommentProps) {
   const currentUser = useSelector(getUser);
   const [isEditing, editingHandler] = useDisclosure(false);
@@ -218,7 +264,10 @@ function ExplorationComment({
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
   const [sendToast] = useToast();
-  const commentsUrl = useCommentUrl({ childTargetId: pageId });
+  const commentsUrl = useExplorationCommentUrl({
+    childTargetId: pageId,
+    view,
+  });
 
   const location = useLocation();
   const commentNodeId = getCommentNodeId(comment);
@@ -324,7 +373,7 @@ function ExplorationComment({
           size="1.5rem"
           mt="0.125rem"
         />
-        <Stack gap="xs" flex={1} miw={0}>
+        <Stack gap="xxs" flex={1} miw={0}>
           <Group gap="sm" align="center" wrap="nowrap">
             <Text fw={700} lh={1.3} truncate>
               {comment.creator?.common_name}
@@ -340,11 +389,14 @@ function ExplorationComment({
               </Text>
             </Tooltip>
           </Group>
-          {renderCommentTags && (
-            <ErrorBoundary errorComponent={() => null}>
-              <CommentTags renderTags={renderCommentTags} comment={comment} />
-            </ErrorBoundary>
-          )}
+          <ErrorBoundary errorComponent={() => null}>
+            <CommentTags
+              comment={comment}
+              pageId={pageId}
+              timelines={timelines}
+              onSelectTimelineId={onSelectTimelineId}
+            />
+          </ErrorBoundary>
           <Box>
             <CommentEditor
               autoFocus
@@ -368,14 +420,115 @@ function ExplorationComment({
   );
 }
 
-// A component (rather than calling the renderer inline) so a throwing renderer
-// is caught by the surrounding ErrorBoundary instead of crashing the comment.
 function CommentTags({
-  renderTags,
   comment,
+  pageId,
+  timelines,
+  onSelectTimelineId,
 }: {
-  renderTags: CommentTagsRenderer;
   comment: Comment;
+  pageId: string;
+  timelines: Timeline[];
+  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
 }) {
-  return <>{renderTags(comment)}</>;
+  const dispatch = useDispatch();
+  const context = comment.context;
+
+  // `highlight_label` is formatted by the client that created the comment, since only it knows
+  // the chart's column settings; the server stores it verbatim and gates it with the rest of the
+  // context, so an absent context here means the viewer is not allowed the values it carried.
+  const highlightLabel = context?.highlight_label;
+  const highlighted = context?.highlighted;
+  const explorationQueryIds = context?.exploration_query_ids ?? [];
+  const timelineId = context?.timeline_id ?? undefined;
+  const timeline =
+    timelineId != null
+      ? timelines.find((entry) => entry.id === timelineId)
+      : undefined;
+
+  if (!highlightLabel && !timeline) {
+    return null;
+  }
+
+  return (
+    <Group gap="xxs" wrap="wrap">
+      <Icon
+        name="corner_up_right"
+        size={12}
+        c="text-secondary"
+        className={S.commentTagArrow}
+        aria-hidden
+      />
+      {highlightLabel && (
+        <CommentBadge
+          label={highlightLabel}
+          buttonProps={{
+            onMouseEnter: () => {
+              if (highlighted && explorationQueryIds.length > 0) {
+                dispatch(
+                  setHighlightedComment({
+                    childTargetId: pageId,
+                    highlighted,
+                    explorationQueryIds,
+                  }),
+                );
+              }
+            },
+            onMouseLeave: () => dispatch(setHighlightedComment(null)),
+          }}
+        />
+      )}
+      {timeline &&
+        (onSelectTimelineId != null ? (
+          <CommentBadge
+            label={timeline.name}
+            buttonProps={{
+              onClick: () => {
+                onSelectTimelineId(timelineId ?? null);
+              },
+            }}
+          />
+        ) : (
+          <CommentBadge label={timeline.name} />
+        ))}
+    </Group>
+  );
+}
+
+interface CommentBadgeProps {
+  label: string;
+  buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
+}
+
+function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
+  if (buttonProps == null) {
+    return (
+      <Text
+        bdrs="sm"
+        py="xxs"
+        px="sm"
+        fz="sm"
+        c="text-primary"
+        className={S.commentBadgeLabel}
+        component="span"
+        style={{ lineHeight: "normal" }}
+      >
+        {label}
+      </Text>
+    );
+  }
+
+  return (
+    <UnstyledButton
+      bdrs="sm"
+      py="xxs"
+      px="sm"
+      fz="sm"
+      c="text-primary"
+      className={S.commentBadge}
+      {...buttonProps}
+    >
+      {label}
+    </UnstyledButton>
+  );
 }

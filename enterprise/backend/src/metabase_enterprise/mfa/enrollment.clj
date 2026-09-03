@@ -13,6 +13,7 @@
   `metabase-enterprise.mfa.verification`."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.mfa.db :as mfa.db]
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
@@ -45,19 +46,16 @@
     ;; serialize concurrent enrollments for the same user by locking the User row: with no totp
     ;; row yet there is nothing else to lock, and racing inserts would abort the transaction on
     ;; the unique (user_id, provider) constraint
-    (t2/select-one [:model/User :id] :id user-id {:for :update})
-    (let [auth-identity (t2/select-one :model/AuthIdentity
-                                       :user_id user-id
-                                       :provider "totp"
-                                       {:for :update})]
+    (mfa.db/lock-user user-id)
+    (let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when-not (some-> auth-identity verification/confirmed?)
         (let [secret      (totp/generate-secret)
               credentials {:secret secret}]
           (if auth-identity
-            (t2/update! :model/AuthIdentity (:id auth-identity) {:credentials credentials})
-            (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                             :provider    "totp"
-                                             :credentials credentials}))
+            (mfa.db/update-auth-identity! (:id auth-identity) {:credentials credentials})
+            (mfa.db/insert-auth-identity! {:user_id     user-id
+                                           :provider    "totp"
+                                           :credentials credentials}))
           secret)))))
 
 (defn confirm-enrollment!
@@ -67,26 +65,23 @@
   failure or when there is no pending enrollment."
   [user-id code]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider "totp"
-                                            {:for :update})]
+    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when-not (verification/confirmed? auth-identity)
         (when-let [secret (verification/stored-secret auth-identity)]
           (when-let [step (totp/matching-time-step secret code)]
             (let [codes (recovery-codes/generate-codes)]
-              (t2/update! :model/AuthIdentity (:id auth-identity)
-                          {:confirmed_at (t/instant)
-                           :credentials  (assoc (:credentials auth-identity)
-                                                :last_used_step step
-                                                :recovery_codes (mapv u.password/hash-bcrypt codes))})
+              (mfa.db/update-auth-identity! (:id auth-identity)
+                                            {:confirmed_at (t/instant)
+                                             :credentials  (assoc (:credentials auth-identity)
+                                                                  :last_used_step step
+                                                                  :recovery_codes (mapv u.password/hash-bcrypt codes))})
               codes)))))))
 
 (defn disable!
   "Remove `user-id`'s TOTP enrollment entirely (re-auth is the caller's responsibility). True when
   something was removed."
   [user-id]
-  (pos? (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp")))
+  (pos? (mfa.db/delete-totp-identity! user-id)))
 
 ;;; -------------------------------------------------- Recovery-code management --------------------------------------------------
 
@@ -96,15 +91,12 @@
   plaintext; only bcrypt hashes are stored. Nil when the user has no confirmed enrollment."
   [user-id]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (t2/select-one :model/AuthIdentity
-                                            :user_id user-id
-                                            :provider "totp"
-                                            {:for :update})]
+    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
       (when (verification/confirmed? auth-identity)
         (let [codes (recovery-codes/generate-codes)]
-          (t2/update! :model/AuthIdentity (:id auth-identity)
-                      {:credentials (assoc (:credentials auth-identity)
-                                           :recovery_codes (mapv u.password/hash-bcrypt codes))})
+          (mfa.db/update-auth-identity! (:id auth-identity)
+                                        {:credentials (assoc (:credentials auth-identity)
+                                                             :recovery_codes (mapv u.password/hash-bcrypt codes))})
           codes)))))
 
 (defn recovery-codes-remaining

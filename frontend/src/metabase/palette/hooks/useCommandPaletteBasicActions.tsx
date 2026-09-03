@@ -3,12 +3,17 @@ import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken, useListDatabasesQuery, useSearchQuery } from "metabase/api";
 import type { UseInitialCollectionIdProps } from "metabase/common/collections/hooks";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+  getUserIsAdmin,
+  getUserPersonalCollectionId,
+} from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
@@ -19,12 +24,6 @@ import {
   setOpenModalWithProps,
 } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-  getUserIsAdmin,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -82,9 +81,10 @@ export const useCommandPaletteBasicActions = ({
   const navigate = useNavigate();
   const collectionId = useInitialCollectionId(props) ?? undefined;
 
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: isLoggedIn,
-  });
+  const { data: databasesResponse } = useListDatabasesQuery(
+    isLoggedIn ? undefined : skipToken,
+  );
+  const databases = databasesResponse?.data ?? [];
   const { data: searchResults } = useSearchQuery(
     isLoggedIn
       ? { models: ["dataset"], limit: 1, context: "basic-actions" }

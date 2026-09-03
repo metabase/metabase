@@ -60,6 +60,23 @@ jobs:
               userName: '${{ github.actor }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
+      - name: Write job summary
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const { owner, repo } = context.repo;
+            const commit = '${{ inputs.commit }}';
+            const version = '${{ inputs.version }}';
+
+            await core.summary
+              .addHeading(`🚀 ${version} Release Overview`)
+              .addList([
+                `Version: ${version}`,
+                `Release commit: <a href="https://github.com/${owner}/${repo}/commit/${commit}">${commit.slice(0, 7)}</a>`,
+                `Started by: @${{ github.actor }}`,
+              ])
+              .write();
 
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -148,6 +165,8 @@ jobs:
   trigger-milestone-check:
     # Posts a Slack FYI about issues that still need review for this release.
     # Informational only — nothing depends on it, so it never blocks the release.
+    #
+    # NOTE: this workflow only runs in https://github.com/metabase/metabase.
     needs: [check-version, check-commit]
     permissions:
       contents: read
@@ -166,6 +185,8 @@ jobs:
     # Sequenced after trigger-milestone-check so that the check sees the milestone
     # in its open state. milestone-check is informational and must never block, so
     # we run regardless of its outcome; only preflight failures suppress this.
+    #
+    # NOTE: this workflow only runs in https://github.com/metabase/metabase.
     needs: [check-version, check-commit, trigger-milestone-check]
     if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
     permissions:

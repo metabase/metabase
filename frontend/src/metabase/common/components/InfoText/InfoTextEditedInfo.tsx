@@ -1,8 +1,8 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
+import { dayjs } from "metabase/dayjs";
 import { Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
@@ -24,7 +24,7 @@ const LoadingText = () => (
 );
 
 const InfoTextSeparator = (
-  <Text component="span" size="sm" mx="xs" c="text-secondary">
+  <Text component="span" size="sm" mx="xxs" c="text-secondary">
     •
   </Text>
 );

@@ -8,9 +8,9 @@ import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/common/components/upsells/components/analytics";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   Box,
@@ -63,7 +63,7 @@ export const UpsellCardContent = ({
       <Card p={0} w={maxWidth} withBorder>
         <Flex direction="row" gap={0}>
           <Box w="100%" p={contentPadding}>
-            <Flex w={leftSideSize} direction="row" gap="lg">
+            <Flex w={leftSideSize} direction="row" gap="xl">
               <UpsellCardLeftColumnContent
                 campaign={campaign}
                 location={location}
@@ -86,8 +86,8 @@ export const UpsellCardContent = ({
   }
 
   return (
-    <Card shadow="md" p={contentPadding} w={maxWidth} withBorder>
-      <Flex direction="row" gap="lg">
+    <Card shadow="sm" p={contentPadding} w={maxWidth} withBorder>
+      <Flex direction="row" gap="xl">
         <Box w={leftSideSize} flex="0 0 auto">
           <UpsellCardLeftColumnContent
             campaign={campaign}
@@ -105,7 +105,7 @@ export const UpsellCardContent = ({
             className={S.ImageCard}
             p={6}
             radius={12}
-            shadow="md"
+            shadow="sm"
             withBorder
             maw="50%"
           >
@@ -149,18 +149,18 @@ const UpsellCardLeftColumnContent = ({
 
   return (
     <Stack gap="sm" w="100%">
-      <Flex align="center" gap="xs">
+      <Flex align="center" gap="xxs">
         <UpsellGem.New size={16} />
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
         <Text c="text-brand">{t`Metabase Pro`}</Text>
       </Flex>
-      <Stack gap="md" py="sm" mb="sm">
+      <Stack gap="lg" py="sm" mb="sm">
         <Title order={3}>{title}</Title>
         <Text c="text-secondary" lh={1.4} p={0}>
           {description}
         </Text>
         {bulletPoints && (
-          <Stack gap="lg" py="sm">
+          <Stack gap="xl" py="sm">
             {bulletPoints?.map((point) => (
               <Flex direction="row" gap="sm" key={point}>
                 <Center w={24} h={24}>

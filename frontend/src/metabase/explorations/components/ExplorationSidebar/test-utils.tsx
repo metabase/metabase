@@ -20,9 +20,8 @@ import type {
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
 import {
+  getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
-  getExplorationSidebarTree,
-  isHiddenTreeItem,
 } from "./utils";
 
 export function getSidebarTestContext(
@@ -33,16 +32,34 @@ export function getSidebarTestContext(
   const explorationSidebarTabsInfo = getExplorationSidebarTabsInfo(exploration);
   const getSelectedSidebarTabUrl = (tab: ExplorationSidebarTab) =>
     `${path}?tab=${tab}`;
-  const treeItemFilter =
-    explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
 
   return {
     path,
     explorationSidebarTabsInfo,
     selectedSidebarTab,
     getSelectedSidebarTabUrl,
-    treeItemFilter,
-    getTree: () => getExplorationSidebarTree(exploration, treeItemFilter),
+    getModel: (opts?: {
+      showHidden?: boolean;
+      sortOrder?: ExplorationSortOrder;
+      explorationOverride?: ReturnType<typeof createExploration>;
+    }) =>
+      getExplorationSidebarModel({
+        exploration: opts?.explorationOverride ?? exploration,
+        selectedSidebarTab,
+        tabsInfo: getExplorationSidebarTabsInfo(
+          opts?.explorationOverride ?? exploration,
+        ),
+        showHidden: opts?.showHidden ?? false,
+        sortOrder: opts?.sortOrder ?? DEFAULT_SORT_ORDER,
+      }),
+    getTree: () =>
+      getExplorationSidebarModel({
+        exploration,
+        selectedSidebarTab,
+        tabsInfo: explorationSidebarTabsInfo,
+        showHidden: false,
+        sortOrder: DEFAULT_SORT_ORDER,
+      }).tree,
   };
 }
 
@@ -75,7 +92,9 @@ export function setup({
   readPageIds = new Set<string>(),
   tab = "all",
 }: SetupOpts) {
-  const setSelectedPageId = jest.fn();
+  const onPreviousPage = jest.fn();
+  const onNextPage = jest.fn();
+  const onPrefetchPage = jest.fn();
   const onToggleShowHidden = jest.fn();
   const onChangeSortOrder = jest.fn();
 
@@ -117,26 +136,20 @@ export function setup({
 
   const getSelectedPageUrl = (pageId: string) =>
     `${Urls.exploration(exploration.id)}/page/${encodeURIComponent(pageId)}`;
+  const getSelectedSummaryUrl = () => Urls.explorationSummary(exploration.id);
 
   const explorationPath = Urls.exploration(exploration.id);
   const {
     explorationSidebarTabsInfo,
     selectedSidebarTab,
     getSelectedSidebarTabUrl,
-    treeItemFilter,
+    getModel,
   } = getSidebarTestContext(exploration, tab);
 
-  // Mirrors ExplorationPage: the empty initial thread (which carries the
-  // all-hidden note) is only retained when pages are actually hidden.
-  const hasHiddenPages = allPages.some((page) => page.hidden);
-  const displayTree = getExplorationSidebarTree(
-    exploration,
-    showHidden
-      ? treeItemFilter
-      : (node) => treeItemFilter(node) && !isHiddenTreeItem(node),
+  const { tree: displayTree, contentMode } = getModel({
+    showHidden,
     sortOrder,
-    { keepEmptyInitialThread: tab === "all" && hasHiddenPages },
-  );
+  });
 
   const sidebar = (
     <ExplorationSidebar
@@ -145,9 +158,11 @@ export function setup({
       selectedSidebarTab={selectedSidebarTab}
       getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
       tree={displayTree}
-      selectedPageId={resolvedPageId}
-      setSelectedPageId={setSelectedPageId}
+      selectedEntity={
+        resolvedPageId != null ? { type: "page", id: resolvedPageId } : null
+      }
       getSelectedPageUrl={getSelectedPageUrl}
+      getSelectedSummaryUrl={getSelectedSummaryUrl}
       shouldScrollSelectionRef={{ current: true }}
       isOpen
       readPageIds={readPageIds}
@@ -155,6 +170,10 @@ export function setup({
       onToggleShowHidden={onToggleShowHidden}
       sortOrder={sortOrder}
       onChangeSortOrder={onChangeSortOrder}
+      contentMode={contentMode}
+      onPreviousPage={onPreviousPage}
+      onNextPage={onNextPage}
+      onPrefetchPage={onPrefetchPage}
     />
   );
 
@@ -163,10 +182,13 @@ export function setup({
     initialRoute: explorationPath,
   });
   return {
-    setSelectedPageId,
+    onPreviousPage,
+    onNextPage,
+    onPrefetchPage,
     onToggleShowHidden,
     onChangeSortOrder,
     getSelectedPageUrl,
+    getSelectedSummaryUrl,
     exploration,
   };
 }

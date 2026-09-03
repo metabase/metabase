@@ -1,6 +1,7 @@
 (ns metabase.slackbot.persistence-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -78,6 +79,49 @@
           (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
           (is (= #{deleted-ts}
                  (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
+
+(deftest message-history-excludes-non-replayable-rows-test
+  (testing "only rows a later turn may replay contribute tool history"
+    (let [conv-id   (str (random-uuid))
+          insert!   (fn [slack-ts call-id & {:keys [error] :as opts}]
+                      (t2/insert! :model/MetabotMessage
+                                  (cond-> {:conversation_id conv-id
+                                           :slack_msg_id    slack-ts
+                                           :role            "assistant"
+                                           :profile_id      "slackbot"
+                                           :total_tokens    0
+                                           :data            [{:type       "tool-search"
+                                                              :toolCallId call-id
+                                                              :state      "output-available"
+                                                              :input      {}
+                                                              :output     {:output "result"}}]
+                                           :data_version    2}
+                                    (contains? opts :finished) (assoc :finished (:finished opts))
+                                    error                      (assoc :error error))))
+          clean     "1712100000.000001"
+          errored   "1712100000.000002"
+          in-flight "1712100000.000003"
+          legacy    "1712100000.000004"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (insert! clean     "call-clean"     :finished true)
+        (insert! errored   "call-errored"   :finished true :error "boom")
+        (insert! in-flight "call-in-flight" :finished nil)
+        ;; No :finished at all -- exercises the column default that keeps pre-migration threads readable.
+        (insert! legacy    "call-legacy")
+        (let [history (slackbot.persistence/message-history
+                       conv-id #{clean errored in-flight legacy})]
+          (testing "a clean finished row still contributes -- guards against over-filtering"
+            (is (contains? history clean)))
+          (testing "an errored row contributes nothing"
+            (is (not (contains? history errored))))
+          ;; Unreachable in production: insert-assistant-placeholder! writes neither `finished` nor
+          ;; `slack_msg_id`, so an in-flight row can never match this query. Covered only because the
+          ;; shared predicate checks `finished`.
+          (testing "an in-flight row contributes nothing"
+            (is (not (contains? history in-flight))))
+          (testing "a row written before the `finished` column still contributes"
+            (is (contains? history legacy))))))))
 
 (deftest message-history-v2-parts-test
   (testing "stored v2 tool parts are translated to AI-SDK message pairs"
@@ -296,3 +340,50 @@
                          :data_version    2})
             (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
             (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts)))))))))
+
+(deftest state-messages-test
+  (let [conv-id  (str (random-uuid))
+        state-of #(metabot.persistence/conversation-state
+                   (slackbot.persistence/state-messages conv-id))
+        insert!  (fn [role state & {:keys [finished error deleted?]
+                                    :or   {finished true}}]
+                   (t2/insert! :model/MetabotMessage
+                               (cond-> {:conversation_id conv-id
+                                        :role            role
+                                        :profile_id      "slackbot"
+                                        :total_tokens    0
+                                        :data            []
+                                        :data_version    2
+                                        :finished        finished
+                                        :state           state}
+                                 error    (assoc :error error)
+                                 deleted? (assoc :deleted_at         (java.time.OffsetDateTime/now)
+                                                 :deleted_by_user_id (mt/user->id :rasta)))))]
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      (testing "a thread with no turns reconstructs to {}"
+        (is (= {} (state-of))))
+      (testing "a finished assistant turn's state becomes the baseline"
+        (insert! "assistant" {:queries {"q1" {:database 1}} :todos [{:id "a"}]})
+        (is (= {:queries {:q1 {:database 1}} :todos [{:id "a"}]}
+               (state-of))))
+      (testing "user rows are ignored even when they carry state"
+        (insert! "user" {:queries {"nope" {:database 99}}} :finished nil)
+        (is (= {:queries {:q1 {:database 1}} :todos [{:id "a"}]}
+               (state-of))))
+      (testing "later turns merge in order -- maps merge entry-wise, vectors take the latest"
+        (insert! "assistant" {:queries {"q2" {:database 2}} :todos [{:id "b"}]})
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of))))
+      (testing "errored turns never leak into the baseline"
+        (insert! "assistant" {:todos [{:id "errored"}]} :error "boom")
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of))))
+      (testing "in-flight turns contribute nothing"
+        (insert! "assistant" {:todos [{:id "in-flight"}]} :finished nil)
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of))))
+      (testing "a response deleted from Slack rewinds its state back out"
+        (insert! "assistant" {:todos [{:id "deleted"}]} :deleted? true)
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of)))))))

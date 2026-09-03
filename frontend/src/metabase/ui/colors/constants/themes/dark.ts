@@ -43,9 +43,13 @@ const deprecatedColors = {
   filter: baseColors.octopus[40],
   focus: baseColors.blue[70],
   "icon-brand": baseColors.brand[40], // Matches text-brand
+  "icon-brand-inverse": baseColors.brand[50],
   "icon-primary": baseColors.orionAlphaInverse[80], // Matches text-primary
+  "icon-primary-inverse": baseColors.orionAlpha[80], // Matches text-primary-inverse
   "icon-disabled": baseColors.orionAlphaInverse[40], // Matches text-disabled
+  "icon-disabled-inverse": baseColors.orionAlpha[40], // Matches text-disabled-inverse
   "icon-secondary": baseColors.orionAlphaInverse[60], // Matches text-secondary
+  "icon-secondary-inverse": baseColors.orionAlpha[60], // Matches text-secondary-inverse
   "illustration-brand-secondary": baseColors.brand[80],
   "illustration-brand-tertiary": baseColors.brand[90],
   "metabase-brand": baseColors.blue[40],
@@ -125,10 +129,22 @@ const actualColors = {
   "background_surface-warning-strong": baseColors.dubloon[70],
   "border-brand": baseColors.brand[80],
   "border-filter": baseColors.filter[80],
+  "border-highlight": baseColors.brand[30],
   "border-neutral": baseColors.orionAlphaInverse[20],
   "border-neutral-strong": baseColors.orionAlphaInverse[30],
   "border-neutral-strongest": baseColors.orionAlphaInverse[50],
   "border-neutral-subtle": baseColors.orionAlphaInverse[10],
+  "border-on_dark": baseColors.orionAlphaInverse[20],
+  "button-label-on_dark-disabled": baseColors.orionAlphaInverse[40],
+  "button-label-on_dark-primary": baseColors.orionAlpha[80],
+  "button-label-on_dark-secondary": baseColors.white,
+  "button-on_dark-disabled": baseColors.orionAlphaInverse[10],
+  "button-on_dark-primary-default": baseColors.white,
+  "button-on_dark-primary-hover": baseColors.orion[20],
+  "button-on_dark-primary-pressed": baseColors.orion[30],
+  "button-on_dark-secondary-default": baseColors.orionAlphaInverse[10],
+  "button-on_dark-secondary-hover": baseColors.orionAlphaInverse[20],
+  "button-on_dark-secondary-pressed": baseColors.orionAlphaInverse[10],
   "core-blue-saturated": baseColors.ocean[40],
   "core-brand-hover": baseColors.brand[30],
   "core-gold": baseColors.gold,

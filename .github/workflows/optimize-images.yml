@@ -63,10 +63,12 @@ jobs:
         total_saved=$((total_before - total_after))
 
         # Output results for use in commit message
-        echo "files_optimized=${total_files}" >> "$GITHUB_OUTPUT"
-        echo "bytes_saved=${total_saved}" >> "$GITHUB_OUTPUT"
-        echo "total_before=${total_before}" >> "$GITHUB_OUTPUT"
-        echo "total_after=${total_after}" >> "$GITHUB_OUTPUT"
+        {
+          echo "files_optimized=${total_files}"
+          echo "bytes_saved=${total_saved}"
+          echo "total_before=${total_before}"
+          echo "total_after=${total_after}"
+        } >> "$GITHUB_OUTPUT"
 
         echo "Optimization complete"
         echo "Files processed: ${total_files}"

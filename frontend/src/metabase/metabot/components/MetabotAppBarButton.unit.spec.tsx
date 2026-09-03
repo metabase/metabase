@@ -88,12 +88,19 @@ describe("MetabotAppBarButton", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should disable the button on the full-page AI exploration (/question/ask) surface", async () => {
-    setup({ isMetabotEnabled: true, pathname: "/question/ask" });
-    expect(
-      await screen.findByRole("button", { name: /Chat with Metabot/ }),
-    ).toBeDisabled();
-  });
+  it.each([
+    "/question/ask",
+    "/question/ask/",
+    "/metabot/conversation/past-conversation-id",
+  ])(
+    "should disable the button on the full-page metabot surface (%s)",
+    async (pathname) => {
+      setup({ isMetabotEnabled: true, pathname });
+      expect(
+        await screen.findByRole("button", { name: /Chat with Metabot/ }),
+      ).toBeDisabled();
+    },
+  );
 
   it("should not disable the button on other question pages", async () => {
     setup({ isMetabotEnabled: true, pathname: "/question/123" });
@@ -107,7 +114,7 @@ describe("MetabotAppBarButton", () => {
 
     // Unjustified type cast. FIXME
     const initialState = store.getState() as any;
-    expect(initialState.metabot.conversations.omnibot.visible).toBe(false);
+    expect(initialState.metabot.agents.omnibot.visible).toBe(false);
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Chat with Metabot/ }),
@@ -115,6 +122,6 @@ describe("MetabotAppBarButton", () => {
 
     // Unjustified type cast. FIXME
     const newState = store.getState() as any;
-    expect(newState.metabot.conversations.omnibot.visible).toBe(true);
+    expect(newState.metabot.agents.omnibot.visible).toBe(true);
   });
 });

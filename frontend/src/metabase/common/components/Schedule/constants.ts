@@ -1,2 +1,2 @@
-export const defaultDay = "mon";
-export const defaultHour = 8;
+export const AM = "am";
+export const PM = "pm";

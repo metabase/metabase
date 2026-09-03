@@ -1,11 +1,10 @@
-import dayjs from "dayjs";
-
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import type { User } from "metabase-types/api";
 import {
   createMockRecentTableItem,

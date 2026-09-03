@@ -37,6 +37,9 @@ describe("scenarios > data apps > repo sync", () => {
         .scrollIntoView()
         .within(() => {
           cy.findByRole("link", { name: "Good App" }).should("be.visible");
+          cy.findByText("A well-formed app that syncs cleanly").should(
+            "be.visible",
+          );
           cy.findByText(/^Synced/).should("be.visible");
         });
 

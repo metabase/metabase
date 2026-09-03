@@ -15,9 +15,10 @@ export const useCollectionData = (
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
-  // Internal collection state.
+  // Internal collection state. Nullish when "personal" cannot be resolved — see
+  // [[getCollectionIdSlugFromReference]].
   const [internalCollectionId, setInternalCollectionId] = useState<
-    CollectionId | undefined
+    CollectionId | null | undefined
   >(baseCollectionId);
 
   const { isBreadcrumbEnabled: isGlobalBreadcrumbEnabled, currentLocation } =
@@ -37,7 +38,9 @@ export const useCollectionData = (
     isFetching: isFetchingCollection,
   } = useGetCollectionQuery(
     // To avoid `/api/collection/undefined` and 404.
-    effectiveCollectionId === undefined || skipCollectionFetching
+    effectiveCollectionId === null ||
+      effectiveCollectionId === undefined ||
+      skipCollectionFetching
       ? skipToken
       : { id: effectiveCollectionId },
   );

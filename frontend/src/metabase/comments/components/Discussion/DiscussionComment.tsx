@@ -7,8 +7,8 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -149,7 +149,7 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <Box mt={isEditing ? "sm" : "xs"}>
+      <Box mt={isEditing ? "sm" : "xxs"}>
         <CommentEditor
           autoFocus
           data-testid="comment-editor"

@@ -3,6 +3,7 @@ import type { StaticResponse } from "cypress/types/net-stubbing";
 import type { GetExplorationDataResponse } from "metabase-types/api";
 
 import { updateSetting } from "./api";
+import { setupAnthropicLlmProvider } from "./e2e-metabot-helpers";
 import { activateToken } from "./e2e-token-helpers";
 
 const MOCK_LLM_PORT = 6125;
@@ -10,16 +11,12 @@ const MOCK_LLM_RESPONSE = "Hello from Explorations!";
 
 export function enableExplorations(): void {
   activateToken("pro-self-hosted");
-  updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
   updateSetting("metabot-enabled?", true);
   cy.task("startMockLlmServer", {
     port: MOCK_LLM_PORT,
     responseText: MOCK_LLM_RESPONSE,
   });
-  updateSetting(
-    "llm-anthropic-api-base-url",
-    `http://localhost:${MOCK_LLM_PORT}`,
-  );
+  setupAnthropicLlmProvider({ baseUrl: `http://localhost:${MOCK_LLM_PORT}` });
   cy.intercept({
     method: "GET",
     pathname: "/api/exploration/dimensions",
@@ -42,7 +39,7 @@ export function visitNewExploration(): void {
  */
 export function startManualExploration(): void {
   cy.findByRole("button", { name: /Manual setup/i }).click();
-  cy.findByRole("button", { name: /Data/ }).should("be.visible");
+  cy.findByRole("button", { name: /Metrics/ }).should("be.visible");
 }
 
 /**
@@ -55,35 +52,23 @@ export function selectAllMetricsTab(): void {
   cy.findByRole("dialog").findByRole("tab", { name: "All" }).click();
 }
 
-export interface AddMetricsAndDimensionsOptions {
+export interface AddMetricsToExplorationOptions {
   metrics: string[];
-  dimensions?: string[];
 }
 
 /**
- * Pick metrics + dimensions through the "+ Data" picker.
+ * Pick metrics through the "+ Metrics" picker.
  */
-export function addMetricsAndDimensions({
+export function addMetricsToExploration({
   metrics,
-  dimensions = [],
-}: AddMetricsAndDimensionsOptions): void {
-  cy.findByRole("button", { name: /Data/ }).click();
-  cy.findByRole("menuitem", { name: "Metrics" }).click();
+}: AddMetricsToExplorationOptions): void {
+  cy.findByRole("button", { name: /Metrics/ }).click();
   cy.wait("@getDimensions");
   selectAllMetricsTab();
   for (const name of metrics) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
   cy.findByRole("button", { name: "Add" }).click();
-
-  if (dimensions.length > 0) {
-    cy.findByRole("button", { name: /Data/ }).click();
-    cy.findByRole("menuitem", { name: "Dimensions" }).click();
-    for (const name of dimensions) {
-      cy.findByRole("checkbox", { name }).check({ force: true });
-    }
-    cy.findByRole("button", { name: "Add" }).click();
-  }
 }
 
 /**
@@ -266,7 +251,6 @@ export function createExplorationViaApi({
       });
 
       const blocks = metrics.map((metric) => ({
-        type: "metric" as const,
         metrics: [metric],
         dimensions,
       }));

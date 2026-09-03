@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDeleteApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -10,6 +9,8 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
+
+import { useDeleteApiKeyMutation } from "../../api/api-key";
 
 export const DeleteApiKeyModal = ({
   onClose,
@@ -29,7 +30,7 @@ export const DeleteApiKeyModal = ({
     <Modal size="30rem" opened onClose={onClose} title={t`Delete API key`}>
       <FormProvider initialValues={{}} onSubmit={handleDelete}>
         <Form>
-          <Stack gap="lg">
+          <Stack gap="xl">
             <Text>{t`You won't be able to recover a deleted API key. You'll have to create a new key.`}</Text>
             <FormErrorMessage />
             <Group justify="flex-end">

@@ -12,7 +12,8 @@ concurrency:
 
 jobs:
   flags:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       has_backport_label: ${{ steps.c.outputs.value }}
     steps:
@@ -27,7 +28,7 @@ jobs:
 
   files-changed:
     name: Check which files changed
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       docs: ${{ steps.changes.outputs.docs }}
@@ -44,7 +45,7 @@ jobs:
     needs: [ files-changed, flags ]
     if: ${{ !cancelled() }}
     name: Decide whether to backport or not
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     permissions: {}
     steps:
@@ -59,7 +60,7 @@ jobs:
 
   priority-backport-reminder:
     name: Remind about backporting P0 + P1 fixes
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     needs: [flags]
     permissions:

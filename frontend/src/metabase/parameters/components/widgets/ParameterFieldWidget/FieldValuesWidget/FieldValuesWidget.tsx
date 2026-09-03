@@ -23,15 +23,14 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { addRemappings, getMetadata } from "metabase/metadata-store";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { connect, useDispatch } from "metabase/redux";
-import { addRemappings } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Autocomplete,
   Loader,

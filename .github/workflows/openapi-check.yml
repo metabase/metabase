@@ -31,7 +31,7 @@ jobs:
       - name: Get latest base branch commit
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }}
-          echo "LATEST_BASE_SHA=$(git rev-parse origin/${{ github.event.pull_request.base.ref }})" >> $GITHUB_ENV
+          echo "LATEST_BASE_SHA=$(git rev-parse origin/${{ github.event.pull_request.base.ref }})" >> "$GITHUB_ENV"
       - name: Check OpenAPI specs are up to date
         env:
           AUTO_COMMIT: "true"

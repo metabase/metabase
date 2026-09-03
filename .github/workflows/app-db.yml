@@ -6,6 +6,34 @@ on:
       skip:
         type: boolean
         default: false
+      force-run:
+        description: Run the full suite regardless of the diff (master / release branches).
+        type: boolean
+        default: false
+
+  # Run one app-DB job on demand, against the ref you dispatch on, optionally under a profiler.
+  # Everything else about the job -- services, matrix legs, test args, quarantine gating -- is
+  # whatever the normal CI run uses, because it is the same job.
+  workflow_dispatch:
+    inputs:
+      app-db:
+        description: 'Which app-DB job to run. Only this one runs; the others are skipped.'
+        type: choice
+        required: true
+        options:
+          - mariadb
+          - mysql
+          - postgres
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.db.custom-migrations-test/some-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
@@ -15,28 +43,105 @@ concurrency:
 # ci-conductor (secrets: inherit is already set on the app-db call in
 # run-tests.yml). See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per job.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen job runs the
+  # whole list -- each app DB has three.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
-  be-tests-mariadb:
+  app-db-matrix:
     if: ${{ !inputs.skip }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    name: Determine app DB versions
+    outputs:
+      mariadb: ${{ steps.versions.outputs.mariadb }}
+      mysql: ${{ steps.versions.outputs.mysql }}
+      postgres: ${{ steps.versions.outputs.postgres }}
+    steps:
+      - name: Select versions to test
+        id: versions
+        uses: actions/github-script@v9
+        env:
+          RUN_ALL: ${{ inputs.force-run }}
+        with:
+          script: | # js
+            const runAll = process.env.RUN_ALL === 'true';
+
+            const versions = {
+              mariadb: [
+                {
+                  name: 'MariaDB 10.6',
+                  image: 'metabase/mariadb:10.6',
+                  'junit-name': 'be-tests-mariadb-10-6-ee',
+                  env: { 'enable-ssl-tests': 'false' },
+                  latest: false
+                },
+                {
+                  name: 'MariaDB Latest',
+                  image: 'mariadb:latest',
+                  'junit-name': 'be-tests-mariadb-latest-ee',
+                  env: { 'enable-ssl-tests': 'false' },
+                  latest: true
+                },
+              ],
+              mysql: [
+                {
+                  name: 'MySQL 8.0',
+                  image: 'mysql:8.0',
+                  'junit-name': 'be-tests-mysql-8-0-ee',
+                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  latest: false
+                },
+                {
+                  name: 'MySQL 9',
+                  image: 'mysql:9',
+                  'junit-name': 'be-tests-mysql-9-ee',
+                  env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
+                  // treating 9.0 as latest until we introduce mysql 26+ support
+                  latest: true
+                },
+              ],
+              postgres: [
+                {
+                  name: 'Postgres 14.x',
+                  'junit-name': 'be-tests-postgres-ee',
+                  image: 'postgres:14-alpine',
+                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  latest: false,
+                },
+                {
+                  name: 'Postgres Latest',
+                  'junit-name': 'be-tests-postgres-latest-ee',
+                  image: 'postgres:latest',
+                  env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
+                  latest: true,
+                },
+              ],
+            };
+
+
+            for (const [db, dbVersions] of Object.entries(versions)) {
+              const selected = runAll ? dbVersions : dbVersions.filter((version) => version.latest);
+              core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
+              core.setOutput(db, JSON.stringify(selected));
+            }
+
+  be-tests-mariadb:
+    needs: app-db-matrix
+    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - name: MariaDB 10.6
-            junit-name: be-tests-mariadb-10-6-ee
-            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
-            env:
-              enable-ssl-tests: 'false'
-          - name: MariaDB Latest
-            junit-name: be-tests-mariadb-latest-ee
-            image: mariadb:latest
-            env:
-              enable-ssl-tests: 'false'
+        version: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb) }}
         job:
           - name: Enterprise Tests
             build-static-viz: false
@@ -70,21 +175,9 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -125,46 +218,16 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-mysql:
-    if: ${{ !inputs.skip }}
+    needs: app-db-matrix
+    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
-            env:
-              enable-ssl-tests: 'false'
-              enable-aws-iam-tests: 'false'
-          - name: MySQL 9
-            junit-name: be-tests-mysql-9-ee
-            image: mysql:9
-            env:
-              enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'true'
-          # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log
-          # until the runner cancels the job. A cancelled job can't be soft-failed with
-          # continue-on-error, so the leg is disabled until 26.x is supported.
-          # - name: MySQL Latest
-          #   junit-name: be-tests-mysql-latest-ee
-          #   image: mysql:latest
-          #   env:
-          #     enable-ssl-tests: 'false'
-          #     enable-aws-iam-tests: 'false'
+        version: ${{ fromJSON(needs.app-db-matrix.outputs.mysql) }}
         job:
           - name: Enterprise Tests
             build-static-viz: false
@@ -198,21 +261,9 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -261,37 +312,16 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-postgres:
-    if: ${{ !inputs.skip }}
+    needs: app-db-matrix
+    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - name: Postgres 14.x
-            junit-name: postgres-ee
-            docker-image: postgres:14-alpine
-            env:
-              enable-ssl-tests: 'false'
-              enable-aws-iam-tests: 'false'
-          - name: Postgres Latest
-            junit-name: postgres-latest-ee
-            docker-image: postgres:latest
-            env:
-              enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'true'
+        version: ${{ fromJSON(needs.app-db-matrix.outputs.postgres) }}
         job:
           - name: Enterprise Tests
             build-static-viz: false
@@ -302,7 +332,6 @@ jobs:
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
@@ -315,21 +344,9 @@ jobs:
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres
@@ -352,7 +369,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     services:
       postgres:
-        image: ${{ matrix.version.docker-image }}
+        image: ${{ matrix.version.image }}
         ports:
           - "5432:5432"
         env:
@@ -366,29 +383,20 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          junit-name: ${{ matrix.version.junit-name }}
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   app-db-tests-result:
     needs:
+      - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
       - be-tests-postgres
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
     if: always() && !cancelled()

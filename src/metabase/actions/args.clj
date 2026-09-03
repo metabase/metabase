@@ -1,12 +1,13 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
+   [metabase.actions.db :as actions.db]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (defmulti action-arg-map-schema
   "Return the appropriate malli schema to use to validate the arg map passed to [[perform-action!*]].
@@ -49,7 +50,8 @@
 (mr/def ::common
   [:map [:database ::lib.schema.id/database]])
 
-(mr/def ::row [:map-of :string :any])
+(mr/def ::row
+  [:map-of :string [:ref ::lib.schema.parameter/parameter.value]])
 
 ;;; Common base schema for all CRUD model row Actions. All CRUD model row Actions at least require
 ;;;
@@ -167,6 +169,6 @@
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
   ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
-  {:database (or database (when table-id (t2/select-one-fn :db_id [:model/Table :db_id] table-id)))
+  {:database (or database (when table-id (actions.db/table-database-id table-id)))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})

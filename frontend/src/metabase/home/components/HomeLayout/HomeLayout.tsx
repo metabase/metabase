@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
