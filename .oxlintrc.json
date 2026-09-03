@@ -1322,6 +1322,7 @@
         "metabase/jtag-missing-key": "error",
         "metabase/no-unconditional-metabase-links-render": "error",
         "metabase/no-color-literals": "error",
+        "metabase/valid-theme-tokens": "error",
         "metabase/no-literal-metabase-strings": "error",
         "metabase/no-oss-reinitialize-import": "error",
         "metabase/no-analytics-import-outside-analytics-files": "error"
@@ -1820,9 +1821,59 @@
           }
         ]
       }
+    },
+    {
+      "files": [
+        "frontend/src/**/*.{ts,tsx,js,jsx}",
+        "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}"
+      ],
+      "excludeFiles": [
+        "frontend/src/metabase/redux/store/mocks/api.ts"
+      ],
+      "rules": {
+        "metabase/no-base-api-access": [
+          "error",
+          {
+            "allowInjectionIn": [
+              "**/frontend/src/metabase/api/**",
+              "**/api/**",
+              "**/api.ts"
+            ],
+            "allowReachIn": [
+              "**/frontend/src/metabase/api/**",
+              "**/frontend/test/**",
+              "**/__support__/**",
+              "**/*.unit.spec.*"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "frontend/src/metabase/router/**/*.{ts,tsx,js,jsx}",
+        "frontend/src/metabase/querying/expressions/**/*.{ts,tsx,js,jsx}",
+        "frontend/src/metabase/ui/**/*.{ts,tsx,js,jsx}",
+        "frontend/src/metabase/query_builder/**/*.{ts,tsx,js,jsx}",
+        "frontend/src/metabase/viz-core/**/*.{ts,tsx,js,jsx}"
+      ],
+      "excludeFiles": [
+        "frontend/src/metabase/querying/expressions/pratt/syntax.ts",
+        "frontend/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.ts",
+        "frontend/src/metabase/query_builder/api/model-index.ts",
+        "**/*.unit.spec.*",
+        "**/*.stories.*",
+        "**/tests/**",
+        "**/__support__/**",
+        "**/*.d.ts"
+      ],
+      "rules": {
+        "metabase-side-effects/no-module-side-effects": "error"
+      }
     }
   ],
   "jsPlugins": [
+    "./frontend/lint/no-module-side-effects-plugin.mjs",
     "./frontend/lint/eslint-plugin-metabase/index.js",
     "eslint-plugin-jest-dom",
     "eslint-plugin-storybook",
