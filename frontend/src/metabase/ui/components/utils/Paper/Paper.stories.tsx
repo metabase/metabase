@@ -1,12 +1,13 @@
 import { Fragment } from "react";
 
 import { Grid, Paper, type PaperProps, Stack, Text } from "metabase/ui";
+import type { RadiusScaleKey } from "metabase/ui/theme";
 import { getThemeOverrides } from "metabase/ui/theme";
 
 const theme = getThemeOverrides();
 
 const spacingOptions = Object.keys(theme.spacing ?? {});
-const PAPER_RADIUS_OPTIONS = ["xxs", "md"] as const;
+const PAPER_RADIUS_OPTIONS = ["xxs", "md"] satisfies readonly RadiusScaleKey[];
 const shadowOptions = Object.keys(theme.shadows ?? {});
 
 const args = {
