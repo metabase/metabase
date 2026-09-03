@@ -14,7 +14,7 @@ import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
+import { isActionDashCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -92,7 +92,7 @@ export const PublicOrEmbeddedDashboardPage = () => {
           isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
           dashcardMenu={({ dashcard, result }) =>
             downloadsEnabled?.results &&
-            isQuestionCard(dashcard.card) &&
+            isQuestionDashCard(dashcard) &&
             !!result?.data &&
             !result?.error && (
               <PublicOrEmbeddedDashCardMenu
