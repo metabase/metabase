@@ -204,10 +204,7 @@ export const CollectionBrowserInner = ({
         id: "all",
         name: t`All collections`,
       });
-      return;
-    }
-
-    if (collection) {
+    } else if (collection) {
       reportLocation({
         type: "collection",
         id: collection.id,
