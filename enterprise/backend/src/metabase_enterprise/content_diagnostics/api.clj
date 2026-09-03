@@ -10,7 +10,9 @@
   verdict with live-hydrated `collection`, `description`, `owner`, `creator`, and `view_count` (the
   entity's usage counter, present for card/dashboard/document; not collection or transform)."
   (:require
+   [clout.core :as clout]
    [java-time.api :as t]
+   [malli.core :as mc]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -319,6 +321,74 @@
        (check-diagnostics-access)
        (handler request respond raise)))))
 
+(defn- declared-query-param-names
+  "The top-level keys `schema` declares, as strings to match the raw `:query-params` keys. A nil schema
+  yields `#{}`, so an endpoint binding no query params rejects every one."
+  [schema]
+  (into #{} (map name) (some-> schema mc/explicit-keys)))
+
+(def ^:private endpoint-param-specs
+  "One spec per endpoint here, for [[matching-endpoint]] to select from.
+
+  A `delay` because `ns-routes` reads namespace metadata the `defendpoint` forms below append to as they
+  expand. `*ns*` is captured outside it: inside, it would resolve at deref time to whichever namespace is
+  serving the request."
+  (let [nmspace *ns*]
+    (delay
+      (mapv (fn [info]
+              {:method (get-in info [:form :method])
+               ;; the same two values `api.macros/ns-handler-map` compiles its own routes from
+               :route  (clout/route-compile (get-in info [:form :route :path])
+                                            (get-in info [:form :route :regexes] {}))
+               :query  (declared-query-param-names (get-in info [:form :params :query :schema]))})
+            (vals (api.macros/ns-routes nmspace))))))
+
+(defn- matching-endpoint
+  "The spec of the endpoint that will handle `request`, or nil when none matches. Mirrors
+  `api.macros/find-matching-handler`, on the same request map that function will later see.
+
+  `:compojure/path` is nil for these routes -- Clout matches on the `:path-info` compojure's `context` has
+  already set, which it prefers over `:uri`. The assoc is kept because the router does it."
+  [request]
+  (let [path    (:compojure/path request)
+        request (cond-> request path (assoc :path-info path))]
+    (some (fn [{:keys [method route] :as spec}]
+            (when (and (= method (:request-method request))
+                       (clout/route-matches route request))
+              spec))
+          @endpoint-param-specs)))
+
+(defn- undeclared-query-params
+  "`{param \"unexpected query parameter\"}` for each of `ks` that `declared` does not contain."
+  [declared ks]
+  (into {}
+        (comp (remove declared)
+              (map (fn [k] [(keyword k) "unexpected query parameter"])))
+        ks))
+
+(def ^:private ^{:arglists '([handler])} +reject-undeclared-params
+  "400s a request carrying a query param the endpoint it routes to does not declare. `defendpoint` decodes
+  before it validates and its decode transformer ends in `strip-extra-keys-transformer`, so an undeclared
+  key is deleted before any schema sees it -- `?sort-colum=asc` would otherwise answer 200 with unsorted
+  results, indistinguishable from a filter that matched nothing.
+
+  A request no endpoint matches passes through for the router to 404. An endpoint declaring no query
+  schema rejects every query param.
+
+  Request bodies are not checked. Every endpoint here is a GET binding no body, so there is nothing to
+  check them against; a body-bearing endpoint added later would need that arm.
+
+  `limit`/`offset` are in no allowlist. `handle-paging` removes them from `:query-params` only when at
+  least one parses as a long, so a well-formed `?limit=5` never reaches here, while `?limit=abc` does and
+  400s instead of quietly serving an unpaged list."
+  (routes.common/wrap-middleware-for-open-api-spec-generation
+   (fn [handler]
+     (fn [request respond raise]
+       (when-let [{:keys [query]} (matching-endpoint request)]
+         (when-let [errors (not-empty (undeclared-query-params query (keys (:query-params request))))]
+           (throw (ex-info "Invalid query parameters" {:status-code 400, :errors errors}))))
+       (handler request respond raise)))))
+
 (api.macros/defendpoint :get "/stale"
   :- [:map
       [:data         [:sequential StaleFinding]]
@@ -493,5 +563,6 @@
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."
   ;; Middleware is applied left-to-right, so the last one ends up outermost: `+auth` runs first and an
-  ;; unauthenticated request still gets a 401 rather than the audience gate's 403.
-  (api.macros/ns-handler *ns* +check-diagnostics-access +auth))
+  ;; unauthenticated request still gets a 401 rather than the audience gate's 403. The param check is
+  ;; innermost, so the audience gate's 403 likewise beats its 400.
+  (api.macros/ns-handler *ns* +reject-undeclared-params +check-diagnostics-access +auth))
