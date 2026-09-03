@@ -96,6 +96,37 @@
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
+(defn- build-parallel!
+  "Run the full build with the frontend bundle building concurrently with backend AOT compilation. The uberjar step
+  joins on the frontend build after compiling Clojure sources, right before resources (which include the frontend
+  build output under resources/frontend_client) are copied into the jar.
+
+  The cheap steps (version, translations, licenses, python) run sequentially up front: licenses invokes bun, and
+  running it concurrently with the frontend build's `bun install` could race on node_modules."
+  [{:keys [edition version]}]
+  (let [timer (u/start-timer)]
+    (version-properties/generate-version-properties-file! edition version)
+    (i18n/create-all-artifacts!)
+    (build-licenses! edition)
+    (build.python/build-python-deps! edition)
+    (u/announce "Did pre-fork steps in %d ms." (u/since-ms timer))
+    (let [frontend (future
+                     (try
+                       (build-frontend! edition)
+                       ::success
+                       (catch Throwable e
+                         e)))]
+      (u/delete-file-if-exists! uberjar/uberjar-filename)
+      (u/step (format "Build uberjar with profile %s (frontend building in parallel)" edition)
+        (uberjar/uberjar {:edition          edition
+                          :await-frontend! (fn []
+                                             (let [result @frontend]
+                                               (when (instance? Throwable result)
+                                                 (throw result))))})
+        (u/assert-file-exists uberjar/uberjar-filename)
+        (u/announce "Uberjar built successfully."))
+      (u/announce "Did parallel frontend + uberjar in %d ms." (u/since-ms timer)))))
+
 (defn build!
   "Programmatic entrypoint."
   ([]
@@ -106,20 +137,24 @@
             steps   (keys all-steps)}}]
    (let [version (or version
                      (version-properties/current-snapshot-version edition))
-         timer         (u/start-timer)]
+         steps   (map u/parse-as-keyword steps)
+         timer   (u/start-timer)]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
                        :ee  "Enterprise Edition")
                      version
                      (str/join ", " (map name steps)))
-       (doseq [step-name steps
-               :let      [step-fn (or (get all-steps (u/parse-as-keyword step-name))
-                                      (throw (ex-info (format "Invalid step: %s" step-name)
-                                                      {:step        step-name
-                                                       :valid-steps (keys all-steps)})))]]
-         (step-fn {:version version, :edition edition})
-         (u/announce "Did %s in %d ms." step-name (u/since-ms timer)))
+       (if (and (= (env/env :mb-parallel-build) "true")
+                (= (set steps) (set (keys all-steps))))
+         (build-parallel! {:version version, :edition edition})
+         (doseq [step-name steps
+                 :let      [step-fn (or (get all-steps step-name)
+                                        (throw (ex-info (format "Invalid step: %s" step-name)
+                                                        {:step        step-name
+                                                         :valid-steps (keys all-steps)})))]]
+           (step-fn {:version version, :edition edition})
+           (u/announce "Did %s in %d ms." step-name (u/since-ms timer))))
        (u/announce "All build steps finished.")))))
 
 (defn build-cli
