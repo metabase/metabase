@@ -1217,7 +1217,7 @@
       (is (=? {:id (meta/id :venues :name)} lib-col)
           "sanity check: Lib metadata still includes the Field ID (#70233)")
       (is (=? {:name     "my_expression"
-               :id       :hawk/key-not-present
-               :table-id :hawk/key-not-present}
+               :id       (symbol "nil #_\"key is not present.\"")
+               :table-id (symbol "nil #_\"key is not present.\"")}
               persisted-col)
           "the wrapped Field's ID must not leak into persisted result metadata"))))
