@@ -10,11 +10,11 @@ redirect_from:
 
 A parameter is a value that changes what data an embedded dashboard or chart shows: a [dashboard filter](../dashboards/filters.md), a [SQL variable or field filter](../questions/native-editor/sql-parameters.md), or a time grouping. Questions built with the query builder don't expose parameters in embeds; to filter one, add it to a dashboard and connect a filter to the card.
 
-For every attribute, prop, event, and value format, check out the [Parameters reference](./parameters-reference.md).
+See also the [Parameters reference](./parameters-reference.md).
 
 ## Choose parameter visibility in the embed wizard
 
-What the embedding wizard offers under **Parameters** depends on the authentication you pick. With **SSO** authentication, every parameter shows by default, and for each one you can set a default value and choose whether to hide its widget. With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
+When you embed a dashboard or SQL question, the embedding wizard will offer different parameter options depending on which authentication method you pick. With **SSO** authentication, you can set a default value and choose whether to hide a parameters widget. With **guest** authentication, however, every parameter starts out **Disabled**, and for each parameter you can pick from:
 
 - **Disabled**: no widget, and nobody can set a value.
 - **Editable**: the widget shows, people can change the value, and your page can set a [starting value](#set-starting-values).
@@ -26,9 +26,9 @@ You can't disable a filter that [always requires a value](../dashboards/filters.
 
 ![Locked parameters](./images/locked-parameters.png)
 
-Say you want each customer to see only their own rows. On an embed with guest authentication, nobody's signed in to your Metabase, so permissions can't scope rows per person. Instead, you can lock the parameter: your server sets the parameter's value in the signed token, and Metabase applies the value before running anything. The viewer can't change the value.
+Say you want each customer to see only their own rows. On an embed with guest authentication, nobody's signed in to your Metabase, so permissions can't scope rows per person. Instead, you can lock the parameter: your server sets the parameter's value in the signed token, and Metabase applies the value before running anything. And because the value is set by the token, the viewer won't be able to change it.
 
-On an SSO embed, you don't need locked parameters. Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
+On an SSO embed, you don't need locked parameters. With SSO, your Metabase knows who's viewing, so [data permissions](../permissions/embedding.md) and [row and column security](../permissions/row-and-column-security.md) filter the rows for you.
 
 ### Lock a parameter
 
@@ -69,7 +69,7 @@ Some notes on locked parameters:
 
 ## Set starting values
 
-To open an embed with some set-and-forget filters already applied, and let people change them from there, pass starting values keyed by slug.
+To open an embed with some set-and-forget filters already applied, pass starting values keyed by slug. From there, people can change the value via the filter widgets.
 
 If instead you want your app to be able to push values, or see when people change a widget's values, use [controlled values](#control-values-from-your-app).
 
@@ -107,13 +107,13 @@ SQL questions take `initialSqlParameters`:
 
 ## Control values from your app
 
-When your app needs to be the source of truth for filter values, use the controlled props. They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever they change. Use them to [build your own filter widgets](#build-your-own-filter-ui), sync filters with your app's URL, or drive two embeds from one set of controls.
+When your app needs to be the source of truth for filter values, use the controlled props. They work like a controlled `<input>` in React: you hold the values, the embed applies whatever you hand it, and it calls you back whenever they change. Use them to [build your own filter widgets](#build-your-own-filter-ui) or to sync filters with your app's URL.
 
-Dashboards take `parameters`; SQL questions take `sql-parameters` (web component) or `sqlParameters` (SDK). Don't combine them with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console (the iframe's console, for web components).
+Don't combine controlled values with starting values: if you pass both, the embed uses the controlled values and logs a warning to the console.
 
 ### Web component controlled values
 
-Set the value as an attribute or a JS property. To catch edits people make in Metabase's widgets, listen for `parameters-change` on the element (it doesn't bubble):
+Set the value as an attribute. To catch edits people make in Metabase's widgets, listen for `parameters-change` on the element (it doesn't bubble):
 
 ```html
 <metabase-dashboard
@@ -181,13 +181,13 @@ To hide a parameter's widget without disabling the parameter, list its slug in `
 
 The same prop works on `StaticQuestion` and `InteractiveQuestion`.
 
-You'll mostly want this on an [SSO embed](./introduction.md#components-with-sso-authentication), where every parameter shows by default. On a guest embed, only **Editable** parameters have a widget to hide, and the embed wizard won't generate this attribute for you, so add it by hand.
+You'll mostly want to hide widgets on an [SSO embed](./introduction.md#components-with-sso-authentication), where every parameter shows by default. On a guest embed, only **Editable** parameters have a widget to hide.
 
-Hiding a widget doesn't restrict anything: the value is still set from the browser, and anyone can open the console and change it. To restrict what people can query, [lock the parameter](#restrict-data-with-locked-parameters) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
+Hiding a widget doesn't restrict anything: the value is still set from the browser, which means that anyone can open the console to change the value. To restrict what people can query, [lock the parameter](#restrict-data-with-locked-parameters) on a guest embed, or use [permissions](../permissions/embedding.md) on an SSO embed.
 
 ## Build your own filter UI
 
-If Metabase's widgets don't fit your app, hide them and supply your own. How you push values in depends on how the embed authenticates.
+If Metabase's widgets don't fit your app, hide them and make your own. How you push values to the charts depends on how the embed authenticates.
 
 ### SSO embeds: control the values and hide the widgets
 
