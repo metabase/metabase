@@ -175,6 +175,19 @@
              (assoc :template_tags {}
                     :parameters [{:id "x" :name "x" :type "x" :target ["x"] :slug "x"}])))
 
+;; Shared by `document_write`'s echo and `get_content`'s document reads — registered here, the
+;; namespace both load, for the same reason as `:question` above: neither tool requires the other,
+;; so a registration owned by either would leave the other depending on `api.clj`'s require order.
+(def ^:private document-concise-keys
+  [:id :name :collection_id :archived :content_markdown])
+
+(def ^:private document-detailed-keys
+  (into document-concise-keys
+        [:entity_id :creator_id :created_at :updated_at]))
+
+(register-key-projection! :document document-concise-keys
+                          :detailed-keys document-detailed-keys)
+
 ;;; ----------------------------------------------- dashboard ------------------------------------------------------
 
 (defn- dashcard-kind

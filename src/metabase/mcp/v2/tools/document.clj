@@ -29,8 +29,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; The `:document` projection is registered by `metabase.mcp.v2.tools.content` (slice 11), which
-;; `metabase.mcp.v2.api` loads alongside this ns — `document-response` below projects through it.
+;; The `:document` projection is registered in `metabase.mcp.v2.projections`, which this ns
+;; requires — `document-response` below projects through it.
 
 ;;; ------------------------------------------------ Smart links ---------------------------------------------------
 

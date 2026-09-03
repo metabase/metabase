@@ -182,15 +182,8 @@
 
 ;;; --------------------------------------------------- document ---------------------------------------------------
 
-(def ^:private document-concise-keys
-  [:id :name :collection_id :archived :content_markdown])
-
-(def ^:private document-detailed-keys
-  (into document-concise-keys
-        [:entity_id :creator_id :created_at :updated_at]))
-
-(projections/register-key-projection! :document document-concise-keys
-                                      :detailed-keys document-detailed-keys)
+;; The `:document` projection is registered in [[metabase.mcp.v2.projections]] because
+;; `document_write` echoes through it too.
 
 (defn- fetch-document
   [id-or-eid]
@@ -207,7 +200,6 @@
                 (log/warn e "Falling back to flattened text for document" (:id doc))
                 nil))]
     (-> doc
-        (select-keys document-detailed-keys)
         (assoc :content_markdown (if ser
                                    (:markdown ser)
                                    (prose-mirror/ast->text (:document doc)))
