@@ -10102,6 +10102,18 @@ databaseChangeLog:
       rollback: # will be deleted with table
 
   - changeSet:
+      id: v53.2024-12-27T17:33:54
+      author: nvoxland
+      validCheckSum: ANY
+      comment: >-
+        Used to insert the plaintext "unencrypted" encryption-check marker on every new database, encrypted ones
+        included, so the marker said nothing about the actual state and became useless. Now a no-op: with no row the
+        state is unknown and is judged from the content, and the encryption tooling writes the sentinel itself.
+      changes:
+        - empty: # no-op on forward migration
+      rollback: []
+
+  - changeSet:
       id: v53.2024-12-27T20:17:23
       author: noahmoss
       comment: Drop unnecessary NOT NULL constraint from cache_config.refresh_automatically column

@@ -2863,6 +2863,22 @@
           (is (thrown? Exception
                        (perm! {:perm_type "perms/view-data" :perm_value "blocked"}))))))))
 
+(deftest delete-plaintext-encryption-check-marker-test
+  (testing "v58.2026-09-03T00:00:03: the plaintext \"unencrypted\" encryption-check marker is deleted"
+    (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+      (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+      (t2/query {:insert-into :setting :values [{:key "encryption-check" :value "unencrypted"}]})
+      (migrate!)
+      (is (nil? (t2/select-one :setting :key "encryption-check")))))
+  (testing "an encrypted sentinel is left alone"
+    (encryption-test/with-secret-key "encryption-check-marker-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:03" [migrate!]
+        (let [sentinel (encryption/encrypt (str (random-uuid)))]
+          (t2/query {:delete-from :setting :where [:= :key "encryption-check"]})
+          (t2/query {:insert-into :setting :values [{:key "encryption-check" :value sentinel}]})
+          (migrate!)
+          (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
+
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
