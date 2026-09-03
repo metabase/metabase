@@ -61,7 +61,7 @@ interface UseDocumentEditorResult {
   setEditorInstance: Dispatch<SetStateAction<TiptapEditor | null>>;
   collectionPickerMode: "save" | "move" | null;
   setCollectionPickerMode: Dispatch<SetStateAction<"save" | "move" | null>>;
-  editorContainerRef: RefObject<HTMLDivElement>;
+  editorContainerRef: RefObject<HTMLDivElement | null>;
   isNavigationScheduled: boolean;
   scheduleNavigation: ScheduleCallback;
   isNewDocument: boolean;
