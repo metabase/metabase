@@ -30,7 +30,11 @@
                      :set    {:details "{\"pattern\":\"plain\"}"}
                      :where  [:!= :details nil]})
           (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
-          (mdb/encrypt-plaintext-columns!)
+          (mt/with-log-messages-for-level [messages :warn]
+            (mdb/encrypt-plaintext-columns!)
+            (is (=? [{:level :warn, :message #"(?s)Encrypted \d+ value\(s\) in notification_recipient\.details that were stored unencrypted\..*"}]
+                    (filter #(re-find #"notification_recipient" (:message %)) (messages)))
+                "the heal warns about the column it had to encrypt"))
           (let [healed (recipient-details)]
             (is (every? encryption/decryptable-string? healed))
             (is (= "{\"pattern\":\"plain\"}" (encryption/decrypt (first healed))))))

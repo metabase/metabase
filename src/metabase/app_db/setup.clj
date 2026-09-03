@@ -20,6 +20,7 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -251,6 +252,10 @@
   encryption commands -- and a JVM that skipped the repair would read every setting as nil."
   [db-state]
   (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
+    (when (mdb.setting/unmigrated-settings?)
+      (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
+                     "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
+                     ". This is expected once after an upgrade.")))
     (mdb.setting/migrate-settings!)))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`

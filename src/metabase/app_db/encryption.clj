@@ -303,6 +303,16 @@
               (t2/query {:update table, :set {column (encrypt-bytes-fn decrypted)}, :where [:= :id id]}))))
         (t2/reducible-select [table :id [column :value]])))
 
+(defn- warn-encrypted-at-startup!
+  "Warn that `n` values stored unencrypted in `column` (as `table.column`) were encrypted at startup, when `n` is
+  positive."
+  [column n]
+  (when (pos? n)
+    (log/warnf (str "Encrypted %d value(s) in %s that were stored unencrypted. This is expected once after an upgrade "
+                    "or after adding MB_ENCRYPTION_SECRET_KEY; if it repeats on every start, another Metabase version "
+                    "is writing to this database.")
+               n column)))
+
 (defn encrypt-plaintext-columns!
   "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup: the one-shot
   encryption backfill migrations cannot be relied on to have done this -- run without MB_ENCRYPTION_SECRET_KEY (the
@@ -317,20 +327,26 @@
   (when (encryption/default-encryption-enabled?)
     (t2/with-transaction [_conn]
       (doseq [[table column] encrypted-string-columns]
-        (run! (fn [{:keys [id value]}]
-                (when (and (string? value)
-                           (not (encryption/decryptable-string? value)))
-                  (t2/query {:update table, :set {column (encryption/encrypt value)}, :where [:= :id id]})))
-              (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]})))
+        (let [encrypted (atom 0)]
+          (run! (fn [{:keys [id value]}]
+                  (when (and (string? value)
+                             (not (encryption/decryptable-string? value)))
+                    (swap! encrypted inc)
+                    (t2/query {:update table, :set {column (encryption/encrypt value)}, :where [:= :id id]})))
+                (t2/reducible-select [table :id [column :value]] {:where [:!= column nil]}))
+          (warn-encrypted-at-startup! (str (name table) "." (name column)) @encrypted)))
       ;; `setting.value_with_aad` is bound to its row, so it is checked and encrypted under each row's own AAD
-      (let [encrypt-setting-fn (encrypt-setting nil)]
+      (let [encrypt-setting-fn (encrypt-setting nil)
+            encrypted          (atom 0)]
         (run! (fn [{:keys [key value_with_aad]}]
                 (when (and (string? value_with_aad)
                            (not (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad key)})))
+                  (swap! encrypted inc)
                   (t2/query {:update :setting
                              :set    {:value_with_aad (encrypt-setting-fn value_with_aad key)}
                              :where  [:= :key key]})))
-              (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))))))
+              (t2/reducible-select [:setting :key :value_with_aad] {:where [:!= :value_with_aad nil]}))
+        (warn-encrypted-at-startup! "setting.value_with_aad" @encrypted)))))
 
 (defn- do-encryption
   "Encrypt or decrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.

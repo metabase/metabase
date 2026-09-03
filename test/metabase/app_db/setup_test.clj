@@ -245,6 +245,21 @@
           (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
           (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
 
+(deftest setup-db-warns-about-settings-from-an-older-version-test
+  (testing "a setting row written by a version without value_with_aad is reported once and then filled in"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (is (not (mdb.setting/unmigrated-settings?)))
+      (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+      (is (mdb.setting/unmigrated-settings?))
+      (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+      (mt/with-log-messages-for-level [messages :warn]
+        (mdb/setup-db! :create-sample-content? false)
+        (is (=? [{:level :warn, :message #"(?s)Some settings were saved by an older version of Metabase.*"}]
+                (filter #(re-find #"older version" (:message %)) (messages)))))
+      (is (not (mdb.setting/unmigrated-settings?)))
+      (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
+
 (deftest encryption-check-status-falls-back-to-value-test
   (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
     (mt/with-temp-empty-app-db [_conn :h2]

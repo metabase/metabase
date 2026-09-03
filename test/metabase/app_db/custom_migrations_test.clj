@@ -2742,7 +2742,10 @@
               enc-id   (ins-key "mb_encr" enc-str)
               raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
           (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
-          (migrate!)
+          (mt/with-log-messages-for-level [messages :warn]
+            (migrate!)
+            (is (=? [{:level :warn, :message "EncryptApiKeys encrypted 1 row(s) in api_key that were stored unencrypted."}]
+                    (filter #(re-find #"EncryptApiKeys" (:message %)) (messages)))))
           (testing "plaintext key is encrypted and decrypts to the original hash"
             (is (encryption/decryptable-string? (raw-key plain-id)))
             (is (= "plaintext-bcrypt-hash"

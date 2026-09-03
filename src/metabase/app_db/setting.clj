@@ -17,6 +17,15 @@
   "The additional authenticated data a setting's value is encrypted under: `setting.<key>`."
   (memoize (fn ^bytes [setting-key] (codecs/to-bytes (str "setting." setting-key)))))
 
+(def ^:private unmigrated-settings-where
+  [:and [:= :value_with_aad nil] [:not= :value nil] [:not= :value ""]])
+
+(defn unmigrated-settings?
+  "Whether any setting row still has a `value` but no `value_with_aad`, i.e. was written by a version predating the
+  column and has not been filled in by [[migrate-settings!]] yet."
+  []
+  (t2/exists? :setting {:where unmigrated-settings-where}))
+
 (defn migrate-settings!
   "Give every setting row that has no `value_with_aad` one, from the legacy `value` column beside it, stored the way
   the Setting model stores one. Runs from `metabase.app-db.setup/setup-db!` after migrations and before anything reads
@@ -34,12 +43,7 @@
   []
   (let [filled (atom 0)]
     (t2/with-transaction [_conn]
-      (doseq [{:keys [key value]} (t2/select :setting
-                                             {:where [:and
-                                                      [:= :value_with_aad nil]
-                                                      [:not= :value nil]
-                                                      [:not= :value ""]]
-                                              :for   :update})
+      (doseq [{:keys [key value]} (t2/select :setting {:where unmigrated-settings-where, :for :update})
               :let  [plain (u/ignore-exceptions (encryption/maybe-decrypt-accepting-plaintext value))]
               :when (some? plain)]
         (swap! filled inc)
