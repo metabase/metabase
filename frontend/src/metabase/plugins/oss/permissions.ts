@@ -253,10 +253,6 @@ const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
   // Unjustified type cast. FIXME
   tabs: [] as any,
-  selectors: {
-    canAccessSettings: (_state: any) => false,
-    canManageSubscriptions: (_state: any) => true,
-  },
 });
 
 export const PLUGIN_APPLICATION_PERMISSIONS =

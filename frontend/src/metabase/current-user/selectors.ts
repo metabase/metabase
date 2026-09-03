@@ -1,10 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
 
 import { currentUserApi } from "./api/current-user";
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "./plugin";
 
 const selectCurrentUser: (state: State) => { data?: User } =
   currentUserApi.endpoints.getCurrentUser.select();
@@ -28,7 +28,7 @@ export const canManageSubscriptions = createSelector(
   [
     getUserIsAdmin,
     (state) =>
-      PLUGIN_APPLICATION_PERMISSIONS.selectors.canManageSubscriptions(state),
+      PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions(state),
   ],
   (isAdmin, canManageSubscriptions) => isAdmin || canManageSubscriptions,
 );
@@ -37,7 +37,7 @@ export const canAccessSettings = createSelector(
   [
     getUserIsAdmin,
     (state) =>
-      PLUGIN_APPLICATION_PERMISSIONS.selectors.canAccessSettings(state),
+      PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessSettings(state),
   ],
   (isAdmin, canAccessSettings) => isAdmin || canAccessSettings,
 );

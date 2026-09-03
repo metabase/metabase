@@ -233,9 +233,12 @@ import { reinitialize as reinitializeUploadManagement } from "./oss/upload-manag
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
- * Mostly for test purposes, reinitialize all plugins.
+ * Reinitialize the plugin slots declared in this module.
  * You don't reinitialize plugins individually because some plugins depend on others,
  * so reinitializing them all ensures that dependencies are correctly set up.
+ *
+ * @internal Do not call directly. Use reinitializePlugins from __support__/plugins instead,
+ * which also resets the slots that other modules declare.
  */
 export function reinitialize() {
   reinitializeNotificationsSdk();

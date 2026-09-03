@@ -6,6 +6,10 @@ export {
   useLazyGetCurrentUserQuery,
 } from "./api/current-user";
 export {
+  PLUGIN_APPLICATION_PERMISSIONS_SELECTORS,
+  reinitialize,
+} from "./plugin";
+export {
   canAccessSettings,
   canManageSubscriptions,
   canUserCreateNativeQueries,
