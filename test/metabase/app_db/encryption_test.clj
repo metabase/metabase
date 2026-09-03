@@ -52,29 +52,7 @@
           (mdb/encrypt-plaintext-columns!)
           (is (= before (recipient-details))))))))
 
-(deftest encrypt-plaintext-columns!-skips-migration-converted-columns-test
-  (testing "the boot heal leaves the columns the v64 migration converts alone, rather than decrypting every card's
-            result_metadata on every startup"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (let [plaintext "[\"a\",\"b\"]"
-              user-id   (t2/insert-returning-pk! :core_user
-                                                 {:first_name  "Enc" :last_name "Test"
-                                                  :email       "enc-test@metabase.com"
-                                                  :password    "x" :date_joined :%now
-                                                  :entity_id   (u/generate-nano-id)})
-              upv-id    (t2/insert-returning-pk! :user_parameter_value
-                                                 {:user_id      user-id
-                                                  :parameter_id "abc123"
-                                                  :value        plaintext})
-              stored    #(t2/select-one-fn :value :user_parameter_value :id upv-id)]
-          (is (= plaintext (stored)) "precondition: stored in the clear")
-          (mdb/encrypt-plaintext-columns!)
-          (is (= plaintext (stored))
-              "the boot heal encrypted a column the migration owns"))))))
-
-(deftest rotation-rewrites-migration-converted-columns-test
+(deftest rotation-rewrites-every-encrypted-column-test
   (testing "key rotation must rewrite every encrypted column, including the ones the boot heal skips: one left under
             the old key is unreadable once that key is gone"
     (mt/with-temp-empty-app-db [_conn :h2]

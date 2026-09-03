@@ -11,10 +11,10 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.revisions.db :as revisions.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
@@ -51,14 +51,7 @@
                                (:model_id card-updated-info)
                                (select-keys card-updated-info [:id :email :first_name :last_name :timestamp])))
                       {}
-                      (t2/reducible-query
-                       {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                        :from      [[:revision :r]]
-                        :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                        :where     [:and
-                                    [:= :r.most_recent true]
-                                    [:= :r.model (model->db-model model)]
-                                    [:in :r.model_id ids]]}))]
+                      (revisions.db/latest-editors-reducible (model->db-model model) ids))]
           (map (fn [item]
                  (m/assoc-some item :last-edit-info (-> item :id id->updated-info)))
                items))))))
@@ -87,17 +80,7 @@
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
   [{:keys [card-ids dashboard-ids]}]
   (when (seq (concat card-ids dashboard-ids))
-    (let [latest-changes (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
-                                                :r.model :r.model_id :r.timestamp]
-                                    :from      [[:revision :r]]
-                                    :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                    :where     [:and [:= :r.most_recent true]
-                                                (into [:or]
-                                                      (keep (fn [[model-name ids]]
-                                                              (when (seq ids)
-                                                                [:and [:= :model model-name] [:in :model_id ids]])))
-                                                      [["Card" card-ids]
-                                                       ["Dashboard" dashboard-ids]])]})]
+    (let [latest-changes (revisions.db/latest-changes card-ids dashboard-ids)]
       (->> latest-changes
            (group-by :model)
            (m/map-vals (fn [model-changes]

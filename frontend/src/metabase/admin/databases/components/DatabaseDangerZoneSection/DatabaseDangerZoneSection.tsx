@@ -62,7 +62,7 @@ export const DatabaseDangerZoneSection = ({
               title={t`Discard saved field values`}
               onClose={saveFieldsModal.close}
               onConfirm={handleDiscardFieldValues}
-              padding="xl"
+              padding="xxl"
               data-testid="discard-field-values-confirm-modal"
             />
           </>

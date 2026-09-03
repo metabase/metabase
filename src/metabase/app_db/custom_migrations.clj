@@ -2477,8 +2477,26 @@
    [:user_parameter_value :value]
    [:transform :last_checkpoint_value]])
 
+(defn- assert-key-set-for-decryption!
+  "`maybe-decrypt-accepting-plaintext` returns its argument untouched when no key is set, so rolling back without
+  MB_ENCRYPTION_SECRET_KEY would report success and leave ciphertext the older version reads as JSON. The downgrade
+  docs give the command with only the MB_DB_* variables, so refuse rather than let that pass."
+  []
+  (when-not (encryption/default-encryption-enabled?)
+    (doseq [[table column] encrypt-dwh-derived-columns-v64]
+      (run! (fn [{:keys [value]}]
+              (when (encryption/possibly-encrypted-string? value)
+                (throw (ex-info (format "Cannot roll back %s.%s: it is encrypted and MB_ENCRYPTION_SECRET_KEY is not set"
+                                        (name table) (name column))
+                                {:table table, :column column}))))
+            (t2/reducible-query {:select [[column :value]]
+                                 :from   [table]
+                                 :where  [:!= column nil]})))))
+
 (define-reversible-migration EncryptDwhDerivedColumns
   (when (encryption/default-encryption-enabled?)
     (mdb.encryption/rewrite-columns! encrypt-dwh-derived-columns-v64 mdb.encryption/encrypt-value))
   ;; hand these back to the older version as plaintext it can read
-  (mdb.encryption/rewrite-columns! encrypt-dwh-derived-columns-v64 encryption/maybe-decrypt-accepting-plaintext))
+  (do
+    (assert-key-set-for-decryption!)
+    (mdb.encryption/rewrite-columns! encrypt-dwh-derived-columns-v64 encryption/maybe-decrypt-accepting-plaintext)))

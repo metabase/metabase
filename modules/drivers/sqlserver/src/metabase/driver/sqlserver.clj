@@ -212,13 +212,16 @@
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
        :user               (str (when domain (str domain "\\"))
                                 user)
-       :instanceName       instance
        :encrypt            (boolean ssl)
        ;; only crazy people would want this. See https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
        :sendTimeAsDatetime false}
       ;; only include `port` if it is specified; leave out for dynamic port: see
       ;; https://github.com/metabase/metabase/issues/7597
-      (merge (when port {:port port}))
+      ;; only include `instanceName` if supplied — mssql-jdbc treats an empty string as a named instance and
+      ;; initiates SQL Server Browser lookup, which breaks Microsoft Fabric / Synapse serverless endpoints
+      ;; that drop the connection whenever the property is present (#81270)
+      (merge (when port {:port port})
+             (when-not (str/blank? instance) {:instanceName instance}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (def ^:private disallowed-additional-opts

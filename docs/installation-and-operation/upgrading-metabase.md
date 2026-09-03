@@ -173,6 +173,8 @@ docker run
 --rm metabase/metabase:<tag> "migrate down"
 ```
 
+If your application database is encrypted at rest, set `MB_ENCRYPTION_SECRET_KEY` for the rollback as well as the `MB_DB_*` variables. `migrate down` has to decrypt the columns that the older version reads as plaintext, and it will refuse to run without the key rather than leave them unreadable.
+
 Note the quotes around `"migrate down"`. You can also just open a shell into the container and run the migrate command inside it.
 
 Once the migration process completes, start up Metabase using the JAR or container image for the version you want to run.

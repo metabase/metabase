@@ -68,7 +68,7 @@ export const PurchaseAdvancedTransforms = ({
 
   return (
     <>
-      <Stack gap="lg">
+      <Stack gap="xl">
         {perRunStr &&
           (freeUnitsStr ? (
             <Text fw="bold" lh="sm">

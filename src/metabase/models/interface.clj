@@ -20,6 +20,7 @@
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -39,7 +40,6 @@
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
-   [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
@@ -358,7 +358,7 @@
 
 (defn transform-encrypted
   "Wrap `transform` so its serialized value is encrypted at rest. Reading is unchanged for rows written before the
-  column was encrypted, which the backfill task may not have reached yet:
+  column was encrypted, which the v64 migration may not have converted yet:
   [[encryption/maybe-decrypt-accepting-plaintext]] passes plaintext through."
   [transform]
   {:in  (fn [v]
@@ -633,7 +633,7 @@
   {:pre [(map? row-map)]}
   (let [model (t2/resolve-model modelable)]
     (try
-      (t2/select-one model (t2.identity-query/identity-query [row-map]))
+      (models.db/after-select-via-identity-query model row-map)
       (catch Throwable e
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
@@ -785,7 +785,7 @@
     a-model       :- qualified-keyword?
     object-id     :- [:or pos-int? string?]]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (first (t2/primary-keys a-model)) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (models.db/entity-by-pk a-model (first (t2/primary-keys a-model)) object-id))))
 
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]

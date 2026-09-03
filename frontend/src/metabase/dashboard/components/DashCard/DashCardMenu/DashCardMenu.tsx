@@ -124,7 +124,7 @@ export const DashCardMenu = ({
           canEdit={canEdit}
         />
         {!!openUnderlyingQuestionItems?.length && (
-          <Menu.Sub position="right" shadow="md">
+          <Menu.Sub position="right" shadow="sm">
             <Menu.Sub.Target>
               <Menu.Sub.Item
                 fw="bold"

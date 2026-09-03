@@ -57,7 +57,7 @@ jobs:
           distribution: temurin
           java-version: 25
       - name: Shrink ignore limits
-        run: ./bin/mage fix-kondo-ratchets
+        run: ./bin/mage kondo-ratchets-shrink
       # Two independent outputs: `push` says the branch needs a new commit, `pr` names the open automation
       # PR if there is one. Approval and auto-merge key on `pr` alone, so a run that failed after opening
       # the PR is repaired by the next run instead of leaving the PR stranded.
@@ -84,8 +84,8 @@ jobs:
 
           # The ratchet file is the whole payload, so an open PR that already carries this result is left
           # alone. Rebasing it onto every master push would restart its CI and churn the diff without
-          # changing what it delivers. The diff is against the working tree, holding what
-          # fix-kondo-ratchets produced above, and so asks whether the PR would deliver the same file.
+          # changing what it delivers. Compare the open PR with the working tree, which contains the
+          # shrunk ratchets file produced above, to determine whether the PR would deliver the same file.
           #
           # A conflicted PR is the exception: only a fresh commit clears it. Mergeability is computed
           # lazily, so a pending UNKNOWN reads as not conflicted and the next run settles it.
@@ -133,7 +133,7 @@ jobs:
             --head "$AUTOMATION_BRANCH" \
             --title "Tighten ratchets" \
             --label "no-backport" \
-            --body "\`./bin/mage fix-kondo-ratchets\` lowered \`$RATCHETS_FILE\` to match master.
+            --body "\`./bin/mage kondo-ratchets-shrink\` lowered \`$RATCHETS_FILE\` to match master.
           The shrink workflow force-updates this branch from master whenever the result changes, so the
           diff is always one commit on top of a recent master. It approves and merges itself once the
           ratchet check passes; nothing is raised.")
