@@ -4,11 +4,12 @@ import { t } from "ttag";
 
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Icon, Title, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { EmbeddingHubHomePage } from "../EmbeddingHubHomePage";
@@ -48,6 +49,9 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
       mih="100%"
       bg="background_page-secondary"
     >
+      <Title order={1} className={visuallyHidden.visuallyHidden}>
+        {t`Home`}
+      </Title>
       {landingPageIllustration &&
         (landingPageIllustration.isDefault ? (
           <LighthouseIllustration />
