@@ -363,6 +363,29 @@
   (testing "GHY-4148: the scope the tool checks is advertised, so a token can actually be granted it"
     (is (contains? (registry/registered-scopes) "agent:content:write"))))
 
+(deftest write-echo-degrades-without-read-scope-test
+  (testing "GHY-4148: a token holding the write scope but not `agent:content:read` gets only the
+            acknowledgement, never the row. Without this the write scope is a read oracle — a
+            rename that changes nothing would hand back the name, description, location, and
+            entity_id of a collection the token's read scopes deny. Dropping the `readback` call
+            from the tool, or widening its ack-keys, must fail here."
+    (mt/with-model-cleanup [:model/Collection]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Secret Plans" :description "hush"}]
+        ;; Both methods go through the same `readback`, so a regression could land on either.
+        (doseq [[method args] [["create" {:method "create" :name "Write-only create"}]
+                               ["update" {:method "update" :id coll-id :name "Write-only update"}]]]
+          (testing method
+            (let [payload (tool-result (call-tool! :crowberto #{"agent:content:write"} args))]
+              (is (= #{:id :url :note} (set (keys payload))))
+              (is (nil? (:name payload)))
+              (is (re-find #"agent:content:read" (:note payload))))))))
+    (testing "and the same call with read+write reads back in full, so a gate stuck on fails here too"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [payload (tool-result (call-tool! :crowberto #{"agent:content:read" "agent:content:write"}
+                                               {:method "create" :name "Read-and-write create"}))]
+          (is (= #{:id :name :description :location :archived :entity_id :url :authority_level :namespace}
+                 (set (keys payload)))))))))
+
 (deftest clear-unsets-description-and-authority-level-test
   (testing "GHY-4191: `clear` unsets the properties `collection-write-entry` lists as `:clearable`.
             A null cannot say \"clear this\" — strict clients fill every unset property with null and

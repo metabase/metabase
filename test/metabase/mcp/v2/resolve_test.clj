@@ -65,6 +65,29 @@
   (is (= 99 (v2.resolve/resolve-collection-id "trash" {:trash-collection-id 99})))
   (is (thrown? Exception (v2.resolve/resolve-collection-id "trash"))))
 
+(deftest resolve-collection-id-collapses-unreadable-test
+  (testing "GHY-4148: a collection_id naming a collection the caller cannot read must give the
+            exact same not-found error as one naming no collection at all. Without the
+            `resolve-and-read` call in the main branch the id would travel straight into the write
+            unchecked, and a distinguishable error would turn the argument into a collection-id
+            enumeration oracle."
+    (mt/with-temp [:model/Collection {readable-id :id}   {:name "Readable"}
+                   :model/Collection {unreadable-id :id} {:name     "Crowberto's personal subfolder"
+                                                          :location (str "/" (:id (collection/user->personal-collection
+                                                                                   (mt/user->id :crowberto)))
+                                                                         "/")}]
+      (mt/with-test-user :rasta
+        (testing "a readable collection resolves to its own id"
+          (is (= readable-id (v2.resolve/resolve-collection-id readable-id))))
+        (let [missing    (try (v2.resolve/resolve-collection-id 13371337)
+                              (catch Exception e (ex-message e)))
+              unreadable (try (v2.resolve/resolve-collection-id unreadable-id)
+                              (catch Exception e (ex-message e)))]
+          (is (str/includes? missing "not found"))
+          ;; Compare the messages, not merely that both threw: differing wording is the leak.
+          (is (= (str/replace missing "13371337" (str unreadable-id))
+                 unreadable)))))))
+
 (deftest resolve-collection-id-or-personal-test
   (testing "GHY-4218: an absent collection argument defaults to the caller's personal collection"
     (mt/with-test-user :rasta
