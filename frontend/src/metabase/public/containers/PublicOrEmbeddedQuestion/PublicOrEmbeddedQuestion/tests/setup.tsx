@@ -97,7 +97,6 @@ export async function setup(
     }),
   );
 
-
   renderWithProviders(
     <Route
       path="public/question/:uuid"
