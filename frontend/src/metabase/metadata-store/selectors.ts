@@ -5,7 +5,9 @@ import type { State } from "metabase/redux/store";
 import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
-import Field from "metabase-lib/v1/metadata/Field";
+import Field, {
+  type HydratedFieldDimension,
+} from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
@@ -366,6 +368,7 @@ function hydrateField(field: Field, metadata: Metadata) {
   field.table = hydrateFieldTable(field, metadata);
   field.target = hydrateFieldTarget(field, metadata);
   field.name_field = hydrateNameField(field, metadata);
+  field.dimensions = hydrateFieldDimensions(field, metadata);
   field.values = getFieldValues(field);
   field.remapping = new Map(getRemappings(field));
 }
@@ -411,6 +414,26 @@ function hydrateFieldTarget(
   metadata: Metadata,
 ): Field | undefined {
   return metadata.field(field.fk_target_field_id) ?? undefined;
+}
+
+/**
+ * Normalizing a field flattens each dimension's `human_readable_field` to an
+ * id. The API nests the field itself, so it is put back here and a store field
+ * answers a remapping question the same way an API field does.
+ */
+function hydrateFieldDimensions(
+  field: Field,
+  metadata: Metadata,
+): HydratedFieldDimension[] {
+  const dimensions = field.getPlainObject().dimensions ?? [];
+
+  return dimensions.map((dimension) => ({
+    ...dimension,
+    human_readable_field:
+      dimension.human_readable_field_id != null
+        ? (metadata.field(dimension.human_readable_field_id) ?? undefined)
+        : undefined,
+  }));
 }
 
 function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {

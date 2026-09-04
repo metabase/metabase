@@ -76,7 +76,7 @@ export interface NormalizedField extends Omit<
   target?: FieldId;
   table?: TableId;
   name_field?: FieldId;
-  dimensions?: NormalizedFieldDimension;
+  dimensions?: NormalizedFieldDimension[];
 }
 
 export interface NormalizedSegment extends Omit<Segment, "table"> {

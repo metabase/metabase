@@ -1,6 +1,8 @@
 import type { Field } from "metabase-types/api/field";
 
-type FormattableField = Pick<Field, "name" | "display_name" | "dimensions">;
+type FormattableField = Pick<Field, "name" | "display_name"> & {
+  dimensions?: { name: string }[];
+};
 
 export function formatField(field: FormattableField) {
   if (!field) {
