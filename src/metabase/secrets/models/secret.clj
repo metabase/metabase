@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.secrets.db :as secrets.db]
-   [metabase.system.settings :as system-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -236,7 +236,7 @@
 
 (defn- ensure-allowed-path!
   [file-path]
-  (let [readable-paths (system-settings/readable-paths)]
+  (let [readable-paths (system/readable-paths)]
     (when-not (some #(is-descendant % file-path) readable-paths)
       (throw (ex-info (tru "Reading from path is disallowed: {0}" file-path)
                       {:file-path file-path})))))
