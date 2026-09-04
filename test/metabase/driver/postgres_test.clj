@@ -1736,6 +1736,52 @@
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
+(deftest ^:parallel multi-stage-query-compiles-to-ctes-test
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [query    (mt/mbql-query venues
+                       {:source-query {:source-query {:source-table $$venues
+                                                      :aggregation  [[:count]]
+                                                      :breakout     [$price]}
+                                       :filter [:> *count/Integer 1]}
+                        :aggregation  [[:sum *count/Integer]]})
+            stage-0  "SELECT venues.price AS price, COUNT(*) AS count FROM venues GROUP BY venues.price ORDER BY venues.price ASC"
+            compile-sql (fn [standalone?]
+                          (binding [driver/*compile-as-standalone-statement* standalone?]
+                            (some-> (qp.compile/compile query) :query pretty-sql)))]
+        (testing "a query that will be run as a standalone statement uses a CTE per non-final stage"
+          (is (= (str "WITH __mb_stage_0 AS (" stage-0 "), "
+                      "__mb_stage_1 AS (SELECT __mb_source.price AS price, __mb_source.count AS count "
+                      "FROM __mb_stage_0 AS __mb_source WHERE __mb_source.count > 1) "
+                      "SELECT SUM(__mb_source.count) AS sum FROM __mb_stage_1 AS __mb_source")
+                 (compile-sql true))))
+        (testing "a query that will be spliced into other SQL keeps using nested subselects"
+          (is (= (str "SELECT SUM(__mb_source.count) AS sum "
+                      "FROM (SELECT __mb_source.price AS price, __mb_source.count AS count "
+                      "FROM (" stage-0 ") AS __mb_source WHERE __mb_source.count > 1) AS __mb_source")
+                 (compile-sql false))))
+        (testing "the query actually runs"
+          (is (= [[100]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel multi-stage-join-source-does-not-use-ctes-test
+  (testing "join sources are always nested subselects, even for a standalone statement"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [query (mt/mbql-query venues
+                      {:joins [{:alias        "J"
+                                :source-query {:source-query {:source-table $$venues
+                                                              :aggregation  [[:count]]
+                                                              :breakout     [$price]}
+                                               :filter [:> *count/Integer 1]}
+                                :condition    [:= $price &J.*price/Integer]
+                                :fields       :all}]
+                       :limit 1})
+              sql   (binding [driver/*compile-as-standalone-statement* true]
+                      (some-> (qp.compile/compile query) :query pretty-sql))]
+          (is (not (str/includes? sql "WITH")))
+          (is (str/includes? sql "LEFT JOIN (SELECT __mb_source.price AS price, __mb_source.count AS count FROM (SELECT")))))))
+
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres

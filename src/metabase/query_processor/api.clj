@@ -209,7 +209,8 @@
                     lib/disable-default-limit)]
       (qp.perms/check-current-user-has-adhoc-native-query-perms query)
       (qp.setup/with-qp-setup [query query]
-        (binding [driver/*compile-with-inline-parameters* true]
+        (binding [driver/*compile-with-inline-parameters*    true
+                  driver/*compile-as-standalone-statement* true]
           ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
           ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
           ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
