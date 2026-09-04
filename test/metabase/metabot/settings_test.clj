@@ -220,8 +220,8 @@
                "openrouter/z-ai/glm-5.2"                    true
                ;; streams reasoning summaries under the server default
                "openrouter/openai/gpt-5.5"                  true
-               ;; encrypted-only upstream: reasoning exists but never renders
-               "openrouter/openai/gpt-5.4"                  false
+               ;; re-probed 2026-09-04: streams summaries under the explicit enable
+               "openrouter/openai/gpt-5.4"                  true
                "openrouter/anthropic/claude-haiku-4.5"      false
                ;; google serves both wire families; Claude partner models and catalog Geminis both stream
                "google/anthropic/claude-sonnet-4-6"         true

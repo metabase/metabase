@@ -184,8 +184,8 @@
     "z-ai/glm-5.2"                true
     "openai/gpt-5.5"              true
     "openai/gpt-5.6-sol"          true
-    "openai/gpt-5.4"              false
-    "openai/gpt-5.4-mini"         false
+    "openai/gpt-5.4"              true
+    "openai/gpt-5.4-mini"         true
     "anthropic/claude-haiku-4.5"  false
     "anthropic/claude-opus-4.5"   false
     "not/a-model"                 false
@@ -224,8 +224,7 @@
     (is (not (contains? (body-for {:model "openai/gpt-5.6-sol"}) :reasoning)))
     (is (not (contains? (body-for {:model "openai/gpt-5.5" :schema {:type "object"}}) :reasoning)))
     (is (not (contains? (body-for {:model "openai/gpt-5.5" :reasoning? false}) :reasoning))))
-  (testing "encrypted-only and budget-only models never get a directive"
-    (is (not (contains? (body-for {:model "openai/gpt-5.4"}) :reasoning)))
+  (testing "budget-only models never get a directive"
     (is (not (contains? (body-for {:model "anthropic/claude-haiku-4.5"}) :reasoning))))
   (testing "enabling reasoning drops :temperature for anthropic models (rejected while thinking)"
     (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :temperature 0.3})]
@@ -256,14 +255,13 @@
                                "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
                                "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
-                               "qwen/qwen3.8-max" "z-ai/glm-5.3" "z-ai/glm-5.2"}
+                               "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max" "z-ai/glm-5.3" "z-ai/glm-5.2"}
           renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
                                "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
-          encrypted          #{"openai/gpt-5.4" "openai/gpt-5.4-mini"}
           budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1" "anthropic/claude-sonnet-4.5"
                                "anthropic/claude-haiku-4.5"}]
       (is (= (set (keys @#'openrouter/supported-models))
-             (into renderable (concat renderable-default encrypted budget))))
+             (into renderable (concat renderable-default budget))))
       (doseq [model renderable]
         (testing model
           (is (true? (openrouter/reasoning-model? model)))
@@ -272,7 +270,7 @@
         (testing model
           (is (true? (openrouter/reasoning-model? model)))
           (is (not (contains? (body-for {:model model}) :reasoning)))))
-      (doseq [model (concat encrypted budget)]
+      (doseq [model budget]
         (testing model
           (is (false? (openrouter/reasoning-model? model)))
           (is (not (contains? (body-for {:model model}) :reasoning))))))))
