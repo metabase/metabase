@@ -101,11 +101,11 @@ const groupDetail = () =>
   ).then(({ GroupDetailApp }) => ({ Component: GroupDetailApp }));
 
 const upsellTenants = () =>
-  import(/* webpackChunkName: "admin" */ "./upsells/UpsellTenants").then(
-    ({ UpsellTenants }) => ({
-      Component: UpsellTenants,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/common/components/upsells/UpsellTenants"
+  ).then(({ UpsellTenants }) => ({
+    Component: UpsellTenants,
+  }));
 
 const performanceApp = () =>
   import(

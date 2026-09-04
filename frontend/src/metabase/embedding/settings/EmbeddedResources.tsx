@@ -4,6 +4,7 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
+import { PublicLinksListing } from "metabase/common/components/PublicLinksListing/PublicLinksListing";
 import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -11,8 +12,6 @@ import type {
   GetEmbeddableCard,
   GetEmbeddableDashboard,
 } from "metabase-types/api";
-
-import { PublicLinksListing } from "./PublicLinksListing";
 
 // refetch if revisiting this page and the cache is over a minute old
 const refetchSettings = { refetchOnMountOrArgChange: 60 };

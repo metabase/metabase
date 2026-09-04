@@ -1,4 +1,4 @@
-import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import { getTenantsBasePath } from "metabase/common/tenants";
 import type { DatabaseId, Tenant } from "metabase-types/api";
 
